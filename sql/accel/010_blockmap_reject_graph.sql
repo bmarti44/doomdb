@@ -78,6 +78,25 @@ create table doom_sector_sound_reach (
     references doom_map_sector (sector_id)
 );
 
+-- Immutable determinant inputs for exact simulation line-of-sight. Dynamic
+-- floor/ceiling values remain session rows joined by the two sector IDs.
+create table doom_los_segment (
+  linedef_id number(10) not null,
+  vx number not null,
+  vy number not null,
+  sx number not null,
+  sy number not null,
+  right_sector_id number(10) not null,
+  left_sector_id number(10),
+  constraint doom_los_segment_pk primary key(linedef_id),
+  constraint doom_los_segment_line_fk foreign key(linedef_id)
+    references doom_map_linedef(linedef_id),
+  constraint doom_los_segment_right_fk foreign key(right_sector_id)
+    references doom_map_sector(sector_id),
+  constraint doom_los_segment_left_fk foreign key(left_sector_id)
+    references doom_map_sector(sector_id)
+);
+
 create index doom_block_line_linedef_ix on doom_block_line (linedef_id);
 create index doom_sector_reject_target_ix on doom_sector_reject (target_sector_id, source_sector_id);
 create index doom_sector_edge_target_ix on doom_sector_edge (target_sector_id, source_sector_id);
@@ -219,6 +238,17 @@ begin
   end loop;
 end;
 /
+
+insert into doom_los_segment(
+  linedef_id,vx,vy,sx,sy,right_sector_id,left_sector_id
+)
+select l.linedef_id,v1.x,v1.y,v2.x-v1.x,v2.y-v1.y,
+  rs.sector_id,ls.sector_id
+from doom_map_linedef l
+join doom_map_vertex v1 on v1.vertex_id=l.start_vertex_id
+join doom_map_vertex v2 on v2.vertex_id=l.end_vertex_id
+join doom_map_sidedef rs on rs.sidedef_id=l.right_sidedef_id
+left join doom_map_sidedef ls on ls.sidedef_id=l.left_sidedef_id;
 
 create property graph doom_sector_graph
   vertex tables (

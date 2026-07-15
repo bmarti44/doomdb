@@ -57,13 +57,13 @@ create or replace package body doom_monsters as
   end;
 
   function reject_pair(p_source number,p_target number) return number is
-    l_count number;l_byte number;l_bit number;
+    l_rejected number;
   begin
-    select count(*) into l_count from doom_map_sector;
-    l_bit:=p_source*l_count+p_target;
-    select byte_value into l_byte from doom_reject_byte
-      where byte_offset=floor(l_bit/8);
-    return case when bitand(l_byte,power(2,mod(l_bit,8)))<>0 then 1 else 0 end;
+    -- DOOM_SECTOR_REJECT is the exact bootstrap decode of DOOM_REJECT_BYTE
+    -- using the reviewed BITAND/POWER addressing rule.
+    select rejected into l_rejected from doom_sector_reject
+      where source_sector_id=p_source and target_sector_id=p_target;
+    return l_rejected;
   exception when no_data_found then return 1;
   end;
 
@@ -73,6 +73,8 @@ create or replace package body doom_monsters as
   ) return number is
     l_blocker number;
   begin
+    -- DOOM_LOS_SEGMENT packs reviewed DOOM_MAP_LINEDEF/DOOM_MAP_SIDEDEF vertex
+    -- facts; live portal heights remain relational joins below.
     -- DOOM_REJECT_BYTE is a negative-only filter. An unset REJECT bit proceeds
     -- to an exact INTERSECT determinant path; DOOM_R1_RAYS uses the same
     -- LINEDEF rational NUMERATOR/DENOMINATOR/DISTANCE ordering convention.
@@ -97,21 +99,17 @@ create or replace package body doom_monsters as
                     <=greatest(geometry.right_floor,geometry.left_floor)
                    then 1 else 0 end as blocking
           from (
-            select l.linedef_id,l.left_sidedef_id,v1.x vx,v1.y vy,
-              v2.x-v1.x sx,v2.y-v1.y sy,
+            select l.linedef_id,l.left_sector_id as left_sidedef_id,
+              l.vx,l.vy,l.sx,l.sy,
               coalesce(rss.ceiling_height,rs.ceiling_height) right_ceiling,
               coalesce(rss.floor_height,rs.floor_height) right_floor,
               coalesce(lss.ceiling_height,ls.ceiling_height) left_ceiling,
               coalesce(lss.floor_height,ls.floor_height) left_floor
-            from doom_map_linedef l
-            join doom_map_vertex v1 on v1.vertex_id=l.start_vertex_id
-            join doom_map_vertex v2 on v2.vertex_id=l.end_vertex_id
-            join doom_map_sidedef rd on rd.sidedef_id=l.right_sidedef_id
-            join doom_map_sector rs on rs.sector_id=rd.sector_id
+            from doom_los_segment l
+            join doom_map_sector rs on rs.sector_id=l.right_sector_id
             left join sector_state rss on rss.session_token=p_session
               and rss.sector_id=rs.sector_id
-            left join doom_map_sidedef ld on ld.sidedef_id=l.left_sidedef_id
-            left join doom_map_sector ls on ls.sector_id=ld.sector_id
+            left join doom_map_sector ls on ls.sector_id=l.left_sector_id
             left join sector_state lss on lss.session_token=p_session
               and lss.sector_id=ls.sector_id
           ) geometry

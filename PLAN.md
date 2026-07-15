@@ -1121,9 +1121,10 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   sound-graph searches. Exact bootstrap-time non-blocked sound reachability,
   bulk actor housekeeping, one-pass special-light neighbors, and omission of a
   redundant modern-lineage JSON rewrite all passed their adjacent gates. The
-  selected result after replacing array DML with common set operations is now
-  45.766 ms p50, 77.846 ms p95, 96.626 ms p99, and 98.822 ms maximum over 270
-  unique turn tics. Simulation/history remains a
+  selected result after replacing array DML with common set operations and
+  packing immutable REJECT/line-of-sight inputs is now 41.410 ms p50,
+  70.581 ms p95, 84.806 ms p99, and 93.566 ms maximum over 270 unique turn
+  tics. Simulation/history remains a
   mandatory bottleneck; continue reducing state serialization/hash, actor
   advancement, world machines, combat, history, command bookkeeping, and audio
   to <=10 ms p95. P12.0 remains active and P8 remains paused.
