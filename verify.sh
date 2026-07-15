@@ -87,7 +87,10 @@ case "$1" in
         scripts/db_sql.sh tests/verify-t6.2-thin-door.sql
         node tests/verify-t6.2-opening-route.mjs
         ;;
-      T6.3) evaluator/t6.3/run-visible.sh ;;
+      T6.3)
+        evaluator/t6.3/run-visible.sh
+        scripts/db_sql.sh tests/verify-t6.3-lift-carry.sql
+        ;;
       T6.4) evaluator/t6.4/run-visible.sh ;;
       T7.1)
         evaluator/t7.1/run-visible.sh
@@ -98,6 +101,7 @@ case "$1" in
         scripts/db_sql.sh tests/verify-t7.2-history.sql
         scripts/db_sql.sh tests/verify-t7.2-runtime.sql
         scripts/db_sql.sh tests/verify-t7.2-mobj-integrity.sql
+        scripts/db_sql.sh tests/verify-t7.2-branch-command-isolation.sql
         ;;
       T7.3)
         evaluator/t7.3/run-visible.sh

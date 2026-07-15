@@ -293,8 +293,16 @@ create or replace package body doom_combat as
     l_slot number;l_mask number;l_owned_mask number;l_weapon varchar2(32);l_selected varchar2(32);
     l_ammo varchar2(32);l_cost number;l_b number;l_s number;l_r number;l_c number;
   begin
-    select coalesce(max(weapon_slot),0) into l_slot from tic_commands
-      where session_token=p_session and tic=p_tic;
+    select coalesce(max(command_row.weapon_slot),0) into l_slot
+    from game_sessions session_row
+    left join tic_commands command_row
+      on command_row.session_token=session_row.session_token
+     and command_row.lineage=case
+       when regexp_like(session_row.save_lineage,'^[0-9a-f]{64}$')
+         then session_row.save_lineage else rpad('0',64,'0') end
+     and command_row.tic=p_tic
+     and command_row.command_ordinal=0
+    where session_row.session_token=p_session;
     if l_slot=0 then return;end if;
     begin
       select w.weapon_id,w.ammo_type,w.ammo_cost,p.selected_weapon,
@@ -406,8 +414,16 @@ create or replace package body doom_combat as
     l_state varchar2(64);
     w doom_weapon_def%rowtype;
   begin
-    select coalesce(max(fire),0) into l_fire from tic_commands
-      where session_token=p_session and tic=p_tic;
+    select coalesce(max(command_row.fire),0) into l_fire
+    from game_sessions session_row
+    left join tic_commands command_row
+      on command_row.session_token=session_row.session_token
+     and command_row.lineage=case
+       when regexp_like(session_row.save_lineage,'^[0-9a-f]{64}$')
+         then session_row.save_lineage else rpad('0',64,'0') end
+     and command_row.tic=p_tic
+     and command_row.command_ordinal=0
+    where session_row.session_token=p_session;
     if l_fire=0 then
       update players set refire=0 where session_token=p_session and player_id=p_player;
       return;

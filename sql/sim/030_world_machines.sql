@@ -190,7 +190,8 @@ create or replace package body doom_world_machines as
   end;
 
   procedure advance_movers(p_session varchar2,p_tic number) is
-    l_height number;l_next number;l_reached boolean;
+    l_height number;l_next number;l_ceiling number;l_player_height number;
+    l_blocked number;l_reached boolean;
   begin
     for m in (select * from active_movers where session_token=p_session order by mover_id) loop
       if m.direction=0 then
@@ -203,9 +204,6 @@ create or replace package body doom_world_machines as
                      case when m.mover_kind='LIFT' then '1' else '-1' end);
         end if;
         continue;
-      end if;
-      if m.mover_kind='LIFT' and m.direction=1 and occupant_in_sector(p_session,m.sector_id) then
-        emit_event(p_session,p_tic,'LIFT_BLOCKED',m.sector_id);continue;
       end if;
       if m.mover_kind='DOOR_RAISE' and m.direction=-1 and occupant_in_sector(p_session,m.sector_id) then
         select ceiling_height into l_height from sector_state
@@ -226,12 +224,56 @@ create or replace package body doom_world_machines as
       l_reached:=(m.direction=1 and l_next>=m.target_height) or
                  (m.direction=-1 and l_next<=m.target_height);
       if l_reached then l_next:=m.target_height;end if;
+
+      -- A platform occupant is supported by the moving floor; it is not an
+      -- obstruction merely because it is inside the sector.  Doom clips each
+      -- supported thing to the new floor height.  A non-crushing lift only
+      -- stalls when that clip would leave insufficient headroom.
+      if m.plane='FLOOR' and m.direction=1 then
+        select ceiling_height into l_ceiling from sector_state
+          where session_token=p_session and sector_id=m.sector_id;
+        l_player_height:=config_number('PLAYER_HEIGHT');
+        select count(*) into l_blocked
+        from (
+          select p.x,p.y,p.z,l_player_height actor_height
+          from players p
+          where p.session_token=p_session and p.z<=l_height
+          union all
+          select o.x,o.y,o.z,o.height
+          from mobjs o
+          where o.session_token=p_session and o.z<=l_height and o.height>0
+        ) actor
+        where l_next+actor.actor_height>l_ceiling
+          and exists (
+            select 1 from table(doom_bsp_locate(actor.x,actor.y)) located
+            where located.sector_id=m.sector_id
+          );
+        if l_blocked>0 then
+          emit_event(p_session,p_tic,'LIFT_BLOCKED',m.sector_id);
+          continue;
+        end if;
+      end if;
+
       if m.plane='CEILING' then
         update sector_state set ceiling_height=l_next
           where session_token=p_session and sector_id=m.sector_id;
       else
         update sector_state set floor_height=l_next
           where session_token=p_session and sector_id=m.sector_id;
+        if m.direction=1 then
+          update players p set z=l_next
+          where p.session_token=p_session and p.z<=l_height
+            and exists (
+              select 1 from table(doom_bsp_locate(p.x,p.y)) located
+              where located.sector_id=m.sector_id
+            );
+          update mobjs o set z=l_next
+          where o.session_token=p_session and o.z<=l_height
+            and exists (
+              select 1 from table(doom_bsp_locate(o.x,o.y)) located
+              where located.sector_id=m.sector_id
+            );
+        end if;
       end if;
       if l_reached then
         emit_event(p_session,p_tic,'MOVER_REACHED',m.sector_id,to_char(l_next));
@@ -347,8 +389,16 @@ create or replace package body doom_world_machines as
     -- USE_ACTION is accepted only through the exact WORLD_USE_RANGE geometry
     -- query below; the command never identifies an actionable line.
     if p_use_action is null then
-      select use_action into l_use from tic_commands
-        where session_token=p_session and tic=p_tic and command_ordinal=0;
+      select command_row.use_action into l_use
+      from game_sessions session_row
+      join tic_commands command_row
+        on command_row.session_token=session_row.session_token
+       and command_row.lineage=case
+         when regexp_like(session_row.save_lineage,'^[0-9a-f]{64}$')
+           then session_row.save_lineage else rpad('0',64,'0') end
+       and command_row.tic=p_tic
+       and command_row.command_ordinal=0
+      where session_row.session_token=p_session;
     else
       l_use:=p_use_action;
     end if;

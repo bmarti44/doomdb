@@ -205,6 +205,25 @@ and compact RLE transport. Do not force MODEL into the world renderer. It may be
 used there only if an isolated benchmark with all render goldens green proves a
 measured end-to-end improvement. T9.1 remains mandatory regardless.
 
+### 1.8 MLE and UTL_TCP performance decision
+
+MLE JavaScript is not a renderer, simulation, RLE, JSON, LOB, compression, or
+tic-batching fallback. A measured local evaluation found renderer SQL
+materialization to dominate production frame latency before RLE, JSON, hashing,
+or compression begins. Wrapping that SQL in MLE does not change its plan;
+fetching its rows into JavaScript adds a language boundary, and moving render
+decisions into JavaScript violates Sections 0.1, 0.3, and 1.6.
+
+UTL_TCP is outbound-only and is not an HTTP response transport. It may not be
+used to bypass AutoREST or send dynamic game data to a relay. All public dynamic
+traffic remains the Section 5.4 `DOOM_API` AutoREST contract.
+
+T12 optimizes the measured relational renderer first. It separately times RLE,
+JSON aggregation, frame hashing, UTF-8 conversion, `UTL_COMPRESS`, ORDS
+marshaling, browser decode, and blit before proposing a codec change. Any future
+MLE experiment requires a charter amendment, fresh independent evaluation,
+local and Autonomous capability probes, and all existing goldens.
+
 ## 2. Non-negotiable implementation rules
 
 1. All dynamic browser traffic uses objects enabled by `ORDS.ENABLE_OBJECT`.
@@ -1086,6 +1105,10 @@ it does not claim a minimum FPS.
 - Route: Terra medium.
 - Collect the Section 6.6 replay, execution plans with runtime statistics, V$SQL
   parse/execution data, stage timers excluded from payloads, and payload sizes.
+- Record separate out-of-band timers for renderer materialization, RLE,
+  canonical JSON aggregation, frame hashing, UTF-8 conversion, gzip, response
+  copy/ORDS marshaling, browser decode, and canvas blit. Measure one-command and
+  four-command STEP latency locally and on managed ORDS.
 - Accept: bound statement shapes remain stable across poses/commands and the
   complete raw/report artifact exists.
 
@@ -1095,6 +1118,9 @@ it does not claim a minimum FPS.
 - Optimize the measured bottleneck using indexes, join/order changes, precomputed
   static relations, partitioning, aggregation shape, or codec changes that retain
   the public decompressed schema and all goldens.
+- Evaluate the already measured shared-portal/single-derivation SQL shape before
+  any codec experiment; it is the confirmed candidate that attacks renderer
+  materialization. MLE and UTL_TCP remain out of scope under Section 1.8.
 - Stop only under Section 6.6. Record every attempt, including regressions.
 - Accept: all correctness and mutation tests remain green and the final report
   states the highest verified local and cloud FPS without a marketing estimate.
