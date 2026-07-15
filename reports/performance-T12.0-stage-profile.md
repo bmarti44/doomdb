@@ -108,6 +108,12 @@ construction, so the 0.93-second trace value is an upper bound for that stage.
   shape (3.79 seconds isolated versus approximately 3.3 seconds) and was
   reverted.  The same shape remains selected for masked sprites because its
   measured improvement there is large and repeatable.
+- Materializing projected portal clip windows and interval windows into two
+  additional indexed GTTs changed the world insert to a pathological UGA-heavy
+  plan.  It exceeded 60 seconds (versus approximately 4 seconds for the selected
+  world stage), continued server-side after the client interrupt, and was killed
+  and fully removed.  Redeploying the selected revision immediately restored
+  the exact hashes in 6.97 seconds with zero invalid objects.
 
 ## Remaining acceptance work
 
