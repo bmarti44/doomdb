@@ -24,6 +24,10 @@ select 'wall_texture', 'SFALL', 'SFALL4', 3, 4, 4 from dual;
 
 create or replace view doom_r2_staged_pixel_rows as
 with
+selected_sessions as (
+  select /*+ materialize */ distinct session_token
+  from frame_r1_hit
+),
 pose as (
   select session_row.session_token, session_row.current_tic,
     player.player_id, player.x player_x, player.y player_y,
@@ -32,16 +36,17 @@ pose as (
       tan(cast(90 as binary_double) * cast(acos(-1) as binary_double) / 360)
       projection_k
   from game_sessions session_row
+  join selected_sessions selected
+    on selected.session_token=session_row.session_token
   join players player
     on player.session_token = session_row.session_token
    and player.player_id = session_row.current_player_id
 ),
 rays as (
-  select pose.*, ray.column_no, ray.ray_x, ray.ray_y
+  select distinct pose.*, hit.column_no,hit.ray_x,hit.ray_y
   from pose
-  join doom_r1_ray_rows ray
-    on ray.session_token = pose.session_token
-   and ray.player_id = pose.player_id
+  join frame_r1_hit hit
+    on hit.session_token=pose.session_token and hit.player_id=pose.player_id
 ),
 -- Live floor, ceiling, and light values override immutable map values.
 sector_values as (
@@ -50,7 +55,7 @@ sector_values as (
     coalesce(live_sector.ceiling_height, map_sector.ceiling_height) ceiling_height,
     coalesce(live_sector.light_level, map_sector.light_level) light_level,
     map_sector.floor_flat, map_sector.ceiling_flat
-  from game_sessions sessions
+  from selected_sessions sessions
   cross join doom_map_sector map_sector
   left join sector_state live_sector
     on live_sector.session_token = sessions.session_token
@@ -62,7 +67,7 @@ active_hits as (
       partition by hit.session_token, hit.column_no
       order by hit.hit_t, hit.linedef_id, hit.seg_id, hit.facing_side
     ) - 1 active_ordinal
-  from doom_r2_staged_portal_hit_rows hit
+  from frame_portal_hit hit
   where hit.is_active = 1
 ),
 hit_detail as (
@@ -121,7 +126,7 @@ interval_detail as (
     sector.floor_flat, sector.ceiling_flat,
     coalesce(prior_hit.clip_top_after,0) clip_top,
     coalesce(prior_hit.clip_bottom_after,200) clip_bottom
-  from doom_r2_staged_sector_interval_rows interval_row
+  from frame_sector_interval interval_row
   join rays
     on rays.session_token=interval_row.session_token
    and rays.column_no=interval_row.column_no
@@ -134,49 +139,16 @@ interval_detail as (
    and prior_hit.active_ordinal=interval_row.interval_ordinal-1
 ),
 screen_pixels as (
-  select rays.session_token, rays.column_no, screen_rows.row_no,
-    screen_rows.row_no + 0.5 row_center
+  select rays.session_token,rays.column_no,screen_rows.row_no,
+    screen_rows.row_no+0.5 row_center
   from rays
   cross join (select level-1 row_no from dual connect by level<=200) screen_rows
 ),
-wall_candidates as (
-  select pixel.session_token,pixel.column_no,pixel.row_no,
-    case
-      when hit.is_termination=1 then 10
-      when pixel.row_center >= 100-(hit.lower_top-hit.eye_z)*hit.projection_k/hit.hit_t
-       and pixel.row_center < 100-(hit.lower_bottom-hit.eye_z)*hit.projection_k/hit.hit_t then 11
-      else 12
-    end layer_ordinal,
-    hit.active_ordinal sector_interval_ordinal,
-    hit.hit_t sample_t, hit.from_sector_id sector_id,
-    case
-      when hit.is_termination=1 then
-        case when hit.middle_texture!='-' then hit.middle_texture
-             when hit.upper_texture!='-' then hit.upper_texture
-             else hit.lower_texture end
-      when pixel.row_center >= 100-(hit.lower_top-hit.eye_z)*hit.projection_k/hit.hit_t
-       and pixel.row_center < 100-(hit.lower_bottom-hit.eye_z)*hit.projection_k/hit.hit_t
-        then hit.lower_texture
-      else hit.upper_texture
-    end base_asset_name,
-    'wall_texture' asset_kind,
-    hit.seg_offset+hit.x_offset+hit.hit_u*sqrt(
-      power(hit.seg_end_x-hit.seg_start_x,2)+power(hit.seg_end_y-hit.seg_start_y,2)) sample_x,
-    case
-      when hit.is_termination=1 then
-        case when bitand(hit.linedef_flags,16)!=0
-             then hit.facing_floor_height+128 else hit.facing_ceiling_height end
-      when pixel.row_center >= 100-(hit.lower_top-hit.eye_z)*hit.projection_k/hit.hit_t
-       and pixel.row_center < 100-(hit.lower_bottom-hit.eye_z)*hit.projection_k/hit.hit_t then
-        case when bitand(hit.linedef_flags,16)!=0
-             then hit.facing_ceiling_height else hit.opposite_floor_height end
-      else case when bitand(hit.linedef_flags,8)!=0
-                then hit.opposite_ceiling_height+128 else hit.facing_ceiling_height end
-    end - (hit.eye_z+(100-pixel.row_center)*hit.hit_t/hit.projection_k)
-      + hit.y_offset sample_y,
-    facing.light_level light_level,
+wall_pixel_hits as (
+  select pixel.session_token,pixel.column_no,pixel.row_no,pixel.row_center,
+    hit.active_ordinal,
     row_number() over (
-      partition by pixel.session_token,pixel.column_no,pixel.row_no
+      partition by hit.session_token,hit.column_no,pixel.row_no
       order by hit.hit_t,hit.linedef_id,hit.seg_id,hit.facing_side
     ) candidate_ordinal
   from screen_pixels pixel
@@ -184,8 +156,6 @@ wall_candidates as (
     on hit.session_token=pixel.session_token and hit.column_no=pixel.column_no
    and pixel.row_center>=hit.clip_top_before
    and pixel.row_center<hit.clip_bottom_before
-  join sector_values facing
-    on facing.session_token=hit.session_token and facing.sector_id=hit.from_sector_id
   where
     (hit.is_termination=1 and
       pixel.row_center>=100-(hit.facing_ceiling_height-hit.eye_z)*hit.projection_k/hit.hit_t and
@@ -199,6 +169,43 @@ wall_candidates as (
       not (hit.facing_ceiling_flat='F_SKY1' and hit.opposite_ceiling_flat='F_SKY1') and
       pixel.row_center>=100-(hit.upper_top-hit.eye_z)*hit.projection_k/hit.hit_t and
       pixel.row_center<100-(hit.upper_bottom-hit.eye_z)*hit.projection_k/hit.hit_t)
+),
+wall_candidates as (
+  select pixel.session_token,pixel.column_no,pixel.row_no,
+    case when hit.is_termination=1 then 10
+      when pixel.row_center>=100-(hit.lower_top-hit.eye_z)*hit.projection_k/hit.hit_t
+       and pixel.row_center<100-(hit.lower_bottom-hit.eye_z)*hit.projection_k/hit.hit_t
+      then 11 else 12 end layer_ordinal,
+    hit.active_ordinal sector_interval_ordinal,hit.hit_t sample_t,
+    hit.from_sector_id sector_id,
+    case when hit.is_termination=1 then
+      case when hit.middle_texture!='-' then hit.middle_texture
+           when hit.upper_texture!='-' then hit.upper_texture else hit.lower_texture end
+      when pixel.row_center>=100-(hit.lower_top-hit.eye_z)*hit.projection_k/hit.hit_t
+       and pixel.row_center<100-(hit.lower_bottom-hit.eye_z)*hit.projection_k/hit.hit_t
+      then hit.lower_texture else hit.upper_texture end base_asset_name,
+    'wall_texture' asset_kind,
+    hit.seg_offset+hit.x_offset+hit.hit_u*sqrt(
+      power(hit.seg_end_x-hit.seg_start_x,2)+power(hit.seg_end_y-hit.seg_start_y,2)) sample_x,
+    case when hit.is_termination=1 then
+      case when bitand(hit.linedef_flags,16)!=0
+           then hit.facing_floor_height+128 else hit.facing_ceiling_height end
+      when pixel.row_center>=100-(hit.lower_top-hit.eye_z)*hit.projection_k/hit.hit_t
+       and pixel.row_center<100-(hit.lower_bottom-hit.eye_z)*hit.projection_k/hit.hit_t
+      then case when bitand(hit.linedef_flags,16)!=0
+        then hit.facing_ceiling_height else hit.opposite_floor_height end
+      else case when bitand(hit.linedef_flags,8)!=0
+        then hit.opposite_ceiling_height+128 else hit.facing_ceiling_height end
+    end-(hit.eye_z+(100-pixel.row_center)*hit.hit_t/hit.projection_k)+
+      hit.y_offset sample_y,
+    facing.light_level,1 candidate_ordinal
+  from wall_pixel_hits pixel
+  join hit_clips hit
+    on hit.session_token=pixel.session_token and hit.column_no=pixel.column_no
+   and hit.active_ordinal=pixel.active_ordinal
+  join sector_values facing
+    on facing.session_token=hit.session_token and facing.sector_id=hit.from_sector_id
+  where pixel.candidate_ordinal=1
 ),
 plane_candidates as (
   select pixel.session_token,pixel.column_no,pixel.row_no,
@@ -228,10 +235,7 @@ plane_candidates as (
     end sample_y,
     case when interval.ceiling_flat='F_SKY1' and pixel.row_center<100
          then 255 else interval.light_level end light_level,
-    row_number() over (
-      partition by pixel.session_token,pixel.column_no,pixel.row_no
-      order by interval.interval_ordinal
-    ) candidate_ordinal
+    1 candidate_ordinal
   from screen_pixels pixel
   join interval_detail interval
     on interval.session_token=pixel.session_token
@@ -272,29 +276,17 @@ horizon_candidates as (
    and pixel.row_center<interval.clip_bottom
 ),
 candidate_union as (
-  select candidate.*,0 source_priority from wall_candidates candidate
+  select candidate.* from wall_candidates candidate
   where candidate_ordinal=1
   union all
-  select candidate.*,1 source_priority from plane_candidates candidate
+  select candidate.* from plane_candidates candidate
   where candidate_ordinal=1
-  union all
-  select candidate.*,2 source_priority from horizon_candidates candidate
-  where candidate_ordinal=1
-),
-ranked_candidates as (
-  select candidate_union.*,
-    row_number() over (
-      partition by session_token,column_no,row_no
-      order by source_priority,candidate_ordinal
-    ) final_ordinal
-  from candidate_union
 ),
 selected_candidates as (
   select session_token,column_no,row_no,layer_ordinal,
     sector_interval_ordinal,sample_t,sector_id,base_asset_name,asset_kind,
     sample_x,sample_y,light_level,candidate_ordinal
-  from ranked_candidates
-  where final_ordinal=1
+  from candidate_union
 ),
 animated_candidates as (
   select selected_candidates.*,
@@ -329,8 +321,10 @@ raw_texels as (
     with_assets.*,texel.c raw_palette_index
   from with_assets
   join at texel on texel.a=with_assets.asset_id
-   and texel.x=cast(floor(sample_x)-asset_width*floor(floor(sample_x)/asset_width) as number)
-   and texel.y=cast(floor(sample_y)-asset_height*floor(floor(sample_y)/asset_height) as number)
+   and texel.x=cast(floor(sample_x)-asset_width*
+     floor(floor(sample_x)/asset_width) as number)
+   and texel.y=cast(floor(sample_y)-asset_height*
+     floor(floor(sample_y)/asset_height) as number)
 )
 select raw_texels.session_token,raw_texels.column_no,raw_texels.row_no,
   colormap.mapped_index palette_index,raw_texels.layer_ordinal,

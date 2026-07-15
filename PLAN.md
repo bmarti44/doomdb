@@ -1022,6 +1022,15 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
 ### P12.0 - Pulled-forward local renderer acceleration gate
 
 - Route: Sol high for SQL changes and Terra medium for measurement.
+- Parity work after P7 is paused behind a playability gate.  The selected local
+  implementation must target 30 presented FPS: no more than 33.3 ms per unique
+  moving 320x200 frame at both p50 and p95 after a 30-frame cursor/buffer warmup.
+  Measure at least 270 unique moving frames with application render caches cold;
+  cached spawn, menu, pause, retry, replay, rewind, or load responses are reported
+  separately and cannot satisfy this gate.  If the architectural attempts below
+  cannot approach the target on Oracle Free's two-core/2-GB limit, report the
+  charter-versus-hardware feasibility conflict rather than calling the result
+  playable or resuming parity.
 - Run after P7 and before continuing P8. Start from the reviewed T5 renderer
   goldens and the measured T8.1 production profile. Capture representative local
   world, masked, presentation, one-command STEP, and four-command STEP timings
@@ -1031,6 +1040,49 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   predicates, and removal of repeated SQL-macro expansion. Do not change the
   320x200 output, canonical RLE/JSON, public API, simulation, WAD data, or SQL
   ownership, and do not use MLE or UTL_TCP.
+- Maintain a row-source inventory for NEW_GAME plus one- and four-command moving
+  STEP frames.  Isolate simulation/state hashing, frustum candidates,
+  ray/segment pairs, portal/window analytics, world sampling, masked sampling,
+  presentation, frame hashing, RLE/JSON/LOB/gzip, ORDS, browser decode, and blit.
+  The first deep trace identified the initial-frame database share as masked
+  rendering 17.0 s (56%), world pixels 4.92 s (16%), R1 hits 3.22 s (11%),
+  presentation 3.03 s (10%), frame hashing 1.01 s (3%), and RLE/JSON below 2%.
+- Execute structural work reduction in this order, retaining canonical views as
+  independent oracles: indexed resolution-profile axes and bounded sprite/wall
+  rasterization; immutable first-opaque/sprite/animation/segment metadata;
+  conservative exact screen-column pruning before determinant/t/u intersection;
+  one shared materialized portal/interval/clip stream; direct world-to-final
+  pixels plus sparse deterministic overlays; then WAD BSP front-to-back subtree
+  rejection, solid column occlusion ranges, and floor/ceiling span generation if
+  the preceding slices remain materially above budget.  JavaBox/Mocha Doom is
+  architectural evidence for persistent runtime state, BSP bounding-box
+  rejection, solid screen-column ranges, column/span rasterization, cached
+  texture columns, and publish-on-new-frame sequencing only; its GPL-derived
+  code, tables, data, and control flow may not be copied or translated.
+- Implementation ledger (2026-07-15): profile-keyed axes and 64-orientation ray
+  tables, immutable first-opaque metadata, exact bounded R1 candidates, shared
+  portal/sector-interval staging, bounded masked rasterization, direct
+  world-to-final composition, sparse overlays, and chunked frame hashing are
+  selected and exact.  The second clean 41-file bootstrap ended with zero
+  invalid objects.  Warm clean `NEW_GAME` is 7.63 s; clean-bootstrap first frame
+  is 8.89 s; one moving turn is 8.71 s; four moving forward tics are 11.35 s.
+  Therefore P12.0 remains active and P8 remains paused.  Next implementation is
+  WAD BSP front-to-back subtree rejection plus solid-column/window facts,
+  followed by plane spans; persistent frame sequencing is finishing work after
+  cache-miss rendering is structurally reduced.
+- New ray, screen-axis, clip, span, and cache-key relations use an explicit
+  resolution profile.  `CANONICAL_320X200` remains the only selected profile and
+  keeps all reviewed hashes.  A future 640x400 profile is a required design
+  target, not part of the current golden set: it has four times the pixels and
+  must be addable without redesigning resolution-independent visibility or
+  geometry.  No claim of 30 FPS at 640x400 follows from meeting it at 320x200.
+- Exact SQL-owned caches may accelerate unchanged/revisited states, but cache
+  keys must cover every render dependency and cache-miss moving frames remain
+  the playability authority.  Only after renderer work approaches the budget may
+  frame-byte construction, JSON RETURNING BLOB, temporary LOB lifecycle, gzip,
+  ORDS pool settings, or DOP be treated as finishing work.  Database In-Memory,
+  MLE, UTL_TCP, alternate HTTP surfaces, approximation, reduced resolution, and
+  client prediction/rendering remain rejected.
 - Every candidate must retain the exact reviewed T5 frame hashes and pass the
   complete T5-T7 correctness and mutation gates. Record rejected attempts and
   raw timings. Select an optimization only after repeat measurements show a

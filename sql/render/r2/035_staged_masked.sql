@@ -207,6 +207,10 @@ from resolved;
 
 create or replace view doom_r2_staged_masked_candidate_rows as
 with
+selected_sessions as (
+  select /*+ materialize */ distinct session_token
+  from frame_r1_hit
+),
 pose as (
   select /*+ materialize */ session_row.session_token,player.player_id,
     player.x player_x,player.y player_y,
@@ -215,15 +219,21 @@ pose as (
     sin(player.angle*acos(-1)/180) forward_y,
     cast(160 as binary_double) projection_k
   from game_sessions session_row
+  join selected_sessions selected
+    on selected.session_token=session_row.session_token
   join players player
     on player.session_token=session_row.session_token
    and player.player_id=session_row.current_player_id
 ),
-screen_pixels as (
-  select /*+ materialize */ screen_columns.column_no,screen_rows.row_no,
-    screen_rows.row_no+0.5 row_center
-  from (select level-1 column_no from dual connect by level<=320) screen_columns
-  cross join (select level-1 row_no from dual connect by level<=200) screen_rows
+screen_columns as (
+  select column_no
+  from doom_screen_column
+  where profile_id='CANONICAL_320X200'
+),
+screen_rows as (
+  select row_no,row_center
+  from doom_screen_row
+  where profile_id='CANONICAL_320X200'
 ),
 active_hits as (
   select /*+ materialize */ hit.*,
@@ -231,49 +241,8 @@ active_hits as (
       partition by hit.session_token,hit.column_no
       order by hit.hit_t,hit.linedef_id,hit.seg_id,hit.facing_side
     )-1 active_ordinal
-  from doom_r2_staged_portal_hit_rows hit
+  from frame_portal_hit hit
   where hit.is_active=1
-),
--- Reuse the active portal stream for interval ownership instead of expanding
--- DOOM_R2_SECTOR_INTERVAL_ROWS and its portal traversal again.
-interval_hits as (
-  select hit.*,
-    hit.active_ordinal interval_ordinal,
-    lag(hit.hit_t,1,0) over (
-      partition by hit.session_token,hit.column_no
-      order by hit.hit_t,hit.linedef_id,hit.seg_id,hit.facing_side
-    ) t_start,
-    lag(hit.to_sector_id,1,hit.from_sector_id) over (
-      partition by hit.session_token,hit.column_no
-      order by hit.hit_t,hit.linedef_id,hit.seg_id,hit.facing_side
-    ) interval_sector_id
-  from active_hits hit
-),
-closed_intervals as (
-  select session_token,column_no,interval_ordinal,t_start,hit_t t_end,
-    interval_sector_id sector_id,linedef_id terminating_linedef_id,0 is_final
-  from interval_hits
-),
-last_active as (
-  select interval_hits.*,
-    row_number() over (
-      partition by session_token,column_no
-      order by hit_t desc,linedef_id desc,seg_id desc,facing_side desc
-    ) reverse_ordinal
-  from interval_hits
-),
-final_intervals as (
-  select hit.session_token,hit.column_no,hit.interval_ordinal+1 interval_ordinal,
-    hit.hit_t t_start,config.number_value t_end,hit.to_sector_id sector_id,
-    cast(null as number) terminating_linedef_id,1 is_final
-  from last_active hit
-  join doom_config config on config.config_key='FAR_DISTANCE'
-  where hit.reverse_ordinal=1 and hit.is_termination=0
-),
-sector_intervals as (
-  select * from closed_intervals
-  union all
-  select * from final_intervals
 ),
 hit_projection as (
   select hit.*,pose.eye_z,pose.projection_k,
@@ -305,7 +274,7 @@ interval_windows as (
     interval_row.interval_ordinal,interval_row.t_start,interval_row.t_end,
     interval_row.sector_id,coalesce(prior_hit.clip_top_after,0) clip_top,
     coalesce(prior_hit.clip_bottom_after,200) clip_bottom
-  from sector_intervals interval_row
+  from frame_sector_interval interval_row
   left join hit_windows prior_hit
     on prior_hit.session_token=interval_row.session_token
    and prior_hit.column_no=interval_row.column_no
@@ -359,7 +328,7 @@ masked_samples as (
     case when wall.wall_depth is null
        or geometry.depth<wall.wall_depth-0.000000001 then 1 else 0 end wall_visible
   from masked_geometry geometry
-  join screen_pixels pixel on pixel.column_no=geometry.column_no
+  cross join screen_rows pixel
   join doom_asset asset
     on asset.asset_kind='wall_texture'
    and asset.asset_name=geometry.asset_name
@@ -409,43 +378,41 @@ sprite_bounds as (
   from sprite_assets
 ),
 sprite_samples as (
-  select sprite.session_token,pixel.column_no,pixel.row_no,
+  select sprite.session_token,pixel_column.column_no,pixel_row.row_no,
     'SPRITE' source_kind,sprite.source_id,sprite.depth,interval.sector_id,
     sprite.asset_name,
     cast(least(sprite.width-1,greatest(0,floor(
-      (pixel.column_no-sprite.left_column)*sprite.width/
+      (pixel_column.column_no-sprite.left_column)*sprite.width/
       nullif(sprite.right_column-sprite.left_column+1,0)))) as number) asset_x,
     cast(least(sprite.height-1,greatest(0,floor(
-      (pixel.row_no-sprite.top_row)*sprite.height/
+      (pixel_row.row_no-sprite.top_row)*sprite.height/
       nullif(sprite.bottom_row-sprite.top_row+1,0)))) as number) asset_y,
     sprite.asset_id,sprite.rotation_no,sprite.flip_x,1 screen_visible,
     case when interval.sector_id is not null
-       and pixel.row_no+0.5>=interval.clip_top
-       and pixel.row_no+0.5<interval.clip_bottom then 1 else 0 end
+       and pixel_row.row_center>=interval.clip_top
+       and pixel_row.row_center<interval.clip_bottom then 1 else 0 end
       sector_visible,
     case when wall.wall_depth is null
        or sprite.depth<wall.wall_depth-0.000000001 then 1 else 0 end wall_visible
   from sprite_bounds sprite
-  join screen_pixels pixel
-    on pixel.column_no between greatest(0,sprite.left_column)
-                           and least(319,sprite.right_column)
-   and pixel.row_no between greatest(0,sprite.top_row)
-                       and least(199,sprite.bottom_row)
+  join screen_columns pixel_column
+    on pixel_column.column_no between greatest(0,sprite.left_column)
+                                  and least(319,sprite.right_column)
+  join screen_rows pixel_row
+    on pixel_row.row_no between greatest(0,sprite.top_row)
+                              and least(199,sprite.bottom_row)
   left join interval_windows interval
     on interval.session_token=sprite.session_token
-   and interval.column_no=pixel.column_no
+   and interval.column_no=pixel_column.column_no
    and sprite.depth>=interval.t_start and sprite.depth<interval.t_end
   left join solid_depths wall
     on wall.session_token=sprite.session_token
-   and wall.column_no=pixel.column_no
+   and wall.column_no=pixel_column.column_no
 ),
 asset_first_opaque as (
-  select asset_id,x,y
-  from (
-    select texel.a asset_id,texel.x,texel.y,
-      row_number() over(partition by texel.a order by texel.y,texel.x) ordinal
-    from at texel where texel.c>=0
-  ) where ordinal=1
+  select asset_id,first_opaque_x x,first_opaque_y y
+  from doom_asset
+  where first_opaque_x is not null
 ),
 -- A fully off-screen billboard still exposes one representative opaque sample
 -- so SCREEN_VISIBLE remains an observable clip fact without materializing an

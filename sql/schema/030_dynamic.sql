@@ -243,6 +243,22 @@ create global temporary table frame_column (
 -- One exact analytic R1 hit stream is shared by all R2 consumers during an API
 -- frame. Direct renderer calls fall back to DOOM_R1_HIT_ROWS when this staging
 -- relation is empty.
+create global temporary table frame_render_seg_bound (
+  session_token varchar2(32) not null,player_id number(10) not null,
+  player_x number not null,player_y number not null,player_z number not null,
+  angle_degrees number not null,angle_radians binary_double not null,
+  direction_x binary_double not null,direction_y binary_double not null,
+  plane_x binary_double not null,plane_y binary_double not null,
+  linedef_id number(10) not null,seg_id number(10) not null,
+  seg_direction number(1) not null,right_sidedef_id number(10),
+  left_sidedef_id number(10),line_start_x number not null,
+  line_start_y number not null,line_end_x number not null,line_end_y number not null,
+  seg_start_x number not null,seg_start_y number not null,
+  seg_end_x number not null,seg_end_y number not null,
+  min_cam_x binary_double not null,max_cam_x binary_double not null,
+  constraint frame_render_seg_bound_pk primary key(session_token,seg_id)
+) on commit delete rows;
+
 create global temporary table frame_r1_hit (
   session_token varchar2(32) not null,
   player_id number(10) not null,
@@ -265,6 +281,32 @@ create global temporary table frame_r1_hit (
   constraint frame_r1_hit_column_ck check(column_no between 0 and 319)
 ) on commit delete rows;
 
+-- The ordered portal walk and its sector intervals are shared by world and
+-- masked consumers.  Materializing them once avoids repeating MATCH_RECOGNIZE
+-- and interval analytics for the same exact R1 stream.
+create global temporary table frame_portal_hit (
+  session_token varchar2(32) not null,column_no number(3) not null,
+  hit_ordinal number not null,hit_t binary_double not null,
+  hit_u binary_double not null,linedef_id number(10) not null,
+  seg_id number(10) not null,facing_side number(1) not null,
+  facing_sidedef_id number(10),opposite_sidedef_id number(10),
+  facing_sector_id number(10),opposite_sector_id number(10),
+  is_active number(1) not null,from_sector_id number(10),to_sector_id number(10),
+  opening_bottom number,opening_top number,lower_bottom number,lower_top number,
+  upper_bottom number,upper_top number,is_closed number(1) not null,
+  is_transition number(1) not null,is_termination number(1) not null,
+  constraint frame_portal_hit_pk primary key(session_token,column_no,hit_ordinal)
+) on commit delete rows;
+
+create global temporary table frame_sector_interval (
+  session_token varchar2(32) not null,column_no number(3) not null,
+  interval_ordinal number not null,t_start binary_double not null,
+  t_end binary_double not null,sector_id number(10),
+  terminating_linedef_id number(10),is_final number(1) not null,
+  constraint frame_sector_interval_pk primary key
+    (session_token,column_no,interval_ordinal)
+) on commit delete rows;
+
 create global temporary table frame_world_pixel (
   session_token varchar2(32) not null,column_no number(3) not null,
   row_no number(3) not null,palette_index number(3) not null,
@@ -283,10 +325,22 @@ create global temporary table frame_masked_pixel (
 -- the reviewed staging plans after their first execution. Actual row counts vary
 -- by pose, but remain in these fixed bounded orders of magnitude.
 begin
+  dbms_stats.set_table_prefs(user,'FRAME_RENDER_SEG_BOUND',
+    'GLOBAL_TEMP_TABLE_STATS','SHARED');
+  dbms_stats.set_table_stats(user,'FRAME_RENDER_SEG_BOUND',numrows=>1200,
+    numblks=>64,no_invalidate=>false);
   dbms_stats.set_table_prefs(user,'FRAME_R1_HIT',
     'GLOBAL_TEMP_TABLE_STATS','SHARED');
   dbms_stats.set_table_stats(user,'FRAME_R1_HIT',numrows=>16000,
     numblks=>256,no_invalidate=>false);
+  dbms_stats.set_table_prefs(user,'FRAME_PORTAL_HIT',
+    'GLOBAL_TEMP_TABLE_STATS','SHARED');
+  dbms_stats.set_table_stats(user,'FRAME_PORTAL_HIT',numrows=>16000,
+    numblks=>256,no_invalidate=>false);
+  dbms_stats.set_table_prefs(user,'FRAME_SECTOR_INTERVAL',
+    'GLOBAL_TEMP_TABLE_STATS','SHARED');
+  dbms_stats.set_table_stats(user,'FRAME_SECTOR_INTERVAL',numrows=>2400,
+    numblks=>64,no_invalidate=>false);
   dbms_stats.set_table_prefs(user,'FRAME_WORLD_PIXEL',
     'GLOBAL_TEMP_TABLE_STATS','SHARED');
   dbms_stats.set_table_stats(user,'FRAME_WORLD_PIXEL',numrows=>64000,

@@ -23,6 +23,9 @@ begin
   drop_object('drop function doom_r1_nearest', -4043);
   drop_object('drop function doom_r1_hits', -4043);
   drop_object('drop function doom_r1_rays', -4043);
+  drop_object('drop function doom_r1_staged_nearest', -4043);
+  drop_object('drop function doom_r1_staged_hits', -4043);
+  drop_object('drop function doom_r1_staged_rays', -4043);
     drop_object('drop function doom_player_move', -4043);
     drop_object('drop function doom_player_move_payload', -4043);
     drop_object('drop function doom_portal_transition_ok', -4043);
@@ -49,6 +52,9 @@ begin
   drop_object('drop view doom_r2_hit_geometry', -942);
   drop_object('drop view doom_r2_staged_hit_geometry', -942);
   drop_object('drop view doom_r1_render_hit_rows', -942);
+  drop_object('drop view doom_r1_staged_segment_bound_rows', -942);
+  drop_object('drop view doom_r1_staged_hit_rows', -942);
+  drop_object('drop view doom_r1_staged_ray_rows', -942);
   drop_object('drop view doom_r1_hit_rows', -942);
   drop_object('drop view doom_r1_ray_rows', -942);
   drop_object('drop view doom_vertex', -942);
@@ -59,12 +65,14 @@ begin
     select column_value table_name
       from table(sys.odcivarchar2list(
         'FRAME_RLE_RUN','FRAME_PIXEL','FRAME_MASKED_PIXEL','FRAME_WORLD_PIXEL',
-        'FRAME_SPRITE','FRAME_WALL','FRAME_R1_HIT','FRAME_COLUMN',
+        'FRAME_SPRITE','FRAME_WALL','FRAME_SECTOR_INTERVAL','FRAME_PORTAL_HIT',
+        'FRAME_R1_HIT','FRAME_RENDER_SEG_BOUND','FRAME_COLUMN',
         'REPLAY_CURSORS','HISTORY_HEADS','SAVE_SLOTS','STATE_HISTORY','STEP_RESPONSES','AUDIO_EVENTS','GAME_EVENTS',
         'TIC_COMMANDS','ACTIVE_SWITCHES','ACTIVE_MOVERS','LINE_STATE','SECTOR_STATE',
         'MOBJS','PLAYERS','GAME_SESSIONS','DOOM_BLOCK_LINE','DOOM_BLOCK_CELL',
         'DOOM_SECTOR_REJECT','DOOM_SECTOR_EDGE','DOOM_RNG_VALUE','DOOM_AUDIO_EVENT_DEF','DOOM_MONSTER_DEF','DOOM_PROJECTILE_DEF','DOOM_AMMO_DEF',
         'DOOM_PICKUP_DEF','DOOM_WEAPON_DEF','DOOM_THING_TYPE_DEF','DOOM_STATE_DEF',
+        'DOOM_RENDER_RAY','DOOM_SCREEN_ROW','DOOM_SCREEN_COLUMN','DOOM_RENDER_PROFILE',
         'DOOM_SECTOR_SPECIAL_DEF','DOOM_LINEDEF_SPECIAL_DEF','DOOM_ENGINE_SOURCE',
         'DOOM_MUSIC','DOOM_SOUND','DOOM_SPRITE_ROTATION','DOOM_PATCH_PLACEMENT',
         'DOOM_ASSET_BLOB','AT','DOOM_ASSET_SOURCE','DOOM_MAP_NODE',

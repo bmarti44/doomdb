@@ -6,6 +6,66 @@ create table doom_engine_source (
   constraint doom_engine_source_pk primary key (source_id)
 );
 
+-- Render profiles keep resolution-dependent axes explicit.  The reviewed
+-- canonical profile remains 320x200; larger profiles require their own future
+-- evaluator/goldens rather than changing this selected profile in place.
+create table doom_render_profile (
+  profile_id varchar2(32) not null,
+  width number(5) not null,
+  height number(5) not null,
+  horizontal_fov number not null,
+  constraint doom_render_profile_pk primary key (profile_id),
+  constraint doom_render_profile_size_ck check (width>0 and height>0),
+  constraint doom_render_profile_fov_ck check (horizontal_fov>0 and horizontal_fov<180)
+);
+
+create table doom_screen_column (
+  profile_id varchar2(32) not null,
+  column_no number(3) not null,
+  camera_x number not null,
+  constraint doom_screen_column_pk primary key (profile_id,column_no),
+  constraint doom_screen_column_profile_fk foreign key (profile_id)
+    references doom_render_profile(profile_id),
+  constraint doom_screen_column_ck check (column_no>=0)
+);
+
+create table doom_screen_row (
+  profile_id varchar2(32) not null,
+  row_no number(3) not null,
+  row_center number not null,
+  constraint doom_screen_row_pk primary key (profile_id,row_no),
+  constraint doom_screen_row_profile_fk foreign key (profile_id)
+    references doom_render_profile(profile_id),
+  constraint doom_screen_row_ck check (row_no>=0 and row_center=row_no+0.5)
+);
+
+create table doom_render_ray (
+  profile_id varchar2(32) not null,
+  orientation_ordinal number(2) not null,
+  column_no number(3) not null,
+  angle_degrees number not null,
+  angle_radians binary_double not null,
+  direction_x binary_double not null,
+  direction_y binary_double not null,
+  plane_x binary_double not null,
+  plane_y binary_double not null,
+  cam_x number not null,
+  ray_x binary_double not null,
+  ray_y binary_double not null,
+  ray_length_squared binary_double not null,
+  constraint doom_render_ray_pk primary key
+    (profile_id,orientation_ordinal,column_no),
+  constraint doom_render_ray_profile_fk foreign key (profile_id)
+    references doom_render_profile(profile_id),
+  constraint doom_render_ray_column_fk foreign key (profile_id,column_no)
+    references doom_screen_column(profile_id,column_no),
+  constraint doom_render_ray_orientation_ck check
+    (orientation_ordinal between 0 and 63)
+);
+
+create index doom_render_ray_cam_ix on doom_render_ray
+  (profile_id,angle_degrees,cam_x);
+
 create table doom_linedef_special_def (
   special_id number(10) not null,
   semantics varchar2(1000) not null,

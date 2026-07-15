@@ -155,10 +155,22 @@ create or replace package body doom_api as
     -- Materialize shared render relations once. World and masked SQL otherwise
     -- expand the exact R1 hit/portal stream independently inside the combined
     -- presentation statement.
+    delete from frame_render_seg_bound;
+    insert into frame_render_seg_bound
+      select /*+ opt_param('optimizer_adaptive_plans' 'false') */ *
+      from doom_r1_staged_segment_bound_rows where session_token=p_session;
     delete from frame_r1_hit;
     insert into frame_r1_hit
       select /*+ opt_param('optimizer_adaptive_plans' 'false') opt_param('_optimizer_use_feedback' 'false') */ *
-      from doom_r1_hit_rows where session_token=p_session;
+      from doom_r1_staged_hit_rows where session_token=p_session;
+    delete from frame_portal_hit;
+    insert into frame_portal_hit
+      select /*+ opt_param('optimizer_adaptive_plans' 'false') opt_param('_optimizer_use_feedback' 'false') */ *
+      from doom_r2_staged_portal_hit_rows where session_token=p_session;
+    delete from frame_sector_interval;
+    insert into frame_sector_interval
+      select /*+ opt_param('optimizer_adaptive_plans' 'false') opt_param('_optimizer_use_feedback' 'false') */ *
+      from doom_r2_staged_sector_interval_rows where session_token=p_session;
     delete from frame_world_pixel;
     insert into frame_world_pixel
       select /*+ opt_param('optimizer_adaptive_plans' 'false') opt_param('_optimizer_use_feedback' 'false') */ *
@@ -177,15 +189,128 @@ create or replace package body doom_api as
     insert into frame_column(session_token,column_no)
       select p_session,level-1 from dual connect by level<=320;
     delete from frame_pixel where session_token=p_session;
-    insert into frame_pixel(session_token,column_no,row_no,palette_index,
-      layer_ordinal)
-    select /*+ opt_param('optimizer_adaptive_plans' 'false') opt_param('_optimizer_use_feedback' 'false') */
-      presentation.session_token,presentation.column_no,
-      presentation.row_no,presentation.palette_index,presentation.layer_ordinal
-    from doom_api_presentation_rows presentation
-    join frame_column selected
-      on selected.session_token=presentation.session_token
-     and selected.column_no=presentation.column_no;
+    if l_mode in ('game','dead') then
+      -- GAME/DEAD already owns a complete world raster.  Copy it once, apply
+      -- masked pixels inline, then rank only sparse presentation overlays.
+      insert into frame_pixel(session_token,column_no,row_no,palette_index,
+        layer_ordinal)
+      select world.session_token,world.column_no,world.row_no,
+        case when world.row_no>=168 then 0
+             else coalesce(masked.palette_index,world.palette_index) end,
+        case when world.row_no>=168 then 0
+             when masked.palette_index is not null then 20 else 10 end
+      from frame_world_pixel world
+      left join frame_masked_pixel masked
+        on masked.session_token=world.session_token
+       and masked.column_no=world.column_no and masked.row_no=world.row_no
+      where world.session_token=p_session;
+
+      merge into frame_pixel target
+      using (
+        with state as (
+          select session_row.session_token,session_row.paused,
+            player.health,player.armor,player.blue_key,player.yellow_key,
+            player.red_key,player.ammo_bullets,player.ammo_shells,
+            player.ammo_rockets,player.ammo_cells,player.selected_weapon
+          from game_sessions session_row
+          join players player
+            on player.session_token=session_row.session_token
+           and player.player_id=session_row.current_player_id
+          where session_row.session_token=p_session
+        ), weapon as (
+          select state.*,
+            case selected_weapon when 'FIST' then 'PUNGA0'
+              when 'PISTOL' then 'PISGA0' when 'SHOTGUN' then 'SHTGA0'
+              when 'CHAINGUN' then 'CHGGA0'
+              when 'ROCKET_LAUNCHER' then 'MISGA0'
+              when 'PLASMA_RIFLE' then 'PLSGA0'
+              when 'CHAINSAW' then 'SAWGA0' else 'PISGA0' end asset_name
+          from state
+        ), hud_values as (
+          select state.session_token,'AMMO' field_name,
+            to_char(case selected_weapon when 'SHOTGUN' then ammo_shells
+              when 'ROCKET_LAUNCHER' then ammo_rockets
+              when 'PLASMA_RIFLE' then ammo_cells else ammo_bullets end,
+              'FM000','NLS_NUMERIC_CHARACTERS=''.,''') field_value,
+            44 right_edge,171 top_row from state
+          union all
+          select session_token,'HEALTH',to_char(health,'FM000',
+            'NLS_NUMERIC_CHARACTERS=''.,'''),90,171 from state
+          union all
+          select session_token,'ARMOR',to_char(armor,'FM000',
+            'NLS_NUMERIC_CHARACTERS=''.,'''),221,171 from state
+        ), hud_chars as (
+          select value_row.*,digit.character_ordinal,
+            substr(field_value,digit.character_ordinal,1) glyph,
+            length(field_value) character_count
+          from hud_values value_row
+          cross join (select level character_ordinal from dual connect by level<=3) digit
+        ), keys as (
+          select session_token,0 key_ordinal,blue_key present from state
+          union all select session_token,1,yellow_key from state
+          union all select session_token,2,red_key from state
+        ), candidates as (
+          select weapon.session_token,floor((320-asset.width)/2)+texel.x column_no,
+            200-asset.height+texel.y row_no,texel.c palette_index,30 layer_ordinal,
+            'WEAPON' source_kind,asset.asset_name source_id
+          from weapon join doom_asset asset
+            on asset.asset_kind='sprite_patch' and asset.asset_name=weapon.asset_name
+          join at texel on texel.a=asset.asset_id and texel.c>=0
+          union all
+          select state.session_token,texel.x,168+texel.y,texel.c,40,
+            'HUD_PATCH',asset.asset_name
+          from state join doom_asset asset
+            on asset.asset_kind='ui_patch' and asset.asset_name='STBAR'
+          join at texel on texel.a=asset.asset_id and texel.c>=0
+          union all
+          select chars.session_token,
+            chars.right_edge-(chars.character_count-chars.character_ordinal+1)*13+
+              texel.x,chars.top_row+texel.y,texel.c,43,'TEXT',
+            chars.field_name||':'||chars.character_ordinal
+          from hud_chars chars join doom_asset asset
+            on asset.asset_kind='ui_patch' and asset.asset_name='STTNUM'||chars.glyph
+          join at texel on texel.a=asset.asset_id and texel.c>=0
+          union all
+          select state.session_token,239+keys.key_ordinal*10+texel.x,
+            171+texel.y,texel.c,44,'HUD_PATCH',asset.asset_name
+          from state join keys on keys.session_token=state.session_token
+          join doom_asset asset on asset.asset_kind='ui_patch'
+           and asset.asset_name='STKEYS'||case keys.key_ordinal
+             when 0 then '0' when 1 then '1' else '2' end
+          join at texel on texel.a=asset.asset_id and texel.c>=0
+          where keys.present=1
+          union all
+          select state.session_token,floor((320-asset.width)/2)+texel.x,
+            4+texel.y,texel.c,50,'PAUSE',asset.asset_name
+          from state join doom_asset asset
+            on asset.asset_kind='ui_patch' and asset.asset_name='M_PAUSE'
+          join at texel on texel.a=asset.asset_id and texel.c>=0
+          where state.paused=1
+        ), ranked as (
+          select candidates.*,
+            row_number() over(partition by session_token,column_no,row_no
+              order by layer_ordinal desc,source_kind,source_id,palette_index) ordinal
+          from candidates
+          where column_no between 0 and 319 and row_no between 0 and 199
+        )
+        select session_token,column_no,row_no,palette_index,layer_ordinal
+        from ranked where ordinal=1
+      ) overlay
+      on (target.session_token=overlay.session_token
+        and target.column_no=overlay.column_no and target.row_no=overlay.row_no)
+      when matched then update set target.palette_index=overlay.palette_index,
+        target.layer_ordinal=overlay.layer_ordinal;
+    else
+      insert into frame_pixel(session_token,column_no,row_no,palette_index,
+        layer_ordinal)
+      select /*+ opt_param('optimizer_adaptive_plans' 'false') opt_param('_optimizer_use_feedback' 'false') */
+        presentation.session_token,presentation.column_no,
+        presentation.row_no,presentation.palette_index,presentation.layer_ordinal
+      from doom_api_presentation_rows presentation
+      join frame_column selected
+        on selected.session_token=presentation.session_token
+       and selected.column_no=presentation.column_no;
+    end if;
 
     delete from frame_rle_run where session_token=p_session;
     insert into frame_rle_run(session_token,column_no,y0,run_length,palette_index)
@@ -210,13 +335,15 @@ create or replace package body doom_api as
         from frame_rle_run where session_token=p_session group by column_no
       );
 
-    select xmlserialize(content xmlagg(xmlelement(e,h) order by column_no,row_no)
+    select xmlserialize(content xmlagg(xmlelement(e,h) order by chunk_no)
       as clob no indent)
       into l_frame_hex
       from (
-        select column_no,row_no,
-          lpad(to_char(palette_index,'FMXX'),2,'0') h
+        select floor((column_no*200+row_no)/1900) chunk_no,
+          listagg(lpad(to_char(palette_index,'FMXX'),2,'0'),'')
+            within group(order by column_no,row_no) h
         from frame_pixel where session_token=p_session
+        group by floor((column_no*200+row_no)/1900)
       );
     l_frame_hex:=replace(replace(l_frame_hex,'<E>',''),'</E>','');
     l_frame:=hex_blob(l_frame_hex);

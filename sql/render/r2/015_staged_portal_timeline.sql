@@ -166,7 +166,7 @@ active_hits as (
       partition by session_token, column_no
       order by hit_t, linedef_id, seg_id, facing_side
     ) as interval_sector_id
-  from doom_r2_staged_portal_hit_rows hit
+  from frame_portal_hit hit
   where is_active = 1
 ),
 closed_intervals as (

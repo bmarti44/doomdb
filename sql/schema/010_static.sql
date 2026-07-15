@@ -30,6 +30,8 @@ create table doom_asset (
   asset_name varchar2(32) not null,
   width number(10),
   height number(10),
+  first_opaque_x number(10),
+  first_opaque_y number(10),
   raw_sha256 varchar2(64),
   texel_sha256 varchar2(64),
   constraint doom_asset_pk primary key (asset_id),
@@ -37,6 +39,9 @@ create table doom_asset (
   constraint doom_asset_id_ck check (asset_id >= 0),
   constraint doom_asset_dim_ck check (
     (width is null and height is null) or (width > 0 and height > 0)),
+  constraint doom_asset_first_opaque_ck check (
+    (first_opaque_x is null and first_opaque_y is null) or
+    (first_opaque_x between 0 and width-1 and first_opaque_y between 0 and height-1)),
   constraint doom_asset_hash_present_ck check (raw_sha256 is not null or texel_sha256 is not null),
   constraint doom_asset_raw_sha_ck check (raw_sha256 is null or regexp_like(raw_sha256, '^[0-9a-f]{64}$')),
   constraint doom_asset_texel_sha_ck check (texel_sha256 is null or regexp_like(texel_sha256, '^[0-9a-f]{64}$'))

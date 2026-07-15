@@ -6,6 +6,7 @@ sql/schema/020_engine.sql
 sql/schema/030_dynamic.sql
 sql/schema/040_constraints.sql
 sql/schema/050_config.sql
+sql/engine/005_render_axes.sql
 sql/engine/010_engine_defs.sql
 @seed-manifest
 sql/schema/055_finalize_seed.sql
@@ -27,6 +28,8 @@ sql/sim/050_combat_inventory.sql
 sql/sim/060_monsters.sql
 sql/sim/070_audio.sql
 sql/sim/tic/010_tic_transaction.sql
+sql/render/r1/012_staged_rays_intersections.sql
+sql/render/r1/014_staged_bounded_hits.sql
 sql/render/r2/010_portal_timeline.sql
 sql/render/r2/015_staged_portal_timeline.sql
 sql/render/r2/020_pixels.sql
