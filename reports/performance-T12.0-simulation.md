@@ -13,6 +13,7 @@ transaction boundary. The reproducible driver is
 | Corrected production-boundary baseline | 68.070 ms | 168.871 ms | 212.230 ms | 221.959 ms |
 | Bulk actor + light/state reductions | 52.828 ms | 158.353 ms | 180.526 ms | 215.652 ms |
 | Exact sound closure selected | 53.413 ms | 82.336 ms | 107.506 ms | 145.990 ms |
+| Set-based common actor housekeeping selected | 45.766 ms | 77.846 ms | 96.626 ms | 98.822 ms |
 
 An earlier rollback-only result of 555.921 ms p50 / 1,488.766 ms p95 is
 rejected: it kept all 300 calls in one transaction and measured accumulating

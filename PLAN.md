@@ -1105,6 +1105,14 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   is enabled and a disposable class reached `USER_JAVA_METHODS.IS_COMPILED=YES`.
   The realistic kernel and caller-created-BLOB versus bounded-RAW transport
   benchmark must pass at no more than 20 ms p95 before full renderer selection.
+  The first production-shaped brute analytic probe is rejected: 320x2,057
+  intersections, 64,000 samples, SHA-256, per-run JSON, GZIP, and a caller-owned
+  244,435-byte BLOB measured 1,133.882 ms p50 and 1,461.524 ms p95 over 30
+  warmed samples. Explicit `COMPILE_CLASS` of its monolithic method stalled and
+  was killed without residue. This triggers the planned work-reduction branch:
+  small separately compilable methods, front-to-back BSP/bounding-box rejection,
+  solid screen-column occlusion, wall columns, plane spans, and a payload corpus
+  matching the actual 92,658-byte response before production integration.
 - Render-free simulation gate (2026-07-15): the first rollback-only 270-call
   probe was rejected because one giant transaction accumulated undo/version
   chains. The corrected public-boundary baseline, with one commit per unique
@@ -1113,8 +1121,9 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   sound-graph searches. Exact bootstrap-time non-blocked sound reachability,
   bulk actor housekeeping, one-pass special-light neighbors, and omission of a
   redundant modern-lineage JSON rewrite all passed their adjacent gates. The
-  selected result is now 53.413 ms p50, 82.336 ms p95, 107.506 ms p99, and
-  145.990 ms maximum over 270 unique turn tics. Simulation/history remains a
+  selected result after replacing array DML with common set operations is now
+  45.766 ms p50, 77.846 ms p95, 96.626 ms p99, and 98.822 ms maximum over 270
+  unique turn tics. Simulation/history remains a
   mandatory bottleneck; continue reducing state serialization/hash, actor
   advancement, world machines, combat, history, command bookkeeping, and audio
   to <=10 ms p95. P12.0 remains active and P8 remains paused.

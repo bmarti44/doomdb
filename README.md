@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | The SQL renderer reached 6.97 s clean / 7.84 s moving but cannot reach 33.3 ms. The approved clean-room OJVM render/codec track is active; corrected render-free SQL simulation is down from 68.1/168.9 ms to 53.4/82.3 ms p50/p95 and must improve further. |
+| P12.0 | Active playability gate | The SQL renderer reached 6.97 s clean / 7.84 s moving but cannot reach 33.3 ms. The clean-room OJVM/BSP render track is active; corrected render-free SQL simulation is down from 68.1/168.9 ms to 45.8/77.8 ms p50/p95 and must improve further. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -81,8 +81,11 @@ The corrected production-boundary render-free baseline for
 `DOOM_TIC_TX.APPLY_BATCH` was 68.1 ms p50 / 168.9 ms p95 over 270 warmed unique
 turn tics. Exact relational sound-graph closure removed a 95.6 ms repeated BFS
 spike; bulk actor housekeeping, one-pass light-neighbor derivation, and modern
-state-document work reduction bring the selected result to 53.4 ms p50 /
-82.3 ms p95. P12.0 therefore has two mandatory workstreams: an exact array-based
+state-document work reduction bring the selected result to 45.8 ms p50 /
+77.8 ms p95. A production-shaped brute OJVM analytic probe was rejected at
+1,133.9/1,461.5 ms p50/p95 with a 244 KB compressed payload; it proves that the
+Java path also needs BSP/solid-column/span work reduction and smaller separately
+compiled hot methods. P12.0 therefore has two mandatory workstreams: an exact array-based
 OJVM renderer and profile-guided SQL simulation/history reduction. Neither may
 claim playability until local AutoREST/browser p50 and p95 are both at most
 33.3 ms.

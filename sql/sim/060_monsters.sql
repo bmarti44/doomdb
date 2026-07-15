@@ -358,14 +358,17 @@ create or replace package body doom_monsters as
       l_actors(l_count).pain_state_id:=row_.pain_state_id;l_actors(l_count).death_state_id:=row_.death_state_id;
     end loop;
 
-    -- Apply the snapshot-derived housekeeping as one array DML operation. Each
-    -- row depends only on its own prior-tic actor record; per-actor SQL context
-    -- switches contributed roughly 12.5 ms to an otherwise 50-70 ms tic.
-    forall i in 1..l_count
-      update mobjs set sector_id=l_actors(i).sector_id,
-        monster_health_seen=l_actors(i).health,
-        attack_cooldown=greatest(0,l_actors(i).attack_cooldown-1)
-        where session_token=p_session_token and mobj_id=l_actors(i).mobj_id;
+    -- Apply common prior-tic housekeeping with one set operation. Sector IDs
+    -- are maintained by CHASE_MOVE; only initial legacy/null rows need the
+    -- bounded BSP location repair.
+    update mobjs m set sector_id=(
+      select sector_id from table(doom_bsp_locate(m.x,m.y)) where rownum=1
+    ) where m.session_token=p_session_token and m.sector_id is null
+      and exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type);
+    update mobjs m set monster_health_seen=m.health,
+      attack_cooldown=greatest(0,m.attack_cooldown-1)
+      where m.session_token=p_session_token
+        and exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type);
 
     for i in 1..l_count loop
       l_seen_health:=coalesce(l_actors(i).monster_health_seen,l_actors(i).health);
