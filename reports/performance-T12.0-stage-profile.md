@@ -114,7 +114,10 @@ construction, so the 0.93-second trace value is an upper bound for that stage.
 - Indexed row-range generation for world walls/planes caused a worse Oracle join
   shape (3.79 seconds isolated versus approximately 3.3 seconds) and was
   reverted.  The same shape remains selected for masked sprites because its
-  measured improvement there is large and repeatable.
+  measured improvement there is large and repeatable.  It was re-tested after
+  the later session/ray cardinality repair in case the old estimates caused the
+  regression; the exact public call again regressed, from 8.49 to 12.30 seconds,
+  and redeploying the selected dense shape restored 8.03 seconds.
 - Materializing projected portal clip windows and interval windows into two
   additional indexed GTTs changed the world insert to a pathological UGA-heavy
   plan.  It exceeded 60 seconds (versus approximately 4 seconds for the selected
