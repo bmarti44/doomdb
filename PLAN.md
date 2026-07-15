@@ -17,15 +17,19 @@ Database owns the game:
 
 - WAD geometry, render assets, engine definitions, live objects, player state,
   sector machines, saves, replays, and audio events are relational data.
-- SQL performs visibility, projection, texture and sprite sampling, lighting,
-  pixel composition, collision, triggers, weapons, projectiles, damage, pickups,
-  monster state advancement, perception, and AI decisions.
+- SQL performs collision, triggers, weapons, projectiles, damage, pickups,
+  monster state advancement, perception, and AI decisions. Under the approved
+  P12.0 amendment, a project-owned Java 11 stored procedure inside Oracle JVM
+  may perform the production visibility, projection, texture/sprite sampling,
+  lighting, composition, frame hashing, RLE, JSON, and GZIP hot path.
 - Thin PL/SQL procedures lock a game session, validate input, execute set-based
   statements, persist the result, and return a frame. They do not contain a
   second procedural game engine.
 - The canonical frame is 320x200 palette indices. The database also renders the
   weapon, HUD, menu, pause overlay, automap, and intermission into that frame.
-- MATCH_RECOGNIZE converts each completed column into constant-color RLE runs.
+- MATCH_RECOGNIZE converts each completed canonical SQL-oracle column into
+  constant-color RLE runs. The OJVM production codec must match those runs
+  exactly but does not execute MATCH_RECOGNIZE on every moving frame.
 - A core title-screen effect uses Oracle's MODEL clause to generate a
   deterministic PSX-style fire animation.
 - ORDS AutoREST is the only dynamic HTTP surface.
@@ -68,8 +72,9 @@ are green.
 
 - No byte-for-byte vanilla framebuffer, state, savegame, or .lmp compatibility.
 - No claim that the project reproduces vanilla bugs or integer overflow.
-- No MLE JavaScript, WebAssembly, Java stored procedure, native extproc, or
-  embedded Doom engine in the simulation or render path.
+- No MLE JavaScript, WebAssembly, native extproc, or embedded Doom engine in the
+  simulation or render path. The sole Java exception is the narrow, clean-room
+  Oracle JVM render/codec procedure approved for P12.0; simulation remains SQL.
 - No custom ORDS modules, templates, or handlers.
 - No client-side prediction, interpolation, gameplay, collision, ray casting,
   sprite sorting, or reference implementation.
@@ -91,6 +96,19 @@ compare it with Sections 0.1-0.3. If the answer conflicts, it must surface the
 contradiction and obtain an explicit charter amendment. Latest-answer-wins is
 forbidden for charter changes. A charter amendment invalidates affected
 goldens and requires renewed human approval before implementation continues.
+
+#### Approved P12.0 OJVM amendment — 2026-07-15
+
+The user's explicit instruction to implement every confirmed JavaBox-informed
+optimization and reach 30 FPS approves this narrow amendment. Oracle, relational
+state/assets, AutoREST, the 320x200 frame, public payload, state/frame hashes,
+audio semantics, and the thin browser contract remain authoritative and
+unchanged. A clean-room Java 11 stored procedure may own only production render
+and codec work inside OJVM, using same-transaction internal JDBC. The canonical
+SQL renderer and MATCH_RECOGNIZE codec remain independently callable parity
+oracles. No JavaBox, Mocha Doom, id Doom, or other engine code, tables, data,
+constants, or translated control flow may be copied. Selection requires exact
+byte/hash/RLE/schema parity and the complete T5-T7 suite.
 
 ## 1. Grounded facts and corrected contracts
 
@@ -189,7 +207,7 @@ ideas as independently specified SQL stages: BSP location, ray/segment
 intersection, portal clipping, state machines, and tic commands.
 
 Do not refactor, transpile, wrap, embed, or mechanically translate the Doom C
-renderer or game loop. A C-to-PL/SQL, C-to-JavaScript, MLE, WASM, or extproc port
+renderer or game loop. A C-to-PL/SQL, C-to-Java, C-to-JavaScript, MLE, WASM, or extproc port
 would make the database a host for the old engine rather than the engine itself,
 would inherit GPL obligations, and would defeat the Oracle-specific design. The
 id source is used only to audit externally observable semantics such as the BSP
@@ -230,7 +248,9 @@ local and Autonomous capability probes, and all existing goldens.
 
 1. All dynamic browser traffic uses objects enabled by `ORDS.ENABLE_OBJECT`.
 2. No `ORDS.DEFINE_MODULE`, handler, application server, or alternate API.
-3. SQL and set-based DML own render and simulation decisions.
+3. SQL and set-based DML own simulation decisions. The approved P12.0 OJVM
+   exception may own production render/codec decisions while the SQL renderer
+   remains the exact independent oracle.
 4. PL/SQL may orchestrate a bounded list of statements per tic but may not loop
    over pixels, walls, or live objects to implement a shadow engine.
 5. No recursive WITH in the render path. `CONNECT BY` is allowed for trees.
@@ -242,8 +262,8 @@ local and Autonomous capability probes, and all existing goldens.
 10. No production code may replace clocks, comparison functions, hash functions,
     browser APIs, SQL wrappers, or evaluator processes.
 11. A failed correctness gate blocks the task. It is never informational.
-12. Performance has no numeric pass threshold, but producing and reviewing the
-    complete externally timed benchmark report is mandatory.
+12. P12.0 performance passes only at 30 unique moving FPS: no more than 33.3 ms
+    at both p50 and p95 after warmup. Complete external evidence is mandatory.
 13. Resolution and required capabilities may not be reduced for performance.
 14. Generated SQL and manifests are byte-stable and checked in.
 15. Bootstrap runs from a fresh volume and is idempotent as a complete process.
@@ -1069,10 +1089,35 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   seeded 320-ray profile passed a controlled same-instance A/B: moving turn and
   four-tic observations are now 7.10-7.84 s and 7.73-8.30 s respectively (use
   7.84 s, about 0.128 FPS, as the conservative current moving figure).
-  Therefore P12.0 remains active and P8 remains paused.  Next implementation is
-  WAD BSP front-to-back subtree rejection plus solid-column/window facts,
-  followed by plane spans; persistent frame sequencing is finishing work after
-  cache-miss rendering is structurally reduced.
+  SQL `MATCH_RECOGNIZE` alone measured 280 ms, so this row/GTT architecture is
+  mathematically outside the 33.3 ms budget. The approved next implementation
+  is a clean-room Java 11 OJVM analytic array renderer derived from the existing
+  project-owned SQL equations, followed only as needed by independently authored
+  BSP front-to-back rejection, solid columns, and plane spans. The SQL renderer
+  and MATCH_RECOGNIZE remain exact differential oracles, not production hot-path
+  stages. JavaBox supplies architectural evidence only; no implementation is
+  copied or translated.
+- OJVM feasibility ledger (2026-07-15): disposable 100-frame probes measured
+  16.0 ms/frame for unique 64,000-byte computation, 29.7 ms for temporary-BLOB
+  return, 32.0 ms for coherent frame generation plus GZIP/BLOB, and 6.8 ms for
+  coherent generation plus GZIP returned as RAW. These are synthetic means, not
+  a game-frame claim. Compose now supplies a 256 MiB executable `/dev/shm`; JIT
+  is enabled and a disposable class reached `USER_JAVA_METHODS.IS_COMPILED=YES`.
+  The realistic kernel and caller-created-BLOB versus bounded-RAW transport
+  benchmark must pass at no more than 20 ms p95 before full renderer selection.
+- Render-free simulation gate (2026-07-15): the first rollback-only 270-call
+  probe was rejected because one giant transaction accumulated undo/version
+  chains. The corrected public-boundary baseline, with one commit per unique
+  tic after 30 warmups, measured 68.070 ms p50 and 168.871 ms p95. Line-level
+  profiling isolated 95.594 ms of an outlier in repeated per-monster procedural
+  sound-graph searches. Exact bootstrap-time non-blocked sound reachability,
+  bulk actor housekeeping, one-pass special-light neighbors, and omission of a
+  redundant modern-lineage JSON rewrite all passed their adjacent gates. The
+  selected result is now 53.413 ms p50, 82.336 ms p95, 107.506 ms p99, and
+  145.990 ms maximum over 270 unique turn tics. Simulation/history remains a
+  mandatory bottleneck; continue reducing state serialization/hash, actor
+  advancement, world machines, combat, history, command bookkeeping, and audio
+  to <=10 ms p95. P12.0 remains active and P8 remains paused.
 - New ray, screen-axis, clip, span, and cache-key relations use an explicit
   resolution profile.  `CANONICAL_320X200` remains the only selected profile and
   keeps all reviewed hashes.  A future 640x400 profile is a required design

@@ -17,6 +17,11 @@ services:
       - ./deploy/local/initdb/10-doom-runtime-grants.sql:/container-entrypoint-initdb.d/10-doom-runtime-grants.sql:ro
     ports:
       - "${DOOMDB_DB_PORT:-1521}:1521"
+    # Oracle JVM JIT emits executable code through shared memory. Docker's
+    # default /dev/shm mount is only 64 MiB and carries noexec/nosuid, which
+    # leaves java_jit_enabled=TRUE without a usable JIT code cache.
+    tmpfs:
+      - /dev/shm:rw,exec,suid,size=256m,mode=1777
     cpus: 2.0
     mem_limit: 2g
     healthcheck:

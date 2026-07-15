@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | Golden-preserving structural acceleration has reduced the best exact clean `NEW_GAME` from 121.79 to 6.97 seconds. A moving turn is conservatively 7.84 seconds and four forward tics are 8.30 seconds; the 30 FPS gate is not met. |
+| P12.0 | Active playability gate | The SQL renderer reached 6.97 s clean / 7.84 s moving but cannot reach 33.3 ms. The approved clean-room OJVM render/codec track is active; corrected render-free SQL simulation is down from 68.1/168.9 ms to 53.4/82.3 ms p50/p95 and must improve further. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -73,15 +73,28 @@ publish-on-new-frame sequencing—but no GPL code or data is copied. Final T12
 will still measure the fixed 300-frame replay and every post-render stage locally
 and in the cloud.
 
+The deeper Sol/max review established a narrow, approved OJVM path as the only
+measured architecture in the right performance class. After correcting Docker's
+JIT shared-memory mount, an isolated coherent 320x200 generation + GZIP + RAW
+return averaged 6.8 ms; that is a feasibility probe, not a game-frame result.
+The corrected production-boundary render-free baseline for
+`DOOM_TIC_TX.APPLY_BATCH` was 68.1 ms p50 / 168.9 ms p95 over 270 warmed unique
+turn tics. Exact relational sound-graph closure removed a 95.6 ms repeated BFS
+spike; bulk actor housekeeping, one-pass light-neighbor derivation, and modern
+state-document work reduction bring the selected result to 53.4 ms p50 /
+82.3 ms p95. P12.0 therefore has two mandatory workstreams: an exact array-based
+OJVM renderer and profile-guided SQL simulation/history reduction. Neither may
+claim playability until local AutoREST/browser p50 and p95 are both at most
+33.3 ms.
+
 ## Is it playable yet?
 
 Not interactively yet. The complete R2 presentation renderer is correct and
 reviewable, and the best exact clean frame is about 16 times faster than the
-original baseline, but the conservative measured moving turn is only about
-0.128 FPS. The
+original baseline, but the current production path is only about 0.128 FPS and
+render-free simulation is independently far over budget. The
 dashboard is useful for visual review; P12.0 remains active until unique moving
-frames approach 30 FPS (33.3 ms at both p50 and p95), or the documented
-Oracle-Free/SQL-only feasibility conflict is resolved.
+frames sustain 30 FPS (33.3 ms at both p50 and p95).
 
 ## Local review
 

@@ -309,21 +309,30 @@ create or replace package body doom_world_machines as
     l_strobe_dark number:=config_number('WORLD_STROBE_DARK');
     l_rng number;l_cursor number;l_max number;l_min number;l_timer number;
   begin
-    for s in (select ss.sector_id,ms.special,ss.light_level,ss.light_timer
+    for s in (with neighbors(source_sector_id,target_sector_id) as (
+        select rs.sector_id,ls.sector_id
+        from doom_map_linedef ml
+        join doom_map_sidedef rs on rs.sidedef_id=ml.right_sidedef_id
+        join doom_map_sidedef ls on ls.sidedef_id=ml.left_sidedef_id
+        union all
+        select ls.sector_id,rs.sector_id
+        from doom_map_linedef ml
+        join doom_map_sidedef rs on rs.sidedef_id=ml.right_sidedef_id
+        join doom_map_sidedef ls on ls.sidedef_id=ml.left_sidedef_id
+      ), neighbor_min as (
+        select e.source_sector_id sector_id,min(n.light_level) min_light
+        from neighbors e join doom_map_sector n
+          on n.sector_id=e.target_sector_id group by e.source_sector_id
+      )
+      select ss.sector_id,ms.special,ss.light_level,ss.light_timer,
+        ms.light_level base_light,coalesce(nm.min_light,ms.light_level) min_light
       from sector_state ss join doom_map_sector ms on ms.sector_id=ss.sector_id
       join doom_sector_special_def d on d.special_id=ms.special
+      left join neighbor_min nm on nm.sector_id=ss.sector_id
       where ss.session_token=p_session and ms.special in(1,7,9,12)
       order by ss.sector_id) loop
       if s.special=12 then
-        select ms.light_level,coalesce(min(n.light_level),ms.light_level)
-          into l_max,l_min from doom_map_sector ms
-          left join (
-            select case when rs.sector_id=s.sector_id then ls.sector_id else rs.sector_id end neighbor_id
-            from doom_map_linedef ml join doom_map_sidedef rs on rs.sidedef_id=ml.right_sidedef_id
-              join doom_map_sidedef ls on ls.sidedef_id=ml.left_sidedef_id
-            where rs.sector_id=s.sector_id or ls.sector_id=s.sector_id
-          ) edge on 1=1 left join doom_map_sector n on n.sector_id=edge.neighbor_id
-          where ms.sector_id=s.sector_id group by ms.light_level;
+        l_max:=s.base_light;l_min:=s.min_light;
         update sector_state set light_level=case
           when mod(p_tic-1,l_strobe_bright+l_strobe_dark)<l_strobe_bright
           then l_max else l_min end
@@ -333,15 +342,7 @@ create or replace package body doom_world_machines as
         if l_timer<=0 then
           select rng_cursor into l_cursor from game_sessions where session_token=p_session;
           select rng_value into l_rng from doom_rng_value where rng_index=mod(l_cursor,256);
-          select ms.light_level,coalesce(min(n.light_level),ms.light_level)
-            into l_max,l_min from doom_map_sector ms
-            left join (
-              select case when rs.sector_id=s.sector_id then ls.sector_id else rs.sector_id end neighbor_id
-              from doom_map_linedef ml join doom_map_sidedef rs on rs.sidedef_id=ml.right_sidedef_id
-                join doom_map_sidedef ls on ls.sidedef_id=ml.left_sidedef_id
-              where rs.sector_id=s.sector_id or ls.sector_id=s.sector_id
-            ) edge on 1=1 left join doom_map_sector n on n.sector_id=edge.neighbor_id
-            where ms.sector_id=s.sector_id group by ms.light_level;
+          l_max:=s.base_light;l_min:=s.min_light;
           if s.light_level=l_max then l_timer:=bitand(l_rng,7)+1;l_max:=l_min;
           else l_timer:=bitand(l_rng,64)+1;end if;
           update sector_state set light_level=l_max,light_timer=l_timer

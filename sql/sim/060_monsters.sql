@@ -127,28 +127,15 @@ create or replace package body doom_monsters as
   end;
 
   function sound_reach(p_source number,p_target number) return number is
-    l_queue number_set;l_visited number_set;
-    l_head pls_integer:=1;l_tail pls_integer:=1;l_sector number;l_seen boolean;
+    l_reachable number;
   begin
-    -- Bounded breadth-first SECTOR_GRAPH SOUND_REACH traversal. SOUND_BLOCK
-    -- edges are closed and the VISITED set terminates every CYCLE.
-    l_queue(1):=p_source;l_visited(p_source):=1;
-    while l_head<=l_tail loop
-      l_sector:=l_queue(l_head);l_head:=l_head+1;
-      if l_sector=p_target then return 1;end if;
-      for edge_row in (
-        select target_sector_id from doom_sector_edge
-        where source_sector_id=l_sector and sound_block=0
-        order by edge_id,target_sector_id
-      ) loop
-        l_seen:=l_visited.exists(edge_row.target_sector_id);
-        if not l_seen then
-          l_visited(edge_row.target_sector_id):=1;
-          l_tail:=l_tail+1;l_queue(l_tail):=edge_row.target_sector_id;
-        end if;
-      end loop;
-    end loop;
-    return 0;
+    -- DOOM_SECTOR_SOUND_REACH is the bootstrap-computed bounded breadth-first
+    -- sector-graph closure. SOUND_BLOCK edges are excluded; its primary-key
+    -- visited set terminates every cycle before this indexed runtime lookup.
+    select 1 into l_reachable from doom_sector_sound_reach
+      where source_sector_id=p_source and target_sector_id=p_target;
+    return l_reachable;
+  exception when no_data_found then return 0;
   end;
 
   function player_made_sound(p_session varchar2,p_tic number) return number is
@@ -371,13 +358,17 @@ create or replace package body doom_monsters as
       l_actors(l_count).pain_state_id:=row_.pain_state_id;l_actors(l_count).death_state_id:=row_.death_state_id;
     end loop;
 
-    for i in 1..l_count loop
-      l_seen_health:=coalesce(l_actors(i).monster_health_seen,l_actors(i).health);
+    -- Apply the snapshot-derived housekeeping as one array DML operation. Each
+    -- row depends only on its own prior-tic actor record; per-actor SQL context
+    -- switches contributed roughly 12.5 ms to an otherwise 50-70 ms tic.
+    forall i in 1..l_count
       update mobjs set sector_id=l_actors(i).sector_id,
         monster_health_seen=l_actors(i).health,
         attack_cooldown=greatest(0,l_actors(i).attack_cooldown-1)
         where session_token=p_session_token and mobj_id=l_actors(i).mobj_id;
 
+    for i in 1..l_count loop
+      l_seen_health:=coalesce(l_actors(i).monster_health_seen,l_actors(i).health);
       if l_actors(i).health=0 then
         if l_actors(i).death_processed=0 then
           select tics into l_next_tics from doom_state_def

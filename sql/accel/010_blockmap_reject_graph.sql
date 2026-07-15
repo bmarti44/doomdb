@@ -64,6 +64,20 @@ create table doom_sector_edge (
   constraint doom_sector_edge_opening_ck check (opening > 0)
 );
 
+-- Exact immutable reachability over non-sound-blocking sector edges. Runtime
+-- monster perception consults this closure instead of executing one procedural
+-- breadth-first traversal (and thousands of SQL statements) per sleeping actor.
+create table doom_sector_sound_reach (
+  source_sector_id number(10) not null,
+  target_sector_id number(10) not null,
+  constraint doom_sector_sound_reach_pk
+    primary key (source_sector_id, target_sector_id),
+  constraint doom_sector_sound_reach_source_fk foreign key (source_sector_id)
+    references doom_map_sector (sector_id),
+  constraint doom_sector_sound_reach_target_fk foreign key (target_sector_id)
+    references doom_map_sector (sector_id)
+);
+
 create index doom_block_line_linedef_ix on doom_block_line (linedef_id);
 create index doom_sector_reject_target_ix on doom_sector_reject (target_sector_id, source_sector_id);
 create index doom_sector_edge_target_ix on doom_sector_edge (target_sector_id, source_sector_id);
@@ -178,6 +192,33 @@ select c.linedef_id * 2 + d.direction as edge_id,
        c.opening
   from eligible_connection c
   cross join direction_ d;
+
+insert into doom_sector_sound_reach(source_sector_id,target_sector_id)
+select sector_id,sector_id from doom_map_sector
+union
+select source_sector_id,target_sector_id
+from doom_sector_edge where sound_block=0;
+
+declare
+  l_added pls_integer;
+begin
+  loop
+    merge into doom_sector_sound_reach d
+    using (
+      select distinct r.source_sector_id,e.target_sector_id
+      from doom_sector_sound_reach r
+      join doom_sector_edge e on e.source_sector_id=r.target_sector_id
+      where e.sound_block=0
+    ) s
+    on (d.source_sector_id=s.source_sector_id
+        and d.target_sector_id=s.target_sector_id)
+    when not matched then insert(source_sector_id,target_sector_id)
+      values(s.source_sector_id,s.target_sector_id);
+    l_added:=sql%rowcount;
+    exit when l_added=0;
+  end loop;
+end;
+/
 
 create property graph doom_sector_graph
   vertex tables (

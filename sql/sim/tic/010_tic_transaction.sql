@@ -54,8 +54,12 @@ create or replace package body doom_tic_tx as
       'paused' value s.paused,
       'menu_state' value s.menu_state,
       'automap_state' value s.automap_state,
-      'last_command_seq' value s.last_command_seq,
-      'save_lineage' value s.save_lineage,
+      'last_command_seq' value case
+        when regexp_like(s.save_lineage,'^[0-9a-f]{64}$') then null
+        else s.last_command_seq end,
+      'save_lineage' value case
+        when regexp_like(s.save_lineage,'^[0-9a-f]{64}$') then null
+        else s.save_lineage end,
       'player' value (
         select json_object(
           'player_id' value p.player_id, 'x' value p.x, 'y' value p.y,
@@ -140,13 +144,10 @@ create or replace package body doom_tic_tx as
           order by linedef_id returning clob)
         from active_switches where session_token=s.session_token), to_clob('[]')) format json,
       'ordering_version' value 'APPENDIX-F-1'
-      returning clob)
+      absent on null returning clob)
       into l_document
       from game_sessions s where s.session_token=p_session;
-    if regexp_like(json_value(l_document,'$.save_lineage'),'^[0-9a-f]{64}$') then
-      select json_transform(l_document,remove '$.last_command_seq',
-        remove '$.save_lineage' returning clob) into l_document from dual;
-    else
+    if json_value(l_document,'$.save_lineage') is not null then
       -- Preserve the reviewed pre-history transport digest for legacy short
       -- lineages.  SHA-256 lineages retain the complete combat state closure.
       select json_transform(l_document,
