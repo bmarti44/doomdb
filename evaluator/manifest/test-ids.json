@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "task": "T0.4",
+  "tests": [
+    {"id":"T0.4-EVAL-001","assertions":3,"purpose":"manifest and exact-result validation"},
+    {"id":"T0.4-EVAL-002","assertions":7,"purpose":"read-only evaluator and network boundary"},
+    {"id":"T0.4-EVAL-003","assertions":2,"purpose":"production static audit good and bad paths"},
+    {"id":"T0.4-EVAL-004","assertions":3,"purpose":"held-back seed hook confinement"},
+    {"id":"T0.4-EVAL-005","assertions":2,"purpose":"mutation killed and survivor canaries"},
+    {"id":"T0.4-EVAL-006","assertions":10,"purpose":"pinned deterministic Playwright policy"},
+    {"id":"T0.4-EVAL-007","assertions":3,"purpose":"dummy good and bad result paths"},
+    {"id":"T0.4-EVAL-008","assertions":13,"purpose":"anti-tamper evaluator self-test coverage"}
+  ]
+}

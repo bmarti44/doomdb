@@ -1,0 +1,6075 @@
+{
+  "schema": 1,
+  "wadSha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d",
+  "map": "E1M1",
+  "assets": [
+    {
+      "kind": "wall_texture",
+      "name": "A-CONCTE",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "CONCRETE"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "A-MUD",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "MUD"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQCOMP01",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQCOMP01"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQCONC05",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQCONC05"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQCONC11",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQCONC11",
+        "AQCONC11"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQCONC14",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQCONC14"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQCONC16",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQCONC16"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQCONC18",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQCONC18",
+        "AQCONC18"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQDOOR01",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQDOOR01"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQDOOR02",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQDOOR02"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQLITE01",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQLITE01",
+        "AQLITE01"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQLITE07",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQLITE07",
+        "AQLITE07"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQLITE08",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQLITE08",
+        "AQLITE08"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQLITE18",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQLITE18",
+        "AQLITE18"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL01",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL01",
+        "AQMETL01"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL03",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL03"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL06",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL06"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL07",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL07"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL09",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL09"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL10",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL10"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL11",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL11"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL12",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL12"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL13",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL13"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL14",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL14"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL15",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL15"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL17",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL17"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL21",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL21"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL24",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL24"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL25",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL25"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL26",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL26"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL27",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL27"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQMETL32",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQMETL32",
+        "AQMETL32"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQPANL01",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQPANL01"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQPANL02",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQPANL02"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQPANL05",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQPANL05",
+        "AQPANL05"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQPANL08",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQPANL08"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQPIPE01",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQPIPE01"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQPIPE08",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQPIPE08"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQPIPE14",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQPIPE14"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQRUST02",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQRUST02"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQRUST10",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQRUST10"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQSECT11",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQSECT11"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQSUPP01",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQSUPP01"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQSUPP04",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQSUPP04"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQSUPP08",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQSUPP08"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQSUPP10",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQSUPP10"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQSUPP11",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQSUPP11"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQSUPP13",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQSUPP13"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQTILE01",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQTILE01",
+        "AQTILE01"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQTILE02",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQTILE02",
+        "AQTILE02"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "AQTRIM05",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05",
+        "AQTRIM05"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "ASHWALL",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "W104_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "ASHWALL2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "RW22_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "BASE",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "BASE"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "BASE2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "BASE2"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "BIGDOOR2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "DOOR2_4"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "BIGDOOR3",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "DOOR9_2"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "BROWN1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "WALL02_2",
+        "WALL02_1",
+        "WALL02_2",
+        "WALL02_1",
+        "WALL02_3",
+        "WALL02_3"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "BROWN96",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "WALL62_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "BROWNHUG",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "WALL04_7",
+        "WALL04_2",
+        "WALL04_3",
+        "WALL04_2",
+        "WALL04_4",
+        "WALL04_5",
+        "WALL04_7",
+        "WALL04_3"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "CEILVINE",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "CEILVINE"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "COMP2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "COMP02_7",
+        "COMP02_6",
+        "COMP02_5",
+        "COMP02_4",
+        "COMP02_3",
+        "COMP02_2",
+        "COMP02_8",
+        "COMP02_1",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08",
+        "STEP08"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "COMPLIT3",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "COMP03_4",
+        "COMP03_4",
+        "BLITA0",
+        "BLITC0",
+        "BLITA0",
+        "BLITC0"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "COMPSPAN",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "COMP03_4",
+        "COMP03_4"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "COMPTALL",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "COMP03_5",
+        "COMP03_8",
+        "COMP03_8",
+        "COMP04_1",
+        "COMP04_2",
+        "COMP04_5",
+        "COMP04_6",
+        "COMP04_7",
+        "COMP04_8"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "COMPUTE1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "W33_8",
+        "W33_8",
+        "W33_8",
+        "W33_8",
+        "COMP01_5",
+        "COMP01_6",
+        "COMP1B_4",
+        "COMP01_5",
+        "COMP01_1",
+        "COMP1C_6"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "COMPUTE2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "COMP02_2",
+        "COMP02_3",
+        "COMP02_1",
+        "COMP02_7"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "COMPUTE4",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "COMP04_5",
+        "COMP04_5",
+        "COMP04_5",
+        "COMP04_5",
+        "COMP04_5",
+        "COMP04_5",
+        "COMP04_5",
+        "COMP04_5",
+        "TSCRN2",
+        "TSCRN3",
+        "TSCRN4",
+        "TSCRN7",
+        "TSCRN6",
+        "TSCRN5",
+        "TSCRN8",
+        "TSCRN1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "COMPVENT",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "COMP03_8",
+        "COMP03_8"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "COMPWERF",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "COMP02_7",
+        "COMP02_3",
+        "COMP03_4",
+        "COMP03_4",
+        "PREEL2",
+        "PREEL1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "CRATE1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "BCRATEL1",
+        "BCRATEL1",
+        "BCRATER1",
+        "BCRATER1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "CRATE2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "GCRATEL1",
+        "GCRATEL1",
+        "GCRATER1",
+        "GCRATER1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "CRATE3",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "GCRATEL1",
+        "GCRATER1",
+        "BCRATEL1",
+        "BCRATER1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "CRATELIT",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "BCRATEL1",
+        "BCRATER1",
+        "SGCRATE2",
+        "SGCRATE2"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "CRATINY",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "VGCRATE1",
+        "VGCRATE1",
+        "VGCRATE1",
+        "VGCRATE1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "CRATWIDE",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "GCRATEL1",
+        "GCRATER1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "BCRATEL1",
+        "BCRATER1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "CRAWHBP",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "BCRATEL1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATEM1",
+        "BCRATER1",
+        "GCRATEL1",
+        "GCRATER1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "GCRATEM1",
+        "BTNTCRAT",
+        "BTNTCRAT",
+        "BUL64D"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "DOOR1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "WALL03_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "DOOR3",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "DOOR2_5"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "DOORBLU",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "W46_37",
+        "W46_37",
+        "W46_37",
+        "W46_37",
+        "W46_37",
+        "W46_37",
+        "W46_37",
+        "W46_37"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "DOORSTOP",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "TTALL1_2"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "DOORTRAK",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "DOORTRAK"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "EXITDOOR",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "DOOR3_6",
+        "DOOR3_4",
+        "DOOR3_5",
+        "T14_5"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "EXITSIGN",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "EXIT1",
+        "EXIT2",
+        "EXIT2",
+        "EXIT2",
+        "EXIT2"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "LITE3",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITB0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "LITE5",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITA0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0",
+        "WLITC0"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "MC17",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "MC17"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "MC18",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "MC18"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "MC19",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "MC19"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "MC2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "MC2"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "MC3",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "MC3"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "MC5",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "MC5"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "METAL",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "WALL47_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "METAL2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "RW33_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "METAL5",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "RW33_4"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "NUKE24",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "NUKEDGE"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "PLAT1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "PLAT2_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SFALL1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "SFALL1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SFALL2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "SFALL2"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SFALL3",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "SFALL3"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SFALL4",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "SFALL4"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SHAWN02",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "SHAWN02"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SHAWN1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "W13_1",
+        "W13_1",
+        "CYL1_1",
+        "WALL01_1",
+        "WALL01_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SHAWN2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "AG128_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SKY1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "SKY1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SP_ROCK1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "WALL63_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "STARGR1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "SW11_1",
+        "SW11_2"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "STARGR2",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "SW15_1",
+        "SW16_2",
+        "SW15_3",
+        "SW16_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "STEP3",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "STEP05"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "STEP4",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "STEP06",
+        "STEP06"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "STEP6",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "STEP07",
+        "STEP10"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "STEPTOP",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "RIPW15"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "STONE4",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "RW18_1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SW1BRN1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "WALL02_2",
+        "WALL02_2",
+        "SW3S0"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SW1GRAY",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "W31_1",
+        "W31_1",
+        "SW2S0"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "WFALL1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "WFALL1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "ZIMMER3",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "RW20_3"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF001",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF001"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF003",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF003"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF007",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF007"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF009",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF009"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF010",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF010"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF012",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF012"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF018",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF018"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF024",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF024"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF028",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF028"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF030",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF030"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF031",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF031"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF032",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF032"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF050",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF050"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF054",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF054"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF055",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF055"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF057",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF057"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF067",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF067"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF068",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF068"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF069",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF069"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF070",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF070"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF072",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF072"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "AQF073",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "AQF073"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "CEIL4_1",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "CEIL4_1"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "CEIL5_1",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "CEIL5_1"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "CEIL5_2",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "CEIL5_2"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "CRATOP1",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "CRATOP1"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "CRATOP2",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "CRATOP2"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "F_SKY1",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "F_SKY1"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FLAT1",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FLAT1"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FLAT20",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FLAT20"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FLAT4",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FLAT4"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FLAT5_4",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FLAT5_4"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FLOOR0_3",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FLOOR0_3"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FLOOR0_5",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FLOOR0_5"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FLOOR5_2",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FLOOR5_2"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FWATER1",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FWATER1"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FWATER2",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FWATER2"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FWATER3",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FWATER3"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "FWATER4",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "FWATER4"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "GRASS1",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "GRASS1"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "MFLR8_3",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "MFLR8_3"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "MFLR8_4",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "MFLR8_4"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "NUKAGE1",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "NUKAGE1"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "NUKAGE2",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "NUKAGE2"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "NUKAGE3",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "NUKAGE3"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "RROCK17",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "RROCK17"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "RROCK18",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "RROCK18"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "SLIME14",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "SLIME14"
+      ]
+    },
+    {
+      "kind": "flat",
+      "name": "TLITE6_1",
+      "reasons": [
+        "E1M1 surface or required animation frame"
+      ],
+      "sourceLumps": [
+        "TLITE6_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AG128_1",
+      "reasons": [
+        "wall texture SHAWN2"
+      ],
+      "sourceLumps": [
+        "AG128_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQCOMP01",
+      "reasons": [
+        "wall texture AQCOMP01"
+      ],
+      "sourceLumps": [
+        "AQCOMP01"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQCONC05",
+      "reasons": [
+        "wall texture AQCONC05"
+      ],
+      "sourceLumps": [
+        "AQCONC05"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQCONC11",
+      "reasons": [
+        "wall texture AQCONC11"
+      ],
+      "sourceLumps": [
+        "AQCONC11"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQCONC14",
+      "reasons": [
+        "wall texture AQCONC14"
+      ],
+      "sourceLumps": [
+        "AQCONC14"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQCONC16",
+      "reasons": [
+        "wall texture AQCONC16"
+      ],
+      "sourceLumps": [
+        "AQCONC16"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQCONC18",
+      "reasons": [
+        "wall texture AQCONC18"
+      ],
+      "sourceLumps": [
+        "AQCONC18"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQDOOR01",
+      "reasons": [
+        "wall texture AQDOOR01"
+      ],
+      "sourceLumps": [
+        "AQDOOR01"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQDOOR02",
+      "reasons": [
+        "wall texture AQDOOR02"
+      ],
+      "sourceLumps": [
+        "AQDOOR02"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQLITE01",
+      "reasons": [
+        "wall texture AQLITE01"
+      ],
+      "sourceLumps": [
+        "AQLITE01"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQLITE07",
+      "reasons": [
+        "wall texture AQLITE07"
+      ],
+      "sourceLumps": [
+        "AQLITE07"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQLITE08",
+      "reasons": [
+        "wall texture AQLITE08"
+      ],
+      "sourceLumps": [
+        "AQLITE08"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQLITE18",
+      "reasons": [
+        "wall texture AQLITE18"
+      ],
+      "sourceLumps": [
+        "AQLITE18"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL01",
+      "reasons": [
+        "wall texture AQMETL01"
+      ],
+      "sourceLumps": [
+        "AQMETL01"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL03",
+      "reasons": [
+        "wall texture AQMETL03"
+      ],
+      "sourceLumps": [
+        "AQMETL03"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL06",
+      "reasons": [
+        "wall texture AQMETL06"
+      ],
+      "sourceLumps": [
+        "AQMETL06"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL07",
+      "reasons": [
+        "wall texture AQMETL07"
+      ],
+      "sourceLumps": [
+        "AQMETL07"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL09",
+      "reasons": [
+        "wall texture AQMETL09"
+      ],
+      "sourceLumps": [
+        "AQMETL09"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL10",
+      "reasons": [
+        "wall texture AQMETL10"
+      ],
+      "sourceLumps": [
+        "AQMETL10"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL11",
+      "reasons": [
+        "wall texture AQMETL11"
+      ],
+      "sourceLumps": [
+        "AQMETL11"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL12",
+      "reasons": [
+        "wall texture AQMETL12"
+      ],
+      "sourceLumps": [
+        "AQMETL12"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL13",
+      "reasons": [
+        "wall texture AQMETL13"
+      ],
+      "sourceLumps": [
+        "AQMETL13"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL14",
+      "reasons": [
+        "wall texture AQMETL14"
+      ],
+      "sourceLumps": [
+        "AQMETL14"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL15",
+      "reasons": [
+        "wall texture AQMETL15"
+      ],
+      "sourceLumps": [
+        "AQMETL15"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL17",
+      "reasons": [
+        "wall texture AQMETL17"
+      ],
+      "sourceLumps": [
+        "AQMETL17"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL21",
+      "reasons": [
+        "wall texture AQMETL21"
+      ],
+      "sourceLumps": [
+        "AQMETL21"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL24",
+      "reasons": [
+        "wall texture AQMETL24"
+      ],
+      "sourceLumps": [
+        "AQMETL24"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL25",
+      "reasons": [
+        "wall texture AQMETL25"
+      ],
+      "sourceLumps": [
+        "AQMETL25"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL26",
+      "reasons": [
+        "wall texture AQMETL26"
+      ],
+      "sourceLumps": [
+        "AQMETL26"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL27",
+      "reasons": [
+        "wall texture AQMETL27"
+      ],
+      "sourceLumps": [
+        "AQMETL27"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQMETL32",
+      "reasons": [
+        "wall texture AQMETL32"
+      ],
+      "sourceLumps": [
+        "AQMETL32"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQPANL01",
+      "reasons": [
+        "wall texture AQPANL01"
+      ],
+      "sourceLumps": [
+        "AQPANL01"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQPANL02",
+      "reasons": [
+        "wall texture AQPANL02"
+      ],
+      "sourceLumps": [
+        "AQPANL02"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQPANL05",
+      "reasons": [
+        "wall texture AQPANL05"
+      ],
+      "sourceLumps": [
+        "AQPANL05"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQPANL08",
+      "reasons": [
+        "wall texture AQPANL08"
+      ],
+      "sourceLumps": [
+        "AQPANL08"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQPIPE01",
+      "reasons": [
+        "wall texture AQPIPE01"
+      ],
+      "sourceLumps": [
+        "AQPIPE01"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQPIPE08",
+      "reasons": [
+        "wall texture AQPIPE08"
+      ],
+      "sourceLumps": [
+        "AQPIPE08"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQPIPE14",
+      "reasons": [
+        "wall texture AQPIPE14"
+      ],
+      "sourceLumps": [
+        "AQPIPE14"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQRUST02",
+      "reasons": [
+        "wall texture AQRUST02"
+      ],
+      "sourceLumps": [
+        "AQRUST02"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQRUST10",
+      "reasons": [
+        "wall texture AQRUST10"
+      ],
+      "sourceLumps": [
+        "AQRUST10"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQSECT11",
+      "reasons": [
+        "wall texture AQSECT11"
+      ],
+      "sourceLumps": [
+        "AQSECT11"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQSUPP01",
+      "reasons": [
+        "wall texture AQSUPP01"
+      ],
+      "sourceLumps": [
+        "AQSUPP01"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQSUPP04",
+      "reasons": [
+        "wall texture AQSUPP04"
+      ],
+      "sourceLumps": [
+        "AQSUPP04"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQSUPP08",
+      "reasons": [
+        "wall texture AQSUPP08"
+      ],
+      "sourceLumps": [
+        "AQSUPP08"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQSUPP10",
+      "reasons": [
+        "wall texture AQSUPP10"
+      ],
+      "sourceLumps": [
+        "AQSUPP10"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQSUPP11",
+      "reasons": [
+        "wall texture AQSUPP11"
+      ],
+      "sourceLumps": [
+        "AQSUPP11"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQSUPP13",
+      "reasons": [
+        "wall texture AQSUPP13"
+      ],
+      "sourceLumps": [
+        "AQSUPP13"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQTILE01",
+      "reasons": [
+        "wall texture AQTILE01"
+      ],
+      "sourceLumps": [
+        "AQTILE01"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQTILE02",
+      "reasons": [
+        "wall texture AQTILE02"
+      ],
+      "sourceLumps": [
+        "AQTILE02"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "AQTRIM05",
+      "reasons": [
+        "wall texture AQTRIM05"
+      ],
+      "sourceLumps": [
+        "AQTRIM05"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "BASE",
+      "reasons": [
+        "wall texture BASE"
+      ],
+      "sourceLumps": [
+        "BASE"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "BASE2",
+      "reasons": [
+        "wall texture BASE2"
+      ],
+      "sourceLumps": [
+        "BASE2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "BCRATEL1",
+      "reasons": [
+        "wall texture CRATE1",
+        "wall texture CRATE3",
+        "wall texture CRATELIT",
+        "wall texture CRATWIDE",
+        "wall texture CRAWHBP"
+      ],
+      "sourceLumps": [
+        "BCRATEL1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "BCRATEM1",
+      "reasons": [
+        "wall texture CRATWIDE",
+        "wall texture CRAWHBP"
+      ],
+      "sourceLumps": [
+        "BCRATEM1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "BCRATER1",
+      "reasons": [
+        "wall texture CRATE1",
+        "wall texture CRATE3",
+        "wall texture CRATELIT",
+        "wall texture CRATWIDE",
+        "wall texture CRAWHBP"
+      ],
+      "sourceLumps": [
+        "BCRATER1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "BLITA0",
+      "reasons": [
+        "wall texture COMPLIT3"
+      ],
+      "sourceLumps": [
+        "BLITA0"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "BLITC0",
+      "reasons": [
+        "wall texture COMPLIT3"
+      ],
+      "sourceLumps": [
+        "BLITC0"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "BTNTCRAT",
+      "reasons": [
+        "wall texture CRAWHBP"
+      ],
+      "sourceLumps": [
+        "BTNTCRAT"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "BUL64D",
+      "reasons": [
+        "wall texture CRAWHBP"
+      ],
+      "sourceLumps": [
+        "BUL64D"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "CEILVINE",
+      "reasons": [
+        "wall texture CEILVINE"
+      ],
+      "sourceLumps": [
+        "CEILVINE"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP01_1",
+      "reasons": [
+        "wall texture COMPUTE1"
+      ],
+      "sourceLumps": [
+        "COMP01_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP01_5",
+      "reasons": [
+        "wall texture COMPUTE1"
+      ],
+      "sourceLumps": [
+        "COMP01_5"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP01_6",
+      "reasons": [
+        "wall texture COMPUTE1"
+      ],
+      "sourceLumps": [
+        "COMP01_6"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP02_1",
+      "reasons": [
+        "wall texture COMP2",
+        "wall texture COMPUTE2"
+      ],
+      "sourceLumps": [
+        "COMP02_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP02_2",
+      "reasons": [
+        "wall texture COMP2",
+        "wall texture COMPUTE2"
+      ],
+      "sourceLumps": [
+        "COMP02_2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP02_3",
+      "reasons": [
+        "wall texture COMP2",
+        "wall texture COMPUTE2",
+        "wall texture COMPWERF"
+      ],
+      "sourceLumps": [
+        "COMP02_3"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP02_4",
+      "reasons": [
+        "wall texture COMP2"
+      ],
+      "sourceLumps": [
+        "COMP02_4"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP02_5",
+      "reasons": [
+        "wall texture COMP2"
+      ],
+      "sourceLumps": [
+        "COMP02_5"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP02_6",
+      "reasons": [
+        "wall texture COMP2"
+      ],
+      "sourceLumps": [
+        "COMP02_6"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP02_7",
+      "reasons": [
+        "wall texture COMP2",
+        "wall texture COMPUTE2",
+        "wall texture COMPWERF"
+      ],
+      "sourceLumps": [
+        "COMP02_7"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP02_8",
+      "reasons": [
+        "wall texture COMP2"
+      ],
+      "sourceLumps": [
+        "COMP02_8"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP03_4",
+      "reasons": [
+        "wall texture COMPLIT3",
+        "wall texture COMPSPAN",
+        "wall texture COMPWERF"
+      ],
+      "sourceLumps": [
+        "COMP03_4"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP03_5",
+      "reasons": [
+        "wall texture COMPTALL"
+      ],
+      "sourceLumps": [
+        "COMP03_5"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP03_8",
+      "reasons": [
+        "wall texture COMPTALL",
+        "wall texture COMPVENT"
+      ],
+      "sourceLumps": [
+        "COMP03_8"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP04_1",
+      "reasons": [
+        "wall texture COMPTALL"
+      ],
+      "sourceLumps": [
+        "COMP04_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP04_2",
+      "reasons": [
+        "wall texture COMPTALL"
+      ],
+      "sourceLumps": [
+        "COMP04_2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP04_5",
+      "reasons": [
+        "wall texture COMPTALL",
+        "wall texture COMPUTE4"
+      ],
+      "sourceLumps": [
+        "COMP04_5"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP04_6",
+      "reasons": [
+        "wall texture COMPTALL"
+      ],
+      "sourceLumps": [
+        "COMP04_6"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP04_7",
+      "reasons": [
+        "wall texture COMPTALL"
+      ],
+      "sourceLumps": [
+        "COMP04_7"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP04_8",
+      "reasons": [
+        "wall texture COMPTALL"
+      ],
+      "sourceLumps": [
+        "COMP04_8"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP1B_4",
+      "reasons": [
+        "wall texture COMPUTE1"
+      ],
+      "sourceLumps": [
+        "COMP1B_4"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "COMP1C_6",
+      "reasons": [
+        "wall texture COMPUTE1"
+      ],
+      "sourceLumps": [
+        "COMP1C_6"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "CONCRETE",
+      "reasons": [
+        "wall texture A-CONCTE"
+      ],
+      "sourceLumps": [
+        "CONCRETE"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "CYL1_1",
+      "reasons": [
+        "wall texture SHAWN1"
+      ],
+      "sourceLumps": [
+        "CYL1_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "DOOR2_4",
+      "reasons": [
+        "wall texture BIGDOOR2"
+      ],
+      "sourceLumps": [
+        "DOOR2_4"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "DOOR2_5",
+      "reasons": [
+        "wall texture DOOR3"
+      ],
+      "sourceLumps": [
+        "DOOR2_5"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "DOOR3_4",
+      "reasons": [
+        "wall texture EXITDOOR"
+      ],
+      "sourceLumps": [
+        "DOOR3_4"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "DOOR3_5",
+      "reasons": [
+        "wall texture EXITDOOR"
+      ],
+      "sourceLumps": [
+        "DOOR3_5"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "DOOR3_6",
+      "reasons": [
+        "wall texture EXITDOOR"
+      ],
+      "sourceLumps": [
+        "DOOR3_6"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "DOOR9_2",
+      "reasons": [
+        "wall texture BIGDOOR3"
+      ],
+      "sourceLumps": [
+        "DOOR9_2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "DOORTRAK",
+      "reasons": [
+        "wall texture DOORTRAK"
+      ],
+      "sourceLumps": [
+        "DOORTRAK"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "EXIT1",
+      "reasons": [
+        "wall texture EXITSIGN"
+      ],
+      "sourceLumps": [
+        "EXIT1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "EXIT2",
+      "reasons": [
+        "wall texture EXITSIGN"
+      ],
+      "sourceLumps": [
+        "EXIT2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "GCRATEL1",
+      "reasons": [
+        "wall texture CRATE2",
+        "wall texture CRATE3",
+        "wall texture CRATWIDE",
+        "wall texture CRAWHBP"
+      ],
+      "sourceLumps": [
+        "GCRATEL1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "GCRATEM1",
+      "reasons": [
+        "wall texture CRATWIDE",
+        "wall texture CRAWHBP"
+      ],
+      "sourceLumps": [
+        "GCRATEM1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "GCRATER1",
+      "reasons": [
+        "wall texture CRATE2",
+        "wall texture CRATE3",
+        "wall texture CRATWIDE",
+        "wall texture CRAWHBP"
+      ],
+      "sourceLumps": [
+        "GCRATER1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "MC17",
+      "reasons": [
+        "wall texture MC17"
+      ],
+      "sourceLumps": [
+        "MC17"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "MC18",
+      "reasons": [
+        "wall texture MC18"
+      ],
+      "sourceLumps": [
+        "MC18"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "MC19",
+      "reasons": [
+        "wall texture MC19"
+      ],
+      "sourceLumps": [
+        "MC19"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "MC2",
+      "reasons": [
+        "wall texture MC2"
+      ],
+      "sourceLumps": [
+        "MC2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "MC3",
+      "reasons": [
+        "wall texture MC3"
+      ],
+      "sourceLumps": [
+        "MC3"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "MC5",
+      "reasons": [
+        "wall texture MC5"
+      ],
+      "sourceLumps": [
+        "MC5"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "MUD",
+      "reasons": [
+        "wall texture A-MUD"
+      ],
+      "sourceLumps": [
+        "MUD"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "NUKEDGE",
+      "reasons": [
+        "wall texture NUKE24"
+      ],
+      "sourceLumps": [
+        "NUKEDGE"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "PLAT2_1",
+      "reasons": [
+        "wall texture PLAT1"
+      ],
+      "sourceLumps": [
+        "PLAT2_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "PREEL1",
+      "reasons": [
+        "wall texture COMPWERF"
+      ],
+      "sourceLumps": [
+        "PREEL1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "PREEL2",
+      "reasons": [
+        "wall texture COMPWERF"
+      ],
+      "sourceLumps": [
+        "PREEL2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "RIPW15",
+      "reasons": [
+        "wall texture STEPTOP"
+      ],
+      "sourceLumps": [
+        "RIPW15"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "RW18_1",
+      "reasons": [
+        "wall texture STONE4"
+      ],
+      "sourceLumps": [
+        "RW18_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "RW20_3",
+      "reasons": [
+        "wall texture ZIMMER3"
+      ],
+      "sourceLumps": [
+        "RW20_3"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "RW22_1",
+      "reasons": [
+        "wall texture ASHWALL2"
+      ],
+      "sourceLumps": [
+        "RW22_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "RW33_1",
+      "reasons": [
+        "wall texture METAL2"
+      ],
+      "sourceLumps": [
+        "RW33_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "RW33_4",
+      "reasons": [
+        "wall texture METAL5"
+      ],
+      "sourceLumps": [
+        "RW33_4"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SFALL1",
+      "reasons": [
+        "wall texture SFALL1"
+      ],
+      "sourceLumps": [
+        "SFALL1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SFALL2",
+      "reasons": [
+        "wall texture SFALL2"
+      ],
+      "sourceLumps": [
+        "SFALL2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SFALL3",
+      "reasons": [
+        "wall texture SFALL3"
+      ],
+      "sourceLumps": [
+        "SFALL3"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SFALL4",
+      "reasons": [
+        "wall texture SFALL4"
+      ],
+      "sourceLumps": [
+        "SFALL4"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SGCRATE2",
+      "reasons": [
+        "wall texture CRATELIT"
+      ],
+      "sourceLumps": [
+        "SGCRATE2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SHAWN02",
+      "reasons": [
+        "wall texture SHAWN02"
+      ],
+      "sourceLumps": [
+        "SHAWN02"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SKY1",
+      "reasons": [
+        "wall texture SKY1"
+      ],
+      "sourceLumps": [
+        "SKY1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "STEP05",
+      "reasons": [
+        "wall texture STEP3"
+      ],
+      "sourceLumps": [
+        "STEP05"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "STEP06",
+      "reasons": [
+        "wall texture STEP4"
+      ],
+      "sourceLumps": [
+        "STEP06"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "STEP07",
+      "reasons": [
+        "wall texture STEP6"
+      ],
+      "sourceLumps": [
+        "STEP07"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "STEP08",
+      "reasons": [
+        "wall texture COMP2"
+      ],
+      "sourceLumps": [
+        "STEP08"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "STEP10",
+      "reasons": [
+        "wall texture STEP6"
+      ],
+      "sourceLumps": [
+        "STEP10"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SW11_1",
+      "reasons": [
+        "wall texture STARGR1"
+      ],
+      "sourceLumps": [
+        "SW11_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SW11_2",
+      "reasons": [
+        "wall texture STARGR1"
+      ],
+      "sourceLumps": [
+        "SW11_2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SW15_1",
+      "reasons": [
+        "wall texture STARGR2"
+      ],
+      "sourceLumps": [
+        "SW15_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SW15_3",
+      "reasons": [
+        "wall texture STARGR2"
+      ],
+      "sourceLumps": [
+        "SW15_3"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SW16_1",
+      "reasons": [
+        "wall texture STARGR2"
+      ],
+      "sourceLumps": [
+        "SW16_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SW16_2",
+      "reasons": [
+        "wall texture STARGR2"
+      ],
+      "sourceLumps": [
+        "SW16_2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SW2S0",
+      "reasons": [
+        "wall texture SW1GRAY"
+      ],
+      "sourceLumps": [
+        "SW2S0"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SW3S0",
+      "reasons": [
+        "wall texture SW1BRN1"
+      ],
+      "sourceLumps": [
+        "SW3S0"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "T14_5",
+      "reasons": [
+        "wall texture EXITDOOR"
+      ],
+      "sourceLumps": [
+        "T14_5"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "TSCRN1",
+      "reasons": [
+        "wall texture COMPUTE4"
+      ],
+      "sourceLumps": [
+        "TSCRN1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "TSCRN2",
+      "reasons": [
+        "wall texture COMPUTE4"
+      ],
+      "sourceLumps": [
+        "TSCRN2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "TSCRN3",
+      "reasons": [
+        "wall texture COMPUTE4"
+      ],
+      "sourceLumps": [
+        "TSCRN3"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "TSCRN4",
+      "reasons": [
+        "wall texture COMPUTE4"
+      ],
+      "sourceLumps": [
+        "TSCRN4"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "TSCRN5",
+      "reasons": [
+        "wall texture COMPUTE4"
+      ],
+      "sourceLumps": [
+        "TSCRN5"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "TSCRN6",
+      "reasons": [
+        "wall texture COMPUTE4"
+      ],
+      "sourceLumps": [
+        "TSCRN6"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "TSCRN7",
+      "reasons": [
+        "wall texture COMPUTE4"
+      ],
+      "sourceLumps": [
+        "TSCRN7"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "TSCRN8",
+      "reasons": [
+        "wall texture COMPUTE4"
+      ],
+      "sourceLumps": [
+        "TSCRN8"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "TTALL1_2",
+      "reasons": [
+        "wall texture DOORSTOP"
+      ],
+      "sourceLumps": [
+        "TTALL1_2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "VGCRATE1",
+      "reasons": [
+        "wall texture CRATINY"
+      ],
+      "sourceLumps": [
+        "VGCRATE1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "W104_1",
+      "reasons": [
+        "wall texture ASHWALL"
+      ],
+      "sourceLumps": [
+        "W104_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "W13_1",
+      "reasons": [
+        "wall texture SHAWN1"
+      ],
+      "sourceLumps": [
+        "W13_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "W31_1",
+      "reasons": [
+        "wall texture SW1GRAY"
+      ],
+      "sourceLumps": [
+        "W31_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "W33_8",
+      "reasons": [
+        "wall texture COMPUTE1"
+      ],
+      "sourceLumps": [
+        "W33_8"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "W46_37",
+      "reasons": [
+        "wall texture DOORBLU"
+      ],
+      "sourceLumps": [
+        "W46_37"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL01_1",
+      "reasons": [
+        "wall texture SHAWN1"
+      ],
+      "sourceLumps": [
+        "WALL01_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL02_1",
+      "reasons": [
+        "wall texture BROWN1"
+      ],
+      "sourceLumps": [
+        "WALL02_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL02_2",
+      "reasons": [
+        "wall texture BROWN1",
+        "wall texture SW1BRN1"
+      ],
+      "sourceLumps": [
+        "WALL02_2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL02_3",
+      "reasons": [
+        "wall texture BROWN1"
+      ],
+      "sourceLumps": [
+        "WALL02_3"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL03_1",
+      "reasons": [
+        "wall texture DOOR1"
+      ],
+      "sourceLumps": [
+        "WALL03_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL04_2",
+      "reasons": [
+        "wall texture BROWNHUG"
+      ],
+      "sourceLumps": [
+        "WALL04_2"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL04_3",
+      "reasons": [
+        "wall texture BROWNHUG"
+      ],
+      "sourceLumps": [
+        "WALL04_3"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL04_4",
+      "reasons": [
+        "wall texture BROWNHUG"
+      ],
+      "sourceLumps": [
+        "WALL04_4"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL04_5",
+      "reasons": [
+        "wall texture BROWNHUG"
+      ],
+      "sourceLumps": [
+        "WALL04_5"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL04_7",
+      "reasons": [
+        "wall texture BROWNHUG"
+      ],
+      "sourceLumps": [
+        "WALL04_7"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL47_1",
+      "reasons": [
+        "wall texture METAL"
+      ],
+      "sourceLumps": [
+        "WALL47_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL62_1",
+      "reasons": [
+        "wall texture BROWN96"
+      ],
+      "sourceLumps": [
+        "WALL62_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WALL63_1",
+      "reasons": [
+        "wall texture SP_ROCK1"
+      ],
+      "sourceLumps": [
+        "WALL63_1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WFALL1",
+      "reasons": [
+        "wall texture WFALL1"
+      ],
+      "sourceLumps": [
+        "WFALL1"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WLITA0",
+      "reasons": [
+        "wall texture LITE3",
+        "wall texture LITE5"
+      ],
+      "sourceLumps": [
+        "WLITA0"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WLITB0",
+      "reasons": [
+        "wall texture LITE3"
+      ],
+      "sourceLumps": [
+        "WLITB0"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "WLITC0",
+      "reasons": [
+        "wall texture LITE3",
+        "wall texture LITE5"
+      ],
+      "sourceLumps": [
+        "WLITC0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "AMMOA0",
+      "reasons": [
+        "state THING_2048_SPAWN"
+      ],
+      "sourceLumps": [
+        "AMMOA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "ARM1A0",
+      "reasons": [
+        "state THING_2018_SPAWN"
+      ],
+      "sourceLumps": [
+        "ARM1A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "ARM2A0",
+      "reasons": [
+        "state THING_2019_SPAWN"
+      ],
+      "sourceLumps": [
+        "ARM2A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "BAR1A0",
+      "reasons": [
+        "state THING_2035_SPAWN"
+      ],
+      "sourceLumps": [
+        "BAR1A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "BAR1B0",
+      "reasons": [
+        "state THING_2035_DEATH"
+      ],
+      "sourceLumps": [
+        "BAR1B0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "BKEYA0",
+      "reasons": [
+        "state THING_5_SPAWN"
+      ],
+      "sourceLumps": [
+        "BKEYA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "BON1A0",
+      "reasons": [
+        "state THING_2014_SPAWN"
+      ],
+      "sourceLumps": [
+        "BON1A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "BON2A0",
+      "reasons": [
+        "state THING_2015_SPAWN"
+      ],
+      "sourceLumps": [
+        "BON2A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "BPAKA0",
+      "reasons": [
+        "state THING_8_SPAWN"
+      ],
+      "sourceLumps": [
+        "BPAKA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "BROKA0",
+      "reasons": [
+        "state THING_2010_SPAWN"
+      ],
+      "sourceLumps": [
+        "BROKA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "CELLA0",
+      "reasons": [
+        "state THING_2047_SPAWN"
+      ],
+      "sourceLumps": [
+        "CELLA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "CELPA0",
+      "reasons": [
+        "state THING_2049_SPAWN"
+      ],
+      "sourceLumps": [
+        "CELPA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "CHGGA0",
+      "reasons": [
+        "state WEAPON_CHAINGUN_READY",
+        "state WEAPON_CHAINGUN_REFIRE"
+      ],
+      "sourceLumps": [
+        "CHGGA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "CHGGB0",
+      "reasons": [
+        "state WEAPON_CHAINGUN_FIRE",
+        "state WEAPON_CHAINGUN_FLASH"
+      ],
+      "sourceLumps": [
+        "CHGGB0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "CLIPA0",
+      "reasons": [
+        "state THING_2007_SPAWN"
+      ],
+      "sourceLumps": [
+        "CLIPA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "COLUA0",
+      "reasons": [
+        "state THING_2028_SPAWN"
+      ],
+      "sourceLumps": [
+        "COLUA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "CSAWA0",
+      "reasons": [
+        "state THING_2005_SPAWN"
+      ],
+      "sourceLumps": [
+        "CSAWA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "ELECA0",
+      "reasons": [
+        "state THING_48_SPAWN"
+      ],
+      "sourceLumps": [
+        "ELECA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "GOR1A0",
+      "reasons": [
+        "state THING_43_SPAWN"
+      ],
+      "sourceLumps": [
+        "GOR1A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "GOR2A0",
+      "reasons": [
+        "state THING_60_SPAWN"
+      ],
+      "sourceLumps": [
+        "GOR2A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "GOR4A0",
+      "reasons": [
+        "state THING_47_SPAWN"
+      ],
+      "sourceLumps": [
+        "GOR4A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "HEADL0",
+      "reasons": [
+        "state THING_15_SPAWN"
+      ],
+      "sourceLumps": [
+        "HEADL0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "LAUNA0",
+      "reasons": [
+        "state THING_2003_SPAWN"
+      ],
+      "sourceLumps": [
+        "LAUNA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "MEDIA0",
+      "reasons": [
+        "state THING_2012_SPAWN"
+      ],
+      "sourceLumps": [
+        "MEDIA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "MGUNA0",
+      "reasons": [
+        "state THING_2002_SPAWN"
+      ],
+      "sourceLumps": [
+        "MGUNA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "MISGA0",
+      "reasons": [
+        "state WEAPON_ROCKET_LAUNCHER_READY",
+        "state WEAPON_ROCKET_LAUNCHER_REFIRE"
+      ],
+      "sourceLumps": [
+        "MISGA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "MISGB0",
+      "reasons": [
+        "state WEAPON_ROCKET_LAUNCHER_FIRE",
+        "state WEAPON_ROCKET_LAUNCHER_FLASH"
+      ],
+      "sourceLumps": [
+        "MISGB0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "PISGA0",
+      "reasons": [
+        "state WEAPON_PISTOL_READY",
+        "state WEAPON_PISTOL_REFIRE"
+      ],
+      "sourceLumps": [
+        "PISGA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "PISGB0",
+      "reasons": [
+        "state WEAPON_PISTOL_FIRE",
+        "state WEAPON_PISTOL_FLASH"
+      ],
+      "sourceLumps": [
+        "PISGB0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "PLASA0",
+      "reasons": [
+        "state THING_2004_SPAWN"
+      ],
+      "sourceLumps": [
+        "PLASA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "PLAYN0",
+      "reasons": [
+        "state THING_12_SPAWN"
+      ],
+      "sourceLumps": [
+        "PLAYN0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "PLAYW0",
+      "reasons": [
+        "state THING_10_SPAWN"
+      ],
+      "sourceLumps": [
+        "PLAYW0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "PLSGA0",
+      "reasons": [
+        "state WEAPON_PLASMA_RIFLE_READY",
+        "state WEAPON_PLASMA_RIFLE_REFIRE"
+      ],
+      "sourceLumps": [
+        "PLSGA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "PLSGB0",
+      "reasons": [
+        "state WEAPON_PLASMA_RIFLE_FIRE",
+        "state WEAPON_PLASMA_RIFLE_FLASH"
+      ],
+      "sourceLumps": [
+        "PLSGB0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POL5A0",
+      "reasons": [
+        "state THING_24_SPAWN"
+      ],
+      "sourceLumps": [
+        "POL5A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POL6A0",
+      "reasons": [
+        "state THING_26_SPAWN"
+      ],
+      "sourceLumps": [
+        "POL6A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSA1",
+      "reasons": [
+        "state THING_3004_SEE",
+        "state THING_3004_SPAWN"
+      ],
+      "sourceLumps": [
+        "POSSA1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSA2",
+      "reasons": [
+        "state THING_3004_SEE",
+        "state THING_3004_SPAWN"
+      ],
+      "sourceLumps": [
+        "POSSA2"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSA3",
+      "reasons": [
+        "state THING_3004_SEE",
+        "state THING_3004_SPAWN"
+      ],
+      "sourceLumps": [
+        "POSSA3"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSA4",
+      "reasons": [
+        "state THING_3004_SEE",
+        "state THING_3004_SPAWN"
+      ],
+      "sourceLumps": [
+        "POSSA4"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSA5",
+      "reasons": [
+        "state THING_3004_SEE",
+        "state THING_3004_SPAWN"
+      ],
+      "sourceLumps": [
+        "POSSA5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSA6",
+      "reasons": [
+        "state THING_3004_SEE",
+        "state THING_3004_SPAWN"
+      ],
+      "sourceLumps": [
+        "POSSA6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSA7",
+      "reasons": [
+        "state THING_3004_SEE",
+        "state THING_3004_SPAWN"
+      ],
+      "sourceLumps": [
+        "POSSA7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSA8",
+      "reasons": [
+        "state THING_3004_SEE",
+        "state THING_3004_SPAWN"
+      ],
+      "sourceLumps": [
+        "POSSA8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSB1",
+      "reasons": [
+        "state THING_3004_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "POSSB1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSB2",
+      "reasons": [
+        "state THING_3004_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "POSSB2"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSB3",
+      "reasons": [
+        "state THING_3004_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "POSSB3"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSB4",
+      "reasons": [
+        "state THING_3004_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "POSSB4"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSB5",
+      "reasons": [
+        "state THING_3004_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "POSSB5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSB6",
+      "reasons": [
+        "state THING_3004_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "POSSB6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSB7",
+      "reasons": [
+        "state THING_3004_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "POSSB7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSB8",
+      "reasons": [
+        "state THING_3004_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "POSSB8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSG1",
+      "reasons": [
+        "state THING_3004_PAIN"
+      ],
+      "sourceLumps": [
+        "POSSG1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSG2",
+      "reasons": [
+        "state THING_3004_PAIN"
+      ],
+      "sourceLumps": [
+        "POSSG2"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSG3",
+      "reasons": [
+        "state THING_3004_PAIN"
+      ],
+      "sourceLumps": [
+        "POSSG3"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSG4",
+      "reasons": [
+        "state THING_3004_PAIN"
+      ],
+      "sourceLumps": [
+        "POSSG4"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSG5",
+      "reasons": [
+        "state THING_3004_PAIN"
+      ],
+      "sourceLumps": [
+        "POSSG5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSG6",
+      "reasons": [
+        "state THING_3004_PAIN"
+      ],
+      "sourceLumps": [
+        "POSSG6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSG7",
+      "reasons": [
+        "state THING_3004_PAIN"
+      ],
+      "sourceLumps": [
+        "POSSG7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSG8",
+      "reasons": [
+        "state THING_3004_PAIN"
+      ],
+      "sourceLumps": [
+        "POSSG8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "POSSL0",
+      "reasons": [
+        "state THING_18_SPAWN",
+        "state THING_3004_DEATH"
+      ],
+      "sourceLumps": [
+        "POSSL0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "PSTRA0",
+      "reasons": [
+        "state THING_2023_SPAWN"
+      ],
+      "sourceLumps": [
+        "PSTRA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "PUNGA0",
+      "reasons": [
+        "state WEAPON_FIST_READY",
+        "state WEAPON_FIST_REFIRE"
+      ],
+      "sourceLumps": [
+        "PUNGA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "PUNGB0",
+      "reasons": [
+        "state WEAPON_FIST_FIRE",
+        "state WEAPON_FIST_FLASH"
+      ],
+      "sourceLumps": [
+        "PUNGB0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "ROCKA0",
+      "reasons": [
+        "state THING_2046_SPAWN"
+      ],
+      "sourceLumps": [
+        "ROCKA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGA1",
+      "reasons": [
+        "state THING_3002_SEE",
+        "state THING_3002_SPAWN",
+        "state THING_58_SEE",
+        "state THING_58_SPAWN"
+      ],
+      "sourceLumps": [
+        "SARGA1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGA2A8",
+      "reasons": [
+        "state THING_3002_SEE",
+        "state THING_3002_SPAWN",
+        "state THING_58_SEE",
+        "state THING_58_SPAWN"
+      ],
+      "sourceLumps": [
+        "SARGA2A8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGA3A7",
+      "reasons": [
+        "state THING_3002_SEE",
+        "state THING_3002_SPAWN",
+        "state THING_58_SEE",
+        "state THING_58_SPAWN"
+      ],
+      "sourceLumps": [
+        "SARGA3A7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGA4A6",
+      "reasons": [
+        "state THING_3002_SEE",
+        "state THING_3002_SPAWN",
+        "state THING_58_SEE",
+        "state THING_58_SPAWN"
+      ],
+      "sourceLumps": [
+        "SARGA4A6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGA5",
+      "reasons": [
+        "state THING_3002_SEE",
+        "state THING_3002_SPAWN",
+        "state THING_58_SEE",
+        "state THING_58_SPAWN"
+      ],
+      "sourceLumps": [
+        "SARGA5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGB1",
+      "reasons": [
+        "state THING_3002_ATTACK_1",
+        "state THING_58_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "SARGB1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGB2B8",
+      "reasons": [
+        "state THING_3002_ATTACK_1",
+        "state THING_58_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "SARGB2B8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGB3B7",
+      "reasons": [
+        "state THING_3002_ATTACK_1",
+        "state THING_58_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "SARGB3B7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGB4B6",
+      "reasons": [
+        "state THING_3002_ATTACK_1",
+        "state THING_58_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "SARGB4B6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGB5",
+      "reasons": [
+        "state THING_3002_ATTACK_1",
+        "state THING_58_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "SARGB5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGG1",
+      "reasons": [
+        "state THING_3002_PAIN",
+        "state THING_58_PAIN"
+      ],
+      "sourceLumps": [
+        "SARGG1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGG2G8",
+      "reasons": [
+        "state THING_3002_PAIN",
+        "state THING_58_PAIN"
+      ],
+      "sourceLumps": [
+        "SARGG2G8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGG3G7",
+      "reasons": [
+        "state THING_3002_PAIN",
+        "state THING_58_PAIN"
+      ],
+      "sourceLumps": [
+        "SARGG3G7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGG4G6",
+      "reasons": [
+        "state THING_3002_PAIN",
+        "state THING_58_PAIN"
+      ],
+      "sourceLumps": [
+        "SARGG4G6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGG5",
+      "reasons": [
+        "state THING_3002_PAIN",
+        "state THING_58_PAIN"
+      ],
+      "sourceLumps": [
+        "SARGG5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SARGN0",
+      "reasons": [
+        "state THING_17_SPAWN",
+        "state THING_3002_DEATH",
+        "state THING_58_DEATH"
+      ],
+      "sourceLumps": [
+        "SARGN0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SAWGA0",
+      "reasons": [
+        "state WEAPON_CHAINSAW_READY",
+        "state WEAPON_CHAINSAW_REFIRE"
+      ],
+      "sourceLumps": [
+        "SAWGA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SAWGB0",
+      "reasons": [
+        "state WEAPON_CHAINSAW_FIRE",
+        "state WEAPON_CHAINSAW_FLASH"
+      ],
+      "sourceLumps": [
+        "SAWGB0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SBOXA0",
+      "reasons": [
+        "state THING_2008_SPAWN"
+      ],
+      "sourceLumps": [
+        "SBOXA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SHOTA0",
+      "reasons": [
+        "state THING_2001_SPAWN"
+      ],
+      "sourceLumps": [
+        "SHOTA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SHTGA0",
+      "reasons": [
+        "state WEAPON_SHOTGUN_READY",
+        "state WEAPON_SHOTGUN_REFIRE"
+      ],
+      "sourceLumps": [
+        "SHTGA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SHTGB0",
+      "reasons": [
+        "state WEAPON_SHOTGUN_FIRE",
+        "state WEAPON_SHOTGUN_FLASH"
+      ],
+      "sourceLumps": [
+        "SHTGB0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SKULK0",
+      "reasons": [
+        "state THING_21_SPAWN"
+      ],
+      "sourceLumps": [
+        "SKULK0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SOULA0",
+      "reasons": [
+        "state THING_2013_SPAWN"
+      ],
+      "sourceLumps": [
+        "SOULA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSA1",
+      "reasons": [
+        "state THING_9_SEE",
+        "state THING_9_SPAWN"
+      ],
+      "sourceLumps": [
+        "SPOSA1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSA2A8",
+      "reasons": [
+        "state THING_9_SEE",
+        "state THING_9_SPAWN"
+      ],
+      "sourceLumps": [
+        "SPOSA2A8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSA3A7",
+      "reasons": [
+        "state THING_9_SEE",
+        "state THING_9_SPAWN"
+      ],
+      "sourceLumps": [
+        "SPOSA3A7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSA4A6",
+      "reasons": [
+        "state THING_9_SEE",
+        "state THING_9_SPAWN"
+      ],
+      "sourceLumps": [
+        "SPOSA4A6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSA5",
+      "reasons": [
+        "state THING_9_SEE",
+        "state THING_9_SPAWN"
+      ],
+      "sourceLumps": [
+        "SPOSA5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSB1",
+      "reasons": [
+        "state THING_9_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "SPOSB1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSB2B8",
+      "reasons": [
+        "state THING_9_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "SPOSB2B8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSB3B7",
+      "reasons": [
+        "state THING_9_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "SPOSB3B7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSB4B6",
+      "reasons": [
+        "state THING_9_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "SPOSB4B6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSB5",
+      "reasons": [
+        "state THING_9_ATTACK_1"
+      ],
+      "sourceLumps": [
+        "SPOSB5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSG1",
+      "reasons": [
+        "state THING_9_PAIN"
+      ],
+      "sourceLumps": [
+        "SPOSG1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSG2G8",
+      "reasons": [
+        "state THING_9_PAIN"
+      ],
+      "sourceLumps": [
+        "SPOSG2G8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSG3G7",
+      "reasons": [
+        "state THING_9_PAIN"
+      ],
+      "sourceLumps": [
+        "SPOSG3G7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSG4G6",
+      "reasons": [
+        "state THING_9_PAIN"
+      ],
+      "sourceLumps": [
+        "SPOSG4G6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSG5",
+      "reasons": [
+        "state THING_9_PAIN"
+      ],
+      "sourceLumps": [
+        "SPOSG5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "SPOSL0",
+      "reasons": [
+        "state THING_19_SPAWN",
+        "state THING_9_DEATH"
+      ],
+      "sourceLumps": [
+        "SPOSL0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "STIMA0",
+      "reasons": [
+        "state THING_2011_SPAWN"
+      ],
+      "sourceLumps": [
+        "STIMA0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TRE2A0",
+      "reasons": [
+        "state THING_54_SPAWN"
+      ],
+      "sourceLumps": [
+        "TRE2A0"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOA1",
+      "reasons": [
+        "state THING_3001_SEE",
+        "state THING_3001_SPAWN"
+      ],
+      "sourceLumps": [
+        "TROOA1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOA2A8",
+      "reasons": [
+        "state THING_3001_SEE",
+        "state THING_3001_SPAWN"
+      ],
+      "sourceLumps": [
+        "TROOA2A8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOA3A7",
+      "reasons": [
+        "state THING_3001_SEE",
+        "state THING_3001_SPAWN"
+      ],
+      "sourceLumps": [
+        "TROOA3A7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOA4A6",
+      "reasons": [
+        "state THING_3001_SEE",
+        "state THING_3001_SPAWN"
+      ],
+      "sourceLumps": [
+        "TROOA4A6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOA5",
+      "reasons": [
+        "state THING_3001_SEE",
+        "state THING_3001_SPAWN"
+      ],
+      "sourceLumps": [
+        "TROOA5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOB1",
+      "reasons": [
+        "state THING_3001_ATTACK_1",
+        "state THING_3001_ATTACK_2"
+      ],
+      "sourceLumps": [
+        "TROOB1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOB2B8",
+      "reasons": [
+        "state THING_3001_ATTACK_1",
+        "state THING_3001_ATTACK_2"
+      ],
+      "sourceLumps": [
+        "TROOB2B8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOB3B7",
+      "reasons": [
+        "state THING_3001_ATTACK_1",
+        "state THING_3001_ATTACK_2"
+      ],
+      "sourceLumps": [
+        "TROOB3B7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOB4B6",
+      "reasons": [
+        "state THING_3001_ATTACK_1",
+        "state THING_3001_ATTACK_2"
+      ],
+      "sourceLumps": [
+        "TROOB4B6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOB5",
+      "reasons": [
+        "state THING_3001_ATTACK_1",
+        "state THING_3001_ATTACK_2"
+      ],
+      "sourceLumps": [
+        "TROOB5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOG1",
+      "reasons": [
+        "state THING_3001_PAIN"
+      ],
+      "sourceLumps": [
+        "TROOG1"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOG2G8",
+      "reasons": [
+        "state THING_3001_PAIN"
+      ],
+      "sourceLumps": [
+        "TROOG2G8"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOG3G7",
+      "reasons": [
+        "state THING_3001_PAIN"
+      ],
+      "sourceLumps": [
+        "TROOG3G7"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOG4G6",
+      "reasons": [
+        "state THING_3001_PAIN"
+      ],
+      "sourceLumps": [
+        "TROOG4G6"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOG5",
+      "reasons": [
+        "state THING_3001_PAIN"
+      ],
+      "sourceLumps": [
+        "TROOG5"
+      ]
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "TROOM0",
+      "reasons": [
+        "state THING_20_SPAWN",
+        "state THING_3001_DEATH"
+      ],
+      "sourceLumps": [
+        "TROOM0"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSBAREXP",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_2035_DEATH"
+      ],
+      "sourceLumps": [
+        "DSBAREXP"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSBGACT",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSBGACT"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSBGDTH1",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_3002_DEATH",
+        "state THING_58_DEATH"
+      ],
+      "sourceLumps": [
+        "DSBGDTH1"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSBGDTH2",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_3001_DEATH"
+      ],
+      "sourceLumps": [
+        "DSBGDTH2"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSBGSIT1",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_3002_SEE",
+        "state THING_58_SEE"
+      ],
+      "sourceLumps": [
+        "DSBGSIT1"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSBGSIT2",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_3001_SEE"
+      ],
+      "sourceLumps": [
+        "DSBGSIT2"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSCLAW",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSCLAW"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSDORCLS",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSDORCLS"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSDOROPN",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSDOROPN"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSFIRSHT",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_3001_ATTACK_2"
+      ],
+      "sourceLumps": [
+        "DSFIRSHT"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSFIRXPL",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSFIRXPL"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSITEMUP",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSITEMUP"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSNOWAY",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSNOWAY"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSOOF",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSOOF"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPISTOL",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state WEAPON_CHAINGUN_FIRE",
+        "state WEAPON_PISTOL_FIRE"
+      ],
+      "sourceLumps": [
+        "DSPISTOL"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPLASMA",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state WEAPON_PLASMA_RIFLE_FIRE"
+      ],
+      "sourceLumps": [
+        "DSPLASMA"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPLPAIN",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSPLPAIN"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPODTH1",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_3004_DEATH"
+      ],
+      "sourceLumps": [
+        "DSPODTH1"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPODTH2",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSPODTH2"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPODTH3",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSPODTH3"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPOPAIN",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_3001_PAIN",
+        "state THING_3002_PAIN",
+        "state THING_3004_PAIN",
+        "state THING_58_PAIN",
+        "state THING_9_PAIN"
+      ],
+      "sourceLumps": [
+        "DSPOPAIN"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPOSACT",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSPOSACT"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPOSIT1",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_3004_SEE"
+      ],
+      "sourceLumps": [
+        "DSPOSIT1"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPOSIT2",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSPOSIT2"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPOSIT3",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSPOSIT3"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSPUNCH",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state WEAPON_FIST_FIRE"
+      ],
+      "sourceLumps": [
+        "DSPUNCH"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSRLAUNC",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state WEAPON_ROCKET_LAUNCHER_FIRE"
+      ],
+      "sourceLumps": [
+        "DSRLAUNC"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSRXPLOD",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSRXPLOD"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSAWFUL",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSSAWFUL"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSAWHIT",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSSAWHIT"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSAWIDL",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSSAWIDL"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSAWUP",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state WEAPON_CHAINSAW_FIRE"
+      ],
+      "sourceLumps": [
+        "DSSAWUP"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSGCOCK",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSSGCOCK"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSGTATK",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSSGTATK"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSGTDTH",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_9_DEATH"
+      ],
+      "sourceLumps": [
+        "DSSGTDTH"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSGTSIT",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state THING_9_SEE"
+      ],
+      "sourceLumps": [
+        "DSSGTSIT"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSHOTGN",
+      "reasons": [
+        "required E1M1 gameplay audio",
+        "state WEAPON_SHOTGUN_FIRE"
+      ],
+      "sourceLumps": [
+        "DSSHOTGN"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSTNMOV",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSSTNMOV"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSWTCHN",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSSWTCHN"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSSWTCHX",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSSWTCHX"
+      ]
+    },
+    {
+      "kind": "sound",
+      "name": "DSWPNUP",
+      "reasons": [
+        "required E1M1 gameplay audio"
+      ],
+      "sourceLumps": [
+        "DSWPNUP"
+      ]
+    },
+    {
+      "kind": "music",
+      "name": "D_E1M1",
+      "reasons": [
+        "E1M1 or intermission music"
+      ],
+      "sourceLumps": [
+        "D_E1M1"
+      ]
+    },
+    {
+      "kind": "music",
+      "name": "D_INTER",
+      "reasons": [
+        "E1M1 or intermission music"
+      ],
+      "sourceLumps": [
+        "D_INTER"
+      ]
+    },
+    {
+      "kind": "music",
+      "name": "D_VICTOR",
+      "reasons": [
+        "E1M1 or intermission music"
+      ],
+      "sourceLumps": [
+        "D_VICTOR"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_DOOM",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_DOOM"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_EPISOD",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_EPISOD"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_NGAME",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_NGAME"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_PAUSE",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_PAUSE"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_SKILL",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_SKILL"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STARMS",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STARMS"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STBAR",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STBAR"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFB0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFB0"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFDEAD0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFDEAD0"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFGOD0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFGOD0"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STKEYS0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STKEYS0"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STKEYS1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STKEYS1"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STKEYS2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STKEYS2"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STKEYS3",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STKEYS3"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STKEYS4",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STKEYS4"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STKEYS5",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STKEYS5"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTNUM0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTNUM0"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTNUM1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTNUM1"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTNUM2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTNUM2"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTNUM3",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTNUM3"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTNUM4",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTNUM4"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTNUM5",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTNUM5"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTNUM6",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTNUM6"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTNUM7",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTNUM7"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTNUM8",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTNUM8"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTNUM9",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTNUM9"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTPRCNT",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTPRCNT"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STYSNUM0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STYSNUM0"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STYSNUM1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STYSNUM1"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STYSNUM2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STYSNUM2"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STYSNUM3",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STYSNUM3"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STYSNUM4",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STYSNUM4"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STYSNUM5",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STYSNUM5"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STYSNUM6",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STYSNUM6"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STYSNUM7",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STYSNUM7"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STYSNUM8",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STYSNUM8"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STYSNUM9",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STYSNUM9"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "TITLEPIC",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "TITLEPIC"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WICOLON",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WICOLON"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIENTER",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIENTER"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIF",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIF"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIKILRS",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIKILRS"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WILV00",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WILV00"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WILV01",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WILV01"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIMAP0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIMAP0"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIMINUS",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIMINUS"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIMSTT",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIMSTT"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WINUM0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WINUM0"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WINUM1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WINUM1"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WINUM2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WINUM2"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WINUM3",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WINUM3"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WINUM4",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WINUM4"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WINUM5",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WINUM5"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WINUM6",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WINUM6"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WINUM7",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WINUM7"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WINUM8",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WINUM8"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WINUM9",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WINUM9"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIOSTK",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIOSTK"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIOSTS",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIOSTS"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIPAR",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIPAR"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIPCNT",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIPCNT"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WISCRT2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WISCRT2"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WISPLAT",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WISPLAT"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WITIME",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WITIME"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIURH0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIURH0"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIURH1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIURH1"
+      ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "WIVCTMS",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "WIVCTMS"
+      ]
+    }
+  ]
+}

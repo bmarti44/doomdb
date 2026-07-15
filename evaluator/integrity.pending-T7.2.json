@@ -1,0 +1,31 @@
+{
+  "schema":1,
+  "task":"T7.2-EVAL",
+  "algorithm":"sha256",
+  "approval":"APPROVED BY USER STANDING AUTHORIZATION 2026-07-15",
+  "dependencies":[
+    {"task":"T5.2","status":"IMPLEMENTATION ACCEPTED 1856885/1856885"},
+    {"task":"T6.3","status":"IMPLEMENTATION ACCEPTED 906/906"},
+    {"task":"T6.4","status":"IMPLEMENTATION ACCEPTED 848/848"},
+    {"task":"T7.1","status":"IMPLEMENTATION ACCEPTED 1582/1582"}
+  ],
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T5.2.json","sha256":"62bca74b9f9916a5dfb2c3f1543322356982c3ac1c3c025e5842242ee34cc5fe"},
+    {"path":"evaluator/integrity.pending-T6.3.json","sha256":"29a7574575f2fb765d7d4179447d9fb37d465cca823aed7c022f8b74790bfb83"},
+    {"path":"evaluator/integrity.pending-T6.4.json","sha256":"49df1e47ef6612dbaf50671f7d362c5f6546d40818c588e9b69d053d1d007081"},
+    {"path":"evaluator/integrity.pending-T7.1.json","sha256":"45be1db5dea63fc4291851ac4e692e9a66bd903096b35bf8b2379a190503f30e"}
+  ],
+  "files":{
+    "evaluator/t7.2/README.md":"5eb6c1e192068671ee4ca84d4546ecd6cf3f180dc1e44d201e463154862f35e7",
+    "evaluator/t7.2/fixtures.json":"75b1184bc627b28497d8f3b4114473f239f669d622d64a881f6b789a0261f3e9",
+    "evaluator/t7.2/mutation-self-check.mjs":"2a9b5c871506fe32e6992b12368f06fcd21835c2e50e2b7ba2489ea4edd88db1",
+    "evaluator/t7.2/mutation-specs.json":"53603c837fb278297b1e01cf9ca301184d418656881c835b9ae0013ea6a53f4b",
+    "evaluator/t7.2/oracle-production.sql":"e9516f83f64b54f4a9a76b281b0fd3a89d4a3b881c4d18ca58682d3ed6bedc87",
+    "evaluator/t7.2/reference.mjs":"64c1b2f5994ebc4d5383da75e0b853e85db426a9c2dca214e9fffb2b0e6563ff",
+    "evaluator/t7.2/run-visible.sh":"7a3ab3798914cf88b31ee41b04d6572dd52345f5b8e32919652f16b4f4315e42",
+    "evaluator/t7.2/self-check.mjs":"dececc482e1882eb3568de157f34a77cb16047dc6f00087c2370332c26b8c04c",
+    "evaluator/t7.2/source-audit.mjs":"00b7b06ea8aed54a4cc092244bd21f29a7a31443bdf0690a8d6ae0c1bb48c2c3",
+    "evaluator/t7.2/test-ids.json":"275bdb43b25af1db23a9f5097b6e55fd55c1f9c1c09b23525cb4d89e4934304e"
+  }
+}

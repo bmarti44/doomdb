@@ -1,0 +1,18 @@
+{
+  "task":"T12.1",
+  "tests":[
+    {"id":"T121-REPLAY-IDENTITY","assertions":12,"intent":"The exact fixed 300-frame replay, 320x200 resolution, warm boundary, measured range, command digest and deterministic frame sequence are present without substitutions or omissions."},
+    {"id":"T121-EXTERNAL-SAMPLES","assertions":300,"intent":"Every frame has evaluator-owned monotonic wall-clock measurements and all measured frames expose end-to-end, database, ORDS, decode/blit, R1 and R2 durations as finite nonnegative observations."},
+    {"id":"T121-REPORT-STATISTICS","assertions":32,"intent":"The report derives p50 and p95 latency, database, ORDS, payload and decode/blit statistics, effective FPS, R1/R2 timing and cursor totals from the complete measured raw sample population."},
+    {"id":"T121-RUNTIME-PLANS","assertions":36,"intent":"Each exercised statement family has an execution plan captured with ALLSTATS LAST runtime rows, starts, elapsed time and a plan hash after representative bound executions."},
+    {"id":"T121-VSQL-COUNTERS","assertions":36,"intent":"V$SQL observations retain redacted SQL identity, force-matching signature, parse calls and execution deltas for each family without bind values or connection secrets."},
+    {"id":"T121-SHAPE-STABILITY","assertions":60,"intent":"Bound SQL statement shapes and force-matching signatures remain invariant across all required poses and command classes while executions advance and hard-parse growth stays explicitly reported."},
+    {"id":"T121-PAYLOAD-SIZES","assertions":300,"intent":"Every replay frame records exact response payload bytes and content hash, and measured payload distribution is reported from the corresponding raw observations."},
+    {"id":"T121-TIMERS-NOT-PAYLOAD","assertions":24,"intent":"Database and renderer stage instrumentation exists only in retained evaluator evidence and is absent from response bodies, response schemas and public decompressed payload keys."},
+    {"id":"T121-RAW-ARTIFACTS","assertions":20,"intent":"Samples, plans, V$SQL snapshots, payload ledger and replay identity are separately retained, nonempty, content-addressed raw artifacts with safe relative paths and byte counts."},
+    {"id":"T121-REPORT-ARTIFACT","assertions":10,"intent":"A complete content-addressed baseline report references the raw artifact manifest and records environment and tool identities without claiming a machine-independent threshold."},
+    {"id":"T121-REDACTION","assertions":18,"intent":"Recursive evidence and artifact scanning rejects credentials, authorization material, endpoints, wallet data, bind values, session identifiers and other secret-bearing content."},
+    {"id":"T121-ATOMIC-PROVENANCE","assertions":8,"intent":"Evidence records evaluator ownership of wall timing, atomic publication, UTC capture bounds and success only after all raw and report artifacts were closed and hashed."},
+    {"id":"T121-FAIL-CLOSED","assertions":8,"intent":"Missing production driver, incomplete replay, absent database evidence, synthetic or dry-run markers, unreadable artifacts and any validation exception prevent a PASS result."}
+  ]
+}

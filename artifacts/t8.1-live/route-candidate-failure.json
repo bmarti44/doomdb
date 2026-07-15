@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "task": "T8.1",
+  "status": "FAILED_CANDIDATE_NOT_APPROVED",
+  "manifest": "5d67fa78932123407f390208933cf18bd174604f91bbec73bd43d744d5b665c5",
+  "route": {
+    "commandCount": 1393,
+    "executedThroughSeq": 201,
+    "batchLimit": 4
+  },
+  "failure": {
+    "firstIrrecoverableMilestone": "FIRST_RESOURCE",
+    "reason": "player dead before representative fight; key/door/lift/secret/exit unreachable"
+  },
+  "milestones": [
+    {
+      "seq": 137,
+      "tic": 137,
+      "stateSha": "296f4c43a55486bb5658724f9444aa7ee7ed07c1d4b962d1fc76cd8da456862d",
+      "x": 592,
+      "y": 496,
+      "angle": 118.125,
+      "health": 0,
+      "alive": 0,
+      "kills": 0,
+      "items": 2,
+      "secrets": 0,
+      "keys": "000"
+    },
+    {
+      "seq": 165,
+      "tic": 165,
+      "stateSha": "c47a7044761e9f6bb64b646f1dbd11182652d19c45634d76ec7e04284412c7e3",
+      "x": 592,
+      "y": 496,
+      "angle": 118.125,
+      "health": 0,
+      "alive": 0,
+      "kills": 0,
+      "items": 2,
+      "secrets": 0,
+      "keys": "000"
+    },
+    {
+      "seq": 201,
+      "tic": 201,
+      "stateSha": "72f9c1bf930669dd147ffc91357d86c400475d3527f00fb42691b197759b4069",
+      "x": 592,
+      "y": 496,
+      "angle": 118.125,
+      "health": 0,
+      "alive": 0,
+      "kills": 1,
+      "items": 2,
+      "secrets": 0,
+      "keys": "000"
+    }
+  ],
+  "final": {
+    "tic": 201,
+    "seq": 201,
+    "mapStatus": "ACTIVE",
+    "x": 592,
+    "y": 496,
+    "angle": 118.125,
+    "health": 0,
+    "alive": 0,
+    "kills": 1,
+    "items": 2,
+    "secrets": 0,
+    "keys": "000"
+  },
+  "events": [
+    {
+      "eventType": "DAMAGE",
+      "count": 20,
+      "firstTic": 5,
+      "lastTic": 176
+    },
+    {
+      "eventType": "MONSTER_DEATH",
+      "count": 1,
+      "firstTic": 176,
+      "lastTic": 176
+    },
+    {
+      "eventType": "MONSTER_HIT",
+      "count": 87,
+      "firstTic": 4,
+      "lastTic": 200
+    },
+    {
+      "eventType": "MONSTER_PAIN",
+      "count": 14,
+      "firstTic": 14,
+      "lastTic": 167
+    },
+    {
+      "eventType": "MONSTER_PROJECTILE",
+      "count": 20,
+      "firstTic": 4,
+      "lastTic": 175
+    },
+    {
+      "eventType": "MONSTER_WAKE",
+      "count": 4,
+      "firstTic": 1,
+      "lastTic": 1
+    },
+    {
+      "eventType": "PICKUP",
+      "count": 2,
+      "firstTic": 57,
+      "lastTic": 65
+    },
+    {
+      "eventType": "PROJECTILE_IMPACT",
+      "count": 20,
+      "firstTic": 5,
+      "lastTic": 176
+    }
+  ],
+  "frames": {
+    "status": "NOT_CAPTURED",
+    "reason": "semantic probe used diagnostic transport frames; no frame or PNG is acceptance evidence"
+  },
+  "review": {
+    "status": "PENDING_EVALUATOR_ROUTE_CORRECTION",
+    "approvedScriptSha": null,
+    "approvedRouteSummarySha": null,
+    "goldenStateFrameHashes": [],
+    "screenshotHashes": []
+  }
+}

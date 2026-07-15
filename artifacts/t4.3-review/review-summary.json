@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "kind": "doomdb-t4.3-review-observations",
+  "generatedFrom": "DOOM_R1_PIXELS and DOOM_PALETTE_TEXEL",
+  "observed": [
+    {
+      "id": "spawn-east",
+      "pose": {
+        "id": "spawn-east",
+        "x": -416,
+        "y": 256,
+        "angle": 0,
+        "eyeZ": 41
+      },
+      "frameSha256": "47302a67b53ef176a84a54b1247a85fc88e45f695af2554ff278265e118f65b4",
+      "rgbaSha256": "a0903655b7150c7a86aea6060bbadc28b6c6093f52c3294994acbae9bb8b732a",
+      "pngSha256": "d46e56cd3f6d87ff2977bc3bcdce988ae00997df10e1b110827b93a3c42efb7b",
+      "pngBytes": 26610
+    },
+    {
+      "id": "spawn-north",
+      "pose": {
+        "id": "spawn-north",
+        "x": -416,
+        "y": 256,
+        "angle": 90,
+        "eyeZ": 41
+      },
+      "frameSha256": "46c8a2ca36446249b89385e0b901064304e3fc6212ce027ff06dc5c8d1b429c6",
+      "rgbaSha256": "67f51584359223c7b789220c87bb50e3f2689ae0c6bdf31c63fc8fcfec136db1",
+      "pngSha256": "2db00d6a02668b636d606e792a81aa2ceb4294bfa5c5866bb3686da379c509f7",
+      "pngBytes": 19847
+    },
+    {
+      "id": "spawn-south",
+      "pose": {
+        "id": "spawn-south",
+        "x": -416,
+        "y": 256,
+        "angle": 270,
+        "eyeZ": 41
+      },
+      "frameSha256": "b920598f8363b34715764745c8130271e9b39f3edcc05125b06d82fdff20a34f",
+      "rgbaSha256": "b51306bb4bb1a7726f1bfda1ea8b922ad080855b7db66da0ba01514f2fb779eb",
+      "pngSha256": "5ee8b950fa8076a9b5930103c53167a67d612a22f4eb95fa960d2854ab778286",
+      "pngBytes": 19512
+    }
+  ]
+}

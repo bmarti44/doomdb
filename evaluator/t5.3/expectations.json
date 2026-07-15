@@ -1,0 +1,11 @@
+{"schema":1,"rotations":[1,2,3,4,5,6,7,8],"scenes":[
+ {"name":"transparent-mask","candidates":2,"winners":2,"sha256":"a27317faadbec502edeaedb30c424b8975eff8f917e385eed8fef6476e90aa51"},
+ {"name":"wall-occlusion","candidates":20,"winners":0,"sha256":"01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"},
+ {"name":"sprite-depth","candidates":101,"winners":6,"sha256":"9dd2d48f3a9d47d0cad1d52f9cee104d526c99b90c0795143239b318ef88ce50"},
+ {"name":"equal-depth","candidates":163,"winners":6,"sha256":"73da483520bbcf298f166d4ffddd341d9efaed038de599def63a49251ba25cc5"},
+ {"name":"sector-clip","candidates":101,"winners":1,"sha256":"138077f83c82ba7315b59101ab1f56f6074b6740e6abd69e40586f1f52ed51b1"}
+],"closure":{"worldStates":66,"renderableThingTypes":44,"spriteAssets":123,"requiredCategories":{"barrel":1,"decoration":16,"monster":5,"pickup":17,"weapon_pickup":5},"diagnosticPoses":3},"diagnostics":[
+ {"count":20,"sha256":"5530281761f40f539b817989f27d008fd9b359b099f1c5b903914d410cf811f2","first":[166,10,480,96,2],"last":[259,2012,448,240,8]},
+ {"count":1,"sha256":"ba903876c0bafd811f6946a5229ee3197c60db669c5251f4f2ee067c961975a0","first":[58,18,144,177,1],"last":[58,18,144,177,1]},
+ {"count":1,"sha256":"4db3dac81813438f8083c3c8360a9a36e4c65fb1cc82a2fd7d74c5cfd1cc6cf5","first":[239,10,211,110,5],"last":[239,10,211,110,5]}
+]}

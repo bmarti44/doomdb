@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "task": "T2.3",
+  "mutations": [
+    {"id":"T2.3-MUT-DROP-THING","change":"remove placed thing type 3001","killedBy":"T2.3-THING-001"},
+    {"id":"T2.3-MUT-UNKNOWN","change":"mark type 58 behavior unknown","killedBy":"T2.3-THING-001"},
+    {"id":"T2.3-MUT-BREAK-STATE","change":"point an imp attack state at a nonexistent next state","killedBy":"T2.3-STATE-001"},
+    {"id":"T2.3-MUT-DROP-SPRITE","change":"remove one reachable TROO rotation lump","killedBy":"T2.3-SPRITE-001"},
+    {"id":"T2.3-MUT-DROP-SOUND","change":"remove DSFIRSHT from closure","killedBy":"T2.3-AUDIO-001"},
+    {"id":"T2.3-MUT-DROP-UI","change":"remove WISPLAT from closure","killedBy":"T2.3-UI-001"},
+    {"id":"T2.3-MUT-BREAK-TEXTURE","change":"remove one patch dependency from SFALL1","killedBy":"T2.3-MAP-ASSET-001"},
+    {"id":"T2.3-MUT-ANIM-ORDER","change":"swap FWATER2 and FWATER3","killedBy":"T2.3-ANIM-001"},
+    {"id":"T2.3-MUT-SPECIAL","change":"make linedef 26 omit BLUE_KEY","killedBy":"T2.3-SPECIAL-001"},
+    {"id":"T2.3-MUT-PICKUP","change":"make a placed pickup non-consuming","killedBy":"T2.3-PICKUP-001"},
+    {"id":"T2.3-MUT-RNG","change":"alter RNG entry 173","killedBy":"T2.3-RNG-001"},
+    {"id":"T2.3-MUT-GPL-SOURCE","change":"claim copied engine state data from GPL Doom source","killedBy":"T2.3-SOURCE-001"}
+  ]
+}

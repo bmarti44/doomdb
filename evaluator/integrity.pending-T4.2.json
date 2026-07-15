@@ -1,0 +1,26 @@
+{
+  "schema":1,"task":"T4.2-EVAL","algorithm":"sha256","approval":"APPROVED BY USER 2026-07-14; EVALUATOR-ONLY SET CONSTRAINTS STATEMENT MOVE APPROVED 2026-07-14",
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T2.2.json","sha256":"23ca7de9b0a78fe6697350911ac0800f48c9fbd9b6851daed6d10cb982b1b04b"},
+    {"path":"evaluator/integrity.pending-T2.3.json","sha256":"3f13e8dcc3294a0efa096365d3fcd7c70b043da3ff4734e912044878b140add9"},
+    {"path":"evaluator/integrity.pending-T2.4.json","sha256":"7bf6d81695ff3b7085f70107b1925e3aaf72587ead46cd096cdbd6e79e0d9354"},
+    {"path":"evaluator/integrity.pending-T3.2.json","sha256":"d617cdd9e5f8a36606d6606d6c61a514f46b3b5545f4526e48361a1c04208050"},
+    {"path":"evaluator/integrity.pending-T3.3.json","sha256":"8ccb54c64ed3e4e34ec3e1f84cda03a3b3ebe4a7ec8bf26c5688ab0b96260e37"},
+    {"path":"evaluator/integrity.pending-T3.4.json","sha256":"6f1bd528776949ca4bc4b08f3fae80b810c38c11c7a9d556be134170400f5651"},
+    {"path":"evaluator/integrity.pending-T4.1.json","sha256":"158c94e68220bbea4809f8688cb94549b07423655aaa4017b6fcaf3703c28ae6","status":"APPROVED BY USER 2026-07-14; approved syntax correction included"}
+  ],
+  "files":{
+    "evaluator/t4.2/README.md":"487f1c089b383aa8d9031e318308c2fcf8a1c910f8a5fc6e17bc629141713edd",
+    "evaluator/t4.2/expectations.json":"0e3d01d411baa5b184af5b91a4281d19cad4ecb7c201e4e6b20d5aca9fe58fa4",
+    "evaluator/t4.2/fixtures.json":"ea5e2d8e97184d36ee38255ffbe960fd36e6b392bb6948a66289ecc63a7f458d",
+    "evaluator/t4.2/mutation-self-check.mjs":"57b545f7e691283a270c31a93c5f987007e6db13bb8b96085dadc14668b56a07",
+    "evaluator/t4.2/mutation-specs.json":"ae5090aefeebb77bc525d993167b92eb66195c1f318ee1390dde9c157385511f",
+    "evaluator/t4.2/oracle-production.sql":"b58d3423a5a4b7b67bd8ff5e776cbee590421fd5c80ee5af3d0da810d192f57e",
+    "evaluator/t4.2/reference.mjs":"714250f409a7adb93ab0859fcd0ed4ad931927a9eb82eefc02c55dc52e4572c3",
+    "evaluator/t4.2/run-visible.sh":"1a3e626099cf37c0b39d8620d441c1a1f260ece56d3f50651d000f10ebdd1e98",
+    "evaluator/t4.2/self-check.mjs":"70e627609a2b8f4f436e55b3a7f882a62aa8802f658a52367bf23fab80b80e4c",
+    "evaluator/t4.2/source-audit.mjs":"a7d1891885de01d47e785acd1db61c85763316f93e5e6ef34188bf8f5ee46bf0",
+    "evaluator/t4.2/test-ids.json":"e7dc4ef55a857bea6dcdbf7b69a4d01ae657772518ea5f98cf06bdac82e1ccbf"
+  }
+}

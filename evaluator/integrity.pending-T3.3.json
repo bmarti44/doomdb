@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "task": "T3.3-EVAL",
+  "algorithm": "sha256",
+  "approval": "APPROVED BY USER 2026-07-14",
+  "approvedBaselines": [
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T2.2.json","sha256":"23ca7de9b0a78fe6697350911ac0800f48c9fbd9b6851daed6d10cb982b1b04b"},
+    {"path":"evaluator/integrity.pending-T2.3.json","sha256":"3f13e8dcc3294a0efa096365d3fcd7c70b043da3ff4734e912044878b140add9"},
+    {"path":"evaluator/integrity.pending-T2.4.json","sha256":"7bf6d81695ff3b7085f70107b1925e3aaf72587ead46cd096cdbd6e79e0d9354"},
+    {"path":"evaluator/integrity.pending-T3.2.json","sha256":"d617cdd9e5f8a36606d6606d6c61a514f46b3b5545f4526e48361a1c04208050"}
+  ],
+  "files": {
+    "evaluator/t3.3/README.md": "a2e6d9a4e08f32dbbcb5875923b76d198934f2f509897a83e72e3cb08ca02b4f",
+    "evaluator/t3.3/expectations.json": "2f4a4791b8d65f2ca6bf15097749555ee849b9c69e428d492de6ed32839b04ca",
+    "evaluator/t3.3/mutation-specs.json": "f6eaf9c5122a572d14a8fc1c58e96beae7133f906d95493b569eb01c94e9127e",
+    "evaluator/t3.3/oracle-production.sql": "b76ad2f1cfa5228f77ad57b1e2837db5ff59081012ee31d3acaa2a66ca50035c",
+    "evaluator/t3.3/reference.mjs": "f92f8b80933d6709f812cb58592d6b73a9766f0a22bac0987df8e74193b98841",
+    "evaluator/t3.3/run-visible.sh": "ea263bf257a0074c3cfe8adb377bcf1916135b71ef3820cbab3c3b1d6f0568a5",
+    "evaluator/t3.3/self-check.mjs": "81096281b2fbdff1a8080a42b7efa7d49ba782437e01b66cbb389556653651fb",
+    "evaluator/t3.3/source-audit.mjs": "5246f01db1acc99581eff787185df2030ef13f0d07c64b0d5317a02fe4c809ba",
+    "evaluator/t3.3/test-ids.json": "4effc8494c52a033507d8886d2e8117fbbf52f198ebf5adc04c9e6f5a7acfa3c"
+  }
+}

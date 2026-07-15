@@ -1,0 +1,104 @@
+name: doomdb-t103
+
+services:
+  db:
+    image: ${DOOMDB_ORACLE_IMAGE:-gvenzl/oracle-free:23.26.2-full@sha256:df18ebc6b17107081b8bb8f1ee90e8018195dc9261e288100be99ef7bef268ff}
+    entrypoint: ["/bin/bash", "/doomdb/db-entrypoint.sh"]
+    environment:
+      APP_USER: DOOM
+      APP_USER_PASSWORD_FILE: /run/secrets/doom_password
+      ORACLE_PASSWORD_FILE: /run/secrets/oracle_password
+    secrets: [oracle_password, doom_password]
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+      - ../../../deploy/local/db-entrypoint.sh:/doomdb/db-entrypoint.sh:ro
+      - ../../../deploy/local/initdb/10-doom-runtime-grants.sql:/container-entrypoint-initdb.d/10-doom-runtime-grants.sql:ro
+    cpus: 2.0
+    mem_limit: 2g
+    networks: [test]
+    healthcheck:
+      test: ["CMD", "/opt/oracle/healthcheck.sh", "FREEPDB1"]
+      interval: 10s
+      timeout: 5s
+      retries: 120
+      start_period: 30s
+    restart: "no"
+
+  ords:
+    image: ${DOOMDB_ORDS_IMAGE:-container-registry.oracle.com/database/ords:26.2.0@sha256:ae9ae8cbbb0c00f25e9624e3b60ffb3838488ca1231d4c9ae4e0a2ab3f4b8930}
+    entrypoint: ["/bin/bash", "/doomdb/ords-entrypoint.sh"]
+    environment:
+      DBHOST: db
+      DBPORT: "1521"
+      DBSERVICENAME: FREEPDB1
+      DB_WAIT_RETRY: "60"
+      ORACLE_PASSWORD_FILE: /run/secrets/oracle_password
+    secrets: [oracle_password]
+    depends_on:
+      db: {condition: service_healthy}
+    volumes:
+      - ords-config:/etc/ords/config
+      - ../../../deploy/local/ords-entrypoint.sh:/doomdb/ords-entrypoint.sh:ro
+      - ../../../deploy/local/ords-entrypoint.d:/ords-entrypoint.d:ro
+      - ../../../client/dist:/var/www/doomdb:ro
+    networks: [test]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/health.txt"]
+      interval: 10s
+      timeout: 5s
+      retries: 120
+      start_period: 10m
+    restart: "no"
+
+  evaluator:
+    build:
+      context: ../../..
+      dockerfile: deploy/local/t10.3/Dockerfile
+      args:
+        ORACLE_IMAGE: ${DOOMDB_ORACLE_IMAGE:-gvenzl/oracle-free:23.26.2-full@sha256:df18ebc6b17107081b8bb8f1ee90e8018195dc9261e288100be99ef7bef268ff}
+        PLAYWRIGHT_IMAGE: ${DOOMDB_PLAYWRIGHT_IMAGE:-mcr.microsoft.com/playwright:v1.61.0-noble@sha256:111dde95859f2c659291cb60e698f9048a8fc30b35b4ddb7c90f9cb5b73062d9}
+    read_only: true
+    init: true
+    user: "1000:1000"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 512
+    shm_size: 256m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=256m,uid=1000,gid=1000,mode=0700
+    secrets: [doom_password]
+    environment:
+      DOOMDB_EVALUATOR_CONTAINER: "1"
+      DOOMDB_APP_PASSWORD_FILE: /run/secrets/doom_password
+      DOOMDB_DB_HOST: db
+      DOOMDB_DB_PORT: "1521"
+      DOOMDB_DB_SERVICE: FREEPDB1
+      DOOM_API_BASE_URL: http://ords:8080/ords/doom
+      CI: "1"
+      PLAYWRIGHT_FORBID_ONLY: "1"
+      PLAYWRIGHT_RETRIES: "0"
+      PLAYWRIGHT_UPDATE_SNAPSHOTS: none
+      T103_RUN_ID: ${T103_RUN_ID:?T103_RUN_ID is required}
+      T103_INFRASTRUCTURE_JSON: ${T103_INFRASTRUCTURE_JSON:?T103_INFRASTRUCTURE_JSON is required}
+    depends_on:
+      db: {condition: service_healthy}
+      ords: {condition: service_healthy}
+    networks: [test]
+    volumes:
+      - ${T103_EVIDENCE_DIR:?T103_EVIDENCE_DIR is required}:/evidence:ro
+    working_dir: /workspace
+    restart: "no"
+
+networks:
+  test:
+    internal: true
+
+volumes:
+  oracle-data:
+  ords-config:
+
+secrets:
+  oracle_password:
+    file: ${DOOMDB_ORACLE_PASSWORD_FILE:?DOOMDB_ORACLE_PASSWORD_FILE is required}
+  doom_password:
+    file: ${DOOMDB_APP_PASSWORD_FILE:?DOOMDB_APP_PASSWORD_FILE is required}

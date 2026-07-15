@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "T2.3-EVAL",
+  "algorithm": "sha256",
+  "approval": "APPROVED BY USER 2026-07-14",
+  "approvedBaselines": [
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T2.2.json","sha256":"23ca7de9b0a78fe6697350911ac0800f48c9fbd9b6851daed6d10cb982b1b04b"}
+  ],
+  "files": {
+    "evaluator/t2.3/README.md": "79a124f239f14a3893e4dba489532c90a2a6aa1b7d0184e63c56fc7ba50a41c8",
+    "evaluator/t2.3/expectations.json": "b72993fb49935fd7f22802826e4a7264a7375b21d93215d39f9490938f5a560d",
+    "evaluator/t2.3/mutation-specs.json": "584dc5b13480d221f6a0fe81503cf63c7f0b327981983f73b548104bcfc17923",
+    "evaluator/t2.3/run-visible.mjs": "85507f979ce5e64555e53df81f119df6bdff4ace6222e55a0df92bfcd79a9c4f",
+    "evaluator/t2.3/self-check.mjs": "2c002987b5a9b3f3111b6ec4896d65b524f6c1cddd519334b0840c1636d99f10",
+    "evaluator/t2.3/test-ids.json": "3dfb9c19ca19d95758a88c2d60518420cf78a2e767d44c1e79ba28c9097c7fd6",
+    "evaluator/t2.3/wad-oracle.mjs": "d80eb6cdbc79325e520334481078f3662726cc4c492c816a4ff9a82ade837add"
+  }
+}

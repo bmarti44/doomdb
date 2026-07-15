@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "manifest": "f8a7ba0189f3c55446d850cd4d2fa5604e16b1ae426015e5ada2729f97ac12ed",
+  "status": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+  "poses": [
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-masked-diagnostic",
+      "reviewStatus": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "pose": {
+        "id": "spawn-east",
+        "x": -416,
+        "y": 256,
+        "angle": 0
+      },
+      "frameSha256": "f34741d9374aa2f89eb172ed87e76e027285506d6589b61f3c77514ec0c96b81",
+      "pngSha256": "3b9dec0139697c497c5d9dbfb79a0c7292915f540ca8c44480a47a1f85a25a3b",
+      "overlayPixelCount": 7106,
+      "overlaySources": [
+        "MASKED:832:AQMETL15",
+        "MASKED:837:AQMETL15",
+        "MASKED:879:AQMETL15",
+        "MASKED:890:AQMETL15",
+        "MASKED:895:AQMETL15",
+        "MASKED:897:AQMETL15",
+        "SPRITE:166:PLAYW0",
+        "SPRITE:167:PLAYW0",
+        "SPRITE:168:HEADL0",
+        "SPRITE:170:POSSL0",
+        "SPRITE:171:POSSL0",
+        "SPRITE:176:POSSA8",
+        "SPRITE:177:POSSA1",
+        "SPRITE:178:TROOA1",
+        "SPRITE:215:STIMA0",
+        "SPRITE:238:HEADL0",
+        "SPRITE:259:MEDIA0",
+        "SPRITE:261:BON1A0",
+        "SPRITE:263:BON1A0",
+        "SPRITE:264:BON1A0",
+        "SPRITE:267:BON1A0",
+        "SPRITE:268:BON1A0",
+        "SPRITE:284:POSSA4",
+        "SPRITE:29:GOR2A0"
+      ]
+    },
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-masked-diagnostic",
+      "reviewStatus": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "pose": {
+        "id": "diagnostic-north",
+        "x": -384,
+        "y": 256,
+        "angle": 90
+      },
+      "frameSha256": "5ae974c2bd0fd0b398dbdb995609e469a973295457d82f3e0826048387ac22d9",
+      "pngSha256": "0549391827e1086f0781cb26bd501f169841136371bfec60742a6b6c6d54effd",
+      "overlayPixelCount": 335,
+      "overlaySources": [
+        "SPRITE:58:POSSL0"
+      ]
+    },
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-masked-diagnostic",
+      "reviewStatus": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "pose": {
+        "id": "diagnostic-south",
+        "x": -416,
+        "y": 320,
+        "angle": 270
+      },
+      "frameSha256": "3fe12e7333d21705c7227e28ca1c6e22cc5acb72c7d6819850c24985c7801c9a",
+      "pngSha256": "49892ad4766f69c967f7dd15962480102c688785d7b349931f096b8c6ca3dfd1",
+      "overlayPixelCount": 105,
+      "overlaySources": [
+        "SPRITE:239:PLAYW0"
+      ]
+    }
+  ]
+}

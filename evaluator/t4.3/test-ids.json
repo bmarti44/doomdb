@@ -1,0 +1,22 @@
+{
+  "schema":1,"task":"T4.3","tests":[
+    {"id":"T43-FIXED-INPUT-CONTRACT","assertions":18,"intent":"The test adapter consumes the approved DOOM_R1_PIXELS session-bound interface and independently observes all required frame fields."},
+    {"id":"T43-THREE-DIAGNOSTIC-POSES","assertions":18,"intent":"Spawn east, spawn north, and spawn south are rendered from bound player rows with the fixed eye height and exact headings."},
+    {"id":"T43-SQL-PIXEL-KEYSET","assertions":64003,"intent":"Each SQL observation contains exactly one palette index for every ordered column and row key in the 320 by 200 canvas."},
+    {"id":"T43-SQL-PALETTE-RANGE","assertions":64000,"intent":"Every database-produced palette index is an integer from zero through 255 before any client-side transformation."},
+    {"id":"T43-CANONICAL-RLE-SHAPE","assertions":960,"intent":"SQL-derived column runs are positive, adjacent, maximally merged, column-local, and cover rows zero through 199 exactly."},
+    {"id":"T43-SQL-RLE-BIDIRECTIONAL","assertions":6,"intent":"Expanding canonical SQL runs equals all 64000 SQL pixels in both relational MINUS directions for every pose."},
+    {"id":"T43-INDEPENDENT-RLE-DECODE","assertions":192000,"intent":"The test-only decoder expands the SQL-derived RLE to the exact ordered palette index at all 64000 positions for all poses."},
+    {"id":"T43-RAW-RGBA-PALETTE","assertions":768003,"intent":"Independent palette lookup yields exact red, green, blue, and opaque alpha bytes for every decoded pixel in all poses."},
+    {"id":"T43-PNG-INDEXED-CONTRACT","assertions":18,"intent":"Each artifact is an 8-bit indexed PNG with fixed dimensions, one complete palette, and no ancillary or nondeterministic chunks."},
+    {"id":"T43-PNG-PALETTE-PIXELS","assertions":192768,"intent":"Independently parsing each PNG returns the exact palette table and all ordered palette indices from the SQL frame."},
+    {"id":"T43-PNG-DETERMINISM","assertions":9,"intent":"Encoding identical pixels and palette twice produces byte-identical PNG data and stable SHA-256 diagnostic identities."},
+    {"id":"T43-COLUMN-DIAGNOSTICS","assertions":54,"intent":"Six named columns per pose report canonical run tuples, per-column palette-byte hashes, and complete row coverage."},
+    {"id":"T43-PIXEL-DIAGNOSTICS","assertions":96,"intent":"Eight named pixel positions per pose report SQL palette index and independently expanded RGBA values for review."},
+    {"id":"T43-POSE-DIFFERENTIATION","assertions":6,"intent":"The three diagnostic poses retain distinct SQL frame and PNG identities rather than replaying one embedded output."},
+    {"id":"T43-HUMAN-GOLDEN-BOUNDARY","assertions":6,"intent":"Visible R1 golden hashes remain absent and explicitly pending until the user reviews the generated PNG artifacts."},
+    {"id":"T43-DECODER-ANTI-CHEAT","assertions":20,"intent":"The test-only decoder has no production dependency, fixture-specific frame bytes, expected visible hashes, network reads, or shell escape."},
+    {"id":"T43-PRODUCTION-ISOLATION","assertions":16,"intent":"Production sources cannot import evaluator code, read evaluator or golden paths, emit evaluator PASS text, or embed diagnostic answers."},
+    {"id":"T43-MUTATION-WITNESSES","assertions":16,"intent":"Isolated semantic mutations of ordering, RLE, palette, RGBA, PNG structure, pose binding, and golden policy are all detected."}
+  ],"declaredAssertions":1282017
+}

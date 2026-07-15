@@ -1,0 +1,25 @@
+{
+  "schema":1,
+  "monsterTypes":[9,58,3001,3002,3004],
+  "rng":[0,8,109,220,222,241,149,107,75,248,254,140,16,66,74,21,211,47,80,242,154,27,205,128,161,89,77,36,95,110,85,48],
+  "states":[
+    {"id":"IDLE","tics":10,"next":"IDLE","action":"LOOK"},
+    {"id":"CHASE","tics":3,"next":"CHASE","action":"CHASE"},
+    {"id":"MELEE","tics":4,"next":"CHASE","action":"MELEE"},
+    {"id":"HITSCAN","tics":4,"next":"CHASE","action":"HITSCAN"},
+    {"id":"MISSILE","tics":6,"next":"CHASE","action":"PROJECTILE"},
+    {"id":"PAIN","tics":2,"next":"CHASE","action":"PAIN"},
+    {"id":"DEATH","tics":5,"next":"CORPSE","action":"DEATH"},
+    {"id":"CORPSE","tics":-1,"next":"CORPSE","action":"NONE"}
+  ],
+  "defs":{
+    "9":{"name":"SERGEANT","speed":8,"health":30,"painChance":170,"meleeRange":64,"attack":"HITSCAN","damageBase":3,"damageDice":5,"drop":2001},
+    "58":{"name":"SPECTRE","speed":8,"health":150,"painChance":180,"meleeRange":64,"attack":"MELEE","damageBase":4,"damageDice":10,"drop":null},
+    "3001":{"name":"IMP","speed":8,"health":60,"painChance":200,"meleeRange":64,"attack":"PROJECTILE","damageBase":3,"damageDice":8,"projectile":100,"drop":null},
+    "3002":{"name":"DEMON","speed":10,"health":150,"painChance":180,"meleeRange":64,"attack":"MELEE","damageBase":4,"damageDice":10,"drop":null},
+    "3004":{"name":"ZOMBIEMAN","speed":8,"health":20,"painChance":200,"meleeRange":64,"attack":"HITSCAN","damageBase":3,"damageDice":5,"drop":2007}
+  },
+  "soundGraph":{"edges":[[1,2],[2,3],[3,4]],"blocked":[[2,3]],"source":1},
+  "los":{"rejectPairs":[[1,4]],"intercepts":[{"distance":32,"blocking":false},{"distance":64,"blocking":true}],"targetDistance":96},
+  "base":{"tic":0,"rngCursor":0,"player":{"id":1,"x":96,"y":0,"health":100,"sector":4},"monster":{"id":10,"type":3004,"x":0,"y":0,"health":20,"sector":1,"state":"IDLE","stateTics":1,"target":null,"dir":null,"dead":false},"events":[],"drops":[],"projectiles":[]}
+}

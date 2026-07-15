@@ -1,0 +1,16 @@
+{
+  "initial":{"tic":0,"mapStatus":"ACTIVE","rng":[0,7,64,3,65,1],"rngCursor":0,"player":{"health":100,"blueKey":false,"secretCount":0,"sectorId":1},"sectors":[
+    {"id":1,"tag":0,"special":0,"floor":0,"ceiling":128,"doorTop":124,"lowestFloor":0,"light":160,"maxLight":160,"minLight":96,"lightTimer":1,"secretFound":false,"damageClock":0},
+    {"id":2,"tag":10,"special":0,"floor":0,"ceiling":0,"doorTop":124,"lowestFloor":0,"light":160,"maxLight":160,"minLight":96,"lightTimer":1,"secretFound":false,"damageClock":0},
+    {"id":3,"tag":20,"special":0,"floor":64,"ceiling":128,"doorTop":124,"lowestFloor":0,"light":160,"maxLight":160,"minLight":96,"lightTimer":1,"secretFound":false,"damageClock":0},
+    {"id":7,"tag":0,"special":7,"floor":0,"ceiling":128,"doorTop":124,"lowestFloor":0,"light":160,"maxLight":160,"minLight":96,"lightTimer":1,"secretFound":false,"damageClock":0},
+    {"id":9,"tag":0,"special":9,"floor":0,"ceiling":128,"doorTop":124,"lowestFloor":0,"light":160,"maxLight":160,"minLight":96,"lightTimer":1,"secretFound":false,"damageClock":0},
+    {"id":12,"tag":0,"special":12,"floor":0,"ceiling":128,"doorTop":124,"lowestFloor":0,"light":160,"maxLight":160,"minLight":80,"lightTimer":1,"secretFound":false,"damageClock":0},
+    {"id":13,"tag":0,"special":1,"floor":0,"ceiling":128,"doorTop":124,"lowestFloor":0,"light":160,"maxLight":160,"minLight":64,"lightTimer":1,"secretFound":false,"damageClock":0}],
+    "lines":[
+      {"id":101,"special":1,"tag":10,"backSector":2,"triggerCount":0,"switchOn":0},{"id":102,"special":2,"tag":10,"backSector":2,"triggerCount":0,"switchOn":0},
+      {"id":111,"special":11,"tag":0,"backSector":1,"triggerCount":0,"switchOn":0},{"id":123,"special":23,"tag":20,"backSector":3,"triggerCount":0,"switchOn":0},
+      {"id":126,"special":26,"tag":10,"backSector":2,"triggerCount":0,"switchOn":0},{"id":162,"special":62,"tag":20,"backSector":3,"triggerCount":0,"switchOn":0},
+      {"id":188,"special":88,"tag":20,"backSector":3,"triggerCount":0,"switchOn":0},{"id":217,"special":117,"tag":10,"backSector":2,"triggerCount":0,"switchOn":0}],
+    "movers":[],"switches":[],"events":[]}
+}

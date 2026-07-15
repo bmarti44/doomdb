@@ -1,0 +1,17 @@
+component_id	component	version	purpose	origin	license	redistribution_note
+doomdb	DoomDB	2.0.0	project source	local repository	MIT	LICENSE
+node	Node.js	24.18.0	build and evaluator runtime	https://nodejs.org/dist/v24.18.0/	MIT	Redistributable with notices
+npm	npm CLI	11.16.0	locked package installation	https://registry.npmjs.org/npm/-/npm-11.16.0.tgz	Artistic-2.0	Redistributable with notices
+typescript	TypeScript	7.0.2	client and tooling compiler	https://registry.npmjs.org/typescript/-/typescript-7.0.2.tgz	Apache-2.0	Redistributable with license
+playwright-test	@playwright/test	1.61.0	evaluator browser harness	https://registry.npmjs.org/@playwright/test/-/test-1.61.0.tgz	Apache-2.0	Evaluator-only dependency
+playwright	playwright	1.61.0	evaluator browser harness runtime	https://registry.npmjs.org/playwright/-/playwright-1.61.0.tgz	Apache-2.0	Transitive evaluator-only dependency
+playwright-core	playwright-core	1.61.0	evaluator browser control runtime	https://registry.npmjs.org/playwright-core/-/playwright-core-1.61.0.tgz	Apache-2.0	Transitive evaluator-only dependency
+typescript-platform-binaries	@typescript/typescript-* platform packages	7.0.2	platform compiler binaries	https://registry.npmjs.org/@typescript/	Apache-2.0	Optional platform packages selected by npm
+fsevents	fsevents	2.3.2	optional macOS file events	https://registry.npmjs.org/fsevents/-/fsevents-2.3.2.tgz	MIT	Optional transitive dependency
+oracle-free-image	gvenzl/oracle-free	23.26.2-full	local Oracle Database	https://github.com/gvenzl/oci-oracle-free	Oracle Free Use Terms and Conditions; image scripts UPL-1.0	Local development image; do not redistribute database software
+ords-image	Oracle REST Data Services container	26.2.0	local ORDS runtime	https://container-registry.oracle.com/ords/ocr/ba/database/ords	Oracle Free Use Terms and Conditions	Local development image; do not redistribute Oracle software
+playwright-image	Microsoft Playwright noble container	1.61.0	test-only browser runtime	https://mcr.microsoft.com/product/playwright/about	Apache-2.0 plus bundled browser notices	Evaluator-only image
+freedoom	Freedoom Phase 1	0.13.0	game data source	https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip	BSD-3-Clause	Vendored archive plus byte-identical COPYING and credits; source record and hashes in vendor/freedoom/0.13.0/SOURCE.md
+doomwiki	DoomWiki WAD and gameplay documentation	2026-07-14 access	public file-format and observable-behavior research	https://doomwiki.org/	CC BY-SA 4.0	Behavior registry is independently authored; attribution retained in structured sources and report
+aws-cli	AWS CLI	2.34.36	S3 cloud deployment	https://github.com/aws/aws-cli/tree/2.34.36	Apache-2.0	Deployment tool; not shipped
+sqlcl	Oracle SQLcl	26.2.0.181.2110	Oracle SQL deployment	https://www.oracle.com/database/sqldeveloper/technologies/sqlcl/download/	Oracle Free Use Terms and Conditions	Deployment tool; not shipped

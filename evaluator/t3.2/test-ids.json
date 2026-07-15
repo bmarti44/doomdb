@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "task": "T3.2",
+  "tests": [
+    {"id":"T32-OBJECT-CONTRACT","assertions":10,"intent":"Required columns, numeric config rows, metadata key, and named domain index exist."},
+    {"id":"T32-PINNED-COUNTS","assertions":5,"intent":"All 1,196 vertices and 1,175 linedefs are represented exactly once and no line is degenerate."},
+    {"id":"T32-VERTEX-EXTREMA","assertions":6,"intent":"Database MIN/MAX values equal the independent E1M1 extrema."},
+    {"id":"T32-METADATA-DERIVATION","assertions":12,"intent":"Both metadata dimensions equal live extrema expanded by the sum of both live configuration values."},
+    {"id":"T32-METADATA-SOURCE-AUDIT","assertions":8,"intent":"Production metadata SQL computes MIN/MAX and both config terms and does not embed pinned output bounds."},
+    {"id":"T32-GEOMETRY-SHAPE","assertions":10,"intent":"Each geometry is a null-SRID two-point 2D straight line with canonical element info."},
+    {"id":"T32-GEOMETRY-ENDPOINTS","assertions":8,"intent":"All ordinates preserve the directed start and end vertex coordinates."},
+    {"id":"T32-GEOMETRY-VALIDITY","assertions":6,"intent":"Every geometry validates at the approved tolerance and validation returns no null/error rows."},
+    {"id":"T32-STABLE-METRICS","assertions":18,"intent":"Length and normalized direction use the unrounded Euclidean norm and approved decimal rounding."},
+    {"id":"T32-LINEDEF-PROBES","assertions":18,"intent":"Six independent pinned horizontal, vertical, oblique, shortest, and longest probes match exactly."},
+    {"id":"T32-RTREE-DEFINITION","assertions":8,"intent":"The named GEOM index is a Spatial domain R-tree rather than a B-tree or function-based substitute."},
+    {"id":"T32-RTREE-VALIDITY","assertions":7,"intent":"Oracle reports valid base, domain, and operator status and indexed queries execute."},
+    {"id":"T32-EXACT-FALSE-POSITIVE","assertions":10,"intent":"A known MBR-only candidate is observed and rejected by the following exact predicate."},
+    {"id":"T32-EXACT-POSITIVE-METAMORPHIC","assertions":10,"intent":"True contacts survive exact testing before and after a large translation."}
+  ],
+  "declaredAssertions": 136
+}

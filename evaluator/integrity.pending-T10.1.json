@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "task": "T10.1-EVAL",
+  "algorithm": "sha256",
+  "approval": "APPROVED AND FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-15; LIVE PRODUCTION ACCEPTANCE REMAINS UPSTREAM-BLOCKED",
+  "dependencies": [
+    {"task":"T8.2","status":"LATEST PRESENT EVALUATOR LINEAGE PINNED; PRODUCTION ACCEPTANCE ORCHESTRATOR-CONTROLLED"},
+    {"task":"T9.1","status":"APPROVED EVALUATOR LINEAGE PINNED; LIVE MODEL AND VISUAL ACCEPTANCE PENDING"},
+    {"task":"T10.1","status":"PRODUCTION AND LIVE ORDS ACCEPTANCE PENDING"}
+  ],
+  "approvedBaselines": [
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T8.2.json","sha256":"659028cf23a71cd39f9dc064d292d78a4df732b8baa4e14272ed8e1985b805fb"},
+    {"path":"evaluator/integrity.pending-T9.1.json","sha256":"dfe090bf4d104bd28b7aaeb9eea8508de3c8013ecd7cb3508d88b79e5dfdaa8e"}
+  ],
+  "files": {
+    "evaluator/t10.1/README.md":"c395c06354f978a92e5a9530f0c9fae68418fac47690cf86ece9ddd9b15e734f",
+    "evaluator/t10.1/direct-http.mjs":"b8f99cf4dc4e94e1655aa28ad370d8118901db4b1ea0aa58618b0fc6f7c0309e",
+    "evaluator/t10.1/fixtures.json":"b489dd337f190183786c6aa09e1b9f8f88d4c35055f82cd07fa5481a5055bfe3",
+    "evaluator/t10.1/mutation-self-check.mjs":"79dbbee0232a9138ea1c4bd1ee0671344e3648da7c4c99e8d8deb47112d8ce8f",
+    "evaluator/t10.1/mutation-specs.json":"692138c81d7fb30ae1fe2151553f78eab61e3a2a2ba8f3d18a2c9ea7ca5684b0",
+    "evaluator/t10.1/oracle-production.sql":"04f7884a88de8504149b78c41230772b8de716c572f7e4b03ce9c7ee794d1760",
+    "evaluator/t10.1/reference.mjs":"08e927c46490722d9696fcb6b64034ddab5c1e4865d48d9383b4b9094f581b7a",
+    "evaluator/t10.1/run-visible.sh":"e1d0a01a71de6e533b208a11ea688a8d80de2a01f6c861e46362cb6bfa65f681",
+    "evaluator/t10.1/self-check.mjs":"ddfb592813eeffb859cf6d4ceeaec6c4fce661797e70609c47605bb98a54dec9",
+    "evaluator/t10.1/source-audit.mjs":"73f6e1d06febb8bdf4e58b27ccb5188c31586933825253a806bedea72a2e26ac",
+    "evaluator/t10.1/test-ids.json":"bdda19c5a44efb41a4724f53a5d0a152cdd1ed5854beaefe44c2bbb70401506e"
+  }
+}

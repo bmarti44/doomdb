@@ -1,0 +1,638 @@
+{
+  "schema": 1,
+  "task": "T8.1",
+  "status": "CANDIDATE_UNPROVEN_NOT_APPROVED",
+  "map": "E1M1",
+  "skill": 3,
+  "width": 320,
+  "height": 200,
+  "commandCount": 1393,
+  "runs": [
+    {
+      "runIndex": 0,
+      "label": "leave-spawn",
+      "firstSeq": 1,
+      "lastSeq": 70,
+      "repeat": 70,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 1,
+      "label": "turn-first-resource",
+      "firstSeq": 71,
+      "lastSeq": 91,
+      "repeat": 21,
+      "command": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 2,
+      "label": "collect-first-resource",
+      "firstSeq": 92,
+      "lastSeq": 137,
+      "repeat": 46,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 3,
+      "label": "first-fight",
+      "firstSeq": 138,
+      "lastSeq": 165,
+      "repeat": 28,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 4,
+      "label": "advance-to-key-route",
+      "firstSeq": 166,
+      "lastSeq": 261,
+      "repeat": 96,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 5,
+      "label": "turn-key-route",
+      "firstSeq": 262,
+      "lastSeq": 294,
+      "repeat": 33,
+      "command": {
+        "turn": -1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 6,
+      "label": "collect-key",
+      "firstSeq": 295,
+      "lastSeq": 376,
+      "repeat": 82,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 7,
+      "label": "return-keyed-door",
+      "firstSeq": 377,
+      "lastSeq": 409,
+      "repeat": 33,
+      "command": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 8,
+      "label": "door-approach",
+      "firstSeq": 410,
+      "lastSeq": 503,
+      "repeat": 94,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 9,
+      "label": "use-keyed-door",
+      "firstSeq": 504,
+      "lastSeq": 504,
+      "repeat": 1,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 10,
+      "label": "door-wait",
+      "firstSeq": 505,
+      "lastSeq": 544,
+      "repeat": 40,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 11,
+      "label": "through-door",
+      "firstSeq": 545,
+      "lastSeq": 604,
+      "repeat": 60,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 12,
+      "label": "lift-approach-turn",
+      "firstSeq": 605,
+      "lastSeq": 626,
+      "repeat": 22,
+      "command": {
+        "turn": -1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 13,
+      "label": "lift-approach",
+      "firstSeq": 627,
+      "lastSeq": 700,
+      "repeat": 74,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 14,
+      "label": "use-lift",
+      "firstSeq": 701,
+      "lastSeq": 701,
+      "repeat": 1,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 15,
+      "label": "lift-cycle",
+      "firstSeq": 702,
+      "lastSeq": 831,
+      "repeat": 130,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 16,
+      "label": "secret-turn",
+      "firstSeq": 832,
+      "lastSeq": 862,
+      "repeat": 31,
+      "command": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 17,
+      "label": "secret-route",
+      "firstSeq": 863,
+      "lastSeq": 950,
+      "repeat": 88,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 18,
+      "label": "secret-use",
+      "firstSeq": 951,
+      "lastSeq": 951,
+      "repeat": 1,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 19,
+      "label": "secret-enter",
+      "firstSeq": 952,
+      "lastSeq": 1009,
+      "repeat": 58,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 20,
+      "label": "exit-return",
+      "firstSeq": 1010,
+      "lastSeq": 1073,
+      "repeat": 64,
+      "command": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 21,
+      "label": "exit-route",
+      "firstSeq": 1074,
+      "lastSeq": 1225,
+      "repeat": 152,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 22,
+      "label": "exit-turn",
+      "firstSeq": 1226,
+      "lastSeq": 1250,
+      "repeat": 25,
+      "command": {
+        "turn": -1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 23,
+      "label": "exit-approach",
+      "firstSeq": 1251,
+      "lastSeq": 1322,
+      "repeat": 72,
+      "command": {
+        "turn": 0,
+        "forward": 1,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 24,
+      "label": "exit-use",
+      "firstSeq": 1323,
+      "lastSeq": 1323,
+      "repeat": 1,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "runIndex": 25,
+      "label": "enter-intermission",
+      "firstSeq": 1324,
+      "lastSeq": 1393,
+      "repeat": 70,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    }
+  ],
+  "milestones": [
+    {
+      "name": "SPAWN",
+      "seq": 0,
+      "runIndex": 0,
+      "runLabel": "leave-spawn",
+      "stateSha": null,
+      "frameSha": null,
+      "pngSha": null,
+      "observationStatus": "NOT_CAPTURED"
+    },
+    {
+      "name": "FIRST_RESOURCE",
+      "seq": 137,
+      "runIndex": 2,
+      "runLabel": "collect-first-resource",
+      "stateSha": null,
+      "frameSha": null,
+      "pngSha": null,
+      "observationStatus": "NOT_CAPTURED"
+    },
+    {
+      "name": "REPRESENTATIVE_FIGHT",
+      "seq": 165,
+      "runIndex": 3,
+      "runLabel": "first-fight",
+      "stateSha": null,
+      "frameSha": null,
+      "pngSha": null,
+      "observationStatus": "NOT_CAPTURED"
+    },
+    {
+      "name": "KEY_ACQUIRED",
+      "seq": 376,
+      "runIndex": 6,
+      "runLabel": "collect-key",
+      "stateSha": null,
+      "frameSha": null,
+      "pngSha": null,
+      "observationStatus": "NOT_CAPTURED"
+    },
+    {
+      "name": "KEYED_DOOR_OPEN",
+      "seq": 544,
+      "runIndex": 10,
+      "runLabel": "door-wait",
+      "stateSha": null,
+      "frameSha": null,
+      "pngSha": null,
+      "observationStatus": "NOT_CAPTURED"
+    },
+    {
+      "name": "LIFT_OPERATED",
+      "seq": 831,
+      "runIndex": 15,
+      "runLabel": "lift-cycle",
+      "stateSha": null,
+      "frameSha": null,
+      "pngSha": null,
+      "observationStatus": "NOT_CAPTURED"
+    },
+    {
+      "name": "SECRET_FOUND",
+      "seq": 1009,
+      "runIndex": 19,
+      "runLabel": "secret-enter",
+      "stateSha": null,
+      "frameSha": null,
+      "pngSha": null,
+      "observationStatus": "NOT_CAPTURED"
+    },
+    {
+      "name": "EXIT_TRIGGERED",
+      "seq": 1323,
+      "runIndex": 24,
+      "runLabel": "exit-use",
+      "stateSha": null,
+      "frameSha": null,
+      "pngSha": null,
+      "observationStatus": "NOT_CAPTURED"
+    },
+    {
+      "name": "INTERMISSION",
+      "seq": 1393,
+      "runIndex": 25,
+      "runLabel": "enter-intermission",
+      "stateSha": null,
+      "frameSha": null,
+      "pngSha": null,
+      "observationStatus": "NOT_CAPTURED"
+    }
+  ],
+  "final": {
+    "mapStatus": null,
+    "complete": null,
+    "kills": null,
+    "items": null,
+    "secrets": null
+  },
+  "review": {
+    "status": "PENDING_ACTUAL_ROUTE_AND_IMAGE_REVIEW",
+    "approvedScriptSha": null,
+    "approvedRouteSummarySha": null,
+    "goldenStateFrameHashes": [],
+    "screenshotHashes": []
+  }
+}

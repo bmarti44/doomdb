@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "task": "T4.3",
+  "status": "HUMAN_REVIEWED_APPROVED",
+  "approval": "User standing authorization applied after direct inspection of all three actual PNGs on 2026-07-15",
+  "sourceEvaluatorManifestSha256": "38927540dc430ff6d3476738f122577ec15bf4ab104628282a4f19a7e7c5977a",
+  "productionPixelsSourceSha256": "051b61499937294d3ee205e265fbbd9fec4bf4c2deb7836e0c6c26a94ed85a0c",
+  "poses": [
+    {
+      "id": "spawn-east",
+      "x": -416, "y": 256, "angle": 0, "eyeZ": 41,
+      "frameSha256": "47302a67b53ef176a84a54b1247a85fc88e45f695af2554ff278265e118f65b4",
+      "rgbaSha256": "a0903655b7150c7a86aea6060bbadc28b6c6093f52c3294994acbae9bb8b732a",
+      "pngSha256": "d46e56cd3f6d87ff2977bc3bcdce988ae00997df10e1b110827b93a3c42efb7b",
+      "pngBytes": 26610,
+      "review": "Coherent industrial corridor: ceiling grid, floor perspective, structural columns, wall panels and hazard stripes align without tears or transpose artifacts."
+    },
+    {
+      "id": "spawn-north",
+      "x": -416, "y": 256, "angle": 90, "eyeZ": 41,
+      "frameSha256": "46c8a2ca36446249b89385e0b901064304e3fc6212ce027ff06dc5c8d1b429c6",
+      "rgbaSha256": "67f51584359223c7b789220c87bb50e3f2689ae0c6bdf31c63fc8fcfec136db1",
+      "pngSha256": "2db00d6a02668b636d606e792a81aa2ceb4294bfa5c5866bb3686da379c509f7",
+      "pngBytes": 19847,
+      "review": "North-facing nearby wall is correctly framed by ceiling and floor planes; texture scale, horizon and dark COLORMAP lighting remain internally consistent."
+    },
+    {
+      "id": "spawn-south",
+      "x": -416, "y": 256, "angle": 270, "eyeZ": 41,
+      "frameSha256": "b920598f8363b34715764745c8130271e9b39f3edcc05125b06d82fdff20a34f",
+      "rgbaSha256": "b51306bb4bb1a7726f1bfda1ea8b922ad080855b7db66da0ba01514f2fb779eb",
+      "pngSha256": "5ee8b950fa8076a9b5930103c53167a67d612a22f4eb95fa960d2854ab778286",
+      "pngBytes": 19512,
+      "review": "South-facing opposing wall is visibly distinct from north while preserving the same projection and palette integrity; no corrupt bands or missing pixels are visible."
+    }
+  ],
+  "reviewConclusion": "Approved as the R1 first-light visible baseline. The documented nearest-hit-sector floor/ceiling limitation remains visible-scope-limited to R1 and is not accepted for final gameplay."
+}

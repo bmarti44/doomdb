@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "groups": [
+    {
+      "id": "FLAT_NUKAGE",
+      "kind": "flat",
+      "periodTics": 8,
+      "frames": [
+        "NUKAGE1",
+        "NUKAGE2",
+        "NUKAGE3"
+      ]
+    },
+    {
+      "id": "FLAT_FWATER",
+      "kind": "flat",
+      "periodTics": 8,
+      "frames": [
+        "FWATER1",
+        "FWATER2",
+        "FWATER3",
+        "FWATER4"
+      ]
+    },
+    {
+      "id": "WALL_SFALL",
+      "kind": "wall_texture",
+      "periodTics": 8,
+      "frames": [
+        "SFALL1",
+        "SFALL2",
+        "SFALL3",
+        "SFALL4"
+      ]
+    }
+  ]
+}

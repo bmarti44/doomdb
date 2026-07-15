@@ -1,0 +1,22 @@
+{"schema":1,"task":"T7.3-EVAL","declaredAssertions":684,"tests":[
+ {"id":"T73-TUPLE-SHAPE","assertions":38,"intent":"Every database response audio item is exactly the reviewed five-field integer/string tuple with bounded volume and separation and no client-authored gameplay fields."},
+ {"id":"T73-STABLE-ORDER","assertions":42,"intent":"Transitions are ordered by logical tic, event class, source, target and authoritative event ordinal, then receive dense zero-based per-tic audio ordinals."},
+ {"id":"T73-STATE-TIMELINES","assertions":54,"intent":"Map start, weapon, pickup, world machine, monster wake/pain/death, barrel, and player-pain scenarios emit the exact reviewed asset timeline."},
+ {"id":"T73-NON-AUDIO-SILENT","assertions":24,"intent":"A database transition without a relational audio definition emits nothing and the browser does not infer sound from controls, frame pixels, mode, or local state."},
+ {"id":"T73-RELATIONAL-DEFINITIONS","assertions":36,"intent":"Event-to-asset mappings are relational, resolve seeded sound/music assets, and do not use hard-coded event CASE dispatch or E1M1 object identifiers."},
+ {"id":"T73-MUSIC-E1M1","assertions":30,"intent":"A new E1M1 map emits one D_E1M1 music tuple at tic zero, uses its seeded browser-playable blob and does not restart it on ordinary STEP responses."},
+ {"id":"T73-VOLUME-SEPARATION","assertions":32,"intent":"Database-authored volume and separation are exact bounded tuple values; client conversion only maps them to gain and pan and never recomputes spatial gameplay."},
+ {"id":"T73-DUPLICATE-REJECT","assertions":28,"intent":"A repeated equal tic/ordinal tuple fails closed before playback, including an exact response retry delivered twice to the presentation layer."},
+ {"id":"T73-REORDER-REJECT","assertions":28,"intent":"Any lower tic or non-increasing ordinal relative to the accepted cursor fails closed rather than replaying, sorting, dropping, or guessing."},
+ {"id":"T73-MALFORMED-REJECT","assertions":30,"intent":"Wrong tuple arity, names, numeric types, negative indices, and out-of-range mix fields fail before cache access or AudioContext scheduling."},
+ {"id":"T73-ASSET-GET-ONLY","assertions":40,"intent":"Every browser audio byte request is an application/json POST to DOOM_API.GET_ASSET with only p_asset_name; no table, blob, WAD, CDN, inferred, or direct asset URL is requested."},
+ {"id":"T73-ASSET-CACHE","assertions":32,"intent":"Concurrent and later occurrences of one asset share one GET_ASSET promise and one decoded AudioBuffer while distinct names remain separate cache keys."},
+ {"id":"T73-DECODE-MEDIA","assertions":26,"intent":"GET_ASSET base64 BLOB bytes and media type are decoded with browser APIs and sound/music assets remain reproducible database-seeded payloads."},
+ {"id":"T73-USER-GESTURE","assertions":34,"intent":"Events may fetch and decode before consent but no source starts until an explicit click resumes AudioContext; queued events then schedule exactly once."},
+ {"id":"T73-PRESENTATION-ONLY","assertions":36,"intent":"Audio failure, latency, disabled audio, and scheduling time cannot mutate commands, session state, tic progression, event tuples, replay hashes, or gameplay decisions."},
+ {"id":"T73-PLAYWRIGHT-PLAYBACK","assertions":42,"intent":"Pinned Chromium observes one resumed context and exact scheduled gain/pan order after a real user gesture with strict console, page-error, and request-failure guards."},
+ {"id":"T73-PLAYWRIGHT-REQUESTS","assertions":34,"intent":"Browser interception proves cache misses use only the approved AutoREST operation and repeated event assets cause no additional network request."},
+ {"id":"T73-SESSION-ROLLBACK","assertions":28,"intent":"Audio rows are session-scoped inside the owning tic transaction, duplicate database keys fail, rollback removes them, and the emitter never commits autonomously."},
+ {"id":"T73-SOURCE-ANTI-GAMING","assertions":46,"intent":"Database and client source audits reject evaluator coupling, fixtures, embedded bytes, event inference, direct base-table HTTP, dynamic SQL, host timing gameplay, and transaction ownership."},
+ {"id":"T73-MUTATION-WITNESSES","assertions":24,"intent":"Every isolated database, cache, ordering, transport, decoding, gesture, scheduling, and presentation-only defect is killed by one documented focused witness."}
+]}

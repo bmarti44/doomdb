@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "task": "T5.4-VISIBLE-GOLDEN",
+  "status": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+  "sourceEvaluatorManifestSha256": "77236041e8925fdae418af702f03ca3f7ab314e84b2e11a2dfd4ed733c1cc0ae",
+  "dimensions": {"width": 320, "height": 200, "order": "column-row"},
+  "reviewMethod": "Every original 320x200 indexed PNG was directly inspected; a true-color diagnostic conversion was used only to work around the review UI's indexed-image delta-preview artifact. Original indexed bytes were independently checked from PNG signature through chunk CRC, IDAT inflation, scan filters, palette, and exact 64000-byte SQL frame identity.",
+  "observations": [
+    {"id":"game-pistol","review":"Coherent E1M1 grate-and-corridor world view with the pistol centered below the crosshair. The weapon ends above the 168 HUD boundary; AMMO 050, HEALTH 100, ARMOR 025, keys, labels, and face/status patches are legible and bounded without overlap."},
+    {"id":"game-shotgun","review":"The shotgun replaces only the lower-center weapon region while the same world remains coherent. The HUD correctly switches current ammo to shells 008; all HUD text stays within rows 168-199 and no transparent weapon holes erase the world."},
+    {"id":"game-paused","review":"A centered red PAUSE patch occupies only x=126..193 and y=4..17 over the intact game canvas. Its transparent holes preserve the ceiling, and it does not collide with the weapon or HUD."},
+    {"id":"menu-selection-0","review":"The full Freedoom menu artwork is intact, all four option labels are centered and readable, and the small blue selector is aligned with NEW GAME. Copyright/version text remains clipped inside the lower corners."},
+    {"id":"menu-selection-2","review":"The same menu background and labels remain byte-stable outside the selector. The blue selector moves to CHOOSE SKILL LEVEL; the 70 changed pixels are bounded to x=54..60 and y=80..134 across the old/new cursor positions."},
+    {"id":"automap-normal","review":"Relational E1M1 linework fills the play area above the unchanged HUD, with a distinct nine-pixel player marker near the west-side spawn. Lines are continuous, aligned, and canvas-bounded with no browser-projected geometry."},
+    {"id":"automap-full","review":"FULL mode preserves the normal automap and player marker while revealing exactly 55 additional hidden-line pixels bounded to x=90..252 and y=41..104. The HUD remains intact and identical below row 168."},
+    {"id":"intermission","review":"A complete intermission backdrop carries centered ENTERING, KILLS, SCRT, and TIME rows with bounded red numeric values. Text is readable with no clipping, overlap, transparent holes, or world/HUD leakage."},
+    {"id":"hud-hidden-values","review":"The intact game view exposes the hidden HUD variations: AMMO 009, HEALTH 037, ARMOR 025, and the blue-key marker. All 753 changed pixels stay within x=18..245 and y=171..186, leaving the world and weapon untouched."}
+  ],
+  "crossFrameDiagnostics": {
+    "pistolToShotgun": {"changed":2287,"x0":18,"x1":182,"y0":108,"y1":186,"reason":"weapon silhouette plus selected-ammo HUD field"},
+    "pistolToPaused": {"changed":665,"x0":126,"x1":193,"y0":4,"y1":17},
+    "menu0ToMenu2": {"changed":70,"x0":54,"x1":60,"y0":80,"y1":134},
+    "automapNormalToFull": {"changed":55,"x0":90,"x1":252,"y0":41,"y1":104},
+    "pistolToHiddenHud": {"changed":753,"x0":18,"x1":245,"y0":171,"y1":186}
+  },
+  "quality": "APPROVED: no transpose, tears, unintended bands, palette corruption, clipping failures, missing lower layers, or presentation overlap in any reviewed frame."
+}

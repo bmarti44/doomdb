@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "task": "T2.2",
+  "policy": "Each source patch is applied to an isolated built parser. Patch application, build and fixture self-check must remain green; only the named semantic test may establish the kill.",
+  "mutations": [
+    {"id":"parser-big-endian-u16","patch":"make the structured 16-bit reader big-endian","killedBy":"T2.2-GEOM-001","reason":"signed and unsigned little-endian values differ"},
+    {"id":"parser-first-duplicate","patch":"resolve a duplicate name to its first occurrence","killedBy":"T2.2-DIR-002","reason":"DUPLUMP must resolve to occurrence 1 bytes 02 03"},
+    {"id":"parser-cross-map-marker","patch":"continue E1M1 lump lookup beyond the next map marker","killedBy":"T2.2-MAP-001","reason":"sentinel E1M2 THINGS must remain unreachable"},
+    {"id":"parser-node-flag-signed","patch":"interpret node child as signed i16 without masking 0x8000","killedBy":"T2.2-NODE-001","reason":"both children are subsectors 0 and 1"},
+    {"id":"parser-ignore-reference-check","patch":"remove one structured-lump foreign-reference validation","killedBy":"T2.2-REF-001","reason":"the corresponding malformed reference must return its exact code"},
+    {"id":"parser-tall-post-absolute","patch":"treat every patch top-delta as an absolute row","killedBy":"T2.2-PATCH-002","reason":"the second column-0 post starts at row 255, not row 5"},
+    {"id":"parser-zero-transparent","patch":"treat palette index 0 as transparent","killedBy":"T2.2-PATCH-001","reason":"column 1 row 0 is an opaque zero texel"},
+    {"id":"parser-conflate-thing-modes","patch":"rename/invert the raw not-single-player bit or infer multiplayer gameplay behavior from skill bits","killedBy":"T2.2-THING-001","reason":"the fixture expects raw file bits only and deliberately separates bit 0x10 from skill bits"},
+    {"id":"parser-blockmap-no-header","patch":"emit list header zero as a linedef index","killedBy":"T2.2-BLOCK-001","reason":"cell lists are exactly [0,1] and [1]"},
+    {"id":"parser-nondeterministic-json","patch":"add current time or unordered directory traversal to output","killedBy":"T2.2-DET-001","reason":"clean-process stdout must be byte-identical"}
+  ]
+}

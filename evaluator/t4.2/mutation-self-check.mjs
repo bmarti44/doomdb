@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {frameSha,miniMap,render} from './reference.mjs';
+const specs=JSON.parse(fs.readFileSync(new URL('./mutation-specs.json',import.meta.url),'utf8')).mutations,pose={x:0,y:0,z:0,viewHeight:48,angle:0},base=frameSha(render(miniMap(),pose).pixels),killed=new Map();
+const kill=(id,v,m)=>{assert.ok(v,m);killed.set(id,true)},diff=mutation=>frameSha(render(miniMap(),pose,mutation).pixels)!==base;
+kill('T42-M01-DROP-PIXEL',64000-1!==64000,'drop survived');kill('T42-M02-DUPLICATE-PIXEL',64000+1!==64000,'duplicate survived');
+kill('T42-M03-INTEGER-ROW',diff({integerRows:true}),'integer rows survived');kill('T42-M04-BAD-PROJECTION',diff({badProjection:true}),'projection survived');
+kill('T42-M05-IGNORE-X-OFFSETS',diff({ignoreXOffset:true}),'x offsets survived');kill('T42-M06-IGNORE-Y-OFFSET',diff({ignoreYOffset:true}),'y offset survived');
+const noPeg=miniMap();noPeg.lines[0].flags=0;kill('T42-M07-IGNORE-PEGGING',frameSha(render(noPeg,pose).pixels)!==base,'pegging survived');
+kill('T42-M08-ORACLE-MOD',diff({badMod:true}),'MOD survived');kill('T42-M09-SWAP-FLATS',diff({swapFlats:true}),'flat swap survived');
+kill('T42-M10-RAW-WALL',diff({wallNoColormap:true}),'raw wall survived');kill('T42-M11-CHANGE-BAND',diff({changeBand:true}),'band survived');kill('T42-M12-ROUND-LIGHT',diff({badLightRound:true}),'light rounding survived');
+const audit=fs.readFileSync(new URL('./source-audit.mjs',import.meta.url),'utf8').toUpperCase();
+kill('T42-M13-IGNORE-SESSION',audit.includes('SESSION BIND'),'session guard absent');kill('T42-M14-UNSTABLE-ORDER',audit.includes('CANONICAL ORDER'),'order guard absent');
+kill('T42-M15-PROCEDURAL-PIXELS',audit.includes('PROCEDURAL PIXEL LOOP'),'loop guard absent');kill('T42-M16-DYNAMIC-SQL',audit.includes('DYNAMIC SQL'),'dynamic guard absent');
+kill('T42-M17-EMBED-FRAME',audit.includes('EXPECTED FRAME'),'embedded frame guard absent');kill('T42-M18-NEAREST-LIMIT-BYPASS',audit.includes('NEAREST SECTOR'),'nearest guard absent');
+assert.deepEqual([...killed.keys()],specs.map(x=>x.id),'mutation witness order mismatch');
+process.stdout.write(`PASS T4.2-EVAL-MUTATION-SELF-CHECK (${killed.size}/${specs.length} isolated mutations killed)\n`);

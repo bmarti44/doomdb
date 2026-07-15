@@ -1,0 +1,33 @@
+{
+  "schema":1,
+  "task":"T7.3-EVAL",
+  "algorithm":"sha256",
+  "approval":"APPROVED BY USER STANDING AUTHORIZATION 2026-07-15",
+  "dependencies":[
+    {"task":"T6.4","status":"IMPLEMENTATION ACCEPTED 848/848"},
+    {"task":"T7.1","status":"IMPLEMENTATION ACCEPTED 1582/1582"},
+    {"task":"T7.2","status":"IMPLEMENTATION ACCEPTED 2565/2565"}
+  ],
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T2.4.json","sha256":"7bf6d81695ff3b7085f70107b1925e3aaf72587ead46cd096cdbd6e79e0d9354"},
+    {"path":"evaluator/integrity.pending-T6.4.json","sha256":"49df1e47ef6612dbaf50671f7d362c5f6546d40818c588e9b69d053d1d007081"},
+    {"path":"evaluator/integrity.pending-T7.1.json","sha256":"45be1db5dea63fc4291851ac4e692e9a66bd903096b35bf8b2379a190503f30e"},
+    {"path":"evaluator/integrity.pending-T7.2.json","sha256":"764dda2fbf89bcb02511e6ffc9e3ba877757cfedb9b2d5a8981bb37b444e82e5"}
+  ],
+  "files":{
+    "evaluator/t7.3/README.md":"b411c7f63a1222918fe1a99dd3256de6608be822ce18d10331dddd36cd30bc9e",
+    "evaluator/t7.3/browser-test-ids.json":"da80ef4f0e8a214e0c0273e19b87728a75623c49ae8af23d44926cc5aad53aa3",
+    "evaluator/t7.3/fixtures.json":"99ab8febf1e46f8bd9f630a4cd8e396c85a9f1751779cdde7634daa3ce021a66",
+    "evaluator/t7.3/mutation-self-check.mjs":"eb8588a604e70964e1098be586ec4ecaf6a8fb63892e241de13fc2c7cf1635ee",
+    "evaluator/t7.3/mutation-specs.json":"338a923815ec1d72f4ba02447e030daa77041eeed8cdddf9f52e47670a1d1ce9",
+    "evaluator/t7.3/oracle-production.sql":"3c71f9ef67886f736e4bc600c18777a91fff15e51441b2b098af1b80b4d6f153",
+    "evaluator/t7.3/playwright.config.ts":"334472714d5643b89ba07014855df4e810cddf9bba0c5f1951547debda0b0c6b",
+    "evaluator/t7.3/reference.mjs":"c0d79eb5a8ababd1355d78b04074b749d56dea4841cba54b14ed79669088ca93",
+    "evaluator/t7.3/run-visible.sh":"6b6c4e13c9580f6c96e27fb587c1665e4e4e7268f477a3ef34e7547907aa761e",
+    "evaluator/t7.3/self-check.mjs":"38bf20dbbbbe28e4c2bef5fcc202946a1b6865cd856143f2ca45e62da21bca8c",
+    "evaluator/t7.3/source-audit.mjs":"2be0a9d9b5a499747fd25cb788ccb274e303342f5066e52c6636aaab72c73510",
+    "evaluator/t7.3/test-ids.json":"46c13533f25650c7486ee32b63d958e5da1a6321f16c5ba7599f4074d8c3ba43",
+    "evaluator/t7.3/tests/audio.spec.ts":"85d05c7c4fda230934fd9bf2bcdd8397d03045d33ba18a5c516a0ad0eb522d83"
+  }
+}

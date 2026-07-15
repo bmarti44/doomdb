@@ -1,0 +1,21 @@
+{
+  "schema":1,
+  "task":"T3.3",
+  "mutations":[
+    {"id":"T33-M01-REVERSE-CHILDREN","change":"Swap child zero and child one after every side decision while leaving all node rows unchanged.","killedBy":"T33-ALL-THINGS-PROBES","reason":"The independently frozen all-THINGS result document changes for broad map coverage."},
+    {"id":"T33-M02-EQUALITY-FRONT","change":"Change the non-axis comparison from cross greater than zero to cross greater than or equal to zero.","killedBy":"T33-HAND-SIDE-CASES","reason":"Origin and collinear equality cases are explicitly expected on side one."},
+    {"id":"T33-M03-GENERIC-AXIS","change":"Use only the generic cross expression for vertical and horizontal nodes, deleting their sign-sensitive branches.","killedBy":"T33-AXIS-TIE-SEMANTICS","reason":"The hand table includes axis sign and equality combinations that generic cross does not preserve."},
+    {"id":"T33-M04-VERTICAL-SIGN","change":"Invert the node dy sign tests in both vertical partition branches.","killedBy":"T33-AXIS-TIE-SEMANTICS","reason":"Positive and negative vertical nodes have separately frozen left, right, and tie outcomes."},
+    {"id":"T33-M05-HORIZONTAL-SIGN","change":"Invert the node dx sign tests in both horizontal partition branches.","killedBy":"T33-BOUNDARY-PROBES","reason":"The pinned horizontal root has probes below, on, and above its partition."},
+    {"id":"T33-M06-WRONG-ROOT","change":"Start traversal at node zero or minimum node id instead of the last node in the loaded NODES lump.","killedBy":"T33-ROOT-LAST-NODE","reason":"The root id and every reviewed path signature begin at maximum node id 680."},
+    {"id":"T33-M07-KEEP-LEAF-BIT","change":"Return the raw flagged child value as the subsector id without removing bit 0x8000.","killedBy":"T33-CHILD-FLAG-DECODE","reason":"Returned subsector keys must be in the loaded zero-based 0 through 681 range."},
+    {"id":"T33-M08-FIRST-CHILD-LEAF","change":"Treat every child id as a subsector even when the high bit is clear, truncating traversal after one node.","killedBy":"T33-DETERMINISTIC-PATH","reason":"Reviewed paths have depths from five through twenty-five and cannot terminate at an ordinary node."},
+    {"id":"T33-M09-LAST-SEG","change":"Resolve a subsector sector from its last seg rather than its first seg.","killedBy":"T33-FACING-SIDEDEF-SECTOR","reason":"The plan fixes first-seg sector ownership even where another seg could appear plausible."},
+    {"id":"T33-M10-REVERSE-FACING","change":"Select the left sidedef for direction zero and the right sidedef for direction one.","killedBy":"T33-SPAWN-SECTOR-140","reason":"Facing direction is semantic and the known spawn sector anchors its correct interpretation."},
+    {"id":"T33-M11-CLAMP-EXTENT","change":"Clamp input coordinates to map vertex bounds before traversing the BSP.","killedBy":"T33-OUTSIDE-COORDINATES","reason":"BSP classification is defined for arbitrary numeric coordinates and must not depend on Spatial metadata bounds."},
+    {"id":"T33-M12-ROUND-BINDS","change":"Round or truncate p_x and p_y before applying node predicates.","killedBy":"T33-BIND-SAFETY","reason":"Call-time numeric binds must reach the exact side predicates without fixture-driven normalization."},
+    {"id":"T33-M13-PROCEDURAL-LOOP","change":"Replace the relational CONNECT BY traversal with a PL/SQL WHILE loop over nodes.","killedBy":"T33-CONNECT-BY-SOURCE","reason":"The task explicitly requires relational CONNECT BY traversal and forbids a procedural substitute."},
+    {"id":"T33-M14-EMBED-THING-LOOKUP","change":"Special-case known THINGS coordinates or consult a precomputed expected sector lookup instead of traversing nodes.","killedBy":"T33-SOURCE-ANTI-CHEAT","reason":"Fixture-specific lookup is reward hacking and cannot generalize to boundary or held-back transformed probes."},
+    {"id":"T33-M15-UNSTABLE-PATH","change":"Aggregate traversed nodes without an explicit root-to-leaf order when constructing the path signature.","killedBy":"T33-DETERMINISTIC-PATH","reason":"Stable path output must not depend on row order or optimizer choices."}
+  ]
+}

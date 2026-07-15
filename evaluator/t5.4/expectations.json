@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "frames": [
+    {"name":"game","sha256":"a3780f4ca8cc9348a8fa3bc210a6052275db716e56b68e5ede7b723c4a34baac"},
+    {"name":"weapon-shotgun","sha256":"ad45bab76af607abb6dbf4c3430583f5711e9bde478d83aa753fc7851faf75f5"},
+    {"name":"paused","sha256":"81b4a7a54683a4a63bb02677bd04413da300f4cf500d59df2d18a668b0d287ee"},
+    {"name":"menu-0","sha256":"7651b4330c0695ae8eb11bdae85a08b80b4dde70a4bb8705c61c3ac81f9c3ab5"},
+    {"name":"menu-2","sha256":"cd06fdab271ba21583a237db003128b456d8d3d0a6e11292ad7e854e60a9a17a"},
+    {"name":"automap","sha256":"d0299024f7cd4f680d708838ff7a580270c67eda5b83c998ca0979dfbcae6079"},
+    {"name":"automap-full","sha256":"8c6e6daf1c3b8a787e7fa7a44927660d6e1bb1f71216ea2c424eedb101e9083d"},
+    {"name":"intermission","sha256":"ea767582e2dd8decca7bba4733d834fc089747105b96ecf924fc2c938b23bc39"},
+    {"name":"hud-variation","sha256":"aba98f69cf8d664e9c21017db696e2eca2275c7756ffcdee9ae7b6453968da4d"}
+  ]
+}

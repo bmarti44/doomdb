@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "task": "T3.2-EVAL",
+  "algorithm": "sha256",
+  "approval": "APPROVED BY USER 2026-07-14",
+  "approvedBaselines": [
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T2.2.json","sha256":"23ca7de9b0a78fe6697350911ac0800f48c9fbd9b6851daed6d10cb982b1b04b"},
+    {"path":"evaluator/integrity.pending-T2.3.json","sha256":"3f13e8dcc3294a0efa096365d3fcd7c70b043da3ff4734e912044878b140add9"},
+    {"path":"evaluator/integrity.pending-T2.4.json","sha256":"7bf6d81695ff3b7085f70107b1925e3aaf72587ead46cd096cdbd6e79e0d9354"}
+  ],
+  "files": {
+    "evaluator/t3.2/README.md": "4ac8e18d941dcc540edceb55e195f797575828f4b63f29bca90c6b6fce2fea0a",
+    "evaluator/t3.2/expectations.json": "29f47412d2d411e273fcf5b2f0cc7d830400f934132c5a3e3f6e50cf8378d27e",
+    "evaluator/t3.2/mutation-specs.json": "b69cfc1aa3542944b254a44819f0353e9edcff90451d90ee008049b21f94b6de",
+    "evaluator/t3.2/oracle-mini-map.sql": "5737096bc6fa1f0058ca2d1a1d0f06757c01aceffcff4dcac8c77c74e6aa8545",
+    "evaluator/t3.2/oracle-production.sql": "208828c193b0acba13ba874e984bed4b88aede58124b93d9cf2a3a77c18cf8a2",
+    "evaluator/t3.2/run-visible.sh": "a879e2027da712b1f9e7b4de0c4e8bd4b0038b799ff1e4deb9d35593cdb3ecc9",
+    "evaluator/t3.2/self-check.mjs": "6b6ea0884f7243c763c0b4c20fa7efbc752c99dc57fd8c9ac9d0670e89ce91a8",
+    "evaluator/t3.2/source-audit.mjs": "1ca5e03b79afe7d66736d6d30a65288f6efd6477a061737ca993dd0b935db821",
+    "evaluator/t3.2/test-ids.json": "b3f48f4885f167f17eb6a31d68b722d8c3e2775e12d351ec89a5a3dbfd574bd5"
+  }
+}

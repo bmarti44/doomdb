@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "task": "T5.3-VISIBLE-GOLDEN",
+  "algorithm": "sha256",
+  "approval": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+  "sourceCandidateEvaluatorManifestSha256": "f8a7ba0189f3c55446d850cd4d2fa5604e16b1ae426015e5ada2729f97ac12ed",
+  "review": "Original 320x200 inspection of three actual database frames plus independent PNG signature/chunk/CRC/IDAT/filter/palette decode and deterministic SQL recapture",
+  "files": {
+    "goldens/t5.3/spawn-east.json": "650e70a80ea98a3539acbec14c05984c2e8f39ab06ed8946faa47ef284db7f72",
+    "goldens/t5.3/spawn-east.png": "3b9dec0139697c497c5d9dbfb79a0c7292915f540ca8c44480a47a1f85a25a3b",
+    "goldens/t5.3/diagnostic-north.json": "96dafb194d9a3b600d29cd16cc57e5e5848d87145dc118680974767514b8a24b",
+    "goldens/t5.3/diagnostic-north.png": "0549391827e1086f0781cb26bd501f169841136371bfec60742a6b6c6d54effd",
+    "goldens/t5.3/diagnostic-south.json": "12bde9fbaab95a39c967f63f5ee19ceb95d11c68b529b55ee96f6126e801dbe7",
+    "goldens/t5.3/diagnostic-south.png": "49892ad4766f69c967f7dd15962480102c688785d7b349931f096b8c6ca3dfd1",
+    "goldens/t5.3/review-summary.json": "30bd846966c36f5b460fa849c5ade546a57ca9262c8d275f7a226b8e4ada05c6"
+  }
+}

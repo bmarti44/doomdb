@@ -1,0 +1,67 @@
+name: doomdb
+
+services:
+  db:
+    image: ${DOOMDB_ORACLE_IMAGE:-gvenzl/oracle-free:23.26.2-full@sha256:df18ebc6b17107081b8bb8f1ee90e8018195dc9261e288100be99ef7bef268ff}
+    entrypoint: ["/bin/bash", "/doomdb/db-entrypoint.sh"]
+    environment:
+      APP_USER: DOOM
+      APP_USER_PASSWORD_FILE: /run/secrets/doom_password
+      ORACLE_PASSWORD_FILE: /run/secrets/oracle_password
+    secrets:
+      - oracle_password
+      - doom_password
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+      - ./deploy/local/db-entrypoint.sh:/doomdb/db-entrypoint.sh:ro
+      - ./deploy/local/initdb/10-doom-runtime-grants.sql:/container-entrypoint-initdb.d/10-doom-runtime-grants.sql:ro
+    ports:
+      - "${DOOMDB_DB_PORT:-1521}:1521"
+    cpus: 2.0
+    mem_limit: 2g
+    healthcheck:
+      test: ["CMD", "/opt/oracle/healthcheck.sh", "FREEPDB1"]
+      interval: 10s
+      timeout: 5s
+      retries: 120
+      start_period: 30s
+    restart: unless-stopped
+
+  ords:
+    image: ${DOOMDB_ORDS_IMAGE:-container-registry.oracle.com/database/ords:26.2.0@sha256:ae9ae8cbbb0c00f25e9624e3b60ffb3838488ca1231d4c9ae4e0a2ab3f4b8930}
+    entrypoint: ["/bin/bash", "/doomdb/ords-entrypoint.sh"]
+    environment:
+      DBHOST: db
+      DBPORT: "1521"
+      DBSERVICENAME: FREEPDB1
+      DB_WAIT_RETRY: "60"
+      ORACLE_PASSWORD_FILE: /run/secrets/oracle_password
+    secrets:
+      - oracle_password
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ords-config:/etc/ords/config
+      - ./deploy/local/ords-entrypoint.sh:/doomdb/ords-entrypoint.sh:ro
+      - ./deploy/local/ords-entrypoint.d:/ords-entrypoint.d:ro
+      - ./client/dist:/var/www/doomdb:ro
+    ports:
+      - "${DOOMDB_HTTP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/health.txt"]
+      interval: 10s
+      timeout: 5s
+      retries: 120
+      start_period: 10m
+    restart: unless-stopped
+
+volumes:
+  oracle-data:
+  ords-config:
+
+secrets:
+  oracle_password:
+    file: ${DOOMDB_ORACLE_PASSWORD_FILE:-./secrets/oracle_password.txt}
+  doom_password:
+    file: ${DOOMDB_APP_PASSWORD_FILE:-./secrets/doom_password.txt}

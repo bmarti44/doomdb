@@ -1,0 +1,4 @@
+set constraints all deferred;
+declare k constant varchar2(32):='62626262626262626262626262626262';begin delete from game_sessions where session_token=k;insert into game_sessions(session_token,game_mode,skill,current_tic,rng_cursor,map_status,paused,menu_state,automap_state,current_player_id,save_lineage,last_command_seq,expires_at,created_at)values(k,'GAME',3,0,0,'ACTIVE',0,'NONE','OFF',null,'T61-C',0,systimestamp+interval '1' hour,systimestamp);insert into players(session_token,player_id,x,y,z,momentum_x,momentum_y,momentum_z,angle,view_height,view_bob,health,armor,armor_type,blue_key,yellow_key,red_key,ammo_bullets,ammo_shells,ammo_rockets,ammo_cells,weapon_mask,selected_weapon,power_invulnerability,power_invisibility,power_ironfeet,power_lightamp,kill_count,item_count,secret_count,alive)values(k,0,-416,256,0,0,0,0,0,41,0,100,0,0,0,0,0,50,0,0,0,1,'PISTOL',0,0,0,0,0,0,0,1);update game_sessions set current_player_id=0 where session_token=k;end;
+/
+commit;

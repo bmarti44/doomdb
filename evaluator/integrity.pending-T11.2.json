@@ -1,0 +1,30 @@
+{
+  "schema":1,
+  "task":"T11.2-EVAL",
+  "algorithm":"sha256",
+  "approval":"APPROVED AND FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-15; LIVE S3 HTTPS AND MANAGED ORDS BROWSER ACCEPTANCE EXTERNALLY BLOCKED",
+  "dependencies":[
+    {"task":"T10.2","status":"APPROVED CLIENT EVALUATOR LINEAGE PINNED; COMPLETE LIVE CLIENT REQUIRED"},
+    {"task":"T10.3","status":"APPROVED LOCAL END-TO-END EVALUATOR LINEAGE PINNED; COMPLETE LIVE LOCAL GATE REQUIRED"},
+    {"task":"T11.1","status":"APPROVED CLOUD DATABASE EVALUATOR LINEAGE PINNED; REAL ADB AND MANAGED ORDS PASS REQUIRED"},
+    {"task":"T11.2","status":"REAL AWS CREDENTIALS, S3 BUCKET, MANAGED ORDS URL, PRODUCTION DRIVER, AND LIVE PLAYWRIGHT EXECUTION PENDING"}
+  ],
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T10.2.json","sha256":"76674b880fad2197d2b8da01c415a76ccf8675cb5d459ce597f250b97d6f42d1"},
+    {"path":"evaluator/integrity.pending-T10.3.json","sha256":"530095621f343aae15a6dcbe1c19fe1164c17e93f23e412279150a3e5277ef3e"},
+    {"path":"evaluator/integrity.pending-T11.1.json","sha256":"04d1282dfc05f918a471737ccef1b065232c4d4ff7977abbf675dda3f03459ea"}
+  ],
+  "files":{
+    "evaluator/t11.2/README.md":"57c2b4018135705452dbf7f0ae58c959ee8d545b88c2f6c314d08f68f271423f",
+    "evaluator/t11.2/fixtures.json":"4ea66dcebd33edf160fecd27436c71692a037caa2d0b58b16efd19233487baa0",
+    "evaluator/t11.2/mutation-self-check.mjs":"ab001685827ab9b6a1f7f34ec75f18ff7cab5dd4864b7b53dde6ec04cafd2184",
+    "evaluator/t11.2/mutation-specs.json":"2498c37620c5041aa82f4792af0637a7bd3da425eacf7918cad575aaf81d0df3",
+    "evaluator/t11.2/reference.mjs":"1da65ee9f6b11267f9f7520ed6a85e625121fd4959756bf46b088a90cefe6b81",
+    "evaluator/t11.2/run-visible.sh":"b4a17ee1741f86ef7f8c46aa78de9c3942f40d655ebf751113e55a65882e655c",
+    "evaluator/t11.2/self-check.mjs":"04014d3c99b8885e6730965365767db822a9cdc264a45300f39eda334396b692",
+    "evaluator/t11.2/source-audit.mjs":"c0405e6524a5b7b6fde01b464be84c2f4869ee2a6d774f44b58e5e27740d3460",
+    "evaluator/t11.2/test-ids.json":"8434cca39d146f4a8f72492ec7da5cfb698d315af5d9e33e0a978cbdbe713dba",
+    "evaluator/t11.2/validate-evidence.mjs":"2562feb24bb546e1440686e477724fa6abbdc14a23ee2e2557ddb9a5e2176535"
+  }
+}

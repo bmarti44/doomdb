@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "task": "T10.3-EVAL",
+  "algorithm": "sha256",
+  "approval": "APPROVED AND FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-15; LIVE TWO-BOOTSTRAP ACCEPTANCE REMAINS UPSTREAM- AND IMPLEMENTATION-BLOCKED",
+  "dependencies": [
+    {"task":"T10.1","status":"APPROVED EVALUATOR LINEAGE PINNED; LIVE AUTOREST PRODUCTION ACCEPTANCE REQUIRED"},
+    {"task":"T10.2","status":"APPROVED EVALUATOR LINEAGE PINNED; LIVE CLIENT, PLAYWRIGHT, AND VISUAL ACCEPTANCE REQUIRED"},
+    {"task":"T10.3","status":"HOST DRIVER, CONTAINER-CAPABLE SQL TRANSPORT, COMPLETE ROUTING, AND TWO FRESH LIVE RUNS PENDING"}
+  ],
+  "approvedBaselines": [
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T10.1.json","sha256":"87ed9f9af1239536ac0d0fc559ca9f0ede21259ca601920f575a3059406120d6"},
+    {"path":"evaluator/integrity.pending-T10.2.json","sha256":"76674b880fad2197d2b8da01c415a76ccf8675cb5d459ce597f250b97d6f42d1"}
+  ],
+  "files": {
+    "evaluator/t10.3/README.md":"9383897fa5f13e9fc4357a460eca6e2b9ab0c9ee33466055d0235cd272142f5d",
+    "evaluator/t10.3/artifact-audit.mjs":"8d2665563ff98dd35cd9e2c078bad510aeae863524b91fdd5d8587d11d2e120e",
+    "evaluator/t10.3/fixtures.json":"ad1bba9096327ed1eb95d1399347ae503ec95d03e14b67f282ffd1acee53f9b2",
+    "evaluator/t10.3/mutation-self-check.mjs":"914f4b440777019648c3be099e9aafbd6c9cb73d10dc1cf0cdac6ceafc0e59f5",
+    "evaluator/t10.3/mutation-specs.json":"e9df008f1782bff8e0f3352234a4e263e175672f1b3be549687686552366cb3d",
+    "evaluator/t10.3/oracle-production.sql":"135e12b6f4dfb8a7066c9326e63de5ff4021ff1581608631620ae2175c6b7b62",
+    "evaluator/t10.3/reference.mjs":"e7c7f67b12ea32a42247a9b9368f4cc739bf57b974f1189a0dfb9717f9b2c138",
+    "evaluator/t10.3/run-container.mjs":"e4c279402590dc0a0414cfe995a03b452301c79854f3a2b0ae9d08c1142a6802",
+    "evaluator/t10.3/run-visible.sh":"48bad721833989b8ad74b50db883843972480083c2b02a0de7ba853c40d61a72",
+    "evaluator/t10.3/self-check.mjs":"0a7df2ade3c75a4823a63b6ed973942bdb34c19a3d9794c28d15d0c6b9b9c460",
+    "evaluator/t10.3/source-audit.mjs":"aee3acccbf79f5f4d7f166614c051e77c7b4ad25a0c567d153290616d86fb797",
+    "evaluator/t10.3/test-ids.json":"30edc8c19afaa589b0d143be03afcc2784d9fa99325678c8b4b37c7563e4a77a"
+  }
+}

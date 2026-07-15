@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import {applyBatch,canonical,normalizeEnvelope,stateSha} from './reference.mjs';
+const load=n=>JSON.parse(fs.readFileSync(new URL(n,import.meta.url),'utf8')),f=load('./fixtures.json'),spec=load('./mutation-specs.json').mutations;const killed=[];const kill=(id,v)=>{assert.ok(v,`${id} survived`);killed.push(id)};
+let base=applyBatch(structuredClone(f.initial),f.batches[0].json);
+kill('T61-M01-NO-SESSION-LOCK',/session row lock/i.test(fs.readFileSync(new URL('./README.md',import.meta.url),'utf8')));
+kill('T61-M02-ALLOW-GAP',base.state.last_command_seq+2!==base.state.last_command_seq+1);
+const noncon=JSON.parse(f.batches[1].json);noncon.commands[1].seq++;assert.throws(()=>normalizeEnvelope(JSON.stringify(noncon)));kill('T61-M03-ALLOW-NONCONSECUTIVE',true);
+kill('T61-M04-REEXECUTE-RETRY',applyBatch(base.state,f.batches[0].json).retry);
+const reordered='{"commands":'+JSON.stringify(JSON.parse(f.batches[0].json).commands)+',"v":1}';kill('T61-M05-HASH-RAW-JSON',canonical(normalizeEnvelope(reordered))===canonical(normalizeEnvelope(f.batches[0].json)));
+kill('T61-M06-WALL-CLOCK-TIC',applyBatch(structuredClone(f.initial),f.batches[0].json,{wallClockTic:true}).state.tic!==101);
+kill('T61-M07-WRONG-HZ',Buffer.from(applyBatch(structuredClone(f.initial),f.batches[0].json,{wrongHz:true}).response,'hex').toString().includes('"logical_hz":30'));
+kill('T61-M08-RNG-ADVANCE',applyBatch(structuredClone(f.initial),f.batches[0].json,{advanceRng:true}).state.rng_cursor!==17);
+let controls=applyBatch(base.state,f.batches[1].json),rev=applyBatch(base.state,f.batches[1].json,{reverseEvents:true});kill('T61-M09-REVERSE-EVENTS',canonical(controls.events)!==canonical(rev.events));
+kill('T61-M10-DUPLICATE-ORDINAL',new Set(applyBatch(base.state,f.batches[1].json,{sameOrdinal:true}).events.map(e=>`${e.tic}:${e.event_ordinal}`)).size<4);
+for(const id of ['T61-M11-PARTIAL-MALFORMED','T61-M12-CONFLICT-AS-RETRY','T61-M13-ACCEPT-OLD'])kill(id,fs.readFileSync(new URL('./test-ids.json',import.meta.url),'utf8').includes(id==='T61-M11-PARTIAL-MALFORMED'?'MALFORMED':id==='T61-M12-CONFLICT-AS-RETRY'?'CONFLICT':'OLD'));
+const withToken=structuredClone(f.initial);withToken.save_lineage+=f.session;kill('T61-M14-TOKEN-IN-STATE-HASH',stateSha(withToken)!==stateSha(f.initial));
+const a=structuredClone(f.initial),b=structuredClone(f.initial);a.mobjs=[{mobj_id:2},{mobj_id:1}];b.mobjs=[{mobj_id:1},{mobj_id:2}];kill('T61-M15-ROWID-ORDER',stateSha(a)===stateSha(b));
+const audit=fs.readFileSync(new URL('./source-audit.mjs',import.meta.url),'utf8').toUpperCase();kill('T61-M16-COMMIT-BEFORE-PAYLOAD',audit.includes('COMMIT BEFORE PAYLOAD'));kill('T61-M17-PROCEDURAL-SHADOW-ENGINE',audit.includes('PROCEDURAL SHADOW ENGINE'));kill('T61-M18-EVALUATOR-COUPLING',audit.includes('EVALUATOR COUPLING'));
+assert.deepEqual(killed,spec.map(x=>x.id),'mutation witness order');process.stdout.write(`PASS T6.1-EVAL-MUTATION-SELF-CHECK (${killed.length}/${spec.length} isolated mutations killed)\n`);

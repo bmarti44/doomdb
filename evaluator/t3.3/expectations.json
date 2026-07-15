@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "interface": {
+    "macro": "DOOM_BSP_LOCATE",
+    "sideMacro": "DOOM_BSP_SIDE",
+    "parameters": ["P_X", "P_Y"],
+    "columns": ["SSECTOR_ID", "SECTOR_ID", "DEPTH", "PATH_SIGNATURE"],
+    "pathFormat": "node_id:side joined by slash from root to leaf"
+  },
+  "counts": {"things":292,"nodes":681,"ssectors":682,"segs":2057},
+  "spawn": {"thingId":157,"x":-416,"y":256,"ssector":115,"sector":140,"depth":8,"pathSignature":"680:0/453:0/187:1/186:0/128:1/127:0/118:0/115:0"},
+  "thingProbeDocument": {
+    "format": "thing_id:x:y:ssector_id:sector_id:depth:path_signature followed by LF, ordered by thing_id",
+    "sha256": "73d1f2d1c7cdc96737d4a9615ca0a8e43bdb67370a8ccce01e888e22c58c06ad",
+    "bytes": 27158,
+    "minimumDepth": 5,
+    "maximumDepth": 25
+  },
+  "root": {"nodeId":680,"x":792,"y":64,"dx":-643,"dy":0},
+  "fractionalBindProbe": {"x":792,"y":64.25,"ssector":157,"sector":147,"depth":13,"pathSignature":"680:0/453:0/187:1/186:1/185:1/184:1/183:0/176:0/168:0/167:0/166:0/155:0/154:0"},
+  "boundaryProbes": [
+    {"x":792,"y":63,"ssector":558,"sector":149,"depth":7,"pathSignature":"680:1/679:0/590:0/564:1/563:0/558:0/555:1"},
+    {"x":792,"y":64,"ssector":558,"sector":149,"depth":7,"pathSignature":"680:1/679:0/590:0/564:1/563:0/558:0/555:1"},
+    {"x":792,"y":65,"ssector":157,"sector":147,"depth":13,"pathSignature":"680:0/453:0/187:1/186:1/185:1/184:1/183:0/176:0/168:0/167:0/166:0/155:0/154:0"},
+    {"x":-10000,"y":64,"ssector":557,"sector":91,"depth":8,"pathSignature":"680:1/679:0/590:0/564:1/563:0/558:0/555:0/554:1"},
+    {"x":10000,"y":64,"ssector":647,"sector":134,"depth":8,"pathSignature":"680:1/679:1/678:0/652:0/650:1/649:1/648:1/647:0"}
+  ],
+  "handSideCases": [
+    {"name":"vertical-positive-left-tie","point":[10,0],"node":[10,4,0,8],"side":1},
+    {"name":"vertical-positive-right","point":[11,0],"node":[10,4,0,8],"side":0},
+    {"name":"vertical-negative-left-tie","point":[10,0],"node":[10,4,0,-8],"side":0},
+    {"name":"vertical-negative-right","point":[11,0],"node":[10,4,0,-8],"side":1},
+    {"name":"horizontal-positive-below-tie","point":[0,4],"node":[3,4,8,0],"side":0},
+    {"name":"horizontal-positive-above","point":[0,5],"node":[3,4,8,0],"side":1},
+    {"name":"horizontal-negative-below-tie","point":[0,4],"node":[3,4,-8,0],"side":1},
+    {"name":"horizontal-negative-above","point":[0,5],"node":[3,4,-8,0],"side":0},
+    {"name":"diagonal-positive-cross","point":[2,0],"node":[0,0,4,4],"side":0},
+    {"name":"diagonal-negative-cross","point":[0,2],"node":[0,0,4,4],"side":1},
+    {"name":"diagonal-origin-equality","point":[0,0],"node":[0,0,4,4],"side":1},
+    {"name":"diagonal-collinear-equality","point":[7,7],"node":[0,0,4,4],"side":1},
+    {"name":"mixed-sign-negative-cross","point":[-2,0],"node":[0,0,-4,4],"side":1},
+    {"name":"mixed-sign-positive-cross","point":[2,0],"node":[0,0,-4,4],"side":0}
+  ]
+}

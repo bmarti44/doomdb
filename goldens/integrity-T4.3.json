@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "task": "T4.3-VISIBLE-GOLDENS",
+  "algorithm": "sha256",
+  "approval": "HUMAN_REVIEWED_APPROVED under user standing authorization 2026-07-15",
+  "evaluatorManifest": {
+    "path": "evaluator/integrity.pending-T4.3.json",
+    "sha256": "38927540dc430ff6d3476738f122577ec15bf4ab104628282a4f19a7e7c5977a"
+  },
+  "files": {
+    "goldens/t4.3-visible.json": "4648f27b3730dd4b3678b00a24a1262c5e6a6d9346473047f8c14e2be85a8e2b",
+    "goldens/t4.3/spawn-east.png": "d46e56cd3f6d87ff2977bc3bcdce988ae00997df10e1b110827b93a3c42efb7b",
+    "goldens/t4.3/spawn-north.png": "2db00d6a02668b636d606e792a81aa2ceb4294bfa5c5866bb3686da379c509f7",
+    "goldens/t4.3/spawn-south.png": "5ee8b950fa8076a9b5930103c53167a67d612a22f4eb95fa960d2854ab778286"
+  }
+}

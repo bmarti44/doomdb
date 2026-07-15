@@ -1,0 +1,22 @@
+{
+  "schema":1,"task":"T5.3-EVAL","algorithm":"sha256","approval":"APPROVED UNDER STANDING USER AUTHORIZATION 2026-07-15 AFTER INDEPENDENT ACTUAL-OUTPUT VISUAL REVIEW",
+  "reviewedUpstream":[
+    {"path":"evaluator/integrity.pending-T5.1.json","sha256":"7b02f8ce55c7f67493134cae9c2bc928340fe39b5abfc5457a3dda4c0e5844f7","status":"APPROVED SOURCE-AUDIT CORRECTION AND IMPLEMENTATION 2026-07-15"},
+    {"path":"evaluator/integrity.pending-T5.2.json","sha256":"b95895c22b3fb8cf5df42a314538ecdc2802abb744815196604070fab900d13c","status":"CASCADE-REFRESHED, APPROVED AND IMPLEMENTED 2026-07-15; 1856885/1856885 ASSERTIONS"},
+    {"path":"goldens/integrity-T5.2.json","sha256":"e59b635cdda850ae092d940ac38fb62cbf8e8b2e1ea6812ad67b61a7ebcc4995","status":"HUMAN-REVIEWED ACTUAL DATABASE OUTPUT APPROVED 2026-07-15"},
+    {"path":"goldens/integrity-T5.3.json","sha256":"24b543562a13c80db22edd376e93a7a5b3c30d28dc2e01db7d28a165210c0860","status":"HUMAN-REVIEWED THREE-FRAME ACTUAL DATABASE OUTPUT APPROVED 2026-07-15"}
+  ],
+  "files":{
+    "evaluator/t5.3/README.md":"f0a538e5010c8df825805a5661e93e61f32580d92b847cf38048fcb2b37fc2e1",
+    "evaluator/t5.3/expectations.json":"3937ad384761d793ec044a228fbbdd3aeddaeaa0e13a6053ddf0eb91896e3ad9",
+    "evaluator/t5.3/fixtures.json":"06a5fcf03d749439b8fd28cda83a33d9f734485eeda744c6bd421ec8853f840b",
+    "evaluator/t5.3/mutation-self-check.mjs":"ab511c2700957bb2c404ac85b28f749c1b1ffca67c9190742cf9383563e8e2c7",
+    "evaluator/t5.3/mutation-specs.json":"f036a4b567fbee27b8af07c796a9937049585a95a27773338957b32db8da2548",
+    "evaluator/t5.3/oracle-production.sql":"ce77becfa42e1ee0858bcc8591fb35cf3f461a139d73f077438b3cb2d7b48427",
+    "evaluator/t5.3/reference.mjs":"31b07ed40c78d21d271fa747292052a3c775bf121703e6aeb01e75efa61a0a2d",
+    "evaluator/t5.3/run-visible.sh":"6e768402d0de69b41bdc6ac0ebaac500bd6ab6e17d7bb0fcbac49623db0c59fb",
+    "evaluator/t5.3/self-check.mjs":"418c37996c5e5bcd541955341443ef709815bf7db60ac4a2ddd33e1e9b361afe",
+    "evaluator/t5.3/source-audit.mjs":"75640c3a487d7873c9dd0d985e7b534cf03b86f90998ffdce08d55b2be6676fc",
+    "evaluator/t5.3/test-ids.json":"7d46b69d433611541f50beefe4b892558b9765cea79a5ab46c9eff6f7a259b74"
+  }
+}

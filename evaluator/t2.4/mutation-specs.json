@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "task": "T2.4-IMPL",
+  "approval": "PENDING USER APPROVAL",
+  "mutations": [
+    {"id":"T2.4-M01","change":"raise the SQL rows-per-batch limit from 500 to 501","killedBy":"T2.4-BATCH-001"},
+    {"id":"T2.4-M02","change":"emit CRLF in one generated SQL file","killedBy":"T2.4-FMT-001"},
+    {"id":"T2.4-M03","change":"include a generation timestamp in the manifest","killedBy":"T2.4-FMT-001"},
+    {"id":"T2.4-M04","change":"reverse two deterministic SQL file records","killedBy":"T2.4-DET-001"},
+    {"id":"T2.4-M05","change":"seed 291 THINGS rows while retaining a plausible manifest","killedBy":"T2.4-COUNT-001"},
+    {"id":"T2.4-M06","change":"search beyond the next map marker for one map lump","killedBy":"T2.4-WAD-001"},
+    {"id":"T2.4-M07","change":"record a source lump size off by one byte","killedBy":"T2.4-SOURCE-001"},
+    {"id":"T2.4-M08","change":"select the first instead of last duplicate lump occurrence","killedBy":"T2.4-ASSET-SOURCE-001"},
+    {"id":"T2.4-M09","change":"add one valid but unrelated WAD flat to the seed","killedBy":"T2.4-CLOSURE-001"},
+    {"id":"T2.4-M10","change":"omit one approved closure sprite patch","killedBy":"T2.4-CLOSURE-001"},
+    {"id":"T2.4-M11","change":"replace transparent patch texels with palette index zero","killedBy":"T2.4-TEXEL-001"},
+    {"id":"T2.4-M12","change":"compose texture patches in reverse overlap order","killedBy":"T2.4-ASSET-HASH-001"},
+    {"id":"T2.4-M13","change":"forge a file hash without changing the generated SQL bytes","killedBy":"T2.4-FILES-001"},
+    {"id":"T2.4-M14","change":"omit the seeded provenance relation for one asset source","killedBy":"T2.4-PROVENANCE-001"}
+  ]
+}

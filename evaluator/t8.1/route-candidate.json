@@ -1,0 +1,41 @@
+{
+  "schema":1,
+  "map":"E1M1",
+  "skill":3,
+  "encoding":"ordered command runs expanded to Section 5.4 v1 commands",
+  "defaults":{"turn":0,"forward":0,"strafe":0,"run":0,"fire":0,"use":0,"weapon":0,"pause":0,"automap":0,"menu":"NONE","cheat":""},
+  "runs":[
+    {"label":"leave-spawn","repeat":70,"command":{"forward":1,"run":1}},
+    {"label":"turn-first-resource","repeat":21,"command":{"turn":1}},
+    {"label":"collect-first-resource","repeat":46,"command":{"forward":1,"run":1}},
+    {"label":"first-fight","repeat":28,"command":{"fire":1}},
+    {"label":"advance-to-key-route","repeat":96,"command":{"forward":1,"run":1}},
+    {"label":"turn-key-route","repeat":33,"command":{"turn":-1}},
+    {"label":"collect-key","repeat":82,"command":{"forward":1,"run":1,"fire":1}},
+    {"label":"return-keyed-door","repeat":33,"command":{"turn":1}},
+    {"label":"door-approach","repeat":94,"command":{"forward":1,"run":1}},
+    {"label":"use-keyed-door","repeat":1,"command":{"use":1}},
+    {"label":"door-wait","repeat":40,"command":{}},
+    {"label":"through-door","repeat":60,"command":{"forward":1,"run":1,"fire":1}},
+    {"label":"lift-approach-turn","repeat":22,"command":{"turn":-1}},
+    {"label":"lift-approach","repeat":74,"command":{"forward":1,"run":1}},
+    {"label":"use-lift","repeat":1,"command":{"use":1}},
+    {"label":"lift-cycle","repeat":130,"command":{}},
+    {"label":"secret-turn","repeat":31,"command":{"turn":1}},
+    {"label":"secret-route","repeat":88,"command":{"forward":1,"run":1,"fire":1}},
+    {"label":"secret-use","repeat":1,"command":{"use":1}},
+    {"label":"secret-enter","repeat":58,"command":{"forward":1,"run":1}},
+    {"label":"exit-return","repeat":64,"command":{"turn":1}},
+    {"label":"exit-route","repeat":152,"command":{"forward":1,"run":1,"fire":1}},
+    {"label":"exit-turn","repeat":25,"command":{"turn":-1}},
+    {"label":"exit-approach","repeat":72,"command":{"forward":1,"run":1}},
+    {"label":"exit-use","repeat":1,"command":{"use":1}},
+    {"label":"enter-intermission","repeat":70,"command":{}}
+  ],
+  "milestoneRuns":{
+    "SPAWN":0,"FIRST_RESOURCE":2,"REPRESENTATIVE_FIGHT":3,"KEY_ACQUIRED":6,
+    "KEYED_DOOR_OPEN":10,"LIFT_OPERATED":15,"SECRET_FOUND":19,
+    "EXIT_TRIGGERED":24,"INTERMISSION":25
+  },
+  "reviewStatus":"CANDIDATE_NOT_YET_PROVEN_OR_APPROVED"
+}

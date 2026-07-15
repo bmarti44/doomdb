@@ -1,0 +1,10 @@
+{
+  "schema":1,
+  "session":"61616161616161616161616161616161",
+  "initial":{"skill":3,"current_player_id":0,"tic":100,"rng_cursor":17,"game_mode":"GAME","map_status":"ACTIVE","paused":0,"menu_state":"NONE","automap_state":"OFF","last_command_seq":0,"save_lineage":"T61-A","player":{"player_id":0,"x":-416,"y":256,"z":0,"momentum_x":0,"momentum_y":0,"momentum_z":0,"angle":0,"view_height":41,"view_bob":0,"health":100,"armor":0,"armor_type":0,"blue_key":0,"yellow_key":0,"red_key":0,"ammo_bullets":50,"ammo_shells":0,"ammo_rockets":0,"ammo_cells":0,"weapon_mask":1,"selected_weapon":"PISTOL","power_invulnerability":0,"power_invisibility":0,"power_ironfeet":0,"power_lightamp":0,"kill_count":0,"item_count":0,"secret_count":0,"alive":1},"mobjs":[],"sectors":[],"lines":[],"movers":[],"switches":[],"commands":[],"events":[],"history":[],"responses":[]},
+  "batches":[
+    {"name":"single","json":"{\"v\":1,\"commands\":[{\"seq\":1,\"turn\":0,\"forward\":1,\"strafe\":0,\"run\":0,\"fire\":0,\"use\":0,\"weapon\":0,\"pause\":0,\"automap\":0,\"menu\":\"NONE\",\"cheat\":\"\"}]}"},
+    {"name":"controls","json":"{\"v\":1,\"commands\":[{\"seq\":2,\"turn\":-1,\"forward\":0,\"strafe\":1,\"run\":1,\"fire\":0,\"use\":0,\"weapon\":0,\"pause\":1,\"automap\":1,\"menu\":\"OPTIONS\",\"cheat\":\"GOD\"},{\"seq\":3,\"turn\":0,\"forward\":0,\"strafe\":0,\"run\":0,\"fire\":0,\"use\":0,\"weapon\":0,\"pause\":0,\"automap\":0,\"menu\":\"NONE\",\"cheat\":\"\"}]}"},
+    {"name":"four","json":"{\"v\":1,\"commands\":[{\"seq\":4,\"turn\":0,\"forward\":0,\"strafe\":0,\"run\":0,\"fire\":0,\"use\":0,\"weapon\":0,\"pause\":0,\"automap\":0,\"menu\":\"NONE\",\"cheat\":\"\"},{\"seq\":5,\"turn\":0,\"forward\":0,\"strafe\":0,\"run\":0,\"fire\":0,\"use\":0,\"weapon\":0,\"pause\":0,\"automap\":0,\"menu\":\"NONE\",\"cheat\":\"\"},{\"seq\":6,\"turn\":0,\"forward\":0,\"strafe\":0,\"run\":0,\"fire\":0,\"use\":0,\"weapon\":0,\"pause\":0,\"automap\":0,\"menu\":\"NONE\",\"cheat\":\"\"},{\"seq\":7,\"turn\":0,\"forward\":0,\"strafe\":0,\"run\":0,\"fire\":0,\"use\":0,\"weapon\":0,\"pause\":0,\"automap\":0,\"menu\":\"NONE\",\"cheat\":\"\"}]}"}
+  ]
+}

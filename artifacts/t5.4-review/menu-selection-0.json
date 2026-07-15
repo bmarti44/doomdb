@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "kind": "doomdb-r2-presentation-diagnostic",
+  "reviewStatus": "pending-independent-visual-review",
+  "width": 320,
+  "height": 200,
+  "order": "column-row",
+  "state": {
+    "id": "menu-selection-0",
+    "mode": "MENU",
+    "paused": 0,
+    "menu": "0",
+    "automap": "OFF",
+    "status": "ACTIVE",
+    "weapon": "PISTOL",
+    "health": 100,
+    "bullets": 50,
+    "shells": 8,
+    "blue": 0
+  },
+  "frameSha256": "9b929da9c83f42aa20763ced709f13070e9fffcfb366bcb52f71a920b339ee58",
+  "pngSha256": "fbdb72150478234076925ef6d78f4c6a456f74b829983589bc4941f9eb46b2c7",
+  "sourceCounts": {
+    "MENU_PATCH": 59388,
+    "TEXT": 4612
+  }
+}

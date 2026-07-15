@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "productionRoots": ["client/src", "sql", "deploy"],
+  "forbiddenPathSegments": ["evaluator", "goldens", "snapshots", "reports", "test-results", "held-back", "tools/reference"],
+  "forbiddenPatterns": [
+    {"id":"expected-path-read","pattern":"(?:readFile|open|fetch|import|require)[^\\n]*(?:evaluator|goldens|snapshots|held-back|test-results)"},
+    {"id":"test-environment-branch","pattern":"(?:process\\.env\\.(?:CI|NODE_ENV|PLAYWRIGHT)|navigator\\.userAgent[^\\n]*Playwright|caller|stack)"},
+    {"id":"process-inspection","pattern":"(?:child_process|execSync|spawnSync|process\\._getActiveHandles)"},
+    {"id":"assertion-disable","pattern":"(?:\\.skip\\s*\\(|\\.fixme\\s*\\(|console\\.assert\\s*=|assert\\s*=\\s*\\(.*true)"},
+    {"id":"unconditional-success","pattern":"(?:process\\.exit\\s*\\(\\s*0\\s*\\)|return\\s+[\"']PASS[\"'])"}
+  ]
+}

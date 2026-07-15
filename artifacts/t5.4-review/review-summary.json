@@ -1,0 +1,269 @@
+{
+  "schema": 1,
+  "manifest": "77236041e8925fdae418af702f03ca3f7ab314e84b2e11a2dfd4ed733c1cc0ae",
+  "status": "pending-independent-visual-review",
+  "frames": [
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-presentation-diagnostic",
+      "reviewStatus": "pending-independent-visual-review",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "state": {
+        "id": "game-pistol",
+        "mode": "GAME",
+        "paused": 0,
+        "menu": "NONE",
+        "automap": "OFF",
+        "status": "ACTIVE",
+        "weapon": "PISTOL",
+        "health": 100,
+        "bullets": 50,
+        "shells": 8,
+        "blue": 0
+      },
+      "frameSha256": "8d07df7962c123b62239a720d89726a80482faee695dca39a82454d540b44886",
+      "pngSha256": "20277d8eb9bc4ec72f36de060c030aab92ca915ccb21b9314e697dec32810ec0",
+      "sourceCounts": {
+        "WORLD": 46960,
+        "HUD_PATCH": 8820,
+        "TEXT": 1420,
+        "MASKED": 4738,
+        "WEAPON": 2062
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-presentation-diagnostic",
+      "reviewStatus": "pending-independent-visual-review",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "state": {
+        "id": "game-shotgun",
+        "mode": "GAME",
+        "paused": 0,
+        "menu": "NONE",
+        "automap": "OFF",
+        "status": "ACTIVE",
+        "weapon": "SHOTGUN",
+        "health": 100,
+        "bullets": 50,
+        "shells": 8,
+        "blue": 0
+      },
+      "frameSha256": "f8b22c7bb6ba99b6e4102b333f78dee425fe8ac5c2938e8dd031cadd676fe9b8",
+      "pngSha256": "4d5fc9100f9ab6af253865aadfb19ae0199e30542c646774b9462b0c435d13c8",
+      "sourceCounts": {
+        "WORLD": 48418,
+        "HUD_PATCH": 8840,
+        "TEXT": 1400,
+        "MASKED": 4738,
+        "WEAPON": 604
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-presentation-diagnostic",
+      "reviewStatus": "pending-independent-visual-review",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "state": {
+        "id": "game-paused",
+        "mode": "GAME",
+        "paused": 1,
+        "menu": "NONE",
+        "automap": "OFF",
+        "status": "ACTIVE",
+        "weapon": "PISTOL",
+        "health": 100,
+        "bullets": 50,
+        "shells": 8,
+        "blue": 0
+      },
+      "frameSha256": "40d36996d23b77f443845bfec7ecd1ad2a9ca3234bc3203d6706d87de11d39a2",
+      "pngSha256": "c2e8532f802e4e12daed12a4493a495b15fdcd07eb432225c8f1b5d79fa651bf",
+      "sourceCounts": {
+        "WORLD": 46295,
+        "HUD_PATCH": 8820,
+        "TEXT": 1420,
+        "MASKED": 4738,
+        "PAUSE": 665,
+        "WEAPON": 2062
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-presentation-diagnostic",
+      "reviewStatus": "pending-independent-visual-review",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "state": {
+        "id": "menu-selection-0",
+        "mode": "MENU",
+        "paused": 0,
+        "menu": "0",
+        "automap": "OFF",
+        "status": "ACTIVE",
+        "weapon": "PISTOL",
+        "health": 100,
+        "bullets": 50,
+        "shells": 8,
+        "blue": 0
+      },
+      "frameSha256": "9b929da9c83f42aa20763ced709f13070e9fffcfb366bcb52f71a920b339ee58",
+      "pngSha256": "fbdb72150478234076925ef6d78f4c6a456f74b829983589bc4941f9eb46b2c7",
+      "sourceCounts": {
+        "MENU_PATCH": 59388,
+        "TEXT": 4612
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-presentation-diagnostic",
+      "reviewStatus": "pending-independent-visual-review",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "state": {
+        "id": "menu-selection-2",
+        "mode": "MENU",
+        "paused": 0,
+        "menu": "2",
+        "automap": "OFF",
+        "status": "ACTIVE",
+        "weapon": "PISTOL",
+        "health": 100,
+        "bullets": 50,
+        "shells": 8,
+        "blue": 0
+      },
+      "frameSha256": "72f0cf0d6488a27049590a4dae02f90dea452e90109292961e47dc1282a39f0a",
+      "pngSha256": "634faa219767025be30fbe7cde9a556bbccd1883d16e282751f048dbb24080a4",
+      "sourceCounts": {
+        "MENU_PATCH": 59388,
+        "TEXT": 4612
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-presentation-diagnostic",
+      "reviewStatus": "pending-independent-visual-review",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "state": {
+        "id": "automap-normal",
+        "mode": "AUTOMAP",
+        "paused": 0,
+        "menu": "NONE",
+        "automap": "ON",
+        "status": "ACTIVE",
+        "weapon": "PISTOL",
+        "health": 100,
+        "bullets": 50,
+        "shells": 8,
+        "blue": 0
+      },
+      "frameSha256": "f76d0101929014d56254f84a4b8e65e6ca0244ce337918c43b9ce61c722c58d2",
+      "pngSha256": "4042fa27327fb28131d3a17d977e6e82aa4fa209f222ba291ef4707554570711",
+      "sourceCounts": {
+        "AUTOMAP": 47130,
+        "AUTOMAP_LINE": 6621,
+        "HUD_PATCH": 8820,
+        "TEXT": 1420,
+        "AUTOMAP_PLAYER": 9
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-presentation-diagnostic",
+      "reviewStatus": "pending-independent-visual-review",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "state": {
+        "id": "automap-full",
+        "mode": "AUTOMAP",
+        "paused": 0,
+        "menu": "NONE",
+        "automap": "FULL",
+        "status": "ACTIVE",
+        "weapon": "PISTOL",
+        "health": 100,
+        "bullets": 50,
+        "shells": 8,
+        "blue": 0
+      },
+      "frameSha256": "b8660171e5b13edc7bd444e96be94e2dba7049a54b2d732a7e0d10fd2f6ca0f5",
+      "pngSha256": "20f65cc409225bb6f78c22d0a31520bd4edbcc6ea4e64d65408e771b85d8548b",
+      "sourceCounts": {
+        "AUTOMAP": 47075,
+        "AUTOMAP_LINE": 6676,
+        "HUD_PATCH": 8820,
+        "TEXT": 1420,
+        "AUTOMAP_PLAYER": 9
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-presentation-diagnostic",
+      "reviewStatus": "pending-independent-visual-review",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "state": {
+        "id": "intermission",
+        "mode": "INTERMISSION",
+        "paused": 0,
+        "menu": "NONE",
+        "automap": "OFF",
+        "status": "COMPLETE",
+        "weapon": "PISTOL",
+        "health": 100,
+        "bullets": 50,
+        "shells": 8,
+        "blue": 0
+      },
+      "frameSha256": "d52aad2210fdc8714afcd639128f53b07b773193f651a2aa90a9dcad550f1fcf",
+      "pngSha256": "3c3e5f77747e78e0a642f1a8a1cc15a4aeb1fe525e721461e224f82a1a9d903f",
+      "sourceCounts": {
+        "INTERMISSION_PATCH": 61389,
+        "TEXT": 2611
+      }
+    },
+    {
+      "schema": 1,
+      "kind": "doomdb-r2-presentation-diagnostic",
+      "reviewStatus": "pending-independent-visual-review",
+      "width": 320,
+      "height": 200,
+      "order": "column-row",
+      "state": {
+        "id": "hud-hidden-values",
+        "mode": "GAME",
+        "paused": 0,
+        "menu": "NONE",
+        "automap": "OFF",
+        "status": "ACTIVE",
+        "weapon": "PISTOL",
+        "health": 37,
+        "bullets": 9,
+        "shells": 8,
+        "blue": 1
+      },
+      "frameSha256": "17aa84b395dbc8bc2acf9f0aae07c1307cf65d7c05e87238d4d600d8bf3b017b",
+      "pngSha256": "467e616a52275b8d8a392c5722e1e047a1d4ac6b7c0bd6c8eaea1415f59284a7",
+      "sourceCounts": {
+        "WORLD": 46960,
+        "HUD_PATCH": 8776,
+        "TEXT": 1464,
+        "MASKED": 4738,
+        "WEAPON": 2062
+      }
+    }
+  ]
+}

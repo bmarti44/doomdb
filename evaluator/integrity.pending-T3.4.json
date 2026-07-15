@@ -1,0 +1,23 @@
+{
+  "schema":1,"task":"T3.4-EVAL","algorithm":"sha256","approval":"APPROVED BY USER 2026-07-14",
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T2.2.json","sha256":"23ca7de9b0a78fe6697350911ac0800f48c9fbd9b6851daed6d10cb982b1b04b"},
+    {"path":"evaluator/integrity.pending-T2.3.json","sha256":"3f13e8dcc3294a0efa096365d3fcd7c70b043da3ff4734e912044878b140add9"},
+    {"path":"evaluator/integrity.pending-T2.4.json","sha256":"7bf6d81695ff3b7085f70107b1925e3aaf72587ead46cd096cdbd6e79e0d9354"},
+    {"path":"evaluator/integrity.pending-T3.2.json","sha256":"d617cdd9e5f8a36606d6606d6c61a514f46b3b5545f4526e48361a1c04208050"}
+  ],
+  "files":{
+    "evaluator/t3.4/README.md":"5b4bc5f82c96690c4cc593049939725945e111f531e072d66120d53f2d252164",
+    "evaluator/t3.4/expectations.json":"77fc2051726c091feb0cb495c61b97ae89bca4f0d3c5451295613f51a61d81ed",
+    "evaluator/t3.4/fixtures.json":"2729260806d85f6954aa8a1ac55707a9766d3cbd8a9af7ef71763db15c47b4e2",
+    "evaluator/t3.4/mutation-self-check.mjs":"9e5c0b343eb497eebddc664d69838137afb29f5993cd1afd36f3904dd578d4a3",
+    "evaluator/t3.4/mutation-specs.json":"43e8dff058d5538c33c9559c71a0a4a7d73747fc95b2767b17b51aa09d01566b",
+    "evaluator/t3.4/oracle-production.sql":"ea19db8612dee2b72b13fa38f1169203b11062c9d82eec557d5ddace5e58271c",
+    "evaluator/t3.4/reference.mjs":"8d6fbfce7ed15ecc67c87fabcfe2419dc345b4a6673825c290b4e34744db4772",
+    "evaluator/t3.4/run-visible.sh":"4a7169a62496293bf84d7a6bf5a0ef889348c347d786547526dddaa98e17244e",
+    "evaluator/t3.4/self-check.mjs":"cc36c2c8851bee45c3fd4aac949d89cfe3a0784a80b8b2d46c2d6ef8b58c4f30",
+    "evaluator/t3.4/source-audit.mjs":"6889834b2502d74eb83b02a3a2df79727d0ba87417c420c5d8767ae1adcb631c",
+    "evaluator/t3.4/test-ids.json":"1ec675f004a804f1a175b4cbe04835504301a5b93374c7132dc193148ff8d4bb"
+  }
+}

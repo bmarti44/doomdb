@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "task": "T2.2-EVAL",
+  "algorithm": "sha256",
+  "approval": "APPROVED BY USER 2026-07-14",
+  "approvedBaseline": {
+    "path": "evaluator/integrity.json",
+    "sha256": "2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"
+  },
+  "files": {
+    "evaluator/t2.2/README.md": "ec4cd0ad67c20f089239aa66de4ba5772bad299692b9c3db456337042fa5d6fb",
+    "evaluator/t2.2/directory-expectations.json": "e9fe66aa54ee8a7ed2a94f28bde81052625e5853ca5019aa2b253095dc5f8b2b",
+    "evaluator/t2.2/expectations.json": "fd52d798c9567779d48b05947fb7b2816510585c77d9c78dea55bace250c5e8e",
+    "evaluator/t2.2/fixture-kit.mjs": "eb5a041aaac1986cd23155d3f77f4ed235ee83bb9b8e7768e154a1242379031d",
+    "evaluator/t2.2/mutation-specs.json": "2137e9e2763a224e2ea491ec483f03e005e73a46a9eb691cb1c901f6bec97752",
+    "evaluator/t2.2/run-visible.mjs": "b4b512e23786b59788ebc30658d10e5152de30e3f02b0b2fcc882d870a4b6f67",
+    "evaluator/t2.2/self-check.mjs": "74ebc3e9595a22fdaa7642b5ea51a29fe433375b7b6541cd80ec83518a7b1330",
+    "evaluator/t2.2/test-ids.json": "f53aeb4b0041533c8e52028b380e36c021e455357684ec1b5f98c9870dc12fd4",
+    "evaluator/t2.2/visible-fixtures.mjs": "841f986c755b525a2e78771b24c5a9d6d45b6ec4c0669ec834c9d16658de97ae"
+  }
+}

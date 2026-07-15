@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "task": "T11.1",
+  "minimumDatabaseMajor": 23,
+  "deploymentTool": {"name":"SQLcl","version":"26.2.0.181.2110"},
+  "p0Sources": {
+    "capabilityLocal":{"path":"probes/oracle/capabilities.sql","sha256":"4e1b434fa2d3220d231767fb41d19b0516c2cadae78856ed8bf4f13b51c50d20"},
+    "capabilityCloud":{"path":"cloud/probes/oracle/capabilities.sql","sha256":"4e1b434fa2d3220d231767fb41d19b0516c2cadae78856ed8bf4f13b51c50d20"},
+    "transportInstall":{"path":"deploy/local/probes/transport/install.sql","sha256":"ce2a26ba3db842bbbd4e2dd3504f295dd4abf16f7c6aa3c988bcc1be7043882a"},
+    "transportRunner":{"path":"scripts/verify-transport.sh","sha256":"e0bca1691842973c4e12eaa221ba474bed757587a0203236f4c1fc1f137d53e6"},
+    "transportUninstall":{"path":"deploy/local/probes/transport/uninstall.sql","sha256":"0018e275a68c802d37e1253a12df35587ecca2ac8bf88f2eb5631a542f2219b0"}
+  },
+  "requiredCredentialVariables": ["ADB_CONNECTION_STRING","ADB_USERNAME","ADB_PASSWORD","ADB_WALLET_DIR","ADB_ORDS_BASE_URL"],
+  "requiredFeatures": ["SDO_GEOMETRY_INDEX","CONNECT_BY","MODEL","MATCH_RECOGNIZE","JSON_RETURNING_CLOB","SQL_PROPERTY_GRAPH","DBMS_CRYPTO_SHA256","UTL_COMPRESS_GZIP","ORDS_ENABLE_OBJECT"],
+  "transportCases": ["IN_NUMBER","IN_CLOB","OUT_VARCHAR2","OUT_CLOB","OUT_BLOB_BASE64","GZIP_JSON","BAD_BODY_4XX","RAISE_5XX","ROLLBACK","CORS_SIMPLE","CORS_PREFLIGHT","MAX_FRAME","LARGEST_ASSET"],
+  "scriptDomains": ["schema","seed","engine","rest"],
+  "seedDomains": ["wad_lumps","vertexes","linedefs","sidedefs","sectors","things","segs","subsectors","nodes","reject_bytes","blockmap_words","playpal","colormap","textures","patches","sprites","sounds","music","engine_states","engine_actions","engine_objects","engine_weapons","engine_specials","engine_rng"],
+  "restObjects": ["DOOM_API","PUBLIC_HEALTH"],
+  "directApiCases": ["PUBLIC_HEALTH","NEW_GAME","STEP","STEP_GZIP_BLOB","ASSET_PLAYPAL","ASSET_AUDIO","SAVE","LOAD","REWIND","REPLAY","CHEAT","COMPLETION_SMOKE","BAD_TOKEN_4XX","BAD_BODY_4XX","METHOD_405","CORS_SIMPLE","CORS_PREFLIGHT"],
+  "forbiddenEvidencePatterns": ["password","authorization","bearer ","wallet","private_key","aws_access","secret_access","connection_string","adb_username","adb_password","https://","jdbc:","oracle.net","tnsnames"],
+  "requiredGrantPolicy": {"publicExecute":["DOOM_API","PUBLIC_HEALTH"],"forbiddenSystemPrivileges":["DBA","SYSDBA","SYSOPER","CREATE ANY PROCEDURE","ALTER ANY PROCEDURE","DROP ANY TABLE","UNLIMITED TABLESPACE"]}
+}

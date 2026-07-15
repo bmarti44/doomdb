@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "kind": "doomdb-r2-presentation-diagnostic",
+  "reviewStatus": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+  "width": 320,
+  "height": 200,
+  "order": "column-row",
+  "state": {
+    "id": "hud-hidden-values",
+    "mode": "GAME",
+    "paused": 0,
+    "menu": "NONE",
+    "automap": "OFF",
+    "status": "ACTIVE",
+    "weapon": "PISTOL",
+    "health": 37,
+    "bullets": 9,
+    "shells": 8,
+    "blue": 1
+  },
+  "frameSha256": "17aa84b395dbc8bc2acf9f0aae07c1307cf65d7c05e87238d4d600d8bf3b017b",
+  "pngSha256": "467e616a52275b8d8a392c5722e1e047a1d4ac6b7c0bd6c8eaea1415f59284a7",
+  "sourceCounts": {
+    "WORLD": 46960,
+    "HUD_PATCH": 8776,
+    "TEXT": 1464,
+    "MASKED": 4738,
+    "WEAPON": 2062
+  }
+}

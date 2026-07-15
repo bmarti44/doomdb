@@ -1,0 +1,5 @@
+{"schema":1,"constants":{"SNAPSHOT_INTERVAL":4,"SCHEMA":1,"REPLAY_SCHEMA":1},"initial":{"tic":0,"x":0,"y":0,"angle":0,"health":100,"ammo":20,"rng":7,"door":0,"score":0},"commands":[
+{"turn":0,"forward":2,"fire":0,"use":0},{"turn":0,"forward":3,"fire":1,"use":0},{"turn":90,"forward":1,"fire":0,"use":1},{"turn":0,"forward":4,"fire":1,"use":0},
+{"turn":270,"forward":2,"fire":0,"use":0},{"turn":0,"forward":1,"fire":1,"use":0},{"turn":90,"forward":2,"fire":0,"use":1},{"turn":0,"forward":3,"fire":1,"use":0},
+{"turn":180,"forward":1,"fire":0,"use":0},{"turn":0,"forward":2,"fire":1,"use":1},{"turn":270,"forward":1,"fire":0,"use":0},{"turn":0,"forward":4,"fire":1,"use":0}
+],"saveSlot":7,"saveTic":5,"rewindTic":3,"replay":{"fromTic":0,"toTic":12}}

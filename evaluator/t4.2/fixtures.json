@@ -1,0 +1,7 @@
+{"schema":1,"width":320,"height":200,"fovDegrees":90,"pixelCenter":0.5,
+ "mini":{"pose":{"x":0,"y":0,"z":0,"viewHeight":48,"angle":0},"description":"one-sided wall at x=128 with negative offsets, lower-unpegged middle texture, patterned flats/texture and non-rounding-equivalent light"},
+ "e1m1Poses":[
+  {"name":"spawn-east","x":-416,"y":256,"z":0,"viewHeight":41,"angle":0},
+  {"name":"spawn-north","x":-416,"y":256,"z":0,"viewHeight":41,"angle":90},
+  {"name":"spawn-south","x":-416,"y":256,"z":0,"viewHeight":41,"angle":270}
+ ]}

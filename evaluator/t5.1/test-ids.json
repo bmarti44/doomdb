@@ -1,0 +1,22 @@
+{"schema":1,"task":"T5.1","declaredAssertions":674,"tests":[
+ {"id":"T51-FIXED-INTERFACE","assertions":32,"intent":"Two bound table SQL macros expose every ordered portal hit and every active sector interval with reviewed deterministic columns."},
+ {"id":"T51-RETAIN-ALL-HITS","assertions":64,"intent":"Every analytically accepted ray hit remains observable even after solid termination or when sector compatibility makes it inactive."},
+ {"id":"T51-STABLE-ANALYTIC-ORDER","assertions":48,"intent":"Portal processing uses the complete stable tuple hit depth, linedef id, seg id, and facing side without insertion-order dependence."},
+ {"id":"T51-FACING-TRANSITIONS","assertions":48,"intent":"Facing and opposite sidedefs determine from and to sectors, and only a hit compatible with the active sector advances the timeline."},
+ {"id":"T51-SECTOR-INTERVALS","assertions":64,"intent":"Contiguous intervals begin at zero, end at the responsible active hit or configured far bound, and retain deterministic ordinals."},
+ {"id":"T51-WINDOW-PIECES","assertions":28,"intent":"A narrow window remains an open portal while independently exposing both its lower and upper facing wall height pieces."},
+ {"id":"T51-STEP-CHAIN","assertions":28,"intent":"Successive floor steps produce ordered lower pieces and advance through the correct sector at each portal crossing."},
+ {"id":"T51-DOOR-STATES","assertions":32,"intent":"The same doorway topology distinguishes an open upper piece from a zero-height closed opening using current sector heights."},
+ {"id":"T51-OVERLAPPING-HITS","assertions":28,"intent":"Coincident duplicate geometry is retained in stable order but an incompatible duplicate cannot transition the active sector twice."},
+ {"id":"T51-VERTEX-TIES","assertions":28,"intent":"Two compatible boundaries meeting at one endpoint produce deterministic same-depth transitions and a deliberate zero-length interval."},
+ {"id":"T51-NESTED-PORTALS","assertions":32,"intent":"Three nested open portals yield four ordered active sector intervals before the one-sided terminal boundary."},
+ {"id":"T51-SOLID-TERMINATION","assertions":28,"intent":"One-sided and nonpositive-height openings terminate exactly once while all later analytic hits remain present but inactive."},
+ {"id":"T51-OPENING-AND-PIECES","assertions":40,"intent":"Opening intersection uses max floors and min ceilings while lower and upper pieces use facing-to-opposite directed differences."},
+ {"id":"T51-FAR-FINAL-INTERVAL","assertions":20,"intent":"A ray without solid termination receives exactly one final interval ending at configured far distance in its last active sector."},
+ {"id":"T51-TRANSLATION-METAMORPHIC","assertions":32,"intent":"Joint translation of scene and pose preserves hit depths, compatibility, wall pieces, termination, and complete interval documents."},
+ {"id":"T51-MIRROR-METAMORPHIC","assertions":32,"intent":"Reflection with heading and sidedef exchange preserves semantic timelines while predictably reversing the discrete facing-side bit."},
+ {"id":"T51-NUMERIC-BOUNDARIES","assertions":20,"intent":"Intersection thresholds retain Appendix B tolerances and timeline ordering never rounds hit depth before analytic comparison."},
+ {"id":"T51-SOURCE-SET-BASED","assertions":28,"intent":"Production uses bound set-based analytic SQL over all R1 hits and dynamic sector heights without procedural ray or portal loops."},
+ {"id":"T51-SOURCE-ANTI-CHEAT","assertions":24,"intent":"Production cannot inspect evaluator artifacts, embed fixture answers or hashes, use dynamic SQL, or forge evaluator outcomes."},
+ {"id":"T51-MUTATION-COVERAGE","assertions":18,"intent":"Every isolated semantic portal-timeline mutation has an explicit independent fixture witness and named detecting test."}
+]}

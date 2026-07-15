@@ -1,0 +1,36 @@
+{
+  "schema":1,
+  "task":"T8.2-EVAL",
+  "algorithm":"sha256",
+  "approval":"APPROVED AND RE-FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-15 AFTER ACCEPTED T7 DEPENDENCY REFRESH; T8.1 LIVE VISUAL ACCEPTANCE REMAINS PENDING",
+  "dependencies":[
+    {"task":"T6.4","status":"IMPLEMENTATION ACCEPTED 848/848"},
+    {"task":"T7.1","status":"PRODUCTION ACCEPTED"},
+    {"task":"T7.2","status":"PRODUCTION ACCEPTED"},
+    {"task":"T7.3","status":"PRODUCTION ACCEPTED"},
+    {"task":"T8.1","status":"LIVE ROUTE AND VISUAL ACCEPTANCE PENDING"}
+  ],
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T6.4.json","sha256":"49df1e47ef6612dbaf50671f7d362c5f6546d40818c588e9b69d053d1d007081"},
+    {"path":"evaluator/integrity.pending-T7.1.json","sha256":"45be1db5dea63fc4291851ac4e692e9a66bd903096b35bf8b2379a190503f30e"},
+    {"path":"evaluator/integrity.pending-T7.2.json","sha256":"764dda2fbf89bcb02511e6ffc9e3ba877757cfedb9b2d5a8981bb37b444e82e5"},
+    {"path":"evaluator/integrity.pending-T7.3.json","sha256":"6267d2dcce1bf52136309c7bda6641325ac69ce1e95b506bf4b3812bd89e9da6"},
+    {"path":"evaluator/integrity.pending-T8.1.json","sha256":"9d397f036967aa0a62b61177a7d089957f0c3c6e5d6a34c0b3da310c75305b95"}
+  ],
+  "files":{
+    "evaluator/t8.2/README.md":"a10262f558b21c544f9dd253e9fc3c61647558193820a715ff7fca98efadd43b",
+    "evaluator/t8.2/browser-test-ids.json":"20adf55bf2c32cc4c5f6af84ffcf030f5513b301df8c2d0dbd17d233a5b7c334",
+    "evaluator/t8.2/direct-api.mjs":"e1ef80a941d373bdd0724122014d805a7bb2c01218140a3186e31fe43c7b12d5",
+    "evaluator/t8.2/fixtures.json":"ecb98786d4782d1ee33600e9a871a01d86e67d9d3a884139e7220fcefd5fa845",
+    "evaluator/t8.2/mutation-self-check.mjs":"446b38de51ccd93a00c3404b83d952f009d7a2341d31e3a52e9d55fbd47d95fd",
+    "evaluator/t8.2/mutation-specs.json":"d43cbb09f44306730b2bf1dd2365d43fcc4b2775937195c0339ece38761fa470",
+    "evaluator/t8.2/playwright.config.ts":"e103114df6fb6df0168ec0397da158efad89c3e905699c026f50aa7ef1cef11a",
+    "evaluator/t8.2/reference.mjs":"42622975064486d1cfbd7353a523410859121fc90e6ce878240b6ae3dac78b73",
+    "evaluator/t8.2/run-visible.sh":"bc27523cd18062d7635bd9b18146b634e0868441f870f36aaeab0cabf9f391ba",
+    "evaluator/t8.2/self-check.mjs":"66085336d8c9eae378aa7661f2283899536095e27724499be72316f71f3008bc",
+    "evaluator/t8.2/source-audit.mjs":"73d45f14bb86e430c886a92e1e3c966d1a0fd79b0b97e6aa436fe1892f55ff5f",
+    "evaluator/t8.2/test-ids.json":"cc73d22dcfc7d22ac5e8fe4dc87f8ec83ad53f52b2f6f7e74601cf9bb101a9a9",
+    "evaluator/t8.2/tests/workflows.spec.ts":"418ab7e8bc2f985685ff542472aac590080bb1ec3206fabf7e9c43e296f2295c"
+  }
+}

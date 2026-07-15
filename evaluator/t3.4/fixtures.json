@@ -1,0 +1,16 @@
+{
+  "blockmapHex":"80ff00ff030002000a000e000a0011000e001100000002000500ffff00000700ffff0000ffff",
+  "blockmapExpected":{"originX":-128,"originY":-256,"columns":3,"rows":2,"offsets":[10,14,10,17,14,17],"lineLists":[[2,5],[7],[2,5],[],[7],[]]},
+  "coordinateProbes":[
+    {"x":-129,"y":-257,"blockX":-1,"blockY":-1},
+    {"x":-128,"y":-256,"blockX":0,"blockY":0},
+    {"x":-1,"y":-129,"blockX":0,"blockY":0},
+    {"x":0,"y":-128,"blockX":1,"blockY":1},
+    {"x":255,"y":-1,"blockX":2,"blockY":1},
+    {"x":256,"y":0,"blockX":3,"blockY":2}
+  ],
+  "rejectHex":"02c1",
+  "rejectSectorCount":4,
+  "rejectExpected":[0,1,0,0,0,0,0,0,1,0,0,0,0,0,1,1],
+  "graph":{"sectors":[{"floor":0,"ceiling":128},{"floor":0,"ceiling":128},{"floor":32,"ceiling":96},{"floor":128,"ceiling":128}],"sides":[{"sector":0},{"sector":1},{"sector":1},{"sector":2},{"sector":2},{"sector":3},{"sector":3},{"sector":0},{"sector":2},{"sector":0}],"lines":[{"id":0,"flags":0,"right":0,"left":1},{"id":1,"flags":64,"right":2,"left":3},{"id":2,"flags":0,"right":4,"left":5},{"id":3,"flags":0,"right":6,"left":65535},{"id":4,"flags":0,"right":8,"left":9},{"id":5,"flags":0,"right":0,"left":1}],"expectedEdges":[{"edgeId":0,"sourceSectorId":0,"targetSectorId":1,"linedefId":0,"soundBlock":0,"opening":128},{"edgeId":1,"sourceSectorId":1,"targetSectorId":0,"linedefId":0,"soundBlock":0,"opening":128},{"edgeId":2,"sourceSectorId":1,"targetSectorId":2,"linedefId":1,"soundBlock":1,"opening":64},{"edgeId":3,"sourceSectorId":2,"targetSectorId":1,"linedefId":1,"soundBlock":1,"opening":64},{"edgeId":8,"sourceSectorId":2,"targetSectorId":0,"linedefId":4,"soundBlock":0,"opening":64},{"edgeId":9,"sourceSectorId":0,"targetSectorId":2,"linedefId":4,"soundBlock":0,"opening":64},{"edgeId":10,"sourceSectorId":0,"targetSectorId":1,"linedefId":5,"soundBlock":0,"opening":128},{"edgeId":11,"sourceSectorId":1,"targetSectorId":0,"linedefId":5,"soundBlock":0,"opening":128}],"reachableFrom0":[0,1,2],"reachableFrom3":[3]}
+}

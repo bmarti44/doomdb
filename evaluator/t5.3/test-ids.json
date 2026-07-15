@@ -1,0 +1,19 @@
+{"schema":1,"task":"T5.3","declaredAssertions":988,"tests":[
+ {"id":"T53-FIXED-INTERFACE","assertions":48,"intent":"Two session-bound SQL table macros expose every opaque masked or billboard candidate, all clipping facts, and deterministic winning overlay pixels."},
+ {"id":"T53-MASKED-MIDDLE","assertions":52,"intent":"Transparent two-sided middle textures preserve opaque posts, discard holes, use sidedef offsets, and remain depth-bearing overlay candidates."},
+ {"id":"T53-SPRITE-PROJECTION","assertions":64,"intent":"Billboards use bound camera pose, configured projection, patch offsets, world height, pixel centers, and deterministic integer screen bounds."},
+ {"id":"T53-EIGHT-ROTATIONS","assertions":80,"intent":"Viewer-relative object bearing selects all eight directional rotations at half-sector boundaries with rotation-zero fallback only when declared."},
+ {"id":"T53-MIRRORED-LUMPS","assertions":40,"intent":"Dual-name sprite lumps choose the independently recorded rotation and horizontal mirror without changing transparent sampling semantics."},
+ {"id":"T53-TRANSPARENT-SAMPLING","assertions":56,"intent":"Absent patch texels never overwrite the world while palette index zero remains an opaque, lightable source color rather than transparency."},
+ {"id":"T53-SCREEN-CLIP","assertions":40,"intent":"Projected samples outside columns zero through 319 or rows zero through 199 are rejected without shrinking the canonical resolution."},
+ {"id":"T53-SECTOR-CLIP","assertions":48,"intent":"Sprite samples are clipped to the active per-column sector window inherited from the complete portal interval timeline."},
+ {"id":"T53-WALL-DEPTH-CLIP","assertions":56,"intent":"A nearer solid wall or closed portal hides a sprite while a nearer sprite remains visible and equal wall depth follows the fixed epsilon rule."},
+ {"id":"T53-NEARER-SPRITE-CLIP","assertions":56,"intent":"At each covered pixel the nearest eligible sprite candidate occludes all farther sprites without object insertion-order dependence."},
+ {"id":"T53-EQUAL-DEPTH-ORDER","assertions":56,"intent":"Equal depth resolves by source class, stable source id, asset row, and asset column so identical poses remain byte-deterministic."},
+ {"id":"T53-WORLD-STATE-CLOSURE","assertions":120,"intent":"Every renderable state reachable from E1M1 decorations, pickups, monsters, barrels, projectiles, and effects resolves to a seeded sprite rotation asset."},
+ {"id":"T53-E1M1-DIAGNOSTICS","assertions":96,"intent":"Spawn and two diagnostic poses expose exact independently checked sprite identities, rotations, clipped counts, spot pixels, and canonical overlay hashes."},
+ {"id":"T53-TRANSLATION-METAMORPHIC","assertions":40,"intent":"Joint translation of camera and world objects preserves projected candidates, rotations, clipping decisions, and winning pixel documents."},
+ {"id":"T53-SOURCE-SET-BASED","assertions":48,"intent":"Production performs projection, transparent sampling, clipping, and depth selection in bound set-based SQL with no procedural object or pixel loops."},
+ {"id":"T53-SOURCE-ANTI-CHEAT","assertions":40,"intent":"Production cannot inspect evaluator artifacts, embed diagnostic poses or hashes, use dynamic SQL, or forge evaluator outcomes."},
+ {"id":"T53-MUTATION-COVERAGE","assertions":48,"intent":"Every isolated masked-wall, billboard, rotation, transparency, clipping, ordering, closure, and anti-cheat mutation has a named semantic witness."}
+]}

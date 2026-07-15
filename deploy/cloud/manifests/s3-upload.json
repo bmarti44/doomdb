@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "operation": "s3-upload",
+  "mode": "dry-run",
+  "bucket": "doomdb-placeholder-bucket",
+  "region": "us-east-1",
+  "index_url": "https://doomdb-placeholder-bucket.s3.us-east-1.amazonaws.com/index.html",
+  "artifacts": [
+    {"key":"index.html","sha256":"7767a01cc0e56affa489f20bf65eb13f2911ca0706899f7b24e624532c4f1a0b","cache_control":"no-cache","content_type":"text/html; charset=utf-8"}
+  ]
+}

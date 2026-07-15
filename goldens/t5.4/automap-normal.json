@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "kind": "doomdb-r2-presentation-diagnostic",
+  "reviewStatus": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+  "width": 320,
+  "height": 200,
+  "order": "column-row",
+  "state": {
+    "id": "automap-normal",
+    "mode": "AUTOMAP",
+    "paused": 0,
+    "menu": "NONE",
+    "automap": "ON",
+    "status": "ACTIVE",
+    "weapon": "PISTOL",
+    "health": 100,
+    "bullets": 50,
+    "shells": 8,
+    "blue": 0
+  },
+  "frameSha256": "f76d0101929014d56254f84a4b8e65e6ca0244ce337918c43b9ce61c722c58d2",
+  "pngSha256": "4042fa27327fb28131d3a17d977e6e82aa4fa209f222ba291ef4707554570711",
+  "sourceCounts": {
+    "AUTOMAP": 47130,
+    "AUTOMAP_LINE": 6621,
+    "HUD_PATCH": 8820,
+    "TEXT": 1420,
+    "AUTOMAP_PLAYER": 9
+  }
+}

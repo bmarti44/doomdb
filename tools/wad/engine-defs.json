@@ -1,0 +1,2490 @@
+{
+  "schema": 1,
+  "wad": {
+    "sha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d",
+    "map": "E1M1"
+  },
+  "sources": [
+    {
+      "id": "plan-contract",
+      "title": "DoomDB v2 implementation contract",
+      "url": "https://github.com/doomdb/doomdb/blob/main/PLAN.md",
+      "license": "MIT",
+      "usage": "Project-specific behavior, determinism, scope, and independently authored implementation rules.",
+      "copiedCodeOrData": false
+    },
+    {
+      "id": "doomwiki-behavior",
+      "title": "DoomWiki gameplay and map-special documentation",
+      "url": "https://doomwiki.org/wiki/Category:Doom_gameplay",
+      "license": "CC BY-SA 4.0",
+      "usage": "Public descriptions of observable gameplay behavior used as research for hand-authored registry rows.",
+      "copiedCodeOrData": false
+    },
+    {
+      "id": "doomwiki-wad",
+      "title": "DoomWiki WAD and map format documentation",
+      "url": "https://doomwiki.org/wiki/WAD",
+      "license": "CC BY-SA 4.0",
+      "usage": "Public file-format descriptions used to interpret independently parsed WAD data.",
+      "copiedCodeOrData": false
+    },
+    {
+      "id": "freedoom-data",
+      "title": "Freedoom Phase 1 0.13.0 data and art",
+      "url": "https://github.com/freedoom/freedoom/releases/tag/v0.13.0",
+      "license": "BSD-3-Clause",
+      "usage": "Pinned WAD asset names, bytes, map placements, and texture-to-patch provenance.",
+      "copiedCodeOrData": false
+    }
+  ],
+  "thingTypes": [
+    {
+      "id": 1,
+      "name": "PLAYER_1_START",
+      "category": "spawn_marker",
+      "spawnState": null,
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "PLAYER_2_START",
+      "category": "spawn_marker",
+      "spawnState": null,
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "PLAYER_3_START",
+      "category": "spawn_marker",
+      "spawnState": null,
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "PLAYER_4_START",
+      "category": "spawn_marker",
+      "spawnState": null,
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "BLUE_KEYCARD",
+      "category": "pickup",
+      "spawnState": "THING_5_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "BACKPACK",
+      "category": "pickup",
+      "spawnState": "THING_8_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 9,
+      "name": "SHOTGUNNER",
+      "category": "monster",
+      "spawnState": "THING_9_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "health": 30,
+      "seeState": "THING_9_SEE",
+      "attackState": "THING_9_ATTACK_1",
+      "painState": "THING_9_PAIN",
+      "deathState": "THING_9_DEATH",
+      "dropType": 2001,
+      "sounds": [
+        "DSSGTSIT",
+        "DSSGTDTH"
+      ]
+    },
+    {
+      "id": 10,
+      "name": "GIBBED_PLAYER",
+      "category": "decoration",
+      "spawnState": "THING_10_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 11,
+      "name": "DEATHMATCH_START",
+      "category": "spawn_marker",
+      "spawnState": null,
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 12,
+      "name": "DEAD_PLAYER",
+      "category": "decoration",
+      "spawnState": "THING_12_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 15,
+      "name": "DEAD_CACODEMON",
+      "category": "decoration",
+      "spawnState": "THING_15_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 17,
+      "name": "DEAD_DEMON",
+      "category": "decoration",
+      "spawnState": "THING_17_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 18,
+      "name": "DEAD_ZOMBIEMAN",
+      "category": "decoration",
+      "spawnState": "THING_18_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 19,
+      "name": "DEAD_SHOTGUNNER",
+      "category": "decoration",
+      "spawnState": "THING_19_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 20,
+      "name": "DEAD_IMP",
+      "category": "decoration",
+      "spawnState": "THING_20_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 21,
+      "name": "DEAD_LOST_SOUL",
+      "category": "decoration",
+      "spawnState": "THING_21_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 24,
+      "name": "BLOOD_POOL",
+      "category": "decoration",
+      "spawnState": "THING_24_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 26,
+      "name": "HANGING_LEG",
+      "category": "decoration",
+      "spawnState": "THING_26_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 43,
+      "name": "HANGING_PAIR_LEGS",
+      "category": "decoration",
+      "spawnState": "THING_43_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 47,
+      "name": "HANGING_VICTIM_ARMS_OUT",
+      "category": "decoration",
+      "spawnState": "THING_47_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 48,
+      "name": "TALL_TECH_LAMP",
+      "category": "decoration",
+      "spawnState": "THING_48_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 54,
+      "name": "LARGE_BROWN_TREE",
+      "category": "decoration",
+      "spawnState": "THING_54_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 58,
+      "name": "SPECTRE",
+      "category": "monster",
+      "spawnState": "THING_58_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "health": 150,
+      "seeState": "THING_58_SEE",
+      "attackState": "THING_58_ATTACK_1",
+      "painState": "THING_58_PAIN",
+      "deathState": "THING_58_DEATH",
+      "dropType": null,
+      "sounds": [
+        "DSBGSIT1",
+        "DSBGDTH1"
+      ],
+      "flags": [
+        "SHADOW"
+      ]
+    },
+    {
+      "id": 60,
+      "name": "HANGING_TORSO",
+      "category": "decoration",
+      "spawnState": "THING_60_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2001,
+      "name": "SHOTGUN",
+      "category": "weapon_pickup",
+      "spawnState": "THING_2001_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2002,
+      "name": "CHAINGUN",
+      "category": "weapon_pickup",
+      "spawnState": "THING_2002_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2003,
+      "name": "ROCKET_LAUNCHER",
+      "category": "weapon_pickup",
+      "spawnState": "THING_2003_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2004,
+      "name": "PLASMA_RIFLE",
+      "category": "weapon_pickup",
+      "spawnState": "THING_2004_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2005,
+      "name": "CHAINSAW",
+      "category": "weapon_pickup",
+      "spawnState": "THING_2005_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2007,
+      "name": "AMMO_CLIP",
+      "category": "pickup",
+      "spawnState": "THING_2007_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2008,
+      "name": "SHELL_BOX",
+      "category": "pickup",
+      "spawnState": "THING_2008_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2010,
+      "name": "ROCKET_BOX",
+      "category": "pickup",
+      "spawnState": "THING_2010_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2011,
+      "name": "STIMPACK",
+      "category": "pickup",
+      "spawnState": "THING_2011_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2012,
+      "name": "MEDIKIT",
+      "category": "pickup",
+      "spawnState": "THING_2012_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2013,
+      "name": "SOULSPHERE",
+      "category": "pickup",
+      "spawnState": "THING_2013_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2014,
+      "name": "HEALTH_BONUS",
+      "category": "pickup",
+      "spawnState": "THING_2014_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2015,
+      "name": "ARMOR_BONUS",
+      "category": "pickup",
+      "spawnState": "THING_2015_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2018,
+      "name": "GREEN_ARMOR",
+      "category": "pickup",
+      "spawnState": "THING_2018_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2019,
+      "name": "BLUE_ARMOR",
+      "category": "pickup",
+      "spawnState": "THING_2019_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2023,
+      "name": "BERSERK",
+      "category": "pickup",
+      "spawnState": "THING_2023_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2028,
+      "name": "FLOOR_LAMP",
+      "category": "decoration",
+      "spawnState": "THING_2028_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2035,
+      "name": "EXPLOSIVE_BARREL",
+      "category": "barrel",
+      "spawnState": "THING_2035_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "health": 20,
+      "deathState": "THING_2035_DEATH"
+    },
+    {
+      "id": 2046,
+      "name": "ROCKET",
+      "category": "pickup",
+      "spawnState": "THING_2046_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2047,
+      "name": "CELL_CHARGE",
+      "category": "pickup",
+      "spawnState": "THING_2047_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2048,
+      "name": "BULLET_BOX",
+      "category": "pickup",
+      "spawnState": "THING_2048_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2049,
+      "name": "CELL_PACK",
+      "category": "pickup",
+      "spawnState": "THING_2049_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 3001,
+      "name": "IMP",
+      "category": "monster",
+      "spawnState": "THING_3001_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "health": 60,
+      "seeState": "THING_3001_SEE",
+      "attackState": "THING_3001_ATTACK_1",
+      "painState": "THING_3001_PAIN",
+      "deathState": "THING_3001_DEATH",
+      "dropType": null,
+      "sounds": [
+        "DSBGSIT2",
+        "DSBGDTH2"
+      ]
+    },
+    {
+      "id": 3002,
+      "name": "DEMON",
+      "category": "monster",
+      "spawnState": "THING_3002_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "health": 150,
+      "seeState": "THING_3002_SEE",
+      "attackState": "THING_3002_ATTACK_1",
+      "painState": "THING_3002_PAIN",
+      "deathState": "THING_3002_DEATH",
+      "dropType": null,
+      "sounds": [
+        "DSBGSIT1",
+        "DSBGDTH1"
+      ]
+    },
+    {
+      "id": 3004,
+      "name": "ZOMBIEMAN",
+      "category": "monster",
+      "spawnState": "THING_3004_SPAWN",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "health": 20,
+      "seeState": "THING_3004_SEE",
+      "attackState": "THING_3004_ATTACK_1",
+      "painState": "THING_3004_PAIN",
+      "deathState": "THING_3004_DEATH",
+      "dropType": 2007,
+      "sounds": [
+        "DSPOSIT1",
+        "DSPODTH1"
+      ]
+    }
+  ],
+  "linedefSpecials": [
+    {
+      "id": 1,
+      "semantics": [
+        "USE",
+        "REPEAT",
+        "DOOR_OPEN_WAIT_CLOSE"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 2,
+      "semantics": [
+        "WALK",
+        "ONCE",
+        "DOOR_OPEN_STAY"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 11,
+      "semantics": [
+        "USE",
+        "ONCE",
+        "EXIT"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 23,
+      "semantics": [
+        "USE",
+        "ONCE",
+        "FLOOR_LOWER_LOWEST"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 26,
+      "semantics": [
+        "USE",
+        "REPEAT",
+        "BLUE_KEY",
+        "DOOR_OPEN_WAIT_CLOSE"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 62,
+      "semantics": [
+        "USE",
+        "REPEAT",
+        "LIFT_LOWER_WAIT_RAISE"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 88,
+      "semantics": [
+        "WALK",
+        "REPEAT",
+        "LIFT_LOWER_WAIT_RAISE"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 117,
+      "semantics": [
+        "USE",
+        "REPEAT",
+        "BLAZING_DOOR_OPEN_WAIT_CLOSE"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    }
+  ],
+  "sectorSpecials": [
+    {
+      "id": 1,
+      "semantics": [
+        "LIGHT_RANDOM_BLINK"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 7,
+      "semantics": [
+        "DAMAGE_5",
+        "DAMAGE_EVERY_32_TICS"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 9,
+      "semantics": [
+        "SECRET_ONCE"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": 12,
+      "semantics": [
+        "LIGHT_SYNC_SLOW_STROBE"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    }
+  ],
+  "weapons": [
+    {
+      "id": "FIST",
+      "thingType": null,
+      "ammoType": "NONE",
+      "readyState": "WEAPON_FIST_READY",
+      "fireState": "WEAPON_FIST_FIRE",
+      "refireState": "WEAPON_FIST_REFIRE",
+      "flashState": "WEAPON_FIST_FLASH",
+      "sounds": [
+        "DSPUNCH"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": "PISTOL",
+      "thingType": null,
+      "ammoType": "BULLET",
+      "readyState": "WEAPON_PISTOL_READY",
+      "fireState": "WEAPON_PISTOL_FIRE",
+      "refireState": "WEAPON_PISTOL_REFIRE",
+      "flashState": "WEAPON_PISTOL_FLASH",
+      "sounds": [
+        "DSPISTOL"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": "SHOTGUN",
+      "thingType": 2001,
+      "ammoType": "SHELL",
+      "readyState": "WEAPON_SHOTGUN_READY",
+      "fireState": "WEAPON_SHOTGUN_FIRE",
+      "refireState": "WEAPON_SHOTGUN_REFIRE",
+      "flashState": "WEAPON_SHOTGUN_FLASH",
+      "sounds": [
+        "DSSHOTGN",
+        "DSSGCOCK"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": "CHAINGUN",
+      "thingType": 2002,
+      "ammoType": "BULLET",
+      "readyState": "WEAPON_CHAINGUN_READY",
+      "fireState": "WEAPON_CHAINGUN_FIRE",
+      "refireState": "WEAPON_CHAINGUN_REFIRE",
+      "flashState": "WEAPON_CHAINGUN_FLASH",
+      "sounds": [
+        "DSPISTOL"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": "ROCKET_LAUNCHER",
+      "thingType": 2003,
+      "ammoType": "ROCKET",
+      "readyState": "WEAPON_ROCKET_LAUNCHER_READY",
+      "fireState": "WEAPON_ROCKET_LAUNCHER_FIRE",
+      "refireState": "WEAPON_ROCKET_LAUNCHER_REFIRE",
+      "flashState": "WEAPON_ROCKET_LAUNCHER_FLASH",
+      "sounds": [
+        "DSRLAUNC"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": "PLASMA_RIFLE",
+      "thingType": 2004,
+      "ammoType": "CELL",
+      "readyState": "WEAPON_PLASMA_RIFLE_READY",
+      "fireState": "WEAPON_PLASMA_RIFLE_FIRE",
+      "refireState": "WEAPON_PLASMA_RIFLE_REFIRE",
+      "flashState": "WEAPON_PLASMA_RIFLE_FLASH",
+      "sounds": [
+        "DSPLASMA"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "id": "CHAINSAW",
+      "thingType": 2005,
+      "ammoType": "NONE",
+      "readyState": "WEAPON_CHAINSAW_READY",
+      "fireState": "WEAPON_CHAINSAW_FIRE",
+      "refireState": "WEAPON_CHAINSAW_REFIRE",
+      "flashState": "WEAPON_CHAINSAW_FLASH",
+      "sounds": [
+        "DSSAWUP",
+        "DSSAWIDL",
+        "DSSAWFUL",
+        "DSSAWHIT"
+      ],
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    }
+  ],
+  "pickups": [
+    {
+      "thingType": 5,
+      "effect": {
+        "id": "GRANT_BLUE_KEYCARD"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 8,
+      "effect": {
+        "id": "GRANT_BACKPACK"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2007,
+      "effect": {
+        "id": "ADD_BULLETS_SMALL"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2008,
+      "effect": {
+        "id": "ADD_SHELLS_BOX"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2010,
+      "effect": {
+        "id": "ADD_ROCKETS_BOX"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2011,
+      "effect": {
+        "id": "HEAL_10_MAX_100"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2012,
+      "effect": {
+        "id": "HEAL_25_MAX_100"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2013,
+      "effect": {
+        "id": "HEAL_TO_200"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2014,
+      "effect": {
+        "id": "HEAL_1_MAX_200"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2015,
+      "effect": {
+        "id": "ADD_ARMOR_1_MAX_200"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2018,
+      "effect": {
+        "id": "SET_GREEN_ARMOR_100"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2019,
+      "effect": {
+        "id": "SET_BLUE_ARMOR_200"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2023,
+      "effect": {
+        "id": "BERSERK_HEAL_AND_POWER"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2046,
+      "effect": {
+        "id": "ADD_ROCKET_SINGLE"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2047,
+      "effect": {
+        "id": "ADD_CELLS_SMALL"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2048,
+      "effect": {
+        "id": "ADD_BULLETS_BOX"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    },
+    {
+      "thingType": 2049,
+      "effect": {
+        "id": "ADD_CELLS_LARGE"
+      },
+      "consume": true,
+      "sound": "DSITEMUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ]
+    }
+  ],
+  "states": [
+    {
+      "id": "THING_5_SPAWN",
+      "tics": 8,
+      "next": "THING_5_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "BKEY",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_8_SPAWN",
+      "tics": 8,
+      "next": "THING_8_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "BPAK",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_9_SPAWN",
+      "tics": 8,
+      "next": "THING_9_SPAWN",
+      "action": "LOOK_FOR_TARGET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SPOS",
+        "frame": "A",
+        "rotations": "ALL"
+      }
+    },
+    {
+      "id": "THING_9_SEE",
+      "tics": 3,
+      "next": "THING_9_SEE",
+      "action": "CHASE_TARGET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SPOS",
+        "frame": "A",
+        "rotations": "ALL"
+      },
+      "sound": "DSSGTSIT"
+    },
+    {
+      "id": "THING_9_ATTACK_1",
+      "tics": 8,
+      "next": "THING_9_SEE",
+      "action": "HITSCAN_ATTACK",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SPOS",
+        "frame": "B",
+        "rotations": "ALL"
+      }
+    },
+    {
+      "id": "THING_9_PAIN",
+      "tics": 4,
+      "next": "THING_9_SEE",
+      "action": "APPLY_PAIN_REACTION",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SPOS",
+        "frame": "G",
+        "rotations": "ALL"
+      },
+      "sound": "DSPOPAIN"
+    },
+    {
+      "id": "THING_9_DEATH",
+      "tics": -1,
+      "next": null,
+      "action": "CORPSE_TERMINAL",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SPOS",
+        "frame": "L",
+        "rotations": "0"
+      },
+      "sound": "DSSGTDTH"
+    },
+    {
+      "id": "THING_10_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PLAY",
+        "frame": "W",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_12_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PLAY",
+        "frame": "N",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_15_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "HEAD",
+        "frame": "L",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_17_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "N",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_18_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "POSS",
+        "frame": "L",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_19_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SPOS",
+        "frame": "L",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_20_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "TROO",
+        "frame": "M",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_21_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SKUL",
+        "frame": "K",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_24_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "POL5",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_26_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "POL6",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_43_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "GOR1",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_47_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "GOR4",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_48_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "ELEC",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_54_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "TRE2",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_58_SPAWN",
+      "tics": 8,
+      "next": "THING_58_SPAWN",
+      "action": "LOOK_FOR_TARGET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "A",
+        "rotations": "ALL"
+      }
+    },
+    {
+      "id": "THING_58_SEE",
+      "tics": 3,
+      "next": "THING_58_SEE",
+      "action": "CHASE_TARGET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "A",
+        "rotations": "ALL"
+      },
+      "sound": "DSBGSIT1"
+    },
+    {
+      "id": "THING_58_ATTACK_1",
+      "tics": 8,
+      "next": "THING_58_SEE",
+      "action": "MELEE_ATTACK",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "B",
+        "rotations": "ALL"
+      }
+    },
+    {
+      "id": "THING_58_PAIN",
+      "tics": 4,
+      "next": "THING_58_SEE",
+      "action": "APPLY_PAIN_REACTION",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "G",
+        "rotations": "ALL"
+      },
+      "sound": "DSPOPAIN"
+    },
+    {
+      "id": "THING_58_DEATH",
+      "tics": -1,
+      "next": null,
+      "action": "CORPSE_TERMINAL",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "N",
+        "rotations": "0"
+      },
+      "sound": "DSBGDTH1"
+    },
+    {
+      "id": "THING_60_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "GOR2",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2001_SPAWN",
+      "tics": 8,
+      "next": "THING_2001_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SHOT",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2002_SPAWN",
+      "tics": 8,
+      "next": "THING_2002_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "MGUN",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2003_SPAWN",
+      "tics": 8,
+      "next": "THING_2003_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "LAUN",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2004_SPAWN",
+      "tics": 8,
+      "next": "THING_2004_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PLAS",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2005_SPAWN",
+      "tics": 8,
+      "next": "THING_2005_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "CSAW",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2007_SPAWN",
+      "tics": 8,
+      "next": "THING_2007_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "CLIP",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2008_SPAWN",
+      "tics": 8,
+      "next": "THING_2008_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SBOX",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2010_SPAWN",
+      "tics": 8,
+      "next": "THING_2010_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "BROK",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2011_SPAWN",
+      "tics": 8,
+      "next": "THING_2011_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "STIM",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2012_SPAWN",
+      "tics": 8,
+      "next": "THING_2012_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "MEDI",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2013_SPAWN",
+      "tics": 8,
+      "next": "THING_2013_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SOUL",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2014_SPAWN",
+      "tics": 8,
+      "next": "THING_2014_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "BON1",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2015_SPAWN",
+      "tics": 8,
+      "next": "THING_2015_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "BON2",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2018_SPAWN",
+      "tics": 8,
+      "next": "THING_2018_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "ARM1",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2019_SPAWN",
+      "tics": 8,
+      "next": "THING_2019_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "ARM2",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2023_SPAWN",
+      "tics": 8,
+      "next": "THING_2023_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PSTR",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2028_SPAWN",
+      "tics": -1,
+      "next": null,
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "COLU",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2035_SPAWN",
+      "tics": 8,
+      "next": "THING_2035_SPAWN",
+      "action": "BARREL_IDLE",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "BAR1",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2035_DEATH",
+      "tics": -1,
+      "next": null,
+      "action": "EXPLODE_AND_DAMAGE_RADIUS",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "BAR1",
+        "frame": "B",
+        "rotations": "0"
+      },
+      "sound": "DSBAREXP"
+    },
+    {
+      "id": "THING_2046_SPAWN",
+      "tics": 8,
+      "next": "THING_2046_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "ROCK",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2047_SPAWN",
+      "tics": 8,
+      "next": "THING_2047_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "CELL",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2048_SPAWN",
+      "tics": 8,
+      "next": "THING_2048_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "AMMO",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_2049_SPAWN",
+      "tics": 8,
+      "next": "THING_2049_SPAWN",
+      "action": "PRESENT_PICKUP",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "CELP",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "THING_3001_SPAWN",
+      "tics": 8,
+      "next": "THING_3001_SPAWN",
+      "action": "LOOK_FOR_TARGET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "TROO",
+        "frame": "A",
+        "rotations": "ALL"
+      }
+    },
+    {
+      "id": "THING_3001_SEE",
+      "tics": 3,
+      "next": "THING_3001_SEE",
+      "action": "CHASE_TARGET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "TROO",
+        "frame": "A",
+        "rotations": "ALL"
+      },
+      "sound": "DSBGSIT2"
+    },
+    {
+      "id": "THING_3001_ATTACK_1",
+      "tics": 8,
+      "next": "THING_3001_ATTACK_2",
+      "action": "MELEE_ATTACK",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "TROO",
+        "frame": "B",
+        "rotations": "ALL"
+      }
+    },
+    {
+      "id": "THING_3001_ATTACK_2",
+      "tics": 8,
+      "next": "THING_3001_SEE",
+      "action": "SPAWN_IMP_FIREBALL",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "TROO",
+        "frame": "B",
+        "rotations": "ALL"
+      },
+      "sound": "DSFIRSHT"
+    },
+    {
+      "id": "THING_3001_PAIN",
+      "tics": 4,
+      "next": "THING_3001_SEE",
+      "action": "APPLY_PAIN_REACTION",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "TROO",
+        "frame": "G",
+        "rotations": "ALL"
+      },
+      "sound": "DSPOPAIN"
+    },
+    {
+      "id": "THING_3001_DEATH",
+      "tics": -1,
+      "next": null,
+      "action": "CORPSE_TERMINAL",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "TROO",
+        "frame": "M",
+        "rotations": "0"
+      },
+      "sound": "DSBGDTH2"
+    },
+    {
+      "id": "THING_3002_SPAWN",
+      "tics": 8,
+      "next": "THING_3002_SPAWN",
+      "action": "LOOK_FOR_TARGET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "A",
+        "rotations": "ALL"
+      }
+    },
+    {
+      "id": "THING_3002_SEE",
+      "tics": 3,
+      "next": "THING_3002_SEE",
+      "action": "CHASE_TARGET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "A",
+        "rotations": "ALL"
+      },
+      "sound": "DSBGSIT1"
+    },
+    {
+      "id": "THING_3002_ATTACK_1",
+      "tics": 8,
+      "next": "THING_3002_SEE",
+      "action": "MELEE_ATTACK",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "B",
+        "rotations": "ALL"
+      }
+    },
+    {
+      "id": "THING_3002_PAIN",
+      "tics": 4,
+      "next": "THING_3002_SEE",
+      "action": "APPLY_PAIN_REACTION",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "G",
+        "rotations": "ALL"
+      },
+      "sound": "DSPOPAIN"
+    },
+    {
+      "id": "THING_3002_DEATH",
+      "tics": -1,
+      "next": null,
+      "action": "CORPSE_TERMINAL",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SARG",
+        "frame": "N",
+        "rotations": "0"
+      },
+      "sound": "DSBGDTH1"
+    },
+    {
+      "id": "THING_3004_SPAWN",
+      "tics": 8,
+      "next": "THING_3004_SPAWN",
+      "action": "LOOK_FOR_TARGET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "POSS",
+        "frame": "A",
+        "rotations": "ALL"
+      }
+    },
+    {
+      "id": "THING_3004_SEE",
+      "tics": 3,
+      "next": "THING_3004_SEE",
+      "action": "CHASE_TARGET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "POSS",
+        "frame": "A",
+        "rotations": "ALL"
+      },
+      "sound": "DSPOSIT1"
+    },
+    {
+      "id": "THING_3004_ATTACK_1",
+      "tics": 8,
+      "next": "THING_3004_SEE",
+      "action": "HITSCAN_ATTACK",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "POSS",
+        "frame": "B",
+        "rotations": "ALL"
+      }
+    },
+    {
+      "id": "THING_3004_PAIN",
+      "tics": 4,
+      "next": "THING_3004_SEE",
+      "action": "APPLY_PAIN_REACTION",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "POSS",
+        "frame": "G",
+        "rotations": "ALL"
+      },
+      "sound": "DSPOPAIN"
+    },
+    {
+      "id": "THING_3004_DEATH",
+      "tics": -1,
+      "next": null,
+      "action": "CORPSE_TERMINAL",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "POSS",
+        "frame": "L",
+        "rotations": "0"
+      },
+      "sound": "DSPODTH1"
+    },
+    {
+      "id": "WEAPON_FIST_READY",
+      "tics": 1,
+      "next": "WEAPON_FIST_READY",
+      "action": "WEAPON_READY",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PUNG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_FIST_FIRE",
+      "tics": 4,
+      "next": "WEAPON_FIST_REFIRE",
+      "action": "MELEE_ATTACK",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PUNG",
+        "frame": "B",
+        "rotations": "0"
+      },
+      "sound": "DSPUNCH"
+    },
+    {
+      "id": "WEAPON_FIST_REFIRE",
+      "tics": 4,
+      "next": "WEAPON_FIST_READY",
+      "action": "CHECK_REFIRE",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PUNG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_FIST_FLASH",
+      "tics": 2,
+      "next": "WEAPON_FIST_READY",
+      "action": "EMIT_MUZZLE_FLASH",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PUNG",
+        "frame": "B",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_PISTOL_READY",
+      "tics": 1,
+      "next": "WEAPON_PISTOL_READY",
+      "action": "WEAPON_READY",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PISG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_PISTOL_FIRE",
+      "tics": 4,
+      "next": "WEAPON_PISTOL_REFIRE",
+      "action": "HITSCAN_ATTACK",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PISG",
+        "frame": "B",
+        "rotations": "0"
+      },
+      "sound": "DSPISTOL"
+    },
+    {
+      "id": "WEAPON_PISTOL_REFIRE",
+      "tics": 4,
+      "next": "WEAPON_PISTOL_READY",
+      "action": "CHECK_REFIRE",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PISG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_PISTOL_FLASH",
+      "tics": 2,
+      "next": "WEAPON_PISTOL_READY",
+      "action": "EMIT_MUZZLE_FLASH",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PISG",
+        "frame": "B",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_SHOTGUN_READY",
+      "tics": 1,
+      "next": "WEAPON_SHOTGUN_READY",
+      "action": "WEAPON_READY",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SHTG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_SHOTGUN_FIRE",
+      "tics": 4,
+      "next": "WEAPON_SHOTGUN_REFIRE",
+      "action": "SHOTGUN_ATTACK",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SHTG",
+        "frame": "B",
+        "rotations": "0"
+      },
+      "sound": "DSSHOTGN"
+    },
+    {
+      "id": "WEAPON_SHOTGUN_REFIRE",
+      "tics": 4,
+      "next": "WEAPON_SHOTGUN_READY",
+      "action": "CHECK_REFIRE",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SHTG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_SHOTGUN_FLASH",
+      "tics": 2,
+      "next": "WEAPON_SHOTGUN_READY",
+      "action": "EMIT_MUZZLE_FLASH",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SHTG",
+        "frame": "B",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_CHAINGUN_READY",
+      "tics": 1,
+      "next": "WEAPON_CHAINGUN_READY",
+      "action": "WEAPON_READY",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "CHGG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_CHAINGUN_FIRE",
+      "tics": 4,
+      "next": "WEAPON_CHAINGUN_REFIRE",
+      "action": "HITSCAN_ATTACK",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "CHGG",
+        "frame": "B",
+        "rotations": "0"
+      },
+      "sound": "DSPISTOL"
+    },
+    {
+      "id": "WEAPON_CHAINGUN_REFIRE",
+      "tics": 4,
+      "next": "WEAPON_CHAINGUN_READY",
+      "action": "CHECK_REFIRE",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "CHGG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_CHAINGUN_FLASH",
+      "tics": 2,
+      "next": "WEAPON_CHAINGUN_READY",
+      "action": "EMIT_MUZZLE_FLASH",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "CHGG",
+        "frame": "B",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_ROCKET_LAUNCHER_READY",
+      "tics": 1,
+      "next": "WEAPON_ROCKET_LAUNCHER_READY",
+      "action": "WEAPON_READY",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "MISG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_ROCKET_LAUNCHER_FIRE",
+      "tics": 4,
+      "next": "WEAPON_ROCKET_LAUNCHER_REFIRE",
+      "action": "SPAWN_ROCKET",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "MISG",
+        "frame": "B",
+        "rotations": "0"
+      },
+      "sound": "DSRLAUNC"
+    },
+    {
+      "id": "WEAPON_ROCKET_LAUNCHER_REFIRE",
+      "tics": 4,
+      "next": "WEAPON_ROCKET_LAUNCHER_READY",
+      "action": "CHECK_REFIRE",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "MISG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_ROCKET_LAUNCHER_FLASH",
+      "tics": 2,
+      "next": "WEAPON_ROCKET_LAUNCHER_READY",
+      "action": "EMIT_MUZZLE_FLASH",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "MISG",
+        "frame": "B",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_PLASMA_RIFLE_READY",
+      "tics": 1,
+      "next": "WEAPON_PLASMA_RIFLE_READY",
+      "action": "WEAPON_READY",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PLSG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_PLASMA_RIFLE_FIRE",
+      "tics": 4,
+      "next": "WEAPON_PLASMA_RIFLE_REFIRE",
+      "action": "SPAWN_PLASMA",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PLSG",
+        "frame": "B",
+        "rotations": "0"
+      },
+      "sound": "DSPLASMA"
+    },
+    {
+      "id": "WEAPON_PLASMA_RIFLE_REFIRE",
+      "tics": 4,
+      "next": "WEAPON_PLASMA_RIFLE_READY",
+      "action": "CHECK_REFIRE",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PLSG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_PLASMA_RIFLE_FLASH",
+      "tics": 2,
+      "next": "WEAPON_PLASMA_RIFLE_READY",
+      "action": "EMIT_MUZZLE_FLASH",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "PLSG",
+        "frame": "B",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_CHAINSAW_READY",
+      "tics": 1,
+      "next": "WEAPON_CHAINSAW_READY",
+      "action": "WEAPON_READY",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SAWG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_CHAINSAW_FIRE",
+      "tics": 4,
+      "next": "WEAPON_CHAINSAW_REFIRE",
+      "action": "SAW_ATTACK",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SAWG",
+        "frame": "B",
+        "rotations": "0"
+      },
+      "sound": "DSSAWUP"
+    },
+    {
+      "id": "WEAPON_CHAINSAW_REFIRE",
+      "tics": 4,
+      "next": "WEAPON_CHAINSAW_READY",
+      "action": "CHECK_REFIRE",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SAWG",
+        "frame": "A",
+        "rotations": "0"
+      }
+    },
+    {
+      "id": "WEAPON_CHAINSAW_FLASH",
+      "tics": 2,
+      "next": "WEAPON_CHAINSAW_READY",
+      "action": "EMIT_MUZZLE_FLASH",
+      "sourceIds": [
+        "plan-contract",
+        "doomwiki-behavior"
+      ],
+      "sprite": {
+        "prefix": "SAWG",
+        "frame": "B",
+        "rotations": "0"
+      }
+    }
+  ]
+}

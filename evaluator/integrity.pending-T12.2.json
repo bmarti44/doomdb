@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "task": "T12.2-EVAL",
+  "algorithm": "sha256",
+  "approval": "APPROVED AND FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-15; LIVE ACCEPTANCE PENDING T12.1, T11.2, IMPLEMENTATION, AND REAL LOCAL/CLOUD EXECUTION",
+  "dependencies": [
+    {"task":"T12.1","status":"APPROVED EVALUATOR LINEAGE PINNED; COMPLETE LIVE BASELINE REQUIRED"},
+    {"task":"T11.2","status":"APPROVED EVALUATOR LINEAGE TRANSITIVELY PINNED; LIVE S3 AND MANAGED ORDS PASS REQUIRED"},
+    {"task":"T12.2","status":"PRODUCTION OPTIMIZATION DRIVER, REAL ATTEMPTS, HUMAN BOTTLENECK REVIEW, AND LOCAL/CLOUD EVIDENCE PENDING"}
+  ],
+  "approvedBaselines": [
+    {"path":"evaluator/integrity.pending-T12.1.json","sha256":"2fcdd0f204ea7a248f29970be8a6ce56f6a18b3e3f4ff4bd2c10a9c5a7d1cd93"}
+  ],
+  "files": {
+    "evaluator/t12.2/README.md":"146747f37b8a7ccd78cac5da7d4779fe3c64926958992ddb44443248c3cfc74a",
+    "evaluator/t12.2/fixtures.json":"9ed998a41e61696419b095374725b79832d0ef056ce7b483859e8dac97402e8a",
+    "evaluator/t12.2/mutation-self-check.mjs":"3110bd7ef4341afd66bb786ccc27a68d41f6c372734074824bdb4a23b83f7c59",
+    "evaluator/t12.2/mutation-specs.json":"b78e214a9d37ffb0a08521a9f20de7c7dede3115ff3a2457e2826fcc46da58e5",
+    "evaluator/t12.2/reference.mjs":"f805e9d1aa53dbe82e8191704e0dbdfa7b804bf5664bf1ca7978c895173e4a81",
+    "evaluator/t12.2/run-visible.sh":"a544575f2cfbd0fa79b6cc5a02e0cd9853ce101526173d732a2a52b8805fbcf0",
+    "evaluator/t12.2/self-check.mjs":"67fd203540912aa77e282286d6f21590ae27f9640e539f0b20d8975e39603ef2",
+    "evaluator/t12.2/source-audit.mjs":"deb616d54125fab2c3a6988c9eb0d42662c9679ad6687908be50b0085b840b33",
+    "evaluator/t12.2/test-ids.json":"d245fe62b70b40c155c6a2c54d1314fd517024dc8c634f452f38c642d5cb5d15",
+    "evaluator/t12.2/validate-evidence.mjs":"bc268447c1a60529666a65879db1ebb609c990a745ec3bfff8c74609cf5d34d2"
+  }
+}

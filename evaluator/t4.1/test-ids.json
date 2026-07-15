@@ -1,0 +1,22 @@
+{
+  "schema":1,"task":"T4.1","tests":[
+    {"id":"T41-FIXED-INTERFACE","assertions":24,"intent":"Three standalone table SQL macros expose stable ray, ordered-hit, and nearest-solid columns keyed by session and all 320 columns."},
+    {"id":"T41-CAMERA-320-COLUMNS","assertions":320,"intent":"The relational row generator emits exactly columns zero through 319 once each without relying on insertion order."},
+    {"id":"T41-CAMERA-HALF-PIXEL","assertions":12,"intent":"Camera x uses the documented pixel-center expression so edge and two center rays remain symmetric without a zero center ray."},
+    {"id":"T41-UNNORMALIZED-RAYS","assertions":320,"intent":"Each ray retains ray dot camera direction equal to one and therefore its intersection parameter is perpendicular camera distance."},
+    {"id":"T41-FRUSTUM-SPATIAL-CANDIDATES","assertions":18,"intent":"An SDO frustum MBR filter reduces indexed linedef candidates while an exact analytic segment predicate decides every accepted hit."},
+    {"id":"T41-HAND-INTERSECTIONS","assertions":24,"intent":"Hand-calculated perpendicular, oblique, endpoint, parallel, behind-camera, determinant, t, and u cases follow Appendix B inequalities."},
+    {"id":"T41-PARALLEL-EPSILON","assertions":8,"intent":"Determinants below the fixed absolute epsilon are rejected without division and near-parallel values outside it remain testable."},
+    {"id":"T41-POSITIVE-T-BOUNDARY","assertions":8,"intent":"Intersections at or behind the positive-t epsilon are rejected while a value immediately above it is accepted."},
+    {"id":"T41-ENDPOINT-U-BOUNDARY","assertions":12,"intent":"Both segment endpoints u equal zero and one are inclusive, while values immediately outside that interval are excluded."},
+    {"id":"T41-STABLE-HIT-ORDER","assertions":24,"intent":"Equal and nearly equal hit depths preserve exact ordering by t, linedef id, seg id, and facing side without row-order dependence."},
+    {"id":"T41-FACING-SIDEDEF","assertions":24,"intent":"Player-side orientation selects the corresponding right or left sidedef and remains consistent under mirrored segment geometry."},
+    {"id":"T41-NEAREST-SOLID","assertions":320,"intent":"Every column chooses the first solid hit after analytic ordering rather than merely the nearest portal or Spatial candidate."},
+    {"id":"T41-TRANSLATION-METAMORPHIC","assertions":48,"intent":"Translating hand geometry and the pose together preserves every ray parameter, hit identity, facing side, and solid selection."},
+    {"id":"T41-MIRROR-METAMORPHIC","assertions":48,"intent":"Mirroring geometry and pose with the corresponding view-angle reflection reverses columns and preserves distances and identities."},
+    {"id":"T41-E1M1-THREE-POSES","assertions":36,"intent":"Three pinned E1M1 positions and headings match independent full-column document hashes, hit counts, and diagnostic hit tuples."},
+    {"id":"T41-NUMERIC-TOLERANCES","assertions":16,"intent":"Oracle NUMBER observations use the approved absolute t and u tolerances while discrete ids, facing, counts, and hashes stay exact."},
+    {"id":"T41-SOURCE-SET-BASED","assertions":18,"intent":"Production uses set-based SQL, CONNECT BY row generation, player rows, Spatial indexed filtering, binds, and closed-form arithmetic."},
+    {"id":"T41-SOURCE-ANTI-CHEAT","assertions":16,"intent":"Production cannot read evaluator artifacts, embed pose answers or expected hashes, inspect callers, execute dynamic SQL, or forge success."}
+  ],"declaredAssertions":1296
+}

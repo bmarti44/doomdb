@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "operation": "autonomous-sql",
+  "mode": "dry-run",
+  "sql": [{"path":"deploy/cloud/sql/health.sql","sha256":"d7213ef7eae748bd49675499d10bb5eec08fdcace84a260cd374a0a9e18d04cb"}],
+  "managed_ords_url": "https://doomdb-placeholder.adb.us-ashburn-1.oraclecloudapps.com/ords/doom/public_health/"
+}

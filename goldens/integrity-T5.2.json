@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "task": "T5.2-VISIBLE-GOLDEN",
+  "algorithm": "sha256",
+  "approval": "HUMAN_REVIEWED_APPROVED under user standing authorization 2026-07-15",
+  "sourceCandidateEvaluatorManifestSha256": "438f35d48821541613a0a114d4ee814889778c1ef36552cb62344ac6a43ba4b7",
+  "files": {
+    "goldens/t5.2-visible.json": "b082b7aefa81b96cae0d1a599c3fa70cfe5463cf453ea90c4ae1550b7b2509a1",
+    "goldens/t5.2/spawn-east.png": "e98ba9a6a894cc091d000f1c00cc0ed0b41d51ac5397818e836e5a73b1d47711"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema":1,
+  "task":"T6.2-EVAL",
+  "algorithm":"sha256",
+  "approval":"APPROVED BY USER STANDING AUTHORIZATION 2026-07-14",
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T2.2.json","sha256":"23ca7de9b0a78fe6697350911ac0800f48c9fbd9b6851daed6d10cb982b1b04b"},
+    {"path":"evaluator/integrity.pending-T2.3.json","sha256":"3f13e8dcc3294a0efa096365d3fcd7c70b043da3ff4734e912044878b140add9"},
+    {"path":"evaluator/integrity.pending-T2.4.json","sha256":"7bf6d81695ff3b7085f70107b1925e3aaf72587ead46cd096cdbd6e79e0d9354"},
+    {"path":"evaluator/integrity.pending-T3.2.json","sha256":"d617cdd9e5f8a36606d6606d6c61a514f46b3b5545f4526e48361a1c04208050"},
+    {"path":"evaluator/integrity.pending-T3.3.json","sha256":"8ccb54c64ed3e4e34ec3e1f84cda03a3b3ebe4a7ec8bf26c5688ab0b96260e37"},
+    {"path":"evaluator/integrity.pending-T3.4.json","sha256":"6f1bd528776949ca4bc4b08f3fae80b810c38c11c7a9d556be134170400f5651"},
+    {"path":"evaluator/integrity.pending-T4.1.json","sha256":"158c94e68220bbea4809f8688cb94549b07423655aaa4017b6fcaf3703c28ae6"}
+  ],
+  "reviewedPendingDependencies":[
+    {"path":"evaluator/integrity.pending-T4.2.json","sha256":"5ca1b511b7ebefddee3169a3485248d76afb07325ae7a271d790565842747155","status":"UPSTREAM CURRENT INTEGRITY; lifecycle tracked by orchestrator"},
+    {"path":"evaluator/integrity.pending-T4.3.json","sha256":"70dd7e9e847690f4fdb3662914e918b26d31b358ca546876d04dd7f074547765","status":"UPSTREAM CURRENT INTEGRITY; visual checkpoint tracked separately"},
+    {"path":"evaluator/integrity.pending-T5.1.json","sha256":"7bc8989c2259ebde17a7a485e4892096745719ff7a5cffe92669290dd0270f69","status":"UPSTREAM CURRENT INTEGRITY; lifecycle tracked by orchestrator"},
+    {"path":"evaluator/integrity.pending-T5.2.json","sha256":"7bcec752e922a2c3fb8d60a64d1f963ef9a42868550366704e25ca9eb0ce603c","status":"UPSTREAM CURRENT INTEGRITY; lifecycle tracked by orchestrator"},
+    {"path":"evaluator/integrity.pending-T5.3.json","sha256":"22fcb89c7ecea2b8716452536c33548d8d095c7a40e212b4e95c0e06112605fd","status":"UPSTREAM CURRENT INTEGRITY; lifecycle tracked by orchestrator"},
+    {"path":"evaluator/integrity.pending-T5.4.json","sha256":"9079b62a14573fcce57daa32a370bd32e4635825a8eecef043848e0bbeda1e4b","status":"UPSTREAM CURRENT INTEGRITY; lifecycle tracked by orchestrator"}
+  ],
+  "files":{
+    "evaluator/t6.2/README.md":"812a1ec3c990e5ece58d3ef7e966210aca005edd92bd7b4f226aee6726cc2932",
+    "evaluator/t6.2/expectations.json":"0e29683789ee6005c1568fb18405d95b8aef26b148834535560f6649ebc38a83",
+    "evaluator/t6.2/fixtures.json":"07fdd12a2e20f38235d7f02227b774245e1d66167e4549bbd97b083c2be4daa5",
+    "evaluator/t6.2/mutation-self-check.mjs":"bd05794caa924a896a46ae75e8fe924e6379c50037a4a2e01ca23fd46175150f",
+    "evaluator/t6.2/mutation-specs.json":"82a331bd845d8cda49cde91403c2a05aad0ff358383331f59cc3e494f5559502",
+    "evaluator/t6.2/oracle-mini-schema.sql":"7859bb478fb879e049d92bd8a503f702d7fa63945ba596da457de439e6caa561",
+    "evaluator/t6.2/oracle-mini-tests.sql":"7116616eb94b3f35c1522b5cc8f5df71469e50aebad847f6b56ca2f7f3a12be7",
+    "evaluator/t6.2/oracle-production.sql":"4169682c333ca100db82b55b8acf924acfb303ff255ddcc97a318fc7cb1254b5",
+    "evaluator/t6.2/reference.mjs":"b7194c70ee77b651b5262d513303d4813baae06e8a4520bab1095df2073982e3",
+    "evaluator/t6.2/run-visible.sh":"9b12ed19279e249472a35cb8f2ab31c91f7c3e05a2a7f6fe3a41e96cbb752f88",
+    "evaluator/t6.2/self-check.mjs":"492ef4d8a6ad79b045a7d4cb9ac843c9d2114d58d4a5a50812d28054882dcc68",
+    "evaluator/t6.2/source-audit.mjs":"6b7a3a5c8f3c2f4fe5ab9273db93f0145908bb355a337da4e9097057b78286df",
+    "evaluator/t6.2/test-ids.json":"5cd692e515e9809485334e0c48fc47774e6a34e7590558a506a5eb17d9729e6b"
+  }
+}

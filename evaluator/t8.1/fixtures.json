@@ -1,0 +1,17 @@
+{
+  "schema":1,
+  "map":"E1M1",
+  "skill":3,
+  "width":320,
+  "height":200,
+  "maxStepBatch":4,
+  "requiredLineSpecials":[1,26,62,88,117],
+  "requiredSectorBehaviors":["LIFT","SECRET"],
+  "representativeMonsterKinds":["HITSCAN","MELEE","PROJECTILE"],
+  "milestones":[
+    "SPAWN","FIRST_RESOURCE","REPRESENTATIVE_FIGHT","KEY_ACQUIRED",
+    "KEYED_DOOR_OPEN","LIFT_OPERATED","SECRET_FOUND","EXIT_TRIGGERED","INTERMISSION"
+  ],
+  "completion":{"mapStatus":"INTERMISSION","complete":1,"minimumKills":3,"minimumItems":2,"minimumSecrets":1},
+  "review":{"required":true,"status":"PENDING","approvedScriptSha":null,"approvedRouteSummarySha":null,"approvedMilestones":[],"goldenStateFrameHashes":[],"screenshotHashes":[]}
+}

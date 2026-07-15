@@ -1,0 +1,30 @@
+services:
+  evaluator:
+    build:
+      context: ..
+      dockerfile: evaluator/Dockerfile
+    read_only: true
+    init: true
+    user: "1000:1000"
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - evaluator_api
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=256m
+    volumes:
+      - ../evaluator:/workspace/evaluator:ro
+      - ../tools/mutations:/workspace/tools/mutations:ro
+      - ../goldens:/workspace/goldens:ro
+      - ${DOOM_HELD_BACK_DIR:-./empty-held-back}:/held-back:ro
+      - ../client/dist:/production/client:ro
+    environment:
+      DOOM_API_BASE_URL: http://ords:8080/ords/doom
+      DOOM_HELD_BACK_DIR: /held-back
+    working_dir: /workspace
+
+networks:
+  evaluator_api:
+    internal: true
+    name: doom_evaluator_api

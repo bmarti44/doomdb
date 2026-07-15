@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "fixture": "visible-complete.wad",
+  "fixtureBytes": 24541,
+  "fixtureSha256": "c93fe89470786182ecf7483c2151a9a0514b04f5b945f013258038abfdd48d11",
+  "wad": {"kind":"PWAD","directoryCount":29,"duplicateLookup":{"name":"DUPLUMP","occurrenceIndex":1,"bytes":[2,3]},"mapBoundary":{"marker":"E1M1","nextMarker":"E1M2","thingsCount":2}},
+  "things": [
+    {"id":0,"x":-16,"y":32,"angle":90,"type":1,"flags":7,"easy":true,"medium":true,"hard":true,"ambush":false,"notSinglePlayer":false,"unknownFlagBits":0},
+    {"id":1,"x":64,"y":-32,"angle":270,"type":3004,"flags":24,"easy":false,"medium":false,"hard":false,"ambush":true,"notSinglePlayer":true,"unknownFlagBits":0}
+  ],
+  "counts": {"linedefs":2,"sidedefs":3,"vertexes":3,"segs":2,"ssectors":2,"nodes":1,"sectors":2},
+  "spotChecks": {
+    "linedef0":{"v1":0,"v2":1,"flags":5,"special":11,"tag":7,"right":0,"left":null},
+    "sidedef0":{"xOffset":-8,"yOffset":12,"upper":"UPPER","lower":"-","middle":"ODDWALL","sector":0},
+    "vertex0":{"x":-128,"y":64},
+    "seg1":{"start":2,"end":1,"angle":49152,"linedef":1,"direction":1,"offset":20},
+    "ssector1":{"segCount":1,"firstSeg":1},
+    "node0":{"x":0,"y":0,"dx":128,"dy":-64,"children":[{"subsector":true,"id":0},{"subsector":true,"id":1}]},
+    "sector0":{"floor":-16,"ceiling":128,"floorFlat":"FLAT1","ceilingFlat":"CEIL1","light":160,"special":9,"tag":2}
+  },
+  "reject": {"sectorCount":2,"bits":[false,true,true,false]},
+  "blockmap": {"originX":-128,"originY":-64,"columns":2,"rows":1,"cells":[[0,1],[1]]},
+  "playpal": {"paletteCount":14,"palette0":{"index0":[0,1,2],"index255":[253,254,255]}},
+  "colormap": {"mapCount":34,"map0":{"index0":255,"index255":0},"map31":{"index7":248}},
+  "pnames": ["PCHTALL","SPRTA0"],
+  "textures": [
+    {"source":"TEXTURE1","name":"ODDWALL","width":3,"height":300,"patches":[{"x":-1,"y":-2,"patch":0},{"x":2,"y":1,"patch":1}]},
+    {"source":"TEXTURE2","name":"SECOND","width":5,"height":3,"patches":[{"x":0,"y":0,"patch":1}]}
+  ],
+  "patches": {
+    "PCHTALL":{"width":2,"height":300,"leftOffset":-2,"topOffset":7,"columns":[[{"top":250,"pixels":[10,11]},{"top":255,"pixels":[12,13,14]}],[{"top":0,"pixels":[0]},{"top":20,"pixels":[255]}]],"transparent":[[0,249],[252,254],[258,299]]},
+    "SPRTA0":{"sprite":"SPRT","rotation":0,"width":2,"height":3,"leftOffset":1,"topOffset":2,"opaqueTexels":[[0,0,21],[0,1,22],[0,2,23],[1,1,24]]}
+  },
+  "flat": {"name":"FLAT1","width":64,"height":64,"index0":0,"index4095":253},
+  "sound": {"name":"DSPISTOL","format":3,"sampleRate":11025,"sampleCount":4,"samples":[128,129,127,0]},
+  "music": {"name":"D_E1M1","magic":"MUS\u001a","scoreLength":2,"scoreStart":16,"primaryChannels":1,"secondaryChannels":0,"instrumentCount":0}
+}

@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "kind": "doomdb-r2-masked-diagnostic",
+  "reviewStatus": "pending-independent-visual-review",
+  "width": 320,
+  "height": 200,
+  "order": "column-row",
+  "pose": {
+    "id": "spawn-east",
+    "x": -416,
+    "y": 256,
+    "angle": 0
+  },
+  "frameSha256": "f34741d9374aa2f89eb172ed87e76e027285506d6589b61f3c77514ec0c96b81",
+  "pngSha256": "3b9dec0139697c497c5d9dbfb79a0c7292915f540ca8c44480a47a1f85a25a3b",
+  "overlayPixelCount": 7106,
+  "overlaySources": [
+    "MASKED:832:AQMETL15",
+    "MASKED:837:AQMETL15",
+    "MASKED:879:AQMETL15",
+    "MASKED:890:AQMETL15",
+    "MASKED:895:AQMETL15",
+    "MASKED:897:AQMETL15",
+    "SPRITE:166:PLAYW0",
+    "SPRITE:167:PLAYW0",
+    "SPRITE:168:HEADL0",
+    "SPRITE:170:POSSL0",
+    "SPRITE:171:POSSL0",
+    "SPRITE:176:POSSA8",
+    "SPRITE:177:POSSA1",
+    "SPRITE:178:TROOA1",
+    "SPRITE:215:STIMA0",
+    "SPRITE:238:HEADL0",
+    "SPRITE:259:MEDIA0",
+    "SPRITE:261:BON1A0",
+    "SPRITE:263:BON1A0",
+    "SPRITE:264:BON1A0",
+    "SPRITE:267:BON1A0",
+    "SPRITE:268:BON1A0",
+    "SPRITE:284:POSSA4",
+    "SPRITE:29:GOR2A0"
+  ]
+}

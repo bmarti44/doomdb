@@ -1,0 +1,20 @@
+{
+  "schema":1,"task":"T4.3-EVAL","algorithm":"sha256","approval":"APPROVED UNDER STANDING USER AUTHORIZATION 2026-07-15 AFTER T4.2 DEPENDENCY REFRESH, EVALUATOR-ONLY ORA-64630 INLINE-VIEW CORRECTION, AND FIXTURE DIAGNOSTIC WIRING CORRECTION; VISIBLE GOLDENS REMAIN PENDING HUMAN CHECKPOINT",
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.pending-T4.1.json","sha256":"158c94e68220bbea4809f8688cb94549b07423655aaa4017b6fcaf3703c28ae6"},
+    {"path":"evaluator/integrity.pending-T4.2.json","sha256":"1cd2021266edea250fd11f9d285a5cdeb3d1fe826c5b557a3d95408d4cd70429"}
+  ],
+  "files":{
+    "evaluator/t4.3/README.md":"fc422f6a3c2912eac72cd1218ca99bce5b66f55dd172d12970b6872843ed6403",
+    "evaluator/t4.3/build-observation.mjs":"de82af507997bac086d40a1b77e26916173fa0b20c3dfe4c197945d326a6eab1",
+    "evaluator/t4.3/capture-pose.sql":"994f554e54d46da62479a7b61f76f7355926fbe6be5eb8c7bb3c212a59148ee6",
+    "evaluator/t4.3/fixtures.json":"855d24d51572377d26847ee2f47541a3fdaafc9b8abbc4e4fdd77ea9e76d02da",
+    "evaluator/t4.3/mutation-self-check.mjs":"a26b5f765f3130e580de243d9da29b8cdd1a780368cb33145b921b063f1f3988",
+    "evaluator/t4.3/mutation-specs.json":"04eea03b46f942710b7950c558c44ad1a65bf902bd0cce685f06f373791a54d9",
+    "evaluator/t4.3/reference.mjs":"1770c7ab26ef2195238c5e518ffdd698ca331cc888ddbfde4eeefb7a3dd1dda4",
+    "evaluator/t4.3/run-observation.mjs":"b851509c1b7d0707a426263dd38ab13582604265663922af1ba1b2a9ba31fe12",
+    "evaluator/t4.3/self-check.mjs":"df847019b91020bc10e818871eb2f6dbc6eeee35200084a57a710c06758258b6",
+    "evaluator/t4.3/source-audit.mjs":"5c77a8d00a946fe3e23fe450521c18eae9803ebcfd6cf534cf3bd9216ba33b39",
+    "evaluator/t4.3/test-ids.json":"5ba7619461528f1dd212923b72f73a1ce3ed505184003418e60670defbd25113"
+  }
+}

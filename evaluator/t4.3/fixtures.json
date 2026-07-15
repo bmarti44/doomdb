@@ -1,0 +1,14 @@
+{
+  "schema":1,
+  "width":320,
+  "height":200,
+  "poses":[
+    {"id":"spawn-east","x":-416,"y":256,"angle":0,"eyeZ":41},
+    {"id":"spawn-north","x":-416,"y":256,"angle":90,"eyeZ":41},
+    {"id":"spawn-south","x":-416,"y":256,"angle":270,"eyeZ":41}
+  ],
+  "diagnosticColumns":[0,80,159,160,239,319],
+  "diagnosticPixels":[[0,0],[0,199],[80,50],[159,99],[160,100],[239,149],[319,0],[319,199]],
+  "syntheticPattern":"cidx=floor_mod(column*17+row*31+floor(row/11)*7,256)",
+  "humanApproval":{"required":true,"status":"PENDING","goldenHashes":[]}
+}

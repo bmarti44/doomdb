@@ -1,0 +1,27 @@
+{
+  "schema":1,
+  "definitions":[
+    {"eventType":"MAP_START","kind":"music","asset":"D_E1M1","volume":255,"separation":128},
+    {"eventType":"WEAPON_PISTOL_FIRE","kind":"sound","asset":"DSPISTOL","volume":255,"separation":128},
+    {"eventType":"PICKUP","kind":"sound","asset":"DSITEMUP","volume":255,"separation":128},
+    {"eventType":"DOOR_OPEN","kind":"sound","asset":"DSDOROPN","volume":240,"separation":180},
+    {"eventType":"MONSTER_WAKE","kind":"sound","asset":"DSPOSIT1","volume":220,"separation":80},
+    {"eventType":"MONSTER_PAIN","kind":"sound","asset":"DSPOPAIN","volume":220,"separation":128},
+    {"eventType":"MONSTER_DEATH","kind":"sound","asset":"DSPODTH1","volume":240,"separation":128},
+    {"eventType":"BARREL_EXPLODE","kind":"sound","asset":"DSBAREXP","volume":255,"separation":128},
+    {"eventType":"PLAYER_PAIN","kind":"sound","asset":"DSPLPAIN","volume":255,"separation":128}
+  ],
+  "transitions":[
+    {"tic":0,"eventOrdinal":0,"eventClass":0,"sourceId":0,"targetId":0,"eventType":"MAP_START"},
+    {"tic":7,"eventOrdinal":4,"eventClass":30,"sourceId":20,"targetId":1,"eventType":"MONSTER_WAKE"},
+    {"tic":7,"eventOrdinal":2,"eventClass":10,"sourceId":1,"targetId":10,"eventType":"WEAPON_PISTOL_FIRE"},
+    {"tic":7,"eventOrdinal":3,"eventClass":20,"sourceId":1,"targetId":40,"eventType":"PICKUP"},
+    {"tic":8,"eventOrdinal":0,"eventClass":10,"sourceId":1,"targetId":1,"eventType":"CONTROL_AUTOMAP"},
+    {"tic":8,"eventOrdinal":5,"eventClass":40,"sourceId":20,"targetId":1,"eventType":"MONSTER_PAIN"},
+    {"tic":9,"eventOrdinal":1,"eventClass":25,"sourceId":7,"targetId":0,"eventType":"DOOR_OPEN"},
+    {"tic":10,"eventOrdinal":1,"eventClass":40,"sourceId":20,"targetId":1,"eventType":"MONSTER_DEATH"},
+    {"tic":10,"eventOrdinal":2,"eventClass":45,"sourceId":30,"targetId":0,"eventType":"BARREL_EXPLODE"},
+    {"tic":11,"eventOrdinal":1,"eventClass":50,"sourceId":20,"targetId":1,"eventType":"PLAYER_PAIN"}
+  ],
+  "expectedTuples":[[0,0,"D_E1M1",255,128],[7,0,"DSPISTOL",255,128],[7,1,"DSITEMUP",255,128],[7,2,"DSPOSIT1",220,80],[8,0,"DSPOPAIN",220,128],[9,0,"DSDOROPN",240,180],[10,0,"DSPODTH1",240,128],[10,1,"DSBAREXP",255,128],[11,0,"DSPLPAIN",255,128]]
+}

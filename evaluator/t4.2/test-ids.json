@@ -1,0 +1,22 @@
+{"schema":1,"task":"T4.2","declaredAssertions":384426,"tests":[
+ {"id":"T42-INTERFACE","assertions":8,"intent":"The reviewed bound table-macro interface and its five fixed output columns exist as valid Oracle objects."},
+ {"id":"T42-DENSE-CARDINALITY","assertions":64003,"intent":"Every render contains exactly 64,000 unique coordinate rows and all three semantic layers are represented."},
+ {"id":"T42-COMPLETE-COORDINATES","assertions":128000,"intent":"Every column 0 through 319 owns every row 0 through 199 exactly once, without gaps, duplicates, or out-of-range coordinates."},
+ {"id":"T42-PALETTE-RANGE","assertions":64000,"intent":"Every canonical output is a non-null integer palette index in the inclusive range zero through 255."},
+ {"id":"T42-MINI-FRAME","assertions":52,"intent":"A hand-authored patterned mini-map independently fixes projection boundaries and floor, ceiling, wall palette pixels."},
+ {"id":"T42-E1M1-SPAWN-EAST","assertions":52,"intent":"Pinned E1M1 spawn facing east matches independent layer counts, spot pixels, and the complete raw-byte frame hash."},
+ {"id":"T42-E1M1-SPAWN-NORTH","assertions":52,"intent":"Pinned E1M1 spawn facing north matches independent layer counts, spot pixels, and the complete raw-byte frame hash."},
+ {"id":"T42-E1M1-SPAWN-SOUTH","assertions":52,"intent":"Pinned E1M1 spawn facing south matches independent layer counts, spot pixels, and the complete raw-byte frame hash."},
+ {"id":"T42-WALL-TEXTURE","assertions":24,"intent":"Solid walls sample dense relational texture texels using facing side, seg distance, and deterministic role selection."},
+ {"id":"T42-FLOOR-REVERSE-PROJECTION","assertions":24,"intent":"Floor pixels use half-row reverse projection, negative-safe floor modulus, and the nearest hit facing sector flat."},
+ {"id":"T42-CEILING-REVERSE-PROJECTION","assertions":24,"intent":"Ceiling pixels use half-row reverse projection, negative-safe floor modulus, and the nearest hit facing sector flat."},
+ {"id":"T42-COLORMAP-LIGHT","assertions":24,"intent":"All semantic layers pass raw texels through the floored and clamped sector-light COLORMAP band."},
+ {"id":"T42-OFFSETS-PEGGING","assertions":24,"intent":"Wall sampling honors seg and sidedef x offsets, sidedef y offset, and upper/lower unpegged alignment."},
+ {"id":"T42-R1-NEAREST-SECTOR","assertions":8,"intent":"R1 deliberately uses the nearest solid facing sector for floor and ceiling and documents that temporary limitation."},
+ {"id":"T42-SESSION-EQUIVALENCE","assertions":64001,"intent":"Two distinct bound session tokens with identical pose and state produce byte-identical 64,000-pixel frames."},
+ {"id":"T42-RERUN-DETERMINISM","assertions":64001,"intent":"Repeated evaluation in one database session produces identical rows and the same canonical frame hash."},
+ {"id":"T42-CANONICAL-HASH","assertions":4,"intent":"Four complete independent frames are SHA-256 hashed over palette bytes in column-major coordinate order."},
+ {"id":"T42-SOURCE-SET-BASED","assertions":30,"intent":"Production rendering is bound relational SQL with no procedural pixel or wall loops, recursion, or dynamic SQL."},
+ {"id":"T42-ANTI-CHEAT","assertions":25,"intent":"Production contains no fixture poses, expected hashes, evaluator paths, caller inspection, test flags, or reference output."},
+ {"id":"T42-MUTATION-COVERAGE","assertions":18,"intent":"All isolated semantic renderer mutations have an explicit independent witness and named detecting test."}
+]}

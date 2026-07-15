@@ -1,0 +1,20 @@
+{
+  "task":"T12.2",
+  "tests":[
+    {"id":"T122-BASELINE-LINEAGE","assertions":12,"intent":"The optimization run pins the approved complete T12.1 baseline, exact replay identity, public decompressed schema digest and approved golden manifest before any change is attempted."},
+    {"id":"T122-APPEND-ONLY-JOURNAL","assertions":40,"intent":"A complete contiguous attempt journal records start and finish events, hash-chain ancestry, source revision, diff identity, measurement outcome, decision and publication state for every experiment including regressions."},
+    {"id":"T122-PROFILE-TARGET","assertions":24,"intent":"Every attempt names the dominant stage from the immediately preceding measured accepted state, includes observed stage evidence, and receives explicit human confirmation that work targeted a real bottleneck."},
+    {"id":"T122-DISTINCT-ALLOWED-CHANGES","assertions":24,"intent":"Every experiment has a nonempty source diff and fingerprint in an allowed SQL, transport or client optimization class, while consecutive stopping attempts are technically distinct."},
+    {"id":"T122-FIXED-REPLAYS","assertions":1200,"intent":"Baseline and every optimization attempt contain the exact fixed 300-frame 320x200 replay with 30 warm frames and 270 evaluator-owned externally timed measured frames."},
+    {"id":"T122-RAW-STATISTICS","assertions":80,"intent":"Attempt p50, p95, effective FPS, stage distributions and improvement percentages are independently derived from complete raw observations rather than copied summaries or marketing estimates."},
+    {"id":"T122-GOLDEN-INVARIANCE","assertions":40,"intent":"Public decompressed response schema and every approved correctness golden remain pinned to baseline digests before and after each attempted optimization, including rolled-back regressions."},
+    {"id":"T122-CORRECTNESS-GATES","assertions":40,"intent":"Every attempt records an unskipped complete correctness gate with exact declared assertion totals and a content-addressed machine report before its performance result may influence selection."},
+    {"id":"T122-MUTATION-GATES","assertions":40,"intent":"Every attempt reruns all required mutation operators, records exact killed and required totals with no survivors, and retains the content-addressed machine report."},
+    {"id":"T122-REGRESSION-RETENTION","assertions":16,"intent":"Negative and non-improving results remain in the contiguous ledger with raw artifacts and an explicit accepted or rolled-back decision; no result can be silently omitted or renumbered."},
+    {"id":"T122-SECTION-66-STOP","assertions":20,"intent":"Execution stops only after the final two technically distinct bottleneck-targeted attempts each improve median latency by less than five percent versus the best accepted state then available."},
+    {"id":"T122-FINAL-LOCAL-CLOUD","assertions":600,"intent":"The selected best revision is independently replayed on local and cloud stacks, preserving identity and producing complete externally measured samples plus directly derived p50, p95 and effective FPS."},
+    {"id":"T122-NO-MARKETING-ESTIMATE","assertions":16,"intent":"The final report states highest verified local and cloud FPS as direct observations, identifies their selected revision and raw evidence, and contains no projected, estimated or portable-threshold claim."},
+    {"id":"T122-RAW-PROVENANCE","assertions":72,"intent":"Journal, per-attempt samples, diffs, correctness, mutations, reports and final environment evidence are atomic content-addressed safe-path artifacts with UTC bounds and evaluator-owned timing."},
+    {"id":"T122-REDACTION-FAIL-CLOSED","assertions":24,"intent":"Recursive evidence scanning rejects secrets and endpoints, while missing production, ancestry, cloud proof, raw evidence, database observations, synthetic markers or any validation exception prevents PASS."}
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "scenes": [
+    {"name":"window","startSector":0,"sectors":[{"id":0,"floor":0,"ceiling":128},{"id":1,"floor":32,"ceiling":96}],"walls":[{"id":10,"x1":8,"y1":8,"x2":8,"y2":-8,"right":0,"left":1},{"id":11,"x1":16,"y1":8,"x2":16,"y2":-8,"right":1,"left":null}]},
+    {"name":"steps","startSector":0,"sectors":[{"id":0,"floor":0,"ceiling":128},{"id":1,"floor":16,"ceiling":128},{"id":2,"floor":32,"ceiling":128}],"walls":[{"id":20,"x1":8,"y1":8,"x2":8,"y2":-8,"right":0,"left":1},{"id":21,"x1":16,"y1":8,"x2":16,"y2":-8,"right":1,"left":2},{"id":22,"x1":24,"y1":8,"x2":24,"y2":-8,"right":2,"left":null}]},
+    {"name":"closed-door","startSector":0,"sectors":[{"id":0,"floor":0,"ceiling":128},{"id":1,"floor":0,"ceiling":0}],"walls":[{"id":30,"x1":8,"y1":8,"x2":8,"y2":-8,"right":0,"left":1},{"id":31,"x1":16,"y1":8,"x2":16,"y2":-8,"right":1,"left":null}]},
+    {"name":"open-door","startSector":0,"sectors":[{"id":0,"floor":0,"ceiling":128},{"id":1,"floor":0,"ceiling":80}],"walls":[{"id":32,"x1":8,"y1":8,"x2":8,"y2":-8,"right":0,"left":1},{"id":33,"x1":16,"y1":8,"x2":16,"y2":-8,"right":1,"left":null}]},
+    {"name":"overlap","startSector":0,"sectors":[{"id":0,"floor":0,"ceiling":128},{"id":1,"floor":0,"ceiling":128}],"walls":[{"id":40,"segId":4,"x1":8,"y1":8,"x2":8,"y2":-8,"right":0,"left":1},{"id":41,"segId":3,"x1":8,"y1":8,"x2":8,"y2":-8,"right":0,"left":1},{"id":42,"x1":16,"y1":8,"x2":16,"y2":-8,"right":1,"left":null}]},
+    {"name":"vertex-tie","startSector":0,"sectors":[{"id":0,"floor":0,"ceiling":128},{"id":1,"floor":8,"ceiling":120},{"id":2,"floor":16,"ceiling":112}],"walls":[{"id":50,"x1":8,"y1":8,"x2":8,"y2":0,"right":0,"left":1},{"id":51,"x1":8,"y1":0,"x2":8,"y2":-8,"right":1,"left":2},{"id":52,"x1":16,"y1":8,"x2":16,"y2":-8,"right":2,"left":null}]},
+    {"name":"nested","startSector":0,"sectors":[{"id":0,"floor":0,"ceiling":128},{"id":1,"floor":8,"ceiling":120},{"id":2,"floor":16,"ceiling":112},{"id":3,"floor":24,"ceiling":104}],"walls":[{"id":60,"x1":8,"y1":8,"x2":8,"y2":-8,"right":0,"left":1},{"id":61,"x1":16,"y1":8,"x2":16,"y2":-8,"right":1,"left":2},{"id":62,"x1":24,"y1":8,"x2":24,"y2":-8,"right":2,"left":3},{"id":63,"x1":32,"y1":8,"x2":32,"y2":-8,"right":3,"left":null}]},
+    {"name":"open-range","startSector":0,"farDistance":64,"sectors":[{"id":0,"floor":0,"ceiling":128},{"id":1,"floor":0,"ceiling":128}],"walls":[{"id":70,"x1":8,"y1":8,"x2":8,"y2":-8,"right":0,"left":1}]}
+  ],
+  "pose":{"x":0,"y":0,"angle":0},
+  "translation":{"dx":173,"dy":-91},
+  "mirror":{"axisX":40}
+}

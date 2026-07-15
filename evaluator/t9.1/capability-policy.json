@@ -1,0 +1,8 @@
+{
+  "schema":1,
+  "capability":"Oracle SQL MODEL",
+  "status":"REQUIRED_NO_FALLBACK",
+  "minimumEvidence":["reports/oracle-capabilities.md MODEL_OK","live parse and execution of evaluator MODEL probe","production USER_SOURCE contains exactly one textual MODEL clause"],
+  "failurePolicy":"Any absence, parse failure, runtime failure, or full-size failure blocks T9.1. Do not substitute PL/SQL, recursive SQL, client generation, precomputed rows, fewer frames, or smaller dimensions.",
+  "documentation":"https://docs.oracle.com/en/database/oracle/oracle-database/23/dwhsg/sql-modeling-data-warehouses.html"
+}

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "package": "DOOM_API",
+  "healthView": "PUBLIC_HEALTH",
+  "procedures": ["NEW_GAME", "STEP", "SAVE_GAME", "LOAD_GAME", "START_REPLAY", "STEP_REPLAY", "GET_ASSET"],
+  "arguments": {
+    "NEW_GAME": [["P_SKILL","IN","NUMBER"],["P_SESSION","OUT","VARCHAR2"],["P_PAYLOAD","OUT","BLOB"]],
+    "STEP": [["P_SESSION","IN","VARCHAR2"],["P_COMMANDS","IN","CLOB"],["P_PAYLOAD","OUT","BLOB"]],
+    "SAVE_GAME": [["P_SESSION","IN","VARCHAR2"],["P_SLOT","IN","NUMBER"],["P_STATE_SHA","OUT","VARCHAR2"]],
+    "LOAD_GAME": [["P_SESSION","IN","VARCHAR2"],["P_SLOT","IN","NUMBER"],["P_PAYLOAD","OUT","BLOB"]],
+    "START_REPLAY": [["P_SESSION","IN","VARCHAR2"],["P_FROM_TIC","IN","NUMBER"],["P_TO_TIC","IN","NUMBER"],["P_REPLAY_ID","OUT","VARCHAR2"]],
+    "STEP_REPLAY": [["P_REPLAY_ID","IN","VARCHAR2"],["P_PAYLOAD","OUT","BLOB"]],
+    "GET_ASSET": [["P_ASSET_NAME","IN","VARCHAR2"],["P_PAYLOAD","OUT","BLOB"],["P_MEDIA_TYPE","OUT","VARCHAR2"]]
+  },
+  "commandKeys": ["seq","turn","forward","strafe","run","fire","use","weapon","pause","automap","menu","cheat"],
+  "validBatch": {"v":1,"commands":[{"seq":1,"turn":0,"forward":1,"strafe":0,"run":0,"fire":0,"use":0,"weapon":0,"pause":0,"automap":0,"menu":"NONE","cheat":""}]},
+  "limits": {"requestBytes":65536,"maxCommands":4,"tokenBytes":16,"tokenHexChars":32},
+  "payload": {"keys":["v","tic","w","h","mode","state_sha","frame_sha","cols","audio","complete"],"v":1,"w":320,"h":200},
+  "assets": [{"name":"PLAYPAL","mediaType":"application/octet-stream"},{"name":"GENMIDI","mediaType":"application/octet-stream"},{"name":"DSPISTOL","mediaType":"audio/x-doom"}],
+  "errors": ["invalid-skill","unknown-session","expired-session","oversize-request","empty-command-list","too-many-commands","unknown-json-key","missing-json-key","fractional-control","out-of-range-control","gapped-sequence","older-sequence","conflicting-retry","unknown-slot","invalid-replay-range","unknown-replay","asset-traversal","asset-not-allowlisted","concurrent-step"],
+  "forbiddenCors": ["*","null"]
+}

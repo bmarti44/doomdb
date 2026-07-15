@@ -1,0 +1,15 @@
+{
+  "schema":1,
+  "width":320,
+  "fovDegrees":90,
+  "handMap":{
+    "vertices":[{"id":0,"x":0,"y":-64},{"id":1,"x":0,"y":64},{"id":2,"x":128,"y":-64},{"id":3,"x":128,"y":64},{"id":4,"x":64,"y":-64},{"id":5,"x":64,"y":64}],
+    "segments":[{"start":0,"end":1},{"start":2,"end":3},{"start":4,"end":5}],
+    "pose":{"x":-32,"y":0,"angle":0},
+    "transform":{"translateX":700,"translateY":-900,"mirrorAxisX":384}
+  },
+  "parallelCase":{"pose":{"x":0,"y":0,"angle":0},"ray":{"rayX":1,"rayY":0},"v1":{"x":8,"y":2},"v2":{"x":20,"y":2}},
+  "behindCase":{"pose":{"x":0,"y":0,"angle":0},"ray":{"rayX":1,"rayY":0},"v1":{"x":-8,"y":-2},"v2":{"x":-8,"y":2}},
+  "vertexTie":{"pose":{"x":0,"y":0,"angle":0},"ray":{"rayX":1,"rayY":0},"segments":[{"id":9,"v1":{"x":8,"y":0},"v2":{"x":8,"y":6}},{"id":4,"v1":{"x":8,"y":-6},"v2":{"x":8,"y":0}}]},
+  "e1m1Poses":[{"name":"spawn-east","x":-416,"y":256,"angle":0},{"name":"spawn-north","x":-416,"y":256,"angle":90},{"name":"central-west","x":128,"y":256,"angle":180}]
+}

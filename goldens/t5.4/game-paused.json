@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "kind": "doomdb-r2-presentation-diagnostic",
+  "reviewStatus": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+  "width": 320,
+  "height": 200,
+  "order": "column-row",
+  "state": {
+    "id": "game-paused",
+    "mode": "GAME",
+    "paused": 1,
+    "menu": "NONE",
+    "automap": "OFF",
+    "status": "ACTIVE",
+    "weapon": "PISTOL",
+    "health": 100,
+    "bullets": 50,
+    "shells": 8,
+    "blue": 0
+  },
+  "frameSha256": "40d36996d23b77f443845bfec7ecd1ad2a9ca3234bc3203d6706d87de11d39a2",
+  "pngSha256": "c2e8532f802e4e12daed12a4493a495b15fdcd07eb432225c8f1b5d79fa651bf",
+  "sourceCounts": {
+    "WORLD": 46295,
+    "HUD_PATCH": 8820,
+    "TEXT": 1420,
+    "MASKED": 4738,
+    "PAUSE": 665,
+    "WEAPON": 2062
+  }
+}

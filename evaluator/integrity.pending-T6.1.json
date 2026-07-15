@@ -1,0 +1,30 @@
+{
+  "schema":1,
+  "task":"T6.1-EVAL",
+  "algorithm":"sha256",
+  "approval":"APPROVED BY USER 2026-07-14 (standing approval)",
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"}
+  ],
+  "reviewedPendingDependencies":[
+    {"path":"evaluator/integrity.pending-T5.4.json","sha256":"9079b62a14573fcce57daa32a370bd32e4635825a8eecef043848e0bbeda1e4b","status":"upstream evaluator/implementation lineage remains orchestrator-controlled"}
+  ],
+  "files":{
+    "evaluator/t6.1/README.md":"527af65693c6ac396e109ebea8c66c2989d948c1e527f09a09345c42d62aa37d",
+    "evaluator/t6.1/concurrency-assert.sql":"b958a081ef9b63a64bee9353fc61c321b45ca0548f589d176c6e3ccd3244a2ba",
+    "evaluator/t6.1/concurrency-setup.sql":"f85b7a37d56ca5e03e4fd7bf0e4f8ff56ebced2e714a0ea2ebfd74b4e78eaac0",
+    "evaluator/t6.1/concurrency-worker-conflict.sql":"ca0516bb8aeab26da552677fca75a700a5f290f46a3ac09bb16fc51b8000e014",
+    "evaluator/t6.1/concurrency-worker.sql":"27172dec6a7a09c4ef5c490d77531d3d23a7131b2dc2820e90f5dfd7d1ccbe47",
+    "evaluator/t6.1/expectations.json":"e1993b2321c5af00e7c461b5953d95f01986e56a3ea292b665520a2d2dffce10",
+    "evaluator/t6.1/fixtures.json":"be95f0fc1a45ddc6f738a58d93b5ac5df3e8d3a87af63d122b75fb0d34a36342",
+    "evaluator/t6.1/mutation-self-check.mjs":"cb7f99b3db2ae9ba0e78bba26616769c8f9dac80ad49ec025ccf6ff5b3f2e0bc",
+    "evaluator/t6.1/mutation-specs.json":"9f22b7e124a31ba39aa8a2c66eb1c0340c96b4cc9c956e3008bed8beb19253b2",
+    "evaluator/t6.1/oracle-production.sql":"b540d02a967fcaec8aeb53049e98e9493ef0d1e8d6864f98240ad4a27f70a462",
+    "evaluator/t6.1/reference.mjs":"8b8c555dc6aed022735722a9d3bedf357af91472e8512e40068c1ac61b4dbfea",
+    "evaluator/t6.1/run-concurrency.sh":"b18ea6e67f375dccd671786230eaa1748a0fe257d09f2e811df2cf2d18a712eb",
+    "evaluator/t6.1/run-visible.sh":"7fb6c7740a54dfc7fbe94c71db61f3615a37961bba7fc5dfbdb64ec4e136d509",
+    "evaluator/t6.1/self-check.mjs":"b5f9e4f5f27d04f38253265a3799e7c4b9947e0274c78952a99232c6d0845d2d",
+    "evaluator/t6.1/source-audit.mjs":"6b0d57634399812e75d25653492db863e9621a7a74a3159efe7bbf9898810754",
+    "evaluator/t6.1/test-ids.json":"f7b25996ee63926f731a5d9c34b2b6f52f1ea6530d8879b2e1ab55a4e8b91f7a"
+  }
+}

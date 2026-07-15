@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "task": "T11.2",
+  "awsCli": "2.34.36",
+  "playwright": "1.61.0",
+  "sourceDirectory": "client/src",
+  "entryDocument": "index.html",
+  "allowedExtensions": [".html", ".js", ".css", ".png", ".ico", ".svg", ".webmanifest"],
+  "forbiddenFragments": [".map", "evaluator", "goldens", "reports", "tools", "vendor", "secrets", "wallet", ".env", ".wad", "fixture", "snapshot"],
+  "contentTypes": {
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+    ".svg": "image/svg+xml",
+    ".webmanifest": "application/manifest+json"
+  },
+  "cachePolicy": {
+    "index": "no-cache, no-store, must-revalidate",
+    "mutable": "no-cache, must-revalidate",
+    "immutable": "public, max-age=31536000, immutable"
+  },
+  "ancestry": {
+    "t10_2": "76674b880fad2197d2b8da01c415a76ccf8675cb5d459ce597f250b97d6f42d1",
+    "t10_3": "530095621f343aae15a6dcbe1c19fe1164c17e93f23e412279150a3e5277ef3e",
+    "t11_1": "04d1282dfc05f918a471737ccef1b065232c4d4ff7977abbf675dda3f03459ea"
+  }
+}

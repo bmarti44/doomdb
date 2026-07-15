@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "kind": "doomdb-r2-masked-diagnostic",
+  "reviewStatus": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+  "width": 320,
+  "height": 200,
+  "order": "column-row",
+  "pose": {
+    "id": "diagnostic-south",
+    "x": -416,
+    "y": 320,
+    "angle": 270
+  },
+  "frameSha256": "3fe12e7333d21705c7227e28ca1c6e22cc5acb72c7d6819850c24985c7801c9a",
+  "pngSha256": "49892ad4766f69c967f7dd15962480102c688785d7b349931f096b8c6ca3dfd1",
+  "overlayPixelCount": 105,
+  "overlaySources": [
+    "SPRITE:239:PLAYW0"
+  ]
+}

@@ -1,0 +1,22 @@
+{"schema":1,"task":"T6.1","declaredAssertions":430,"tests":[
+ {"id":"T61-FIXED-INTERFACE","assertions":12,"intent":"The reviewed internal DOOM_TIC_TX.APPLY_BATCH procedure accepts a token and compact command CLOB and returns one cached response BLOB."},
+ {"id":"T61-EXACT-JSON","assertions":32,"intent":"Envelope and command objects use version one, exact keys, integer domains, one through four commands, and the sixty-four KiB byte ceiling."},
+ {"id":"T61-CONSECUTIVE-BATCH","assertions":24,"intent":"Accepted command sequences are consecutive both inside each batch and against the session last-command sequence under a session row lock."},
+ {"id":"T61-LOGICAL-35HZ","assertions":14,"intent":"Every accepted command advances exactly one persisted logical tic at the fixed thirty-five Hertz contract without reading elapsed wall-clock time."},
+ {"id":"T61-APPENDIX-F-CONTROLS","assertions":28,"intent":"Pause, menu, automap, and cheat controls are applied before later tic stages and their outputs retain deterministic control ordering."},
+ {"id":"T61-EVENT-ORDINALS","assertions":24,"intent":"Events within each tic have dense zero-based ordinals in reviewed semantic order and append-only primary keys remain unique."},
+ {"id":"T61-COMMAND-PERSISTENCE","assertions":28,"intent":"Every accepted input is stored once with its tic, ordinal, normalized fields, and independent canonical per-command SHA-256."},
+ {"id":"T61-BATCH-CACHE","assertions":26,"intent":"A successful batch stores its exact range, canonical batch hash, state hash, tic range, and byte-identical response for deterministic retry."},
+ {"id":"T61-EXACT-RETRY","assertions":20,"intent":"An exact retry of the last accepted range and canonical content returns cached bytes without advancing state or duplicating commands or events."},
+ {"id":"T61-CONFLICT-ROLLBACK","assertions":18,"intent":"A repeated accepted range with different canonical content raises conflict and leaves all session state, input, output, and history rows unchanged."},
+ {"id":"T61-OLD-ROLLBACK","assertions":16,"intent":"An uncached range at or below the accepted sequence frontier raises old-command error and atomically applies no row changes."},
+ {"id":"T61-GAP-ROLLBACK","assertions":16,"intent":"A range starting above the next required sequence raises gap error and atomically applies no state, command, event, history, or cache rows."},
+ {"id":"T61-MALFORMED-ROLLBACK","assertions":44,"intent":"Invalid syntax, extra or missing keys, noninteger controls, bad ranges, oversized input, empty arrays, and five-command batches all roll back."},
+ {"id":"T61-STATE-HASH","assertions":30,"intent":"Canonical logical state hashing covers ordered session, player, object, sector, line, mover, switch, RNG, and Appendix F version data but not token identity."},
+ {"id":"T61-REPRODUCIBLE-STATE","assertions":18,"intent":"Two different session tokens with identical initial logical rows and command documents produce identical ordered rows, events, and state hashes."},
+ {"id":"T61-SPLIT-BATCH-METAMORPHIC","assertions":16,"intent":"Applying a consecutive command stream one at a time or in reviewed batches reaches identical logical state and ordered command/event rows."},
+ {"id":"T61-CONCURRENT-IDENTICAL","assertions":18,"intent":"Two real Oracle sessions submitting one identical batch concurrently serialize on the session row and both receive identical bytes while applying once."},
+ {"id":"T61-CONCURRENT-CONFLICT","assertions":12,"intent":"Two real Oracle sessions submitting conflicting content for one range produce exactly one commit and one conflict with no mixed partial state."},
+ {"id":"T61-PAYLOAD-FAILURE-ROLLBACK","assertions":8,"intent":"If response payload construction raises, no transaction-owned logical state, input, event, history, or response row is committed."},
+ {"id":"T61-SOURCE-MUTATIONS","assertions":26,"intent":"Set-based transaction source, anti-cheat restrictions, integrity ancestry, concurrency health, and all semantic mutations fail closed."}
+]}

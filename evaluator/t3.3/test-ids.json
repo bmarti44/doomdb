@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "task": "T3.3",
+  "tests": [
+    {"id":"T33-MACRO-INTERFACE","assertions":12,"intent":"The fixed table SQL macro exposes the reviewed bind and result-column contract without overloads."},
+    {"id":"T33-CONNECT-BY-SOURCE","assertions":16,"intent":"Production traversal starts at the last node and uses CONNECT BY rather than recursion, dynamic SQL, or procedural loops."},
+    {"id":"T33-HAND-SIDE-CASES","assertions":14,"intent":"Independent hand calculations cover all axis signs, both non-axis signs, and equality on the partition."},
+    {"id":"T33-AXIS-TIE-SEMANTICS","assertions":16,"intent":"Vertical and horizontal equality follow the explicit sign-sensitive R_PointOnSide-compatible cases."},
+    {"id":"T33-NONAXIS-CROSS","assertions":12,"intent":"Non-axis traversal selects side zero only for strictly positive plan-contract cross products."},
+    {"id":"T33-ROOT-LAST-NODE","assertions":8,"intent":"Traversal begins at maximum node id 680 and its first path component reflects the root decision."},
+    {"id":"T33-CHILD-FLAG-DECODE","assertions":10,"intent":"The 0x8000 child flag is recognized and stripped while ordinary node child ids remain nodes."},
+    {"id":"T33-FACING-SIDEDEF-SECTOR","assertions":10,"intent":"A leaf sector comes from its first seg and the seg direction selects the facing right or left sidedef."},
+    {"id":"T33-SPAWN-SECTOR-140","assertions":8,"intent":"Pinned player-one thing 157 resolves through the independent path to subsector 115 and sector 140."},
+    {"id":"T33-ALL-THINGS-PROBES","assertions":292,"intent":"Every one of the 292 pinned THINGS coordinates matches its independently decoded subsector, sector, depth, and path tuple."},
+    {"id":"T33-BOUNDARY-PROBES","assertions":15,"intent":"Points immediately below, exactly on, and immediately above the root partition preserve strict tie semantics."},
+    {"id":"T33-OUTSIDE-COORDINATES","assertions":10,"intent":"Large coordinates on both sides traverse deterministically without extent clamping or null output."},
+    {"id":"T33-DETERMINISTIC-PATH","assertions":10,"intent":"Repeated and reordered bind calls produce identical root-to-leaf path signatures and final rows."},
+    {"id":"T33-BIND-SAFETY","assertions":14,"intent":"Pose coordinates remain macro parameters and caller binds rather than embedded fixture-specific constants."},
+    {"id":"T33-SOURCE-ANTI-CHEAT","assertions":8,"intent":"Production BSP code cannot read evaluator artifacts, embed approved hashes, or branch on test and process state."}
+  ],
+  "declaredAssertions": 455
+}

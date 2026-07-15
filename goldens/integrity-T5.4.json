@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "task": "T5.4-VISIBLE-GOLDEN",
+  "algorithm": "sha256",
+  "approval": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+  "sourceCandidateEvaluatorManifestSha256": "77236041e8925fdae418af702f03ca3f7ab314e84b2e11a2dfd4ed733c1cc0ae",
+  "review": "Nine original 320x200 actual database frames directly inspected; independent PNG signature/chunk/CRC/IDAT/filter/palette decode, exact 64000-byte SQL frame identity, bounded cross-state diagnostics, and deterministic live recapture required",
+  "files": {
+    "goldens/t5.4-visible.json": "e717399497b2feed7a9e073c330f8b413031dd16535c7ae630f07a5ad1238613",
+    "goldens/t5.4/game-pistol.json": "a7c09188dc574917b48fb33ddf6fdad5d77ee68565e9a7d5abea3b2340746e8a",
+    "goldens/t5.4/game-pistol.png": "20277d8eb9bc4ec72f36de060c030aab92ca915ccb21b9314e697dec32810ec0",
+    "goldens/t5.4/game-shotgun.json": "ec6cd804f3d7f2af5a6d32fce9f202605017b60bcd4a9a46141143e89f57d649",
+    "goldens/t5.4/game-shotgun.png": "4d5fc9100f9ab6af253865aadfb19ae0199e30542c646774b9462b0c435d13c8",
+    "goldens/t5.4/game-paused.json": "162f8657ec19a811a4d9b0fdbd344b9ad6e3af8f4b2170dfe0c05df13fa0adc6",
+    "goldens/t5.4/game-paused.png": "c2e8532f802e4e12daed12a4493a495b15fdcd07eb432225c8f1b5d79fa651bf",
+    "goldens/t5.4/menu-selection-0.json": "53cfd703866e25ea3e8543e94cd445079eb79776d735eac2113aefd823ada66c",
+    "goldens/t5.4/menu-selection-0.png": "fbdb72150478234076925ef6d78f4c6a456f74b829983589bc4941f9eb46b2c7",
+    "goldens/t5.4/menu-selection-2.json": "ab090dd57208219a05beb4cd48bb1fc6a48515f96ec7d428e86443f4564dedd4",
+    "goldens/t5.4/menu-selection-2.png": "634faa219767025be30fbe7cde9a556bbccd1883d16e282751f048dbb24080a4",
+    "goldens/t5.4/automap-normal.json": "20eb258dfede1e6335e6803a03ed618fb1c784c806b76d680279834560200b71",
+    "goldens/t5.4/automap-normal.png": "4042fa27327fb28131d3a17d977e6e82aa4fa209f222ba291ef4707554570711",
+    "goldens/t5.4/automap-full.json": "fef5628328df70603d36f74eca8581a1d092f48b9cd625af15a49cff89891dab",
+    "goldens/t5.4/automap-full.png": "20f65cc409225bb6f78c22d0a31520bd4edbcc6ea4e64d65408e771b85d8548b",
+    "goldens/t5.4/intermission.json": "d1a631058fd5ae6a3d22f260986555d1a76ef5d445b64925f071d2e7e145643a",
+    "goldens/t5.4/intermission.png": "3c3e5f77747e78e0a642f1a8a1cc15a4aeb1fe525e721461e224f82a1a9d903f",
+    "goldens/t5.4/hud-hidden-values.json": "6547f06bc11fbfd58c0f337b7de83b1dffba9c9b72661e37939e1182079441de",
+    "goldens/t5.4/hud-hidden-values.png": "467e616a52275b8d8a392c5722e1e047a1d4ac6b7c0bd6c8eaea1415f59284a7",
+    "goldens/t5.4/review-summary.json": "153323bfcc1d7fddfe6fa2d59a72849b927346dcfaa1c68d464be881c4750c4c"
+  }
+}

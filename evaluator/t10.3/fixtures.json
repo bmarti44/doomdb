@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "task": "T10.3",
+  "freshRuns": 2,
+  "projectPrefix": "doomdb-t103-",
+  "timeoutsSeconds": {
+    "bootstrap": 1800,
+    "suite": 1800,
+    "playwright": 600,
+    "shutdown": 180,
+    "wholeGate": 14400
+  },
+  "databaseResources": {"nanoCpus": 2000000000, "memoryBytes": 2147483648},
+  "requiredServices": ["db", "ords", "evaluator"],
+  "containerPolicy": {
+    "readOnly": true,
+    "user": "1000:1000",
+    "capDrop": ["ALL"],
+    "noNewPrivileges": true,
+    "dockerSocket": false,
+    "hostPid": false,
+    "workspaceReadOnly": true,
+    "scratch": "/tmp",
+    "networkPeers": ["db", "ords"]
+  },
+  "suiteFamilies": [
+    {"id":"P0-FOUNDATION","kind":"foundation","command":"./verify.sh phase P0","minPassRecords":6},
+    {"id":"P1-BOOTSTRAP","kind":"sql","command":"./verify.sh phase P1","minPassRecords":4},
+    {"id":"P2-WAD-SEED","kind":"sql-mutation","command":"./verify.sh phase P2","minPassRecords":10},
+    {"id":"P3-SCHEMA","kind":"sql","command":"./verify.sh phase P3","minPassRecords":1},
+    {"id":"T4.1-RAYS","kind":"sql-mutation","command":"./verify.sh task T4.1","minPassRecords":4},
+    {"id":"T4.2-R1-PIXELS","kind":"sql-mutation","command":"./verify.sh task T4.2","minPassRecords":4},
+    {"id":"T4.3-R1-GOLDENS","kind":"sql-visual","command":"./verify.sh task T4.3","minPassRecords":3},
+    {"id":"T5.1-PORTALS","kind":"sql-mutation","command":"./verify.sh task T5.1","minPassRecords":4},
+    {"id":"T5.2-R2-PIXELS","kind":"sql-mutation","command":"./verify.sh task T5.2","minPassRecords":4},
+    {"id":"T5.3-SPRITES","kind":"sql-mutation","command":"./verify.sh task T5.3","minPassRecords":4},
+    {"id":"T5.4-PRESENTATION","kind":"sql-visual-mutation","command":"./verify.sh task T5.4","minPassRecords":4},
+    {"id":"T6.1-TIC","kind":"simulation-mutation","command":"./verify.sh task T6.1","minPassRecords":4},
+    {"id":"T6.2-MOVEMENT","kind":"simulation-mutation","command":"./verify.sh task T6.2","minPassRecords":4},
+    {"id":"T6.3-SPECIALS","kind":"simulation-mutation","command":"./verify.sh task T6.3","minPassRecords":4},
+    {"id":"T6.4-RNG","kind":"simulation-mutation","command":"./verify.sh task T6.4","minPassRecords":4},
+    {"id":"T7.1-PLAYER","kind":"simulation-mutation","command":"./verify.sh task T7.1","minPassRecords":4},
+    {"id":"T7.2-MONSTERS","kind":"simulation-mutation","command":"./verify.sh task T7.2","minPassRecords":4},
+    {"id":"T7.3-AUDIO","kind":"api-playwright-mutation","command":"./verify.sh task T7.3","minPassRecords":5},
+    {"id":"T8.1-HISTORY","kind":"simulation-mutation","command":"./verify.sh task T8.1","minPassRecords":4},
+    {"id":"T8.2-WORKFLOWS","kind":"api-playwright-mutation","command":"./verify.sh task T8.2","minPassRecords":5},
+    {"id":"T9.1-FIRE","kind":"sql-visual-mutation","command":"./verify.sh task T9.1","minPassRecords":4},
+    {"id":"T10.1-AUTOREST","kind":"api-sql-mutation","command":"./verify.sh task T10.1","minPassRecords":4},
+    {"id":"T10.2-CLIENT","kind":"playwright-mutation","command":"./verify.sh task T10.2","minPassRecords":5},
+    {"id":"FOUNDATION-ADVERSARIAL","kind":"foundation","command":"./verify.sh evaluator-self-test","minPassRecords":1}
+  ],
+  "coreCapabilities": [
+    "Fresh local bootstrap", "WAD/seed", "Geometry/BSP", "R2 renderer",
+    "Complete presentation", "World simulation", "Gameplay", "Persistence",
+    "Fire", "AutoREST", "Client", "Full E1M1", "Mutation suite", "Production audit"
+  ],
+  "excludedLaterCapabilities": ["Cloud", "Performance"],
+  "hashDomains": [
+    "bootstrap", "seed", "schema", "geometry", "r1", "r2", "presentation",
+    "simulation", "gameplay", "persistence", "fire", "autorest", "client",
+    "completionReplay", "mutationInventory", "productionArtifacts"
+  ],
+  "artifactRoots": ["client/dist", "sql"],
+  "forbiddenArtifactPatterns": [
+    "evaluator", "fixture", "golden", "test-id", "playwright", "reports/",
+    "sourceMappingURL", ".map", ".ts", "node_modules", "TODO", "FIXME"
+  ],
+  "schemaPolicy": {
+    "invalidObjects": 0,
+    "disabledOrUnvalidatedConstraints": 0,
+    "enabledRestObjects": ["DOOM_API", "PUBLIC_HEALTH"],
+    "forbiddenObjectNamePatterns": ["EVAL", "FIXTURE", "GOLDEN", "TEST", "MOCK", "REFERENCE"]
+  }
+}

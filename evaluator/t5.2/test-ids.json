@@ -1,0 +1,22 @@
+{"schema":1,"task":"T5.2","declaredAssertions":1856885,"tests":[
+ {"id":"T52-FIXED-INTERFACE","assertions":10,"intent":"One session-bound relational R2 pixel macro exposes the reviewed six-column dense frame contract without persisting renderer output."},
+ {"id":"T52-DENSE-CARDINALITY","assertions":448003,"intent":"All seven reviewed scene frames contain exactly 64,000 rows and exactly one row for every coordinate pair."},
+ {"id":"T52-COMPLETE-COORDINATES","assertions":896000,"intent":"Every column zero through 319 owns every row zero through 199 with no gaps, duplicates, or out-of-range coordinates."},
+ {"id":"T52-PALETTE-RANGE","assertions":448000,"intent":"Every canonical scene pixel is a non-null integer palette index in the inclusive zero through 255 range."},
+ {"id":"T52-HEIGHT-STEP","assertions":80,"intent":"A raised far floor clips the portal, draws the directed lower piece, and assigns reverse-projected floor samples to the correct interval sector."},
+ {"id":"T52-WINDOW","assertions":80,"intent":"A portal with both floor and ceiling differences preserves its open center while drawing independently projected lower and upper pieces."},
+ {"id":"T52-SKY-POLICY","assertions":80,"intent":"Adjacent sky ceilings suppress their upper wall piece and sample full-bright SKY1 without applying the sector COLORMAP band."},
+ {"id":"T52-ANIMATION-TIC","assertions":80,"intent":"Flat and wall animation frames are selected from checked-in groups using persisted current tic and deterministic group periods."},
+ {"id":"T52-SIDEDEF-OFFSETS","assertions":80,"intent":"Wall horizontal sampling combines analytic wall coordinate, seg offset, and signed sidedef x offset while vertical sampling includes signed y offset."},
+ {"id":"T52-UPPER-PEGGING","assertions":80,"intent":"The upper-unpegged flag aligns upper texture origin to the opposite ceiling plus texture height before applying sidedef y offset."},
+ {"id":"T52-LOWER-PEGGING","assertions":80,"intent":"The lower-unpegged flag aligns lower texture origin to the facing ceiling before applying signed sidedef y offset."},
+ {"id":"T52-CANONICAL-HASHES","assertions":14,"intent":"Seven complete 64,000-byte frames have exact independent SHA-256 values and repeat without token or row-source-order dependence."},
+ {"id":"T52-RERUN-DETERMINISM","assertions":64001,"intent":"Repeated evaluation for one unchanged session yields exactly the same 64,000 coordinate rows and canonical palette-byte hash."},
+ {"id":"T52-INTERVAL-SECTOR-SAMPLING","assertions":48,"intent":"Floor and ceiling reverse projection selects the sector interval containing each reconstructed distance rather than the nearest hit sector globally."},
+ {"id":"T52-SKY-FULLBRIGHT","assertions":32,"intent":"Sky sampling ignores sector light changes while retaining deterministic horizontal camera mapping and vertical texture coordinates."},
+ {"id":"T52-ANIMATION-GROUPS","assertions":32,"intent":"Animation advances by integer tic period, wraps each declared group, and never substitutes an asset from another group."},
+ {"id":"T52-OFFSET-MODULUS","assertions":32,"intent":"Signed offsets and negative texture coordinates use floor modulus for arbitrary asset dimensions rather than Oracle MOD."},
+ {"id":"T52-PEGGING-ROLES","assertions":48,"intent":"Upper and lower roles use distinct flag bits and height anchors, including signed y offset after role-specific origin selection."},
+ {"id":"T52-LIGHT-COLORMAP","assertions":32,"intent":"Non-sky wall, floor, and ceiling texels use active-sector light and the floored clamped COLORMAP band exactly once."},
+ {"id":"T52-SOURCE-AND-MUTATIONS","assertions":73,"intent":"Set-based source, anti-cheat restrictions, and all eighteen isolated semantic mutations are independently checked and fail closed."}
+]}

@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: ./verify.sh env | secrets | transport | task T0.1..T7.3 | phase P0|P1|P2|P3 | evaluator-self-test" >&2
+  exit 2
+}
+
+[[ $# -ge 1 ]] || usage
+
+case "$1" in
+  env)
+    [[ $# -eq 1 ]] || usage
+    scripts/verify_env.sh
+    scripts/verify-secrets-ignored.sh
+    ;;
+  secrets)
+    [[ $# -eq 1 ]] || usage
+    scripts/verify-secrets-ignored.sh
+    ;;
+  transport)
+    [[ $# -eq 1 ]] || usage
+    scripts/check-transport-contract.sh
+    scripts/verify-transport.sh
+    ;;
+  task)
+    [[ $# -eq 2 ]] || usage
+    case "$2" in
+      T0.1)
+        scripts/verify_env.sh
+        printf 'PASS T0.1 (34/34 assertions)\n'
+        ;;
+      T0.2)
+        tests/verify-oracle-probes.sh
+        probes/oracle/run.sh
+        ;;
+      T0.3)
+        scripts/check-transport-contract.sh
+        scripts/verify-transport.sh
+        printf 'PASS T0.3 (23/23 assertions)\n'
+        ;;
+      T0.4) node evaluator/run-foundation.mjs T0.4 ;;
+      T1.1) DOOMDB_T1_LIVE=1 tests/verify-local-stack.sh ;;
+      T1.2)
+        tests/verify-bootstrap-static.sh
+        tests/verify-bootstrap-live.sh
+        printf 'PASS T1.2 (15/15 assertions)\n'
+        ;;
+      T1.3) tests/verify-cloud-skeleton.sh ;;
+      T2.1) tests/verify-freedoom-vendor.sh ;;
+      T2.2)
+        node evaluator/t2.2/run-visible.mjs
+        node tests/verify-wad-parser-mutations.mjs
+        printf 'PASS T2.2 (235/235 assertions)\n'
+        ;;
+      T2.3)
+        node evaluator/t2.3/run-visible.mjs
+        node tests/verify-engine-defs-mutations.mjs
+        printf 'PASS T2.3 (135/135 assertions)\n'
+        ;;
+      T2.4)
+        node evaluator/t2.4/run-visible.mjs
+        node tests/verify-seed-mutations.mjs
+        printf 'PASS T2.4 (168/168 assertions)\n'
+        ;;
+      T3.1)
+        tests/verify-schema-static.sh
+        tests/verify-schema-live.sh
+        printf 'PASS T3.1 (37/37 assertions)\n'
+        ;;
+      T3.2) evaluator/t3.2/run-visible.sh ;;
+      T3.3) evaluator/t3.3/run-visible.sh ;;
+      T3.4) evaluator/t3.4/run-visible.sh ;;
+      T4.1) evaluator/t4.1/run-visible.sh ;;
+      T4.2) evaluator/t4.2/run-visible.sh ;;
+      T4.3) tests/verify-t4.3-offline.sh ;;
+      T5.1)
+        evaluator/t5.1/run-visible.sh
+        scripts/db_sql.sh tests/verify-t5.1-dynamic.sql
+        ;;
+      T5.2) evaluator/t5.2/run-visible.sh ;;
+      T5.3) evaluator/t5.3/run-visible.sh ;;
+      T5.4) evaluator/t5.4/run-visible.sh ;;
+      T6.1) evaluator/t6.1/run-visible.sh ;;
+      T6.2)
+        evaluator/t6.2/run-visible.sh
+        scripts/db_sql.sh tests/verify-t6.2-thin-door.sql
+        node tests/verify-t6.2-opening-route.mjs
+        ;;
+      T6.3) evaluator/t6.3/run-visible.sh ;;
+      T6.4) evaluator/t6.4/run-visible.sh ;;
+      T7.1)
+        evaluator/t7.1/run-visible.sh
+        scripts/db_sql.sh tests/verify-t7.1-history.sql
+        ;;
+      T7.2)
+        evaluator/t7.2/run-visible.sh
+        scripts/db_sql.sh tests/verify-t7.2-history.sql
+        scripts/db_sql.sh tests/verify-t7.2-runtime.sql
+        scripts/db_sql.sh tests/verify-t7.2-mobj-integrity.sql
+        ;;
+      T7.3)
+        evaluator/t7.3/run-visible.sh
+        scripts/db_sql.sh tests/verify-t7.3-history.sql
+        node tests/verify-t7.3-audio.mjs
+        ;;
+      *) usage ;;
+    esac
+    ;;
+  phase)
+    [[ $# -eq 2 ]] || usage
+    case "$2" in
+      P0)
+        scripts/verify_env.sh
+        tests/verify-oracle-probes.sh
+        probes/oracle/run.sh
+        scripts/check-transport-contract.sh
+        scripts/verify-transport.sh
+        node evaluator/run-foundation.mjs T0.4
+        printf 'PASS P0 (74/74 assertions)\n'
+        ;;
+      P1)
+        DOOMDB_T1_LIVE=1 tests/verify-local-stack.sh
+        tests/verify-bootstrap-static.sh
+        tests/verify-bootstrap-live.sh
+        tests/verify-cloud-skeleton.sh
+        printf 'PASS P1 (63/63 assertions)\n'
+        ;;
+      P2)
+        tests/verify-freedoom-vendor.sh
+        node evaluator/t2.2/run-visible.mjs
+        node tests/verify-wad-parser-mutations.mjs
+        node evaluator/t2.3/run-visible.mjs
+        node tests/verify-engine-defs-mutations.mjs
+        node evaluator/t2.4/run-visible.mjs
+        node tests/verify-seed-mutations.mjs
+        printf 'PASS P2 (548/548 assertions)\n'
+        ;;
+      P3) tests/verify-phase-p3.sh ;;
+      *) usage ;;
+    esac
+    ;;
+  evaluator-self-test)
+    [[ $# -eq 1 ]] || usage
+    node evaluator/self-test.mjs
+    ;;
+  *) usage ;;
+esac

@@ -1,0 +1,36 @@
+{
+  "schema":1,
+  "constants":{"radius":16,"height":56,"stepHeight":24,"viewHeight":41,"maxContacts":2,"blockingFlag":1},
+  "maps":{
+    "wall":{"startSector":0,"sectors":{"0":{"floor":0,"ceiling":128}},"lines":[{"id":10,"x1":64,"y1":-128,"x2":64,"y2":128,"flags":0,"rightSector":0,"leftSector":null}]},
+    "corner":{"startSector":0,"sectors":{"0":{"floor":0,"ceiling":128}},"lines":[{"id":10,"x1":64,"y1":-128,"x2":64,"y2":128,"flags":0,"rightSector":0,"leftSector":null},{"id":11,"x1":128,"y1":64,"x2":-128,"y2":64,"flags":0,"rightSector":0,"leftSector":null}]},
+    "portal":{"regions":[{"axis":"x","value":64,"low":0,"high":1}],"sectors":{"0":{"floor":0,"ceiling":128},"1":{"floor":0,"ceiling":128}},"lines":[{"id":20,"x1":64,"y1":-128,"x2":64,"y2":128,"flags":0,"rightSector":0,"leftSector":1}]},
+    "step":{"regions":[{"axis":"x","value":64,"low":0,"high":1}],"sectors":{"0":{"floor":0,"ceiling":128},"1":{"floor":24,"ceiling":128}},"lines":[{"id":21,"x1":64,"y1":-128,"x2":64,"y2":128,"flags":0,"rightSector":0,"leftSector":1}]},
+    "highStep":{"regions":[{"axis":"x","value":64,"low":0,"high":1}],"sectors":{"0":{"floor":0,"ceiling":128},"1":{"floor":25,"ceiling":128}},"lines":[{"id":22,"x1":64,"y1":-128,"x2":64,"y2":128,"flags":0,"rightSector":0,"leftSector":1}]},
+    "closedDoor":{"regions":[{"axis":"x","value":64,"low":0,"high":1}],"sectors":{"0":{"floor":0,"ceiling":128},"1":{"floor":0,"ceiling":0}},"lines":[{"id":23,"x1":64,"y1":-128,"x2":64,"y2":128,"flags":0,"rightSector":0,"leftSector":1,"dynamicBlocks":true}]},
+    "lowOpening":{"regions":[{"axis":"x","value":64,"low":0,"high":1}],"sectors":{"0":{"floor":0,"ceiling":128},"1":{"floor":0,"ceiling":52}},"lines":[{"id":25,"x1":64,"y1":-128,"x2":64,"y2":128,"flags":0,"rightSector":0,"leftSector":1}]},
+    "flagged":{"regions":[{"axis":"x","value":64,"low":0,"high":1}],"sectors":{"0":{"floor":0,"ceiling":128},"1":{"floor":0,"ceiling":128}},"lines":[{"id":24,"x1":64,"y1":-128,"x2":64,"y2":128,"flags":1,"rightSector":0,"leftSector":1}]},
+    "translated":{"startSector":0,"sectors":{"0":{"floor":7,"ceiling":135}},"lines":[{"id":30,"x1":1064,"y1":-2128,"x2":1064,"y2":2128,"flags":0,"rightSector":0,"leftSector":null}]},
+    "endpoint":{"startSector":0,"sectors":{"0":{"floor":0,"ceiling":128}},"lines":[{"id":40,"x1":64,"y1":20,"x2":64,"y2":80,"flags":0,"rightSector":0,"leftSector":null}]},
+    "earliest":{"startSector":0,"sectors":{"0":{"floor":0,"ceiling":128}},"lines":[{"id":99,"x1":40,"y1":-128,"x2":40,"y2":128,"flags":0,"rightSector":0,"leftSector":null},{"id":1,"x1":80,"y1":-128,"x2":80,"y2":128,"flags":0,"rightSector":0,"leftSector":null}]},
+    "tie":{"startSector":0,"sectors":{"0":{"floor":0,"ceiling":128}},"lines":[{"id":8,"x1":64,"y1":-128,"x2":64,"y2":128,"flags":0,"rightSector":0,"leftSector":null},{"id":7,"x1":64,"y1":128,"x2":64,"y2":-128,"flags":0,"rightSector":0,"leftSector":null}]}
+  },
+  "scenarios":[
+    {"name":"head-on","map":"wall","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0}},
+    {"name":"oblique-slide","map":"wall","input":{"x":0,"y":0,"z":0,"dx":100,"dy":30}},
+    {"name":"corner-two-contact","map":"corner","input":{"x":0,"y":0,"z":0,"dx":100,"dy":100}},
+    {"name":"open-portal","map":"portal","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0}},
+    {"name":"valid-step","map":"step","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0}},
+    {"name":"too-high-step","map":"highStep","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0}},
+    {"name":"closed-door","map":"closedDoor","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0}},
+    {"name":"low-opening","map":"lowOpening","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0}},
+    {"name":"blocking-flag","map":"flagged","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0}},
+    {"name":"translated","map":"translated","input":{"x":1000,"y":-2000,"z":7,"dx":100,"dy":30}},
+    {"name":"tunneling","map":"wall","input":{"x":-500,"y":0,"z":0,"dx":1000,"dy":0}},
+    {"name":"noclip","map":"wall","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0,"noclip":1}},
+    {"name":"noclip-destination","map":"highStep","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0,"noclip":1}},
+    {"name":"endpoint-contact","map":"endpoint","input":{"x":0,"y":0,"z":0,"dx":100,"dy":10}},
+    {"name":"stable-earliest","map":"earliest","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0}},
+    {"name":"stable-tie","map":"tie","input":{"x":0,"y":0,"z":0,"dx":100,"dy":0}}
+  ]
+}

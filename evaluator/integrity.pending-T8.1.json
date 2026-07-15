@@ -1,0 +1,32 @@
+{
+  "schema":1,
+  "task":"T8.1-EVAL",
+  "algorithm":"sha256",
+  "approval":"APPROVED AND RE-FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-15 AFTER T7 DEPENDENCY REFRESH AND TWO EVALUATOR-ONLY ACCEPTED-SCHEMA CORRECTIONS FOR SPECIALS, CURRENT_TIC, COUNTERS, AND COLOR KEYS; LIVE ROUTE AND VISUAL GOLDENS REMAIN PENDING ACTUAL REVIEW; DOOM_API REMAINS A PROVISIONAL T10.1 PREREQUISITE",
+  "dependencies":[
+    {"task":"T6.4","status":"IMPLEMENTATION ACCEPTED 848/848"},
+    {"task":"T7.1","status":"IMPLEMENTATION ACCEPTED 1582/1582"},
+    {"task":"T7.2","status":"IMPLEMENTATION ACCEPTED 2565/2565"},
+    {"task":"T7.3","status":"IMPLEMENTATION ACCEPTED 684/684"}
+  ],
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T6.4.json","sha256":"49df1e47ef6612dbaf50671f7d362c5f6546d40818c588e9b69d053d1d007081"},
+    {"path":"evaluator/integrity.pending-T7.1.json","sha256":"45be1db5dea63fc4291851ac4e692e9a66bd903096b35bf8b2379a190503f30e"},
+    {"path":"evaluator/integrity.pending-T7.2.json","sha256":"764dda2fbf89bcb02511e6ffc9e3ba877757cfedb9b2d5a8981bb37b444e82e5"},
+    {"path":"evaluator/integrity.pending-T7.3.json","sha256":"6267d2dcce1bf52136309c7bda6641325ac69ce1e95b506bf4b3812bd89e9da6"}
+  ],
+  "files":{
+    "evaluator/t8.1/README.md":"fef9f927b6c435dc13794b6267de9f7ee141bd6240a93492b4010182c25d35b8",
+    "evaluator/t8.1/fixtures.json":"99772e210bb82a445246873d035ca6beea5162ae308e53d98269a79a2d63b271",
+    "evaluator/t8.1/mutation-self-check.mjs":"8317b555cb41ce11f165ae34550011053e0cbddf8f2ed66fe08883c0572cdc23",
+    "evaluator/t8.1/mutation-specs.json":"fd04569517610a9da195348081c4e18053ed8f1791858804fd1a4193f0816105",
+    "evaluator/t8.1/oracle-production.sql":"e4d86e7df63c7c509ed7bc121f74a4423b71c62080c4b62cbfe6a6e83c61eefc",
+    "evaluator/t8.1/reference.mjs":"255f3de8c25cdb12179bbfaca2ae15a95c6bbda0b987ead9a93cc3ffeee89db4",
+    "evaluator/t8.1/route-candidate.json":"7442cb273101edfdf2496eaf827e7f066b0cfe29a4d3fbf2065ccd3463da0665",
+    "evaluator/t8.1/run-visible.sh":"712036ec3bd5bf3b95f25c70386d3f7d8c382acc9ff11657576df643ec542563",
+    "evaluator/t8.1/self-check.mjs":"e091fe98cc318acd6b6159522816035860beadc7a69c900cb2e1f3dc465be47d",
+    "evaluator/t8.1/source-audit.mjs":"d2777b683b832b9d4523b96f3ab199cc7aea4a253fac15b592218d8a0b34a53b",
+    "evaluator/t8.1/test-ids.json":"3d469fee15fef4d3577bc2d238c69205ed4eb0961f0537504bf2ae3b3a7838a2"
+  }
+}

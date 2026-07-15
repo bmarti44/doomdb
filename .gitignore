@@ -1,0 +1,46 @@
+node_modules/
+
+# Local credentials. Keep only deliberately fake templates in version control.
+secrets/**
+!secrets/*.example
+
+# Environment- and tool-specific secret stores.
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!.env.*.example
+!**/.env.example
+!**/.env.*.example
+.aws/
+.oci/
+**/.aws/
+**/.oci/
+
+# Private keys, certificates containing private material, tokens, and wallets.
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.token
+*.secret
+*.secrets
+*_rsa
+*_ed25519
+wallet/
+wallets/
+**/wallet/
+**/wallets/
+Wallet_*.zip
+
+# Infrastructure variable files commonly carrying credentials.
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+
+# Local test/bootstrap scratch directories may contain generated passwords.
+.tmp-*/

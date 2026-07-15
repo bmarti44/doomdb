@@ -1,0 +1,17 @@
+{"schema":1,"task":"T10.1","declaredAssertions":1457,"tests":[
+{"id":"T101-PUBLIC-SPEC","assertions":113,"intent":"Package metadata exposes exactly seven uniquely named, non-overloaded Section 5.4 procedures with exact argument direction, ordinal, and SQL types."},
+{"id":"T101-EXPOSURE","assertions":96,"intent":"ORDS metadata exposes exactly DOOM_API and non-updatable PUBLIC_HEALTH while every base table, sequence, package helper, and state object remains unreachable."},
+{"id":"T101-GRANTS","assertions":74,"intent":"Least-privilege grants permit only package execution and health selection to the REST principal and deny direct dynamic/static table privileges."},
+{"id":"T101-HTTP-SURFACE","assertions":105,"intent":"All seven procedures accept POST application/json on canonical AutoREST paths; GET, PUT, PATCH, DELETE and alternate/custom routes fail closed."},
+{"id":"T101-NEW-GAME","assertions":88,"intent":"NEW_GAME validates skill and caps, creates a cryptographically random 32-lowercase-hex token, reclaims bounded expiry rows, and returns gzip canonical payload."},
+{"id":"T101-STEP-VALIDATION","assertions":154,"intent":"STEP enforces exact JSON envelope/keysets, integer/range rules, one to four consecutive commands, 64-KiB byte limit, ownership, expiry, and configured caps."},
+{"id":"T101-RETRY-ATOMICITY","assertions":119,"intent":"Exact terminal-batch retry returns identical cached compressed bytes without tic/event/RNG mutation; conflicting, older, gapped, and failed requests roll back wholly."},
+{"id":"T101-CONCURRENCY","assertions":86,"intent":"Two simultaneous STEP calls for one session serialize or reject one in-flight call without double execution, while independent sessions make forward progress."},
+{"id":"T101-SAVE-LOAD","assertions":92,"intent":"SAVE_GAME and LOAD_GAME enforce session/slot ownership, stable lowercase state hash, atomic errors, and gzip payload whose restored canonical state matches the saved hash."},
+{"id":"T101-REPLAY","assertions":84,"intent":"Replay range validation, opaque replay identity, bounded cursor advancement, terminal behavior, session isolation, and STEP_REPLAY gzip determinism are exact."},
+{"id":"T101-ASSET-ALLOWLIST","assertions":77,"intent":"GET_ASSET serves only configured exact allowlist names with deterministic bytes and media types; traversal, case tricks, encoded separators, and unknown assets fail."},
+{"id":"T101-GZIP-PAYLOAD","assertions":141,"intent":"Every frame BLOB has gzip magic, decompresses to exact canonical JSON keys, 320 columns each covering 200 rows, valid audio tuples, and independent state/frame hashes."},
+{"id":"T101-HEALTH-CORS","assertions":63,"intent":"PUBLIC_HEALTH is non-updatable and side-effect-free, reveals no secrets, reports readiness, and no permissive wildcard/null CORS policy is emitted or configured."},
+{"id":"T101-SOURCE-SCHEMA","assertions":91,"intent":"Static production audit rejects public helpers, overloads, custom handlers, table exposure, evaluator coupling, dynamic SQL, unsafe exception commits, and missing rollback mapping."},
+{"id":"T101-MUTATION-INTEGRITY","assertions":74,"intent":"Focused semantic mutations, evaluator self-tests, approved ancestry pointers, fixture/reference hashes, and production-independent adversarial canaries all fail closed."}
+]}

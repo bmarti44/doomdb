@@ -1,0 +1,12 @@
+{
+  "schema":1,"tolerance":{"t":0.000001,"u":0.000000001},"scenes":[
+    {"name":"window","hitCount":2,"activeCount":2,"intervalCount":2,"transitionCount":1,"terminationCount":1,"sha256":"f2cef61746374e2d785db7f4d6875bd4c0a6380d80078dde0b30a431b8ccb6a8"},
+    {"name":"steps","hitCount":3,"activeCount":3,"intervalCount":3,"transitionCount":2,"terminationCount":1,"sha256":"9cc18111c46e3764bc64495c124478ce6abba84580e7e53de2faee96d4c3ff9e"},
+    {"name":"closed-door","hitCount":2,"activeCount":1,"intervalCount":1,"transitionCount":0,"terminationCount":1,"sha256":"889aa4476e9d44c2fcefa435ff2793f8674b720251b06e9be7f39cc88af28adb"},
+    {"name":"open-door","hitCount":2,"activeCount":2,"intervalCount":2,"transitionCount":1,"terminationCount":1,"sha256":"143767749c64c783b8e1432f64973f09e8313c3ab3d3038484c5f46cd96a0451"},
+    {"name":"overlap","hitCount":3,"activeCount":2,"intervalCount":2,"transitionCount":1,"terminationCount":1,"sha256":"466ae4cbcc268ec45cab8dacc861c735f71398ac3452910dc73bfb8ca91fecf9"},
+    {"name":"vertex-tie","hitCount":3,"activeCount":3,"intervalCount":3,"transitionCount":2,"terminationCount":1,"sha256":"c963fa42ad8c7557778960bd417146fc03f788ff89d9d9fb7b496ea2e8d007f8"},
+    {"name":"nested","hitCount":4,"activeCount":4,"intervalCount":4,"transitionCount":3,"terminationCount":1,"sha256":"992657351ffd0eacebba87970a35bb4c00c6d867f4f7cd172c20f5b922ee34ec"},
+    {"name":"open-range","hitCount":1,"activeCount":1,"intervalCount":2,"transitionCount":1,"terminationCount":0,"sha256":"15855994ef856ac71c86e870d228fd0fd401f6159cd475c3d63565efb764e054"}
+  ]
+}

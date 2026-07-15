@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "task": "T12.1",
+  "resolution": [320, 200],
+  "frames": 300,
+  "warmFrames": 30,
+  "measuredFrames": 270,
+  "replaySha256": "c393f8f38a5a89e3bcda88d46e9b62f84e5856ae63bda597b2f67b9cd3856c65",
+  "poses": ["spawn", "corridor", "door", "combat"],
+  "commands": ["IDLE", "MOVE", "TURN", "USE", "FIRE"],
+  "statementFamilies": ["step", "frame", "asset"],
+  "requiredPlanFormat": "ALLSTATS LAST",
+  "rawKinds": ["samples", "plans", "vsql", "payloads", "replay"],
+  "reportMetrics": ["endToEndMs", "databaseMs", "ordsMs", "decodeBlitMs", "r1Ms", "r2Ms", "payloadBytes", "effectiveFps"],
+  "forbiddenPayloadKeys": ["r1Ms", "r2Ms", "databaseMs", "ordsMs", "stageTimers", "sqlId", "planHash"],
+  "forbiddenSecretPatterns": ["authorization", "bearer ", "password", "passwd", "secret", "token", "jdbc:", "oraclecloud.com", "amazonaws.com", "ordsBaseUrl", "wallet", "private_key"],
+  "ancestry": {"t11_2": "6c131343e5d3a1de14576df654cc993f81c665fe175320e030df9b8f0c003d3c"}
+}

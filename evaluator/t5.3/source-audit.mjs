@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';
+const root=path.resolve(import.meta.dirname,'../..'),dir=path.join(root,'sql/render/r2');assert.ok(fs.existsSync(dir),'T5.3 implementation directory missing');
+const files=fs.readdirSync(dir).filter(x=>x.endsWith('.sql')).sort(),selected=files.filter(n=>{const s=fs.readFileSync(path.join(dir,n),'utf8').toUpperCase();return s.includes('DOOM_R2_MASKED_CANDIDATES')||s.includes('DOOM_R2_MASKED_PIXELS');});assert.ok(selected.length,'reviewed T5.3 macro source absent');
+const source=selected.map(n=>fs.readFileSync(path.join(dir,n),'utf8')).join('\n').toUpperCase();
+for(const token of ['DOOM_R2_MASKED_CANDIDATES','DOOM_R2_MASKED_PIXELS','SQL_MACRO','P_SESSION','MOBJS','DOOM_STATE_DEF','DOOM_ASSET','AT','DOOM_MAP_SIDEDEF','MIDDLE_TEXTURE','DOOM_R2_SECTOR_INTERVALS','ROW_NUMBER','PARTITION BY','ORDER BY','SOURCE_KIND','SOURCE_ID','DEPTH','COLUMN_NO','ROW_NO','ASSET_NAME','ASSET_X','ASSET_Y','PALETTE_INDEX','ROTATION_NO','FLIP_X','SCREEN_VISIBLE','SECTOR_VISIBLE','WALL_VISIBLE','IS_SELECTED'])assert.ok(source.includes(token),`required T5.3 token absent: ${token}`);
+assert.ok(/MOBJS[\s\S]*(STATE_ID|ANGLE)[\s\S]*(X|POSITION)/.test(source),'CURRENT MOBJ STATE absent');
+assert.ok(/MIDDLE_TEXTURE[\s\S]*(X_OFFSET|Y_OFFSET)/.test(source),'MASKED SIDEDEF OFFSETS absent');
+assert.ok(source.includes('PROJECTILE')&&source.includes('EFFECT'),'PROJECTILE AND EFFECT CATALOG absent');
+assert.ok(!/\b(WHILE|FOR\s+[^\n]+\s+LOOP|LOOP\s*;)/.test(source),'PROCEDURAL SPRITE LOOP forbidden');
+assert.ok(!/EXECUTE\s+IMMEDIATE|DBMS_SQL/.test(source),'dynamic SQL forbidden');assert.ok(!/\bROUND\s*\([^)]*(DEPTH|HIT_T)/.test(source),'early depth rounding forbidden');
+assert.ok(!/WITH\s+[A-Z0-9_$]+\s*\([^)]*\)\s+AS[^;]+UNION\s+ALL/is.test(source),'recursive render CTE forbidden');
+for(const bad of ['EVALUATOR/','GOLDENS/','SNAPSHOTS/','REPORTS/','PLAYWRIGHT','CALL_STACK','FORMAT_CALL_STACK','TEST_NAME','CI=','-416','256','A27317FAADBEC502','73DA483520BBCF29','EXPECTED PIXELS','REFERENCE OUTPUT'])assert.ok(!source.includes(bad),`EMBEDDED DIAGNOSTIC ANSWERS or evaluator coupling: ${bad}`);
+process.stdout.write(`PASS T5.3-SOURCE-AUDIT (${selected.length} SQL files; set-based masked and sprite composition)\n`);

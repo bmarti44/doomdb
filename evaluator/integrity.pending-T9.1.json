@@ -1,0 +1,32 @@
+{
+  "schema":1,
+  "task":"T9.1-EVAL",
+  "algorithm":"sha256",
+  "approval":"APPROVED AND FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-15; LIVE ORACLE AND ACTUAL ANIMATION VISUAL ACCEPTANCE REMAIN UPSTREAM-BLOCKED",
+  "dependencies":[
+    {"task":"T8.1","status":"LIVE ROUTE AND MILESTONE VISUAL ACCEPTANCE PENDING"},
+    {"task":"T8.2","status":"LIVE WORKFLOW ACCEPTANCE PENDING"},
+    {"task":"T9.1","status":"PRODUCTION MODEL IMPLEMENTATION ABSENT; VISUAL CHECKPOINT PENDING"}
+  ],
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T8.1.json","sha256":"bf1aa8d0fd8f7d18eabc99862b51d4ff3f5aa922d86b68e08b5c52f278f5f084"},
+    {"path":"evaluator/integrity.pending-T8.2.json","sha256":"659028cf23a71cd39f9dc064d292d78a4df732b8baa4e14272ed8e1985b805fb"}
+  ],
+  "files":{
+    "evaluator/t9.1/README.md":"ce6e7e5943e9aa834d7b2d5c7d485a95a7a7f9c1845a253132779e1c37dc373c",
+    "evaluator/t9.1/build-expectations.mjs":"ca58df1aeff918fe41234883c6186138f5147a81762c59eb959c52ed3f1d3eb0",
+    "evaluator/t9.1/capability-policy.json":"ace76242d062e54d0bb17868afdd109c4a87873426ca3a351a3e0450235c04d0",
+    "evaluator/t9.1/expectations.json":"798fed01f69290767e7ee0797f43db1a1f09d10c3ae2f2cf92b5a082db6497ab",
+    "evaluator/t9.1/fixtures.json":"8c40b32d01157b4f68fe407963f41b886058da8539cbef707b504ab873fb9651",
+    "evaluator/t9.1/mutation-self-check.mjs":"738461ef6ab65314eba8d0e838b4957d2c1a340dee5cd7d9e082f011a4c63317",
+    "evaluator/t9.1/mutation-specs.json":"785594db05127b26a83c1244da36b8be7c0cf51901c217e9e650052efafd93f4",
+    "evaluator/t9.1/oracle-production.sql":"5dea4ac9a1c70d8ffa0040dc2d9b8bddead79bf709eb64840295c6f366cb98c1",
+    "evaluator/t9.1/reference.mjs":"6146eb5eb17ded30db189e235c7b871aae7358a8bdfe98ee82f3473c900f84d2",
+    "evaluator/t9.1/run-visible.sh":"57d0efb71cbb0356cad3803d8eeec275121835e973df44e05b9703db899a4e8a",
+    "evaluator/t9.1/self-check.mjs":"466e48fdd6d12a9695a8f2e84d515a9ab028fa1d1ba216ab7c118eb44086725e",
+    "evaluator/t9.1/source-audit.mjs":"adf23c251633a4f4050624cca5f90d2b06d364afb92bb3bf89f49b0d9913db25",
+    "evaluator/t9.1/test-ids.json":"4a50239f1cf1ea5f65a5ea4f57a60cbcef81992bacdf0738e34afc0ce2c76329",
+    "evaluator/t9.1/validate-oracle-output.mjs":"db50172b5313e92526fabfb5bbe754a66944e49d6a461e3a627da4a7330823d6"
+  }
+}

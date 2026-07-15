@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "width": 160,
+  "height": 96,
+  "frames": 150,
+  "maxHeat": 36,
+  "order": {"frame":"ASC","y":"DESC","x":"ASC"},
+  "noise": "floor_mod(frame*73+x*151+y*199+frame*x*17+x*y*13,256)",
+  "baseRule": "28+floor_mod(noise(frame,x,height-1),9)",
+  "cellRule": "max(0,heat[frame-1,y+1,floor_mod(x+floor_mod(noise,3)-1,width)]-floor_mod(floor(noise/3),3))",
+  "storage": {"table":"DOOM_FIRE_FRAME_RUN","key":["FRAME_NO","RUN_NO"],"columns":["START_OFFSET","RUN_LENGTH","INTENSITY"],"flattening":"offset=y*160+x"},
+  "generator": {"package":"DOOM_FIRE","procedure":"GENERATE"},
+  "feasibility": {"small":{"frames":8,"width":16,"height":12},"full":{"frames":150,"width":160,"height":96},"maxEstimatedBytes":268435456},
+  "visualReview": {"status":"PENDING","artifactSha256":null,"reviewedFrameHashes":[],"note":"Must be a real 150-frame animation decoded from accepted Oracle RLE rows; no evaluator-generated image is a visual golden."}
+}

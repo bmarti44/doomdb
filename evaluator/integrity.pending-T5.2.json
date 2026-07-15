@@ -1,0 +1,20 @@
+{
+ "schema":1,"task":"T5.2-EVAL","algorithm":"sha256","approval":"APPROVED UNDER STANDING USER AUTHORIZATION 2026-07-15 AFTER ACCEPTED T5.1 EVALUATOR-ONLY AUDIT CORRECTION REFRESH AND DIRECT ACTUAL-OUTPUT VISUAL REVIEW",
+ "approvedBaselines":[
+  {"path":"evaluator/integrity.pending-T5.1.json","sha256":"7b02f8ce55c7f67493134cae9c2bc928340fe39b5abfc5457a3dda4c0e5844f7","status":"APPROVED AND IMPLEMENTED 2026-07-15; includes evaluator-only source-audit scope/token-boundary correction and transitively pins current renderer and human-reviewed visible-golden manifests"},
+  {"path":"goldens/integrity-T5.2.json","sha256":"e59b635cdda850ae092d940ac38fb62cbf8e8b2e1ea6812ad67b61a7ebcc4995","status":"HUMAN-REVIEWED ACTUAL DATABASE OUTPUT APPROVED 2026-07-15"}
+ ],
+ "files":{
+  "evaluator/t5.2/README.md":"29e0e7cdafb915e32692c8fd1da30e39f3976c8a9b9ebfd8bf4e629ef77de086",
+  "evaluator/t5.2/expectations.json":"53c5384b2b49b9ddb6f556727e06e1b104002339453f8eee7968eb9f48a02d18",
+  "evaluator/t5.2/fixtures.json":"2fcd512561f3c4ea74a6ed03b39617348061863e1394bc9d9d820bb78d5c6b93",
+  "evaluator/t5.2/mutation-self-check.mjs":"40524c409f7708cc1ea19db43725552b1bd17cf813aa8bc5bb64f7140af6def2",
+  "evaluator/t5.2/mutation-specs.json":"1b667c8669575bed32aaece76fa5006b0948959afcd4f60f815065b613c1b3ef",
+  "evaluator/t5.2/oracle-production.sql":"5201ee5859a0c44acd5699147b09551700f919578e07bf67774d4b5d1f3c2bc9",
+  "evaluator/t5.2/reference.mjs":"993d918437b8ec633d8d888fc77af05ba0519147bffee9d3827c4ecca699d758",
+  "evaluator/t5.2/run-visible.sh":"b90887212947a923e61c93b66ab3ebf9f3f771a508d0d127a40882d87f026b45",
+  "evaluator/t5.2/self-check.mjs":"bd062d58b1b9ae4ed42db8471b9b39aa01718dac12a96178415e5856c7fc1150",
+  "evaluator/t5.2/source-audit.mjs":"7b86182b52fdf1856505116cf04965f2846137d7d2ab06a24c2c71d320551fe1",
+  "evaluator/t5.2/test-ids.json":"38b5ba38bc64e0c00ef89bd4abe08ea80c2c72774015ebdecd1eacc41b16d5ef"
+ }
+}

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "mutations": [
+    {
+      "id": "canary-killed",
+      "target": "evaluator/dummy/mutation/implementation.mjs",
+      "find": "return 2 + 2;",
+      "replace": "return 2 + 3;",
+      "expected": "killed",
+      "assertion": "T0.4-EVAL-005",
+      "reason": "dummy arithmetic mismatch"
+    },
+    {
+      "id": "canary-survives",
+      "target": "evaluator/dummy/mutation/implementation.mjs",
+      "find": "export function calculate() {",
+      "replace": "export function calculate() { // harmless canary",
+      "expected": "survived",
+      "assertion": "T0.4-EVAL-005",
+      "reason": ""
+    }
+  ]
+}

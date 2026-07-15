@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "operation": "cloud-teardown",
+  "mode": "dry-run",
+  "delete_s3_objects": ["index.html"],
+  "s3_index_url": "https://doomdb-placeholder-bucket.s3.us-east-1.amazonaws.com/index.html",
+  "drop_sql": "deploy/cloud/sql/teardown-health.sql",
+  "managed_ords_url": "https://doomdb-placeholder.adb.us-ashburn-1.oraclecloudapps.com/ords/doom/public_health/"
+}

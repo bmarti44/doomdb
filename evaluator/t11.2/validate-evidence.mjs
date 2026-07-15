@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import {validateEvidence} from './reference.mjs';
+const p=process.argv[2];assert.ok(p,'evidence path required');const f=JSON.parse(fs.readFileSync(new URL('./fixtures.json',import.meta.url))),e=JSON.parse(fs.readFileSync(p));validateEvidence(e,f);process.stdout.write('PASS T11.2-LIVE-EVIDENCE (real S3 HTTPS and managed ORDS browser evidence)\n');

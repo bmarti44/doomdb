@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "map": "E1M1",
+  "tables": {
+    "vertex": "DOOM_VERTEX",
+    "linedef": "DOOM_LINEDEF",
+    "config": "DOOM_CONFIG",
+    "spatialIndex": "DOOM_LINEDEF_SIDX"
+  },
+  "counts": {"vertices": 1196, "linedefs": 1175, "zeroLengthLinedefs": 0},
+  "vertexBounds": {"minX": -704, "maxX": 3248, "minY": -1064, "maxY": 2336},
+  "configuration": {"FAR_DISTANCE": 8192, "PLAYER_RADIUS": 16},
+  "margin": 8208,
+  "metadata": {
+    "column": "GEOM",
+    "srid": null,
+    "tolerance": 0.005,
+    "dimensions": [
+      {"name": "X", "lower": -8912, "upper": 11456},
+      {"name": "Y", "lower": -9272, "upper": 10544}
+    ]
+  },
+  "geometry": {"gtype": 2002, "elemInfo": [1, 2, 1], "ordinateCount": 4},
+  "metricScale": 12,
+  "linedefProbes": [
+    {"id": 0, "start": [2656,608], "end": [2624,597], "length": 33.837848631377, "direction": [-0.945686599305,-0.325079768511]},
+    {"id": 1, "start": [1784,1416], "end": [1952,1184], "length": 286.440220639491, "direction": [0.586509812152,-0.809942121543]},
+    {"id": 2, "start": [1872,1792], "end": [1936,1952], "length": 172.325273828304, "direction": [0.371390676354,0.928476690885]},
+    {"id": 6, "start": [1312,439], "end": [1312,672], "length": 233, "direction": [0,1]},
+    {"id": 300, "start": [752,-576], "end": [752,-575], "length": 1, "direction": [0,1]},
+    {"id": 507, "start": [-256,1984], "end": [960,1984], "length": 1216, "direction": [1,0]}
+  ],
+  "miniMap": {
+    "falsePositiveLine": [[0,0],[10,10]],
+    "falsePositiveWindow": [[0,9],[1,10]],
+    "trueWindows": [[[4,4],[6,6]], [[9,9],[11,11]]],
+    "translation": [100000,-75000]
+  },
+  "sourceAudit": {
+    "forbiddenLiteralBounds": [-8912,11456,-9272,10544],
+    "requiredTokens": ["MIN(","MAX(","FAR_DISTANCE","PLAYER_RADIUS"]
+  }
+}

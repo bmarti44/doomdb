@@ -1,0 +1,21 @@
+{
+  "schema":1,"task":"T3.4","tests":[
+    {"id":"T34-FIXED-INTERFACE","assertions":20,"intent":"The four materialized relations and named SQL property graph expose deterministic keys, coordinates, ordering, and source attributes."},
+    {"id":"T34-BLOCK-BINARY-ROUNDTRIP","assertions":12,"intent":"An independently decoded BLOCKMAP re-encodes byte-for-byte, preserving signed origins, shared offsets, list headers, and terminators."},
+    {"id":"T34-BLOCK-HEADER-CELLS","assertions":10,"intent":"Pinned origin, dimensions, cell count, world minima, and source word offsets agree with raw WAD bytes."},
+    {"id":"T34-BLOCK-ALL-CELLS","assertions":864,"intent":"Every pinned block cell has the independently decoded ordered linedef list, including shared and empty lists."},
+    {"id":"T34-BLOCK-MEMBERSHIPS","assertions":2064,"intent":"Every materialized cell-to-linedef membership preserves cell id, line ordinal, and valid linedef identity."},
+    {"id":"T34-NEGATIVE-BOUNDARIES","assertions":12,"intent":"Floor division at negative world coordinates selects correct cells immediately below, on, and above 128-unit boundaries."},
+    {"id":"T34-REJECT-BINARY-BITS","assertions":182,"intent":"All 182 source-sector bit rows match independent LSB-first row-major decoding of the exact 4,141-byte REJECT lump."},
+    {"id":"T34-REJECT-KNOWN-PROBES","assertions":18,"intent":"Known clear and set pairs include zero, final, spawn, and nontrivial sector indices in both directions."},
+    {"id":"T34-GRAPH-MINI-MAP","assertions":20,"intent":"A hand-authored four-sector graph includes passable two-sided lines, excludes closed and one-sided lines, and preserves sound blocking."},
+    {"id":"T34-GRAPH-DIRECTED-SYMMETRY","assertions":16,"intent":"Each eligible physical connection creates exactly two inverse directed edges with the same linedef and attributes."},
+    {"id":"T34-GRAPH-PINNED-WAD","assertions":16,"intent":"Pinned graph counts, openings, hashes, connected components, and isolated vertices match a raw-WAD oracle."},
+    {"id":"T34-PROPERTY-GRAPH-OBJECT","assertions":12,"intent":"DOOM_SECTOR_GRAPH is a valid Oracle SQL property graph over sector vertices and passable directed edges."},
+    {"id":"T34-SYMMETRIC-REACHABILITY","assertions":12,"intent":"Reachability is symmetric across paired directed edges, including a mini-map component and the pinned spawn component."},
+    {"id":"T34-SOUND-BLOCK-ATTRIBUTE","assertions":10,"intent":"Linedef flag 0x40 is represented on both graph directions without changing topological passability."},
+    {"id":"T34-DETERMINISTIC-MATERIALIZE","assertions":8,"intent":"Repeated materialization and reordered source reads yield identical ordered block, reject, and graph documents."},
+    {"id":"T34-SOURCE-RELATIONAL","assertions":14,"intent":"Production uses set-based SQL, raw source relations, exact bit arithmetic, SQL property graph DDL, and GRAPH_TABLE consumption."},
+    {"id":"T34-SOURCE-ANTI-CHEAT","assertions":10,"intent":"Production cannot read evaluator artifacts, embed expected hashes or fixture coordinates, inspect callers, or forge success."}
+  ],"declaredAssertions":3300
+}

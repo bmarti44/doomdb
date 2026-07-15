@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "task": "T3.2",
+  "mutations": [
+    {"id":"T32-M01-HARDCODE-BOUNDS","change":"Replace the metadata MIN/MAX queries with the four pinned expanded output literals.","killedBy":"T32-METADATA-SOURCE-AUDIT","reason":"Equal output for E1M1 must not conceal a literal map extent."},
+    {"id":"T32-M02-OMIT-PLAYER-RADIUS","change":"Expand metadata by FAR_DISTANCE only, omitting PLAYER_RADIUS from both dimensions.","killedBy":"T32-METADATA-DERIVATION","reason":"The required safety margin is the sum of both configuration rows."},
+    {"id":"T32-M03-STALE-METADATA","change":"Calculate metadata before vertex load and leave the stale bounds after vertices are loaded.","killedBy":"T32-METADATA-DERIVATION","reason":"Metadata must reflect live vertex extrema at deployment."},
+    {"id":"T32-M04-REVERSE-ENDPOINTS","change":"Construct every geometry from end vertex to start vertex while retaining original keys.","killedBy":"T32-GEOMETRY-ENDPOINTS","reason":"Direction and ordinate order are stable linedef semantics."},
+    {"id":"T32-M05-WRONG-ELEM-INFO","change":"Store the same ordinates as an arc element or multipoint instead of straight line element 1,2,1.","killedBy":"T32-GEOMETRY-SHAPE","reason":"Plausible coordinates do not replace the required geometry representation."},
+    {"id":"T32-M06-MANHATTAN-LENGTH","change":"Precompute ABS(dx)+ABS(dy) in the LENGTH column instead of the Euclidean norm.","killedBy":"T32-STABLE-METRICS","reason":"Oblique linedefs distinguish Euclidean from Manhattan length."},
+    {"id":"T32-M07-UNNORMALIZED-DIRECTION","change":"Store raw dx and dy as direction components without division by the Euclidean length.","killedBy":"T32-STABLE-METRICS","reason":"The direction contract requires a normalized vector."},
+    {"id":"T32-M08-PREMATURE-ROUNDING","change":"Round LENGTH before dividing dx and dy, changing the normalized direction probes.","killedBy":"T32-LINEDEF-PROBES","reason":"Direction division uses the unrounded Euclidean norm."},
+    {"id":"T32-M09-FLOATING-UNSTABLE","change":"Store unquantized binary-float metrics rather than NUMBER values rounded to twelve decimal places.","killedBy":"T32-OBJECT-CONTRACT","reason":"Stable decimal persistence is part of the schema contract."},
+    {"id":"T32-M10-BTREE-SUBSTITUTE","change":"Create a conventional or function-based B-tree index instead of an Oracle Spatial R-tree domain index.","killedBy":"T32-RTREE-DEFINITION","reason":"Index name or presence alone is insufficient."},
+    {"id":"T32-M11-IGNORE-DOMAIN-STATUS","change":"Leave the domain index failed or loading while checking only USER_INDEXES.STATUS.","killedBy":"T32-RTREE-VALIDITY","reason":"All three Oracle index status fields must be valid."},
+    {"id":"T32-M12-REMOVE-EXACT-PREDICATE","change":"Return SDO_FILTER candidates directly by deleting the subsequent SDO_RELATE or exact SDO_GEOM predicate.","killedBy":"T32-EXACT-FALSE-POSITIVE","reason":"The diagonal mini-map supplies a real MBR false positive; database and index must remain healthy for the kill to count."},
+    {"id":"T32-M13-INVERT-EXACT-RESULT","change":"Accept rows where SDO_RELATE ANYINTERACT is FALSE and reject its TRUE contacts.","killedBy":"T32-EXACT-POSITIVE-METAMORPHIC","reason":"Both negative and positive exact cases are independently exercised."},
+    {"id":"T32-M14-TRANSLATION-SENSITIVE","change":"Clamp or truncate coordinates so the same mini-map changes answers after a large translation.","killedBy":"T32-EXACT-POSITIVE-METAMORPHIC","reason":"Rigid translation cannot change line/window intersection truth."}
+  ]
+}

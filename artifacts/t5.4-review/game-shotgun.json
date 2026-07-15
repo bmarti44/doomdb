@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "kind": "doomdb-r2-presentation-diagnostic",
+  "reviewStatus": "pending-independent-visual-review",
+  "width": 320,
+  "height": 200,
+  "order": "column-row",
+  "state": {
+    "id": "game-shotgun",
+    "mode": "GAME",
+    "paused": 0,
+    "menu": "NONE",
+    "automap": "OFF",
+    "status": "ACTIVE",
+    "weapon": "SHOTGUN",
+    "health": 100,
+    "bullets": 50,
+    "shells": 8,
+    "blue": 0
+  },
+  "frameSha256": "f8b22c7bb6ba99b6e4102b333f78dee425fe8ac5c2938e8dd031cadd676fe9b8",
+  "pngSha256": "4d5fc9100f9ab6af253865aadfb19ae0199e30542c646774b9462b0c435d13c8",
+  "sourceCounts": {
+    "WORLD": 48418,
+    "HUD_PATCH": 8840,
+    "TEXT": 1400,
+    "MASKED": 4738,
+    "WEAPON": 604
+  }
+}

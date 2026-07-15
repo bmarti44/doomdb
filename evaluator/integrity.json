@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "algorithm": "sha256",
+  "approval": "APPROVED BY USER 2026-07-14",
+  "files": {
+    "evaluator/README.md": "f574d785751f2257d25d687fa81b941a76fdeb4233af2e816958436f0810d1d6",
+    "evaluator/compose.evaluator.yaml": "7007d2035dac77159ea52d012e70c22e2f000742e9fd6a8c15d4f83c6c13929c",
+    "evaluator/manifest/test-ids.json": "e26be080d4ba4b0044c4be97b474800bc72e031240acbc7ed6dc5d42397ceff1",
+    "evaluator/audit-policy.json": "9db4bc61840051fe24dfdd0551054196d10b5092a2101de930c9742eafb9bcec",
+    "evaluator/audit-production.mjs": "e1e36c968464f1f4b8d2d2830d593c9f1accca6fc08fa39fefb3e556f56684bd",
+    "evaluator/fixtures/visible-seed.json": "3b5b88feb4d7acf397b0de346319ac45da3fa764e1edd121ac0c8401fcab8ae9",
+    "evaluator/goldens/foundation.txt": "898ff9bc95978fa0ba2dfe44fcf9d7e487f22f88983aa2248c8655cfada9dc7d",
+    "evaluator/playwright/playwright.config.ts": "1e5bff05c71b25142d6ec67baa90e392641629fdd1f45f4a3c6366913f6f57d1",
+    "evaluator/playwright/guard-source.mjs": "13a335fafd6a6475c0e058ef2e4731898a8029f083524e1dc023f5144d355e46",
+    "evaluator/playwright/strict-page.mjs": "b30bfc839c2819bb0e2aeb99a27f364fa77e8a5585f44b5f05f024211d681a95",
+    "evaluator/playwright/validate-report.mjs": "8b0e114d527571f1609b20b0d7f06abcd7c26cb62e396ed87d3bf4903803f87a",
+    "evaluator/lib/hidden-seeds.mjs": "29ebd180cdd58f4848514c796e75664b035b9df8aa96b1f456db2bd2d806fe5d",
+    "evaluator/lib/static-audit.mjs": "5c48b9f28f907f307c2fc780cdcb0b0c960ad67af8ef943cee59fb6801a19391",
+    "evaluator/lib/result-validator.mjs": "b0931b1f5ef120bb4338db0b98a86e6f8f70ca5a03d63cf8519ed6767e355e6e",
+    "evaluator/lib/integrity.mjs": "9d234803224e65a632dd1a6b6992d62fc26bf5be35a8c19f542823be372dc0fd",
+    "evaluator/lib/network-policy.mjs": "e7d8994143b68c5a6c3a66c13ef7d981065b06873d0db7142a828ac7786ac33e",
+    "evaluator/foundation-child.mjs": "49f6d19c55bf41b51677f17e43d9782b27eca6d9d091a8dbff059613f62701e3",
+    "evaluator/run-foundation.mjs": "604dbcad0a0a2d011564b6c0468b357a62f67f204da1fb2322a095c6eb5b9ae8",
+    "evaluator/self-test.mjs": "d7468ff7b1576ad7686d5cc5b491b20e09c34d2115fa2b13e01a93c8f71c0fd7",
+    "tools/mutations/catalog.json": "134db9f6faaef125ae57dedc5b9ff2d05c628adf3a206a22fcedffbb0bb760f7",
+    "tools/mutations/canaries.json": "d5685abecf81760163197c27453f75485da3af5d4d489a5f25945ecbb7fcc275",
+    "tools/mutations/run.mjs": "30792f4868ba3e034ebfdc8dbf8f28388ec61029b1cfa754d46c5301a9c21bdd"
+  }
+}

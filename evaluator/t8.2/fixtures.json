@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "map": "E1M1",
+  "skills": {"accepted": [1,2,3,4,5], "rejected": [0,6,-1,1.5,"3",null]},
+  "commandKeys": ["seq","turn","forward","strafe","run","fire","use","weapon","pause","automap","menu","cheat"],
+  "menuActions": ["OPEN","DOWN","UP","SELECT","BACK","RESTART"],
+  "automapStates": ["OFF","NORMAL","FULL"],
+  "cheats": [
+    {"code":"GOD","effect":"toggle damage immunity without restoring health or changing inventory"},
+    {"code":"ALL","effect":"grant all three keys, every E1M1 player-usable weapon, and each weapon's configured maximum ammunition"},
+    {"code":"NOCLIP","effect":"toggle collision bypass while preserving ordinary trigger, pickup, and deterministic tic processing"},
+    {"code":"FULLMAP","effect":"toggle hidden relational automap geometry while automap presentation remains database-owned"}
+  ],
+  "rewindEncoding": {"field":"cheat","pattern":"REWIND:<tic>","example":"REWIND:3","semantics":"restore exact verified history at tic into a new continuation lineage; next accepted command sequence remains globally monotonic"},
+  "pause": {
+    "commands":[
+      {"seq":1,"turn":0,"forward":0,"strafe":0,"run":0,"fire":0,"use":0,"weapon":0,"pause":1,"automap":0,"menu":"NONE","cheat":""},
+      {"seq":2,"turn":1,"forward":1,"strafe":1,"run":1,"fire":1,"use":1,"weapon":0,"pause":0,"automap":0,"menu":"NONE","cheat":""},
+      {"seq":3,"turn":0,"forward":0,"strafe":0,"run":0,"fire":0,"use":0,"weapon":0,"pause":1,"automap":0,"menu":"NONE","cheat":""}
+    ],
+    "frozenRows":["PLAYERS","MOBJS","SECTOR_STATE","LINE_STATE","ACTIVE_MOVERS","ACTIVE_SWITCHES"],
+    "frozenScalars":["rng_cursor","player_pose","health","armor","ammo","weapon_state","monster_state","mover_state"],
+    "allowedChanges":["current_tic","last_command_seq","paused","menu_state","automap_state","command_history","control_events","pause_overlay_pixels"]
+  },
+  "menu": {
+    "commands":["OPEN","DOWN","DOWN","UP","SELECT","BACK"],
+    "states":["MAIN:0","MAIN:1","MAIN:2","MAIN:1","SKILL:0","NONE"],
+    "gameplayFrozen":true
+  },
+  "automap": {
+    "commands":[{"automap":1,"cheat":""},{"automap":0,"cheat":"FULLMAP"},{"automap":0,"cheat":"FULLMAP"},{"automap":1,"cheat":""}],
+    "states":["NORMAL","FULL","NORMAL","OFF"],
+    "mode":["AUTOMAP","AUTOMAP","AUTOMAP","GAME"],
+    "hudUnchanged":true,
+    "fullOnlyDifference":"previously undiscovered relational linedef pixels"
+  },
+  "persistence": {
+    "saveSlot":3,
+    "saveAfterTic":4,
+    "continueToTic":8,
+    "rewindToTic":3,
+    "replay":{"fromTic":1,"toTic":8},
+    "continuationCommands":[
+      {"turn":1,"forward":0,"strafe":0,"run":0,"fire":0,"use":0,"weapon":0},
+      {"turn":0,"forward":1,"strafe":0,"run":1,"fire":0,"use":0,"weapon":0},
+      {"turn":0,"forward":0,"strafe":0,"run":0,"fire":1,"use":0,"weapon":0},
+      {"turn":-1,"forward":0,"strafe":1,"run":0,"fire":0,"use":1,"weapon":0}
+    ]
+  },
+  "deathRestart": {"death":{"health":0,"alive":0,"mode":"DEAD"},"restartCommand":"RESTART","restart":{"map":"E1M1","health":100,"alive":1,"mode":"GAME","tic":0}},
+  "intermission": {"mode":"INTERMISSION","complete":1,"gameplayFrozen":true,"requiredFields":["kills","items","secrets","time_tics","state_sha","frame_sha"]},
+  "payload": {"keys":["v","tic","w","h","mode","state_sha","frame_sha","cols","audio","complete"],"w":320,"h":200,"columns":320,"rowsPerColumn":200},
+  "network": {
+    "method":"POST","contentType":"application/json","sameOrigin":true,
+    "paths":["new_game/","step/","save_game/","load_game/","start_replay/","step_replay/","get_asset/"],
+    "forbidden":["doom_history","game_sessions","players","state_history","save_slots","replay_cursors","evaluator","goldens"]
+  },
+  "errors":[
+    "unknown session","expired session","wrong JSON version","missing command key","extra command key","noninteger control","out of range control","unknown menu action","unknown cheat","malformed rewind target","future rewind target","gapped sequence","conflicting retry","more than four commands","request over 64 KiB","invalid save slot","missing save slot","invalid replay range","unknown replay id","replay past completion"
+  ]
+}

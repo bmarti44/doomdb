@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "node": {
+    "version": "24.18.0",
+    "lts": "Krypton",
+    "npm": "11.16.0"
+  },
+  "packages": {
+    "@playwright/test": "1.61.0",
+    "typescript": "7.0.2"
+  },
+  "images": {
+    "oracle-free": {
+      "tag": "gvenzl/oracle-free:23.26.2-full",
+      "linux/amd64": "sha256:df18ebc6b17107081b8bb8f1ee90e8018195dc9261e288100be99ef7bef268ff",
+      "linux/arm64": "sha256:a590b3f44a3d8118c850fbfb486511256421a03bb93fb4d415a2a1103cd3ac01"
+    },
+    "ords": {
+      "tag": "container-registry.oracle.com/database/ords:26.2.0",
+      "linux/amd64": "sha256:ae9ae8cbbb0c00f25e9624e3b60ffb3838488ca1231d4c9ae4e0a2ab3f4b8930",
+      "linux/arm64": "sha256:97a718f2b94a01d59d2b0c0b61cd407e1f9827a4218462f550d29523263ee66d"
+    },
+    "playwright": {
+      "tag": "mcr.microsoft.com/playwright:v1.61.0-noble",
+      "linux/amd64": "sha256:111dde95859f2c659291cb60e698f9048a8fc30b35b4ddb7c90f9cb5b73062d9",
+      "linux/arm64": "sha256:35488358a60d3e7eacc4f02e0985e3b46240424d6d7b229732332016e6127508"
+    }
+  },
+  "freedoom": {
+    "version": "0.13.0",
+    "archiveSha256": "3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59",
+    "freedoom1WadSha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
+  },
+  "deploymentTools": {
+    "awsCli": "2.34.36",
+    "sqlcl": "26.2.0.181.2110"
+  }
+}

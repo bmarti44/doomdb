@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "task": "T2.3-EVAL",
+  "approval": "PENDING USER APPROVAL",
+  "tests": [
+    {"id":"T2.3-WAD-001","assertions":7,"purpose":"pinned WAD identity, E1M1 confinement and literal placed thing/special sets"},
+    {"id":"T2.3-MAP-ASSET-001","assertions":6,"purpose":"all 114 wall textures and 44 flats are closure roots and resolve through texture/patch provenance"},
+    {"id":"T2.3-THING-001","assertions":8,"purpose":"all 49 placed types have known, source-backed definitions and spawn states"},
+    {"id":"T2.3-MONSTER-001","assertions":10,"purpose":"five interactive monster types close through perception, attack, pain, death, drop, sprite and sound behavior"},
+    {"id":"T2.3-SPECIAL-001","assertions":10,"purpose":"all eight linedef and four sector specials have independently documented exact trigger/action semantics"},
+    {"id":"T2.3-WEAPON-001","assertions":10,"purpose":"starter and five placed weapons resolve ready/fire/refire/flash states, ammo, projectiles and sound"},
+    {"id":"T2.3-PICKUP-001","assertions":7,"purpose":"all 17 placed pickup types define bounded effects, consumption and pickup sound"},
+    {"id":"T2.3-STATE-001","assertions":12,"purpose":"every reachable state transition resolves with bounded termination/cycles and valid sprite/sound/action references"},
+    {"id":"T2.3-SPRITE-001","assertions":8,"purpose":"required sprite prefixes, frames and rotations resolve to pinned WAD lumps"},
+    {"id":"T2.3-AUDIO-001","assertions":6,"purpose":"required gameplay sounds and E1M1/intermission music are present and closure-reachable"},
+    {"id":"T2.3-UI-001","assertions":7,"purpose":"title, menu, pause, HUD, font/key/face and E1M1 intermission assets are present and closure-reachable"},
+    {"id":"T2.3-ANIM-001","assertions":8,"purpose":"E1M1 nukage, water and wall-fall animation groups have exact ordered frames and timing"},
+    {"id":"T2.3-RNG-001","assertions":10,"purpose":"checked-in project RNG has 256 exact independently derived bytes, persisted-cursor metadata and is not Doom P_Random"},
+    {"id":"T2.3-SOURCE-001","assertions":9,"purpose":"every behavior row cites allowed public behavior/spec sources and Freedoom data provenance without copied GPL code/data"},
+    {"id":"T2.3-DET-001","assertions":5,"purpose":"canonical files are byte-stable, duplicate-free and contain no unknown/TODO/volatile fields"},
+    {"id":"T2.3-MUT-001","assertions":12,"purpose":"twelve semantic mutations map to and are killed by named visible tests"}
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "kind": "doomdb-r2-presentation-diagnostic",
+  "reviewStatus": "HUMAN_REVIEWED_APPROVED under standing user authorization 2026-07-15",
+  "width": 320,
+  "height": 200,
+  "order": "column-row",
+  "state": {
+    "id": "intermission",
+    "mode": "INTERMISSION",
+    "paused": 0,
+    "menu": "NONE",
+    "automap": "OFF",
+    "status": "COMPLETE",
+    "weapon": "PISTOL",
+    "health": 100,
+    "bullets": 50,
+    "shells": 8,
+    "blue": 0
+  },
+  "frameSha256": "d52aad2210fdc8714afcd639128f53b07b773193f651a2aa90a9dcad550f1fcf",
+  "pngSha256": "3c3e5f77747e78e0a642f1a8a1cc15a4aeb1fe525e721461e224f82a1a9d903f",
+  "sourceCounts": {
+    "INTERMISSION_PATCH": 61389,
+    "TEXT": 2611
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "task": "T2.4-EVAL",
+  "approval": "PENDING USER APPROVAL",
+  "tests": [
+    {"id":"T2.4-CLI-001","assertions":6,"purpose":"generator accepts only the pinned WAD plus approved definitions/closure and an explicit output directory"},
+    {"id":"T2.4-DET-001","assertions":8,"purpose":"two clean temporary-directory generations have byte-identical paths, bytes and canonical SQL tree hashes"},
+    {"id":"T2.4-FMT-001","assertions":8,"purpose":"every generated document is ASCII, LF-only, final-LF, deterministic and free of volatile values"},
+    {"id":"T2.4-BATCH-001","assertions":8,"purpose":"all SQL insert statements and manifest file records contain no more than 500 rows"},
+    {"id":"T2.4-WAD-001","assertions":8,"purpose":"manifest pins IWAD/map identity and confines map ingestion to E1M1"},
+    {"id":"T2.4-COUNT-001","assertions":13,"purpose":"manifest and generated dataset rows match every literal Section 1.1 map and palette/colormap count"},
+    {"id":"T2.4-BOUNDS-001","assertions":5,"purpose":"manifest reproduces exact E1M1 vertex bounds and player-one spawn facts"},
+    {"id":"T2.4-SOURCE-001","assertions":12,"purpose":"each used source records directory index/name/occurrence/offset/size/SHA-256 and last-occurrence selection"},
+    {"id":"T2.4-MAP-SHA-001","assertions":10,"purpose":"map marker, ten map lump hashes and byte sizes match independent literal probes"},
+    {"id":"T2.4-CORE-SHA-001","assertions":8,"purpose":"PLAYPAL/COLORMAP/PNAMES/TEXTURE directory provenance and hashes match independent probes"},
+    {"id":"T2.4-CLOSURE-001","assertions":10,"purpose":"manifest asset keys equal the approved E1M1 closure with no missing, duplicate or unrelated asset"},
+    {"id":"T2.4-ASSET-SOURCE-001","assertions":10,"purpose":"every asset source lump resolves with exact last-occurrence hash and closure source order"},
+    {"id":"T2.4-ASSET-HASH-001","assertions":10,"purpose":"raw and decoded asset hashes match independent WAD decoding, including literal hash probes"},
+    {"id":"T2.4-TEXEL-001","assertions":16,"purpose":"hand-recorded palette, colormap, flat, composed wall, UI and transparent sprite texels match manifest and seed"},
+    {"id":"T2.4-PROVENANCE-001","assertions":8,"purpose":"SQL contains exactly the manifest-declared source and asset provenance row closure"},
+    {"id":"T2.4-FILES-001","assertions":8,"purpose":"manifest lists every and only generated SQL file with byte hash, dataset, rows and batch metadata"},
+    {"id":"T2.4-IMMUTABLE-001","assertions":6,"purpose":"approved evaluator integrity baselines remain byte-identical and production cannot read evaluator artifacts"},
+    {"id":"T2.4-MUT-001","assertions":14,"purpose":"fourteen semantic mutations map to named visible tests and are required to be killed"}
+  ]
+}

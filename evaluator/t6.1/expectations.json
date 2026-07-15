@@ -1,0 +1,5 @@
+{"schema":1,"scenarios":[
+ {"name":"single","tic":101,"lastSeq":1,"stateSha":"862882f4a0e6221db8b9c18d9d262943a1415f34689f7970395c06777e3538af","commandSha":"f830e4b8bb44f7df41c66169adb00c75a0273e7e82cef4103f4afc916b293d56","eventCount":0},
+ {"name":"controls","tic":103,"lastSeq":3,"stateSha":"a9a979368fc35e0d39899d787d1cfdd7538e15e06931b835a429fc8d119dcf74","commandSha":"3d550979845a9a7ef605c3db693d92c75806b0280dd9fd1c7fb8820b6fe7fc59","eventCount":4,"events":[[102,0,"CONTROL_PAUSE","1"],[102,1,"CONTROL_MENU","OPTIONS"],[102,2,"CONTROL_AUTOMAP","ON"],[102,3,"CONTROL_CHEAT","GOD"]]},
+ {"name":"four","tic":107,"lastSeq":7,"stateSha":"32f58c623a025b7bd7b0b2ad7448d4c305def628099a3efbbde31b009bd8679c","commandSha":"10194844aea5170bcea18fcadf10997f7cb55c033e51e031aca8e67988ed4d5c","eventCount":0}
+]}

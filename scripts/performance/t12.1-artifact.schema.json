@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:doomdb:t12.1:baseline-evidence",
+  "title": "DoomDB T12.1 baseline evidence envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "task", "status", "synthetic", "resolution", "replay", "capture", "samples", "plans", "vsql", "shapes", "rawArtifacts", "reportArtifact", "report"],
+  "properties": {
+    "schema": {"const": 1},
+    "task": {"const": "T12.1"},
+    "status": {"const": "COMPLETE"},
+    "synthetic": {"const": false},
+    "resolution": {"const": [320, 200]},
+    "replay": {"type": "object"},
+    "capture": {"type": "object"},
+    "samples": {"type": "array", "minItems": 300, "maxItems": 300},
+    "plans": {"type": "array", "minItems": 3, "maxItems": 3},
+    "vsql": {"type": "array", "minItems": 3, "maxItems": 3},
+    "shapes": {"type": "array", "minItems": 60, "maxItems": 60},
+    "rawArtifacts": {"type": "array", "minItems": 5, "maxItems": 5},
+    "reportArtifact": {"type": "object"},
+    "report": {"type": "object"}
+  }
+}

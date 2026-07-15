@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "task": "T11.1",
+  "sqlcl": {"name": "SQLcl", "version": "26.2.0.181.2110"},
+  "minimumDatabaseMajor": 23,
+  "bootstrapOrder": "sql/bootstrap/order.txt",
+  "seedOrderGenerator": "tools/wad/seed-load-order.mjs",
+  "domains": ["schema", "seed", "engine", "rest"],
+  "p0": {
+    "capabilityLocal": ["probes/oracle/capabilities.sql", "4e1b434fa2d3220d231767fb41d19b0516c2cadae78856ed8bf4f13b51c50d20"],
+    "capabilityCloud": ["cloud/probes/oracle/capabilities.sql", "4e1b434fa2d3220d231767fb41d19b0516c2cadae78856ed8bf4f13b51c50d20"],
+    "transportInstall": ["deploy/local/probes/transport/install.sql", "ce2a26ba3db842bbbd4e2dd3504f295dd4abf16f7c6aa3c988bcc1be7043882a"],
+    "transportRunner": ["scripts/verify-transport.sh", "e0bca1691842973c4e12eaa221ba474bed757587a0203236f4c1fc1f137d53e6"],
+    "transportUninstall": ["deploy/local/probes/transport/uninstall.sql", "0018e275a68c802d37e1253a12df35587ecca2ac8bf88f2eb5631a542f2219b0"]
+  },
+  "restObjects": ["DOOM_API", "PUBLIC_HEALTH"],
+  "forbidCustomOrds": true,
+  "evidencePath": "/tmp/doomdb-t111-evidence.json"
+}

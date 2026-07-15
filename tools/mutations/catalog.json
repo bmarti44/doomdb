@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "status": "patches supplied by owning evaluator tasks",
+  "mutations": [
+    "reverse-bsp-child","change-vertex","flip-ray-determinant","remove-spatial-exact-predicate","reverse-facing-sidedef",
+    "ignore-texture-offsets","ignore-pegging","break-portal-height","sprite-wall-occlusion","change-colormap",
+    "drop-or-duplicate-pixel","alter-rle-length","rng-order","skip-monster-state","shorten-mover-timer",
+    "ignore-key","disable-damage-or-pickup","reorder-events","corrupt-save-replay","change-client-palette"
+  ]
+}

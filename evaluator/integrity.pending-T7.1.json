@@ -1,0 +1,28 @@
+{
+  "schema":1,
+  "task":"T7.1-EVAL",
+  "algorithm":"sha256",
+  "approval":"APPROVED BY USER STANDING AUTHORIZATION 2026-07-15",
+  "dependencies":[
+    {"task":"T6.2","status":"IMPLEMENTATION ACCEPTED 372/372"},
+    {"task":"T6.3","status":"PRODUCTION ACCEPTANCE PENDING"},
+    {"task":"T6.4","status":"PRODUCTION ACCEPTANCE PENDING"}
+  ],
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T6.3.json","sha256":"3e4a5d765cd55dc06902f04fc5076a5c5bd9ff2d56a9df0cf6ad2dd17ee2ee23"},
+    {"path":"evaluator/integrity.pending-T6.4.json","sha256":"eb415b4e69e4f22f945dd545a63c876d1c29d273ae1edda246a64f6b0b9b314c"}
+  ],
+  "files":{
+    "evaluator/t7.1/README.md":"56ec29a82aa8c9ab5e76274e314b52ab6a47f50dbc665091f3830b00d45fea72",
+    "evaluator/t7.1/fixtures.json":"f14dfcd05efd9a7435bf432f074197c0cbfb3b2f3a8a22c4a29393ecb2aa15ad",
+    "evaluator/t7.1/mutation-self-check.mjs":"795c0e1ee1e81c7f1a5494867655faef2dab002f7999dde69398b89bbd137656",
+    "evaluator/t7.1/mutation-specs.json":"2b4121daa520667dc66f7acecd1a6ee60890cdd569b5b9c8ea64a2a6428dcfea",
+    "evaluator/t7.1/oracle-production.sql":"a3c68eddad6f013d57d3bf10b9527cb5898c45c3a9145f85d01ab9f9057dc400",
+    "evaluator/t7.1/reference.mjs":"52fbb58d819db8e7420ac302f1d72bdd3f9560360ae4ce968c8ce26005cd216a",
+    "evaluator/t7.1/run-visible.sh":"4a1d97bd3e182e51be59f1b98363b24e38659e420a18b977d10b18e7ab868290",
+    "evaluator/t7.1/self-check.mjs":"b85f112b85f97b9cbe4a10f19ff4068284cc4cdd8dc735e1f982673766de33c7",
+    "evaluator/t7.1/source-audit.mjs":"f69e459eeb0a6a3cc8a7bd6f0b5a33ee4bf658a003565afd810233df3b092d80",
+    "evaluator/t7.1/test-ids.json":"b0657d2679842310f571a2b4f1e412fcec242ea43f09c642417df0f2bd77e322"
+  }
+}

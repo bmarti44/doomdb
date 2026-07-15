@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+const root=path.resolve(import.meta.dirname,'../..'),dir=path.join(root,'sql/render/r1');
+assert.ok(fs.existsSync(dir),'T4.1 implementation directory missing: sql/render/r1');
+const files=fs.readdirSync(dir).filter(n=>n.endsWith('.sql')).sort();assert.ok(files.length>0,'no T4.1 SQL discovered');
+const source=files.map(n=>fs.readFileSync(path.join(dir,n),'utf8')).join('\n').toUpperCase();
+for(const token of ['DOOM_R1_RAYS','DOOM_R1_HITS','DOOM_R1_NEAREST','SQL_MACRO','PLAYERS','GAME_SESSIONS','CONNECT BY','LEVEL','COLUMN_NO','SDO_FILTER','SDO_GEOMETRY','DOOM_LINEDEF','DOOM_MAP_SEG','DOOM_MAP_LINEDEF','DOOM_MAP_SIDEDEF','DOOM_MAP_SECTOR','COS','SIN','TAN','ABS','POWER','ROW_NUMBER','ORDER BY','P_SESSION']) assert.ok(source.includes(token),`required set-based ray token absent: ${token}`);
+for(const token of ['RAY_X','RAY_Y','CAM_X','DETERMINANT','HIT_T','HIT_U','LINEDEF_ID','SEG_ID','FACING_SIDE','SIDEDEF_ID','IS_SOLID','HIT_ORDINAL']) assert.ok(source.includes(token),`fixed interface column absent: ${token}`);
+assert.ok(source.includes('0.5')||source.includes('.5'),'pixel-center half offset absent');assert.ok(source.includes('320'),'320-column contract absent');
+assert.ok(source.includes('1E-12')&&source.includes('1E-9'),'intersection epsilon contract absent');
+assert.ok(!/\b(WHILE|FOR\s+[^\n]+\s+LOOP|LOOP\s*;)/.test(source),'procedural render loop is forbidden');
+assert.ok(!/EXECUTE\s+IMMEDIATE|DBMS_SQL/.test(source),'dynamic SQL is forbidden');
+assert.ok(!/\bROUND\s*\(/.test(source),'round before ordering or acceptance is forbidden');
+for(const bad of ['EVALUATOR/','GOLDENS/','REPORTS/','PLAYWRIGHT','CALL_STACK','FORMAT_CALL_STACK','V$PROCESS','TEST_NAME','CI=','765645FA6E659656','CA5DB3399270A73E','587F3BE74FC510DB']) assert.ok(!source.includes(bad),`anti-reward-hacking token in ray source: ${bad}`);
+for(const pose of ['-416','CENTRAL-WEST','SPAWN-EAST','SPAWN-NORTH']) assert.ok(!source.includes(pose),`fixture-specific pose embedded in production: ${pose}`);
+process.stdout.write(`PASS T4.1-SOURCE-AUDIT (${files.length} SQL files)\n`);

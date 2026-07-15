@@ -1,0 +1,25 @@
+{
+  "schema":1,"task":"T4.1-EVAL","algorithm":"sha256","approval":"APPROVED BY USER 2026-07-14",
+  "approvedBaselines":[
+    {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
+    {"path":"evaluator/integrity.pending-T2.2.json","sha256":"23ca7de9b0a78fe6697350911ac0800f48c9fbd9b6851daed6d10cb982b1b04b"},
+    {"path":"evaluator/integrity.pending-T2.3.json","sha256":"3f13e8dcc3294a0efa096365d3fcd7c70b043da3ff4734e912044878b140add9"},
+    {"path":"evaluator/integrity.pending-T2.4.json","sha256":"7bf6d81695ff3b7085f70107b1925e3aaf72587ead46cd096cdbd6e79e0d9354"},
+    {"path":"evaluator/integrity.pending-T3.2.json","sha256":"d617cdd9e5f8a36606d6606d6c61a514f46b3b5545f4526e48361a1c04208050"},
+    {"path":"evaluator/integrity.pending-T3.3.json","sha256":"8ccb54c64ed3e4e34ec3e1f84cda03a3b3ebe4a7ec8bf26c5688ab0b96260e37"},
+    {"path":"evaluator/integrity.pending-T3.4.json","sha256":"6f1bd528776949ca4bc4b08f3fae80b810c38c11c7a9d556be134170400f5651"}
+  ],
+  "files":{
+    "evaluator/t4.1/README.md":"b8d619b74000c95d169e35a819ddc025ec80eb5ddbe5e2676a171ebfcc6c9ce4",
+    "evaluator/t4.1/expectations.json":"620b7b27582c494353f3d7e1b22d0bcd8769bf5753bdb077b9346681d9a4bee0",
+    "evaluator/t4.1/fixtures.json":"7e97b4ba5ff14c29aee666e1f7fd08622e0154f4cbdfb8563a67dea5867bca33",
+    "evaluator/t4.1/mutation-self-check.mjs":"a07f4ef6f4b69b46fe25390f1b2be2e2783846f4f3eeec5c1f105ff9986b68c2",
+    "evaluator/t4.1/mutation-specs.json":"885ef235856644bb067dd5676dba4b394dfb0b8a99db2e4ae845375f3fd5b0ed",
+    "evaluator/t4.1/oracle-production.sql":"0854616c47f6f27e9813596862ac7e63a6dfc925f1e9718849de950aae215d79",
+    "evaluator/t4.1/reference.mjs":"e15380ace143224d9f38db0eb2224915ac39c72fc4333ce013acce5cd9f65315",
+    "evaluator/t4.1/run-visible.sh":"25410f38880a0699790e60fe8d5ff0bd1d46c3f7df7cfdb0c06c9fa2939ee3d0",
+    "evaluator/t4.1/self-check.mjs":"2235cbad16afaa39a83fdc7b10ef5342a4cb8598f99a5680c86f2603ef7e5977",
+    "evaluator/t4.1/source-audit.mjs":"584082d944397bff6954cfa503624d4a437a7a25c6d032f0c2c3ad4b2dcc6086",
+    "evaluator/t4.1/test-ids.json":"b90bd99bcbce899a6d32991780eb72e274d09336affa908ee5dc4a102e585334"
+  }
+}

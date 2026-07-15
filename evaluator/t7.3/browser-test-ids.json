@@ -1,0 +1,5 @@
+{"schema":1,"task":"T7.3-BROWSER","declaredAssertions":34,"tests":[
+ {"id":"T73-PLAYWRIGHT-PLAYBACK","assertions":20,"intent":"Pinned Chromium observes user-gesture-gated one-time AudioContext scheduling with exact gain and pan order and no console, page, or request failures."},
+ {"id":"T73-PLAYWRIGHT-REQUESTS","assertions":14,"intent":"Browser request interception proves same-name events share one application/json POST to DOOM_API.GET_ASSET and no direct audio endpoint is used."}
+]}
+

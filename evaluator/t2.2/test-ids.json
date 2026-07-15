@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "task": "T2.2-EVAL",
+  "approval": "PENDING USER APPROVAL",
+  "tests": [
+    {"id":"T2.2-DIR-001","assertions":8,"purpose":"IWAD/PWAD header, little-endian directory, bounds, names, offsets, sizes and occurrence indices"},
+    {"id":"T2.2-DIR-002","assertions":4,"purpose":"duplicate-name last-occurrence lookup while preserving both provenance rows"},
+    {"id":"T2.2-MAP-001","assertions":4,"purpose":"E1M1 marker confinement; never consume same-name lumps beyond E1M2"},
+    {"id":"T2.2-THING-001","assertions":20,"purpose":"signed coordinates and independent easy/medium/hard, ambush and not-single-player file bits; no gameplay-mode inference"},
+    {"id":"T2.2-GEOM-001","assertions":26,"purpose":"LINEDEFS, SIDEDEFS, VERTEXES, SEGS, SSECTORS and SECTORS values and signed fields"},
+    {"id":"T2.2-NODE-001","assertions":12,"purpose":"node partition, bboxes and unsigned 0x8000 subsector child flags"},
+    {"id":"T2.2-BLOCK-001","assertions":10,"purpose":"BLOCKMAP signed origin, dimensions, shared offset lists, zero header and terminators"},
+    {"id":"T2.2-REJECT-001","assertions":6,"purpose":"REJECT row-major bit order and required byte count from sector count"},
+    {"id":"T2.2-COLOR-001","assertions":10,"purpose":"all PLAYPAL palettes and all COLORMAP bands with spot entries"},
+    {"id":"T2.2-TEX-001","assertions":22,"purpose":"PNAMES plus TEXTURE1/TEXTURE2, odd widths, negative origins and overlapping placements"},
+    {"id":"T2.2-PATCH-001","assertions":20,"purpose":"patch header, post framing, transparent gaps and palette index zero as opaque data"},
+    {"id":"T2.2-PATCH-002","assertions":8,"purpose":"tall-patch relative top-delta continuation after prior absolute top 250"},
+    {"id":"T2.2-SPRITE-001","assertions":12,"purpose":"sprite frame/rotation naming and sparse patch texels"},
+    {"id":"T2.2-FLAT-001","assertions":5,"purpose":"flat namespace, 64x64 size and texel order"},
+    {"id":"T2.2-AUDIO-001","assertions":12,"purpose":"Doom sound header/sample payload and MUS header inputs"},
+    {"id":"T2.2-ERROR-001","assertions":30,"purpose":"15 malformed fixtures return exact stable codes on two executions"},
+    {"id":"T2.2-REF-001","assertions":12,"purpose":"out-of-range vertex, sector, linedef, seg, node-child and patch references are rejected"},
+    {"id":"T2.2-DET-001","assertions":4,"purpose":"two clean-process parses produce byte-identical compact JSON and no volatile fields"},
+    {"id":"T2.2-MUT-001","assertions":10,"purpose":"ten independent parser semantic mutations are killed by their named visible tests"}
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "task": "T5.2",
+  "status": "HUMAN_REVIEWED_APPROVED",
+  "approval": "User standing authorization applied after direct original-resolution inspection and independent PNG decoding on 2026-07-15",
+  "sourceCandidateEvaluatorManifestSha256": "438f35d48821541613a0a114d4ee814889778c1ef36552cb62344ac6a43ba4b7",
+  "productionPixelsSourceSha256": "9d876b4b8d590a37821466d928267ee4c88ba862f592f25dc2020e1355d818fd",
+  "pose": {
+    "id": "spawn-east",
+    "x": -416,
+    "y": 256,
+    "angle": 0,
+    "eyeZ": 41,
+    "currentTic": 17,
+    "width": 320,
+    "height": 200,
+    "order": "column-row",
+    "observationSha256": "3b915cab53118cbe458f1fc7c1b3457fe12a940b3fd183d2ca9ee0b7efc9f79d",
+    "frameSha256": "df931aead5a878018c9ad36cff0b73ed56545b290dcff9f59001fbec9a3f11f4",
+    "paletteSha256": "fd895921b5d0a394612bb29852ed003d44d69f76dec31c0dc6b5d5fc7d63f7bb",
+    "rgbaSha256": "e5b06d38181fece72cc7ce5ba15a3dabfd239992682d0136817bf88881344432",
+    "layersSha256": "0a77deec09cdee9bad3db577827e4c0f58aee5c82431b86322f5ece5669d707a",
+    "sectorIntervalsSha256": "0a9f60bb361aa2119a4d00802ef3bad27bd7b8da1b4ce0ad98f7834c0ae73be5",
+    "pngSha256": "e98ba9a6a894cc091d000f1c00cc0ed0b41d51ac5397818e836e5a73b1d47711",
+    "pngBytes": 22440,
+    "uniquePaletteIndices": 87,
+    "uniqueSectorIntervals": 20,
+    "layerCounts": {"0":23507,"1":14328,"3":0,"4":0,"10":20384,"11":2860,"12":2921},
+    "diagnosticPixels": [
+      {"column":0,"row":0,"paletteIndex":111,"layerOrdinal":1,"sectorIntervalOrdinal":2},
+      {"column":80,"row":100,"paletteIndex":107,"layerOrdinal":10,"sectorIntervalOrdinal":4},
+      {"column":159,"row":100,"paletteIndex":77,"layerOrdinal":10,"sectorIntervalOrdinal":15},
+      {"column":160,"row":100,"paletteIndex":5,"layerOrdinal":10,"sectorIntervalOrdinal":17},
+      {"column":240,"row":100,"paletteIndex":7,"layerOrdinal":10,"sectorIntervalOrdinal":5},
+      {"column":319,"row":199,"paletteIndex":0,"layerOrdinal":0,"sectorIntervalOrdinal":0}
+    ],
+    "review": "The actual 320x200 database frame shows a coherent E1M1 industrial corridor: ceiling and floor perspective converge continuously, the centered doorway and structural columns align, orange hazard-stripe spans remain unbroken, and wall texture scale and lighting are consistent. Portal upper/lower pieces are visible around the opening, the indoor zero-sky count is appropriate, and no transpose, tearing, corrupt bands, holes, or missing pixels are visible."
+  },
+  "reviewConclusion": "Approved as the first actual R2 visible baseline after exact 1,856,885-assertion production verification and an independent canonical indexed-PNG byte decode."
+}
