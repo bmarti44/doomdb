@@ -208,7 +208,7 @@ from resolved;
 create or replace view doom_r2_staged_masked_candidate_rows as
 with
 selected_sessions as (
-  select /*+ materialize */ distinct session_token
+  select /*+ materialize */ min(session_token) session_token
   from frame_r1_hit
 ),
 pose as (

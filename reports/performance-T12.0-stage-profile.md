@@ -57,6 +57,13 @@ spilled approximately 12,000 TEMP blocks every frame.
    second clean bootstrap, first `NEW_GAME` improved from 9.86 to 8.89 seconds,
    one moving turn from 9.87 to 8.71 seconds, and four forward tics from 11.76
    to 11.35 seconds, with identical output.
+8. The world and masked views now derive the session as the exact single
+   aggregate row held by the frame GTT, and world rays come from the seeded
+   320-row orientation profile rather than `DISTINCT` over thousands of hit
+   rows.  This removes optimizer estimates of 16,000 sessions, a 12-million-row
+   pose/ray join, and redundant hash-unique work.  Controlled clean-instance A/B
+   measurements improved the moving shapes by 5-8%; main observations reached
+   7.10-7.84 seconds for one turn and 7.73-8.30 seconds for four tics.
 
 Across successive exact public probes, `NEW_GAME(3)` fell from 26.30 seconds to
 14.06, 11.35, 10.08, 8.08, and finally 7.67 seconds.  Every selected probe
@@ -64,11 +71,11 @@ returned 92,658 bytes, state SHA-256
 `3e05a3305cd738a2115b2a233fedad173a6a81f664621d81d0363c46482ab640`,
 and frame SHA-256
 `1e9b6e40177c1234a87159cdc69cac93e968c7da4f1f54389a8426286f12d90f`.
-After shared portal/interval staging, the repeated clean probe reached 7.63
-seconds.  That is about 3.45 times faster than the prior 26.30-second revision
-and 16.0 times faster than the original 121.79-second baseline.  The measured
-one-turn frame remains 8.71 seconds (about 0.115 FPS), roughly 262 times above a
-33.3 ms frame budget.
+After shared portal/interval staging and cardinality repair, the best repeated
+clean probe reached 6.97 seconds.  That is about 3.77 times faster than the prior
+26.30-second revision and 17.5 times faster than the original 121.79-second
+baseline.  The conservative one-turn frame is 7.84 seconds (about 0.128 FPS),
+roughly 235 times above a 33.3 ms frame budget.
 
 ## Updated trace at the eight-second shape
 

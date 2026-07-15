@@ -25,12 +25,13 @@ select 'wall_texture', 'SFALL', 'SFALL4', 3, 4, 4 from dual;
 create or replace view doom_r2_staged_pixel_rows as
 with
 selected_sessions as (
-  select /*+ materialize */ distinct session_token
+  select /*+ materialize */ min(session_token) session_token
   from frame_r1_hit
 ),
 pose as (
   select session_row.session_token, session_row.current_tic,
     player.player_id, player.x player_x, player.y player_y,
+    player.angle angle_degrees,
     player.z + player.view_height + player.view_bob eye_z,
     cast(320 as binary_double) / 2 /
       tan(cast(90 as binary_double) * cast(acos(-1) as binary_double) / 360)
@@ -43,10 +44,11 @@ pose as (
    and player.player_id = session_row.current_player_id
 ),
 rays as (
-  select distinct pose.*, hit.column_no,hit.ray_x,hit.ray_y
+  select pose.*,ray.column_no,ray.ray_x,ray.ray_y
   from pose
-  join frame_r1_hit hit
-    on hit.session_token=pose.session_token and hit.player_id=pose.player_id
+  join doom_render_ray ray
+    on ray.profile_id='CANONICAL_320X200'
+   and ray.angle_degrees=pose.angle_degrees
 ),
 -- Live floor, ceiling, and light values override immutable map values.
 sector_values as (

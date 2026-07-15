@@ -43,15 +43,17 @@ and optimizer feedback are disabled only on fixed-shape staging statements to
 prevent a slower second-execution cursor.
 
 Successive exact public probes reduced `NEW_GAME` through 26.30, 14.06, 11.35,
-10.08, 8.08, 7.67, and 7.63 seconds. A second from-zero 41-file bootstrap ended
+10.08, 8.08, 7.67, 7.63, and 6.97 seconds. A second from-zero 41-file bootstrap ended
 with zero invalid objects and its first `NEW_GAME` completed in 8.89 seconds.
 Every call returned the same 92,658 bytes and exact baseline state/frame hashes.
-The best clean result is about 16 times faster than 121.79 seconds.
+The best clean result is about 17.5 times faster than 121.79 seconds.
 
-The executable moving probe measured one turning command at 8.71 seconds and a
-four-command forward batch at 11.35 seconds. The authoritative moving result is
-therefore about 0.115 FPS, not real-time playability, and is roughly 262 times
-over the 33.3 ms frame budget.
+After replacing redundant `DISTINCT` hit scans with one aggregate session fact
+and the seeded 320-ray profile, the executable moving probes observed one turn
+at 7.10-7.84 seconds and four forward tics at 7.73-8.30 seconds. A controlled
+same-instance clean A/B improved both moving shapes by 5-8%. The conservative
+moving result is therefore about 0.128 FPS, not real-time playability, and is
+roughly 235 times over the 33.3 ms frame budget.
 
 ## Rejected attempts
 

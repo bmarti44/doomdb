@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | Golden-preserving structural acceleration has reduced repeated clean `NEW_GAME` from 121.79 to 7.63 seconds. One moving turn is 8.71 seconds and four forward tics are 11.35 seconds; the 30 FPS gate is not met. |
+| P12.0 | Active playability gate | Golden-preserving structural acceleration has reduced the best exact clean `NEW_GAME` from 121.79 to 6.97 seconds. A moving turn is conservatively 7.84 seconds and four forward tics are 8.30 seconds; the 30 FPS gate is not met. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -55,13 +55,13 @@ portal-free boundary transition, stale MOBJ self-references at commit, command
 reads leaking across save/load lineages, and occupied lifts refusing to rise.
 Focused regressions and the complete adjacent P6/P7 gates pass after the fixes.
 A standalone public 163-tic prefix runs in about 31 seconds. The pulled-forward
-T12.0 staging path now completes a warm clean `NEW_GAME` in 7.63 seconds with
+T12.0 staging path now completes its best warm clean `NEW_GAME` in 6.97 seconds with
 the exact prior state hash, frame hash, and 92,658-byte payload, down from
 121.79 seconds. A second from-zero bootstrap completed all 41 files with zero
 invalid objects and its first call measured 8.89 seconds. The exact moving-frame
-probes measured 8.71 seconds for one turn and 11.35 seconds for four forward
-tics. The canonical reviewed renderer remains unchanged as the independent
-parity oracle.
+probes now measure 7.10–7.84 seconds for one turn and 7.73–8.30 seconds for four
+forward tics. The conservative one-turn figure is about 0.128 FPS. The canonical
+reviewed renderer remains unchanged as the independent parity oracle.
 An independent Sol/xhigh evaluation rejected MLE JavaScript and `UTL_TCP` for
 the production path: neither reduces the dominant relational renderer work,
 and `UTL_TCP` cannot replace the required inbound ORDS/AutoREST transport. The
@@ -77,7 +77,8 @@ and in the cloud.
 
 Not interactively yet. The complete R2 presentation renderer is correct and
 reviewable, and the best exact clean frame is about 16 times faster than the
-original baseline, but the measured moving turn is only about 0.115 FPS. The
+original baseline, but the conservative measured moving turn is only about
+0.128 FPS. The
 dashboard is useful for visual review; P12.0 remains active until unique moving
 frames approach 30 FPS (33.3 ms at both p50 and p95), or the documented
 Oracle-Free/SQL-only feasibility conflict is resolved.

@@ -1064,8 +1064,11 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   portal/sector-interval staging, bounded masked rasterization, direct
   world-to-final composition, sparse overlays, and chunked frame hashing are
   selected and exact.  The second clean 41-file bootstrap ended with zero
-  invalid objects.  Warm clean `NEW_GAME` is 7.63 s; clean-bootstrap first frame
-  is 8.89 s; one moving turn is 8.71 s; four moving forward tics are 11.35 s.
+  invalid objects.  The best exact clean `NEW_GAME` is 6.97 s.  Replacing the
+  optimizer's 16,000-session estimate with one aggregate session fact and the
+  seeded 320-ray profile passed a controlled same-instance A/B: moving turn and
+  four-tic observations are now 7.10-7.84 s and 7.73-8.30 s respectively (use
+  7.84 s, about 0.128 FPS, as the conservative current moving figure).
   Therefore P12.0 remains active and P8 remains paused.  Next implementation is
   WAD BSP front-to-back subtree rejection plus solid-column/window facts,
   followed by plane spans; persistent frame sequencing is finishing work after
