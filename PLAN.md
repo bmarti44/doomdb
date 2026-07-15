@@ -1091,9 +1091,11 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   7.84 s, about 0.128 FPS, as the conservative current moving figure).
   SQL `MATCH_RECOGNIZE` alone measured 280 ms, so this row/GTT architecture is
   mathematically outside the 33.3 ms budget. The approved next implementation
-  is a clean-room Java 11 OJVM analytic array renderer derived from the existing
-  project-owned SQL equations, followed only as needed by independently authored
-  BSP front-to-back rejection, solid columns, and plane spans. The SQL renderer
+  is a clean-room Java 11 OJVM renderer derived from the existing project-owned
+  SQL equations. The brute analytic shape is no longer an implementation stage:
+  independently authored BSP front-to-back rejection, conservative child
+  bounding boxes, per-column solid/vertical portal clips, wall columns, and
+  plane boundary arrays/spans are mandatory work reduction. The SQL renderer
   and MATCH_RECOGNIZE remain exact differential oracles, not production hot-path
   stages. JavaBox supplies architectural evidence only; no implementation is
   copied or translated.
@@ -1113,6 +1115,42 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   small separately compilable methods, front-to-back BSP/bounding-box rejection,
   solid screen-column occlusion, wall columns, plane spans, and a payload corpus
   matching the actual 92,658-byte response before production integration.
+- Fresh 10046/TKPROF triage (2026-07-15): two consecutive exact frames measured
+  11.14 and 10.57 s with stable plan hashes and 92,658-byte payloads. The warm
+  frame is world pixels 6.53 s (5.62 s CPU, 14,685 TEMP/physical blocks), masked
+  pixels 1.21 s, R1 hits 1.18 s, base/sparse composition 0.66 s, and
+  RLE/JSON/hash 0.51 s. World ownership forms a 4,762,030-row intermediate and
+  spills five major hash workareas; masked rendering spends about 1.08 s in
+  ranking and scans `DOOM_SCREEN_COLUMN` 3,505 times; R1 performs 2,018 repeated
+  ray range scans plus a per-column window sort. Removing all spill wait would
+  still leave 5.62 s of world CPU, while 240 ms production RLE alone is 7.2x the
+  complete budget. Further SQL join/index, PGA, DOP, or relational-pixel tuning
+  is stopped as a 30 FPS route.
+- OJVM implementation gates: use 6-10 cohesive primitive-array methods and
+  synchronously call `DBMS_JAVA.COMPILE_METHOD` for traversal, projection,
+  opaque columns, plane spans, masked fragments, presentation, codec, and BLOB
+  output. Every hot method must compile within 60 s and report
+  `IS_COMPILED=YES`. Kill the route if the no-JDBC composite kernel exceeds
+  12 ms p95, BSP traversal/projection exceeds 3 ms p95 or retains more than 25%
+  of ordinary brute seg-column pairs, opaque world exceeds 8 ms p95, masked
+  composition exceeds 3 ms p95, warm snapshot plus render exceeds 17 ms p95,
+  or renderer+codec+handoff exceeds 20 ms p95. Any missing SQL-winning primitive
+  or unexplained pixel/RLE/payload mismatch fails immediately.
+- OJVM data architecture: load deterministic revision-keyed relational BLOB
+  packs into exact-width primitive session arrays through internal JDBC; do not
+  fetch 3,040,239 `AT` rows per pooled session and do not embed a WAD. Cap and
+  prewarm the real ORDS pool because OJVM static caches are database-session
+  private. Retained immutable cache is capped at 12 MiB per pooled session and a
+  warm dynamic snapshot at 5 ms p95. Reuse one profile-sized indexed framebuffer,
+  column clip/interval arrays, plane bounds, masked primitive indexes, and codec
+  buffers with no full GC in the 300-frame corpus.
+- Exact production composition writes opaque world, planes, masked fragments,
+  weapon, HUD, and overlays into that single indexed framebuffer, then performs
+  one pass for frame hash, canonical Java RLE/JSON, GZIP, and caller-owned BLOB.
+  SQL pixel GTTs and `MATCH_RECOGNIZE` remain mandatory independent parity
+  oracles only. A future packed indexed-frame public schema is likely necessary
+  for efficient 640x400 scaling, but is deferred and requires its own explicit
+  charter amendment; it is not part of the current 320x200 selection.
 - Render-free simulation gate (2026-07-15): the first rollback-only 270-call
   probe was rejected because one giant transaction accumulated undo/version
   chains. The corrected public-boundary baseline, with one commit per unique
@@ -1134,11 +1172,13 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   target, not part of the current golden set: it has four times the pixels and
   must be addable without redesigning resolution-independent visibility or
   geometry.  No claim of 30 FPS at 640x400 follows from meeting it at 320x200.
-- Exact SQL-owned caches may accelerate unchanged/revisited states, but cache
+- Exact dependency caches may accelerate unchanged/revisited states, but cache
   keys must cover every render dependency and cache-miss moving frames remain
-  the playability authority.  Only after renderer work approaches the budget may
-  frame-byte construction, JSON RETURNING BLOB, temporary LOB lifecycle, gzip,
-  ORDS pool settings, or DOP be treated as finishing work.  Database In-Memory,
+  the playability authority. Only after renderer work approaches the budget may
+  ORDS pool settings or compression-level tuning be treated as finishing work.
+  The exact Java frame hash/RLE/JSON/GZIP/BLOB codec is part of the <=20 ms
+  renderer gate because the measured SQL codec cannot remain in production.
+  Database In-Memory,
   MLE, UTL_TCP, alternate HTTP surfaces, approximation, reduced resolution, and
   client prediction/rendering remain rejected.
 - Every candidate must retain the exact reviewed T5 frame hashes and pass the
