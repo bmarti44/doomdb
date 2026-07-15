@@ -8,6 +8,12 @@ declare
   end;
 begin
   drop_object('drop property graph doom_sector_graph', -42421);
+  drop_object('drop package doom_api', -4043);
+  drop_object('drop function doom_r2_staged_masked_pixels', -4043);
+  drop_object('drop function doom_r2_staged_masked_candidates', -4043);
+  drop_object('drop function doom_r2_staged_pixels', -4043);
+  drop_object('drop function doom_r2_staged_sector_intervals', -4043);
+  drop_object('drop function doom_r2_staged_portal_hits', -4043);
   drop_object('drop function doom_r2_presentation', -4043);
   drop_object('drop function doom_r2_masked_pixels', -4043);
   drop_object('drop function doom_r2_masked_candidates', -4043);
@@ -29,13 +35,20 @@ begin
   drop_object('drop package doom_tic_tx', -4043);
   drop_object('drop package doom_history', -4043);
   drop_object('drop view doom_r2_masked_candidate_rows', -942);
+  drop_object('drop view doom_api_presentation_rows', -942);
+  drop_object('drop view doom_r2_staged_masked_candidate_rows', -942);
   drop_object('drop view doom_r2_world_sprite_catalog', -942);
   drop_object('drop view doom_r2_sprite_patch_metrics', -942);
+  drop_object('drop view doom_r2_staged_pixel_rows', -942);
   drop_object('drop view doom_r2_pixel_rows', -942);
   drop_object('drop view doom_r2_animation_frames', -942);
   drop_object('drop view doom_r2_sector_interval_rows', -942);
+  drop_object('drop view doom_r2_staged_sector_interval_rows', -942);
   drop_object('drop view doom_r2_portal_hit_rows', -942);
+  drop_object('drop view doom_r2_staged_portal_hit_rows', -942);
   drop_object('drop view doom_r2_hit_geometry', -942);
+  drop_object('drop view doom_r2_staged_hit_geometry', -942);
+  drop_object('drop view doom_r1_render_hit_rows', -942);
   drop_object('drop view doom_r1_hit_rows', -942);
   drop_object('drop view doom_r1_ray_rows', -942);
   drop_object('drop view doom_vertex', -942);
@@ -45,7 +58,8 @@ begin
   for t in (
     select column_value table_name
       from table(sys.odcivarchar2list(
-        'FRAME_RLE_RUN','FRAME_PIXEL','FRAME_SPRITE','FRAME_WALL','FRAME_COLUMN',
+        'FRAME_RLE_RUN','FRAME_PIXEL','FRAME_MASKED_PIXEL','FRAME_WORLD_PIXEL',
+        'FRAME_SPRITE','FRAME_WALL','FRAME_R1_HIT','FRAME_COLUMN',
         'REPLAY_CURSORS','HISTORY_HEADS','SAVE_SLOTS','STATE_HISTORY','STEP_RESPONSES','AUDIO_EVENTS','GAME_EVENTS',
         'TIC_COMMANDS','ACTIVE_SWITCHES','ACTIVE_MOVERS','LINE_STATE','SECTOR_STATE',
         'MOBJS','PLAYERS','GAME_SESSIONS','DOOM_BLOCK_LINE','DOOM_BLOCK_CELL',

@@ -205,7 +205,7 @@ select resolved.state_id,resolved.rotation_no,resolved.asset_id,
   resolved.left_offset,resolved.top_offset,resolved.flip_x
 from resolved;
 
-create or replace view doom_r2_masked_candidate_rows as
+create or replace view doom_r2_staged_masked_candidate_rows as
 with
 pose as (
   select /*+ materialize */ session_row.session_token,player.player_id,
@@ -231,7 +231,7 @@ active_hits as (
       partition by hit.session_token,hit.column_no
       order by hit.hit_t,hit.linedef_id,hit.seg_id,hit.facing_side
     )-1 active_ordinal
-  from doom_r2_portal_hit_rows hit
+  from doom_r2_staged_portal_hit_rows hit
   where hit.is_active=1
 ),
 -- Reuse the active portal stream for interval ownership instead of expanding
@@ -505,27 +505,27 @@ select session_token,column_no,row_no,source_kind,source_id,depth,sector_id,
          and winner_ordinal=1 then 1 else 0 end is_selected
 from ranked;
 
-create or replace function doom_r2_masked_candidates(
+create or replace function doom_r2_staged_masked_candidates(
   p_session varchar2
 ) return varchar2 sql_macro(table)
 is
 begin
   return q'~
     select candidate.*
-    from doom_r2_masked_candidate_rows candidate
+    from doom_r2_staged_masked_candidate_rows candidate
     where candidate.session_token=p_session
   ~';
 end;
 /
 
-create or replace function doom_r2_masked_pixels(
+create or replace function doom_r2_staged_masked_pixels(
   p_session varchar2
 ) return varchar2 sql_macro(table)
 is
 begin
   return q'~
     select candidate.*
-    from doom_r2_masked_candidate_rows candidate
+    from doom_r2_staged_masked_candidate_rows candidate
     where candidate.session_token=p_session
       and candidate.is_selected=1
     order by candidate.column_no,candidate.row_no

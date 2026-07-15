@@ -38,37 +38,41 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P8 | Active | The full legitimate E1M1 route is executing through the public tic transaction. It has completed lift 1 and reached sector 149 at tic 1019; lift 2, blue key, exit, repeatability, and milestone-frame review remain. |
+| P12.0 | Complete | Pulled-forward local renderer acceleration keeps canonical goldens intact and reduces repeated clean `NEW_GAME` from 121.79 to 26.30 seconds. |
+| P8 | Active | The full legitimate E1M1 route is executing through the public tic transaction. Its current public checkpoint is tic 1430 with 46 health and 9 kills, approaching lift 2; blue key, exit, repeatability, and milestone-frame review remain. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
-| P12 | Pending | Golden-preserving profiling and optimization follows completed local/cloud acceptance. |
+| P12.1–P12.2 | Pending | The final fixed 300-frame local/cloud profiling and stopping-rule evidence follows completed cloud acceptance. |
 
-The current public route is alive at tic 1019 in sector 149 with 20 health,
-3 armor, 7 kills, and 10 items. It has legitimately opened the corridor doors,
-activated lift 1, waited for it to lower, ridden it back to its origin, and
-continued toward lift 2 and the blue key. No noclip, teleport, or direct state
-mutation is used.
+The current public route checkpoint is alive at tic 1430 with 46 health, 9
+kills, and 15 shotgun shells. It has legitimately opened the corridor doors,
+operated and ridden lift 1, reached the lift-2 approach, and cleared a stronger
+combat line without losing health. No noclip, teleport, or direct state mutation
+is used.
 
 Route evaluation exposed and fixed four production integration defects: a
 portal-free boundary transition, stale MOBJ self-references at commit, command
 reads leaking across save/load lineages, and occupied lifts refusing to rise.
 Focused regressions and the complete adjacent P6/P7 gates pass after the fixes.
-A standalone public 163-tic prefix runs in about 31 seconds. Clean single-session
-`NEW_GAME` currently takes about 122 seconds; accumulated sessions can make the
-late-filter renderer much slower, which is recorded for T10/T12 profiling.
+A standalone public 163-tic prefix runs in about 31 seconds. The pulled-forward
+T12.0 staging path now completes repeated clean `NEW_GAME` calls in 26.30 seconds
+with the exact prior state hash, frame hash, and 92,658-byte payload, down from
+121.79 seconds. A fresh bootstrap's first call measured 28.01 seconds. The
+canonical reviewed renderer remains unchanged as the independent parity oracle.
 An independent Sol/xhigh evaluation rejected MLE JavaScript and `UTL_TCP` for
 the production path: neither reduces the dominant relational renderer work,
-and `UTL_TCP` cannot replace the required inbound ORDS/AutoREST transport. T12
-will optimize shared SQL derivations and measure each post-render stage instead.
+and `UTL_TCP` cannot replace the required inbound ORDS/AutoREST transport. The
+confirmed improvement came from shared relational staging; final T12 will still
+measure the fixed 300-frame replay and every post-render stage locally and in the
+cloud.
 
 ## Is it playable yet?
 
-Not interactively. The complete R2 presentation renderer is correct and
-reviewable, but the current measured full 320×200 database frame takes about
-25.7 seconds (roughly 0.04 FPS): approximately 18.7 seconds for world rows and
-4.6 seconds for the masked layer. The dashboard is useful for visual review;
-real-time playability is a P12 performance objective after correctness and
-end-to-end acceptance are complete.
+Not interactively yet. The complete R2 presentation renderer is correct and
+reviewable, and T12.0 made clean first-frame API generation about 4.6 times
+faster, but 26.30 seconds per `NEW_GAME` is still far from real time. The
+dashboard is useful for visual review; final representative STEP/FPS measurement
+and further golden-preserving optimization remain in T12.1–T12.2.
 
 ## Local review
 

@@ -28,7 +28,12 @@ sql/sim/060_monsters.sql
 sql/sim/070_audio.sql
 sql/sim/tic/010_tic_transaction.sql
 sql/render/r2/010_portal_timeline.sql
+sql/render/r2/015_staged_portal_timeline.sql
 sql/render/r2/020_pixels.sql
+sql/render/r2/025_staged_pixels.sql
 sql/render/r2/030_masked.sql
+sql/render/r2/035_staged_masked.sql
 sql/render/r2/040_presentation.sql
+sql/render/r2/050_api_presentation_rows.sql
+sql/rest/010_doom_api.sql
 sql/schema/060_grants.sql

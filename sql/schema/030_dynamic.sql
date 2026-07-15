@@ -240,6 +240,68 @@ create global temporary table frame_column (
   constraint frame_column_no_ck check (column_no between 0 and 319)
 ) on commit delete rows;
 
+-- One exact analytic R1 hit stream is shared by all R2 consumers during an API
+-- frame. Direct renderer calls fall back to DOOM_R1_HIT_ROWS when this staging
+-- relation is empty.
+create global temporary table frame_r1_hit (
+  session_token varchar2(32) not null,
+  player_id number(10) not null,
+  column_no number(3) not null,
+  player_x number not null,player_y number not null,player_z number not null,
+  angle_degrees number not null,angle_radians binary_double not null,
+  direction_x binary_double not null,direction_y binary_double not null,
+  plane_x binary_double not null,plane_y binary_double not null,
+  cam_x number not null,ray_x binary_double not null,ray_y binary_double not null,
+  linedef_id number(10) not null,seg_id number(10) not null,
+  seg_direction number(1) not null,determinant binary_double not null,
+  t_numerator number not null,u_numerator binary_double not null,
+  facing_side number(1) not null,right_sidedef_id number(10),
+  left_sidedef_id number(10),hit_t binary_double not null,
+  hit_u binary_double not null,sidedef_id number(10),
+  opposite_sidedef_id number(10),is_solid number(1) not null,
+  hit_ordinal number not null,
+  constraint frame_r1_hit_pk primary key
+    (session_token,column_no,hit_ordinal),
+  constraint frame_r1_hit_column_ck check(column_no between 0 and 319)
+) on commit delete rows;
+
+create global temporary table frame_world_pixel (
+  session_token varchar2(32) not null,column_no number(3) not null,
+  row_no number(3) not null,palette_index number(3) not null,
+  layer_ordinal number(3) not null,sector_interval_ordinal number,
+  constraint frame_world_pixel_pk primary key(session_token,column_no,row_no)
+) on commit delete rows;
+
+create global temporary table frame_masked_pixel (
+  session_token varchar2(32) not null,column_no number(3) not null,
+  row_no number(3) not null,palette_index number(3) not null,
+  source_kind varchar2(16) not null,source_id number not null,
+  constraint frame_masked_pixel_pk primary key(session_token,column_no,row_no)
+) on commit delete rows;
+
+-- Stable shared cardinalities prevent Oracle cardinality feedback from replacing
+-- the reviewed staging plans after their first execution. Actual row counts vary
+-- by pose, but remain in these fixed bounded orders of magnitude.
+begin
+  dbms_stats.set_table_prefs(user,'FRAME_R1_HIT',
+    'GLOBAL_TEMP_TABLE_STATS','SHARED');
+  dbms_stats.set_table_stats(user,'FRAME_R1_HIT',numrows=>16000,
+    numblks=>256,no_invalidate=>false);
+  dbms_stats.set_table_prefs(user,'FRAME_WORLD_PIXEL',
+    'GLOBAL_TEMP_TABLE_STATS','SHARED');
+  dbms_stats.set_table_stats(user,'FRAME_WORLD_PIXEL',numrows=>64000,
+    numblks=>512,no_invalidate=>false);
+  dbms_stats.set_table_prefs(user,'FRAME_MASKED_PIXEL',
+    'GLOBAL_TEMP_TABLE_STATS','SHARED');
+  dbms_stats.set_table_stats(user,'FRAME_MASKED_PIXEL',numrows=>8000,
+    numblks=>128,no_invalidate=>false);
+  dbms_stats.set_table_prefs(user,'FRAME_COLUMN',
+    'GLOBAL_TEMP_TABLE_STATS','SHARED');
+  dbms_stats.set_table_stats(user,'FRAME_COLUMN',numrows=>320,
+    numblks=>8,no_invalidate=>false);
+end;
+/
+
 create global temporary table frame_wall (
   session_token varchar2(32) not null,
   column_no number(3) not null,

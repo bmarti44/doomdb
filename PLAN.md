@@ -218,7 +218,9 @@ UTL_TCP is outbound-only and is not an HTTP response transport. It may not be
 used to bypass AutoREST or send dynamic game data to a relay. All public dynamic
 traffic remains the Section 5.4 `DOOM_API` AutoREST contract.
 
-T12 optimizes the measured relational renderer first. It separately times RLE,
+The local renderer-materialization slice of T12 runs immediately after P7 and
+before the remaining P8 replay work. It optimizes the measured relational
+renderer first because every public replay batch pays that cost. It separately times RLE,
 JSON aggregation, frame hashing, UTF-8 conversion, `UTL_COMPRESS`, ORDS
 marshaling, browser decode, and blit before proposing a codec change. Any future
 MLE experiment requires a charter amendment, fresh independent evaluation,
@@ -715,6 +717,10 @@ it does not claim a minimum FPS.
 
 ## 7. Execution phases and task cards
 
+Execution order is P0-P7, the local T12.0 acceleration gate, P8-P11, then the
+full local-and-cloud T12.1/T12.2 protocol. T12.0 may improve implementation
+speed but may not relax or replace the final 300-frame local/cloud evidence.
+
 ### P0 - Contract and evaluator foundation
 
 #### T0.1 Versions and host preflight
@@ -1013,6 +1019,28 @@ it does not claim a minimum FPS.
   browser requests only AutoREST assets, and Playwright observes scheduled playback
   after a user gesture without console errors.
 
+### P12.0 - Pulled-forward local renderer acceleration gate
+
+- Route: Sol high for SQL changes and Terra medium for measurement.
+- Run after P7 and before continuing P8. Start from the reviewed T5 renderer
+  goldens and the measured T8.1 production profile. Capture representative local
+  world, masked, presentation, one-command STEP, and four-command STEP timings
+  outside production payloads.
+- Optimize the confirmed renderer-materialization bottleneck first. Evaluate a
+  shared-portal/single-derivation relational shape, earliest legal session
+  predicates, and removal of repeated SQL-macro expansion. Do not change the
+  320x200 output, canonical RLE/JSON, public API, simulation, WAD data, or SQL
+  ownership, and do not use MLE or UTL_TCP.
+- Every candidate must retain the exact reviewed T5 frame hashes and pass the
+  complete T5-T7 correctness and mutation gates. Record rejected attempts and
+  raw timings. Select an optimization only after repeat measurements show a
+  material local improvement without cursor-shape regression.
+- Accept: representative local render and STEP timings are recorded, exact
+  renderer/state hashes and payload schema remain unchanged, all T5-T7 gates
+  pass, and P8 resumes against the selected faster revision. This is an enabling
+  gate, not final T12 acceptance; T12.1/T12.2 still require the fixed 300-frame
+  replay and independent local/cloud evidence after P11.
+
 ### P8 - Full E1M1 and presentation workflows
 
 #### T8.1 Full completion replay
@@ -1098,7 +1126,7 @@ it does not claim a minimum FPS.
   new-game, STEP, asset, canvas, audio, save/load, replay, and completion-smoke
   tests. No non-S3/non-Oracle runtime dependency appears in the network log.
 
-### P12 - Golden-preserving performance work
+### P12 - Final golden-preserving local and cloud performance work
 
 #### T12.1 Baseline and cursor hygiene
 
@@ -1111,6 +1139,9 @@ it does not claim a minimum FPS.
   four-command STEP latency locally and on managed ORDS.
 - Accept: bound statement shapes remain stable across poses/commands and the
   complete raw/report artifact exists.
+- Reuse T12.0 artifacts only as ancestry and local diagnostic evidence. Capture
+  the complete 300-frame local and cloud baseline here; the pulled-forward gate
+  does not satisfy or shorten this acceptance contract.
 
 #### T12.2 Profile-guided optimization loop
 
@@ -1119,8 +1150,9 @@ it does not claim a minimum FPS.
   static relations, partitioning, aggregation shape, or codec changes that retain
   the public decompressed schema and all goldens.
 - Evaluate the already measured shared-portal/single-derivation SQL shape before
-  any codec experiment; it is the confirmed candidate that attacks renderer
-  materialization. MLE and UTL_TCP remain out of scope under Section 1.8.
+  any codec experiment if T12.0 did not already select it. Treat the selected
+  T12.0 revision as the initial candidate state, not as proof of final local or
+  cloud performance. MLE and UTL_TCP remain out of scope under Section 1.8.
 - Stop only under Section 6.6. Record every attempt, including regressions.
 - Accept: all correctness and mutation tests remain green and the final report
   states the highest verified local and cloud FPS without a marketing estimate.

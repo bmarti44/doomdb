@@ -152,17 +152,35 @@ create or replace package body doom_api as
       into l_tic,l_mode,l_complete from game_sessions
       where session_token=p_session;
 
-    -- Materialize the SQL-macro canvas once before downstream RLE and hash
-    -- aggregation.  Besides avoiding duplicate renderer work, this keeps the
-    -- macro at a top-level statement boundary required by Oracle's SQL-macro
-    -- expansion rules.
+    -- Materialize shared render relations once. World and masked SQL otherwise
+    -- expand the exact R1 hit/portal stream independently inside the combined
+    -- presentation statement.
+    delete from frame_r1_hit;
+    insert into frame_r1_hit
+      select /*+ opt_param('optimizer_adaptive_plans' 'false') opt_param('_optimizer_use_feedback' 'false') */ *
+      from doom_r1_hit_rows where session_token=p_session;
+    delete from frame_world_pixel;
+    insert into frame_world_pixel
+      select /*+ opt_param('optimizer_adaptive_plans' 'false') opt_param('_optimizer_use_feedback' 'false') */ *
+      from doom_r2_staged_pixel_rows where session_token=p_session;
+    delete from frame_masked_pixel;
+    insert into frame_masked_pixel(session_token,column_no,row_no,palette_index,
+      source_kind,source_id)
+      select /*+ opt_param('optimizer_adaptive_plans' 'false') opt_param('_optimizer_use_feedback' 'false') */
+        session_token,column_no,row_no,palette_index,source_kind,source_id
+      from doom_r2_staged_masked_candidate_rows
+      where session_token=p_session and is_selected=1;
+
+    -- Materialize the composed canvas once before downstream RLE and hash
+    -- aggregation.
     delete from frame_column;
     insert into frame_column(session_token,column_no)
       select p_session,level-1 from dual connect by level<=320;
     delete from frame_pixel where session_token=p_session;
     insert into frame_pixel(session_token,column_no,row_no,palette_index,
       layer_ordinal)
-    select presentation.session_token,presentation.column_no,
+    select /*+ opt_param('optimizer_adaptive_plans' 'false') opt_param('_optimizer_use_feedback' 'false') */
+      presentation.session_token,presentation.column_no,
       presentation.row_no,presentation.palette_index,presentation.layer_ordinal
     from doom_api_presentation_rows presentation
     join frame_column selected

@@ -42,17 +42,17 @@ create or replace view doom_api_presentation_rows as
     world_pixels as (
       select /*+ materialize */ world.*
       from session_state state
-      join doom_r2_pixel_rows world
+      join frame_world_pixel world
         on world.session_token=state.session_token
       where state.game_mode in ('GAME','DEAD') and world.row_no<168
     ),
     masked_pixels as (
       select /*+ materialize */ masked.*
       from session_state state
-      join doom_r2_masked_candidate_rows masked
+      join frame_masked_pixel masked
         on masked.session_token=state.session_token
       where state.game_mode in ('GAME','DEAD')
-        and masked.is_selected=1 and masked.row_no<168
+        and masked.row_no<168
     ),
     world_candidates as (
       select world.session_token,world.column_no,world.row_no,
