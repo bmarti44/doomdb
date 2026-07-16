@@ -9,6 +9,12 @@ declare
   committed_tic_ number;committed_seq_ number;version_ number;count_ number;sha_ varchar2(64);
   before_ clob;after_ clob;dest_ integer:=1;src_ integer:=1;context_ integer:=0;warning_ integer;
 
+  function int_(p raw,o pls_integer) return number is
+  begin return utl_raw.cast_to_binary_integer(
+    utl_raw.substr(p,o,4),utl_raw.big_endian);end;
+  function u16_(p raw,o pls_integer) return number is
+  begin return to_number(rawtohex(utl_raw.substr(p,o,2)),'XXXX');end;
+
   procedure cleanup_sessions is
   begin
     if apply_session_ is not null then delete from game_sessions where session_token=apply_session_;end if;
@@ -79,7 +85,7 @@ declare
   end;
 
   procedure assert_parity is
-    a_ clob;e_ clob;
+    a_ clob;e_ clob;events_ number;frontier_ number;
   begin
     assert_equal(world_doc(apply_session_),world_doc(oracle_session_),'applied mobj parity');
     select json_array(health,armor,alive,kill_count returning clob) into a_ from players p join game_sessions g
@@ -89,11 +95,19 @@ declare
     assert_equal(a_,e_,'applied player parity');
     select json_arrayagg(json_array(event_ordinal,event_type,actor_mobj_id,target_mobj_id,
       number_value,text_value null on null returning varchar2) order by event_ordinal returning clob)
-      into a_ from game_events where session_token=apply_session_ and tic=tic_;
+      into a_ from game_events where session_token=apply_session_ and tic=tic_+1;
     select json_arrayagg(json_array(event_ordinal,event_type,actor_mobj_id,target_mobj_id,
       number_value,text_value null on null returning varchar2) order by event_ordinal returning clob)
-      into e_ from game_events where session_token=oracle_session_ and tic=tic_;
+      into e_ from game_events where session_token=oracle_session_ and tic=tic_+1;
     assert_equal(a_,e_,'applied event parity');
+    select count(*) into events_ from game_events
+      where session_token=apply_session_ and tic=tic_;
+    if events_<>0 then raise_application_error(-20000,'events persisted on source tic');end if;
+    select count(*),coalesce(max(event_ordinal)+1,0) into events_,frontier_
+      from game_events where session_token=apply_session_ and tic=tic_+1;
+    if events_<>u16_(delta_,23) or frontier_<>int_(delta_,53) then
+      raise_application_error(-20000,'resulting-tic event count/frontier parity');
+    end if;
     select json_array(current_tic,last_command_seq,rng_cursor returning clob) into a_
       from game_sessions where session_token=apply_session_;
     select json_array(current_tic,last_command_seq,rng_cursor returning clob) into e_
@@ -169,7 +183,7 @@ begin
 
   doom_unified_delta_apply.apply_tic(apply_session_,lineage_,tic_,seq_,delta_,
     committed_tic_,committed_seq_,version_,count_,sha_);
-  doom_monsters.advance(oracle_session_,tic_);
+  doom_monsters.advance(oracle_session_,tic_+1);
   update game_sessions set current_tic=tic_+1,last_command_seq=seq_+1 where session_token=oracle_session_;
   assert_parity;
   expect_reject(delta_,'stale duplicate delta');
@@ -183,7 +197,7 @@ begin
     tic_,seq_,rng_,next_mobj_,0);
   doom_unified_delta_apply.apply_tic(apply_session_,lineage_,tic_,seq_,delta_,
     committed_tic_,committed_seq_,version_,count_,sha_);
-  doom_monsters.advance(oracle_session_,tic_);
+  doom_monsters.advance(oracle_session_,tic_+1);
   update game_sessions set current_tic=tic_+1,last_command_seq=seq_+1 where session_token=oracle_session_;
   result_:=doom_unified_actor_accept(apply_session_,lineage_,1,request_);
   if result_<>'OK' then raise_application_error(-20000,'accept '||result_);end if;

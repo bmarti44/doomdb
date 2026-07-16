@@ -232,8 +232,13 @@ create or replace package body doom_unified_delta_apply as
     select coalesce(max(mobj_id),0)+1 into l_initial_mobj from mobjs
       where session_token=p_session_token;
     if l_next_mobj<>l_initial_mobj+l_spawn_count then fail('mobj frontier');end if;
+    -- A prepared tic advances EXPECTED_TIC to NEXT_TIC.  Its events belong to
+    -- that resulting logical tic, matching DOOM_TIC_TX.APPLY_BATCH(l_tic+ord).
+    -- The retained owner starts NEXT_EVENT at zero for each new tic; deriving
+    -- the relational frontier here also preserves exact append semantics when
+    -- a prior subsystem has already emitted an event for the resulting tic.
     select coalesce(max(event_ordinal)+1,0) into l_initial_event from game_events
-      where session_token=p_session_token and tic=p_expected_tic;
+      where session_token=p_session_token and tic=l_next_tic;
     if l_next_event<>l_initial_event+l_event_count then fail('event frontier');end if;
 
     l_position:=73;
@@ -402,7 +407,7 @@ create or replace package body doom_unified_delta_apply as
     for i in 1..l_event_count loop
       insert into game_events(session_token,tic,event_ordinal,event_type,
         actor_mobj_id,target_mobj_id,number_value,text_value)
-      values(p_session_token,p_expected_tic,l_events(i).ordinal,
+      values(p_session_token,l_next_tic,l_events(i).ordinal,
         l_events(i).event_name,l_events(i).actor_id,l_events(i).target_id,
         l_events(i).number_value,l_events(i).text_value);
     end loop;
