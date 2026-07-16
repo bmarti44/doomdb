@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | Exact BSP/portal/wall drawing passes at 1.436 ms p95 and matches all 26,165 SQL wall pixels byte-for-byte. Planes, masked drawing, codec, OJVM integration, and simulation remain active. |
+| P12.0 | Active playability gate | The complete 64,000-pixel world matches SQL byte-for-byte at 4.794 ms p95. Masked drawing, presentation/codec, compiled OJVM integration, packed loading, and simulation remain active. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -112,6 +112,13 @@ combined traversal-through-wall path measures 1.061 ms p50 / 1.436 ms p95 over
 20,000 samples. This passes the opaque-wall component gate; the frame is still
 incomplete until exact plane spans, masked fragments, presentation, and codec
 are integrated.
+
+Floors, ceilings, and sky now fill that same buffer using exact sector
+intervals, stored rays, and the database projection constant. All 64,000 world
+pixels match production SQL with zero missing, extra, or palette differences.
+The complete world path measures 2.730 ms p50 / 4.794 ms p95 / 5.348 ms p99
+over 20,000 samples, passing the 8 ms opaque-world gate. The next parity slice
+is masked walls and sprites.
 
 ## Is it playable yet?
 

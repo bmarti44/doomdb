@@ -1148,6 +1148,16 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   <=8 ms opaque-world gate before planes. Row-by-row immutable loading is 4.369
   seconds and must be replaced by revision-keyed primitive BLOB packs. Exact
   floor/ceiling boundary arrays and horizontal spans are next.
+- Exact interval-bounded floors, ceilings, and sky now use the stored 20,480 ray
+  components and database-computed binary-double projection constant. All
+  64,000 production SQL world pixels match with 0 missing, 0 extra, and 0
+  palette mismatches. The complete allocation-free world path measures
+  2.730063/4.794134/5.348201 ms p50/p95/p99 over 20,000 samples, passing the
+  <=8 ms opaque-world gate. Current plane work is direct indexed-array raster;
+  horizontal span coalescing remains mandatory before 640x400 activation but
+  does not block the 320x200 masked-fragment slice. Cold row loading including
+  1,256,192 wall texels, 200,704 flat texels, and stored rays is 4.999 seconds,
+  further confirming the packed relational BLOB requirement.
 - Local native-method evidence correction (2026-07-15): Oracle's foreground
   trace proves the disposable one-line `(I)I` method compiled successfully in
   59,470 ms; the client cutoff landed at completion. JIT, the descriptor, and
@@ -1172,7 +1182,8 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
 - OJVM implementation gates: use 6-10 cohesive primitive-array methods and
   synchronously call `DBMS_JAVA.COMPILE_METHOD` for traversal, projection,
   opaque columns, plane spans, masked fragments, presentation, codec, and BLOB
-  output. Every hot method must compile within 60 s and report
+  output. Permit one measured 5-10 minute cold deployment bootstrap; after the
+  compiler is warm, each hot method must compile within 60 s and report
   `IS_COMPILED=YES`. Kill the route if the no-JDBC composite kernel exceeds
   12 ms p95, BSP traversal/projection exceeds 3 ms p95 or retains more than 25%
   of ordinary brute seg-column pairs, opaque world exceeds 8 ms p95, masked

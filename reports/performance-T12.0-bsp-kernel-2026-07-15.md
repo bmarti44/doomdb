@@ -24,8 +24,10 @@ two-pass nearest-solid-depth clip, an exact ordered sector portal walk, and
 per-column upper/lower portal clips. The two-pass design avoids assuming that
 seg storage order inside a subsector is strict ray-depth order. Exact wall
 regions are drawn front-to-back into one reusable indexed buffer, sampling the
-real relational textures and colormap. It does not yet implement plane spans,
-masked fragments, or the production codec.
+real relational textures and colormap. Sector intervals also bound an exact
+array-based floor/ceiling/sky raster into the same buffer. It does not yet
+implement masked fragments or the production codec; horizontal plane-span
+coalescing remains a later resolution-scaling optimization.
 
 The runner compiles with the pinned database image's Java 11 HotSpot VM and uses
 the image's `ojdbc11.jar`. The password is read only from the Compose secret
@@ -52,6 +54,8 @@ pair. The selected run found:
 | Final upper/lower clip mismatches | 0 |
 | Production SQL opaque wall pixels at spawn east | 26,165 |
 | Java wall missing / extra / palette mismatch | 0 / 0 / 0 |
+| Production SQL complete world pixels | 64,000 |
+| Java world missing / extra / palette mismatch | 0 / 0 / 0 |
 | Maximum nodes visited | 614 / 681 |
 | Maximum subsectors visited | 588 / 682 |
 
@@ -61,9 +65,11 @@ the no-more-than-25% gate by a wide margin. Node/subsector visitation remains
 high. The portal stream and final clip arrays now match the production SQL
 `MATCH_RECOGNIZE` oracle exactly across the same 12 directions. At spawn east,
 all 26,165 wall coordinates and palette values match the production SQL world
-oracle. A narrowly bounded integer snap reconciles SQL exact-number flooring
-with binary-double values such as `22.999999999999986`; the fail-closed byte
-oracle guards that compatibility rule.
+oracle. A narrowly bounded integer snap reconciles SQL exact-number wall
+flooring with binary-double values such as `22.999999999999986`. Planes use the
+stored 20,480 ray components, the database-computed projection constant, and
+raw binary-double flooring for negative world coordinates. The fail-closed
+oracle now guards all 64,000 world bytes.
 
 ## HotSpot timing
 
@@ -72,14 +78,14 @@ After 5,000 warmups, 20,000 unique angle/nearby-position samples measured with a
 
 | Metric | Result |
 | --- | ---: |
-| Immutable relational load including 1,256,192 wall texels | 4,368.997 ms |
-| Traversal through exact wall draw p50 | 1.060739 ms |
-| Traversal through exact wall draw p95 | 1.435519 ms |
-| Traversal through exact wall draw p99 | 1.651697 ms |
+| Immutable relational load including walls/flats/rays | 4,998.740 ms |
+| Complete exact 64,000-pixel world p50 | 2.730063 ms |
+| Complete exact 64,000-pixel world p95 | 4.794134 ms |
+| Complete exact 64,000-pixel world p99 | 5.348201 ms |
 
 The geometry/clip portion previously passed its <=3 ms component gate, and the
-combined exact wall path remains well inside the <=8 ms opaque-world gate on
-HotSpot. The 4.37-second row-by-row cold load is not in the frame path, but it is
+complete exact world remains inside the <=8 ms opaque-world gate on HotSpot.
+The 5.00-second row-by-row cold load is not in the frame path, but it is
 not an acceptable pooled-session prewarm path; the planned revision-keyed
 relational BLOB packs remain necessary.
 
@@ -104,19 +110,21 @@ Consequences:
 - interpreted OJVM timing cannot select the production renderer;
 - the local pinned Oracle Free image supports JIT but has a costly cold compile;
 - the algorithm work may continue in the checked-in Java 11 HotSpot harness;
-- production selection requires the one-line probe and every renderer hot
-  method to compile within 60 seconds and report `IS_COMPILED=YES` on the target
-  Oracle environment; and
+- production selection requires a bounded cold deployment warmup, then every
+  renderer hot method to compile within 60 seconds and report `IS_COMPILED=YES`
+  on the target Oracle environment; and
 - SQL remains the production renderer and exact independent oracle meanwhile.
 
 ## Next implementation
 
-1. Add exact floor/ceiling boundary arrays and horizontal plane spans into the
-   same indexed buffer, then compare all 64,000 world bytes.
+1. Add exact masked wall/sprite primitive fragments and require full
+   world+masked parity plus <=3 ms for that stage.
 2. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and
    enforce the 12 MiB/session and 5 ms warm-snapshot gates.
 3. Externally compile/load the representative methods, allow bounded cold JIT
    warmup, and require compiled steady-state timing before integration.
+4. Coalesce plane work into horizontal spans before activating 640x400; the
+   current direct indexed raster already passes 320x200 but scales per pixel.
 
 Run the current reproducible gate with:
 
