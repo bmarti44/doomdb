@@ -149,8 +149,8 @@ Consequences:
 
 ## Next implementation
 
-1. Write the 42 KB packed-v2 GZIP result to a caller-owned Oracle BLOB and keep
-   codec+BLOB at or below 5 ms p95.
+1. Load the real renderer/codec into OJVM, compile every hot method, and measure
+   renderer+codec+the selected two-write caller-owned BLOB path in one call.
 2. Parameterize weapon/HUD values and add pause/menu/automap/intermission
    presentation parity.
 3. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and

@@ -1194,6 +1194,15 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   GZIP/base64 round trip is exact, and the TypeScript client accepts both
   versions with SHA-256 verification. V2 is selected; caller-owned BLOB handoff
   must keep codec+BLOB <=5 ms p95 before OJVM integration.
+- Caller-owned BLOB handoff passes. A disposable OJVM matrix wrote the real
+  42,140-byte measured payload size after 200 warmups over 1,500 samples per
+  path. Direct locator `setBytes` measured 0.085/0.252 ms p50/p95, two bounded
+  locator writes measured 0.093/0.232 ms, and `setBinaryStream` measured
+  0.159/0.434 ms. All paths preserved length and SHA-256, and cleanup left zero
+  probe/invalid objects. Select two locator writes (32,767 bytes plus remainder)
+  because they have the best p95 and remain inside the internal-driver bound.
+  Codec+BLOB component sum is 2.032499 ms p95; renderer+codec+BLOB component
+  sum is 7.043515 ms. The real combined compiled-OJVM call is next.
 - Local native-method evidence correction (2026-07-15): Oracle's foreground
   trace proves the disposable one-line `(I)I` method compiled successfully in
   59,470 ms; the client cutoff landed at completion. JIT, the descriptor, and
