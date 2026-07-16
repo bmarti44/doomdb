@@ -15,6 +15,19 @@ create or replace package doom_unified_delta_apply authid definer as
     p_delta_count out number,
     p_delta_sha out varchar2
   );
+  procedure apply_command_tic(
+    p_session_token in varchar2,
+    p_save_lineage in varchar2,
+    p_expected_tic in number,
+    p_expected_command_seq in number,
+    p_command in raw,
+    p_delta in raw,
+    p_committed_tic out number,
+    p_committed_command_seq out number,
+    p_delta_version out number,
+    p_delta_count out number,
+    p_delta_sha out varchar2
+  );
 end doom_unified_delta_apply;
 /
 
@@ -139,6 +152,12 @@ create or replace package body doom_unified_delta_apply as
     if p_value=-1 then return null;end if;
     if p_value<0 then fail(p_label||' invalid null sentinel');end if;
     return p_value;
+  end;
+
+  function signed_byte_at(p_position pls_integer,p_label varchar2) return pls_integer is
+    l_value pls_integer:=byte_at(p_position,p_label);
+  begin
+    return case when l_value>=128 then l_value-256 else l_value end;
   end;
 
   function event_type(p_code number) return varchar2 is
@@ -428,6 +447,121 @@ create or replace package body doom_unified_delta_apply as
       raise_application_error(-20841,'DTIC v1: missing fenced relational row');
     when others then
       rollback to doom_unified_delta_apply_start;
+      raise;
+  end;
+
+  procedure apply_command_tic(
+    p_session_token in varchar2,
+    p_save_lineage in varchar2,
+    p_expected_tic in number,
+    p_expected_command_seq in number,
+    p_command in raw,
+    p_delta in raw,
+    p_committed_tic out number,
+    p_committed_command_seq out number,
+    p_delta_version out number,
+    p_delta_count out number,
+    p_delta_sha out varchar2
+  ) is
+    c_command_bytes constant pls_integer:=24;
+    c_dctc_header constant pls_integer:=105;
+    l_command_seq number;l_outer_seq number;l_outer_tic number;
+    l_turn pls_integer;l_forward pls_integer;l_strafe pls_integer;l_run pls_integer;
+    l_child_length number;l_angle_index number;l_x number;l_y number;l_z number;
+    l_sector number;l_derived_sector number;l_nested_length number;
+    l_nested raw(32767);l_wrapped raw(32767);l_inner_tic number;l_inner_seq number;
+    l_inner_version number;l_inner_count number;l_inner_sha varchar2(64);
+  begin
+    savepoint doom_unified_command_apply_start;
+    p_committed_tic:=null;p_committed_command_seq:=null;
+    p_delta_version:=null;p_delta_count:=null;p_delta_sha:=null;
+
+    if p_command is null or utl_raw.length(p_command)<>c_command_bytes then
+      fail('DMSC/v2 exact length');
+    end if;
+    g_delta:=p_command;g_length:=c_command_bytes;
+    if rawtohex(utl_raw.substr(g_delta,1,4))<>'444D5343' or
+       byte_at(5,'DMSC version')<>2 or byte_at(6,'DMSC count')<>1 or
+       byte_at(7,'DMSC reserved')<>0 or byte_at(8,'DMSC reserved')<>0 then
+      fail('DMSC/v2 header');
+    end if;
+    l_command_seq:=u64_at(9,'DMSC sequence');
+    if l_command_seq<>p_expected_command_seq+1 then fail('DMSC sequence gap');end if;
+    l_turn:=signed_byte_at(17,'DMSC turn');
+    l_forward:=signed_byte_at(18,'DMSC forward');
+    l_strafe:=signed_byte_at(19,'DMSC strafe');l_run:=byte_at(20,'DMSC run');
+    if l_turn not between -1 and 1 or l_forward not between -1 and 1 or
+       l_strafe not between -1 and 1 or l_run not in(0,1) then
+      fail('DMSC movement domain');
+    end if;
+    for i in 21..24 loop
+      if byte_at(i,'DMSC unsupported action/reserved')<>0 then
+        fail('DMSC unsupported action/reserved');
+      end if;
+    end loop;
+
+    if p_delta is null then fail('null DCTC delta');end if;
+    g_delta:=p_delta;g_length:=utl_raw.length(g_delta);
+    if g_length<12+c_dctc_header+60 then fail('short DCTC envelope');end if;
+    if rawtohex(utl_raw.substr(g_delta,1,4))<>'44554F50' or
+       byte_at(5,'DCTC DUOP version')<>1 or byte_at(6,'DCTC DUOP status')<>0 or
+       byte_at(7,'DCTC DUOP mode')<>5 or byte_at(8,'DCTC DUOP reserved')<>0 then
+      fail('DCTC DUOP header');
+    end if;
+    l_child_length:=u32_at(9,'DCTC child length');
+    if l_child_length<>g_length-12 then fail('DCTC DUOP exact length');end if;
+    if rawtohex(utl_raw.substr(g_delta,13,4))<>'44435443' or
+       byte_at(17,'DCTC version')<>1 or byte_at(18,'DCTC status')<>0 or
+       byte_at(19,'DCTC reserved')<>0 or byte_at(20,'DCTC command bytes')<>c_command_bytes then
+      fail('DCTC header');
+    end if;
+    l_outer_seq:=u64_at(21,'DCTC command frontier');
+    l_outer_tic:=u64_at(29,'DCTC tic frontier');
+    if l_outer_seq<>l_command_seq or l_outer_seq<>p_expected_command_seq+1 or
+       l_outer_tic<>p_expected_tic+1 then fail('DCTC outer frontier');end if;
+    l_angle_index:=i32_at(37,'DCTC angle index');
+    if l_angle_index<0 or l_angle_index>63 then fail('DCTC angle index');end if;
+    l_x:=number_at(41,'DCTC player x');l_y:=number_at(64,'DCTC player y');
+    l_z:=number_at(87,'DCTC player z');l_sector:=i32_at(110,'DCTC player sector');
+    if l_sector<0 then fail('DCTC player sector');end if;
+    begin
+      select sector_id into l_derived_sector from table(doom_bsp_locate(l_x,l_y))
+        where rownum=1;
+    exception when no_data_found then fail('DCTC player sector lookup');end;
+    if l_sector<>l_derived_sector then fail('DCTC player sector mismatch');end if;
+    l_nested_length:=i32_at(114,'DCTC nested length');
+    if l_nested_length<60 or l_nested_length<>g_length-117 or
+       l_child_length<>c_dctc_header+l_nested_length then
+      fail('DCTC nested exact length');
+    end if;
+    l_nested:=utl_raw.substr(g_delta,118,l_nested_length);
+    l_wrapped:=utl_raw.concat(hextoraw('44554F5001000400'),
+      utl_raw.cast_from_binary_integer(l_nested_length,utl_raw.big_endian),l_nested);
+    -- Cross-lock the two independently versioned frontiers before either the
+    -- nested relational apply or the outer player movement can mutate state.
+    g_delta:=l_wrapped;g_length:=utl_raw.length(l_wrapped);
+    if rawtohex(utl_raw.substr(g_delta,13,6))<>'445449430100' or
+       u64_at(57,'nested DTIC tic frontier')<>l_outer_tic or
+       u64_at(65,'nested DTIC command frontier')<>l_outer_seq then
+      fail('DCTC nested DTIC frontier/header');
+    end if;
+
+    doom_unified_delta_apply.apply_tic(p_session_token,p_save_lineage,
+      p_expected_tic,p_expected_command_seq,l_wrapped,l_inner_tic,l_inner_seq,
+      l_inner_version,l_inner_count,l_inner_sha);
+    if l_inner_tic<>l_outer_tic or l_inner_seq<>l_outer_seq or
+       l_inner_version<>1 or l_inner_count<>1 then fail('DCTC nested apply metadata');end if;
+    update players set x=l_x,y=l_y,z=l_z,angle=l_angle_index*5625/1000
+      where session_token=p_session_token and player_id=(
+        select current_player_id from game_sessions where session_token=p_session_token);
+    if sql%rowcount<>1 then fail('DCTC current player row');end if;
+
+    p_committed_tic:=l_outer_tic;p_committed_command_seq:=l_outer_seq;
+    p_delta_version:=1;p_delta_count:=1;
+    p_delta_sha:=lower(rawtohex(dbms_crypto.hash(p_delta,dbms_crypto.hash_sh256)));
+  exception
+    when others then
+      rollback to doom_unified_command_apply_start;
       raise;
   end;
 end doom_unified_delta_apply;
