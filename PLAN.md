@@ -1512,6 +1512,27 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   one committed/pending retained state and one fenced prepare/persist/commit/
   accept coordinator. Independent player and actor statics are differential
   prototypes only and may not be routed to production attacks.
+- Unified retained-world structural gate (2026-07-16): one owner now captures
+  all 280 MOBJ rows, the physical player row, exact Oracle `NUMBER` bytes,
+  RNG/ID/event/tic/command frontiers, and the complete state/monster mappings.
+  Its 70,999-byte canonical pack and SHA match across committed and pending
+  round trips; session, lineage, generation, mapping, frontier, request,
+  accept, and discard fences pass. The pack is strictly restart/checkpoint
+  material and must not be serialized every tic.
+- CHASE allocation repair (2026-07-16): the first exact retained implementation
+  measured 9.686/61.016/324.997 ms p50/p95/max and was rejected. Cached invariant
+  exact values plus conservative double broad phases with exact boundary
+  fallback preserve 212/212 parity. A fully warmed 300-call corpus rotating four
+  targets measures 0.227/0.623/0.989 ms; cold/JIT-transition evidence remains
+  separately visible and the worker must warm before admission.
+- Unified transaction/restart probe (2026-07-16): the production-shaped
+  AQ/Scheduler coordinator passes strict RAW magic/version/count/exact-length
+  checks, idempotent duplicate replay, pre-commit rollback plus discard, stale
+  frontier/generation rejection, post-commit accept-failure reconstruction, and
+  Scheduler stop/restart continuation. The bounded probe recorded 3 commits,
+  6 intentional failures, 4 discards, and 1 reconstruction, then removed every
+  probe object/job. Production integration must return exact-length deltas; it
+  may not expose the legacy 104-byte capacity buffer.
 - OJVM deployment-memory guard (2026-07-16): repeated iterative
   `loadjava -force` cycles eventually drove the 2 GiB local instance's MMAN to
   fatal `ORA-00822`; the alert trace identifies MMAN, not an uncaught game

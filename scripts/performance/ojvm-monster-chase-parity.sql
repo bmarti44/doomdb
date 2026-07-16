@@ -8,6 +8,11 @@ declare
   actual_id_ number;actual_x_ number;actual_y_ number;actual_sector_ number;actual_direction_ number;
   player_x_ number;player_y_ number;request_ varchar2(32);mismatches_ pls_integer:=0;
   rng_before_ number;rng_after_ number;events_ number;cases_ pls_integer:=0;
+  samples_ sys.odcinumberlist:=sys.odcinumberlist();started_ timestamp;
+  target_x_ sys.odcinumberlist:=sys.odcinumberlist();
+  target_y_ sys.odcinumberlist:=sys.odcinumberlist();
+  elapsed_ interval day to second;
+  ms_ number;p50_ number;p95_ number;max_ number;
 begin
   update doom_config set number_value=greatest(number_value,256)
     where config_key='MAX_ACTIVE_SESSIONS';
@@ -64,6 +69,8 @@ begin
   ) loop
     savepoint chase_case;
     player_x_:=target_.x;player_y_:=target_.y;
+    target_x_.extend;target_x_(target_x_.count):=player_x_;
+    target_y_.extend;target_y_(target_y_.count):=player_y_;
     update players set x=player_x_,y=player_y_
       where session_token=session_ and player_id=(select current_player_id
         from game_sessions where session_token=session_);
@@ -113,8 +120,36 @@ begin
   if cases_<>4 or mismatches_<>0 then
     raise_application_error(-20000,'chase parity cases='||cases_||' mismatches='||mismatches_);
   end if;
+  -- Warm and time the retained compute/encode boundary independently from the
+  -- SQL differential setup. This helper is pure over its frozen snapshot.
+  for warmup_ in 1..5 loop
+    delta_:=doom_monster_chase_prepare(session_,lineage_,1,lower(rawtohex(sys_guid())),
+      target_x_(mod(warmup_-1,target_x_.count)+1),
+      target_y_(mod(warmup_-1,target_y_.count)+1));
+    if rawtohex(utl_raw.substr(delta_,1,6))<>'444D43480100' then
+      raise_application_error(-20000,'chase warmup '||doom_monster_chase_last_error);
+    end if;
+  end loop;
+  for sample_ in 1..300 loop
+    started_:=systimestamp;
+    delta_:=doom_monster_chase_prepare(session_,lineage_,1,lower(rawtohex(sys_guid())),
+      target_x_(mod(sample_-1,target_x_.count)+1),
+      target_y_(mod(sample_-1,target_y_.count)+1));
+    elapsed_:=systimestamp-started_;
+    if rawtohex(utl_raw.substr(delta_,1,6))<>'444D43480100' then
+      raise_application_error(-20000,'chase benchmark '||doom_monster_chase_last_error);
+    end if;
+    ms_:=extract(day from elapsed_)*86400000+extract(hour from elapsed_)*3600000+
+      extract(minute from elapsed_)*60000+extract(second from elapsed_)*1000;
+    samples_.extend;samples_(samples_.count):=ms_;
+  end loop;
+  select percentile_cont(.5) within group(order by column_value),
+         percentile_cont(.95) within group(order by column_value),max(column_value)
+    into p50_,p95_,max_ from table(samples_);
   dbms_output.put_line('MONSTER_CHASE_PARITY_OK cases='||cases_||
     ' actors_per_case='||actor_count_||' comparisons='||cases_*actor_count_);
+  dbms_output.put_line('monster_chase_prepare_ms='||round(p50_,3)||'|'||
+    round(p95_,3)||'|'||round(max_,3));
   rollback;
 end;
 /

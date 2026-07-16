@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | Renderer: 15.671/17.590 ms p50/p95. Retained actor gates now include fresh death 53/53, drops 25/25, ordered death/drop events 78/78, and no-attack CHASE movement 212/212. Unified world state, attacks, persistence, and public integration remain. |
+| P12.0 | Active playability gate | Renderer: 15.671/17.590 ms p50/p95. Death/drop and CHASE pass; warmed CHASE is 0.227/0.623 ms p50/p95. Unified exact world state passes 280/280 rows, and the transaction/restart probe passes. Attacks, production persistence, and public integration remain. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -193,9 +193,16 @@ RNG movement. Atomic fresh death/kill/drop handling now matches 53/53 actors,
 25/25 spawned drops, and 78/78 ordered events. A separate retained CHASE helper
 matches 212/212 actor movements across four target quadrants with exact Oracle
 `NUMBER` coordinates and prior-snapshot collision. These kernels must next be
-merged into one retained player/actor frontier before attack dispatch; attacks remain before the actor loop
-is production-routable. The incomplete fast-path projection is roughly 25–32
+merged into one retained player/actor frontier before attack dispatch. Attacks
+remain before the actor loop is production-routable. The incomplete fast-path projection is roughly 25–32
 FPS; it is not a measured gameplay result.
+The structural merge now round-trips all 280 MOBJ rows plus player, RNG, state,
+monster-definition, ID, event, tic, and command frontiers byte-exactly. Its
+70,999-byte SHA-fenced pack is a restart/checkpoint format, not per-tic work.
+A production-shaped AQ/Scheduler transaction probe passes exact-length delta
+validation, idempotent replay, rollback/discard, generation fencing,
+post-commit reconstruction, and worker restart. The next implementation step
+connects the proven behavior deltas to this single owner before attacks land.
 Playability requires 270+ unique moving frames to sustain 30 FPS at both p50
 and p95 through the public browser path. See the
 [ORDS/OJVM worker report](reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md).

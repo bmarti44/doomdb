@@ -298,6 +298,22 @@ target quadrants using exact coordinates and the frozen prior-actor snapshot.
 Both remain differential kernels until player, actor, RNG, ID, event, and tic
 frontiers are merged behind one prepare/persist/commit/accept boundary.
 
+That structural merge now passes independently. One retained owner round-trips
+all 280 MOBJ rows, the physical player row, exact Oracle-number encodings, the
+state/monster mappings, and every RNG/ID/event/tic/command frontier. Its
+70,999-byte canonical restart pack and state-map SHA are fenced; it is not a
+per-tic payload. The initially correct CHASE kernel exposed a 61.016 ms p95
+allocation tail. Conservative double broad phases with exact decision-boundary
+fallback retain 212/212 parity and reduce a warmed four-target corpus to
+0.227/0.623/0.989 ms p50/p95/max.
+
+The companion production-shaped transaction probe validates exact RAW length,
+idempotent replay, rollback/discard, generation/frontier fencing, post-commit
+reconstruction, and Scheduler restart. It completes with three commits, six
+intentional failures, four discards, one reconstruction, and no leaked probe
+objects or jobs. Behavior deltas still need to be wired into the unified owner
+and production persistence before public routing.
+
 Repeated `loadjava -force` during iterative development eventually caused the
 2 GiB local instance's MMAN to terminate with fatal `ORA-00822`. The Oracle
 alert trace identifies MMAN memory management rather than an uncaught Java game
