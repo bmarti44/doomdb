@@ -1489,8 +1489,8 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   retained worker follows an ordinary no-action edge with 53/53 row parity,
   zero events, and unchanged RNG; CHASE, melee, hitscan, and projectile actions
   remain explicitly fail-closed until their differential slices land. The
-  SHA-verified catalog is 202,515 bytes with payload SHA-256
-  `21719458f28e3e91efe4691081e02ef54959a75186a93566191b4cdf8e3e191d`.
+  catalog is extended below; its v4 fingerprint is retained as historical
+  evidence rather than the current production candidate.
 - Retained processed-corpse transition (2026-07-16): dead actors whose initial
   death bookkeeping is already durable now advance through the same retained
   state graph with 53/53 SQL parity, zero events, and unchanged RNG. Unprocessed
@@ -1533,6 +1533,12 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   6 intentional failures, 4 discards, and 1 reconstruction, then removed every
   probe object/job. Production integration must return exact-length deltas; it
   may not expose the legacy 104-byte capacity buffer.
+- Exact hitscan spread catalog (2026-07-16): catalog version 5 precomputes all
+  511 possible `sin((rng_a-rng_b)*2*pi/4096)` values as raw Oracle `NUMBER`
+  encodings. All 511 match SQL byte-for-byte, avoiding per-attack trigonometric
+  conversion without changing RNG order. The current catalog is 213,737 bytes
+  with SHA-256
+  `a2d3d2c293603b75340914734ebae178d5df76557ca4c685b5b0409971183472`.
 - OJVM deployment-memory guard (2026-07-16): repeated iterative
   `loadjava -force` cycles eventually drove the 2 GiB local instance's MMAN to
   fatal `ORA-00822`; the alert trace identifies MMAN, not an uncaught game

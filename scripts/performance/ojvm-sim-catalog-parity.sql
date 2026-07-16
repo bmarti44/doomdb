@@ -4,7 +4,7 @@ set serveroutput on size unlimited
 declare
   result_ varchar2(4000);failures_ pls_integer:=0;cases_ pls_integer:=0;
   sql_sector number;java_sector number;sql_x number;sql_y number;java_x number;java_y number;
-  matrix_failures_ number;rng_expected_ number;
+  matrix_failures_ number;rng_expected_ number;spread_cases_ number:=0;
   function same_number(p_left number,p_right number) return boolean is same_ number;begin
     select case when dump(p_left,16)=dump(p_right,16) then 1 else 0 end into same_ from dual;
     return same_=1;
@@ -70,6 +70,13 @@ begin
       raise_application_error(-20000,'catalog RNG mismatch index='||index_);
     end if;
   end loop;
+  for difference_ in -255..255 loop
+    if not same_number(doom_sim_catalog_hitscan_sin(difference_),
+        sin(difference_*2*acos(-1)/4096)) then
+      raise_application_error(-20000,'hitscan spread mismatch difference='||difference_);
+    end if;
+    spread_cases_:=spread_cases_+1;
+  end loop;
   for state_ in (
     select s.state_index,s.tics,coalesce(n.state_index,-1) next_index,
       case s.action_name when 'CHASE' then 1 when 'MELEE' then 2
@@ -90,6 +97,7 @@ begin
   dbms_output.put_line('sim_catalog_movement_parity=1152/1152');
   dbms_output.put_line('sim_catalog_reject_sound_parity=33124/33124');
   dbms_output.put_line('sim_catalog_rng_parity=256/256');
+  dbms_output.put_line('sim_catalog_hitscan_spread_parity='||spread_cases_||'/511');
   dbms_output.put_line('sim_catalog_state_graph_parity=151/151');
 end;
 /

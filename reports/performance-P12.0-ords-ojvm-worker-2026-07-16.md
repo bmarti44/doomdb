@@ -287,8 +287,10 @@ packs all 151 database-defined state timers, next-state indices, and action
 classifications; every definition matches SQL. Expiring actors now follow
 ordinary no-action edges with 53/53 row parity, zero events, and unchanged RNG.
 CHASE, melee, hitscan, and projectile dispatch remain fail-closed. The resulting
-catalog is 202,515 bytes with SHA-256
-`21719458f28e3e91efe4691081e02ef54959a75186a93566191b4cdf8e3e191d`.
+catalog version 4 was 202,515 bytes. Version 5 adds all 511 possible exact
+Oracle-number hitscan spread-sine values at 511/511 parity, producing a
+213,737-byte pack with SHA-256
+`a2d3d2c293603b75340914734ebae178d5df76557ca4c685b5b0409971183472`.
 Already-processed corpses also follow timer and next-state edges at 53/53 SQL
 parity with zero events and unchanged RNG. The fresh-death extension matches
 53/53 actor mutations, 25/25 full drop spawns, and 78/78 ordered death/drop

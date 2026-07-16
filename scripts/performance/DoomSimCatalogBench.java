@@ -14,7 +14,7 @@ import oracle.sql.NUMBER;
 /** Immutable SQL-built simulation catalog retained by one database worker. */
 public final class DoomSimCatalogBench {
   private static final int MAGIC = 0x44534350; // DSCP
-  private static final int VERSION = 4;
+  private static final int VERSION = 5;
   private static boolean loaded;
   private static int[] nodeX, nodeY, nodeDx, nodeDy, child0, child1;
   private static byte[] child0Leaf, child1Leaf;
@@ -30,6 +30,7 @@ public final class DoomSimCatalogBench {
   static double[] baseFloor, baseCeiling;
   static byte[] rejectBits, soundReachBits;
   static int[] rngValue;
+  static NUMBER[] hitscanSin;
   static int[] stateTics, stateNext, stateAction;
   static byte[][] movementDeltaX, movementDeltaY;
   static NUMBER[] movementXExact, movementYExact;
@@ -215,6 +216,20 @@ public final class DoomSimCatalogBench {
       require(index == 256, "RNG count");
     }
 
+    out.writeInt(511);
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select level-256 spread_difference," +
+             "utl_raw.cast_from_number(sin((level-256)*2*acos(-1)/4096)) " +
+             "from dual connect by level<=511 order by spread_difference")) {
+      int difference = -255;
+      while (rows.next()) {
+        require(rows.getInt(1) == difference++, "hitscan spread order");
+        writeNumber(out, rows.getBytes(2));
+      }
+      require(difference == 256, "hitscan spread count");
+    }
+
     int stateCount;
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery("select count(*) from doom_state_def")) {
@@ -349,6 +364,9 @@ public final class DoomSimCatalogBench {
     for (int index = 0; index < rngCount; index++) {
       rngValue[index] = in.readInt(); require(rngValue[index] >= 0 && rngValue[index] <= 255, "RNG value");
     }
+    int spreadCount = in.readInt(); require(spreadCount == 511, "hitscan spread count");
+    hitscanSin = new NUMBER[spreadCount];
+    for (int index = 0; index < spreadCount; index++) hitscanSin[index] = new NUMBER(readNumber(in));
     int stateCount = in.readInt(); require(stateCount > 0 && stateCount <= 4096, "state count");
     stateTics = new int[stateCount]; stateNext = new int[stateCount]; stateAction = new int[stateCount];
     for (int index = 0; index < stateCount; index++) {
@@ -456,6 +474,15 @@ public final class DoomSimCatalogBench {
     try { require(loaded && index >= 0 && index < 256, "RNG index"); return rngValue[index]; }
     catch (Throwable error) {
       lastError = error.getClass().getName() + ":" + error.getMessage(); return -1;
+    }
+  }
+
+  public static NUMBER hitscanSin(int difference) {
+    try {
+      require(loaded && difference >= -255 && difference <= 255, "hitscan spread difference");
+      return hitscanSin[difference + 255];
+    } catch (Throwable error) {
+      lastError = error.getClass().getName() + ":" + error.getMessage(); return null;
     }
   }
 
