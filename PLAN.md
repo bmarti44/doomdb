@@ -1620,6 +1620,14 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   projectiles, events, RNG, and resulting-tic semantics; malformed, stale,
   discard, and accept gates pass. Canonical command/history/state hashing and
   production worker cutover remain before the public 30 FPS measurement.
+- Durable delta-apply optimization (2026-07-16): immutable catalog maps,
+  memoized world-reference checks, ordered actor-ID bulk validation, `FORALL`
+  writes, and fixed-layout canonical decoders preserve exact actor/DCTC bytes,
+  SHAs, malformed-input rejection, and atomic rollback. Two independent warm
+  300-tic runs measured strict apply at 5.114/6.612/8.685 ms and
+  5.590/7.868/13.034 ms p50/p95/max, versus the 11.331/14.033/33.548 ms
+  baseline. The improvement is selected, but the observed tail variability is
+  retained in projections; this is not an end-to-end 30 FPS result.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

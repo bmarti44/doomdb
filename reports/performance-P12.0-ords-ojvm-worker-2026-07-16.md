@@ -327,3 +327,22 @@ Large frames remain in relational SecureFile rows. AQ carries only a small,
 unguessable request identifier and command metadata. The worker commits the
 authoritative state and response before signaling completion. AutoREST enforces
 game ownership and uses bounded waits plus idempotent retry behavior.
+
+## Durable delta apply optimization
+
+The first production-shaped 300-tic transaction probe isolated the strict SQL
+delta apply at 11.331/14.033/33.548 ms p50/p95/max. The selected rewrite keeps
+row walking and writes in PL/SQL but retains immutable catalog maps, memoizes
+world-reference checks, validates the ordered actor set in one bulk read, uses
+`FORALL` for actor/spawn/event DML, and decodes fixed-layout actor and DCTC
+regions without rebuilding per-field labels. Canonical Oracle `NUMBER` bytes,
+all malformed-input gates, exact output bytes/SHAs, and atomic rollback remain
+unchanged.
+
+Two independent warm 300-tic runs measured strict apply at
+5.114/6.612/8.685 ms and 5.590/7.868/13.034 ms p50/p95/max. Their corresponding
+whole prepare/apply/commit/accept transaction results were 6.355/7.854/20.065 ms
+and 6.954/9.406/19.548 ms. This is a material improvement, but the second run
+confirms real tail variability. Budget projections therefore use the slower
+7.868 ms apply and 9.406 ms transaction p95 until the integrated worker route
+provides a larger end-to-end sample.
