@@ -19,8 +19,10 @@ JDBC into exact-width primitive arrays:
 
 The measured hot path performs allocation-free iterative front-to-back BSP
 traversal, conservative child-box field-of-view rejection, exact near-plane seg
-clipping, and bounded column projection. It does not yet implement solid-column
-coverage, vertical portal clips, wall drawing, plane spans, masked fragments, or
+clipping, bounded column projection, exact determinant/t/u acceptance, and a
+two-pass nearest-solid-depth clip. The two-pass design avoids assuming that seg
+storage order inside a subsector is strict ray-depth order. It does not yet
+implement vertical portal clips, wall drawing, plane spans, masked fragments, or
 the production codec.
 
 The runner compiles with the pinned database image's Java 11 HotSpot VM and uses
@@ -40,13 +42,16 @@ pair. The selected run found:
 | SQL-accepted seg-column pairs | 57,012 |
 | Missing from Java candidates | 0 |
 | Candidate retention vs. 12 brute 2,057x320 grids | 0.7218% |
+| SQL-visible hits through the first solid wall | 21,050 |
+| Missing after Java solid-depth coverage | 0 |
+| Visible retention vs. brute grids | 0.2706% |
 | Maximum nodes visited | 614 / 681 |
 | Maximum subsectors visited | 588 / 682 |
 
-The zero-miss result passes the correctness gate. The 0.7218% retention passes
-the no-more-than-25% gate by a wide margin. Most of the reduction currently
-comes from conservative seg projection; node/subsector visitation remains high,
-so solid coverage and vertical portal clips are still required before drawing.
+Both zero-miss results pass the correctness gate. Projection retains 0.7218% of
+brute pairs, and exact solid-depth coverage reduces that to 0.2706%; both pass
+the no-more-than-25% gate by a wide margin. Node/subsector visitation remains
+high, so vertical portal clips are still required before drawing.
 
 ## HotSpot timing
 
@@ -55,12 +60,12 @@ After 5,000 warmups, 20,000 unique angle/nearby-position samples measured with a
 
 | Metric | Result |
 | --- | ---: |
-| Immutable relational load | 1,212.734 ms |
-| Traversal + projection p50 | 0.043718 ms |
-| Traversal + projection p95 | 0.222975 ms |
-| Traversal + projection p99 | 0.272980 ms |
+| Immutable relational load | 2,357.122 ms |
+| Traversal + projection + solid coverage p50 | 0.096178 ms |
+| Traversal + projection + solid coverage p95 | 0.447939 ms |
+| Traversal + projection + solid coverage p99 | 0.514542 ms |
 
-This passes the <=3 ms component gate on HotSpot. The 1.21-second cold load is
+This passes the <=3 ms component gate on HotSpot. The 2.36-second cold load is
 not in the frame path, but it is not an acceptable pooled-session prewarm path;
 the planned revision-keyed relational BLOB packs remain necessary.
 
@@ -89,8 +94,8 @@ Consequences:
 
 ## Next implementation
 
-1. Add per-column solid coverage and upper/lower portal clip arrays while
-   retaining the zero-miss audit.
+1. Add per-column upper/lower portal clip arrays while retaining the zero-miss
+   audit.
 2. Draw exact opaque wall columns into one reusable 320x200 palette buffer and
    compare world bytes against the SQL oracle.
 3. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and

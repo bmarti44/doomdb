@@ -1124,6 +1124,14 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   allocation-free Java 11 HotSpot kernel measured 0.043718/0.222975/0.272980 ms
   p50/p95/p99 over 20,000 samples, passing the <=3 ms algorithm gate. This is
   algorithm evidence only: it has no wall/plane/masked drawing or codec yet.
+- Exact two-pass nearest-solid-depth coverage now evaluates only the bounded
+  ranges, retains SQL hits through the first solid wall, and avoids relying on
+  subsector seg storage order. Across the same 12 poses it retained 21,050
+  SQL-visible hits with 0 missing and reduced brute-pair retention to 0.2706%.
+  Allocation-free traversal, projection, determinant acceptance, and solid
+  coverage measured 0.096178/0.447939/0.514542 ms p50/p95/p99 over 20,000
+  samples. The next renderer slice is vertical portal clips plus exact opaque
+  wall columns; solid coverage alone is not portal-safe.
 - Local native-method blocker (2026-07-15): a disposable one-line `(I)I` method
   failed to return from `DBMS_JAVA.COMPILE_METHOD` within 60 seconds both before
   and after a controlled restart reduced database memory from 94% to 82% of the

@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | The SQL renderer cannot reach 33.3 ms. The first clean-room BSP/projection kernel passes its algorithm gate at 0.223 ms p95 with zero SQL-oracle misses, but the pinned local OJVM native compiler fails its 60-second minimal-method gate. Rendering and simulation remain unselected. |
+| P12.0 | Active playability gate | The clean-room BSP/projection/solid-coverage kernel passes at 0.448 ms p95 with zero SQL-oracle misses and 0.2706% visible-pair retention, but the pinned local OJVM native compiler fails its 60-second minimal-method gate. Full rendering and simulation remain unselected. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -92,11 +92,13 @@ claim playability until local AutoREST/browser p50 and p95 are both at most
 
 The first real-map clean-room implementation now loads all 681 BSP nodes, 682
 subsectors, and 2,057 segs into primitive Java arrays. Its allocation-free
-front-to-back traversal and conservative projection measured 0.044 ms p50 /
-0.223 ms p95 over 20,000 HotSpot samples. Across 12 spawn directions it retained
-only 0.7218% of brute seg-column pairs and omitted none of 57,012 independently
-accepted SQL intersections. This validates the work-reduction algorithm, not a
-complete renderer. A one-line `DBMS_JAVA.COMPILE_METHOD` probe still exceeded
+front-to-back traversal, conservative projection, exact intersections, and
+two-pass solid-depth coverage measured 0.096 ms p50 / 0.448 ms p95 over 20,000
+HotSpot samples. Across 12 spawn directions it omitted none of 57,012 accepted
+SQL intersections, then retained all 21,050 SQL-visible hits through the first
+solid wall while reducing brute-pair retention to 0.2706%. This validates the
+work-reduction algorithm, not a complete renderer. A one-line
+`DBMS_JAVA.COMPILE_METHOD` probe still exceeded
 the 60-second gate after a clean database restart, so this pinned local Oracle
 Free image cannot select OJVM production code yet. SQL stays in production while
 wall/portal/plane work continues in the Java 11 harness and the native compiler
