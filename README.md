@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | The exact tic-zero GAME presentation matches all 64,000 SQL pixels at 5.706 ms p95. Dynamic presentation, codec, compiled OJVM integration, packed loading, and simulation remain active. |
+| P12.0 | Active playability gate | Exact presentation is 5.133 ms p95; selected packed codec is 1.800 ms p95; renderer+codec is 6.812 ms p95 with zero SQL-oracle mismatches. BLOB/OJVM integration, dynamic presentation, packed loading, and simulation remain active. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -67,9 +67,12 @@ the production path: neither reduces the dominant relational renderer work,
 and `UTL_TCP` cannot replace the required inbound ORDS/AutoREST transport. The
 confirmed improvements came from precomputed rays, bounded rasterization,
 static opacity metadata, shared portal/interval staging, sparse composition, and
-chunked frame hashing. JavaBox informed the next architecture experiments—BSP
-front-to-back rejection, solid column occlusion, spans, persistent state, and
-publish-on-new-frame sequencing—but no GPL code or data is copied. Final T12
+chunked frame hashing. JavaBox and pinned Mocha Doom commit `c0af1322` informed
+the architecture experiments—BSP front-to-back rejection, solid column
+occlusion, indexed buffers, fixed-point lookup tables, preallocated draw
+instructions, visplane spans, persistent state, and publish-on-new-frame
+sequencing. Mocha Doom is GPLv3 and DoomDB is MIT, so no GPL code, tables,
+control flow, or data is copied. Final T12
 will still measure the fixed 300-frame replay and every post-render stage locally
 and in the cloud.
 
@@ -126,8 +129,13 @@ match SQL exactly. Complete world+masked rendering measures 3.060 ms p50 /
 5.390 ms p95 / 5.942 ms p99; masked work adds only about 0.60 ms p95, passing
 its 3 ms stage gate. The real pistol, status bar, and tic-zero ammo/health/armor
 digits now compose the final GAME frame. All 64,000 presentation pixels match
-SQL exactly at 3.268 ms p50 / 5.706 ms p95 / 6.494 ms p99. The exact frame
-codec and dynamic presentation states are next.
+SQL exactly at 2.884 ms p50 / 5.133 ms p95 / 5.737 ms p99. The selected
+packed-v2 codec preserves the legacy SQL document as a parity oracle while
+replacing its pathological 45,317 nested RLE runs on the hot path. It measures
+1.430 ms p50 / 1.800 ms p95 and emits 42,140 GZIP bytes; renderer+codec measures
+4.476 ms p50 / 6.812 ms p95. The browser now decodes both v1 RLE and v2 packed
+frames. Caller-owned Oracle BLOB handoff and dynamic presentation states are
+next.
 
 ## Is it playable yet?
 

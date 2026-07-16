@@ -1074,11 +1074,16 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   one shared materialized portal/interval/clip stream; direct world-to-final
   pixels plus sparse deterministic overlays; then WAD BSP front-to-back subtree
   rejection, solid column occlusion ranges, and floor/ceiling span generation if
-  the preceding slices remain materially above budget.  JavaBox/Mocha Doom is
-  architectural evidence for persistent runtime state, BSP bounding-box
-  rejection, solid screen-column ranges, column/span rasterization, cached
-  texture columns, and publish-on-new-frame sequencing only; its GPL-derived
-  code, tables, data, and control flow may not be copied or translated.
+  the preceding slices remain materially above budget. JavaBox and Mocha Doom
+  are architectural evidence for persistent runtime state, BSP bounding-box
+  rejection, solid screen-column ranges, indexed byte buffers, fixed-point
+  lookup tables, preallocated draw instructions, visplane horizontal spans,
+  cached texture columns, and publish-on-new-frame sequencing only. Mocha Doom
+  was inspected at `c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93` (2026-01-14);
+  its renderer explicitly keeps BSP traversal serial and partitions the stored
+  draw work. It is GPLv3, while DoomDB is MIT and Section 1.6 requires an
+  independently designed Oracle-native implementation, so its code, tables,
+  data, and control flow may not be copied, translated, or directly embedded.
 - Implementation ledger (2026-07-15): profile-keyed axes and 64-orientation ray
   tables, immutable first-opaque metadata, exact bounded R1 candidates, shared
   portal/sector-interval staging, bounded masked rasterization, direct
@@ -1171,11 +1176,24 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   `STBAR`, and ammo/health/armor digits over the world+masked buffer. All 64,000
   final indexed pixels match `DOOM_API_PRESENTATION_ROWS` with 0 missing, 0
   extra, and 0 palette mismatches. Complete presentation timing is
-  3.268134/5.706218/6.493983 ms p50/p95/p99 over 20,000 samples. Cold row
-  loading including 173,170 UI texels is 6.494 seconds,
+  2.884442/5.132537/5.736680 ms p50/p95/p99 over 20,000 samples. Cold row
+  loading including 173,170 UI texels is 6.899 seconds,
   reinforcing the packed-BLOB requirement. Exact frame hash/RLE/canonical
   JSON/GZIP/BLOB codec parity is next; dynamic weapons/HUD values and the
   pause/menu/automap/intermission modes remain after the tic-zero slice.
+- The codec spike proved the legacy v1 schema is algorithmically hostile:
+  45,317 runs expand 64,000 indexed bytes to 481,989 JSON bytes. V1 level 1
+  measured 10.465499 ms p95 and 137,333 bytes; Huffman-only measured 8.917733
+  ms and 192,338 bytes; level 0 met CPU at 3.636932 ms but emitted 482,047
+  bytes. The selected narrow v2 contract carries the same column-major indexed
+  bytes as allocation-free base64 in canonical JSON, then level-1 GZIP. Its
+  isolated p95 is 1.993562 ms at 44,112 bytes. The full exact run measures
+  1.430147/1.800499 ms codec p50/p95, emits 42,140 bytes for the final sampled
+  frame, and measures 4.476119/6.811515 ms renderer+codec p50/p95. The legacy
+  decompressed document still matches `DOOM_API.NEW_GAME` byte-for-byte, the v2
+  GZIP/base64 round trip is exact, and the TypeScript client accepts both
+  versions with SHA-256 verification. V2 is selected; caller-owned BLOB handoff
+  must keep codec+BLOB <=5 ms p95 before OJVM integration.
 - Local native-method evidence correction (2026-07-15): Oracle's foreground
   trace proves the disposable one-line `(I)I` method compiled successfully in
   59,470 ms; the client cutoff landed at completion. JIT, the descriptor, and

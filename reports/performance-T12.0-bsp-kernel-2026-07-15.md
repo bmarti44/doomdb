@@ -30,7 +30,11 @@ walls and relational sprite-state/rotation primitives are depth-ranked into a
 reusable presentation buffer. The tic-zero `GAME` presentation then composes
 the real pistol, status bar, ammo, health, and armor assets into the final
 indexed frame. It does not yet implement dynamic weapon/HUD states,
-pause/menu/automap/intermission modes, or the production codec; horizontal
+pause/menu/automap/intermission modes. The codec converts the indexed frame to
+bytes, hashes it, emits the selected packed-v2 base64 JSON envelope, and writes
+level-1 GZIP through reusable primitive buffers. The legacy v1 RLE document is
+still generated once and compared byte-for-byte with the decompressed SQL
+`NEW_GAME` payload as an independent oracle. Horizontal
 plane-span coalescing remains a later resolution-scaling optimization.
 
 The runner compiles with the pinned database image's Java 11 HotSpot VM and uses
@@ -98,15 +102,21 @@ After 5,000 warmups, 20,000 unique angle/nearby-position samples measured with a
 
 | Metric | Result |
 | --- | ---: |
-| Immutable relational load including walls/flats/sprites/rays/UI | 6,493.898 ms |
-| Complete tic-zero presentation p50 | 3.268134 ms |
-| Complete tic-zero presentation p95 | 5.706218 ms |
-| Complete tic-zero presentation p99 | 6.493983 ms |
+| Immutable relational load including walls/flats/sprites/rays/UI | 6,899.113 ms |
+| Complete tic-zero presentation p50 | 2.884442 ms |
+| Complete tic-zero presentation p95 | 5.132537 ms |
+| Complete tic-zero presentation p99 | 5.736680 ms |
+| Legacy SQL-oracle RLE runs | 45,317 |
+| Packed-v2 canonical / GZIP bytes | 85,578 / 42,140 |
+| Packed codec p50 / p95 | 1.430147 / 1.800499 ms |
+| Renderer + packed codec p50 / p95 | 4.476119 / 6.811515 ms |
 
 The geometry/clip portion previously passed its <=3 ms component gate, and the
 complete exact world remains inside the <=8 ms opaque-world gate on HotSpot.
 Masked composition adds about 0.60 ms at p95, passing its <=3 ms gate. Tic-zero
-presentation remains a small fraction of the frame. The 6.49-second row-by-row cold load is not
+presentation remains a small fraction of the frame. Packed-v2 passes the <=5 ms
+codec gate, and the composite passes the <=20 ms renderer+codec gate. The
+6.90-second row-by-row cold load is not
 in the frame path, but it is
 not an acceptable pooled-session prewarm path; the planned revision-keyed
 relational BLOB packs remain necessary.
@@ -139,8 +149,8 @@ Consequences:
 
 ## Next implementation
 
-1. Add the exact frame hash/RLE/canonical JSON/GZIP/BLOB codec and compare it to
-   the production SQL payload.
+1. Write the 42 KB packed-v2 GZIP result to a caller-owned Oracle BLOB and keep
+   codec+BLOB at or below 5 ms p95.
 2. Parameterize weapon/HUD values and add pause/menu/automap/intermission
    presentation parity.
 3. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and

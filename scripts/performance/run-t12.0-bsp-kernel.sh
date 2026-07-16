@@ -24,4 +24,4 @@ docker exec "$container" "$java_home/jdk/bin/javac" \
 docker exec "$container" "$java_home/jdk/bin/java" \
   -Xms32m -Xmx64m -XX:+UseSerialGC \
   -cp "$tmp:$java_home/jdbc/lib/ojdbc11.jar" \
-  DoomBspKernelBench /run/secrets/doom_password
+  DoomBspKernelBench /run/secrets/doom_password "$@"

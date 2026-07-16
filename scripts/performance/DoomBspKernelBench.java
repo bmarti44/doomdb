@@ -1,6 +1,9 @@
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.Blob;
 import java.sql.CallableStatement;
@@ -10,8 +13,12 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.zip.CRC32;
+import java.util.zip.Deflater;
+import java.util.zip.GZIPInputStream;
 
 /**
  * Disposable clean-room BSP/projection spike. This is deliberately outside the
@@ -96,6 +103,20 @@ public final class DoomBspKernelBench {
   private static int uiStatusBarAsset, weaponAsset;
   private static final int[] uiDigitAsset = new int[10];
   private static short[] finalFrame;
+  private static final byte[] codecFrame = new byte[WIDTH * 200];
+  private static final byte[] codecDigest = new byte[32];
+  private static final byte[] HEX = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
+  private static final byte[] BASE64 =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+          .getBytes(StandardCharsets.US_ASCII);
+  private static final String ZERO_SHA =
+      "0000000000000000000000000000000000000000000000000000000000000000";
+  private static final byte[] codecJson = new byte[1_500_000];
+  private static final byte[] codecGzip = new byte[1_500_000];
+  private static MessageDigest codecSha256;
+  private static final CRC32 codecCrc = new CRC32();
+  private static final Deflater codecDeflater = new Deflater(1, true);
+  private static int codecJsonLength, codecGzipLength, codecRunCount;
 
   private static int visitedNodes;
   private static int visitedSubsectors;
@@ -1126,6 +1147,8 @@ public final class DoomBspKernelBench {
   private static int[] productionPortalOracle(Connection connection, int px, int py)
       throws Exception {
     String session = null;
+    byte[] oracleDocument = null;
+    String oracleStateSha = null;
     byte[] oracleActive = new byte[segTotal * WIDTH];
     int sqlActive = 0, missing = 0, extra = 0, clipMismatch = 0;
     int sqlWallPixels = 0, wallMissing = 0, wallColorMismatch = 0, wallExtra = 0;
@@ -1146,7 +1169,19 @@ public final class DoomBspKernelBench {
         call.execute();
         session = call.getString(2);
         Blob payload = call.getBlob(3);
-        if (payload != null) payload.free();
+        require(payload != null && payload.length() <= Integer.MAX_VALUE,
+            "NEW_GAME payload missing or too large");
+        byte[] compressed = payload.getBytes(1, (int) payload.length());
+        payload.free();
+        oracleDocument = gunzip(compressed, compressed.length);
+        String oracleJson = new String(oracleDocument, StandardCharsets.UTF_8);
+        String marker = "\"state_sha\":\"";
+        int stateStart = oracleJson.indexOf(marker);
+        require(stateStart >= 0, "NEW_GAME state_sha missing");
+        stateStart += marker.length();
+        int stateEnd = oracleJson.indexOf('"', stateStart);
+        require(stateEnd - stateStart == 64, "NEW_GAME state_sha malformed");
+        oracleStateSha = oracleJson.substring(stateStart, stateEnd);
       }
       connection.setAutoCommit(false);
       try (PreparedStatement update = connection.prepareStatement(
@@ -1292,6 +1327,12 @@ public final class DoomBspKernelBench {
             }
             for (int index = 0; index < finalFrame.length; index++)
               if (finalFrame[index] >= 0 && seenPresentation[index] == 0) presentationExtra++;
+            encodeTicZeroPayload(oracleStateSha);
+            require(equalPrefix(codecJson, codecJsonLength, oracleDocument),
+                "Java canonical payload differs from NEW_GAME SQL payload");
+            byte[] javaRoundTrip = gunzip(codecGzip, codecGzipLength);
+            require(equalPrefix(codecJson, codecJsonLength, javaRoundTrip),
+                "Java gzip round trip differs from canonical payload");
           }
         }
       }
@@ -1319,8 +1360,212 @@ public final class DoomBspKernelBench {
     return sorted[Math.max(0, index)] / 1_000_000.0;
   }
 
+  private static int appendAscii(int offset, String value) {
+    for (int index = 0; index < value.length(); index++)
+      codecJson[offset++] = (byte) value.charAt(index);
+    return offset;
+  }
+
+  private static int appendNumber(int offset, int value) {
+    if (value == 0) { codecJson[offset] = '0'; return offset + 1; }
+    int divisor = 1;
+    while (value / divisor >= 10) divisor *= 10;
+    while (divisor != 0) {
+      codecJson[offset++] = (byte) ('0' + value / divisor);
+      value %= divisor;
+      divisor /= 10;
+    }
+    return offset;
+  }
+
+  private static int appendHexDigest(int offset) {
+    for (int index = 0; index < codecDigest.length; index++) {
+      int value = codecDigest[index] & 255;
+      codecJson[offset++] = HEX[value >>> 4];
+      codecJson[offset++] = HEX[value & 15];
+    }
+    return offset;
+  }
+
+  private static void writeLittleEndian(int offset, long value) {
+    for (int index = 0; index < 4; index++) {
+      codecGzip[offset + index] = (byte) value;
+      value >>>= 8;
+    }
+  }
+
+  private static void prepareFrameSha() throws Exception {
+    for (int index = 0; index < finalFrame.length; index++)
+      codecFrame[index] = (byte) finalFrame[index];
+    codecSha256.reset();
+    codecSha256.update(codecFrame);
+    require(codecSha256.digest(codecDigest, 0, codecDigest.length) == codecDigest.length,
+        "SHA-256 output length mismatch");
+  }
+
+  private static void buildTicZeroJson(String stateSha) {
+    int offset = appendAscii(0, "{\"v\":1,\"tic\":0,\"w\":320,\"h\":200,\"mode\":\"game\"," +
+        "\"state_sha\":\"");
+    offset = appendAscii(offset, stateSha);
+    offset = appendAscii(offset, "\",\"frame_sha\":\"");
+    offset = appendHexDigest(offset);
+    offset = appendAscii(offset, "\",\"cols\":[");
+    codecRunCount = 0;
+    for (int column = 0; column < WIDTH; column++) {
+      if (column != 0) codecJson[offset++] = ',';
+      codecJson[offset++] = '[';
+      int row = 0;
+      boolean firstRun = true;
+      while (row < 200) {
+        int palette = codecFrame[column * 200 + row] & 255;
+        int start = row++;
+        while (row < 200 && (codecFrame[column * 200 + row] & 255) == palette) row++;
+        if (!firstRun) codecJson[offset++] = ',';
+        firstRun = false;
+        codecJson[offset++] = '[';
+        offset = appendNumber(offset, start); codecJson[offset++] = ',';
+        offset = appendNumber(offset, row - start); codecJson[offset++] = ',';
+        offset = appendNumber(offset, palette); codecJson[offset++] = ']';
+        codecRunCount++;
+      }
+      codecJson[offset++] = ']';
+    }
+    offset = appendAscii(offset, "],\"audio\":[],\"complete\":0}");
+    codecJsonLength = offset;
+  }
+
+  private static void compressJson() {
+    codecGzip[0] = 0x1f; codecGzip[1] = (byte) 0x8b; codecGzip[2] = 8;
+    codecGzip[3] = 0; codecGzip[4] = 0; codecGzip[5] = 0; codecGzip[6] = 0;
+    codecGzip[7] = 0; codecGzip[8] = 0; codecGzip[9] = 3;
+    codecDeflater.reset();
+    codecDeflater.setInput(codecJson, 0, codecJsonLength);
+    codecDeflater.finish();
+    int compressed = 10;
+    int stalls = 0;
+    while (!codecDeflater.finished()) {
+      require(compressed < codecGzip.length - 8, "gzip output capacity exhausted");
+      int written = codecDeflater.deflate(codecGzip, compressed,
+          codecGzip.length - compressed - 8);
+      if (written == 0) {
+        require(++stalls < 4, "gzip deflater stalled");
+        continue;
+      }
+      stalls = 0;
+      compressed += written;
+    }
+    codecCrc.reset();
+    codecCrc.update(codecJson, 0, codecJsonLength);
+    writeLittleEndian(compressed, codecCrc.getValue());
+    writeLittleEndian(compressed + 4, codecJsonLength);
+    codecGzipLength = compressed + 8;
+  }
+
+  private static void buildPackedTicZeroJson(String stateSha) {
+    int offset = appendAscii(0, "{\"v\":2,\"tic\":0,\"w\":320,\"h\":200,\"mode\":\"game\"," +
+        "\"state_sha\":\"");
+    offset = appendAscii(offset, stateSha);
+    offset = appendAscii(offset, "\",\"frame_sha\":\"");
+    offset = appendHexDigest(offset);
+    offset = appendAscii(offset, "\",\"frame_b64\":\"");
+    int index = 0;
+    while (index + 2 < codecFrame.length) {
+      int bits = ((codecFrame[index] & 255) << 16) |
+          ((codecFrame[index + 1] & 255) << 8) | (codecFrame[index + 2] & 255);
+      codecJson[offset++] = BASE64[(bits >>> 18) & 63];
+      codecJson[offset++] = BASE64[(bits >>> 12) & 63];
+      codecJson[offset++] = BASE64[(bits >>> 6) & 63];
+      codecJson[offset++] = BASE64[bits & 63];
+      index += 3;
+    }
+    if (index < codecFrame.length) {
+      int bits = (codecFrame[index] & 255) << 16;
+      codecJson[offset++] = BASE64[(bits >>> 18) & 63];
+      if (index + 1 < codecFrame.length) {
+        bits |= (codecFrame[index + 1] & 255) << 8;
+        codecJson[offset++] = BASE64[(bits >>> 12) & 63];
+        codecJson[offset++] = BASE64[(bits >>> 6) & 63];
+      } else {
+        codecJson[offset++] = BASE64[(bits >>> 12) & 63];
+        codecJson[offset++] = '=';
+      }
+      codecJson[offset++] = '=';
+    }
+    offset = appendAscii(offset, "\",\"audio\":[],\"complete\":0}");
+    codecJsonLength = offset;
+  }
+
+  private static void encodePackedTicZeroPayload(String stateSha) throws Exception {
+    prepareFrameSha();
+    buildPackedTicZeroJson(stateSha);
+    compressJson();
+  }
+
+  private static void encodeTicZeroPayload(String stateSha) throws Exception {
+    prepareFrameSha();
+    buildTicZeroJson(stateSha);
+    compressJson();
+  }
+
+  private static byte[] gunzip(byte[] bytes, int length) throws Exception {
+    try (GZIPInputStream input = new GZIPInputStream(new ByteArrayInputStream(bytes, 0, length));
+         ByteArrayOutputStream output = new ByteArrayOutputStream(codecJson.length)) {
+      byte[] chunk = new byte[8192];
+      int count;
+      while ((count = input.read(chunk)) >= 0) output.write(chunk, 0, count);
+      return output.toByteArray();
+    }
+  }
+
+  private static boolean equalPrefix(byte[] left, int leftLength, byte[] right) {
+    if (leftLength != right.length) return false;
+    for (int index = 0; index < leftLength; index++)
+      if (left[index] != right[index]) return false;
+    return true;
+  }
+
+  private static void runCodecOnly(int px, int py) throws Exception {
+    traverseAndProject(px, py, 0, false);
+    encodePackedTicZeroPayload(ZERO_SHA);
+    byte[] packedRoundTrip = gunzip(codecGzip, codecGzipLength);
+    require(equalPrefix(codecJson, codecJsonLength, packedRoundTrip),
+        "packed gzip round trip differs from canonical payload");
+    String packedJson = new String(packedRoundTrip, StandardCharsets.UTF_8);
+    String marker = "\"frame_b64\":\"";
+    int frameStart = packedJson.indexOf(marker) + marker.length();
+    int frameEnd = packedJson.indexOf('"', frameStart);
+    require(frameStart >= marker.length() && frameEnd > frameStart,
+        "packed frame_b64 missing");
+    require(Arrays.equals(codecFrame,
+        Base64.getDecoder().decode(packedJson.substring(frameStart, frameEnd))),
+        "packed frame_b64 differs from indexed frame");
+    for (int index = 0; index < 1000; index++) encodePackedTicZeroPayload(ZERO_SHA);
+    int count = 1500;
+    long[] sha = new long[count], json = new long[count], gzip = new long[count], total = new long[count];
+    for (int index = 0; index < count; index++) {
+      long t0 = System.nanoTime();
+      prepareFrameSha();
+      long t1 = System.nanoTime();
+      buildPackedTicZeroJson(ZERO_SHA);
+      long t2 = System.nanoTime();
+      compressJson();
+      long t3 = System.nanoTime();
+      sha[index] = t1 - t0; json[index] = t2 - t1; gzip[index] = t3 - t2;
+      total[index] = t3 - t0; sink += codecGzipLength + codecGzip[10];
+    }
+    Arrays.sort(sha); Arrays.sort(json); Arrays.sort(gzip); Arrays.sort(total);
+    System.out.printf(java.util.Locale.ROOT,
+        "PACKED_CODEC json_bytes=%d gzip_bytes=%d sha_p95_ms=%.6f " +
+        "json_p95_ms=%.6f gzip_p95_ms=%.6f total_p50_ms=%.6f total_p95_ms=%.6f%n",
+        codecJsonLength, codecGzipLength, percentile(sha, .95),
+        percentile(json, .95), percentile(gzip, .95), percentile(total, .50),
+        percentile(total, .95));
+  }
+
   public static void main(String[] args) throws Exception {
-    require(args.length == 1, "usage: DoomBspKernelBench PASSWORD_FILE");
+    require(args.length == 1 || (args.length == 2 && "--codec-only".equals(args[1])),
+        "usage: DoomBspKernelBench PASSWORD_FILE [--codec-only]");
+    codecSha256 = MessageDigest.getInstance("SHA-256");
     String password = new String(Files.readAllBytes(Paths.get(args[0])), StandardCharsets.UTF_8).trim();
     long loadStart = System.nanoTime();
     try (Connection connection = DriverManager.getConnection(
@@ -1329,6 +1574,10 @@ public final class DoomBspKernelBench {
       load(connection);
       double loadMs = (System.nanoTime() - loadStart) / 1_000_000.0;
       int px = -416, py = 256;
+      if (args.length == 2) {
+        runCodecOnly(px, py);
+        return;
+      }
       int auditAccepted = 0, auditMissing = 0, auditCandidates = 0;
       int auditVisible = 0, auditVisibleMissing = 0, auditVisibleCandidates = 0;
       int maxNodes = 0, maxSubsectors = 0;
@@ -1375,10 +1624,34 @@ public final class DoomBspKernelBench {
         samples[i] = System.nanoTime() - start;
       }
       Arrays.sort(samples);
+      for (int i = 0; i < 1000; i++) encodePackedTicZeroPayload(ZERO_SHA);
+      int codecSampleCount = 3000;
+      long[] codecSamples = new long[codecSampleCount];
+      for (int i = 0; i < codecSampleCount; i++) {
+        long start = System.nanoTime();
+        encodePackedTicZeroPayload(ZERO_SHA);
+        codecSamples[i] = System.nanoTime() - start;
+        sink += codecGzipLength + codecGzip[10];
+      }
+      Arrays.sort(codecSamples);
+      long[] compositeSamples = new long[codecSampleCount];
+      for (int i = 0; i < codecSampleCount; i++) {
+        long start = System.nanoTime();
+        traverseAndProject(px + (i % 7) - 3, py + (i % 11) - 5, i % ANGLES, false);
+        encodePackedTicZeroPayload(ZERO_SHA);
+        compositeSamples[i] = System.nanoTime() - start;
+        sink += codecGzipLength + codecGzip[10];
+      }
+      Arrays.sort(compositeSamples);
       double retention = auditCandidates / (12.0 * segTotal * WIDTH);
       double visibleRetention = auditVisibleCandidates / (12.0 * segTotal * WIDTH);
       double p95 = percentile(samples, .95);
+      double codecP95 = percentile(codecSamples, .95);
+      double compositeP95 = percentile(compositeSamples, .95);
       require(p95 <= 12.0, "no-JDBC composite p95 gate failed: " + p95 + " ms");
+      require(codecP95 <= 5.0, "codec p95 gate failed: " + codecP95 + " ms");
+      require(compositeP95 <= 20.0,
+          "renderer+codec p95 gate failed: " + compositeP95 + " ms");
       require(retention <= .25, "candidate retention gate failed: " + retention);
       System.out.printf(java.util.Locale.ROOT,
           "BSP_KERNEL load_ms=%.3f p50_ms=%.6f p95_ms=%.6f p99_ms=%.6f " +
@@ -1390,6 +1663,9 @@ public final class DoomBspKernelBench {
           "sql_masked_wall=%d masked_missing=%d masked_color=%d masked_extra=%d " +
           "sql_masked_total=%d full_masked_missing=%d full_masked_color=%d full_masked_extra=%d " +
           "sql_presentation=%d presentation_missing=%d presentation_color=%d presentation_extra=%d " +
+          "oracle_rle_runs=%d packed_json_bytes=%d packed_gzip_bytes=%d " +
+          "codec_p50_ms=%.6f codec_p95_ms=%.6f " +
+          "composite_p50_ms=%.6f composite_p95_ms=%.6f " +
           "max_nodes=%d max_ssectors=%d sink=%d%n",
           loadMs, percentile(samples, .50), p95, percentile(samples, .99),
           auditAccepted, auditMissing, retention, auditVisible, auditVisibleMissing,
@@ -1399,6 +1675,9 @@ public final class DoomBspKernelBench {
           portalOracle[12], portalOracle[13], portalOracle[14], portalOracle[15],
           portalOracle[16], portalOracle[17], portalOracle[18], portalOracle[19],
           portalOracle[20], portalOracle[21], portalOracle[22], portalOracle[23],
+          codecRunCount, codecJsonLength, codecGzipLength,
+          percentile(codecSamples, .50), codecP95,
+          percentile(compositeSamples, .50), compositeP95,
           maxNodes, maxSubsectors, sink);
     }
   }
