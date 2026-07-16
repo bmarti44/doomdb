@@ -2,7 +2,7 @@ whenever sqlerror exit sql.sqlcode rollback
 set define off serveroutput on size unlimited
 declare
   k_token constant varchar2(32):='62626262626262626262626262626262';
-  procedure clear_map is begin delete from doom_block_line;delete from doom_block_cell;delete from doom_linedef;delete from doom_map_linedef;delete from doom_map_sidedef;delete from doom_map_vertex;delete from sector_state;delete from doom_map_sector;delete from eval_region;end;
+  procedure clear_map is begin delete from doom_block_line;delete from doom_block_cell;delete from doom_collision_segment;delete from doom_linedef;delete from doom_map_linedef;delete from doom_map_sidedef;delete from doom_map_vertex;delete from sector_state;delete from doom_map_sector;delete from eval_region;end;
   procedure sector_(p_id number,p_floor number,p_ceiling number) is begin insert into doom_map_sector values(p_id,p_floor,p_ceiling);insert into sector_state values(k_token,p_id,p_floor,p_ceiling);end;
   procedure line_(p_id number,p_x1 number,p_y1 number,p_x2 number,p_y2 number,p_flags number,p_right number,p_left number) is
     l_len number:=sqrt(power(p_x2-p_x1,2)+power(p_y2-p_y1,2));
@@ -11,6 +11,7 @@ declare
     insert into doom_map_sidedef values(p_id*2,p_right);if p_left is not null then insert into doom_map_sidedef values(p_id*2+1,p_left);end if;
     insert into doom_map_linedef values(p_id,p_id*2,p_id*2+1,p_flags,p_id*2,case when p_left is null then null else p_id*2+1 end);
     insert into doom_linedef values(p_id,p_id*2,p_id*2+1,p_flags,p_id*2,case when p_left is null then null else p_id*2+1 end,mdsys.sdo_geometry(2002,null,null,mdsys.sdo_elem_info_array(1,2,1),mdsys.sdo_ordinate_array(p_x1,p_y1,p_x2,p_y2)),l_len,(p_x2-p_x1)/l_len,(p_y2-p_y1)/l_len);
+    insert into doom_collision_segment values(p_id,p_flags,p_left,p_right,p_id*2,p_id*2+1,p_x1,p_y1,p_x2,p_y2,least(p_x1,p_x2),greatest(p_x1,p_x2),least(p_y1,p_y2),greatest(p_y1,p_y2),l_len,(p_x2-p_x1)/l_len,(p_y2-p_y1)/l_len);
     insert into doom_block_line values(0,(select count(*) from doom_block_line),p_id);
   end;
   procedure player_(p_x number,p_y number,p_z number,p_noclip number:=0) is begin update players set x=p_x,y=p_y,z=p_z,view_height=41,noclip=p_noclip where session_token=k_token and player_id=0;end;
@@ -36,7 +37,7 @@ begin
   update doom_map_sector set floor_height=0 where sector_id=1;update sector_state set floor_height=25 where sector_id=1;player_(0,0,0);check_('dynamic high step',100,0,48,0,0,0,1,20);
   update sector_state set floor_height=0,ceiling_height=0 where sector_id=1;player_(0,0,0);check_('closed door',100,0,48,0,0,0,1,20);
   -- Explicit blocking flag on an otherwise open two-sided line.
-  update sector_state set ceiling_height=128 where sector_id=1;update doom_map_linedef set flags=1;update doom_linedef set flags=1;player_(0,0,0);check_('blocking flag',100,0,48,0,0,0,1,20);
+  update sector_state set ceiling_height=128 where sector_id=1;update doom_map_linedef set flags=1;update doom_linedef set flags=1;update doom_collision_segment set flags=1;player_(0,0,0);check_('blocking flag',100,0,48,0,0,0,1,20);
   rollback;dbms_output.put_line('PASS T6.2-ORACLE-MINI-MAP (10 independent live scenarios)');
 end;
 /

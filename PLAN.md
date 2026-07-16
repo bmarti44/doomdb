@@ -1278,9 +1278,14 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   bulk actor housekeeping, one-pass special-light neighbors, and omission of a
   redundant modern-lineage JSON rewrite all passed their adjacent gates. The
   selected result after replacing array DML with common set operations and
-  packing immutable REJECT/line-of-sight inputs is now 41.410 ms p50,
-  70.581 ms p95, 84.806 ms p99, and 93.566 ms maximum over 270 unique turn
-  tics. Simulation/history remains a
+  packing immutable REJECT/line-of-sight inputs was 41.410 ms p50 / 70.581 ms
+  p95. A fresh line trace then isolated canonical state JSON, swept collision,
+  full state-BLOB history, and a redundant state-document lineage parse. The
+  selected exact lineage flag, 1,175-row immutable collision geometry with a
+  conservative swept-circle AABB, native compilation of seven hot PL/SQL
+  bodies, and 182-row immutable sector-light facts all pass adjacent P6/P7
+  gates. The current 270-tic result is 35.894 ms p50, 47.714 ms p95,
+  60.802 ms p99, and 68.946 ms maximum. Simulation/history remains a
   mandatory bottleneck; continue reducing state serialization/hash, actor
   advancement, world machines, combat, history, command bookkeeping, and audio
   to <=10 ms p95. P12.0 remains active and P8 remains paused.

@@ -15,6 +15,10 @@ transaction boundary. The reproducible driver is
 | Exact sound closure selected | 53.413 ms | 82.336 ms | 107.506 ms | 145.990 ms |
 | Set-based common actor housekeeping selected | 45.766 ms | 77.846 ms | 96.626 ms | 98.822 ms |
 | Packed REJECT and LOS geometry selected | 41.410 ms | 70.581 ms | 84.806 ms | 93.566 ms |
+| Lineage fast path | 40.273 ms | 67.708 ms | 85.847 ms | 91.823 ms |
+| Exact swept-AABB collision segments | 38.705 ms | 56.227 ms | 73.994 ms | 91.117 ms |
+| Native hot PL/SQL | 37.804 ms | 49.319 ms | 55.048 ms | 56.983 ms |
+| Static sector runtime facts selected | 35.894 ms | 47.714 ms | 60.802 ms | 68.946 ms |
 
 An earlier rollback-only result of 555.921 ms p50 / 1,488.766 ms p95 is
 rejected: it kept all 300 calls in one transaction and measured accumulating
@@ -28,7 +32,25 @@ rounds to 6,784 reachable pairs; runtime perception uses the composite primary
 key. The complete T7.2 evaluator, mutation, history, lifecycle, MOBJ-integrity,
 and branch-isolation gates pass.
 
-The remaining ordinary-tic profile is led by state JSON/hash work, actor
-housekeeping/advancement, special-sector processing, and history writes.
-Simulation still fails its preferred 10 ms p95 slice and the overall 33.3 ms
-response gate. No playability claim is made.
+The refreshed 30-tic `DBMS_PROFILER` run is reproducible with
+`artifacts/performance/t12.0/profile-render-free-simulation.sql`. Before native
+compilation, canonical state JSON cost 282.734 ms over 30 tics, swept contact
+142.881 ms over 18 calls, command state-BLOB updates 104.398 ms over 30 tics,
+and a redundant full-state JSON parse 78.690 ms over 30 tics. The selected
+lineage flag removes that parse without changing legacy hashes. A packed
+1,175-row immutable collision relation plus a mathematically conservative swept
+circle AABB removes the repeated map/sidedef/vertex join and passes all T6.2
+collision, tangency, thin-door, and route-prefix gates.
+
+Native compilation of the seven hot PL/SQL bodies passes its predeclared 3 ms
+p95 A/B gate, saving 6.908 ms p95. The selected 182-row immutable sector runtime
+relation also replaces the per-tic two-direction neighbor aggregation used by
+special lighting. The complete T6.1-T6.4 and T7.1-T7.3 evaluator, mutation,
+concurrency, history, lifecycle, integrity, branch-isolation, and Chromium gates
+pass after these changes.
+
+The remaining ordinary-tic profile is led by state JSON/hash/history, actor
+advancement, and interval snapshot writes. Simulation still fails its preferred
+10 ms p95 slice and the integrated 33.3 ms response gate. The next structural
+slice is an exact streaming canonical state/history writer, followed by
+set-based actor/world advancement. No playability claim is made.

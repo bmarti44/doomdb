@@ -309,26 +309,11 @@ create or replace package body doom_world_machines as
     l_strobe_dark number:=config_number('WORLD_STROBE_DARK');
     l_rng number;l_cursor number;l_max number;l_min number;l_timer number;
   begin
-    for s in (with neighbors(source_sector_id,target_sector_id) as (
-        select rs.sector_id,ls.sector_id
-        from doom_map_linedef ml
-        join doom_map_sidedef rs on rs.sidedef_id=ml.right_sidedef_id
-        join doom_map_sidedef ls on ls.sidedef_id=ml.left_sidedef_id
-        union all
-        select ls.sector_id,rs.sector_id
-        from doom_map_linedef ml
-        join doom_map_sidedef rs on rs.sidedef_id=ml.right_sidedef_id
-        join doom_map_sidedef ls on ls.sidedef_id=ml.left_sidedef_id
-      ), neighbor_min as (
-        select e.source_sector_id sector_id,min(n.light_level) min_light
-        from neighbors e join doom_map_sector n
-          on n.sector_id=e.target_sector_id group by e.source_sector_id
-      )
-      select ss.sector_id,ms.special,ss.light_level,ss.light_timer,
-        ms.light_level base_light,coalesce(nm.min_light,ms.light_level) min_light
+    for s in (select ss.sector_id,ms.special,ss.light_level,ss.light_timer,
+        ms.light_level base_light,rt.min_neighbor_light min_light
       from sector_state ss join doom_map_sector ms on ms.sector_id=ss.sector_id
       join doom_sector_special_def d on d.special_id=ms.special
-      left join neighbor_min nm on nm.sector_id=ss.sector_id
+      join doom_sector_runtime_static rt on rt.sector_id=ss.sector_id
       where ss.session_token=p_session and ms.special in(1,7,9,12)
       order by ss.sector_id) loop
       if s.special=12 then

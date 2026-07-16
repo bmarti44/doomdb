@@ -40,7 +40,7 @@ create or replace package body doom_tic_tx as
     return l_blob;
   end;
 
-  function state_document(p_session varchar2) return clob is
+  function state_document(p_session varchar2,p_legacy number) return clob is
     l_document clob;
   begin
     select json_object(
@@ -54,12 +54,8 @@ create or replace package body doom_tic_tx as
       'paused' value s.paused,
       'menu_state' value s.menu_state,
       'automap_state' value s.automap_state,
-      'last_command_seq' value case
-        when regexp_like(s.save_lineage,'^[0-9a-f]{64}$') then null
-        else s.last_command_seq end,
-      'save_lineage' value case
-        when regexp_like(s.save_lineage,'^[0-9a-f]{64}$') then null
-        else s.save_lineage end,
+      'last_command_seq' value case when p_legacy=0 then null else s.last_command_seq end,
+      'save_lineage' value case when p_legacy=0 then null else s.save_lineage end,
       'player' value (
         select json_object(
           'player_id' value p.player_id, 'x' value p.x, 'y' value p.y,
@@ -147,7 +143,7 @@ create or replace package body doom_tic_tx as
       absent on null returning clob)
       into l_document
       from game_sessions s where s.session_token=p_session;
-    if json_value(l_document,'$.save_lineage') is not null then
+    if p_legacy=1 then
       -- Preserve the reviewed pre-history transport digest for legacy short
       -- lineages.  SHA-256 lineages retain the complete combat state closure.
       select json_transform(l_document,
@@ -262,6 +258,7 @@ create or replace package body doom_tic_tx as
     l_dest_view number;
     l_world_ready number;
     l_lineage varchar2(64);
+    l_legacy number;
     l_previous_command_sha varchar2(64);
     l_row_command_sha varchar2(64);
     l_expected_keys constant varchar2(200) :=
@@ -398,6 +395,7 @@ create or replace package body doom_tic_tx as
     if l_first<>l_frontier+1 then fail(c_gap, 'command sequence gap'); end if;
 
     select save_lineage into l_lineage from game_sessions where session_token=p_session;
+    l_legacy:=case when regexp_like(l_lineage,'^[0-9a-f]{64}$') then 0 else 1 end;
     select case when
       (select count(*) from sector_state where session_token=p_session)>0 and
       (select count(*) from line_state where session_token=p_session)>0
@@ -485,14 +483,14 @@ create or replace package body doom_tic_tx as
       update game_sessions set current_tic=l_tic+command_row.ord,
         last_command_seq=command_row.seq,paused=l_paused,menu_state=l_menu,
         automap_state=l_automap,game_mode=l_mode where session_token=p_session;
-      l_state_document:=state_document(p_session);
+      l_state_document:=state_document(p_session,l_legacy);
       l_state_sha:=sha256(l_state_document);
       l_snapshot_blob:=utf8_blob(l_state_document);
       update tic_commands set state_sha=l_state_sha,frame_sha=l_state_sha,
         state_blob=l_snapshot_blob
         where session_token=p_session and lineage=l_lineage
           and command_seq=command_row.seq;
-      if regexp_like(l_lineage,'^[0-9a-f]{64}$') or command_row.ord=l_count then
+      if l_legacy=0 or command_row.ord=l_count then
         doom_history.capture_tic(p_session,l_tic+command_row.ord,l_state_document,
           l_state_sha,l_state_sha);
       end if;
@@ -503,7 +501,7 @@ create or replace package body doom_tic_tx as
     -- DOOM_HISTORY.CAPTURE_TIC persists reviewed STATE_HISTORY checkpoints
     -- after authoritative tic effects and before response construction.
 
-    if regexp_like(l_lineage,'^[0-9a-f]{64}$') then
+    if l_legacy=0 then
       select json_object('v' value 1,'tic' value l_tic+l_count,
           'logical_hz' value 35,'first_seq' value l_first,'last_seq' value l_last,
           'command_sha' value l_command_sha,'state_sha' value l_state_sha,

@@ -97,9 +97,12 @@ begin
 end;
 /
 
--- One exact relational sweep. DOOM_BLOCK_LINE is retained as a broad-phase
--- hint; the complete line relation is the conservative candidate guard.
--- Thus candidate reduction can never remove a true finite-segment contact.
+-- One exact relational sweep. DOOM_COLLISION_SEGMENT is the bootstrap-packed
+-- projection of DOOM_MAP_LINEDEF, DOOM_MAP_SIDEDEF, DOOM_LINEDEF, and their
+-- endpoint vertices. Its swept-circle AABB is a mathematically conservative
+-- broad phase: every finite segment that touches the moving circle overlaps
+-- this box, so candidate reduction cannot remove a true contact. DOOM_BLOCK_LINE
+-- remains the independent WAD acceleration oracle but is not needed here.
 create or replace function doom_sweep_contact(
   p_session varchar2, p_x number, p_y number, p_z number,
   p_dx number, p_dy number, p_radius number, p_height number,
@@ -132,28 +135,22 @@ begin
                        +(p_y-geom.y1)*geom.direction_x))
                    / nullif(p_dx*(-geom.direction_y)+p_dy*geom.direction_x,0) contact_t
             from (
-              select l.linedef_id,l.flags,l.left_sidedef_id,
-                     sv.x x1,sv.y y1,ev.x x2,ev.y y2,
-                     l.length,l.direction_x,l.direction_y,
-                     coalesce(sr.floor_height,msr.floor_height) right_floor,
-                     coalesce(sr.ceiling_height,msr.ceiling_height) right_ceiling,
-                     coalesce(sl.floor_height,msl.floor_height) left_floor,
-                     coalesce(sl.ceiling_height,msl.ceiling_height) left_ceiling,
-                     case when bh.linedef_id is null then 0 else 1 end blockmap_member
-              from doom_linedef l
-              join doom_map_linedef ml on ml.linedef_id=l.linedef_id
-              join doom_map_vertex sv on sv.vertex_id=ml.start_vertex_id
-              join doom_map_vertex ev on ev.vertex_id=ml.end_vertex_id
-              join doom_map_sidedef rs on rs.sidedef_id=ml.right_sidedef_id
-              left join doom_map_sidedef ls on ls.sidedef_id=ml.left_sidedef_id
-              join doom_map_sector msr on msr.sector_id=rs.sector_id
-              left join doom_map_sector msl on msl.sector_id=ls.sector_id
-              left join sector_state sr on sr.session_token=p_session and sr.sector_id=rs.sector_id
-              left join sector_state sl on sl.session_token=p_session and sl.sector_id=ls.sector_id
-              left join (select distinct linedef_id from doom_block_line) bh
-                on bh.linedef_id=l.linedef_id
+              select l.linedef_id,l.flags,l.left_sector_id left_sidedef_id,
+                     l.x1,l.y1,l.x2,l.y2,
+                     l.segment_length length,l.direction_x,l.direction_y,
+                     sr.floor_height right_floor,sr.ceiling_height right_ceiling,
+                     sl.floor_height left_floor,sl.ceiling_height left_ceiling
+              from doom_collision_segment l
+              join sector_state sr on sr.session_token=p_session
+                and sr.sector_id=l.right_sector_id
+              left join sector_state sl on sl.session_token=p_session
+                and sl.sector_id=l.left_sector_id
               where (p_exclude_linedef is null or l.linedef_id<>p_exclude_linedef)
-                and (l.left_sidedef_id is null
+                and l.min_x<=greatest(p_x,p_x+p_dx)+p_radius
+                and l.max_x>=least(p_x,p_x+p_dx)-p_radius
+                and l.min_y<=greatest(p_y,p_y+p_dy)+p_radius
+                and l.max_y>=least(p_y,p_y+p_dy)-p_radius
+                and (l.left_sector_id is null
                   or bitand(l.flags,1)<>0
                   -- Portal bottom is GREATEST live FLOOR_HEIGHT; portal top is
                   -- LEAST live CEILING_HEIGHT, never static map heights.
@@ -190,26 +187,23 @@ begin
                        2*((p_x-case endpoint.endpoint_no when 0 then geom.x1 else geom.x2 end)*p_dx
                          +(p_y-case endpoint.endpoint_no when 0 then geom.y1 else geom.y2 end)*p_dy) qb
                 from (
-                  select l.linedef_id,l.flags,l.left_sidedef_id,
-                         ml.start_vertex_id,ml.end_vertex_id,
-                         sv.x x1,sv.y y1,ev.x x2,ev.y y2,
-                         l.length,l.direction_x,l.direction_y,
-                         coalesce(sr.floor_height,msr.floor_height) right_floor,
-                         coalesce(sr.ceiling_height,msr.ceiling_height) right_ceiling,
-                         coalesce(sl.floor_height,msl.floor_height) left_floor,
-                         coalesce(sl.ceiling_height,msl.ceiling_height) left_ceiling
-                  from doom_linedef l
-                  join doom_map_linedef ml on ml.linedef_id=l.linedef_id
-                  join doom_map_vertex sv on sv.vertex_id=ml.start_vertex_id
-                  join doom_map_vertex ev on ev.vertex_id=ml.end_vertex_id
-                  join doom_map_sidedef rs on rs.sidedef_id=ml.right_sidedef_id
-                  left join doom_map_sidedef ls on ls.sidedef_id=ml.left_sidedef_id
-                  join doom_map_sector msr on msr.sector_id=rs.sector_id
-                  left join doom_map_sector msl on msl.sector_id=ls.sector_id
-                  left join sector_state sr on sr.session_token=p_session and sr.sector_id=rs.sector_id
-                  left join sector_state sl on sl.session_token=p_session and sl.sector_id=ls.sector_id
+                  select l.linedef_id,l.flags,l.left_sector_id left_sidedef_id,
+                         l.start_vertex_id,l.end_vertex_id,
+                         l.x1,l.y1,l.x2,l.y2,
+                         l.segment_length length,l.direction_x,l.direction_y,
+                         sr.floor_height right_floor,sr.ceiling_height right_ceiling,
+                         sl.floor_height left_floor,sl.ceiling_height left_ceiling
+                  from doom_collision_segment l
+                  join sector_state sr on sr.session_token=p_session
+                    and sr.sector_id=l.right_sector_id
+                  left join sector_state sl on sl.session_token=p_session
+                    and sl.sector_id=l.left_sector_id
                   where (p_exclude_linedef is null or l.linedef_id<>p_exclude_linedef)
-                    and (l.left_sidedef_id is null or bitand(l.flags,1)<>0
+                    and l.min_x<=greatest(p_x,p_x+p_dx)+p_radius
+                    and l.max_x>=least(p_x,p_x+p_dx)-p_radius
+                    and l.min_y<=greatest(p_y,p_y+p_dy)+p_radius
+                    and l.max_y>=least(p_y,p_y+p_dy)-p_radius
+                    and (l.left_sector_id is null or bitand(l.flags,1)<>0
                       or greatest(sr.floor_height,sl.floor_height)-p_z>p_step
                       or least(sr.ceiling_height,sl.ceiling_height)
                            -greatest(sr.floor_height,sl.floor_height)<p_height

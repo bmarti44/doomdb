@@ -12,6 +12,7 @@ create table doom_map_vertex(vertex_id number primary key,x number,y number);
 create table doom_map_sidedef(sidedef_id number primary key,sector_id number);
 create table doom_map_linedef(linedef_id number primary key,start_vertex_id number,end_vertex_id number,flags number,right_sidedef_id number,left_sidedef_id number);
 create table doom_linedef(linedef_id number primary key,start_vertex_id number,end_vertex_id number,flags number,right_sidedef_id number,left_sidedef_id number,geom mdsys.sdo_geometry,length number,direction_x number,direction_y number);
+create table doom_collision_segment(linedef_id number primary key,flags number,left_sector_id number,right_sector_id number,start_vertex_id number,end_vertex_id number,x1 number,y1 number,x2 number,y2 number,min_x number,max_x number,min_y number,max_y number,segment_length number,direction_x number,direction_y number);
 create table doom_block_cell(cell_id number primary key,block_x number,block_y number,world_min_x number,world_min_y number,list_word_offset number);
 create table doom_block_line(cell_id number,line_ordinal number,linedef_id number,primary key(cell_id,line_ordinal));
 create table eval_region(boundary_x number,low_sector number,high_sector number);
