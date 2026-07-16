@@ -1440,6 +1440,15 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   enumeration retained exact parity and measures 0.165/0.734/2.079 ms. Select
   the BLOCKMAP route and wire it into pending state; the thin-portal tangent
   exception remains fail-closed until its dedicated adversarial corpus passes.
+- Transactional movement integration (2026-07-16): version-2 packed commands
+  now advance turn plus exact Oracle `NUMBER` position in pending state and emit
+  fixed-width raw NUMBER deltas. The real-session differential passes 270/270
+  tics and 270/270 prepare-invisibility checks before explicit fenced accept;
+  the collision-heavy companion corpus retains its 124 contacts. The complete
+  packed `prepare+accept` boundary measures 0.261/0.762/5.821 ms p50/p95/max.
+  This slice is selected. Implement dynamic double-buffered sector heights and
+  the complete quiet/common actor tick next, then write canonical state directly
+  from arrays; do not spend more time on ordinary movement micro-tuning.
 - Fable/ORDS reconciliation (2026-07-16): Fable independently confirmed that
   ORDS cleanup has no supported off switch and OJVM application arrays are
   session-private. Its unmeasured DBMS_PIPE proposal is archived as fallback,

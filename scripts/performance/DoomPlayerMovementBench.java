@@ -16,9 +16,9 @@ public final class DoomPlayerMovementBench {
   private static NUMBER contactT;
   private static NUMBER contactDirectionX;
   private static NUMBER contactDirectionY;
-  private static NUMBER resultX;
-  private static NUMBER resultY;
-  private static NUMBER resultZ;
+  static NUMBER resultX;
+  static NUMBER resultY;
+  static NUMBER resultZ;
   private static boolean[] reachableScratch;
   private static boolean[] nextScratch;
   private static int[] candidateLines;

@@ -228,6 +228,14 @@ contact samples. Scanning all 1,175 lines was rejected at
 9.966/16.746/25.070 ms p50/p95/max. BLOCKMAP candidate enumeration preserves
 the corpus and measures 0.165/0.734/2.079 ms, so movement is now inside budget.
 
+The selected kernel is also connected to the worker transaction model. A
+version-2 command pack advances turn and exact position in pending state and
+returns fixed-width raw NUMBER deltas. Across 270 real-session tics, every
+pending delta matched SQL and every pre-accept committed frontier remained
+unchanged. A separate 300-call production-shaped prepare+accept matrix measured
+0.261/0.762/5.821 ms p50/p95/max. This excludes dirty-row DML and render but
+includes command decode, exact movement, delta encode, and both Java boundaries.
+
 Large frames remain in relational SecureFile rows. AQ carries only a small,
 unguessable request identifier and command metadata. The worker commits the
 authoritative state and response before signaling completion. AutoREST enforces

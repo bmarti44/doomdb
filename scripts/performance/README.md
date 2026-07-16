@@ -33,6 +33,10 @@ locations against `DOOM_BSP_LOCATE`, and all 1,152 raw NUMBER movement pairs.
 The follow-up exact swept-circle movement corpus passes 270/270 sequential
 real-session moves with 124 contacts. Packing the immutable BLOCKMAP reduces its
 kernel from 9.966/16.746 ms to 0.165/0.734 ms p50/p95.
+`ojvm-resident-movement-parity.sql` then exercises the transaction-facing v2
+command/delta pack. It requires 270 exact SQL positions and 270 pending-state
+invisibility checks; its 300-call prepare+accept matrix reports p50/p95/max and
+currently measures 0.261/0.762/5.821 ms.
 
 `verify-performance-baseline.mjs` has two fail-closed modes. With one evidence
 path it verifies an already collected baseline and every referenced artifact.

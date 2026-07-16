@@ -57,7 +57,7 @@
     <article class="panel">
       <h2>Current milestone</h2>
       <p class="big">30 FPS playability gate<br><span>database worker renderer passes · retained simulation slice 1 passes</span></p>
-      <p class="muted">A retained AQ/Scheduler worker renders, encodes, commits, and correlates 300 exact frames at 15.671 / 17.590 ms p50/p95. The 191 KB retained simulation catalog and exact BLOCKMAP collision kernel pass 270/270 sequential moves with 124 contacts at 0.165 / 0.734 ms p50/p95. Actors, persistence, and the browser path remain outside the gate.</p>
+      <p class="muted">A retained AQ/Scheduler worker renders, encodes, commits, and correlates 300 exact frames at 15.671 / 17.590 ms p50/p95. Packed transactional movement now passes 270/270 SQL tics and 270/270 pending-state fences at 0.261 / 0.762 ms p50/p95. Common actors, canonical persistence, and the browser path remain outside the gate.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -71,7 +71,7 @@
     <h2>Live implementation status · July 16, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate; public <code>DOOM_TIC_TX.APPLY_BATCH</code> only; lift 1 completed and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> ORDS cleanup resets OJVM statics even with one reused SID, so the selected architecture is a long-lived in-database AQ/Scheduler worker. Its exact static renderer + packed-v2 codec + persistent BLOB path measures 15.671 / 17.590 ms p50/p95 request-through-commit. The rejected relational live-state worker remains 29.265 / 42.373 ms before simulation. Retained simulation now passes transaction/fencing and exact NUMBER gates. Its 191,381-byte catalog includes BSP, collision, sectors, movement, and BLOCKMAP; exact movement matches 270/270 real-session moves with 124 contacts and measures 0.165 / 0.734 ms p50/p95 after BLOCKMAP pruning. Actor phases, dirty persistence, and the public 30 FPS p95 gate remain.</p>
+    <p><strong>Performance:</strong> ORDS cleanup resets OJVM statics even with one reused SID, so the selected architecture is a long-lived in-database AQ/Scheduler worker. Its exact static renderer + packed-v2 codec + persistent BLOB path measures 15.671 / 17.590 ms p50/p95 request-through-commit. The rejected relational live-state worker remains 29.265 / 42.373 ms before simulation. The 191,381-byte retained simulation catalog includes BSP, exact collision, sectors, movement, and BLOCKMAP. Collision-heavy parity is 270/270 with 124 contacts; version-2 transactional commands then pass 270/270 exact SQL tics and prepare fences at 0.261 / 0.762 ms p50/p95. Common actor phases, canonical dirty persistence, and the public 30 FPS gate remain.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">

@@ -1,3 +1,5 @@
+import oracle.sql.NUMBER;
+
 /**
  * First differential slice of the retained OJVM simulation.
  *
@@ -13,6 +15,7 @@ public final class DoomResidentSimulationBench {
   private static final int COMMAND_BYTES = 16;
   private static final int DELTA_HEADER_BYTES = 8;
   private static final int DELTA_BYTES = 24;
+  private static final int MOVEMENT_DELTA_BYTES = 96;
   private static final double TURN_DEGREES = 5.625d;
 
   private static boolean loaded;
@@ -23,6 +26,9 @@ public final class DoomResidentSimulationBench {
   private static double playerY;
   private static double playerZ;
   private static double playerAngle;
+  private static NUMBER exactPlayerX;
+  private static NUMBER exactPlayerY;
+  private static NUMBER exactPlayerZ;
   private static String lineage;
   private static long workerGeneration;
   private static boolean pending;
@@ -33,9 +39,14 @@ public final class DoomResidentSimulationBench {
   private static double pendingY;
   private static double pendingZ;
   private static double pendingAngle;
+  private static NUMBER pendingExactX;
+  private static NUMBER pendingExactY;
+  private static NUMBER pendingExactZ;
   private static final long[] scratchSequence = new long[4];
   private static final double[] scratchAngle = new double[4];
   private static final byte[] deltaBuffer = new byte[DELTA_HEADER_BYTES + 4 * DELTA_BYTES];
+  private static final byte[] movementDeltaBuffer =
+      new byte[DELTA_HEADER_BYTES + 4 * MOVEMENT_DELTA_BYTES];
   private static String lastError = "";
 
   private DoomResidentSimulationBench() {}
@@ -87,6 +98,7 @@ public final class DoomResidentSimulationBench {
       playerY = y;
       playerZ = z;
       playerAngle = angle;
+      exactPlayerX = new NUMBER(x); exactPlayerY = new NUMBER(y); exactPlayerZ = new NUMBER(z);
       pending = false;
       pendingRequest = null;
       loaded = true;
@@ -99,6 +111,20 @@ public final class DoomResidentSimulationBench {
       pending = false;
       pendingRequest = null;
       return failure(error);
+    }
+  }
+
+  public static String loadExactPlayer(String session, String loadedLineage, long generation,
+      long tic, long commandSeq, NUMBER x, NUMBER y, NUMBER z, double angle) {
+    try {
+      require(x != null && y != null && z != null, "missing exact position");
+      String result = loadPlayer(session, loadedLineage, generation, tic, commandSeq,
+          x.doubleValue(), y.doubleValue(), z.doubleValue(), angle);
+      require("OK".equals(result), result);
+      exactPlayerX = x; exactPlayerY = y; exactPlayerZ = z;
+      return "OK";
+    } catch (Throwable error) {
+      loaded = false; pending = false; return failure(error);
     }
   }
 
@@ -149,6 +175,20 @@ public final class DoomResidentSimulationBench {
     putInt(deltaBuffer, 0, DELTA_MAGIC);
     deltaBuffer[4] = VERSION; deltaBuffer[5] = (byte) status;
     deltaBuffer[6] = (byte) count;
+  }
+
+  private static void writeMovementHeader(int status, int count) {
+    for (int index = 0; index < movementDeltaBuffer.length; index++) movementDeltaBuffer[index] = 0;
+    putInt(movementDeltaBuffer, 0, DELTA_MAGIC);
+    movementDeltaBuffer[4] = 2; movementDeltaBuffer[5] = (byte) status;
+    movementDeltaBuffer[6] = (byte) count;
+  }
+
+  private static void putNumber(byte[] output, int offset, NUMBER value) {
+    byte[] bytes = value.toBytes();
+    require(bytes.length >= 1 && bytes.length <= 22, "NUMBER byte length");
+    output[offset] = (byte) bytes.length;
+    System.arraycopy(bytes, 0, output, offset + 1, bytes.length);
   }
 
   public static byte[] prepareTurnBatch(String session, String expectedLineage,
@@ -217,10 +257,73 @@ public final class DoomResidentSimulationBench {
       require(request != null && request.equals(pendingRequest), "prepared request mismatch");
       lastCommandSeq = pendingCommandSeq; currentTic = pendingTic;
       playerX = pendingX; playerY = pendingY; playerZ = pendingZ; playerAngle = pendingAngle;
+      exactPlayerX = pendingExactX; exactPlayerY = pendingExactY; exactPlayerZ = pendingExactZ;
       pending = false; pendingRequest = null; lastError = "";
       return "OK";
     } catch (Throwable error) {
       return failure(error);
+    }
+  }
+
+  /** Version-2 transactional batch: turn plus exact retained player movement. */
+  public static byte[] prepareMovementBatch(String session, String expectedLineage,
+      long generation, String request, byte[] packedCommands) {
+    try {
+      requireFence(session, expectedLineage, generation);
+      require(!pending, "prepared batch is awaiting resolution");
+      require(request != null && request.matches("[0-9a-f]{32}"), "invalid request id");
+      require(packedCommands != null && packedCommands.length >= COMMAND_HEADER_BYTES,
+          "missing command pack");
+      require(readInt(packedCommands, 0) == COMMAND_MAGIC && packedCommands[4] == 2,
+          "movement command header");
+      int count = packedCommands[5] & 255;
+      require(count >= 1 && count <= 4 && packedCommands[6] == 0 && packedCommands[7] == 0,
+          "movement batch header");
+      require(packedCommands.length == COMMAND_HEADER_BYTES + count * COMMAND_BYTES,
+          "movement command length");
+
+      long nextSeq = lastCommandSeq, nextTic = currentTic;
+      double nextAngle = playerAngle;
+      NUMBER nextX = exactPlayerX, nextY = exactPlayerY, nextZ = exactPlayerZ;
+      writeMovementHeader(0, count);
+      for (int index = 0; index < count; index++) {
+        int inputOffset = COMMAND_HEADER_BYTES + index * COMMAND_BYTES;
+        long sequence = readLong(packedCommands, inputOffset);
+        int turn = packedCommands[inputOffset + 8];
+        int forward = packedCommands[inputOffset + 9];
+        int strafe = packedCommands[inputOffset + 10];
+        int run = packedCommands[inputOffset + 11];
+        require(sequence == nextSeq + 1, "command sequence gap");
+        require(turn >= -1 && turn <= 1 && forward >= -1 && forward <= 1 &&
+            strafe >= -1 && strafe <= 1 && run >= 0 && run <= 1, "movement command domain");
+        for (int reserved = 12; reserved < 16; reserved++) {
+          require(packedCommands[inputOffset + reserved] == 0, "movement reserved bytes");
+        }
+        nextAngle = advanceAngle(nextAngle, turn);
+        int angleIndex = ((int) Math.round(nextAngle / TURN_DEGREES)) & 63;
+        String movement = DoomPlayerMovementBench.move(nextX, nextY, nextZ, angleIndex,
+            forward, strafe, run);
+        require(movement.indexOf("\"error\"") < 0, DoomPlayerMovementBench.lastError());
+        nextX = DoomPlayerMovementBench.resultX;
+        nextY = DoomPlayerMovementBench.resultY;
+        nextZ = DoomPlayerMovementBench.resultZ;
+        nextSeq = sequence; nextTic++;
+        int outputOffset = DELTA_HEADER_BYTES + index * MOVEMENT_DELTA_BYTES;
+        putLong(movementDeltaBuffer, outputOffset, sequence);
+        putLong(movementDeltaBuffer, outputOffset + 8, nextTic);
+        putLong(movementDeltaBuffer, outputOffset + 16,
+            Double.doubleToRawLongBits(nextAngle));
+        putNumber(movementDeltaBuffer, outputOffset + 24, nextX);
+        putNumber(movementDeltaBuffer, outputOffset + 47, nextY);
+        putNumber(movementDeltaBuffer, outputOffset + 70, nextZ);
+      }
+      pendingCommandSeq = nextSeq; pendingTic = nextTic; pendingAngle = nextAngle;
+      pendingExactX = nextX; pendingExactY = nextY; pendingExactZ = nextZ;
+      pendingX = nextX.doubleValue(); pendingY = nextY.doubleValue(); pendingZ = nextZ.doubleValue();
+      pendingRequest = request; pending = true; lastError = "";
+      return movementDeltaBuffer;
+    } catch (Throwable error) {
+      failure(error); writeMovementHeader(1, 0); return movementDeltaBuffer;
     }
   }
 
@@ -282,6 +385,15 @@ public final class DoomResidentSimulationBench {
     } catch (Throwable error) {
       return failure(error);
     }
+  }
+
+  public static String exactState(String session, String expectedLineage, long generation) {
+    try {
+      requireFence(session, expectedLineage, generation);
+      return "OK|" + lastCommandSeq + "|" + currentTic + "|" + exactPlayerX.stringValue() +
+          "|" + exactPlayerY.stringValue() + "|" + exactPlayerZ.stringValue() + "|" +
+          Double.toString(playerAngle);
+    } catch (Throwable error) { return failure(error); }
   }
 
   public static String lastError() {
