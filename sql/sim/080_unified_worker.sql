@@ -25,6 +25,13 @@ create or replace package body doom_unified_worker as
     raise_application_error(c_invalid,'missing worker configuration');
   end;
 
+  function elapsed_us(p_started timestamp with time zone) return number is
+    l_span interval day to second:=systimestamp-p_started;
+  begin
+    return round((extract(day from l_span)*86400+extract(hour from l_span)*3600+
+      extract(minute from l_span)*60+extract(second from l_span))*1000000);
+  end;
+
   function pool_size return pls_integer is
     l_size number:=config_number('UNIFIED_WORKER_POOL_SIZE');
   begin
@@ -241,11 +248,15 @@ create or replace package body doom_unified_worker as
     l_next_mobj number;l_result_tic number;l_result_seq number;
     l_ledger_sha varchar2(64);l_state_locator blob;
     l_delta_locator blob;l_response_locator blob;l_delta raw(32767);
+    l_render_payload blob;
     l_committed_tic number;l_committed_seq number;l_delta_version number;
     l_delta_count number;l_delta_sha varchar2(64);l_state_sha varchar2(64);
     l_frame_sha varchar2(4000);l_response_sha varchar2(64);
     l_response_bytes number;l_result varchar2(4000);l_error varchar2(4000);
     l_prepared number:=0;l_committed number:=0;l_failpoint number;
+    l_stage timestamp with time zone;l_prepare_us number;l_apply_us number;
+    l_state_us number;l_render_us number;l_finalize_us number;
+    l_render_kernel_us number;l_codec_us number;l_blob_us number;
   begin
     begin
       select worker_slot,session_token,save_lineage,generation,expected_tic,
@@ -298,6 +309,7 @@ create or replace package body doom_unified_worker as
       select coalesce(max(mobj_id),0)+1 into l_next_mobj from mobjs
         where session_token=l_session;
 
+      l_stage:=systimestamp;
       doom_command_ledger.begin_dmsc_v2(l_session,l_lineage,l_expected_tic,
         l_expected_seq,l_command,l_result_tic,l_result_seq,l_ledger_sha,
         l_state_locator);
@@ -311,53 +323,70 @@ create or replace package body doom_unified_worker as
       l_delta:=doom_unified_command_tic_prepare(l_session,l_lineage,l_generation,
         p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command);
       l_prepared:=1;
+      l_prepare_us:=elapsed_us(l_stage);
       l_failpoint:=config_number('UNIFIED_WORKER_FAILPOINT');
       if l_failpoint in(1,4) then
         raise_application_error(c_invalid,'injected pre-apply worker failure');
       end if;
+      l_stage:=systimestamp;
       doom_unified_delta_apply.apply_command_tic(l_session,l_lineage,
         l_expected_tic,l_expected_seq,l_command,l_delta,l_committed_tic,
         l_committed_seq,l_delta_version,l_delta_count,l_delta_sha);
       if l_committed_tic<>l_result_tic or l_committed_seq<>l_result_seq then
         raise_application_error(c_invalid,'ledger/apply frontier mismatch');
       end if;
+      l_apply_us:=elapsed_us(l_stage);
       if l_failpoint=3 then
         raise_application_error(c_invalid,'injected post-apply worker failure');
       end if;
 
+      l_stage:=systimestamp;
       dbms_lob.trim(l_delta_locator,0);
       dbms_lob.writeappend(l_delta_locator,utl_raw.length(l_delta),l_delta);
       doom_canonical_state.build_into_locator(
         l_session,0,l_state_locator,l_state_sha);
+      l_state_us:=elapsed_us(l_stage);
+      l_stage:=systimestamp;
+      dbms_lob.createtemporary(l_render_payload,true,dbms_lob.call);
       l_frame_sha:=doom_unified_render_pending(l_session,l_lineage,l_generation,
-        p_request,l_state_sha,l_response_locator);
+        p_request,l_state_sha,l_render_payload);
       if not regexp_like(l_frame_sha,'^[0-9a-f]{64}$') then
         raise_application_error(c_invalid,'direct pending renderer: '||
           substr(l_frame_sha,1,3000));
       end if;
-      -- The server-side JDBC Blob mutates the persistent LOB, but the PL/SQL
-      -- locator passed into Java may retain its pre-call length metadata.
-      -- Re-select the same locked locator before measuring and hashing it.
-      select response_blob into l_response_locator from doom_worker_result
-        where request_id=p_request for update;
+      -- Keep server-side JDBC off the persistent SecureFile locator: its
+      -- measured write tail dominates otherwise. Java fills a temporary BLOB;
+      -- PL/SQL performs one bounded durable copy in the owning transaction.
+      dbms_lob.trim(l_response_locator,0);
+      dbms_lob.copy(l_response_locator,l_render_payload,
+        dbms_lob.getlength(l_render_payload),1,1);
       l_response_bytes:=dbms_lob.getlength(l_response_locator);
       if l_response_bytes=0 then
         raise_application_error(c_invalid,'empty worker response');
       end if;
       l_response_sha:=lower(rawtohex(dbms_crypto.hash(
         l_response_locator,dbms_crypto.hash_sh256)));
+      l_render_us:=elapsed_us(l_stage);
+      l_render_kernel_us:=round(doom_bsp_last_render_ns/1000);
+      l_codec_us:=round(doom_bsp_last_codec_ns/1000);
+      l_blob_us:=round(doom_bsp_last_blob_ns/1000);
 
+      l_stage:=systimestamp;
       doom_command_ledger.finalize_command(l_session,l_lineage,l_result_seq,
         l_state_sha,l_frame_sha);
       if mod(l_result_tic,4)=0 then
         doom_capture_tic_blob(l_session,l_result_tic,l_state_locator,
           l_state_sha,l_frame_sha);
       end if;
+      l_finalize_us:=elapsed_us(l_stage);
       update doom_worker_result set committed_tic=l_committed_tic,
         committed_command_seq=l_committed_seq,delta_version=l_delta_version,
         delta_count=l_delta_count,delta_bytes=utl_raw.length(l_delta),
         delta_sha=l_delta_sha,state_sha=l_state_sha,frame_sha=l_frame_sha,
-        response_bytes=l_response_bytes,response_sha=l_response_sha
+        response_bytes=l_response_bytes,response_sha=l_response_sha,
+        prepare_us=l_prepare_us,apply_us=l_apply_us,state_us=l_state_us,
+        render_us=l_render_us,render_kernel_us=l_render_kernel_us,
+        codec_us=l_codec_us,blob_us=l_blob_us,finalize_us=l_finalize_us
         where request_id=p_request;
       if sql%rowcount<>1 then
         raise_application_error(c_invalid,'worker result finalize race');

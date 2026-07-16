@@ -8,6 +8,7 @@ sql/schema/035_unified_worker.sql
 sql/schema/036_unified_worker_result_metadata.sql
 sql/schema/037_unified_worker_control_state_map.sql
 sql/schema/038_unified_worker_config.sql
+sql/schema/039_unified_worker_profile.sql
 sql/schema/040_constraints.sql
 sql/schema/050_config.sql
 sql/engine/005_render_axes.sql
