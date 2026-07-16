@@ -6,7 +6,7 @@ public final class DoomCommonActorTickBench {
   private static String session, lineage, pendingRequest, lastError = "";
   private static long generation;
   private static int count;
-  private static int[] mobjId, health, healthSeen, cooldown, awake, stateTics;
+  private static int[] mobjId, health, healthSeen, cooldown, awake, stateTics, sector;
   private static int[] pendingHealthSeen, pendingCooldown, dirtyIndex;
   private static final byte[] delta = new byte[8 + 255 * 12];
 
@@ -54,14 +54,15 @@ public final class DoomCommonActorTickBench {
       Parser parser = new Parser(snapshot.getSubString(1, (int) snapshot.length()));
       parser.expect('['); int rows = 0;
       if (!parser.take(']')) {
-        do { parser.expect('['); for (int field = 0; field < 6; field++) {
-            parser.integer(field == 2); if (field < 5) parser.expect(',');
+        do { parser.expect('['); for (int field = 0; field < 7; field++) {
+            parser.integer(field == 2); if (field < 6) parser.expect(',');
           } parser.expect(']'); rows++;
         } while (parser.take(',')); parser.expect(']');
       }
       require(rows >= 0 && rows <= 255, "actor count");
       int[] newMobjId = new int[rows], newHealth = new int[rows], newHealthSeen = new int[rows];
       int[] newCooldown = new int[rows], newAwake = new int[rows], newStateTics = new int[rows];
+      int[] newSector = new int[rows];
       parser = new Parser(snapshot.getSubString(1, (int) snapshot.length())); parser.expect('[');
       int index = 0;
       if (!parser.take(']')) {
@@ -71,20 +72,21 @@ public final class DoomCommonActorTickBench {
           newHealthSeen[index] = parser.integer(true); parser.expect(',');
           newCooldown[index] = parser.integer(false); parser.expect(',');
           newAwake[index] = parser.integer(false); parser.expect(',');
-          newStateTics[index] = parser.integer(false); parser.expect(']');
+          newStateTics[index] = parser.integer(false); parser.expect(',');
+          newSector[index] = parser.integer(false); parser.expect(']');
           require(newMobjId[index] >= 0 &&
               (index == 0 || newMobjId[index] > newMobjId[index - 1]),
               "actor order");
           require(newHealth[index] >= 0 &&
               (newHealthSeen[index] == -1 || newHealthSeen[index] >= 0) &&
               newCooldown[index] >= 0 && (newAwake[index] == 0 || newAwake[index] == 1) &&
-              newStateTics[index] >= -1, "actor value");
+              newStateTics[index] >= -1 && newSector[index] >= 0, "actor value");
           index++;
         } while (parser.take(',')); parser.expect(']');
       }
       require(index == rows && parser.offset == parser.text.length(), "actor snapshot trailing bytes");
       mobjId = newMobjId; health = newHealth; healthSeen = newHealthSeen;
-      cooldown = newCooldown; awake = newAwake; stateTics = newStateTics;
+      cooldown = newCooldown; awake = newAwake; stateTics = newStateTics; sector = newSector;
       pendingHealthSeen = new int[rows]; pendingCooldown = new int[rows];
       dirtyIndex = new int[rows];
       session = loadedSession; lineage = loadedLineage; generation = loadedGeneration;
@@ -102,16 +104,24 @@ public final class DoomCommonActorTickBench {
   }
 
   public static byte[] prepareQuiet(String expectedSession, String expectedLineage,
-      long expectedGeneration, String request, int playerMadeSound, int allRejectHidden) {
+      long expectedGeneration, String request, double playerX, double playerY,
+      int playerMadeSound) {
     try {
       fence(expectedSession, expectedLineage, expectedGeneration);
       require(!pending && request != null && request.matches("[0-9a-f]{32}"), "actor request");
-      require(playerMadeSound == 0 && allRejectHidden == 1, "quiet actor proof");
+      require(Double.isFinite(playerX) && Double.isFinite(playerY) &&
+          (playerMadeSound == 0 || playerMadeSound == 1), "quiet actor input");
+      int playerSector = DoomSimCatalogBench.locateSector(playerX, playerY);
+      require(playerSector >= 0, "player sector");
       int dirty = 0;
       for (int index = 0; index < count; index++) {
+        int rejected = DoomSimCatalogBench.rejected(sector[index], playerSector);
+        int soundReach = DoomSimCatalogBench.soundReach(playerSector, sector[index]);
         require(health[index] > 0 && awake[index] == 0 &&
             (healthSeen[index] == -1 || healthSeen[index] == health[index]),
             "unsupported actor action mobj=" + mobjId[index]);
+        require(rejected == 1 && (playerMadeSound == 0 || soundReach == 0),
+            "actor wake proof mobj=" + mobjId[index]);
         pendingHealthSeen[index] = health[index];
         pendingCooldown[index] = Math.max(0, cooldown[index] - 1);
         if (pendingHealthSeen[index] != healthSeen[index] ||

@@ -4,6 +4,7 @@ set serveroutput on size unlimited
 declare
   result_ varchar2(4000);failures_ pls_integer:=0;cases_ pls_integer:=0;
   sql_sector number;java_sector number;sql_x number;sql_y number;java_x number;java_y number;
+  matrix_failures_ number;
   function same_number(p_left number,p_right number) return boolean is same_ number;begin
     select case when dump(p_left,16)=dump(p_right,16) then 1 else 0 end into same_ from dual;
     return same_=1;
@@ -51,8 +52,21 @@ begin
       end loop;
     end loop;
   end loop;
+  select count(*) into matrix_failures_ from doom_map_sector s
+    cross join doom_map_sector t
+    left join doom_sector_reject r on r.source_sector_id=s.sector_id
+      and r.target_sector_id=t.sector_id
+    left join doom_sector_sound_reach a on a.source_sector_id=s.sector_id
+      and a.target_sector_id=t.sector_id
+    where doom_sim_catalog_rejected(s.sector_id,t.sector_id)<>coalesce(r.rejected,1)
+       or doom_sim_catalog_sound_reach(s.sector_id,t.sector_id)<>
+          case when a.source_sector_id is null then 0 else 1 end;
+  if matrix_failures_<>0 then
+    raise_application_error(-20000,'catalog sector matrix failures='||matrix_failures_);
+  end if;
   dbms_output.put_line('sim_catalog_summary='||doom_sim_catalog_summary);
   dbms_output.put_line('sim_catalog_bsp_locate_parity='||cases_||'/'||cases_);
   dbms_output.put_line('sim_catalog_movement_parity=1152/1152');
+  dbms_output.put_line('sim_catalog_reject_sound_parity=33124/33124');
 end;
 /

@@ -1423,7 +1423,7 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   byte-for-byte. Preloaded lookup+NUMBER add measured 0.54–0.69 us/op and exact
   quadratic entry 9.7–15.0 us/op; runtime trig is not selected. See
   `reports/performance-P12.0-sol-max-resident-simulation-2026-07-16.md`.
-- Retained simulation catalog (2026-07-16): a SQL-built, SHA-verified 191,381
+- Retained simulation catalog (2026-07-16): a SQL-built, SHA-verified 199,671
   byte BLOB now carries all 681 BSP nodes, 682 subsector-sector owners, 1,175
   collision lines, 182 sector baselines, and 1,152 raw Oracle `NUMBER` movement
   pairs. The worker loads/decodes it once; relational row walking exists only in
@@ -1455,12 +1455,24 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   preserves every other actor field and the RNG cursor, and passes pending
   load/accept/discard/session/lineage/generation/request fences. After five
   warmups its 300 retained `prepare+accept` calls measured
-  0.598/0.802/1.966 ms p50/p95/max in the final full-harness run. This is a bounded component, not yet a
+  0.783/1.241/2.290 ms p50/p95/max after retained eligibility lookup. This is
+  a bounded component, not yet a
   production actor loop: its entry requires explicit no-sound and all-REJECT-
   hidden proofs and fails closed otherwise. The next actor slice must compute
   those proofs inside retained state, preserve prior-snapshot mobj-id order and
   old-cooldown attack semantics, then add pain/wake/state/action behavior with
   adversarial differential cases before routing real tics through it.
+- Retained actor eligibility and audible wake (2026-07-16): the one-time
+  simulation catalog now includes compact directed REJECT and sound-reach
+  matrices and matches SQL for all 33,124 sector pairs. With live player
+  coordinates and retained actor sectors, the worker matches 53/53 SQL actor
+  wakes plus 53/53 ordered `MONSTER_WAKE`/`HEARD` events from a frozen
+  `DRY_FIRE` sound input; RNG and relational state remain untouched before
+  persistence/accept. Every REJECT-open actor fails the entire prepare closed,
+  so this slice cannot guess LOS or emit a false `SEEN`/`HEARD` reason. Next add
+  retained exact LOS and SEEN wake parity, then pain/state/action phases. The
+  transitional sound bit must ultimately come from the retained current-tic
+  event buffer, not a per-tic SQL scalar.
 - Fable/ORDS reconciliation (2026-07-16): Fable independently confirmed that
   ORDS cleanup has no supported off switch and OJVM application arrays are
   session-private. Its unmeasured DBMS_PIPE proposal is archived as fallback,

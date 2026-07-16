@@ -14,7 +14,7 @@ import oracle.sql.NUMBER;
 /** Immutable SQL-built simulation catalog retained by one database worker. */
 public final class DoomSimCatalogBench {
   private static final int MAGIC = 0x44534350; // DSCP
-  private static final int VERSION = 1;
+  private static final int VERSION = 2;
   private static boolean loaded;
   private static int[] nodeX, nodeY, nodeDx, nodeDy, child0, child1;
   private static byte[] child0Leaf, child1Leaf;
@@ -28,6 +28,7 @@ public final class DoomSimCatalogBench {
   static int blockOriginX, blockOriginY, blockWidth, blockHeight;
   static int[] blockOffset, blockLines;
   static double[] baseFloor, baseCeiling;
+  static byte[] rejectBits, soundReachBits;
   static byte[][] movementDeltaX, movementDeltaY;
   static NUMBER[] movementXExact, movementYExact;
   private static String catalogSha = "";
@@ -58,6 +59,14 @@ public final class DoomSimCatalogBench {
     int length = in.readUnsignedByte();
     require(length >= 1 && length <= 22, "NUMBER byte length");
     byte[] bytes = new byte[length]; in.readFully(bytes); return bytes;
+  }
+
+  private static void setBit(byte[] bits, int index) {
+    bits[index >>> 3] |= (byte) (1 << (index & 7));
+  }
+
+  private static boolean getBit(byte[] bits, int index) {
+    return (bits[index >>> 3] & (1 << (index & 7))) != 0;
   }
 
   private static byte[] buildBytes(Connection connection) throws Exception {
@@ -147,9 +156,10 @@ public final class DoomSimCatalogBench {
     for (int value : offsets) out.writeInt(value);
     for (int value : references) out.writeInt(value);
 
+    int sectorCount;
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery("select count(*) from doom_map_sector")) {
-      rows.next(); out.writeInt(rows.getInt(1));
+      rows.next(); sectorCount = rows.getInt(1); out.writeInt(sectorCount);
     }
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
@@ -160,6 +170,38 @@ public final class DoomSimCatalogBench {
         out.writeDouble(rows.getDouble(2)); out.writeDouble(rows.getDouble(3));
       }
     }
+
+    int pairCount = sectorCount * sectorCount, bitBytes = (pairCount + 7) >>> 3;
+    byte[] reject = new byte[bitBytes], sound = new byte[bitBytes];
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select s.sector_id,t.sector_id,coalesce(r.rejected,1) " +
+             "from doom_map_sector s cross join doom_map_sector t " +
+             "left join doom_sector_reject r on r.source_sector_id=s.sector_id " +
+             "and r.target_sector_id=t.sector_id order by s.sector_id,t.sector_id")) {
+      int index = 0;
+      while (rows.next()) {
+        require(rows.getInt(1) == index / sectorCount &&
+            rows.getInt(2) == index % sectorCount, "REJECT pair order");
+        if (rows.getInt(3) != 0) setBit(reject, index); index++;
+      }
+      require(index == pairCount, "REJECT pair count");
+    }
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select s.sector_id,t.sector_id,case when r.source_sector_id is null then 0 else 1 end " +
+             "from doom_map_sector s cross join doom_map_sector t " +
+             "left join doom_sector_sound_reach r on r.source_sector_id=s.sector_id " +
+             "and r.target_sector_id=t.sector_id order by s.sector_id,t.sector_id")) {
+      int index = 0;
+      while (rows.next()) {
+        require(rows.getInt(1) == index / sectorCount &&
+            rows.getInt(2) == index % sectorCount, "sound pair order");
+        if (rows.getInt(3) != 0) setBit(sound, index); index++;
+      }
+      require(index == pairCount, "sound pair count");
+    }
+    out.writeInt(sectorCount); out.writeInt(bitBytes); out.write(reject); out.write(sound);
 
     String movementSql =
         "select utl_raw.cast_from_number((f*cos(a*acos(-1)/180)+s*sin(a*acos(-1)/180))*8*(r+1))," +
@@ -262,6 +304,11 @@ public final class DoomSimCatalogBench {
     for (int id = 0; id < count; id++) {
       baseFloor[id] = in.readDouble(); baseCeiling[id] = in.readDouble();
     }
+    int matrixSectors = in.readInt(), bitBytes = in.readInt();
+    require(matrixSectors == count && bitBytes == (count * count + 7) / 8,
+        "sector matrix dimensions");
+    rejectBits = new byte[bitBytes]; soundReachBits = new byte[bitBytes];
+    in.readFully(rejectBits); in.readFully(soundReachBits);
     count = in.readInt(); require(count == 64 * 18, "movement lookup count");
     movementDeltaX = new byte[count][]; movementDeltaY = new byte[count][];
     movementXExact = new NUMBER[count]; movementYExact = new NUMBER[count];
@@ -334,6 +381,28 @@ public final class DoomSimCatalogBench {
     try { require(loaded, "catalog not loaded"); return movementYExact[
         movementIndex(angleIndex, forward, strafe, run)]; }
     catch (Throwable error) { lastError = error.getClass().getName() + ":" + error.getMessage(); return null; }
+  }
+
+  private static int sectorPairIndex(int source, int target) {
+    require(source >= 0 && source < baseFloor.length && target >= 0 &&
+        target < baseFloor.length, "sector pair");
+    return source * baseFloor.length + target;
+  }
+
+  public static int rejected(int source, int target) {
+    try { require(loaded, "catalog not loaded");
+      return getBit(rejectBits, sectorPairIndex(source, target)) ? 1 : 0;
+    } catch (Throwable error) {
+      lastError = error.getClass().getName() + ":" + error.getMessage(); return -1;
+    }
+  }
+
+  public static int soundReach(int source, int target) {
+    try { require(loaded, "catalog not loaded");
+      return getBit(soundReachBits, sectorPairIndex(source, target)) ? 1 : 0;
+    } catch (Throwable error) {
+      lastError = error.getClass().getName() + ":" + error.getMessage(); return -1;
+    }
   }
 
   public static String summary() {

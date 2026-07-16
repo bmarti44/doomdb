@@ -23,6 +23,14 @@ create or replace function doom_sim_catalog_movement_y(
 return number as language java name
   'DoomSimCatalogBench.movementY(int,int,int,int) return oracle.sql.NUMBER';
 /
+create or replace function doom_sim_catalog_rejected(p_source in number,p_target in number)
+return number as language java name
+  'DoomSimCatalogBench.rejected(int,int) return int';
+/
+create or replace function doom_sim_catalog_sound_reach(p_source in number,p_target in number)
+return number as language java name
+  'DoomSimCatalogBench.soundReach(int,int) return int';
+/
 create or replace function doom_sim_catalog_last_error return varchar2 as
 language java name 'DoomSimCatalogBench.lastError() return java.lang.String';
 /

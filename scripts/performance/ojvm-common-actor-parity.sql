@@ -9,6 +9,7 @@ declare
   actual_id_ number;actual_seen_ number;actual_cooldown_ number;offset_ pls_integer;
   unchanged_ pls_integer;events_ pls_integer;failures_ pls_integer:=0;rng_before_ number;rng_after_ number;
   actor_before_ clob;actor_after_ clob;
+  fixture_found_ boolean:=false;
   samples_ sys.odcinumberlist:=sys.odcinumberlist();started_ timestamp with time zone;
   elapsed_ interval day to second;ms_ number;p50_ number;p95_ number;max_ number;
 begin
@@ -20,11 +21,24 @@ begin
     where g.session_token=session_;
   select sector_id into player_sector_
     from table(doom_bsp_locate(player_x_,player_y_)) where rownum=1;
-  select min(source_sector_id) into hidden_sector_ from doom_sector_reject
-    where target_sector_id=player_sector_ and rejected=1;
-  if hidden_sector_ is null then
+  -- Pick a real map coordinate whose sector has a REJECT-hidden but
+  -- sound-connected source. This exercises both the quiet and audible gates.
+  for point_ in (select x,y from doom_map_thing order by thing_id) loop
+    select sector_id into player_sector_
+      from table(doom_bsp_locate(point_.x,point_.y)) where rownum=1;
+    select min(r.source_sector_id) into hidden_sector_ from doom_sector_reject r
+      join doom_sector_sound_reach s on s.source_sector_id=player_sector_
+        and s.target_sector_id=r.source_sector_id
+      where r.target_sector_id=player_sector_ and r.rejected=1;
+    if hidden_sector_ is not null then
+      player_x_:=point_.x;player_y_:=point_.y;fixture_found_:=true;exit;
+    end if;
+  end loop;
+  if not fixture_found_ then
     raise_application_error(-20000,'no REJECT-hidden actor fixture sector');
   end if;
+  update players set x=player_x_,y=player_y_ where session_token=session_
+    and player_id=(select current_player_id from game_sessions where session_token=session_);
 
   -- Rollback-only controlled fixture: every monster is alive, asleep, unheard,
   -- and REJECT-hidden from the player. The native loop can therefore perform
@@ -50,36 +64,39 @@ begin
   end if;
   select json_arrayagg(
            json_array(m.mobj_id,m.health,m.monster_health_seen,
-             m.attack_cooldown,m.awake,m.state_tics null on null returning varchar2)
+             m.attack_cooldown,m.awake,m.state_tics,m.sector_id
+             null on null returning varchar2)
            order by m.mobj_id returning clob)
     into snapshot_
     from mobjs m join doom_monster_def d on d.thing_type=m.thing_type
     where m.session_token=session_;
+  result_:=doom_sim_catalog_load;
+  if substr(result_,1,3)<>'OK|' then raise_application_error(-20000,result_);end if;
   result_:=doom_common_actor_load(session_,lineage_,1,snapshot_);
   if result_<>'OK|'||actor_count_ then raise_application_error(-20000,result_);end if;
 
   -- Wrong fences and malformed request IDs reject without publishing pending state.
   delta_:=doom_common_actor_prepare(session_,lineage_,2,
-    '11111111111111111111111111111111',0,1);
+    '11111111111111111111111111111111',to_binary_double(player_x_),
+    to_binary_double(player_y_),0);
   if rawtohex(utl_raw.substr(delta_,6,1))<>'01' then
     raise_application_error(-20000,'generation fence accepted');
   end if;
-  delta_:=doom_common_actor_prepare(session_,lineage_,1,'bad-request',0,1);
+  delta_:=doom_common_actor_prepare(session_,lineage_,1,'bad-request',
+    to_binary_double(player_x_),to_binary_double(player_y_),0);
   if rawtohex(utl_raw.substr(delta_,6,1))<>'01' then
     raise_application_error(-20000,'malformed request accepted');
   end if;
 
   -- DISCARD must leave the retained committed frontier reusable.
   request_:='22222222222222222222222222222222';
-  delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,1,1);
+  delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,
+    to_binary_double(player_x_),to_binary_double(player_y_),1);
   if rawtohex(utl_raw.substr(delta_,6,1))<>'01' then
     raise_application_error(-20000,'sound wake proof accepted');
   end if;
-  delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,0,0);
-  if rawtohex(utl_raw.substr(delta_,6,1))<>'01' then
-    raise_application_error(-20000,'visibility wake proof accepted');
-  end if;
-  delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,0,1);
+  delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,
+    to_binary_double(player_x_),to_binary_double(player_y_),0);
   if utl_raw.length(delta_)<>3068 or rawtohex(utl_raw.substr(delta_,1,8))<>'444143540100'||
        lpad(to_char(actor_count_,'fm0x'),2,'0')||'00' then
     raise_application_error(-20000,'actor delta header '||rawtohex(utl_raw.substr(delta_,1,8)));
@@ -95,7 +112,8 @@ begin
   if substr(result_,1,4)<>'ERR|' then raise_application_error(-20000,'double discard accepted');end if;
 
   request_:='33333333333333333333333333333333';
-  delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,0,1);
+  delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,
+    to_binary_double(player_x_),to_binary_double(player_y_),0);
   dirty_:=to_number(rawtohex(utl_raw.substr(delta_,7,1)),'xx');
   if dirty_<>actor_count_ then
     raise_application_error(-20000,'dirty actor count='||dirty_||' expected='||actor_count_);
@@ -152,13 +170,15 @@ begin
   -- Warm retained scan/prepare/accept cost after cooldowns have reached zero.
   for warmup_ in 1..5 loop
     request_:=lower(rawtohex(sys_guid()));
-    delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,0,1);
+    delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,
+      to_binary_double(player_x_),to_binary_double(player_y_),0);
     result_:=doom_common_actor_accept(session_,lineage_,1,request_);
     if result_<>'OK' then raise_application_error(-20000,result_);end if;
   end loop;
   for sample_ in 1..300 loop
     request_:=lower(rawtohex(sys_guid()));started_:=systimestamp;
-    delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,0,1);
+    delta_:=doom_common_actor_prepare(session_,lineage_,1,request_,
+      to_binary_double(player_x_),to_binary_double(player_y_),0);
     if rawtohex(utl_raw.substr(delta_,1,6))<>'444143540100' then
       raise_application_error(-20000,'actor benchmark rejected '||doom_common_actor_last_error);
     end if;

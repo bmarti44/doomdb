@@ -213,9 +213,9 @@ prebuilt by SQL and only narrow exact collision/final-coordinate operations use
 `oracle.sql.NUMBER`.
 
 The immutable worker catalog is now concrete. One SQL-built, SHA-verified
-191,381-byte BLOB contains 681 BSP nodes, 682 subsector ownership entries,
-1,175 collision lines, 182 sector baselines, and all 1,152 raw movement NUMBER
-pairs. It loads once per worker generation. The decoded BSP locator matched
+199,671-byte BLOB contains 681 BSP nodes, 682 subsector ownership entries,
+1,175 collision lines, 182 sector baselines, all 1,152 raw movement NUMBER
+pairs, and compact REJECT/sound matrices. It loads once per worker generation. The decoded BSP locator matched
 `DOOM_BSP_LOCATE` at 270/270 deterministic points, and the packed movement
 values retained 1,152/1,152 byte parity. Relational row walking is confined to
 the offline builder and is not a tic/frame operation.
@@ -249,14 +249,27 @@ The result is 53/53 exact rows. Every non-housekeeping actor field and the RNG
 cursor remain unchanged; pending load, wrong-request accept/discard, double
 accept/discard, and all worker fences reject without publishing state. After
 five warmups, 300 retained prepare+accept calls measured
-0.598/0.802/1.966 ms p50/p95/max in the final full-harness run.
+0.783/1.241/2.290 ms p50/p95/max after retained eligibility lookup.
 
 This is not a complete actor tic or a playability result. The entry point
-requires explicit no-sound and all-REJECT-hidden proofs and fails closed if
-either is absent. Production routing waits for retained computation of those
-proofs plus exact pain, wake, state transition, chase, attack, drop, RNG, and
-event ordering. Later decisions must use the prior actor snapshot—including
-the old cooldown—even though the common delta is persisted first.
+derives REJECT eligibility from live coordinates and retained actor sectors;
+the transitional frozen sound bit is still supplied by the caller. Production
+routing waits for that bit to come from the retained event buffer plus exact
+pain, LOS, state transition, chase, attack, drop, RNG, and event ordering. Later
+decisions must use the prior actor snapshot—including the old cooldown—even
+though the common delta is persisted first.
+
+The catalog now also retains compact directed REJECT and sound-reach matrices.
+All 33,124 sector pairs match the SQL relations exactly. The actor probe derives
+the player sector from live coordinates and classifies each retained actor
+sector without JDBC or JSON work on the tic path.
+
+The first behavior extension supports audible wakes only when REJECT proves
+visibility is zero. A frozen `DRY_FIRE` input wakes all 53 sound-reachable
+fixture actors exactly like SQL, including 53/53 ordered `MONSTER_WAKE` events,
+the player target, NULL number, and `HEARD` text. RNG is unchanged and pending
+state remains invisible. A REJECT-open actor rejects the whole prepare before
+any pending state is published; exact LOS and `SEEN` wakes are the next slice.
 
 Large frames remain in relational SecureFile rows. AQ carries only a small,
 unguessable request identifier and command metadata. The worker commits the

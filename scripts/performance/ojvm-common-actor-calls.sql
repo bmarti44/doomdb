@@ -7,9 +7,9 @@ return varchar2 as language java name
 /
 create or replace function doom_common_actor_prepare(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2,
-  p_player_made_sound in number,p_all_reject_hidden in number)
+  p_player_x in binary_double,p_player_y in binary_double,p_player_made_sound in number)
 return raw as language java name
-  'DoomCommonActorTickBench.prepareQuiet(java.lang.String,java.lang.String,long,java.lang.String,int,int) return byte[]';
+  'DoomCommonActorTickBench.prepareQuiet(java.lang.String,java.lang.String,long,java.lang.String,double,double,int) return byte[]';
 /
 create or replace function doom_common_actor_accept(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2)

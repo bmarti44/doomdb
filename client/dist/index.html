@@ -56,8 +56,8 @@
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">30 FPS playability gate<br><span>worker renderer · movement · quiet-actor slice pass</span></p>
-      <p class="muted">The retained AQ/Scheduler worker renders, encodes, commits, and correlates 300 exact frames at 15.671 / 17.590 ms p50/p95. Packed movement passes 270/270 SQL tics at 0.261 / 0.762 ms; the bounded 53-actor quiet phase passes at 0.598 / 0.802 ms. Full actors, canonical persistence, and the browser path remain outside the gate.</p>
+      <p class="big">30 FPS playability gate<br><span>renderer · movement · quiet and audible-wake slices pass</span></p>
+      <p class="muted">The retained AQ/Scheduler renderer passes at 15.671 / 17.590 ms p50/p95. Packed movement matches 270/270 SQL tics; retained eligibility matches all 33,124 sector pairs; quiet and audible-wake phases each match all 53 actors, including ordered HEARD events. Full actors, persistence, and the browser path remain outside the gate.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -71,7 +71,7 @@
     <h2>Live implementation status · July 16, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate; public <code>DOOM_TIC_TX.APPLY_BATCH</code> only; lift 1 completed and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> ORDS cleanup resets OJVM statics even with one reused SID, so the selected architecture is a long-lived in-database AQ/Scheduler worker. Its exact static renderer + packed-v2 codec + persistent BLOB path measures 15.671 / 17.590 ms p50/p95 request-through-commit. The rejected relational live-state worker remains 29.265 / 42.373 ms before simulation. The 191,381-byte retained catalog includes BSP, exact collision, sectors, movement, and BLOCKMAP. Collision-heavy parity is 270/270 with 124 contacts; transactional movement passes 270/270 at 0.261 / 0.762 ms p50/p95. A fail-closed quiet-actor component matches all 53 SQL rows at 0.598 / 0.802 ms, but pain, wake, state, chase, attack, drop, canonical persistence, and the public 30 FPS gate remain.</p>
+    <p><strong>Performance:</strong> ORDS cleanup resets OJVM statics, so the selected architecture is a long-lived in-database AQ/Scheduler worker. Its exact renderer + codec + committed BLOB path measures 15.671 / 17.590 ms p50/p95. The rejected relational snapshot path remains 29.265 / 42.373 ms before simulation. The 199,671-byte retained catalog now includes BSP, collision, BLOCKMAP, movement, and exact REJECT/sound matrices. Movement passes 270/270 SQL tics; eligibility passes 33,124/33,124 sector pairs; quiet actors, audible wakes, and ordered HEARD events each pass 53/53. LOS/SEEN wakes, pain, state, chase, attack, drop, persistence, and the public 30 FPS gate remain.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">
@@ -161,7 +161,7 @@
     <article class="panel phase done"><b>P5.4</b><span>Presentation</span><p class="muted">HUD, weapons, menu, pause, automap, intermission</p></article>
     <article class="panel phase done"><b>P6</b><span>Simulation</span><p class="muted">tic, movement, machines, history, replay</p></article>
     <article class="panel phase done"><b>P7</b><span>Gameplay</span><p class="muted">weapons, monsters, pickups, audio</p></article>
-    <article class="panel phase active"><b>P12.0</b><span>30 FPS gate</span><p class="muted">renderer + movement pass · actors in progress</p></article>
+    <article class="panel phase active"><b>P12.0</b><span>30 FPS gate</span><p class="muted">renderer + movement pass · actor wakes in progress</p></article>
     <article class="panel phase"><b>P8.1</b><span>Completion route</span><p class="muted">preserved at tic 1430 · resumes after gate</p></article>
   </section>
   <footer>Build-review surface only · no credentials or evaluator data are exposed to the browser.</footer>
