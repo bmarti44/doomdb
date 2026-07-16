@@ -282,8 +282,13 @@ match, and the 36 successful rolls emit 36/36 ordered `MONSTER_PAIN` events.
 
 The next bounded active-state phase handles awake actors whose old state timer
 is greater than one. All 53 rows decrement from three tics to two exactly like
-SQL, with zero events and an unchanged RNG cursor. State transition and action
-dispatch remain fail-closed at `state_tics <= 1`.
+SQL, with zero events and an unchanged RNG cursor. Catalog version 4 additionally
+packs all 151 database-defined state timers, next-state indices, and action
+classifications; every definition matches SQL. Expiring actors now follow
+ordinary no-action edges with 53/53 row parity, zero events, and unchanged RNG.
+CHASE, melee, hitscan, and projectile dispatch remain fail-closed. The resulting
+catalog is 202,515 bytes with SHA-256
+`21719458f28e3e91efe4691081e02ef54959a75186a93566191b4cdf8e3e191d`.
 
 Repeated `loadjava -force` during iterative development eventually caused the
 2 GiB local instance's MMAN to terminate with fatal `ORA-00822`. The Oracle

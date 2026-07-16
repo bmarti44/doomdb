@@ -34,6 +34,15 @@ return number as language java name
 create or replace function doom_sim_catalog_rng(p_index in number)
 return number as language java name 'DoomSimCatalogBench.rng(int) return int';
 /
+create or replace function doom_sim_catalog_state_tics(p_index in number)
+return number as language java name 'DoomSimCatalogBench.stateTics(int) return int';
+/
+create or replace function doom_sim_catalog_state_next(p_index in number)
+return number as language java name 'DoomSimCatalogBench.stateNext(int) return int';
+/
+create or replace function doom_sim_catalog_state_action(p_index in number)
+return number as language java name 'DoomSimCatalogBench.stateAction(int) return int';
+/
 create or replace function doom_sim_catalog_last_error return varchar2 as
 language java name 'DoomSimCatalogBench.lastError() return java.lang.String';
 /

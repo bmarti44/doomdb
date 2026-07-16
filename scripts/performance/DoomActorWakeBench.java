@@ -152,21 +152,31 @@ public final class DoomActorWakeBench {
           roll = DoomSimCatalogBench.rng(cursor); require(roll >= 0, DoomSimCatalogBench.lastError());
           cursor = (cursor + 1) & 255; draws++; pain = roll < painChance[index];
         }
-        boolean activeTick = awake[index] == 1 && !pain;
-        if (activeTick) require(stateTics[index] > 1,
-            "active state transition mobj=" + id[index]);
-        int visible = pain || activeTick || rejected == 1 ? 0 :
+        boolean active = awake[index] == 1 && !pain;
+        int activeState = stateIndex[index], activeTics = stateTics[index];
+        if (active) {
+          if (stateTics[index] > 1) activeTics = stateTics[index] - 1;
+          else if (stateTics[index] == 1) {
+            activeState = DoomSimCatalogBench.stateNext(stateIndex[index]);
+            require(activeState >= 0, "missing next state mobj=" + id[index]);
+            activeTics = DoomSimCatalogBench.stateTics(activeState);
+            require(DoomSimCatalogBench.stateAction(activeState) == 0,
+                "unsupported state action mobj=" + id[index]);
+          } else require(DoomSimCatalogBench.stateAction(stateIndex[index]) == 0,
+              "unsupported current action mobj=" + id[index]);
+        }
+        int visible = pain || active || rejected == 1 ? 0 :
             DoomRetainedLosBench.visible(x[index], y[index], sector[index],
               playerX, playerY, playerSector);
         require(visible >= 0, DoomRetainedLosBench.lastError());
-        boolean wake = !pain && !activeTick &&
+        boolean wake = !pain && !active &&
             (visible == 1 || (playerMadeSound == 1 && reaches == 1));
         nextSeen[index] = health[index]; nextCooldown[index] = Math.max(0, cooldown[index] - 1);
         nextAwake[index] = pain || wake ? 1 : awake[index];
         nextStateIndex[index] = pain ? painStateIndex[index] :
-            wake ? seeStateIndex[index] : stateIndex[index];
+            wake ? seeStateIndex[index] : active ? activeState : stateIndex[index];
         nextStateTics[index] = pain ? painStateTics[index] :
-            wake ? seeStateTics[index] : activeTick ? stateTics[index] - 1 : stateTics[index];
+            wake ? seeStateTics[index] : active ? activeTics : stateTics[index];
         nextTarget[index] = wake ? playerTarget : target[index];
         if (nextSeen[index] != seen[index] || nextCooldown[index] != cooldown[index] ||
             nextAwake[index] != awake[index] || nextStateIndex[index] != stateIndex[index] ||

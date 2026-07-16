@@ -14,7 +14,7 @@ import oracle.sql.NUMBER;
 /** Immutable SQL-built simulation catalog retained by one database worker. */
 public final class DoomSimCatalogBench {
   private static final int MAGIC = 0x44534350; // DSCP
-  private static final int VERSION = 3;
+  private static final int VERSION = 4;
   private static boolean loaded;
   private static int[] nodeX, nodeY, nodeDx, nodeDy, child0, child1;
   private static byte[] child0Leaf, child1Leaf;
@@ -30,6 +30,7 @@ public final class DoomSimCatalogBench {
   static double[] baseFloor, baseCeiling;
   static byte[] rejectBits, soundReachBits;
   static int[] rngValue;
+  static int[] stateTics, stateNext, stateAction;
   static byte[][] movementDeltaX, movementDeltaY;
   static NUMBER[] movementXExact, movementYExact;
   private static String catalogSha = "";
@@ -214,6 +215,29 @@ public final class DoomSimCatalogBench {
       require(index == 256, "RNG count");
     }
 
+    int stateCount;
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery("select count(*) from doom_state_def")) {
+      rows.next(); stateCount = rows.getInt(1); out.writeInt(stateCount);
+    }
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select s.state_index,s.tics,coalesce(n.state_index,-1)," +
+             "case s.action_name when 'CHASE' then 1 when 'MELEE' then 2 " +
+             "when 'HITSCAN' then 3 when 'PROJECTILE' then 4 else 0 end " +
+             "from (select d.*,row_number() over(order by state_id)-1 state_index " +
+             "from doom_state_def d) s left join " +
+             "(select state_id,row_number() over(order by state_id)-1 state_index " +
+             "from doom_state_def) n on n.state_id=s.next_state_id order by s.state_index")) {
+      int index = 0;
+      while (rows.next()) {
+        require(rows.getInt(1) == index, "state order");
+        out.writeInt(rows.getInt(2)); out.writeInt(rows.getInt(3)); out.writeInt(rows.getInt(4));
+        index++;
+      }
+      require(index == stateCount, "state count");
+    }
+
     String movementSql =
         "select utl_raw.cast_from_number((f*cos(a*acos(-1)/180)+s*sin(a*acos(-1)/180))*8*(r+1))," +
         "utl_raw.cast_from_number((f*sin(a*acos(-1)/180)-s*cos(a*acos(-1)/180))*8*(r+1)) " +
@@ -325,6 +349,13 @@ public final class DoomSimCatalogBench {
     for (int index = 0; index < rngCount; index++) {
       rngValue[index] = in.readInt(); require(rngValue[index] >= 0 && rngValue[index] <= 255, "RNG value");
     }
+    int stateCount = in.readInt(); require(stateCount > 0 && stateCount <= 4096, "state count");
+    stateTics = new int[stateCount]; stateNext = new int[stateCount]; stateAction = new int[stateCount];
+    for (int index = 0; index < stateCount; index++) {
+      stateTics[index] = in.readInt(); stateNext[index] = in.readInt(); stateAction[index] = in.readInt();
+      require(stateTics[index] >= -1 && stateNext[index] >= -1 && stateNext[index] < stateCount &&
+          stateAction[index] >= 0 && stateAction[index] <= 4, "state value");
+    }
     count = in.readInt(); require(count == 64 * 18, "movement lookup count");
     movementDeltaX = new byte[count][]; movementDeltaY = new byte[count][];
     movementXExact = new NUMBER[count]; movementYExact = new NUMBER[count];
@@ -426,6 +457,19 @@ public final class DoomSimCatalogBench {
     catch (Throwable error) {
       lastError = error.getClass().getName() + ":" + error.getMessage(); return -1;
     }
+  }
+
+  public static int stateTics(int index) {
+    try { require(loaded && index >= 0 && index < stateTics.length, "state index"); return stateTics[index]; }
+    catch (Throwable error) { lastError = error.getClass().getName() + ":" + error.getMessage(); return -2; }
+  }
+  public static int stateNext(int index) {
+    try { require(loaded && index >= 0 && index < stateNext.length, "state index"); return stateNext[index]; }
+    catch (Throwable error) { lastError = error.getClass().getName() + ":" + error.getMessage(); return -2; }
+  }
+  public static int stateAction(int index) {
+    try { require(loaded && index >= 0 && index < stateAction.length, "state index"); return stateAction[index]; }
+    catch (Throwable error) { lastError = error.getClass().getName() + ":" + error.getMessage(); return -1; }
   }
 
   public static String summary() {

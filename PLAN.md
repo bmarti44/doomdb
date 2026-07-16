@@ -1482,6 +1482,15 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   53/53 actor rows with zero events and no RNG movement; the HEARD, SEEN, and
   pain corpora remain green. `state_tics <= 1` still fails closed until the
   next-state/action graph and CHASE/attack dispatch are retained.
+- Retained state graph and no-action transition (2026-07-16): catalog version 4
+  now packs the complete database-defined state graph rather than hardcoding a
+  route or fixed actor sequence. All 151 state timers, next-state indices, and
+  action classifications match SQL. When an awake actor timer expires, the
+  retained worker follows an ordinary no-action edge with 53/53 row parity,
+  zero events, and unchanged RNG; CHASE, melee, hitscan, and projectile actions
+  remain explicitly fail-closed until their differential slices land. The
+  SHA-verified catalog is 202,515 bytes with payload SHA-256
+  `21719458f28e3e91efe4691081e02ef54959a75186a93566191b4cdf8e3e191d`.
 - OJVM deployment-memory guard (2026-07-16): repeated iterative
   `loadjava -force` cycles eventually drove the 2 GiB local instance's MMAN to
   fatal `ORA-00822`; the alert trace identifies MMAN, not an uncaught game

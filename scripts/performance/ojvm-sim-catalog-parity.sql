@@ -70,10 +70,26 @@ begin
       raise_application_error(-20000,'catalog RNG mismatch index='||index_);
     end if;
   end loop;
+  for state_ in (
+    select s.state_index,s.tics,coalesce(n.state_index,-1) next_index,
+      case s.action_name when 'CHASE' then 1 when 'MELEE' then 2
+        when 'HITSCAN' then 3 when 'PROJECTILE' then 4 else 0 end action_code
+      from (select d.*,row_number() over(order by state_id)-1 state_index
+        from doom_state_def d) s
+      left join (select state_id,row_number() over(order by state_id)-1 state_index
+        from doom_state_def) n on n.state_id=s.next_state_id order by s.state_index
+  ) loop
+    if doom_sim_catalog_state_tics(state_.state_index)<>state_.tics or
+       doom_sim_catalog_state_next(state_.state_index)<>state_.next_index or
+       doom_sim_catalog_state_action(state_.state_index)<>state_.action_code then
+      raise_application_error(-20000,'catalog state mismatch index='||state_.state_index);
+    end if;
+  end loop;
   dbms_output.put_line('sim_catalog_summary='||doom_sim_catalog_summary);
   dbms_output.put_line('sim_catalog_bsp_locate_parity='||cases_||'/'||cases_);
   dbms_output.put_line('sim_catalog_movement_parity=1152/1152');
   dbms_output.put_line('sim_catalog_reject_sound_parity=33124/33124');
   dbms_output.put_line('sim_catalog_rng_parity=256/256');
+  dbms_output.put_line('sim_catalog_state_graph_parity=151/151');
 end;
 /
