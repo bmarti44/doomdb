@@ -19,12 +19,17 @@ public final class DoomSimCatalogBench {
   private static int[] nodeX, nodeY, nodeDx, nodeDy, child0, child1;
   private static byte[] child0Leaf, child1Leaf;
   private static int[] subsectorSector;
-  private static int[] lineId, lineFlags, lineLeftSector, lineRightSector;
-  private static int[] lineStartVertex, lineEndVertex;
-  private static double[] lineX1, lineY1, lineX2, lineY2, lineLength, lineDirectionX,
+  static int[] lineId, lineFlags, lineLeftSector, lineRightSector;
+  static int[] lineStartVertex, lineEndVertex;
+  static double[] lineX1, lineY1, lineX2, lineY2, lineLength, lineDirectionX,
       lineDirectionY;
-  private static double[] baseFloor, baseCeiling;
-  private static byte[][] movementDeltaX, movementDeltaY;
+  static byte[][] lineLengthNumber, lineDirectionXNumber, lineDirectionYNumber;
+  static NUMBER[] lineLengthExact, lineDirectionXExact, lineDirectionYExact;
+  static int blockOriginX, blockOriginY, blockWidth, blockHeight;
+  static int[] blockOffset, blockLines;
+  static double[] baseFloor, baseCeiling;
+  static byte[][] movementDeltaX, movementDeltaY;
+  static NUMBER[] movementXExact, movementYExact;
   private static String catalogSha = "";
   private static String lastError = "";
 
@@ -100,13 +105,47 @@ public final class DoomSimCatalogBench {
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
              "select linedef_id,flags,coalesce(left_sector_id,-1),right_sector_id," +
-             "start_vertex_id,end_vertex_id,x1,y1,x2,y2,segment_length,direction_x,direction_y " +
+             "start_vertex_id,end_vertex_id,x1,y1,x2,y2,segment_length,direction_x,direction_y," +
+             "utl_raw.cast_from_number(segment_length),utl_raw.cast_from_number(direction_x)," +
+             "utl_raw.cast_from_number(direction_y) " +
              "from doom_collision_segment order by linedef_id")) {
       while (rows.next()) {
         for (int column = 1; column <= 6; column++) out.writeInt(rows.getInt(column));
         for (int column = 7; column <= 13; column++) out.writeDouble(rows.getDouble(column));
+        for (int column = 14; column <= 16; column++) writeNumber(out, rows.getBytes(column));
       }
     }
+
+    int cellCount, referenceCount;
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select count(*),max(block_x)+1,max(block_y)+1,min(world_min_x),min(world_min_y) " +
+             "from doom_block_cell")) {
+      rows.next(); cellCount = rows.getInt(1); out.writeInt(rows.getInt(2));
+      out.writeInt(rows.getInt(3)); out.writeInt(rows.getInt(4)); out.writeInt(rows.getInt(5));
+    }
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery("select count(*) from doom_block_line")) {
+      rows.next(); referenceCount = rows.getInt(1);
+    }
+    int[] offsets = new int[cellCount + 1], references = new int[referenceCount];
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select c.cell_id,b.linedef_id from doom_block_cell c left join doom_block_line b " +
+             "on b.cell_id=c.cell_id order by c.cell_id,b.line_ordinal")) {
+      int currentCell = 0, reference = 0;
+      while (rows.next()) {
+        int cell = rows.getInt(1);
+        while (currentCell < cell) offsets[++currentCell] = reference;
+        int line = rows.getInt(2);
+        if (!rows.wasNull()) references[reference++] = line;
+      }
+      while (currentCell < cellCount) offsets[++currentCell] = reference;
+      require(reference == referenceCount, "block line count");
+    }
+    out.writeInt(cellCount); out.writeInt(referenceCount);
+    for (int value : offsets) out.writeInt(value);
+    for (int value : references) out.writeInt(value);
 
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery("select count(*) from doom_map_sector")) {
@@ -194,6 +233,10 @@ public final class DoomSimCatalogBench {
     lineX1 = new double[count]; lineY1 = new double[count]; lineX2 = new double[count];
     lineY2 = new double[count]; lineLength = new double[count];
     lineDirectionX = new double[count]; lineDirectionY = new double[count];
+    lineLengthNumber = new byte[count][]; lineDirectionXNumber = new byte[count][];
+    lineDirectionYNumber = new byte[count][];
+    lineLengthExact = new NUMBER[count]; lineDirectionXExact = new NUMBER[count];
+    lineDirectionYExact = new NUMBER[count];
     for (int id = 0; id < count; id++) {
       lineId[id] = in.readInt(); lineFlags[id] = in.readInt();
       lineLeftSector[id] = in.readInt(); lineRightSector[id] = in.readInt();
@@ -202,15 +245,30 @@ public final class DoomSimCatalogBench {
       lineX2[id] = in.readDouble(); lineY2[id] = in.readDouble();
       lineLength[id] = in.readDouble(); lineDirectionX[id] = in.readDouble();
       lineDirectionY[id] = in.readDouble();
+      lineLengthNumber[id] = readNumber(in); lineDirectionXNumber[id] = readNumber(in);
+      lineDirectionYNumber[id] = readNumber(in);
+      lineLengthExact[id] = new NUMBER(lineLengthNumber[id]);
+      lineDirectionXExact[id] = new NUMBER(lineDirectionXNumber[id]);
+      lineDirectionYExact[id] = new NUMBER(lineDirectionYNumber[id]);
     }
+    blockWidth = in.readInt(); blockHeight = in.readInt();
+    blockOriginX = in.readInt(); blockOriginY = in.readInt();
+    int cellCount = in.readInt(), referenceCount = in.readInt();
+    require(cellCount == blockWidth * blockHeight, "block dimensions");
+    blockOffset = new int[cellCount + 1]; blockLines = new int[referenceCount];
+    for (int index = 0; index < blockOffset.length; index++) blockOffset[index] = in.readInt();
+    for (int index = 0; index < blockLines.length; index++) blockLines[index] = in.readInt();
     count = in.readInt(); baseFloor = new double[count]; baseCeiling = new double[count];
     for (int id = 0; id < count; id++) {
       baseFloor[id] = in.readDouble(); baseCeiling[id] = in.readDouble();
     }
     count = in.readInt(); require(count == 64 * 18, "movement lookup count");
     movementDeltaX = new byte[count][]; movementDeltaY = new byte[count][];
+    movementXExact = new NUMBER[count]; movementYExact = new NUMBER[count];
     for (int id = 0; id < count; id++) {
       movementDeltaX[id] = readNumber(in); movementDeltaY[id] = readNumber(in);
+      movementXExact[id] = new NUMBER(movementDeltaX[id]);
+      movementYExact[id] = new NUMBER(movementDeltaY[id]);
     }
     require(in.read() == -1, "catalog trailing bytes");
   }
@@ -267,14 +325,14 @@ public final class DoomSimCatalogBench {
   }
 
   public static NUMBER movementX(int angleIndex, int forward, int strafe, int run) {
-    try { require(loaded, "catalog not loaded"); return new NUMBER(movementDeltaX[
-        movementIndex(angleIndex, forward, strafe, run)]); }
+    try { require(loaded, "catalog not loaded"); return movementXExact[
+        movementIndex(angleIndex, forward, strafe, run)]; }
     catch (Throwable error) { lastError = error.getClass().getName() + ":" + error.getMessage(); return null; }
   }
 
   public static NUMBER movementY(int angleIndex, int forward, int strafe, int run) {
-    try { require(loaded, "catalog not loaded"); return new NUMBER(movementDeltaY[
-        movementIndex(angleIndex, forward, strafe, run)]); }
+    try { require(loaded, "catalog not loaded"); return movementYExact[
+        movementIndex(angleIndex, forward, strafe, run)]; }
     catch (Throwable error) { lastError = error.getClass().getName() + ":" + error.getMessage(); return null; }
   }
 

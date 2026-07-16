@@ -343,7 +343,12 @@ decision instead.
   - **Do NOT settle on per-request rebuild** — the measured 481 ms cold path
     (167 ms pack decode + 268 ms fresh-session snapshot + render) sits atop
     an unavoidable fresh-JVM floor and cannot plausibly reach 33.3 ms even
-    fully optimized. The selected architecture from the research is a
+    fully optimized. The resident-worker conclusion remains selected, but
+    the DBMS_PIPE/snapshot details below are historical fallback evidence.
+    A later persistent-AQ probe passed 3.843 ms p95 with zero mismatches, the
+    retained renderer passed 17.590 ms p95, and the exact snapshot composite
+    failed at 42.373 ms p95. The selected implementation is AQ plus shared
+    array-resident simulation/render state. The original proposal was a
     **database-resident DBMS_SCHEDULER render worker**: one long-lived
     session holds the warm renderer (statics, PreparedStatements,
     framebuffers survive for the session's life; JIT code is already
@@ -492,12 +497,11 @@ Section 8.1).
 ## 9. Suggested execution order for Codex
 
 0. ~~ORDS session-affinity probe~~ DONE 2026-07-16: affinity does not
-   preserve state (Section 6). New step 0: the **DBMS_PIPE ping-pong
-   benchmark** (experiment 1 of
-   reports/performance-P12.0-ords-ojvm-state-research-2026-07-16.md,
-   ≤2 ms p95 round trip), plus the `DBA_SERVICES.RESET_STATE` one-query
-   diagnostic and the fresh-session floor attribution (experiment 3) to
-   close the per-request-rebuild line with recorded numbers.
+   preserve state (Section 6). ~~DBMS_PIPE ping-pong~~ superseded by the
+   measured persistent-AQ result (2.122/3.843 ms p50/p95, 300/300 correlated,
+   zero mismatches). `DBA_SERVICES.RESET_STATE` is NULL for `FREEPDB1`, so ORDS
+   cleanup itself explains the reset. Keep pipe only as a fallback experiment;
+   implement the AQ worker singleton/fencing and array-resident state next.
 1. A1–A2: live-state renderer entry point + packed snapshot (the snapshot
    now doubles as the pipe payload); parity on moving frames (doors moving,
    monsters awake), composite ≤17 ms gate. Apply the A4 hardening items

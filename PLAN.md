@@ -1423,7 +1423,7 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   byte-for-byte. Preloaded lookup+NUMBER add measured 0.54–0.69 us/op and exact
   quadratic entry 9.7–15.0 us/op; runtime trig is not selected. See
   `reports/performance-P12.0-sol-max-resident-simulation-2026-07-16.md`.
-- Retained simulation catalog (2026-07-16): a SQL-built, SHA-verified 163,984
+- Retained simulation catalog (2026-07-16): a SQL-built, SHA-verified 191,381
   byte BLOB now carries all 681 BSP nodes, 682 subsector-sector owners, 1,175
   collision lines, 182 sector baselines, and 1,152 raw Oracle `NUMBER` movement
   pairs. The worker loads/decodes it once; relational row walking exists only in
@@ -1431,6 +1431,23 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   270/270 deterministic map points and preserves all 1,152 movement encodings
   byte-for-byte. Extend this retained catalog with exact collision NUMBER bytes
   and dynamic double-buffered sector heights before selecting movement.
+- Retained collision/movement gate (2026-07-16): the catalog now also packs raw
+  Oracle `NUMBER` line length/directions and the 864-cell/2,064-reference
+  BLOCKMAP. The independently authored swept-circle/two-contact/portal kernel
+  matches `DOOM_PLAYER_MOVE_PAYLOAD` for 270/270 sequential real-session moves,
+  including 124 contact samples. A full 1,175-line scan measured
+  9.966/16.746/25.070 ms p50/p95/max and was rejected; BLOCKMAP candidate
+  enumeration retained exact parity and measures 0.165/0.734/2.079 ms. Select
+  the BLOCKMAP route and wire it into pending state; the thin-portal tangent
+  exception remains fail-closed until its dedicated adversarial corpus passes.
+- Fable/ORDS reconciliation (2026-07-16): Fable independently confirmed that
+  ORDS cleanup has no supported off switch and OJVM application arrays are
+  session-private. Its unmeasured DBMS_PIPE proposal is archived as fallback,
+  not selected: persistent AQ already passed 3.843 ms p95/300 with transactional
+  semantics. The live `DBA_SERVICES.RESET_STATE` value for `FREEPDB1` is NULL,
+  proving ORDS cleanup—not service `LEVEL1`—causes the observed reset. Production
+  adds an exclusive `DBMS_LOCK` worker singleton; global application context is
+  permitted only for <=4 KB heartbeat/revision metadata, never game state.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

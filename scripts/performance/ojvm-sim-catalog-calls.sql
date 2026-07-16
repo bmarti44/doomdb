@@ -26,3 +26,18 @@ return number as language java name
 create or replace function doom_sim_catalog_last_error return varchar2 as
 language java name 'DoomSimCatalogBench.lastError() return java.lang.String';
 /
+
+create or replace function doom_sim_move_payload(
+  p_x in number,p_y in number,p_z in number,p_angle_index in number,
+  p_forward in number,p_strafe in number,p_run in number)
+return varchar2 as language java name
+  'DoomPlayerMovementBench.move(oracle.sql.NUMBER,oracle.sql.NUMBER,oracle.sql.NUMBER,int,int,int,int) return java.lang.String';
+/
+
+create or replace function doom_sim_move_last_error return varchar2 as
+language java name 'DoomPlayerMovementBench.lastError() return java.lang.String';
+/
+
+create or replace function doom_sim_move_benchmark(p_iterations in number) return varchar2 as
+language java name 'DoomPlayerMovementBench.benchmark(int) return java.lang.String';
+/

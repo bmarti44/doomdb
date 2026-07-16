@@ -28,8 +28,11 @@ quadratic collision root byte-for-byte. The selected path preloads SQL-built
 `DoomSimCatalogBench.java`, `019_simulation_kernel_pack.sql`, and the
 `ojvm-sim-catalog-*` scripts build and verify the immutable simulation catalog.
 Its relational reads occur once in the offline builder; a retained worker reads
-one SHA-checked 163,984-byte BLOB. The gate covers catalog counts, 270 BSP
+one SHA-checked 191,381-byte BLOB. The gate covers catalog counts, 270 BSP
 locations against `DOOM_BSP_LOCATE`, and all 1,152 raw NUMBER movement pairs.
+The follow-up exact swept-circle movement corpus passes 270/270 sequential
+real-session moves with 124 contacts. Packing the immutable BLOCKMAP reduces its
+kernel from 9.966/16.746 ms to 0.165/0.734 ms p50/p95.
 
 `verify-performance-baseline.mjs` has two fail-closed modes. With one evidence
 path it verifies an already collected baseline and every referenced artifact.

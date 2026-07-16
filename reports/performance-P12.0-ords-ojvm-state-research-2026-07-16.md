@@ -15,6 +15,17 @@ rendezvous. The retained AQ/Scheduler renderer then passed at 15.671/17.590 ms
 p50/p95 request-through-commit. See
 `performance-P12.0-ords-ojvm-worker-2026-07-16.md` for the newer local evidence.
 
+Fable follow-up reconciliation: Fable independently reproduced the documented
+no-reset-switch/no-shared-OJVM-state conclusion and proposed DBMS_PIPE plus an
+exclusive `DBMS_LOCK` singleton. The pipe proposal remains a bounded fallback,
+not the selected transport: the repository has already measured persistent AQ
+at 3.843 ms p95 with transactional/idempotent semantics and a retained renderer
+at 17.590 ms p95. Shipping a rebuilt snapshot through either IPC is also
+superseded by the approved shared array-resident simulation/render state because
+the exact snapshot composite measured 42.373 ms p95. A live privileged audit
+found `DBA_SERVICES.RESET_STATE` is NULL for `FREEPDB1`, so the observed reset is
+attributable to unconditional ORDS cleanup rather than service `LEVEL1`.
+
 ## Definitive conclusion
 
 **The per-request reset is unconditional, documented, and has no supported

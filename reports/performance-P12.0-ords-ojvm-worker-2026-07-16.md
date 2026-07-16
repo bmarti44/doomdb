@@ -213,12 +213,20 @@ prebuilt by SQL and only narrow exact collision/final-coordinate operations use
 `oracle.sql.NUMBER`.
 
 The immutable worker catalog is now concrete. One SQL-built, SHA-verified
-163,984-byte BLOB contains 681 BSP nodes, 682 subsector ownership entries,
+191,381-byte BLOB contains 681 BSP nodes, 682 subsector ownership entries,
 1,175 collision lines, 182 sector baselines, and all 1,152 raw movement NUMBER
 pairs. It loads once per worker generation. The decoded BSP locator matched
 `DOOM_BSP_LOCATE` at 270/270 deterministic points, and the packed movement
 values retained 1,152/1,152 byte parity. Relational row walking is confined to
 the offline builder and is not a tic/frame operation.
+
+Raw Oracle `NUMBER` collision length/directions and the immutable
+864-cell/2,064-reference BLOCKMAP now live in that catalog. The exact retained
+swept-circle, two-contact slide, BSP destination, and two-hop portal kernel
+matches 270/270 sequential calls to `DOOM_PLAYER_MOVE_PAYLOAD`, including 124
+contact samples. Scanning all 1,175 lines was rejected at
+9.966/16.746/25.070 ms p50/p95/max. BLOCKMAP candidate enumeration preserves
+the corpus and measures 0.165/0.734/2.079 ms, so movement is now inside budget.
 
 Large frames remain in relational SecureFile rows. AQ carries only a small,
 unguessable request identifier and command metadata. The worker commits the

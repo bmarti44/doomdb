@@ -33,13 +33,16 @@ docker cp "$root/scripts/performance/DoomOracleNumberParityBench.java" \
   "$container:$tmp/DoomOracleNumberParityBench.java" >/dev/null
 docker cp "$root/scripts/performance/DoomSimCatalogBench.java" \
   "$container:$tmp/DoomSimCatalogBench.java" >/dev/null
+docker cp "$root/scripts/performance/DoomPlayerMovementBench.java" \
+  "$container:$tmp/DoomPlayerMovementBench.java" >/dev/null
 docker exec "$container" "$java_home/jdk/bin/javac" --release 11 \
   -cp "$java_home/jdbc/lib/ojdbc11.jar" "$tmp/DoomResidentSimulationBench.java" \
-  "$tmp/DoomOracleNumberParityBench.java" "$tmp/DoomSimCatalogBench.java"
+  "$tmp/DoomOracleNumberParityBench.java" "$tmp/DoomSimCatalogBench.java" \
+  "$tmp/DoomPlayerMovementBench.java"
 docker exec "$container" sh -c \
   "exec '$java_home/bin/loadjava' -force -resolve -user DOOM@FREEPDB1 \
   '$tmp/DoomResidentSimulationBench.class' '$tmp/DoomOracleNumberParityBench.class' \
-  '$tmp/DoomSimCatalogBench.class' \
+  '$tmp/DoomSimCatalogBench.class' '$tmp/DoomPlayerMovementBench.class' \
   < /run/secrets/doom_password"
 
 run_sql "$root/scripts/performance/ojvm-resident-simulation-calls.sql"
@@ -49,4 +52,5 @@ run_sql "$root/sql/accel/019_simulation_kernel_pack.sql"
 run_sql "$root/scripts/performance/ojvm-resident-simulation-parity.sql"
 run_sql "$root/scripts/performance/ojvm-number-parity.sql"
 run_sql "$root/scripts/performance/ojvm-sim-catalog-parity.sql"
+run_sql "$root/scripts/performance/ojvm-sim-movement-parity.sql"
 run_sql "$root/scripts/performance/ojvm-resident-simulation-benchmark.sql"
