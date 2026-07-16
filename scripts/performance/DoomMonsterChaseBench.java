@@ -527,6 +527,44 @@ public final class DoomMonsterChaseBench {
     } catch (Throwable error) { return failure(error); }
   }
 
+  /** Publish a coordinator-owned, previously prepared CHASE delta after commit. */
+  public static String acceptWorld(String expectedSession, String expectedLineage,
+      long expectedGeneration, String request, byte[] packed) {
+    try {
+      fence(expectedSession, expectedLineage, expectedGeneration, request);
+      require(packed != null && packed.length == 8 + count * RECORD_BYTES &&
+          packed[0] == 'D' && packed[1] == 'M' && packed[2] == 'C' && packed[3] == 'H' &&
+          packed[4] == 1 && packed[5] == 0, "chase accepted pack");
+      int packedCount = ((packed[6] & 255) << 8) | (packed[7] & 255);
+      require(packedCount == count, "chase accepted count");
+      for (int actor = 0; actor < count; actor++) {
+        int offset = 8 + actor * RECORD_BYTES;
+        int packedId = ((packed[offset] & 255) << 24) | ((packed[offset + 1] & 255) << 16) |
+            ((packed[offset + 2] & 255) << 8) | (packed[offset + 3] & 255);
+        require(packedId == id[actor], "chase accepted actor");
+        int xLength = packed[offset + 4] & 255, yLength = packed[offset + 27] & 255;
+        require(xLength >= 1 && xLength <= 22 && yLength >= 1 && yLength <= 22,
+            "chase accepted NUMBER");
+        byte[] xBytes = new byte[xLength], yBytes = new byte[yLength];
+        System.arraycopy(packed, offset + 5, xBytes, 0, xLength);
+        System.arraycopy(packed, offset + 28, yBytes, 0, yLength);
+        x[actor] = new NUMBER(xBytes); y[actor] = new NUMBER(yBytes);
+        xd[actor] = x[actor].doubleValue(); yd[actor] = y[actor].doubleValue();
+        xMinus[actor] = x[actor].add(negativeSpeed[actor]);
+        xPlus[actor] = x[actor].add(speed[actor]);
+        yMinus[actor] = y[actor].add(negativeSpeed[actor]);
+        yPlus[actor] = y[actor].add(speed[actor]);
+        xCenterField[actor] = numberField(x[actor]); xMinusField[actor] = numberField(xMinus[actor]);
+        xPlusField[actor] = numberField(xPlus[actor]); yCenterField[actor] = numberField(y[actor]);
+        yMinusField[actor] = numberField(yMinus[actor]); yPlusField[actor] = numberField(yPlus[actor]);
+      }
+      lastError = ""; return "OK";
+    } catch (Throwable error) {
+      lastError = error.getClass().getName() + ":" + error.getMessage();
+      return "ERR|" + lastError;
+    }
+  }
+
   public static String lastError() {
     try { return lastError; } catch (Throwable error) { return error.getClass().getName(); }
   }
