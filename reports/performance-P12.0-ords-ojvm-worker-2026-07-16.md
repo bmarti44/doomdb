@@ -213,9 +213,9 @@ prebuilt by SQL and only narrow exact collision/final-coordinate operations use
 `oracle.sql.NUMBER`.
 
 The immutable worker catalog is now concrete. One SQL-built, SHA-verified
-199,671-byte BLOB contains 681 BSP nodes, 682 subsector ownership entries,
+200,699-byte BLOB contains 681 BSP nodes, 682 subsector ownership entries,
 1,175 collision lines, 182 sector baselines, all 1,152 raw movement NUMBER
-pairs, and compact REJECT/sound matrices. It loads once per worker generation. The decoded BSP locator matched
+pairs, compact REJECT/sound matrices, and all 256 canonical RNG values. It loads once per worker generation. The decoded BSP locator matched
 `DOOM_BSP_LOCATE` at 270/270 deterministic points, and the packed movement
 values retained 1,152/1,152 byte parity. Relational row walking is confined to
 the offline builder and is not a tic/frame operation.
@@ -276,7 +276,9 @@ rays, including 132 REJECT-open pairs. The warmed internal 53-actor batch
 measures 0.074/0.245/0.476 ms p50/p95/max; the rejected one-call-per-ray probe
 measured 1.681 ms p95 because it repaid the SQL/Java boundary for every actor.
 With LOS in the same retained pass, all 53 visible wakes and their ordered
-`SEEN` events also match SQL exactly.
+`SEEN` events also match SQL exactly. The pain extension then consumes RNG in
+the same prior-snapshot mobj order as SQL: all 53 actor rows and cursor advances
+match, and the 36 successful rolls emit 36/36 ordered `MONSTER_PAIN` events.
 
 Repeated `loadjava -force` during iterative development eventually caused the
 2 GiB local instance's MMAN to terminate with fatal `ORA-00822`. The Oracle

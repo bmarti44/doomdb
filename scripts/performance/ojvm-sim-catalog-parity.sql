@@ -4,7 +4,7 @@ set serveroutput on size unlimited
 declare
   result_ varchar2(4000);failures_ pls_integer:=0;cases_ pls_integer:=0;
   sql_sector number;java_sector number;sql_x number;sql_y number;java_x number;java_y number;
-  matrix_failures_ number;
+  matrix_failures_ number;rng_expected_ number;
   function same_number(p_left number,p_right number) return boolean is same_ number;begin
     select case when dump(p_left,16)=dump(p_right,16) then 1 else 0 end into same_ from dual;
     return same_=1;
@@ -64,9 +64,16 @@ begin
   if matrix_failures_<>0 then
     raise_application_error(-20000,'catalog sector matrix failures='||matrix_failures_);
   end if;
+  for index_ in 0..255 loop
+    select rng_value into rng_expected_ from doom_rng_value where rng_index=index_;
+    if doom_sim_catalog_rng(index_)<>rng_expected_ then
+      raise_application_error(-20000,'catalog RNG mismatch index='||index_);
+    end if;
+  end loop;
   dbms_output.put_line('sim_catalog_summary='||doom_sim_catalog_summary);
   dbms_output.put_line('sim_catalog_bsp_locate_parity='||cases_||'/'||cases_);
   dbms_output.put_line('sim_catalog_movement_parity=1152/1152');
   dbms_output.put_line('sim_catalog_reject_sound_parity=33124/33124');
+  dbms_output.put_line('sim_catalog_rng_parity=256/256');
 end;
 /

@@ -18,6 +18,8 @@ declare
 begin
   load_result_:=doom_sim_catalog_load;
   if substr(load_result_,1,3)<>'OK|' then raise_application_error(-20000,load_result_);end if;
+  update doom_config set number_value=greatest(number_value,256)
+    where config_key='MAX_ACTIVE_SESSIONS';
   doom_api.new_game(3,session_,payload_);
   select x,y,z into x_,y_,z_ from players p join game_sessions g
     on g.session_token=p.session_token and g.current_player_id=p.player_id

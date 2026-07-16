@@ -1,9 +1,10 @@
 whenever sqlerror exit failure rollback
 
 create or replace function doom_actor_wake_load(
-  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_snapshot in clob)
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_rng_cursor in number,p_snapshot in clob)
 return varchar2 as language java name
-  'DoomActorWakeBench.load(java.lang.String,java.lang.String,long,java.sql.Clob) return java.lang.String';
+  'DoomActorWakeBench.load(java.lang.String,java.lang.String,long,int,java.sql.Clob) return java.lang.String';
 /
 create or replace function doom_actor_wake_prepare(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2,

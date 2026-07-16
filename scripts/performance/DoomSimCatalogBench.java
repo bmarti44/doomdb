@@ -14,7 +14,7 @@ import oracle.sql.NUMBER;
 /** Immutable SQL-built simulation catalog retained by one database worker. */
 public final class DoomSimCatalogBench {
   private static final int MAGIC = 0x44534350; // DSCP
-  private static final int VERSION = 2;
+  private static final int VERSION = 3;
   private static boolean loaded;
   private static int[] nodeX, nodeY, nodeDx, nodeDy, child0, child1;
   private static byte[] child0Leaf, child1Leaf;
@@ -29,6 +29,7 @@ public final class DoomSimCatalogBench {
   static int[] blockOffset, blockLines;
   static double[] baseFloor, baseCeiling;
   static byte[] rejectBits, soundReachBits;
+  static int[] rngValue;
   static byte[][] movementDeltaX, movementDeltaY;
   static NUMBER[] movementXExact, movementYExact;
   private static String catalogSha = "";
@@ -203,6 +204,16 @@ public final class DoomSimCatalogBench {
     }
     out.writeInt(sectorCount); out.writeInt(bitBytes); out.write(reject); out.write(sound);
 
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select rng_index,rng_value from doom_rng_value order by rng_index")) {
+      int index = 0; out.writeInt(256);
+      while (rows.next()) {
+        require(rows.getInt(1) == index, "RNG order"); out.writeInt(rows.getInt(2)); index++;
+      }
+      require(index == 256, "RNG count");
+    }
+
     String movementSql =
         "select utl_raw.cast_from_number((f*cos(a*acos(-1)/180)+s*sin(a*acos(-1)/180))*8*(r+1))," +
         "utl_raw.cast_from_number((f*sin(a*acos(-1)/180)-s*cos(a*acos(-1)/180))*8*(r+1)) " +
@@ -309,6 +320,11 @@ public final class DoomSimCatalogBench {
         "sector matrix dimensions");
     rejectBits = new byte[bitBytes]; soundReachBits = new byte[bitBytes];
     in.readFully(rejectBits); in.readFully(soundReachBits);
+    int rngCount = in.readInt(); require(rngCount == 256, "RNG count");
+    rngValue = new int[rngCount];
+    for (int index = 0; index < rngCount; index++) {
+      rngValue[index] = in.readInt(); require(rngValue[index] >= 0 && rngValue[index] <= 255, "RNG value");
+    }
     count = in.readInt(); require(count == 64 * 18, "movement lookup count");
     movementDeltaX = new byte[count][]; movementDeltaY = new byte[count][];
     movementXExact = new NUMBER[count]; movementYExact = new NUMBER[count];
@@ -401,6 +417,13 @@ public final class DoomSimCatalogBench {
     try { require(loaded, "catalog not loaded");
       return getBit(soundReachBits, sectorPairIndex(source, target)) ? 1 : 0;
     } catch (Throwable error) {
+      lastError = error.getClass().getName() + ":" + error.getMessage(); return -1;
+    }
+  }
+
+  public static int rng(int index) {
+    try { require(loaded && index >= 0 && index < 256, "RNG index"); return rngValue[index]; }
+    catch (Throwable error) {
       lastError = error.getClass().getName() + ":" + error.getMessage(); return -1;
     }
   }

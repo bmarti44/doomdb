@@ -51,6 +51,8 @@ declare
   elapsed_ interval day to second;ms_ number;p50_ number;p95_ number;max_ number;
   actors_ clob;player_x_ number;player_y_ number;player_sector_ number;
 begin
+  update doom_config set number_value=greatest(number_value,256)
+    where config_key='MAX_ACTIVE_SESSIONS';
   doom_api.new_game(3,session_,payload_);
   result_:=doom_sim_catalog_load;
   if substr(result_,1,3)<>'OK|' then raise_application_error(-20000,result_);end if;

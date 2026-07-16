@@ -1423,7 +1423,7 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   byte-for-byte. Preloaded lookup+NUMBER add measured 0.54–0.69 us/op and exact
   quadratic entry 9.7–15.0 us/op; runtime trig is not selected. See
   `reports/performance-P12.0-sol-max-resident-simulation-2026-07-16.md`.
-- Retained simulation catalog (2026-07-16): a SQL-built, SHA-verified 199,671
+- Retained simulation catalog (2026-07-16): a SQL-built, SHA-verified 200,699
   byte BLOB now carries all 681 BSP nodes, 682 subsector-sector owners, 1,175
   collision lines, 182 sector baselines, and 1,152 raw Oracle `NUMBER` movement
   pairs. The worker loads/decodes it once; relational row walking exists only in
@@ -1471,8 +1471,10 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   persistence/accept. The follow-up BLOCKMAP LOS kernel matches 270/270 SQL
   rays, including 132 REJECT-open cases, and a warmed 53-actor batch measures
   0.074/0.245/0.476 ms p50/p95/max. With that kernel folded into classification,
-  53/53 `SEEN` wakes and events now also match SQL. Next add pain/state/action
-  phases. The transitional sound bit must ultimately come from the retained
+  53/53 `SEEN` wakes and events now also match SQL. The next pain slice retains
+  all 256 canonical RNG bytes, matches 53/53 actor and RNG transitions, and
+  emits 36/36 ordered `MONSTER_PAIN` events for successful rolls. Next add
+  death and active state/action phases. The transitional sound bit must ultimately come from the retained
   current-tic event buffer, not a per-tic SQL scalar.
 - OJVM deployment-memory guard (2026-07-16): repeated iterative
   `loadjava -force` cycles eventually drove the 2 GiB local instance's MMAN to

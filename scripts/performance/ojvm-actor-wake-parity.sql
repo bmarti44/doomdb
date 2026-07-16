@@ -12,6 +12,8 @@ declare
   rng_before_ number;rng_after_ number;fixture_found_ boolean:=false;
   sleeping_count_ number;
 begin
+  update doom_config set number_value=greatest(number_value,256)
+    where config_key='MAX_ACTIVE_SESSIONS';
   doom_api.new_game(3,session_,payload_);
   select g.save_lineage,p.x,p.y,max(m.mobj_id)
     into lineage_,player_x_,player_y_,player_target_
@@ -48,11 +50,13 @@ begin
   )
   select json_arrayagg(json_array(m.mobj_id,m.health,m.monster_health_seen,
            m.attack_cooldown,m.awake,m.state_tics,m.sector_id,m.x,m.y,cur.state_index,
-           m.target_mobj_id,see.state_index,see.tics null on null returning varchar2)
+           m.target_mobj_id,see.state_index,see.tics,d.pain_chance,
+           pain.state_index,pain.tics null on null returning varchar2)
            order by m.mobj_id returning clob)
     into snapshot_
     from mobjs m join doom_monster_def d on d.thing_type=m.thing_type
     join states cur on cur.state_id=m.state_id join states see on see.state_id=d.see_state_id
+    join states pain on pain.state_id=d.pain_state_id
     where m.session_token=session_;
   result_:=doom_sim_catalog_load;
   if substr(result_,1,3)<>'OK|' then raise_application_error(-20000,result_);end if;
@@ -61,12 +65,12 @@ begin
     into sector_snapshot_ from sector_state where session_token=session_;
   result_:=doom_retained_los_load(sector_snapshot_);
   if result_<>'OK|182' then raise_application_error(-20000,result_);end if;
-  result_:=doom_actor_wake_load(session_,lineage_,1,snapshot_);
+  select rng_cursor into rng_before_ from game_sessions where session_token=session_;
+  result_:=doom_actor_wake_load(session_,lineage_,1,rng_before_,snapshot_);
   if result_<>'OK|'||actor_count_ then raise_application_error(-20000,result_);end if;
   insert into game_events(session_token,tic,event_ordinal,event_type,
     actor_mobj_id,target_mobj_id,number_value,text_value)
     values(session_,900,0,'DRY_FIRE',null,null,null,null);
-  select rng_cursor into rng_before_ from game_sessions where session_token=session_;
   request_:='22222222222222222222222222222222';
   delta_:=doom_actor_wake_prepare(session_,lineage_,1,request_,
     player_x_,player_y_,1,player_target_,1);
@@ -122,14 +126,15 @@ begin
         and event_type='MONSTER_WAKE' and number_value is null and text_value='HEARD'
       order by event_ordinal
   ) loop
-    offset_:=event_offset_+row_index_*16;
+    offset_:=event_offset_+row_index_*20;
     if utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_,4),utl_raw.big_endian)<>
          event_.event_ordinal or
        utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_+4,4),utl_raw.big_endian)<>
          event_.actor_mobj_id or
        utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_+8,4),utl_raw.big_endian)<>
          event_.target_mobj_id or
-       utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_+12,4),utl_raw.big_endian)<>2 then
+       utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_+12,4),utl_raw.big_endian)<>2 or
+       utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_+16,4),utl_raw.big_endian)<>-1 then
       raise_application_error(-20000,'wake event mismatch index='||row_index_);
     end if;
     row_index_:=row_index_+1;
@@ -149,13 +154,16 @@ begin
   )
   select json_arrayagg(json_array(m.mobj_id,m.health,m.monster_health_seen,
            m.attack_cooldown,m.awake,m.state_tics,m.sector_id,m.x,m.y,cur.state_index,
-           m.target_mobj_id,see.state_index,see.tics null on null returning varchar2)
+           m.target_mobj_id,see.state_index,see.tics,d.pain_chance,
+           pain.state_index,pain.tics null on null returning varchar2)
            order by m.mobj_id returning clob)
     into snapshot_
     from mobjs m join doom_monster_def d on d.thing_type=m.thing_type
     join states cur on cur.state_id=m.state_id join states see on see.state_id=d.see_state_id
+    join states pain on pain.state_id=d.pain_state_id
     where m.session_token=session_;
-  result_:=doom_actor_wake_load(session_,lineage_,1,snapshot_);
+  select rng_cursor into rng_before_ from game_sessions where session_token=session_;
+  result_:=doom_actor_wake_load(session_,lineage_,1,rng_before_,snapshot_);
   if result_<>'OK|'||actor_count_ then raise_application_error(-20000,result_);end if;
   request_:='33333333333333333333333333333333';
   delta_:=doom_actor_wake_prepare(session_,lineage_,1,request_,
@@ -204,14 +212,15 @@ begin
         and event_type='MONSTER_WAKE' and number_value is null and text_value='SEEN'
       order by event_ordinal
   ) loop
-    offset_:=event_offset_+row_index_*16;
+    offset_:=event_offset_+row_index_*20;
     if utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_,4),utl_raw.big_endian)<>
          event_.event_ordinal or
        utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_+4,4),utl_raw.big_endian)<>
          event_.actor_mobj_id or
        utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_+8,4),utl_raw.big_endian)<>
          event_.target_mobj_id or
-       utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_+12,4),utl_raw.big_endian)<>1 then
+       utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_+12,4),utl_raw.big_endian)<>1 or
+       utl_raw.cast_to_binary_integer(utl_raw.substr(delta_,offset_+16,4),utl_raw.big_endian)<>-1 then
       raise_application_error(-20000,'seen event mismatch index='||row_index_);
     end if;
     row_index_:=row_index_+1;

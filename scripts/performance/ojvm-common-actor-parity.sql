@@ -13,6 +13,8 @@ declare
   samples_ sys.odcinumberlist:=sys.odcinumberlist();started_ timestamp with time zone;
   elapsed_ interval day to second;ms_ number;p50_ number;p95_ number;max_ number;
 begin
+  update doom_config set number_value=greatest(number_value,256)
+    where config_key='MAX_ACTIVE_SESSIONS';
   doom_api.new_game(3,session_,payload_);
   select g.save_lineage,p.x,p.y
     into lineage_,player_x_,player_y_

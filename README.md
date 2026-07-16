@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | Renderer: 15.671/17.590 ms p50/p95. Movement: 270/270 SQL tics. Actor eligibility: 33,124/33,124 pairs; exact LOS: 270/270 rays at 0.245 ms p95 per 53-actor batch; quiet, HEARD, and SEEN phases: 53/53 each. Full actors, persistence, and public integration remain. |
+| P12.0 | Active playability gate | Renderer: 15.671/17.590 ms p50/p95. Movement: 270/270 SQL tics. Exact LOS: 270/270 rays at 0.240 ms p95 per 53 actors. Quiet, HEARD, SEEN, and pain actor rows: 53/53; pain events: 36/36. Full actors, persistence, and public integration remain. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -172,9 +172,9 @@ turn results plus a four-command packed batch; that is a component parity gate,
 not a playable game result. Its pending state stays invisible until explicit
 post-commit acceptance, and session/lineage/generation fences pass. Oracle
 `NUMBER` also matches all 1,152 movement deltas and the first quadratic contact
-root byte-for-byte. A SHA-verified 199,671-byte worker catalog now retains all
+root byte-for-byte. A SHA-verified 200,699-byte worker catalog now retains all
 681 BSP nodes, 682 subsector owners, 1,175 collision lines, 182 sectors, and the
-movement matrix, BLOCKMAP, and compact REJECT/sound matrices. Its BSP locator
+movement matrix, BLOCKMAP, compact REJECT/sound matrices, and all 256 RNG bytes. Its BSP locator
 matches 270/270 SQL cases and all 33,124 directed sector pairs match SQL; the
 exact swept collision matches 270/270 sequential moves with 124 contact cases.
 BLOCKMAP pruning reduced that movement kernel from 16.746 ms to 0.734 ms p95.
@@ -182,9 +182,10 @@ The kernel is now wired into the worker's pending state: 270/270 packed tics
 match SQL exactly, committed state remains unchanged before `accept`, and the
 combined prepare/accept boundary measures 0.261/0.762 ms p50/p95.
 The bounded actor phases match 53/53 quiet rows, 53/53 audible `HEARD` wakes,
-and 53/53 visible `SEEN` wakes with ordered events. Exact BLOCKMAP LOS matches
-270/270 SQL rays and costs 0.074/0.245 ms p50/p95 for one warmed 53-actor batch.
-Pain, state transitions, chase, attack, and drops remain before the actor loop
+and 53/53 visible `SEEN` wakes with ordered events. Pain also matches all 53
+actor and RNG transitions plus 36/36 successful-roll events. Exact BLOCKMAP LOS matches
+270/270 SQL rays and costs 0.074/0.240 ms p50/p95 for one warmed 53-actor batch.
+Death, active state transitions, chase, attack, and drops remain before the actor loop
 is production-routable. The incomplete fast-path projection is roughly 25–32
 FPS; it is not a measured gameplay result.
 Playability requires 270+ unique moving frames to sustain 30 FPS at both p50
