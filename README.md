@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | Renderer: 15.671/17.590 ms p50/p95. Packed movement: 270/270 SQL tics at 0.261/0.762 ms. Retained actor eligibility: 33,124/33,124 sector pairs; quiet and audible-wake phases: 53/53 each. Full actors, persistence, and public integration remain. |
+| P12.0 | Active playability gate | Renderer: 15.671/17.590 ms p50/p95. Movement: 270/270 SQL tics. Actor eligibility: 33,124/33,124 pairs; exact LOS: 270/270 rays at 0.245 ms p95 per 53-actor batch; quiet, HEARD, and SEEN phases: 53/53 each. Full actors, persistence, and public integration remain. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -181,13 +181,14 @@ BLOCKMAP pruning reduced that movement kernel from 16.746 ms to 0.734 ms p95.
 The kernel is now wired into the worker's pending state: 270/270 packed tics
 match SQL exactly, committed state remains unchanged before `accept`, and the
 combined prepare/accept boundary measures 0.261/0.762 ms p50/p95.
-The first bounded actor phases match 53/53 quiet rows and 53/53 audible wakes,
-including 53 ordered `MONSTER_WAKE`/`HEARD` events. Eligibility is derived from
-live coordinates, retained sectors, and the catalog; every LOS-dependent actor
-fails the batch closed. Pain, exact LOS/SEEN wakes, state transitions, chase,
-attack, and drops remain before the actor loop is production-routable.
-Playability requires 270+ unique moving frames to sustain 30 FPS at both p50 and p95 through the
-public browser path. See the
+The bounded actor phases match 53/53 quiet rows, 53/53 audible `HEARD` wakes,
+and 53/53 visible `SEEN` wakes with ordered events. Exact BLOCKMAP LOS matches
+270/270 SQL rays and costs 0.074/0.245 ms p50/p95 for one warmed 53-actor batch.
+Pain, state transitions, chase, attack, and drops remain before the actor loop
+is production-routable. The incomplete fast-path projection is roughly 25–32
+FPS; it is not a measured gameplay result.
+Playability requires 270+ unique moving frames to sustain 30 FPS at both p50
+and p95 through the public browser path. See the
 [ORDS/OJVM worker report](reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md).
 
 ## Local review

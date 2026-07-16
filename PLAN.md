@@ -1468,11 +1468,19 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   coordinates and retained actor sectors, the worker matches 53/53 SQL actor
   wakes plus 53/53 ordered `MONSTER_WAKE`/`HEARD` events from a frozen
   `DRY_FIRE` sound input; RNG and relational state remain untouched before
-  persistence/accept. Every REJECT-open actor fails the entire prepare closed,
-  so this slice cannot guess LOS or emit a false `SEEN`/`HEARD` reason. Next add
-  retained exact LOS and SEEN wake parity, then pain/state/action phases. The
-  transitional sound bit must ultimately come from the retained current-tic
-  event buffer, not a per-tic SQL scalar.
+  persistence/accept. The follow-up BLOCKMAP LOS kernel matches 270/270 SQL
+  rays, including 132 REJECT-open cases, and a warmed 53-actor batch measures
+  0.074/0.245/0.476 ms p50/p95/max. With that kernel folded into classification,
+  53/53 `SEEN` wakes and events now also match SQL. Next add pain/state/action
+  phases. The transitional sound bit must ultimately come from the retained
+  current-tic event buffer, not a per-tic SQL scalar.
+- OJVM deployment-memory guard (2026-07-16): repeated iterative
+  `loadjava -force` cycles eventually drove the 2 GiB local instance's MMAN to
+  fatal `ORA-00822`; the alert trace identifies MMAN, not an uncaught game
+  entry point. Production loads each class revision once and restarts/warmups
+  the worker. The local probe supports `DOOMDB_SKIP_LOADJAVA=1` for repeat
+  measurements after one successful compile/load, preventing class-metadata
+  churn from contaminating performance or availability evidence.
 - Fable/ORDS reconciliation (2026-07-16): Fable independently confirmed that
   ORDS cleanup has no supported off switch and OJVM application arrays are
   session-private. Its unmeasured DBMS_PIPE proposal is archived as fallback,

@@ -1,4 +1,5 @@
 import java.sql.Clob;
+import oracle.sql.NUMBER;
 
 /** Retained audible-wake phase for REJECT-hidden sleeping actors. */
 public final class DoomActorWakeBench {
@@ -8,9 +9,11 @@ public final class DoomActorWakeBench {
   private static int count;
   private static int[] id, health, seen, cooldown, awake, stateTics, sector;
   private static int[] stateIndex, target, seeStateIndex, seeStateTics;
+  private static NUMBER[] x, y;
   private static int[] nextSeen, nextCooldown, nextAwake, nextStateIndex, nextStateTics, nextTarget;
   private static int[] dirtyIndex, wakeIndex;
-  private static final byte[] delta = new byte[12 + 255 * 32 + 255 * 12];
+  private static int[] wakeReason;
+  private static final byte[] delta = new byte[12 + 255 * 32 + 255 * 16];
 
   private DoomActorWakeBench() {}
   private static void require(boolean value, String message) {
@@ -33,6 +36,15 @@ public final class DoomActorWakeBench {
       while (offset < text.length() && Character.isDigit(text.charAt(offset)))
         value = value * 10 + text.charAt(offset++) - '0';
       require(offset > start, "wake JSON integer"); return sign * value;
+    }
+    String numberToken() {
+      whitespace(); int start = offset;
+      while (offset < text.length()) {
+        char value = text.charAt(offset);
+        if ((value >= '0' && value <= '9') || value == '-' || value == '+' || value == '.' ||
+            value == 'e' || value == 'E') offset++; else break;
+      }
+      require(offset > start, "wake JSON number"); return text.substring(start, offset);
     }
   }
   private static void putInt(byte[] bytes, int offset, int value) {
@@ -59,21 +71,25 @@ public final class DoomActorWakeBench {
       if (!parser.take(']')) {
         do {
           parser.expect('[');
-          for (int field = 0; field < 11; field++) {
-            parser.integer(field == 2 || field == 8); if (field < 10) parser.expect(',');
+          for (int field = 0; field < 13; field++) {
+            if (field == 7 || field == 8) parser.numberToken();
+            else parser.integer(field == 2 || field == 10);
+            if (field < 12) parser.expect(',');
           }
           parser.expect(']'); rows++;
         } while (parser.take(',')); parser.expect(']');
       }
       require(rows <= 255, "wake actor count");
-      int[][] values = new int[11][rows];
+      int[][] values = new int[11][rows]; NUMBER[] newX = new NUMBER[rows], newY = new NUMBER[rows];
       parser = new Parser(json); parser.expect('['); int row = 0;
       if (!parser.take(']')) {
         do {
           parser.expect('[');
-          for (int field = 0; field < 11; field++) {
-            values[field][row] = parser.integer(field == 2 || field == 8);
-            if (field < 10) parser.expect(',');
+          for (int field = 0, integerField = 0; field < 13; field++) {
+            if (field == 7) newX[row] = new NUMBER(parser.numberToken());
+            else if (field == 8) newY[row] = new NUMBER(parser.numberToken());
+            else values[integerField++][row] = parser.integer(field == 2 || field == 10);
+            if (field < 12) parser.expect(',');
           }
           parser.expect(']');
           require(values[0][row] >= 0 && (row == 0 || values[0][row] > values[0][row - 1]),
@@ -81,7 +97,8 @@ public final class DoomActorWakeBench {
           require(values[1][row] > 0 && (values[2][row] == -1 || values[2][row] >= 0) &&
               values[3][row] >= 0 && (values[4][row] == 0 || values[4][row] == 1) &&
               values[5][row] >= -1 && values[6][row] >= 0 && values[7][row] >= 0 &&
-              values[8][row] >= -1 && values[9][row] >= 0 && values[10][row] >= -1,
+              values[8][row] >= -1 && values[9][row] >= 0 && values[10][row] >= -1 &&
+              newX[row] != null && newY[row] != null,
               "wake actor value");
           row++;
         } while (parser.take(',')); parser.expect(']');
@@ -90,9 +107,10 @@ public final class DoomActorWakeBench {
       id = values[0]; health = values[1]; seen = values[2]; cooldown = values[3];
       awake = values[4]; stateTics = values[5]; sector = values[6]; stateIndex = values[7];
       target = values[8]; seeStateIndex = values[9]; seeStateTics = values[10];
+      x = newX; y = newY;
       nextSeen = new int[rows]; nextCooldown = new int[rows]; nextAwake = new int[rows];
       nextStateIndex = new int[rows]; nextStateTics = new int[rows]; nextTarget = new int[rows];
-      dirtyIndex = new int[rows]; wakeIndex = new int[rows];
+      dirtyIndex = new int[rows]; wakeIndex = new int[rows]; wakeReason = new int[rows];
       session = loadedSession; lineage = loadedLineage; generation = loadedGeneration;
       count = rows; loaded = true; pending = false; pendingRequest = null; lastError = "";
       return "OK|" + count;
@@ -106,25 +124,28 @@ public final class DoomActorWakeBench {
   }
 
   public static byte[] prepare(String expectedSession, String expectedLineage,
-      long expectedGeneration, String request, double playerX, double playerY,
+      long expectedGeneration, String request, NUMBER playerX, NUMBER playerY,
       int playerMadeSound, int playerTarget, int firstEventOrdinal) {
     try {
       fence(expectedSession, expectedLineage, expectedGeneration);
       require(!pending && request != null && request.matches("[0-9a-f]{32}"), "wake request");
-      require(Double.isFinite(playerX) && Double.isFinite(playerY) &&
+      require(playerX != null && playerY != null &&
           (playerMadeSound == 0 || playerMadeSound == 1) && playerTarget >= -1 &&
           firstEventOrdinal >= 0, "wake input");
-      int playerSector = DoomSimCatalogBench.locateSector(playerX, playerY);
+      int playerSector = DoomSimCatalogBench.locateSector(playerX.doubleValue(), playerY.doubleValue());
       require(playerSector >= 0, "wake player sector");
       int dirty = 0, wakes = 0;
       for (int index = 0; index < count; index++) {
         int rejected = DoomSimCatalogBench.rejected(sector[index], playerSector);
         int reaches = DoomSimCatalogBench.soundReach(playerSector, sector[index]);
+        int visible = rejected == 1 ? 0 :
+            DoomRetainedLosBench.visible(x[index], y[index], sector[index],
+              playerX, playerY, playerSector);
         require(health[index] > 0 && awake[index] == 0 &&
             (seen[index] == -1 || seen[index] == health[index]),
             "unsupported wake actor mobj=" + id[index]);
-        require(rejected == 1, "LOS-dependent wake actor mobj=" + id[index]);
-        boolean wake = playerMadeSound == 1 && reaches == 1;
+        require(visible >= 0, DoomRetainedLosBench.lastError());
+        boolean wake = visible == 1 || (playerMadeSound == 1 && reaches == 1);
         nextSeen[index] = health[index]; nextCooldown[index] = Math.max(0, cooldown[index] - 1);
         nextAwake[index] = wake ? 1 : awake[index];
         nextStateIndex[index] = wake ? seeStateIndex[index] : stateIndex[index];
@@ -132,7 +153,7 @@ public final class DoomActorWakeBench {
         nextTarget[index] = wake ? playerTarget : target[index];
         if (nextSeen[index] != seen[index] || nextCooldown[index] != cooldown[index] || wake)
           dirtyIndex[dirty++] = index;
-        if (wake) wakeIndex[wakes++] = index;
+        if (wake) { wakeIndex[wakes] = index; wakeReason[wakes++] = visible == 1 ? 1 : 2; }
       }
       for (int index = 0; index < delta.length; index++) delta[index] = 0;
       putInt(delta, 0, 0x4441574b); // DAWK
@@ -148,9 +169,9 @@ public final class DoomActorWakeBench {
       }
       int eventOffset = 12 + dirty * 32;
       for (int item = 0; item < wakes; item++) {
-        int actor = wakeIndex[item], offset = eventOffset + item * 12;
+        int actor = wakeIndex[item], offset = eventOffset + item * 16;
         putInt(delta, offset, firstEventOrdinal + item); putInt(delta, offset + 4, id[actor]);
-        putInt(delta, offset + 8, playerTarget);
+        putInt(delta, offset + 8, playerTarget); putInt(delta, offset + 12, wakeReason[item]);
       }
       pending = true; pendingRequest = request; lastError = ""; return delta;
     } catch (Throwable error) {

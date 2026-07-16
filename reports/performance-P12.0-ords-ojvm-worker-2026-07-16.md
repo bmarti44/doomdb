@@ -264,12 +264,26 @@ All 33,124 sector pairs match the SQL relations exactly. The actor probe derives
 the player sector from live coordinates and classifies each retained actor
 sector without JDBC or JSON work on the tic path.
 
-The first behavior extension supports audible wakes only when REJECT proves
+The first behavior extension supports audible wakes when REJECT proves
 visibility is zero. A frozen `DRY_FIRE` input wakes all 53 sound-reachable
 fixture actors exactly like SQL, including 53/53 ordered `MONSTER_WAKE` events,
 the player target, NULL number, and `HEARD` text. RNG is unchanged and pending
-state remains invisible. A REJECT-open actor rejects the whole prepare before
-any pending state is published; exact LOS and `SEEN` wakes are the next slice.
+state remains invisible.
+
+The exact retained LOS follow-up uses the packed BLOCKMAP, immutable line
+geometry, and live retained sector heights. It matches 270/270 independent SQL
+rays, including 132 REJECT-open pairs. The warmed internal 53-actor batch
+measures 0.074/0.245/0.476 ms p50/p95/max; the rejected one-call-per-ray probe
+measured 1.681 ms p95 because it repaid the SQL/Java boundary for every actor.
+With LOS in the same retained pass, all 53 visible wakes and their ordered
+`SEEN` events also match SQL exactly.
+
+Repeated `loadjava -force` during iterative development eventually caused the
+2 GiB local instance's MMAN to terminate with fatal `ORA-00822`. The Oracle
+alert trace identifies MMAN memory management rather than an uncaught Java game
+entry. The harness now supports `DOOMDB_SKIP_LOADJAVA=1` for repeat probes after
+one successful deployment; production deploys one revision, restarts the
+worker, warms it, and audits compiled methods before admitting traffic.
 
 Large frames remain in relational SecureFile rows. AQ carries only a small,
 unguessable request identifier and command metadata. The worker commits the
