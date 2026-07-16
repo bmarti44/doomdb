@@ -65,6 +65,23 @@ create or replace function doom_unified_state_reused return number as language j
 create or replace function doom_unified_state_removed return number as language java name
   'DoomUnifiedActorStateBench.lastStateRemoved() return int';
 /
+create or replace function doom_unified_history_fill(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_tic in number,p_frontier in number,
+  p_command_sha in varchar2,p_event_sha in varchar2,p_state_sha in varchar2,
+  p_frame_sha in varchar2,p_payload in blob)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.fillPendingHistory(java.lang.String,java.lang.String,long,java.lang.String,long,long,java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.sql.Blob) return java.lang.String';
+/
+create or replace function doom_unified_history_total_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastHistoryTotalNanos() return long';
+/
+create or replace function doom_unified_history_encode_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastHistoryEncodeNanos() return long';
+/
+create or replace function doom_unified_history_blob_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastHistoryBlobNanos() return long';
+/
 create or replace function doom_unified_render_pending(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,
   p_request in varchar2,p_state_sha in varchar2,p_payload in blob)

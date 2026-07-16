@@ -1659,6 +1659,23 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   four-tic history checkpoint: 5.322/8.114 ms versus 0.459/0.741 ms for normal
   finalization. Preserve its cadence and snapshot bytes; optimize construction
   rather than hiding checkpoints from the sample. Public cutover remains barred.
+- SecureFile/strict-durability correction (2026-07-16, supersedes the prior
+  four-tic-cadence direction): worker 10046 trace attributed 5,135 waits and
+  3.12 seconds directly to the three hot NOCACHE/CACHE-READS LOB segments. The
+  selected storage is `SECUREFILE (CACHE LOGGING RETENTION NONE)` for response,
+  per-tic state, and history; temporary locators are freed per request; local
+  USERS storage is presized to 4 GiB with 512 MiB growth and redo uses three
+  1 GiB groups. Plain PL/SQL commits produced only one `log file sync` at worker
+  shutdown, so the authoritative commit is now explicit `BATCH WAIT` and traced
+  separately. Response copy is 0.731/1.160/2.971 ms p50/p95/max over 1,000
+  stationary frames. The reviewed interval is now 32 tics: per-tic deltas stay
+  authoritative and strict-durable, snapshot bytes remain exact, and recovery
+  is bounded to 32 delta applications. The clean stationary 300-frame database
+  gate passes at 27.465/32.287 ms p50/p95; 1,000 frames are 27.821/34.005 ms.
+  The real dynamic 300-frame path remains 28.875/35.271 ms because spawned
+  projectiles are not yet advanced/removed in retained arrays. Implement and
+  parity-lock that lifecycle before public cutover or an end-to-end claim. See
+  `reports/performance-P12.0-securefile-tail-research-2026-07-16.md`.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

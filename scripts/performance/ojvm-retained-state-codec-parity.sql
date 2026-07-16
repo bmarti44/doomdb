@@ -7,13 +7,18 @@ set serveroutput on size unlimited feedback off verify off
 declare
   session_ varchar2(32);lineage_ varchar2(64);payload_ blob;map_clob_ clob;map_blob_ blob;
   map_sha_ varchar2(64);result_ varchar2(4000);request_ varchar2(32);command_ raw(24);
-  delta_ raw(32767);oracle_ blob;retained_ blob;snapshot_ blob;oracle_sha_ varchar2(64);
+  delta_ raw(32767);oracle_ blob;retained_ blob;snapshot_ blob;history_retained_ blob;
+  history_sql_ blob;oracle_sha_ varchar2(64);history_sha_ varchar2(4000);
+  history_sql_sha_ varchar2(64);command_sha_ varchar2(64);event_sha_ varchar2(64);
   retained_sha_ varchar2(4000);tic_ number;seq_ number;rng_ number;next_mobj_ number;
   committed_tic_ number;committed_seq_ number;version_ number;count_ number;delta_sha_ varchar2(64);
   generation_ number:=1;death_id_ number;projectile_id_ number;px_ number;py_ number;
+  ledger_state_ blob;ledger_sha_ varchar2(64);ledger_tic_ number;ledger_seq_ number;
   drop_rows_ number:=0;projectile_rows_ number:=0;mismatches_ number:=0;
   command_tics_ number:=0;plain_tics_ number:=0;
-  old_next_ number;running_ number;started_ timestamp with time zone;
+  history_checkpoints_ number:=0;
+  history_interval_ number;
+  old_next_ number;running_ number;started_ timestamp with time zone;command_mode_ boolean;
   encode_ms_ sys.odcinumberlist:=sys.odcinumberlist();blob_ms_ sys.odcinumberlist:=sys.odcinumberlist();
   total_ms_ sys.odcinumberlist:=sys.odcinumberlist();bytes_ sys.odcinumberlist:=sys.odcinumberlist();
   compare_ms_ sys.odcinumberlist:=sys.odcinumberlist();object_encode_ms_ sys.odcinumberlist:=sys.odcinumberlist();
@@ -78,6 +83,9 @@ begin
   if result_ not like 'OK|%' then raise_application_error(-20000,'retained state load '||result_);end if;
   dbms_lob.createtemporary(oracle_,true,dbms_lob.call);
   dbms_lob.createtemporary(retained_,true,dbms_lob.call);
+  dbms_lob.createtemporary(history_retained_,true,dbms_lob.call);
+  select number_value into history_interval_ from doom_config
+    where config_key='HISTORY_SNAPSHOT_INTERVAL';
 
   for sample_ in 1..300 loop
     command_:=hextoraw('444d53430201000000000000'||lpad(to_char(seq_+1,'fmxxxxxxxx'),8,'0')||
@@ -86,6 +94,7 @@ begin
       case when mod(sample_,19)=0 then '01' else '00' end||
       case when mod(sample_,5)=0 then '01' else '00' end||'00000000');
     request_:=lower(rawtohex(sys_guid()));old_next_:=next_mobj_;
+    command_mode_:=mod(sample_,37)<>0;
     if mod(sample_,37)=0 then
       delta_:=doom_unified_actor_prepare(session_,lineage_,generation_,request_,'TIC',tic_,seq_,
         rng_,next_mobj_,0);plain_tics_:=plain_tics_+1;
@@ -94,6 +103,10 @@ begin
       doom_unified_delta_apply.apply_tic(session_,lineage_,tic_,seq_,delta_,committed_tic_,
         committed_seq_,version_,count_,delta_sha_);
     else
+      doom_command_ledger.begin_dmsc_v2(session_,lineage_,tic_,seq_,command_,ledger_tic_,
+        ledger_seq_,ledger_sha_,ledger_state_);
+      if ledger_tic_<>tic_+1 or ledger_seq_<>seq_+1 then
+        raise_application_error(-20000,'retained ledger frontier '||sample_);end if;
       delta_:=doom_unified_command_tic_prepare(session_,lineage_,generation_,request_,tic_,seq_,
         rng_,next_mobj_,0,command_);command_tics_:=command_tics_+1;
       if rawtohex(utl_raw.substr(delta_,1,8))<>'44554F5001000500' then
@@ -155,6 +168,38 @@ begin
         ' numbers='||oracle_number_||'|'||retained_number_||' ord='||diff_ord_||
         ' ids='||oracle_id_||'|'||retained_id_);
     end if;
+    if command_mode_ then
+      dbms_lob.trim(ledger_state_,0);dbms_lob.copy(ledger_state_,oracle_,
+        dbms_lob.getlength(oracle_),1,1);
+      doom_command_ledger.finalize_command(session_,lineage_,committed_seq_,oracle_sha_,oracle_sha_);
+    end if;
+    if command_mode_ and mod(committed_tic_,history_interval_)=0 then
+      select command_sha,event_sha into command_sha_,event_sha_ from history_heads
+        where session_token=session_ and lineage=lineage_;
+      history_sha_:=doom_unified_history_fill(session_,lineage_,generation_,request_,
+        committed_tic_,committed_seq_,command_sha_,event_sha_,oracle_sha_,oracle_sha_,history_retained_);
+      if not regexp_like(history_sha_,'^[0-9a-f]{64}$') then
+        raise_application_error(-20000,'retained history fill '||sample_||' '||history_sha_);end if;
+      doom_capture_tic_blob(session_,committed_tic_,oracle_,oracle_sha_,oracle_sha_);
+      select snapshot_blob,snapshot_sha into history_sql_,history_sql_sha_ from state_history
+        where session_token=session_ and lineage=lineage_ and tic=committed_tic_;
+      if history_sha_<>history_sql_sha_ or
+         dbms_lob.getlength(history_retained_)<>dbms_lob.getlength(history_sql_) or
+         dbms_lob.compare(history_retained_,history_sql_)<>0 or
+         lower(rawtohex(dbms_crypto.hash(history_retained_,dbms_crypto.hash_sh256)))<>history_sha_ then
+        raise_application_error(-20000,'retained history mismatch tic='||committed_tic_);end if;
+      delete from state_history where session_token=session_ and lineage=lineage_
+        and tic=committed_tic_;
+      doom_capture_retained_tic(session_,lineage_,committed_tic_,committed_seq_,
+        command_sha_,event_sha_,oracle_sha_,oracle_sha_,history_sha_,history_retained_);
+      select snapshot_blob,snapshot_sha into history_sql_,history_sql_sha_ from state_history
+        where session_token=session_ and lineage=lineage_ and tic=committed_tic_;
+      if history_sha_<>history_sql_sha_ or
+         dbms_lob.getlength(history_retained_)<>dbms_lob.getlength(history_sql_) or
+         dbms_lob.compare(history_retained_,history_sql_)<>0 then
+        raise_application_error(-20000,'retained history persist mismatch tic='||committed_tic_);end if;
+      history_checkpoints_:=history_checkpoints_+1;
+    end if;
     select count(case when projectile_kind is null then 1 end),
       count(case when projectile_kind is not null then 1 end)
       into running_,count_ from mobjs where session_token=session_ and mobj_id>=old_next_;
@@ -178,7 +223,8 @@ begin
   dbms_output.put_line('RETAINED_STATE_CODEC_OK tics=300 mismatches='||mismatches_||
     ' recoveries=1 drops='||drop_rows_||' projectiles='||projectile_rows_||
     ' command_tics='||command_tics_||' plain_tics='||plain_tics_||
-    ' frontier='||tic_||'|'||seq_||' generation='||generation_);
+    ' history_checkpoints='||history_checkpoints_||' frontier='||tic_||'|'||seq_||
+    ' generation='||generation_);
   report_('retained_state_total_ms',total_ms_);report_('retained_state_encode_ms',encode_ms_);
   report_('retained_state_blob_ms',blob_ms_);report_('retained_state_bytes',bytes_);
   report_('retained_state_compare_ms',compare_ms_);report_('retained_state_object_encode_ms',object_encode_ms_);

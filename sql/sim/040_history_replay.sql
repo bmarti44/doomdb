@@ -1,7 +1,7 @@
 -- T6.4 deterministic persistence.  Durable history is append-only; restore
 -- operations branch by lineage and only replace the live authoritative rows.
 merge into doom_config d
-using (select 'HISTORY_SNAPSHOT_INTERVAL' config_key,4 number_value from dual) s
+using (select 'HISTORY_SNAPSHOT_INTERVAL' config_key,32 number_value from dual) s
 on (d.config_key=s.config_key)
 when matched then update set d.number_value=s.number_value,d.text_value=null
 when not matched then insert(config_key,number_value,text_value)
@@ -21,6 +21,8 @@ alter table tic_commands add (
     regexp_like(state_sha,'^[0-9a-f]{64}$') and
     regexp_like(frame_sha,'^[0-9a-f]{64}$'))
 );
+alter table tic_commands modify lob(state_blob)
+  (cache logging retention none);
 alter table tic_commands drop constraint tic_commands_tic_uq;
 alter table tic_commands add constraint tic_commands_tic_uq
   unique(session_token,lineage,tic,command_ordinal);

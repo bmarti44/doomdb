@@ -218,7 +218,7 @@ create table state_history (
   constraint state_history_session_fk foreign key (session_token) references game_sessions (session_token) on delete cascade,
   constraint state_history_range_ck check (tic >= 0 and first_command_seq >= 0 and last_command_seq >= first_command_seq),
   constraint state_history_sha_ck check (regexp_like(state_sha, '^[0-9a-f]{64}$'))
-);
+) lob(snapshot_blob) store as securefile(cache logging retention none);
 
 create table save_slots (
   session_token varchar2(32) not null,

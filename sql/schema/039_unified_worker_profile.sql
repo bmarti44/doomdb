@@ -28,6 +28,21 @@ begin
   add_column('STATE_CHANGED');
   add_column('STATE_REUSED');
   add_column('STATE_REMOVED');
+  add_column('HISTORY_US');
+  add_column('HISTORY_ENCODE_US');
+  add_column('HISTORY_BLOB_US');
+  add_column('HISTORY_PERSIST_US');
   add_column('FINALIZE_US');
+  add_column('COMMIT_US');
 end;
 /
+
+-- The hot write path must not block on direct-path container I/O. All three
+-- authoritative payloads remain redo-logged, while RETENTION NONE avoids old
+-- SecureFile versions for immutable insert-once rows.
+alter table doom_worker_result modify lob(response_blob)
+  (cache logging retention none);
+alter table tic_commands modify lob(state_blob)
+  (cache logging retention none);
+alter table state_history modify lob(snapshot_blob)
+  (cache logging retention none);

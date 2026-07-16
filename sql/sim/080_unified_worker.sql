@@ -248,12 +248,13 @@ create or replace package body doom_unified_worker as
     l_next_mobj number;l_result_tic number;l_result_seq number;
     l_ledger_sha varchar2(64);l_state_locator blob;
     l_delta_locator blob;l_response_locator blob;l_delta raw(32767);
-    l_state_payload blob;l_render_payload blob;
+    l_state_payload blob;l_render_payload blob;l_history_payload blob;
     l_committed_tic number;l_committed_seq number;l_delta_version number;
     l_delta_count number;l_delta_sha varchar2(64);l_state_sha varchar2(64);
     l_frame_sha varchar2(4000);l_response_sha varchar2(64);
     l_response_bytes number;l_result varchar2(4000);l_error varchar2(4000);
     l_prepared number:=0;l_committed number:=0;l_failpoint number;
+    l_history_interval number;
     l_stage timestamp with time zone;l_prepare_us number;l_apply_us number;
     l_state_us number;l_render_us number;l_finalize_us number;
     l_render_call_us number;l_render_update_us number;l_render_kernel_us number;
@@ -261,6 +262,19 @@ create or replace package body doom_unified_worker as
     l_response_hash_us number;l_state_encode_us number;l_state_blob_us number;
     l_state_compare_us number;l_state_object_encode_us number;
     l_state_changed number;l_state_reused number;l_state_removed number;
+    l_event_sha varchar2(64);l_snapshot_sha varchar2(4000);
+    l_history_stage timestamp with time zone;l_finalize_stage timestamp with time zone;
+    l_history_us number;
+    l_history_encode_us number;l_history_blob_us number;l_history_persist_us number;
+    l_commit_us number;
+    procedure free_temp(p_lob in out nocopy blob) is
+    begin
+      if p_lob is not null and dbms_lob.istemporary(p_lob)=1 then
+        dbms_lob.freetemporary(p_lob);
+      end if;
+      p_lob:=null;
+    exception when others then p_lob:=null;
+    end;
   begin
     begin
       select worker_slot,session_token,save_lineage,generation,expected_tic,
@@ -329,6 +343,10 @@ create or replace package body doom_unified_worker as
       l_prepared:=1;
       l_prepare_us:=elapsed_us(l_stage);
       l_failpoint:=config_number('UNIFIED_WORKER_FAILPOINT');
+      l_history_interval:=config_number('HISTORY_SNAPSHOT_INTERVAL');
+      if l_history_interval<>trunc(l_history_interval) or l_history_interval<1 then
+        raise_application_error(c_invalid,'invalid history checkpoint interval');
+      end if;
       if l_failpoint in(1,4) then
         raise_application_error(c_invalid,'injected pre-apply worker failure');
       end if;
@@ -345,6 +363,7 @@ create or replace package body doom_unified_worker as
       end if;
 
       l_stage:=systimestamp;
+      dbms_application_info.set_action('DOOM_STATE_COPY');
       dbms_lob.trim(l_delta_locator,0);
       dbms_lob.writeappend(l_delta_locator,utl_raw.length(l_delta),l_delta);
       -- The retained owner already has every canonical field in primitive
@@ -361,6 +380,7 @@ create or replace package body doom_unified_worker as
       dbms_lob.trim(l_state_locator,0);
       dbms_lob.copy(l_state_locator,l_state_payload,
         dbms_lob.getlength(l_state_payload),1,1);
+      free_temp(l_state_payload);
       l_state_us:=elapsed_us(l_stage);
       l_state_encode_us:=round(doom_unified_state_encode_ns/1000);
       l_state_blob_us:=round(doom_unified_state_blob_ns/1000);
@@ -370,6 +390,7 @@ create or replace package body doom_unified_worker as
       l_state_reused:=doom_unified_state_reused;
       l_state_removed:=doom_unified_state_removed;
       l_stage:=systimestamp;
+      dbms_application_info.set_action('DOOM_RENDER');
       dbms_lob.createtemporary(l_render_payload,true,dbms_lob.call);
       l_frame_sha:=doom_unified_render_pending(l_session,l_lineage,l_generation,
         p_request,l_state_sha,l_render_payload);
@@ -382,9 +403,11 @@ create or replace package body doom_unified_worker as
       -- measured write tail dominates otherwise. Java fills a temporary BLOB;
       -- PL/SQL performs one bounded durable copy in the owning transaction.
       l_stage:=systimestamp;
+      dbms_application_info.set_action('DOOM_RESPONSE_COPY');
       dbms_lob.trim(l_response_locator,0);
       dbms_lob.copy(l_response_locator,l_render_payload,
         dbms_lob.getlength(l_render_payload),1,1);
+      free_temp(l_render_payload);
       l_response_copy_us:=elapsed_us(l_stage);
       l_response_bytes:=dbms_lob.getlength(l_response_locator);
       if l_response_bytes=0 then
@@ -400,14 +423,33 @@ create or replace package body doom_unified_worker as
       l_codec_us:=round(doom_bsp_last_codec_ns/1000);
       l_blob_us:=round(doom_bsp_last_blob_ns/1000);
 
-      l_stage:=systimestamp;
+      l_finalize_stage:=systimestamp;
       doom_command_ledger.finalize_command(l_session,l_lineage,l_result_seq,
         l_state_sha,l_frame_sha);
-      if mod(l_result_tic,4)=0 then
-        doom_capture_tic_blob(l_session,l_result_tic,l_state_locator,
-          l_state_sha,l_frame_sha);
+      if mod(l_result_tic,l_history_interval)=0 then
+        dbms_application_info.set_action('DOOM_HISTORY');
+        l_history_stage:=systimestamp;
+        select event_sha into l_event_sha from history_heads
+          where session_token=l_session and lineage=l_lineage;
+        dbms_lob.createtemporary(l_history_payload,true,dbms_lob.call);
+        l_snapshot_sha:=doom_unified_history_fill(l_session,l_lineage,l_generation,
+          p_request,l_result_tic,l_result_seq,l_ledger_sha,l_event_sha,l_state_sha,
+          l_frame_sha,l_history_payload);
+        if not regexp_like(l_snapshot_sha,'^[0-9a-f]{64}$') then
+          raise_application_error(c_invalid,'retained history codec: '||
+            substr(l_snapshot_sha,1,3000));
+        end if;
+        l_history_encode_us:=round(doom_unified_history_encode_ns/1000);
+        l_history_blob_us:=round(doom_unified_history_blob_ns/1000);
+        l_stage:=systimestamp;
+        doom_capture_retained_tic(l_session,l_lineage,l_result_tic,l_result_seq,
+          l_ledger_sha,l_event_sha,l_state_sha,l_frame_sha,l_snapshot_sha,
+          l_history_payload);
+        free_temp(l_history_payload);
+        l_history_persist_us:=elapsed_us(l_stage);
+        l_history_us:=elapsed_us(l_history_stage);
       end if;
-      l_finalize_us:=elapsed_us(l_stage);
+      l_finalize_us:=elapsed_us(l_finalize_stage);
       update doom_worker_result set committed_tic=l_committed_tic,
         committed_command_seq=l_committed_seq,delta_version=l_delta_version,
         delta_count=l_delta_count,delta_bytes=utl_raw.length(l_delta),
@@ -422,7 +464,9 @@ create or replace package body doom_unified_worker as
         render_call_us=l_render_call_us,render_update_us=l_render_update_us,
         render_kernel_us=l_render_kernel_us,codec_us=l_codec_us,
         blob_us=l_blob_us,response_copy_us=l_response_copy_us,
-        response_hash_us=l_response_hash_us,finalize_us=l_finalize_us
+        response_hash_us=l_response_hash_us,history_us=l_history_us,
+        history_encode_us=l_history_encode_us,history_blob_us=l_history_blob_us,
+        history_persist_us=l_history_persist_us,finalize_us=l_finalize_us
         where request_id=p_request;
       if sql%rowcount<>1 then
         raise_application_error(c_invalid,'worker result finalize race');
@@ -438,9 +482,13 @@ create or replace package body doom_unified_worker as
       if sql%rowcount<>1 then
         raise_application_error(c_invalid,'worker heartbeat fence');
       end if;
-      commit;
+      dbms_application_info.set_action('DOOM_DURABLE_COMMIT');
+      l_stage:=systimestamp;
+      commit write batch wait;
+      l_commit_us:=elapsed_us(l_stage);
       l_committed:=1;
     exception when others then
+      free_temp(l_state_payload);free_temp(l_render_payload);free_temp(l_history_payload);
       l_error:=substr(sqlerrm||' '||dbms_utility.format_error_backtrace,1,4000);
       if l_committed=0 then
         rollback;
@@ -490,10 +538,13 @@ create or replace package body doom_unified_worker as
       audit_event(p_request,p_slot,p_worker_generation,'POSTCOMMIT_RECOVERED',
         l_error);
     end;
+    update doom_worker_result set commit_us=l_commit_us
+      where request_id=p_request;
     -- The SQL/AQ dequeue transaction is already durable.  Correlate only after
     -- Java accept or combined reconstruction establishes the live generation.
     respond(p_request);
     commit;
+    dbms_application_info.set_action(null);
   end;
 
   procedure run_slot(p_worker_slot in number) is

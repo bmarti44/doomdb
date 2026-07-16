@@ -27,6 +27,7 @@ public final class DoomUnifiedActorStateBench {
   private static String pendingRequest,lastError="";
   private static int pendingMode;
   private static boolean pendingStateEncoded;
+  private static String pendingStateSha;
   private static byte[] pendingChild;
   private static long ticChaseNs,ticLoopNs,ticEncodeNs;
   private static long lastActorTicNs,lastCommandEncodeNs;
@@ -42,6 +43,9 @@ public final class DoomUnifiedActorStateBench {
   private static long lastStateEncodeNs,lastStateBlobNs,lastStateTotalNs;
   private static long lastStateCompareNs,lastStateObjectEncodeNs;
   private static int lastStateChanged,lastStateReused,lastStateRemoved;
+  private static byte[] historyOutput=new byte[524288];
+  private static int historyOutputLength;
+  private static long lastHistoryEncodeNs,lastHistoryBlobNs,lastHistoryTotalNs;
 
   private DoomUnifiedActorStateBench() {}
 
@@ -358,6 +362,15 @@ public final class DoomUnifiedActorStateBench {
   }
   private static String stateSha()throws Exception{if(stateDigest==null)stateDigest=MessageDigest.getInstance("SHA-256");
     stateDigest.reset();stateDigest.update(stateOutput,0,stateOutputLength);return hex(stateDigest.digest());}
+  private static boolean lowerHex(String value,int length){if(value==null||value.length()!=length)return false;
+    for(int i=0;i<length;i++){char c=value.charAt(i);if(!((c>='0'&&c<='9')||(c>='a'&&c<='f')))return false;}
+    return true;}
+  private static void ensureHistory(int bytes){if(historyOutputLength+bytes<=historyOutput.length)return;
+    historyOutput=Arrays.copyOf(historyOutput,Math.max(historyOutput.length*2,historyOutputLength+bytes));}
+  private static void historyAscii(String value){ensureHistory(value.length());
+    for(int i=0;i<value.length();i++)historyOutput[historyOutputLength++]=(byte)value.charAt(i);}
+  private static String historySha()throws Exception{if(stateDigest==null)stateDigest=MessageDigest.getInstance("SHA-256");
+    stateDigest.reset();stateDigest.update(historyOutput,0,historyOutputLength);return hex(stateDigest.digest());}
   private static void loadStateTemplate(Connection c,String session,Owner o)throws Exception{
     byte[] seed;String expectedSha;
     try(CallableStatement call=c.prepareCall("begin doom_canonical_state.build(?,0,?,?); end;")){
@@ -590,7 +603,8 @@ public final class DoomUnifiedActorStateBench {
   }
 
   private static void invalidateForRecovery(){
-    pending=null;pendingRequest=null;pendingChild=null;pendingMode=0;pendingStateEncoded=false;committed=null;spare=null;
+    pending=null;pendingRequest=null;pendingChild=null;pendingMode=0;pendingStateEncoded=false;
+    pendingStateSha=null;committed=null;spare=null;
     lastRenderUpserts=lastRenderRemoves=0;DoomFreshDeathTickBench.invalidateForRecovery();
   }
   public static String forceLoad(String session,String lineage,long generation,String stateMapSha){
@@ -927,7 +941,7 @@ public final class DoomUnifiedActorStateBench {
       putNumberFixed(child,74,candidate.playerZ);putInt(child,97,candidate.playerSector);
       putInt(child,101,nestedLength);System.arraycopy(nested,0,child,COMMAND_CHILD_HEADER,nestedLength);
       byte[] result=wrap(MODE_COMMAND_TIC,child,child.length);pending=candidate;pendingRequest=request;
-      pendingStateEncoded=false;
+      pendingStateEncoded=false;pendingStateSha=null;
       if(DoomPlayerMovementBench.traceEnabled)lastCommandEncodeNs=System.nanoTime()-encodeStarted;
       pendingMode=MODE_COMMAND_TIC;
       pendingChild=null;lastError="";return result;
@@ -1135,7 +1149,7 @@ public final class DoomUnifiedActorStateBench {
         selected=MODE_TIC;child=ticDelta(candidate,s,l,g,request);childLength=ticOutputLength;
       }else throw new IllegalStateException("unified mode");
       byte[] result=wrap(selected,child,childLength);pending=candidate;pendingRequest=request;
-      pendingStateEncoded=false;
+      pendingStateEncoded=false;pendingStateSha=null;
       pendingMode=selected;pendingChild=selected==MODE_TIC?null:Arrays.copyOf(child,childLength);
       lastError="";return result;
     }catch(Throwable e){
@@ -1157,7 +1171,7 @@ public final class DoomUnifiedActorStateBench {
           DoomRetainedRenderSceneBench.acceptOwnerTic(s,g,request)),"unified renderer accept");
       if(!pendingStateEncoded)pending.stateMobjFragments=null;
       Owner previous=committed;committed=pending;spare=previous;pending=null;pendingRequest=null;
-      pendingStateEncoded=false;
+      pendingStateEncoded=false;pendingStateSha=null;
       pendingChild=null;lastError="";return "OK";
     }catch(Throwable e){try{if(DoomRetainedRenderSceneBench.ownerTicPending())
         DoomRetainedRenderSceneBench.discardOwnerTic(s,g,request);}catch(Throwable ignored){}
@@ -1170,7 +1184,7 @@ public final class DoomUnifiedActorStateBench {
         require("OK".equals(child),"unified child discard "+child);}
       if(DoomRetainedRenderSceneBench.ownerTicPending())require("OK".equals(
           DoomRetainedRenderSceneBench.discardOwnerTic(s,g,request)),"unified renderer discard");
-      spare=pending;pending=null;pendingRequest=null;pendingStateEncoded=false;
+      spare=pending;pending=null;pendingRequest=null;pendingStateEncoded=false;pendingStateSha=null;
       pendingChild=null;lastError="";return "OK";
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}}
   public static String fillPendingState(String s,String l,long g,String request,Blob payload){
@@ -1184,7 +1198,7 @@ public final class DoomUnifiedActorStateBench {
         int written=payload.setBytes(offset+1L,stateOutput,offset,count);
         require(written==count,"unified state short BLOB write");offset+=count;}
       lastStateBlobNs=System.nanoTime()-phase;lastStateTotalNs=System.nanoTime()-totalStarted;
-      pendingStateEncoded=true;lastError="";return sha;
+      pendingStateEncoded=true;pendingStateSha=sha;lastError="";return sha;
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();
       try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}return "ERR|"+lastError;}}
   public static long lastStateEncodeNanos(){return lastStateEncodeNs;}
@@ -1195,6 +1209,33 @@ public final class DoomUnifiedActorStateBench {
   public static int lastStateChanged(){return lastStateChanged;}
   public static int lastStateReused(){return lastStateReused;}
   public static int lastStateRemoved(){return lastStateRemoved;}
+  public static String fillPendingHistory(String s,String l,long g,String request,long tic,long frontier,
+      String commandSha,String eventSha,String stateSha,String frameSha,Blob payload){
+    long totalStarted=System.nanoTime();
+    try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
+        committed.generation==g&&request!=null&&request.equals(pendingRequest)&&pendingStateEncoded&&
+        tic==pending.tic&&frontier==pending.seq&&lowerHex(l,64)&&lowerHex(commandSha,64)&&lowerHex(eventSha,64)&&
+        lowerHex(stateSha,64)&&stateSha.equals(pendingStateSha)&&lowerHex(frameSha,64)&&payload!=null,
+        "unified history pending fence");long phase=System.nanoTime();
+      historyOutputLength=0;historyAscii("{\"schema\":1,\"lineage\":\""+l+
+        "\",\"frontier\":"+frontier+",\"command_sha\":\""+commandSha+
+        "\",\"event_sha\":\""+eventSha+"\",\"state_sha\":\""+stateSha+
+        "\",\"frame_sha\":\""+frameSha+"\",\"state\":");
+      ensureHistory(stateOutputLength+1);
+      System.arraycopy(stateOutput,0,historyOutput,historyOutputLength,stateOutputLength);
+      historyOutputLength+=stateOutputLength;historyOutput[historyOutputLength++]='}';
+      String sha=historySha();
+      lastHistoryEncodeNs=System.nanoTime()-phase;phase=System.nanoTime();
+      payload.truncate(0);int offset=0;while(offset<historyOutputLength){int count=Math.min(32767,
+          historyOutputLength-offset);int written=payload.setBytes(offset+1L,historyOutput,offset,count);
+        require(written==count,"unified history short BLOB write");offset+=count;}
+      lastHistoryBlobNs=System.nanoTime()-phase;lastHistoryTotalNs=System.nanoTime()-totalStarted;
+      lastError="";return sha;
+    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();
+      try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}return "ERR|"+lastError;}}
+  public static long lastHistoryEncodeNanos(){return lastHistoryEncodeNs;}
+  public static long lastHistoryBlobNanos(){return lastHistoryBlobNs;}
+  public static long lastHistoryTotalNanos(){return lastHistoryTotalNs;}
   public static String renderPending(String s,String l,long g,String request,String stateSha,Blob payload){
     try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
         committed.generation==g&&request!=null&&request.equals(pendingRequest)&&
@@ -1259,7 +1300,7 @@ public final class DoomUnifiedActorStateBench {
           times[149]+"|"+times[284]+"|"+times[299]+phases;
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
     finally{if(activeRequest!=null&&activeRequest.equals(pendingRequest)){
-        pending=null;pendingRequest=null;pendingChild=null;pendingStateEncoded=false;}
+        pending=null;pendingRequest=null;pendingChild=null;pendingStateEncoded=false;pendingStateSha=null;}
       if(savedX!=null&&committed!=null){committed.playerX=savedX;committed.playerY=savedY;
       committed.playerSector=savedSector;}}
   }

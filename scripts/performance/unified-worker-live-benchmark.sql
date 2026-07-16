@@ -14,7 +14,10 @@ declare
   delta_sha_ varchar2(64);state_sha_ varchar2(64);frame_sha_ varchar2(64);
   response_bytes_ number;response_sha_ varchar2(64);delta_ blob;payload_ blob;
   tic_ number;seq_ number;old_wait_ number;old_capacity_ number;count_ number;
+  history_interval_ number;
   started_ timestamp with time zone;samples_ sys.odcinumberlist:=sys.odcinumberlist();
+  checkpoint_samples_ sys.odcinumberlist:=sys.odcinumberlist();
+  regular_samples_ sys.odcinumberlist:=sys.odcinumberlist();
   p50_ number;p95_ number;max_ number;min_bytes_ number:=null;max_bytes_ number:=0;
   deadline_ timestamp with time zone;
 
@@ -64,6 +67,8 @@ begin
     where config_key='UNIFIED_WORKER_WAIT_SECONDS';
   select number_value into old_capacity_ from doom_config
     where config_key='MAX_ACTIVE_SESSIONS';
+  select number_value into history_interval_ from doom_config
+    where config_key='HISTORY_SNAPSHOT_INTERVAL';
   update doom_config set number_value=30 where config_key='UNIFIED_WORKER_WAIT_SECONDS';
   update doom_config set number_value=greatest(number_value,128)
     where config_key='MAX_ACTIVE_SESSIONS';
@@ -99,6 +104,10 @@ begin
     max_bytes_:=greatest(max_bytes_,response_bytes_);
     if sample_>c_warm then
       samples_.extend;samples_(samples_.count):=elapsed_ms_(started_);
+      if mod(committed_tic_,history_interval_)=0 then checkpoint_samples_.extend;
+        checkpoint_samples_(checkpoint_samples_.count):=samples_(samples_.count);
+      else regular_samples_.extend;
+        regular_samples_(regular_samples_.count):=samples_(samples_.count);end if;
     end if;
   end loop;
   select percentile_cont(.5) within group(order by column_value),
@@ -109,12 +118,24 @@ begin
     ' response_bytes='||min_bytes_||'|'||max_bytes_);
   dbms_output.put_line('unified_worker_caller_ms='||round(p50_,3)||'|'||
     round(p95_,3)||'|'||round(max_,3));
+  select percentile_cont(.5) within group(order by column_value),
+    percentile_cont(.95) within group(order by column_value),max(column_value)
+    into p50_,p95_,max_ from table(checkpoint_samples_);
+  dbms_output.put_line('unified_worker_caller_checkpoint_ms='||round(p50_,3)||'|'||
+    round(p95_,3)||'|'||round(max_,3));
+  select percentile_cont(.5) within group(order by column_value),
+    percentile_cont(.95) within group(order by column_value),max(column_value)
+    into p50_,p95_,max_ from table(regular_samples_);
+  dbms_output.put_line('unified_worker_caller_regular_ms='||round(p50_,3)||'|'||
+    round(p95_,3)||'|'||round(max_,3));
   for stage_ in (
     with measured as (
       select x.committed_tic,x.prepare_us,x.apply_us,x.state_us,x.state_encode_us,
         x.state_blob_us,x.state_compare_us,x.state_object_encode_us,x.state_changed,
         x.state_reused,x.state_removed,x.render_us,x.render_call_us,x.render_update_us,
-        x.render_kernel_us,x.codec_us,x.blob_us,x.response_copy_us,x.response_hash_us,x.finalize_us,
+        x.render_kernel_us,x.codec_us,x.blob_us,x.response_copy_us,x.response_hash_us,
+        x.history_us,x.history_encode_us,x.history_blob_us,x.history_persist_us,x.finalize_us,
+        x.commit_us,
         row_number() over(order by r.created_at,r.request_id) sample_no
       from doom_worker_request r join doom_worker_result x
         on x.request_id=r.request_id
@@ -140,11 +161,20 @@ begin
       union all select 'blob',blob_us/1000 from measured where sample_no>30
       union all select 'response_copy',response_copy_us/1000 from measured where sample_no>30
       union all select 'response_hash',response_hash_us/1000 from measured where sample_no>30
+      union all select 'history',history_us/1000 from measured
+        where sample_no>30 and history_us is not null
+      union all select 'history_encode',history_encode_us/1000 from measured
+        where sample_no>30 and history_encode_us is not null
+      union all select 'history_blob',history_blob_us/1000 from measured
+        where sample_no>30 and history_blob_us is not null
+      union all select 'history_persist',history_persist_us/1000 from measured
+        where sample_no>30 and history_persist_us is not null
       union all select 'finalize',finalize_us/1000 from measured where sample_no>30
       union all select 'finalize_checkpoint',finalize_us/1000 from measured
-        where sample_no>30 and mod(committed_tic,4)=0
+        where sample_no>30 and history_us is not null
       union all select 'finalize_regular',finalize_us/1000 from measured
-        where sample_no>30 and mod(committed_tic,4)<>0
+        where sample_no>30 and history_us is null
+      union all select 'commit',commit_us/1000 from measured where sample_no>30
     )
     select stage,percentile_cont(.5) within group(order by value) p50,
       percentile_cont(.95) within group(order by value) p95,max(value) maximum

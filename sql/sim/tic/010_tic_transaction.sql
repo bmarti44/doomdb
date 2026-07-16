@@ -128,6 +128,7 @@ create or replace package body doom_tic_tx as
     l_world_ready number;
     l_lineage varchar2(64);
     l_legacy number;
+    l_history_interval number;
     l_row_command_sha varchar2(64);
     l_expected_keys constant varchar2(200) :=
       ',seq,turn,forward,strafe,run,fire,use,weapon,pause,automap,menu,cheat,';
@@ -143,6 +144,11 @@ create or replace package body doom_tic_tx as
       fail(c_session, 'unknown or expired session');
     end;
     l_initial_automap := l_automap;
+    select number_value into l_history_interval from doom_config
+      where config_key='HISTORY_SNAPSHOT_INTERVAL';
+    if l_history_interval<>trunc(l_history_interval) or l_history_interval<1 then
+      fail(c_malformed,'invalid history checkpoint interval');
+    end if;
 
     begin
       if p_commands is null then fail(c_malformed, 'missing command document'); end if;
@@ -336,11 +342,11 @@ create or replace package body doom_tic_tx as
         l_command_state_blob,l_state_sha);
       doom_command_ledger.finalize_command(p_session,l_lineage,command_row.seq,
         l_state_sha,l_state_sha);
-      -- Modern lineages only persist history documents at the reviewed four-tic
+      -- Modern lineages only persist history documents at the configured
       -- checkpoint cadence.  Per-command hashes/BLOBs are already complete;
       -- avoid re-hashing the same 200+ KiB state in the history adapter on the
       -- three non-checkpoint tics.  Legacy batches retain their terminal call.
-      if (l_legacy=0 and mod(l_tic+command_row.ord,4)=0)
+      if (l_legacy=0 and mod(l_tic+command_row.ord,l_history_interval)=0)
          or (l_legacy=1 and command_row.ord=l_count) then
         doom_capture_tic_blob(p_session,l_tic+command_row.ord,l_command_state_blob,
           l_state_sha,l_state_sha);

@@ -103,8 +103,8 @@ create table doom_worker_result (
     regexp_like(state_sha,'^[0-9a-f]{64}$') and
     regexp_like(frame_sha,'^[0-9a-f]{64}$') and
     regexp_like(response_sha,'^[0-9a-f]{64}$'))
-) lob(delta_blob) store as securefile(cache)
-  lob(response_blob) store as securefile(cache);
+) lob(delta_blob) store as securefile(cache logging retention none)
+  lob(response_blob) store as securefile(cache logging retention none);
 
 create table doom_worker_audit (
   audit_id number generated always as identity not null,

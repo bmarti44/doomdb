@@ -6,8 +6,11 @@ regenerates the vendor SPFILE with `sga_target=1024m` and
 `pga_aggregate_target=256m` before handing control back to the vendor entrypoint.
 The first-database initialization hook grants the fixed `DOOM` owner direct
 `EXECUTE` capability on `SYS.DBMS_CRYPTO`, which DoomDB requires for canonical
-SHA-256 documents. The grant contains no credential and is persisted with the
-database volume.
+SHA-256 documents. The same first-database hook presizes the USERS datafile to
+4 GiB with 512 MiB growth increments and replaces the image's 200 MiB redo logs
+with three 1 GiB groups. This prevents per-second datafile growth and roughly
+per-minute log switches under the retained worker's durable write rate. These
+settings contain no credential and are persisted with the database volume.
 On the first run with an empty ORDS configuration volume, the wrapper removes
 the ORDS repository bundled in Oracle Free through the supported ORDS CLI; the
 official ORDS entrypoint then installs the pinned version and persists its pool.
