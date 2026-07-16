@@ -1401,6 +1401,16 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   amendment: simulation and rendering share retained primitive state, SQL
   persists authoritative per-tic deltas/checkpoints and remains the parity
   oracle, and no request rebuilds Java state by relational row walking.
+- Array-resident simulation slice 1 (2026-07-16): the retained OJVM worker now
+  has a no-JDBC player/frontier kernel and a versioned packed command/delta
+  boundary. It passed 270/270 exact SQL-oracle turn results, 4/4 packed batch
+  results, and atomic rejection with no partial state mutation. Every public
+  Java entry catches `Throwable`, and a session token fence prevents retained
+  state from leaking between games. The interpreted/JIT-visible internal
+  ten-million-turn reproducible diagnostic measured 286.749 ns/tic; this measures only the
+  arithmetic kernel and does not count persistence, rendering, AQ, ORDS, or
+  browser work. Extend this same boundary with array-resident collision and
+  player movement next; do not introduce per-tic JDBC or JSON reconstruction.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

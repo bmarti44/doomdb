@@ -12,6 +12,14 @@ rejected canonical-state serializer spike.  It is byte/SHA exact, but its six
 internal-JDBC row walks measured 69.286/106.270 ms p50/p95.  The call specs are
 not part of bootstrap and the live probe objects are removed after measurement.
 
+`run-p12.0-resident-simulation-probe.sh` exercises the first approved retained
+simulation slice inside OJVM. A worker loads the player frontier once, applies
+validated turn commands from a compact binary batch without JDBC, and returns a
+compact binary delta for SQL persistence. The probe requires exact parity for
+270 scalar turns and four packed turns, plus atomic rejection of an invalid
+batch. Its internal ten-million-turn sample is a kernel-only diagnostic and is
+never an end-to-end FPS claim.
+
 `verify-performance-baseline.mjs` has two fail-closed modes. With one evidence
 path it verifies an already collected baseline and every referenced artifact.
 With `--collect REPLAY EVIDENCE`, it performs the real 300-frame replay and

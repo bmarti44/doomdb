@@ -173,6 +173,31 @@ one array-resident state in the retained database worker, SQL remains the
 persistence/parity authority, and each tic writes relational deltas and exact
 checkpoints rather than rebuilding the Java state from relational rows.
 
+## Array-resident simulation slice 1
+
+The first implementation establishes the intended boundary rather than another
+relational snapshot experiment. `DoomResidentSimulationBench` loads the current
+player/frontier once into session-private primitive state, accepts a versioned
+binary batch of one to four validated turn commands, and emits one versioned
+binary delta. It performs no JDBC or JSON work per tic. A session-token fence
+prevents cross-game reuse, the batch validates into local variables before
+committing retained state, and every public Java entry catches `Throwable`.
+
+The live Oracle probe passed:
+
+- 270/270 unique scalar turn results against the SQL `MOD(angle + turn *
+  5.625 + 360, 360)` oracle;
+- 4/4 results through the production-shaped packed batch boundary;
+- atomic rejection of an invalid/gapped batch without partial mutation; and
+- a kernel-only ten-million-turn reproducible diagnostic at 286.749 ns/tic.
+
+The nanosecond result is not an FPS measurement: it excludes collision, world
+machines, actors, state hashing, relational delta persistence, rendering, AQ,
+ORDS, wire transfer, decode, and blit. Its value is architectural: retained
+primitive computation is negligible compared with the rejected 10.874 ms
+snapshot rebuild and 24.162/36.939 ms SQL simulation. The next differential
+slice extends this same packed boundary with player movement and collision.
+
 Large frames remain in relational SecureFile rows. AQ carries only a small,
 unguessable request identifier and command metadata. The worker commits the
 authoritative state and response before signaling completion. AutoREST enforces
