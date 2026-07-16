@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | Renderer: 15.671/17.590 ms p50/p95. Death/drop and CHASE pass; warmed CHASE is 0.227/0.623 ms p50/p95. Unified exact world state passes 280/280 rows, and the transaction/restart probe passes. Attacks, production persistence, and public integration remain. |
+| P12.0 | Active playability gate | Direct retained rendering is 7.135/9.505 ms p50/p95 with exact camera, sector, and MOBJ changes. The four-slot AQ/Scheduler worker passes two-session isolation, response correlation, restart fencing, and terminal replay. The single-pass actor tic, durable deltas, and public 30 FPS proof remain. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -160,52 +160,30 @@ BLOB handoff is 0.063 ms p95 and the full renderer+codec+BLOB total is
 
 ## Is it playable yet?
 
-Not yet. The retained database worker proves that recurring ORDS/OJVM cold
-starts can be removed: its exact static 300-frame path is 15.671/17.590 ms
-p50/p95 through committed BLOB response. The real relational live-state
-snapshot composite is still 29.265/42.373 ms before simulation, ORDS, decode,
-or blit, while conservative SQL simulation is 24.162/36.939 ms. P12.0 is now
-implementing one array-resident simulation/render worker with relational
-deltas, checkpoints, and exact SQL differential oracles. Its first retained
-player/frontier slice crosses no JDBC/JSON boundary and matches 270/270 SQL
-turn results plus a four-command packed batch; that is a component parity gate,
-not a playable game result. Its pending state stays invisible until explicit
-post-commit acceptance, and session/lineage/generation fences pass. Oracle
-`NUMBER` also matches all 1,152 movement deltas and the first quadratic contact
-root byte-for-byte. A SHA-verified 247,103-byte worker catalog now retains all
-681 BSP nodes, 682 subsector owners, 1,175 collision lines, 182 sectors, and the
-movement matrix, BLOCKMAP, compact REJECT/sound matrices, all 256 RNG bytes,
-the database-defined 151-state actor graph, and all 511 possible exact hitscan
-spread, sine, and event-text values. Its BSP locator
-matches 270/270 SQL cases and all 33,124 directed sector pairs match SQL; the
-exact swept collision matches 270/270 sequential moves with 124 contact cases.
-BLOCKMAP pruning reduced that movement kernel from 16.746 ms to 0.734 ms p95.
-The kernel is now wired into the worker's pending state: 270/270 packed tics
-match SQL exactly, committed state remains unchanged before `accept`, and the
-combined prepare/accept boundary measures 0.261/0.762 ms p50/p95.
-The bounded actor phases match 53/53 quiet rows, 53/53 audible `HEARD` wakes,
-and 53/53 visible `SEEN` wakes with ordered events. Pain also matches all 53
-actor and RNG transitions plus 36/36 successful-roll events. Exact BLOCKMAP LOS matches
-270/270 SQL rays and costs 0.074/0.240 ms p50/p95 for one warmed 53-actor batch.
-Awake state countdown and ordinary no-action next-state transitions each match
-53/53 with no events or RNG changes; every packed state definition matches SQL
-151/151. Processed-corpse transitions also match 53/53 with zero events and no
-RNG movement. Atomic fresh death/kill/drop handling now matches 53/53 actors,
-25/25 spawned drops, and 78/78 ordered events. A separate retained CHASE helper
-matches 212/212 actor movements across four target quadrants with exact Oracle
-`NUMBER` coordinates and prior-snapshot collision. These kernels must next be
-merged into one retained player/actor frontier before attack dispatch. Attacks
-remain before the actor loop is production-routable. The incomplete fast-path projection is roughly 25–32
-FPS; it is not a measured gameplay result.
-The structural merge now round-trips all 280 MOBJ rows plus player, RNG, state,
-monster-definition, ID, event, tic, and command frontiers byte-exactly. Its
-70,999-byte SHA-fenced pack is a restart/checkpoint format, not per-tic work.
-A production-shaped AQ/Scheduler transaction probe passes exact-length delta
-validation, idempotent replay, rollback/discard, generation fencing,
-post-commit reconstruction, and worker restart. The next implementation step
-connects the proven behavior deltas to this single owner before attacks land.
-Playability requires 270+ unique moving frames to sustain 30 FPS at both p50
-and p95 through the public browser path. See the
+Not yet through the public route. The current SQL-rendered endpoint remains the
+correct playable reference at about 0.128 FPS, while the new production
+components are individually inside the 33.3 ms budget but are not fully coupled.
+
+The retained renderer now consumes a 145-byte ordinary frame delta without JDBC
+or table reads and measures 7.135/9.505 ms p50/p95 for render, codec, and BLOB
+handoff. It preserves 64/64 changing-angle frames, owner isolation, and exact
+sector and MOBJ update/add/remove behavior. Retained movement is 0.762 ms p95,
+warmed CHASE is 1.080 ms p95 through the unified owner, and the exact attack
+action kernel is below 0.1 ms p95. These are component measurements, not an
+end-to-end FPS claim.
+
+The database now has four bounded Scheduler worker slots. Arbitrary valid game
+sessions can claim a slot through the public AutoREST package; concurrent
+sessions retain separate state, generations, queue messages, and responses.
+Default-off rollout, rollback isolation, lost-response replay across restart,
+and stale-work fencing pass live. SQL remains the independent differential
+oracle and authoritative durable store.
+
+The remaining critical work is one actor-ordered retained tic that composes
+death, pain, wake, state advancement, melee/hitscan/projectile attacks, and
+CHASE exactly once, followed by durable delta persistence and the fixed
+270-frame AutoREST/browser measurement. Playability requires both p50 and p95
+to remain at or below 33.3 ms through that public path. See the
 [ORDS/OJVM worker report](reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md).
 
 ## Local review

@@ -1557,6 +1557,25 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   Keep log-file-sync/commit as a distinct timing stage as dirty volume grows,
   and require a worker-kill/reconstruction test that resumes the exact state and
   frame SHA chain mid-lineage before the public gate.
+- Retained-scene renderer gate (2026-07-16): the worker now loads one exact
+  21,792-byte scene at reconstruction and applies compact dynamic deltas directly
+  to its primitive arrays. Ordinary camera/presentation updates are 145 bytes;
+  the adversarial 301-byte gate also changes a sector, updates and adds MOBJs,
+  and removes a MOBJ. All 64 changing angles, A-B-A owner isolation, and the
+  sector/MOBJ mutations match the SQL/JDBC oracle. After 500 varying warmups,
+  300 varying frames measured 0.070/0.116/0.162 ms update and
+  7.135/9.505/10.875 ms render+codec+BLOB p50/p95/max. The warm path performs
+  no JDBC or table reads. DRS2 remains reconstruction/parity material only.
+- Multi-session worker-pool gate (2026-07-16): four fixed Scheduler slots now
+  provide exclusive session ownership, slot-correlated request AQ consumption,
+  request-ID response correlation, independent generations/SIDs/heartbeats, and
+  a public AutoREST `claim(session)` entry for arbitrary valid game sessions.
+  Exact terminal requests replay across worker restarts while stale new work is
+  rejected. A live two-session gate passes default-off rollout, rollback
+  isolation, response correlation, independent restart/generation behavior,
+  cross-generation terminal replay, and stale-generation fencing. The installed
+  worker remains rollback-only until the unified retained tic and durable delta
+  writer replace the scaffold.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior
