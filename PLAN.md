@@ -1115,6 +1115,25 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   small separately compilable methods, front-to-back BSP/bounding-box rejection,
   solid screen-column occlusion, wall columns, plane spans, and a payload corpus
   matching the actual 92,658-byte response before production integration.
+- First clean-room BSP/projection implementation (2026-07-15): the real
+  681-node/682-subsector/2,057-seg map is loaded into primitive Java arrays and
+  traversed front-to-back with conservative child-box rejection and bounded seg
+  projection. An independent SQL determinant/t/u audit across 12 spawn
+  directions found all 57,012 accepted seg-column pairs in the Java candidate
+  bitmap with 0 missing while retaining only 0.7218% of the brute pairs. The
+  allocation-free Java 11 HotSpot kernel measured 0.043718/0.222975/0.272980 ms
+  p50/p95/p99 over 20,000 samples, passing the <=3 ms algorithm gate. This is
+  algorithm evidence only: it has no wall/plane/masked drawing or codec yet.
+- Local native-method blocker (2026-07-15): a disposable one-line `(I)I` method
+  failed to return from `DBMS_JAVA.COMPILE_METHOD` within 60 seconds both before
+  and after a controlled restart reduced database memory from 94% to 82% of the
+  2 GiB limit. JIT is enabled and the executable 256 MiB `/dev/shm` has ample
+  free space; both attempts were interrupted and removed with zero invalid or
+  probe objects. The pinned local image therefore currently fails the OJVM JIT
+  selection gate. Continue clean-room algorithm work in the Java 11 HotSpot
+  harness, keep SQL in production, and require the minimal probe plus every hot
+  renderer method to compile on a second target Oracle environment before OJVM
+  integration. Interpreted OJVM timings may not select the renderer.
 - Fresh 10046/TKPROF triage (2026-07-15): two consecutive exact frames measured
   11.14 and 10.57 s with stable plan hashes and 92,658-byte payloads. The warm
   frame is world pixels 6.53 s (5.62 s CPU, 14,685 TEMP/physical blocks), masked

@@ -1,5 +1,12 @@
 # T12.1 performance evidence driver
 
+The pulled-forward T12.0 clean-room BSP/projection implementation is exercised
+separately with `run-t12.0-bsp-kernel.sh`. It compiles the real-map Java 11
+kernel inside the pinned database container, audits every retained candidate
+against independent SQL intersection equations, and fails closed on a missing
+pair, greater-than-25% candidate retention, or greater-than-3 ms p95. It is an
+algorithm-selection harness, not production or final T12.1 evidence.
+
 `verify-performance-baseline.mjs` has two fail-closed modes. With one evidence
 path it verifies an already collected baseline and every referenced artifact.
 With `--collect REPLAY EVIDENCE`, it performs the real 300-frame replay and
