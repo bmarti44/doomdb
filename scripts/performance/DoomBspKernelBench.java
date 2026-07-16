@@ -4,12 +4,16 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CodingErrorAction;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.CallableStatement;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -23,6 +27,7 @@ import java.util.Map;
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 import java.util.zip.GZIPInputStream;
+import oracle.sql.NUMBER;
 
 /**
  * Disposable clean-room BSP/projection spike. This is deliberately outside the
@@ -145,6 +150,22 @@ public final class DoomBspKernelBench {
   private static final int KERNEL_PACK_VERSION = 1;
   private static long lastKernelLoadNanos, lastSnapshotNanos;
   private static long lastRetainedUpdateNanos;
+  private static long retainedDticSeq=-1;
+  private static int[] dticActorId=new int[0],dticActorIndex=new int[0],dticActorState=new int[0],dticActorTarget=new int[0];
+  private static double[] dticActorX=new double[0],dticActorY=new double[0];
+  private static int[] dticSpawnId=new int[0],dticSpawnIndex=new int[0],dticSpawnState=new int[0];
+  private static int[] dticSpawnTarget=new int[0],dticSpawnTracer=new int[0],dticSpawnOwner=new int[0];
+  private static double[] dticSpawnX=new double[0],dticSpawnY=new double[0],dticSpawnZ=new double[0];
+  private static int[] dticOldState=new int[0];
+  private static double[] dticOldX=new double[0],dticOldY=new double[0];
+  private static double[] directOldZ=new double[0];
+  private static int dticAppliedActors,dticPriorMobjCount,dticPriorLiveTic;
+  private static long dticPriorSeq;private static boolean dticApplied;
+  private static boolean directApplied;private static String directRequest;
+  private static double directOldCameraX,directOldCameraY,directOldEyeZ;
+  private static BigDecimal directOldExactX,directOldExactY;
+  private static int directOldAngle,directOldHealth,directOldArmor;
+  private static String directOldMode;
   private static String lastDynamicFailure="";
   private static long lastRenderNanos, lastCodecNanos, lastBlobNanos;
   private static long lastBspNanos, lastSolidNanos, lastPortalNanos;
@@ -545,11 +566,252 @@ public final class DoomBspKernelBench {
     liveAudio=audio.append(']').toString();refreshLiveGeometry();
   }
 
+  private static void ensureDticScratch(int actors,int spawns){
+    if(dticActorId.length<actors){int n=Math.max(actors,Math.max(64,dticActorId.length*2));
+      dticActorId=new int[n];dticActorIndex=new int[n];dticActorState=new int[n];
+      dticActorTarget=new int[n];
+      dticActorX=new double[n];dticActorY=new double[n];dticOldState=new int[n];
+      dticOldX=new double[n];dticOldY=new double[n];directOldZ=new double[n];}
+    if(dticSpawnId.length<spawns){int n=Math.max(spawns,Math.max(16,dticSpawnId.length*2));
+      dticSpawnId=new int[n];dticSpawnIndex=new int[n];dticSpawnState=new int[n];
+      dticSpawnTarget=new int[n];dticSpawnTracer=new int[n];dticSpawnOwner=new int[n];
+      dticSpawnX=new double[n];dticSpawnY=new double[n];dticSpawnZ=new double[n];}
+  }
+
+  private static double readDticNumber(KernelInput in)throws Exception{
+    int length=in.readUnsignedByte();require(length>=1&&length<=22,"DTIC NUMBER length invalid");
+    byte[] raw=in.readBytes(length);NUMBER number=new NUMBER(raw);
+    require(Arrays.equals(raw,number.toBytes()),"DTIC NUMBER is not canonical");
+    for(int pad=length;pad<22;pad++)require(in.readUnsignedByte()==0,"DTIC NUMBER padding invalid");
+    double value=number.doubleValue();require(Double.isFinite(value),"DTIC NUMBER is not finite");return value;
+  }
+
+  private static String readDticString(KernelInput in)throws Exception{
+    int length=in.readUnsignedShort();if(length==65535)return null;
+    byte[] raw=in.readBytes(length);CharBuffer decoded=StandardCharsets.UTF_8.newDecoder()
+        .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
+        .decode(ByteBuffer.wrap(raw));String value=decoded.toString();
+    require(Arrays.equals(raw,value.getBytes(StandardCharsets.UTF_8)),"DTIC text is not canonical UTF-8");
+    return value;
+  }
+
+  private static boolean dticReference(int id,int actors,int spawns){
+    if(id<0)return id==-1;for(int i=0;i<actors;i++)if(dticActorId[i]==id)return true;
+    for(int i=0;i<spawns;i++)if(dticSpawnId[i]==id)return true;return retainedMobjIndex(id)>=0;
+  }
+
+  /** Apply the unified owner's actor-only DUOP/DTIC v1 result without a SQL read. */
+  private static void decodeRetainedDtic(Blob delta)throws Exception{
+    byte[] encoded=snapshotBytes(delta);KernelInput in=new KernelInput(encoded);
+    require(in.readInt()==0x44554f50,"DTIC wrapper magic mismatch");
+    require(in.readUnsignedByte()==1&&in.readUnsignedByte()==0&&in.readUnsignedByte()==4&&
+        in.readUnsignedByte()==0,"DTIC wrapper header invalid");
+    int childLength=in.readInt();require(childLength==in.remaining()&&childLength>=60,
+        "DTIC wrapper length invalid");
+    require(in.readInt()==0x44544943,"DTIC magic mismatch");
+    require(in.readUnsignedByte()==1&&in.readUnsignedByte()==0,"DTIC version invalid");
+    int actors=in.readUnsignedShort(),spawns=in.readUnsignedShort(),events=in.readUnsignedShort();
+    int draws=in.readUnsignedShort();
+    require(in.readUnsignedShort()==0,"DTIC claims unsupported player/sector extension");
+    int rng=in.readInt();
+    int playerHealth=in.readInt(),playerArmor=in.readInt(),playerAlive=in.readInt();
+    int killCount=in.readInt(),nextMobj=in.readInt(),nextEvent=in.readInt();
+    long nextTic=in.readLong(),nextSeq=in.readLong();
+    require(actors<=4096&&spawns<=1024&&events<=8192&&draws<=65535&&rng>=0&&rng<=255&&
+        killCount>=0&&nextMobj>=0&&nextEvent>=0&&nextTic<=Integer.MAX_VALUE&&
+        nextTic==((long)liveTic)+1&&nextSeq>=0&&
+        (retainedDticSeq<0||nextSeq==retainedDticSeq+1),"DTIC frontier/count invalid");
+    require(playerHealth==liveHealth&&playerArmor==liveArmor&&
+        playerAlive==(("dead".equals(liveMode)||liveHealth==0)?0:1),
+        "DTIC claims unsupported player change");
+    ensureDticScratch(actors,spawns);
+    int priorActorId=-1;
+    for(int actor=0;actor<actors;actor++){
+      int id=in.readInt(),seen=in.readInt(),cooldown=in.readInt(),state=in.readInt();
+      int tics=in.readInt(),death=in.readInt(),awake=in.readInt(),flags=in.readInt();
+      int target=in.readInt(),direction=in.readInt();double x=readDticNumber(in),y=readDticNumber(in);
+      int sector=in.readInt();
+      require(id>priorActorId&&seen>=-1&&cooldown>=0&&state>=0&&state<catalogStateCount&&
+          tics>=-1&&(death==0||death==1)&&(awake==0||awake==1)&&flags>=0&&target>=-1&&
+          direction>=-1&&direction<=7&&sector>=0&&sector<sectorFloor.length,"DTIC actor invalid/order");
+      priorActorId=id;
+      int index=retainedMobjIndex(id);require(index>=0,"DTIC actor missing from retained scene");
+      dticActorId[actor]=id;dticActorIndex[actor]=index;dticActorState[actor]=state;
+      dticActorTarget[actor]=target;dticActorX[actor]=x;dticActorY[actor]=y;
+    }
+    int existingSpawns=0;
+    int priorSpawnId=-1;
+    for(int spawn=0;spawn<spawns;spawn++){
+      int id=in.readInt(),thing=in.readInt(),state=in.readInt(),tics=in.readInt();
+      double x=readDticNumber(in),y=readDticNumber(in),z=readDticNumber(in);
+      readDticNumber(in);readDticNumber(in);readDticNumber(in);double radius=readDticNumber(in);
+      double height=readDticNumber(in);int health=in.readInt(),flags=in.readInt(),target=in.readInt();
+      int tracer=in.readInt(),reaction=in.readInt(),spawnThing=in.readInt(),owner=in.readInt();
+      int exploded=in.readInt(),sector=in.readInt();String kind=readDticString(in);
+      require(id==nextMobj-spawns+spawn&&id>priorSpawnId&&thing>=0&&state>=0&&
+          state<catalogStateCount&&tics>=-1&&
+          radius>=0&&height>=0&&health>=0&&flags>=0&&target>=-1&&tracer>=-1&&reaction>=0&&
+          spawnThing>=-1&&owner>=-1&&(exploded==0||exploded==1)&&sector>=0&&sector<sectorFloor.length&&
+          (kind==null||kind.matches("[A-Z0-9_]+")),"DTIC spawn invalid/order");
+      priorSpawnId=id;
+      int index=retainedMobjIndex(id);if(index>=0)existingSpawns++;
+      dticSpawnId[spawn]=id;dticSpawnIndex[spawn]=index;dticSpawnState[spawn]=state;
+      dticSpawnTarget[spawn]=target;dticSpawnTracer[spawn]=tracer;dticSpawnOwner[spawn]=owner;
+      dticSpawnX[spawn]=x;dticSpawnY[spawn]=y;dticSpawnZ[spawn]=z;
+    }
+    for(int actor=0;actor<actors;actor++)require(dticReference(dticActorTarget[actor],actors,spawns),
+        "DTIC actor target reference invalid");
+    for(int spawn=0;spawn<spawns;spawn++)require(dticReference(dticSpawnTarget[spawn],actors,spawns)&&
+        dticReference(dticSpawnTracer[spawn],actors,spawns)&&dticReference(dticSpawnOwner[spawn],actors,spawns),
+        "DTIC spawn reference invalid");
+    int priorOrdinal=-1;
+    for(int event=0;event<events;event++){
+      int ordinal=in.readInt();require((priorOrdinal<0||ordinal==priorOrdinal+1)&&ordinal<nextEvent,
+          "DTIC event order/frontier");
+      priorOrdinal=ordinal;int type=in.readInt(),actor=in.readInt(),target=in.readInt();
+      require(type>=1&&type<=7&&actor>=0&&dticReference(actor,actors,spawns)&&
+          dticReference(target,actors,spawns),"DTIC event domain/reference invalid");
+      int present=in.readUnsignedByte();
+      require(present==0||present==1,"DTIC event NUMBER presence invalid");
+      if(present==1)readDticNumber(in);else for(int slot=0;slot<23;slot++)
+        require(in.readUnsignedByte()==0,"DTIC null NUMBER padding invalid");
+      readDticString(in);
+    }
+    require(events==0||nextEvent==priorOrdinal+1,"DTIC event frontier invalid");
+    require(in.exhausted(),"DTIC trailing bytes");
+    require(existingSpawns==0||existingSpawns==spawns,"DTIC partial spawn replay");
+    if(existingSpawns==spawns)for(int spawn=0;spawn<spawns;spawn++){
+      int index=dticSpawnIndex[spawn];require(mobjState[index]==dticSpawnState[spawn]&&
+          Double.compare(mobjX[index],dticSpawnX[spawn])==0&&
+          Double.compare(mobjY[index],dticSpawnY[spawn])==0&&
+          Double.compare(mobjZ[index],dticSpawnZ[spawn])==0&&Double.compare(mobjAngle[index],0.0)==0,
+          "DTIC conflicting spawn replay");
+    }
+    ensureMobjCapacity(mobjCount+(existingSpawns==0?spawns:0));
+    dticPriorMobjCount=mobjCount;dticPriorLiveTic=liveTic;dticPriorSeq=retainedDticSeq;
+    dticAppliedActors=actors;for(int actor=0;actor<actors;actor++){int index=dticActorIndex[actor];
+      dticOldState[actor]=mobjState[index];dticOldX[actor]=mobjX[index];dticOldY[actor]=mobjY[index];}
+    dticApplied=true;
+    for(int actor=0;actor<actors;actor++){int index=dticActorIndex[actor];
+      mobjState[index]=dticActorState[actor];mobjX[index]=dticActorX[actor];mobjY[index]=dticActorY[actor];}
+    if(existingSpawns==0)for(int spawn=0;spawn<spawns;spawn++){
+      int index=mobjCount++;mobjId[index]=dticSpawnId[spawn];mobjState[index]=dticSpawnState[spawn];
+      mobjX[index]=dticSpawnX[spawn];mobjY[index]=dticSpawnY[spawn];mobjZ[index]=dticSpawnZ[spawn];
+      mobjAngle[index]=0.0;
+    }
+    liveTic=(int)nextTic;retainedDticSeq=nextSeq;
+  }
+
+  private static void rollbackRetainedDtic(){if(!dticApplied)return;
+    for(int actor=0;actor<dticAppliedActors;actor++){int index=dticActorIndex[actor];
+      mobjState[index]=dticOldState[actor];mobjX[index]=dticOldX[actor];mobjY[index]=dticOldY[actor];}
+    mobjCount=dticPriorMobjCount;liveTic=dticPriorLiveTic;retainedDticSeq=dticPriorSeq;dticApplied=false;
+  }
+
+  private static void rollbackDirectOwner(){if(!directApplied)return;
+    for(int mobj=0;mobj<dticAppliedActors;mobj++){mobjId[mobj]=dticActorId[mobj];
+      mobjState[mobj]=dticOldState[mobj];mobjX[mobj]=dticOldX[mobj];mobjY[mobj]=dticOldY[mobj];
+      mobjZ[mobj]=directOldZ[mobj];mobjAngle[mobj]=dticActorX[mobj];}
+    mobjCount=dticPriorMobjCount;liveTic=dticPriorLiveTic;retainedDticSeq=dticPriorSeq;
+    liveCameraX=directOldCameraX;liveCameraY=directOldCameraY;cameraEyeZ=directOldEyeZ;
+    liveExactCameraX=directOldExactX;liveExactCameraY=directOldExactY;liveAngle=directOldAngle;
+    liveHealth=directOldHealth;liveArmor=directOldArmor;liveMode=directOldMode;
+    prepareExactSegmentRelatives();directApplied=false;directRequest=null;
+  }
+
+  static String stageRetainedOwnerAndRender(String request,long nextTic,long nextSeq,
+      NUMBER playerX,NUMBER playerY,NUMBER playerEyeZ,int playerAngleIndex,int playerHealth,
+      int playerArmor,int playerAlive,int changeCount,int[] changeOp,int[] worldId,int[] worldState,
+      NUMBER[] worldX,NUMBER[] worldY,NUMBER[] worldZ,NUMBER[] worldAngle,
+      String stateSha,Blob payload)throws Exception{
+    require(!directApplied&&!dticApplied&&request!=null&&request.matches("[0-9a-f]{32}")&&
+        nextTic==((long)liveTic)+1&&nextTic<=Integer.MAX_VALUE&&nextSeq>=0&&
+        (retainedDticSeq<0||nextSeq==retainedDticSeq+1)&&playerX!=null&&playerY!=null&&
+        playerEyeZ!=null&&playerAngleIndex>=0&&playerAngleIndex<64&&playerHealth>=0&&
+        playerArmor>=0&&(playerAlive==0||playerAlive==1)&&changeCount>=0&&changeCount<=4096&&
+        changeOp!=null&&worldId!=null&&worldState!=null&&worldX!=null&&worldY!=null&&worldZ!=null&&
+        changeOp.length>=changeCount&&worldId.length>=changeCount&&worldState.length>=changeCount&&
+        worldX.length>=changeCount&&worldY.length>=changeCount&&worldZ.length>=changeCount&&
+        worldAngle!=null&&worldAngle.length>=changeCount&&
+        stateSha!=null&&stateSha.matches("[0-9a-f]{64}")&&payload!=null,
+        "direct retained owner input");
+    long updateStarted=System.nanoTime();
+    int priorWorld=-1;ensureDticScratch(mobjCount,0);
+    for(int change=0;change<changeCount;change++){require(worldId[change]>priorWorld&&
+          (changeOp[change]==0||changeOp[change]==1),"direct retained world order/op");priorWorld=worldId[change];
+      if(changeOp[change]==1)require(worldState[change]>=0&&worldState[change]<catalogStateCount&&
+          worldX[change]!=null&&worldY[change]!=null&&worldZ[change]!=null&&worldAngle[change]!=null,
+          "direct retained world invalid");}
+    ensureMobjCapacity(mobjCount+changeCount);
+    dticPriorMobjCount=mobjCount;dticPriorLiveTic=liveTic;dticPriorSeq=retainedDticSeq;
+    directOldCameraX=liveCameraX;directOldCameraY=liveCameraY;directOldEyeZ=cameraEyeZ;
+    directOldExactX=liveExactCameraX;directOldExactY=liveExactCameraY;directOldAngle=liveAngle;
+    directOldHealth=liveHealth;directOldArmor=liveArmor;directOldMode=liveMode;dticAppliedActors=mobjCount;
+    for(int mobj=0;mobj<mobjCount;mobj++){dticActorId[mobj]=mobjId[mobj];dticOldState[mobj]=mobjState[mobj];
+      dticOldX[mobj]=mobjX[mobj];dticOldY[mobj]=mobjY[mobj];directOldZ[mobj]=mobjZ[mobj];
+      dticActorX[mobj]=mobjAngle[mobj];}
+    directApplied=true;directRequest=request;
+    try{liveExactCameraX=playerX.bigDecimalValue();liveExactCameraY=playerY.bigDecimalValue();
+      liveCameraX=playerX.doubleValue();liveCameraY=playerY.doubleValue();cameraEyeZ=playerEyeZ.doubleValue();
+      liveAngle=playerAngleIndex;liveHealth=playerHealth;liveArmor=playerArmor;liveMode=playerAlive==0?"dead":"game";
+      liveTic=(int)nextTic;retainedDticSeq=nextSeq;prepareExactSegmentRelatives();
+      for(int change=0;change<changeCount;change++){int index=retainedMobjIndex(worldId[change]);
+        if(changeOp[change]==0){require(index>=0,"direct retained remove missing");int last=--mobjCount;
+          mobjId[index]=mobjId[last];mobjState[index]=mobjState[last];mobjX[index]=mobjX[last];
+          mobjY[index]=mobjY[last];mobjZ[index]=mobjZ[last];mobjAngle[index]=mobjAngle[last];
+        }else{if(index<0){index=mobjCount++;mobjId[index]=worldId[change];}
+          mobjState[index]=worldState[change];mobjX[index]=worldX[change].doubleValue();
+          mobjY[index]=worldY[change].doubleValue();mobjZ[index]=worldZ[change].doubleValue();
+          mobjAngle[index]=worldAngle[change].doubleValue();}}
+      lastRetainedUpdateNanos=System.nanoTime()-updateStarted;
+      long started=System.nanoTime();traverseAndProject(liveCameraX,liveCameraY,liveAngle,false);
+      lastRenderNanos=System.nanoTime()-started;started=System.nanoTime();encodePackedTicZeroPayload(stateSha);
+      lastCodecNanos=System.nanoTime()-started;started=System.nanoTime();payload.truncate(0);
+      int first=Math.min(32767,codecGzipLength);int written=payload.setBytes(1,codecGzip,0,first);
+      if(codecGzipLength>first)written+=payload.setBytes(first+1,codecGzip,first,codecGzipLength-first);
+      require(written==codecGzipLength,"short direct retained BLOB write");lastBlobNanos=System.nanoTime()-started;
+      StringBuilder sha=new StringBuilder(64);for(byte value:codecDigest){sha.append((char)HEX[(value>>>4)&15]);
+        sha.append((char)HEX[value&15]);}return sha.toString();
+    }catch(Throwable failure){rollbackDirectOwner();throw failure;}
+  }
+
+  static void acceptRetainedOwner(String request){require(directApplied&&request!=null&&request.equals(directRequest),
+      "direct retained accept fence");directApplied=false;directRequest=null;}
+  static void discardRetainedOwner(String request){require(directApplied&&request!=null&&request.equals(directRequest),
+      "direct retained discard fence");rollbackDirectOwner();}
+  static boolean retainedOwnerPending(){return directApplied;}
+
+  private static void verifyRendererStateMap(Connection connection,String expected)throws Exception{
+    require(expected!=null&&expected.matches("[0-9a-f]{64}"),"renderer state-map SHA invalid");
+    try(Statement statement=connection.createStatement();ResultSet rows=statement.executeQuery(
+        "select json_arrayagg(json_array(state_id,tics,next_state_id,action_name,"+
+        "sprite_prefix,sprite_frame,rotations null on null returning varchar2) "+
+        "order by state_id returning clob) from doom_state_def")){
+      require(rows.next(),"renderer state map missing");Clob value=rows.getClob(1);
+      String text=value.getSubString(1,(int)value.length());value.free();byte[] digest=
+          MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
+      StringBuilder actual=new StringBuilder(64);for(byte item:digest){actual.append((char)HEX[(item>>>4)&15]);
+        actual.append((char)HEX[item&15]);}require(expected.equals(actual.toString()),"renderer state-map SHA mismatch");
+    }
+    try(Statement statement=connection.createStatement();ResultSet rows=statement.executeQuery(
+        "select state_id from doom_state_def order by state_id")){int index=0;while(rows.next()){
+      Integer packed=stateIndexByName.get(rows.getString(1));require(packed!=null&&packed.intValue()==index,
+          "renderer packed state order mismatch");index++;}require(index==catalogStateCount&&
+          stateIndexByName.size()==catalogStateCount,"renderer packed state count mismatch");}
+  }
+
   static void loadRetainedScene(String session,Blob snapshot) throws Exception {
     require(session!=null&&session.matches("[0-9a-f]{32}"),"invalid retained session");
     if(!databaseCacheLoaded){Connection internal=DriverManager.getConnection(
         "jdbc:default:connection:");loadKernelPack(internal);databaseCacheLoaded=true;}
-    decodeDynamicSnapshot(snapshot,session);
+    decodeDynamicSnapshot(snapshot,session);retainedDticSeq=-1;
+  }
+
+  static void loadRetainedScene(String session,String stateMapSha,Blob snapshot)throws Exception{
+    require(session!=null&&session.matches("[0-9a-f]{32}"),"invalid retained session");
+    Connection internal=DriverManager.getConnection("jdbc:default:connection:");
+    if(!databaseCacheLoaded){loadKernelPack(internal);databaseCacheLoaded=true;}
+    verifyRendererStateMap(internal,stateMapSha);decodeDynamicSnapshot(snapshot,session);retainedDticSeq=-1;
   }
 
   static String updateRetainedSceneAndRender(String session,Blob delta,String stateSha,
@@ -570,6 +832,26 @@ public final class DoomBspKernelBench {
     lastBlobNanos=System.nanoTime()-started;StringBuilder sha=new StringBuilder(64);
     for(byte value:codecDigest){sha.append((char)HEX[(value>>>4)&15]);
       sha.append((char)HEX[value&15]);}return sha.toString();
+  }
+
+  static String updateRetainedTicAndRender(String session,Blob delta,String stateSha,
+      Blob payload)throws Exception{
+    require(session!=null&&session.matches("[0-9a-f]{32}")&&payload!=null&&stateSha!=null&&
+        stateSha.matches("[0-9a-f]{64}"),"retained DTIC render input");
+    try{long started=System.nanoTime();decodeRetainedDtic(delta);
+      lastRetainedUpdateNanos=System.nanoTime()-started;
+      require("game".equals(liveMode)||"dead".equals(liveMode),"retained DTIC renderer mode");
+      started=System.nanoTime();traverseAndProject(liveCameraX,liveCameraY,liveAngle,false);
+      lastRenderNanos=System.nanoTime()-started;
+      started=System.nanoTime();encodePackedTicZeroPayload(stateSha);
+      lastCodecNanos=System.nanoTime()-started;
+      started=System.nanoTime();payload.truncate(0);int first=Math.min(32767,codecGzipLength);
+      int written=payload.setBytes(1,codecGzip,0,first);
+      if(codecGzipLength>first)written+=payload.setBytes(first+1,codecGzip,first,codecGzipLength-first);
+      require(written==codecGzipLength,"short retained DTIC BLOB write");lastBlobNanos=System.nanoTime()-started;
+      StringBuilder sha=new StringBuilder(64);for(byte value:codecDigest){sha.append((char)HEX[(value>>>4)&15]);
+        sha.append((char)HEX[value&15]);}dticApplied=false;return sha.toString();
+    }catch(Throwable failure){rollbackRetainedDtic();throw failure;}
   }
 
   private static final class JsonInput {
@@ -864,6 +1146,11 @@ public final class DoomBspKernelBench {
       int value=((bytes[offset]&255)<<24)|((bytes[offset+1]&255)<<16)|
           ((bytes[offset+2]&255)<<8)|(bytes[offset+3]&255); offset+=4; return value;
     }
+    int readUnsignedByte(){require(offset<bytes.length,"renderer kernel pack truncated");return bytes[offset++]&255;}
+    int readUnsignedShort(){require(offset+2<=bytes.length,"renderer kernel pack truncated");
+      int value=((bytes[offset]&255)<<8)|(bytes[offset+1]&255);offset+=2;return value;}
+    void skip(int length){require(length>=0&&offset+length<=bytes.length,"renderer kernel skip invalid");offset+=length;}
+    int remaining(){return bytes.length-offset;}
     long readLong() { return ((long)readInt()<<32)|(readInt()&0xffffffffL); }
     double readDouble() { return Double.longBitsToDouble(readLong()); }
     short readShort() {

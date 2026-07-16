@@ -12,6 +12,13 @@ create or replace function doom_unified_actor_prepare(
 return raw as language java name
   'DoomUnifiedActorStateBench.prepare(java.lang.String,java.lang.String,long,java.lang.String,java.lang.String,long,long,int,int,int) return byte[]';
 /
+create or replace function doom_unified_command_tic_prepare(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2,
+  p_tic in number,p_command_seq in number,p_rng in number,p_next_mobj in number,
+  p_next_event in number,p_command in raw)
+return raw as language java name
+  'DoomUnifiedActorStateBench.prepareCommandTic(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[]) return byte[]';
+/
 create or replace function doom_unified_actor_accept(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2)
 return varchar2 as language java name
@@ -21,6 +28,18 @@ create or replace function doom_unified_actor_discard(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2)
 return varchar2 as language java name
   'DoomUnifiedActorStateBench.discard(java.lang.String,java.lang.String,long,java.lang.String) return java.lang.String';
+/
+create or replace function doom_unified_render_pending(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2,
+  p_state_sha in varchar2,p_payload in blob)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.renderPending(java.lang.String,java.lang.String,long,java.lang.String,java.lang.String,java.sql.Blob) return java.lang.String';
+/
+create or replace function doom_unified_render_upserts return number as language java name
+  'DoomUnifiedActorStateBench.lastRenderUpserts() return int';
+/
+create or replace function doom_unified_render_removes return number as language java name
+  'DoomUnifiedActorStateBench.lastRenderRemoves() return int';
 /
 create or replace function doom_unified_actor_last_error return varchar2 as
 language java name 'DoomUnifiedActorStateBench.lastError() return java.lang.String';
@@ -47,6 +66,11 @@ create or replace function doom_unified_world_sql_parity(
 return varchar2 as language java name
   'DoomUnifiedActorStateBench.worldSqlParity(java.lang.String,java.lang.String,long) return java.lang.String';
 /
+create or replace function doom_unified_owner_sql_parity(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.ownerSqlParity(java.lang.String,java.lang.String,long) return java.lang.String';
+/
 create or replace function doom_unified_world_spawn_remove(
   p_session in varchar2,p_lineage in varchar2,p_generation in number)
 return varchar2 as language java name
@@ -56,4 +80,10 @@ create or replace function doom_unified_tic_accept_benchmark(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,p_iterations in number)
 return varchar2 as language java name
   'DoomUnifiedActorStateBench.benchmarkAcceptedTics(java.lang.String,java.lang.String,long,int) return java.lang.String';
+/
+create or replace function doom_unified_command_tic_benchmark(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_iterations in number,
+  p_warmups in number)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.benchmarkAcceptedCommandTics(java.lang.String,java.lang.String,long,int,int) return java.lang.String';
 /

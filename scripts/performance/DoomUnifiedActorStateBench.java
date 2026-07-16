@@ -18,24 +18,29 @@ import oracle.sql.NUMBER;
 
 /** Typed retained owner coordinating the accepted fresh-death and CHASE kernels. */
 public final class DoomUnifiedActorStateBench {
-  private static final int HEADER_BYTES=12,MODE_DEATH=1,MODE_CHASE=2,MODE_ATTACK=3,MODE_TIC=4;
+  private static final int HEADER_BYTES=12,MODE_DEATH=1,MODE_CHASE=2,MODE_ATTACK=3,MODE_TIC=4,
+      MODE_COMMAND_TIC=5,COMMAND_BYTES=24,COMMAND_CHILD_HEADER=105;
   private static Owner committed,pending,spare;
   private static String pendingRequest,lastError="";
   private static int pendingMode;
   private static byte[] pendingChild;
   private static long ticChaseNs,ticLoopNs,ticEncodeNs;
+  private static long lastActorTicNs,lastCommandEncodeNs;
   private static final byte[] ticOutput=new byte[32767];
   private static int ticOutputLength;
   private static int[] priorHealthScratch=new int[0],moveMaskScratch=new int[0];
+  private static int[] renderOp=new int[0],renderId=new int[0],renderState=new int[0];
+  private static NUMBER[] renderX=new NUMBER[0],renderY=new NUMBER[0],renderZ=new NUMBER[0],renderAngle=new NUMBER[0];
+  private static int lastRenderUpserts,lastRenderRemoves;
 
   private DoomUnifiedActorStateBench() {}
 
   private static final class Owner {
     String session,lineage,stateMapSha;long generation,tic,seq;
     int rng,nextMobj,nextEvent,playerId,playerTarget,killCount,count;
-    int playerHealth,playerArmor,playerArmorType,playerAlive,playerSector;
+    int playerHealth,playerArmor,playerArmorType,playerAlive,playerSector,playerAngleIndex;
     int playerSound;
-    NUMBER playerX,playerY,playerZ;
+    NUMBER playerX,playerY,playerZ,playerEyeZ;
     int[] id,thingType,stateIndex,stateTics,health,flags,target,sector,direction,awake,cooldown;
     int[] healthSeen,deathProcessed,behaviorIndex;
     int[] visibilityCache;
@@ -56,9 +61,9 @@ public final class DoomUnifiedActorStateBench {
       Owner o=new Owner();o.session=session;o.lineage=lineage;o.stateMapSha=stateMapSha;
       o.generation=generation;o.tic=tic;o.seq=seq;o.rng=rng;o.nextMobj=nextMobj;
       o.nextEvent=nextEvent;o.playerId=playerId;o.playerTarget=playerTarget;o.killCount=killCount;o.count=count;
-      o.playerX=playerX;o.playerY=playerY;o.playerZ=playerZ;o.playerHealth=playerHealth;
+      o.playerX=playerX;o.playerY=playerY;o.playerZ=playerZ;o.playerEyeZ=playerEyeZ;o.playerHealth=playerHealth;
       o.playerArmor=playerArmor;o.playerArmorType=playerArmorType;o.playerAlive=playerAlive;
-      o.playerSector=playerSector;
+      o.playerSector=playerSector;o.playerAngleIndex=playerAngleIndex;
       o.playerSound=playerSound;
       o.id=id.clone();o.thingType=thingType.clone();o.stateIndex=stateIndex.clone();
       o.stateTics=stateTics.clone();o.health=health.clone();o.flags=flags.clone();
@@ -84,7 +89,8 @@ public final class DoomUnifiedActorStateBench {
       tic=s.tic;seq=s.seq;rng=s.rng;nextMobj=s.nextMobj;nextEvent=s.nextEvent;playerId=s.playerId;
       playerTarget=s.playerTarget;killCount=s.killCount;count=s.count;playerHealth=s.playerHealth;
       playerArmor=s.playerArmor;playerArmorType=s.playerArmorType;playerAlive=s.playerAlive;
-      playerSector=s.playerSector;playerSound=s.playerSound;playerX=s.playerX;playerY=s.playerY;playerZ=s.playerZ;
+      playerSector=s.playerSector;playerAngleIndex=s.playerAngleIndex;playerSound=s.playerSound;
+      playerX=s.playerX;playerY=s.playerY;playerZ=s.playerZ;playerEyeZ=s.playerEyeZ;
       System.arraycopy(s.stateIndex,0,stateIndex,0,count);System.arraycopy(s.stateTics,0,stateTics,0,count);
       System.arraycopy(s.health,0,health,0,count);System.arraycopy(s.flags,0,flags,0,count);
       System.arraycopy(s.target,0,target,0,count);System.arraycopy(s.sector,0,sector,0,count);
@@ -169,6 +175,7 @@ public final class DoomUnifiedActorStateBench {
 
   private static void require(boolean value,String message){if(!value)throw new IllegalStateException(message);}
   private static int int_(byte[] b,int o){return ((b[o]&255)<<24)|((b[o+1]&255)<<16)|((b[o+2]&255)<<8)|(b[o+3]&255);}
+  private static long long_(byte[] b,int o){return ((long)int_(b,o)<<32)|(int_(b,o+4)&0xffffffffL);}
   private static int ushort(byte[] b,int o){return ((b[o]&255)<<8)|(b[o+1]&255);}
   private static NUMBER number(byte[] b,int offset){
     int length=b[offset]&255;require(length>=1&&length<=22,"unified NUMBER");
@@ -237,21 +244,25 @@ public final class DoomUnifiedActorStateBench {
         o.tic=r.getLong(1);o.seq=r.getLong(2);o.rng=r.getInt(3);o.playerId=r.getInt(4);
         require(lineage.equals(r.getString(5)),"unified lineage");}}
     try(PreparedStatement s=c.prepareStatement("select utl_raw.cast_from_number(x),"+
-        "utl_raw.cast_from_number(y),utl_raw.cast_from_number(z),kill_count,health,armor,"+
-        "armor_type,alive,(select sector_id from table(doom_bsp_locate(p.x,p.y)) where rownum=1) "+
+        "utl_raw.cast_from_number(y),utl_raw.cast_from_number(z),utl_raw.cast_from_number(angle),"+
+        "utl_raw.cast_from_number(z+view_height+view_bob),"+
+        "kill_count,health,armor,armor_type,alive,"+
+        "(select sector_id from table(doom_bsp_locate(p.x,p.y)) where rownum=1) "+
         "from players p where session_token=? and player_id=?")){
       s.setString(1,session);s.setInt(2,o.playerId);try(ResultSet r=s.executeQuery()){require(r.next(),"unified player");
         o.playerX=new NUMBER(raw(r,1));o.playerY=new NUMBER(raw(r,2));o.playerZ=new NUMBER(raw(r,3));
-        o.killCount=r.getInt(4);o.playerHealth=r.getInt(5);o.playerArmor=r.getInt(6);
-        o.playerArmorType=r.getInt(7);o.playerAlive=r.getInt(8);o.playerSector=r.getInt(9);}}
+        NUMBER angle=new NUMBER(raw(r,4));o.playerEyeZ=new NUMBER(raw(r,5));double degrees=angle.doubleValue();
+        require(degrees>=0&&degrees<360,"unified player angle");o.playerAngleIndex=((int)Math.round(degrees/5.625d))&63;
+        require(Math.abs(o.playerAngleIndex*5.625d-degrees)<1e-9,"unified player angle quantum");
+        o.killCount=r.getInt(6);o.playerHealth=r.getInt(7);o.playerArmor=r.getInt(8);
+        o.playerArmorType=r.getInt(9);o.playerAlive=r.getInt(10);o.playerSector=r.getInt(11);}}
     try(PreparedStatement s=c.prepareStatement("select count(*) from mobjs where session_token=? and mobj_id=?")){
       s.setString(1,session);s.setInt(2,o.playerId);try(ResultSet r=s.executeQuery()){r.next();
         o.playerTarget=r.getInt(1)==0?-1:o.playerId;}}
     try(PreparedStatement s=c.prepareStatement("select coalesce(max(mobj_id),0)+1 from mobjs where session_token=?")){
       s.setString(1,session);try(ResultSet r=s.executeQuery()){r.next();o.nextMobj=r.getInt(1);}}
-    try(PreparedStatement s=c.prepareStatement("select coalesce(max(event_ordinal)+1,0) from game_events " +
-        "where session_token=? and tic=?")){s.setString(1,session);s.setLong(2,o.tic);
-      try(ResultSet r=s.executeQuery()){r.next();o.nextEvent=r.getInt(1);}}
+    // current_tic is already accepted; a new resulting tic always starts event ordinals at zero.
+    o.nextEvent=0;
     try(PreparedStatement s=c.prepareStatement("select count(*) from game_events where session_token=? "+
         "and tic=? and event_type in('DAMAGE','BARREL_EXPLODE','PROJECTILE_SPAWN','PROJECTILE_IMPACT','DRY_FIRE')")){
       s.setString(1,session);s.setLong(2,o.tic);try(ResultSet r=s.executeQuery()){r.next();o.playerSound=r.getInt(1)>0?1:0;}}
@@ -380,7 +391,11 @@ public final class DoomUnifiedActorStateBench {
           "left join doom_state_def sd on sd.state_id=tt.spawn_state_id where m.session_token=?",session);
       String death=DoomFreshDeathTickBench.load(session,lineage,generation,candidate.killCount,deaths);
       deaths.free();require(death.startsWith("OK|"),"unified death load "+death);
-      committed=candidate;spare=candidate.copy();lastError="";return "OK|"+candidate.count+"|"+candidate.tic+"|"+
+      committed=candidate;spare=candidate.copy();int renderCapacity=4096;
+      renderOp=new int[renderCapacity];renderId=new int[renderCapacity];renderState=new int[renderCapacity];
+      renderX=new NUMBER[renderCapacity];renderY=new NUMBER[renderCapacity];renderZ=new NUMBER[renderCapacity];
+      renderAngle=new NUMBER[renderCapacity];
+      lastError="";return "OK|"+candidate.count+"|"+candidate.tic+"|"+
           candidate.seq+"|"+candidate.rng+"|"+candidate.nextMobj+"|"+candidate.nextEvent;
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
   }
@@ -526,6 +541,10 @@ public final class DoomUnifiedActorStateBench {
     return out;
   }
   private static void putInt(byte[] b,int o,int v){b[o]=(byte)(v>>>24);b[o+1]=(byte)(v>>>16);b[o+2]=(byte)(v>>>8);b[o+3]=(byte)v;}
+  private static void putLong(byte[] b,int o,long v){putInt(b,o,(int)(v>>>32));putInt(b,o+4,(int)v);}
+  private static void putNumberFixed(byte[] b,int o,NUMBER value){byte[] raw=value.toBytes();
+    require(raw.length>=1&&raw.length<=22,"command TIC NUMBER");b[o]=(byte)raw.length;
+    System.arraycopy(raw,0,b,o+1,raw.length);Arrays.fill(b,o+1+raw.length,o+23,(byte)0);}
   private static int fastInt(int p,int v){putInt(ticOutput,p,v);return p+4;}
   private static int fastShort(int p,int v){ticOutput[p]=(byte)(v>>>8);ticOutput[p+1]=(byte)v;return p+2;}
   private static int fastLong(int p,long v){for(int i=7;i>=0;i--)ticOutput[p++]=(byte)(v>>>(i*8));return p;}
@@ -618,6 +637,50 @@ public final class DoomUnifiedActorStateBench {
     ticOutputLength=p;ticEncodeNs+=System.nanoTime()-phase;
     o.tic++;o.seq++;o.nextEvent=0;o.playerSound=0;return ticOutput;
   }
+
+  /** One parity-locked DMSC/v2 movement command plus one ordered actor TIC. */
+  public static byte[] prepareCommandTic(String s,String l,long g,String request,long tic,long seq,
+      int rng,int nextMobj,int nextEvent,byte[] command){
+    try{
+      fence(s,l,g,tic,seq,rng,nextMobj,nextEvent);require(pending==null&&request!=null&&
+          request.matches("[0-9a-f]{32}"),"command TIC request");
+      require(command!=null&&command.length==COMMAND_BYTES&&int_(command,0)==0x444d5343&&
+          command[4]==2&&(command[5]&255)==1&&command[6]==0&&command[7]==0,"command TIC DMSC/v2 header");
+      long commandSeq=long_(command,8);require(commandSeq==seq+1,"command TIC sequence gap");
+      int turn=command[16],forward=command[17],strafe=command[18],run=command[19]&255;
+      require(turn>=-1&&turn<=1&&forward>=-1&&forward<=1&&strafe>=-1&&strafe<=1&&run<=1,
+          "command TIC movement domain");
+      for(int i=20;i<24;i++)require(command[i]==0,"command TIC unsupported action/reserved");
+      Owner candidate=spare;require(candidate!=null&&candidate!=committed,"command TIC spare");
+      candidate.copyFrom(committed);candidate.playerAngleIndex=(candidate.playerAngleIndex+turn+64)&63;
+      NUMBER oldX=candidate.playerX,oldY=candidate.playerY,oldZ=candidate.playerZ;
+      String movement=DoomPlayerMovementBench.moveRetained(candidate.playerX,candidate.playerY,candidate.playerZ,
+          candidate.playerAngleIndex,forward,strafe,run);
+      require("OK".equals(movement),"command TIC movement "+DoomPlayerMovementBench.lastError());
+      candidate.playerX=DoomPlayerMovementBench.resultX;candidate.playerY=DoomPlayerMovementBench.resultY;
+      candidate.playerZ=DoomPlayerMovementBench.resultZ;
+      candidate.playerEyeZ=candidate.playerEyeZ.add(candidate.playerZ.sub(oldZ));
+      candidate.playerSector=DoomPlayerMovementBench.resultSector;
+      if(oldX.compareTo(candidate.playerX)!=0||oldY.compareTo(candidate.playerY)!=0)
+        Arrays.fill(candidate.visibilityCache,-1);
+      long actorStarted=DoomPlayerMovementBench.traceEnabled?System.nanoTime():0;
+      byte[] nested=ticDelta(candidate,s,l,g,request);
+      if(DoomPlayerMovementBench.traceEnabled)lastActorTicNs=System.nanoTime()-actorStarted;
+      int nestedLength=ticOutputLength;
+      require(candidate.seq==commandSeq&&candidate.tic==tic+1,"command TIC resulting frontier");
+      long encodeStarted=DoomPlayerMovementBench.traceEnabled?System.nanoTime():0;
+      byte[] child=new byte[COMMAND_CHILD_HEADER+nestedLength];putInt(child,0,0x44435443);
+      child[4]=1;child[5]=0;child[6]=0;child[7]=(byte)COMMAND_BYTES;
+      putLong(child,8,candidate.seq);putLong(child,16,candidate.tic);putInt(child,24,candidate.playerAngleIndex);
+      putNumberFixed(child,28,candidate.playerX);putNumberFixed(child,51,candidate.playerY);
+      putNumberFixed(child,74,candidate.playerZ);putInt(child,97,candidate.playerSector);
+      putInt(child,101,nestedLength);System.arraycopy(nested,0,child,COMMAND_CHILD_HEADER,nestedLength);
+      byte[] result=wrap(MODE_COMMAND_TIC,child,child.length);pending=candidate;pendingRequest=request;
+      if(DoomPlayerMovementBench.traceEnabled)lastCommandEncodeNs=System.nanoTime()-encodeStarted;
+      pendingMode=MODE_COMMAND_TIC;
+      pendingChild=null;lastError="";return result;
+    }catch(Throwable e){return failure(e);}
+  }
   private static void checkpointNumber(DataOutputStream out,NUMBER value)throws Exception{
     byte[] raw=value.toBytes();require(raw.length>=1&&raw.length<=22,"world checkpoint NUMBER");
     out.writeByte(raw.length);out.write(raw);
@@ -685,23 +748,28 @@ public final class DoomUnifiedActorStateBench {
   }
   private static byte[] ownerBytes(Owner o)throws Exception{
     byte[] world=worldBytes(o.world);ByteArrayOutputStream bytes=new ByteArrayOutputStream(world.length+256);
-    DataOutputStream out=new DataOutputStream(bytes);out.writeInt(0x44574350);out.writeInt(1);
+    DataOutputStream out=new DataOutputStream(bytes);out.writeInt(0x44574350);out.writeInt(3);
     out.writeUTF(o.session);out.writeUTF(o.lineage);out.writeUTF(o.stateMapSha);out.writeLong(o.generation);
     out.writeLong(o.tic);out.writeLong(o.seq);out.writeInt(o.rng);out.writeInt(o.nextMobj);out.writeInt(o.nextEvent);
     out.writeInt(o.playerId);out.writeInt(o.playerTarget);out.writeInt(o.killCount);out.writeInt(o.playerHealth);
     out.writeInt(o.playerArmor);out.writeInt(o.playerArmorType);out.writeInt(o.playerAlive);out.writeInt(o.playerSector);
+    out.writeInt(o.playerAngleIndex);
     out.writeInt(o.playerSound);checkpointNumber(out,o.playerX);checkpointNumber(out,o.playerY);
-    checkpointNumber(out,o.playerZ);out.writeInt(world.length);out.write(world);out.flush();return bytes.toByteArray();
+    checkpointNumber(out,o.playerZ);checkpointNumber(out,o.playerEyeZ);
+    out.writeInt(world.length);out.write(world);out.flush();return bytes.toByteArray();
   }
   private static Owner ownerBytes(Owner base,byte[] packed)throws Exception{
     DataInputStream in=new DataInputStream(new ByteArrayInputStream(packed));
-    require(in.readInt()==0x44574350&&in.readInt()==1,"owner restore header");Owner o=base.copy();
+    require(in.readInt()==0x44574350&&in.readInt()==3,"owner restore header");Owner o=base.copy();
     require(o.session.equals(in.readUTF())&&o.lineage.equals(in.readUTF())&&o.stateMapSha.equals(in.readUTF()),
         "owner restore identity");require(o.generation==in.readLong(),"owner restore generation");
     o.tic=in.readLong();o.seq=in.readLong();o.rng=in.readInt();o.nextMobj=in.readInt();o.nextEvent=in.readInt();
+    require(o.nextEvent==0,"owner restore event frontier");
     o.playerId=in.readInt();o.playerTarget=in.readInt();o.killCount=in.readInt();o.playerHealth=in.readInt();
     o.playerArmor=in.readInt();o.playerArmorType=in.readInt();o.playerAlive=in.readInt();o.playerSector=in.readInt();
+    o.playerAngleIndex=in.readInt();require(o.playerAngleIndex>=0&&o.playerAngleIndex<64,"owner restore angle");
     o.playerSound=in.readInt();o.playerX=checkpointNumber(in);o.playerY=checkpointNumber(in);o.playerZ=checkpointNumber(in);
+    o.playerEyeZ=checkpointNumber(in);
     int length=in.readInt();require(length>=12&&length<=1048576,"owner world length");byte[] world=new byte[length];
     in.readFully(world);require(in.available()==0,"owner restore trailing");o.world=worldBytes(world);validateWorld(o,o.world);
     bindMonsters(o);return o;
@@ -728,6 +796,32 @@ public final class DoomUnifiedActorStateBench {
       WorldMobjs sql=loadWorld(DriverManager.getConnection("jdbc:default:connection:"),s,states);
       require(Arrays.equals(worldBytes(committed.world),worldBytes(sql)),"world SQL parity");
       return "OK|"+sql.count;
+    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}}
+  public static String ownerSqlParity(String s,String l,long g){
+    try{require(committed!=null&&pending==null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
+        committed.generation==g&&committed.nextEvent==0,"owner SQL parity fence");
+      Connection c=DriverManager.getConnection("jdbc:default:connection:");
+      try(PreparedStatement p=c.prepareStatement("select current_tic,last_command_seq,rng_cursor from game_sessions where session_token=?")){
+        p.setString(1,s);try(ResultSet r=p.executeQuery()){require(r.next()&&r.getLong(1)==committed.tic&&
+            r.getLong(2)==committed.seq&&r.getInt(3)==committed.rng,"owner SQL session");}}
+      try(PreparedStatement p=c.prepareStatement("select utl_raw.cast_from_number(x),utl_raw.cast_from_number(y),"+
+          "utl_raw.cast_from_number(z),utl_raw.cast_from_number(angle),"+
+          "utl_raw.cast_from_number(z+view_height+view_bob),health,armor,armor_type,alive,kill_count " +
+          ",(select sector_id from table(doom_bsp_locate(p.x,p.y)) where rownum=1) " +
+          "from players p where session_token=? and player_id=?")){p.setString(1,s);p.setInt(2,committed.playerId);
+        try(ResultSet r=p.executeQuery()){require(r.next(),"owner SQL player");NUMBER angle=new NUMBER((long)committed.playerAngleIndex*5625L).div(new NUMBER(1000));
+          require(committed.playerX.compareTo(new NUMBER(raw(r,1)))==0&&committed.playerY.compareTo(new NUMBER(raw(r,2)))==0&&
+              committed.playerZ.compareTo(new NUMBER(raw(r,3)))==0&&angle.compareTo(new NUMBER(raw(r,4)))==0&&
+              committed.playerEyeZ.compareTo(new NUMBER(raw(r,5)))==0&&committed.playerHealth==r.getInt(6)&&
+              committed.playerArmor==r.getInt(7)&&committed.playerArmorType==r.getInt(8)&&
+              committed.playerAlive==r.getInt(9)&&committed.killCount==r.getInt(10)&&
+              committed.playerSector==r.getInt(11),"owner SQL player state");}}
+      HashMap<String,Integer> states=new HashMap<String,Integer>();for(int i=0;i<committed.stateId.length;i++)
+        states.put(committed.stateId[i],Integer.valueOf(i));WorldMobjs sql=loadWorld(c,s,states);
+      require(Arrays.equals(worldBytes(committed.world),worldBytes(sql)),"owner SQL world");
+      try(PreparedStatement p=c.prepareStatement("select coalesce(max(mobj_id),0)+1 from mobjs where session_token=?")){
+        p.setString(1,s);try(ResultSet r=p.executeQuery()){require(r.next()&&r.getInt(1)==committed.nextMobj,"owner SQL mobj frontier");}}
+      return "OK|"+committed.tic+"|"+committed.seq+"|"+sql.count;
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}}
   public static String worldSpawnRemoveProbe(String s,String l,long g){
     try{require(committed!=null&&pending==null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
@@ -796,21 +890,58 @@ public final class DoomUnifiedActorStateBench {
         committed.generation==g&&pending!=null&&request!=null&&request.equals(pendingRequest),
         "unified pending");String child="OK";
       if(pendingMode==MODE_DEATH)child=DoomFreshDeathTickBench.accept(s,l,g,request);
-      else if(pendingMode==MODE_CHASE||pendingMode==MODE_TIC)
+      else if(pendingMode==MODE_CHASE||pendingMode==MODE_TIC||pendingMode==MODE_COMMAND_TIC)
         child=DoomMonsterChaseBench.acceptWorld(s,l,g,request,
-            pendingMode==MODE_TIC?chasePack(pending):pendingChild);
+            pendingMode==MODE_CHASE?pendingChild:chasePack(pending));
       require("OK".equals(child)||child.startsWith("OK|"),"unified child accept "+child);
+      if(DoomRetainedRenderSceneBench.ownerTicPending())require("OK".equals(
+          DoomRetainedRenderSceneBench.acceptOwnerTic(s,g,request)),"unified renderer accept");
       Owner previous=committed;committed=pending;spare=previous;pending=null;pendingRequest=null;
       pendingChild=null;lastError="";return "OK";
-    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}}
+    }catch(Throwable e){try{if(DoomRetainedRenderSceneBench.ownerTicPending())
+        DoomRetainedRenderSceneBench.discardOwnerTic(s,g,request);}catch(Throwable ignored){}
+      lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}}
 
   public static String discard(String s,String l,long g,String request){
     try{require(committed!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
         committed.generation==g&&pending!=null&&request!=null&&request.equals(pendingRequest),
         "unified pending");if(pendingMode==MODE_DEATH){String child=DoomFreshDeathTickBench.discard(s,l,g,request);
-        require("OK".equals(child),"unified child discard "+child);}spare=pending;pending=null;pendingRequest=null;
+        require("OK".equals(child),"unified child discard "+child);}
+      if(DoomRetainedRenderSceneBench.ownerTicPending())require("OK".equals(
+          DoomRetainedRenderSceneBench.discardOwnerTic(s,g,request)),"unified renderer discard");
+      spare=pending;pending=null;pendingRequest=null;
       pendingChild=null;lastError="";return "OK";
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}}
+  public static String renderPending(String s,String l,long g,String request,String stateSha,Blob payload){
+    try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
+        committed.generation==g&&request!=null&&request.equals(pendingRequest)&&
+        (pendingMode==MODE_TIC||pendingMode==MODE_COMMAND_TIC),"unified render pending fence");
+      int dirty=0,old=0,next=0;lastRenderUpserts=lastRenderRemoves=0;
+      WorldMobjs before=committed.world,after=pending.world;
+      while(old<before.count||next<after.count){int oldId=old<before.count?before.id[old]:Integer.MAX_VALUE;
+        int nextId=next<after.count?after.id[next]:Integer.MAX_VALUE;
+        if(oldId<nextId){require(dirty<renderId.length,"unified render diff capacity");renderOp[dirty]=0;
+          renderId[dirty]=oldId;renderState[dirty]=0;renderX[dirty]=renderY[dirty]=renderZ[dirty]=renderAngle[dirty]=null;
+          dirty++;lastRenderRemoves++;old++;continue;}
+        if(nextId<oldId){require(dirty<renderId.length,"unified render diff capacity");renderOp[dirty]=1;
+          renderId[dirty]=nextId;renderState[dirty]=after.state[next];renderX[dirty]=after.x[next];
+          renderY[dirty]=after.y[next];renderZ[dirty]=after.z[next];renderAngle[dirty]=after.angle[next];
+          dirty++;lastRenderUpserts++;next++;continue;}
+        if(before.state[old]!=after.state[next]||before.x[old]!=after.x[next]||before.y[old]!=after.y[next]||
+            before.z[old]!=after.z[next]||before.angle[old]!=after.angle[next]){
+          require(dirty<renderId.length,"unified render diff capacity");renderOp[dirty]=1;renderId[dirty]=nextId;
+          renderState[dirty]=after.state[next];renderX[dirty]=after.x[next];renderY[dirty]=after.y[next];
+          renderZ[dirty]=after.z[next];renderAngle[dirty]=after.angle[next];dirty++;lastRenderUpserts++;}old++;next++;}
+      String result=DoomRetainedRenderSceneBench.stageOwnerTic(s,g,request,pending.tic,pending.seq,
+        pending.playerX,pending.playerY,pending.playerEyeZ,pending.playerAngleIndex,pending.playerHealth,
+        pending.playerArmor,pending.playerAlive,dirty,renderOp,renderId,renderState,renderX,renderY,
+        renderZ,renderAngle,stateSha,payload);
+      require(result!=null&&!result.startsWith("ERROR:")&&!result.startsWith("ERR|"),
+          "unified renderer stage "+DoomRetainedRenderSceneBench.lastError());lastError="";return result;
+    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();
+      try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}return "ERR|"+lastError;}}
+  public static int lastRenderUpserts(){return lastRenderUpserts;}
+  public static int lastRenderRemoves(){return lastRenderRemoves;}
   public static String benchmark(String s,String l,long g,String mode,long tic,long seq,int rng,
       int nextMobj,int nextEvent,Clob targets,int iterations){
     NUMBER savedX=null,savedY=null;int savedSector=-1;String activeRequest=null;
@@ -860,5 +991,48 @@ public final class DoomUnifiedActorStateBench {
       Arrays.sort(times);return "OK|TIC_ACCEPT|"+iterations+"|"+bytes+"|"+times[149]+"|"+
           times[284]+"|"+times[299]+"|"+committed.tic+"|"+committed.seq;
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}}
+  private static byte[] movementCommand(long seq,int turn,int forward,int strafe,int run){
+    byte[] command=new byte[COMMAND_BYTES];putInt(command,0,0x444d5343);command[4]=2;command[5]=1;
+    putLong(command,8,seq);command[16]=(byte)turn;command[17]=(byte)forward;
+    command[18]=(byte)strafe;command[19]=(byte)run;return command;
+  }
+  public static String benchmarkAcceptedCommandTics(String s,String l,long g,int iterations,int warmups){
+    try{require(committed!=null&&pending==null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
+        committed.generation==g&&iterations==300&&(warmups==0||warmups==20),"accepted command TIC benchmark");
+      long[] times=new long[iterations],candidateNs=new long[iterations],sideNs=new long[iterations];
+      long[] interiorNs=new long[iterations],endpointNs=new long[iterations],portalNs=new long[iterations];
+      long[] actorNs=new long[iterations],encodeNs=new long[iterations];long candidateCount=0,sideCount=0;
+      long interiorCount=0,endpointCount=0;int bytes=0;
+      for(int sample=-warmups;sample<iterations;sample++){long next=committed.seq+1;
+        byte[] command=movementCommand(next,(sample%17==0)?1:(sample%11==0?-1:0),(sample&1)==0?1:-1,
+            sample%19==0?1:0,sample%5==0?1:0);String request=String.format("%032x",sample+21);
+        long started=System.nanoTime();byte[] delta=prepareCommandTic(s,l,g,request,committed.tic,committed.seq,
+          committed.rng,committed.nextMobj,committed.nextEvent,command);require(delta[5]==0,"accepted command TIC prepare "+lastError);
+        String accepted=accept(s,l,g,request);require("OK".equals(accepted),"accepted command TIC accept");
+        long elapsed=System.nanoTime()-started;if(sample>=0){times[sample]=elapsed;bytes=delta.length;}}
+      Arrays.sort(times);DoomPlayerMovementBench.traceEnabled=true;
+      for(int sample=0;sample<iterations;sample++){long next=committed.seq+1;
+        byte[] command=movementCommand(next,(sample%17==0)?1:(sample%11==0?-1:0),(sample&1)==0?1:-1,
+            sample%19==0?1:0,sample%5==0?1:0);String request=String.format("%032x",sample+1001);
+        byte[] delta=prepareCommandTic(s,l,g,request,committed.tic,committed.seq,committed.rng,
+          committed.nextMobj,committed.nextEvent,command);require(delta[5]==0,"traced command TIC prepare "+lastError);
+        String discarded=discard(s,l,g,request);require("OK".equals(discarded),"traced command TIC discard");
+          candidateNs[sample]=DoomPlayerMovementBench.traceCandidateNs;sideNs[sample]=DoomPlayerMovementBench.traceSideNs;
+          interiorNs[sample]=DoomPlayerMovementBench.traceInteriorNs;endpointNs[sample]=DoomPlayerMovementBench.traceEndpointNs;
+          portalNs[sample]=DoomPlayerMovementBench.tracePortalNs;actorNs[sample]=lastActorTicNs;
+          encodeNs[sample]=lastCommandEncodeNs;candidateCount+=DoomPlayerMovementBench.traceCandidates;
+          sideCount+=DoomPlayerMovementBench.traceSideTests;interiorCount+=DoomPlayerMovementBench.traceInteriorTests;
+          endpointCount+=DoomPlayerMovementBench.traceEndpointTests;}
+      DoomPlayerMovementBench.traceEnabled=false;Arrays.sort(candidateNs);Arrays.sort(sideNs);Arrays.sort(interiorNs);
+      Arrays.sort(endpointNs);Arrays.sort(portalNs);Arrays.sort(actorNs);Arrays.sort(encodeNs);
+      return "OK|COMMAND_TIC_ACCEPT|"+iterations+"|"+warmups+"|"+bytes+"|"+times[149]+"|"+
+          times[284]+"|"+times[299]+"|"+committed.tic+"|"+committed.seq+"|PHASES|"+
+          candidateNs[149]+","+candidateNs[284]+"|"+sideNs[149]+","+sideNs[284]+"|"+
+          interiorNs[149]+","+interiorNs[284]+"|"+endpointNs[149]+","+endpointNs[284]+"|"+
+          portalNs[149]+","+portalNs[284]+"|"+actorNs[149]+","+actorNs[284]+"|"+
+          encodeNs[149]+","+encodeNs[284]+"|COUNTS|"+(candidateCount/iterations)+","+
+          (sideCount/iterations)+","+(interiorCount/iterations)+","+(endpointCount/iterations);
+    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
+    finally{DoomPlayerMovementBench.traceEnabled=false;}}
   public static String lastError(){try{return lastError;}catch(Throwable e){return e.getClass().getName();}}
 }

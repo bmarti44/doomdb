@@ -48,6 +48,10 @@ docker cp "$root/scripts/performance/DoomFreshDeathTickBench.java" \
   "$container:$tmp/DoomFreshDeathTickBench.java" >/dev/null
 docker cp "$root/scripts/performance/DoomRetainedWorldStateBench.java" \
   "$container:$tmp/DoomRetainedWorldStateBench.java" >/dev/null
+docker cp "$root/scripts/performance/DoomBspKernelBench.java" \
+  "$container:$tmp/DoomBspKernelBench.java" >/dev/null
+docker cp "$root/scripts/performance/DoomRetainedRenderSceneBench.java" \
+  "$container:$tmp/DoomRetainedRenderSceneBench.java" >/dev/null
 docker cp "$root/scripts/performance/DoomUnifiedActorStateBench.java" \
   "$container:$tmp/DoomUnifiedActorStateBench.java" >/dev/null
 docker exec "$container" "$java_home/jdk/bin/javac" --release 11 \
@@ -56,7 +60,8 @@ docker exec "$container" "$java_home/jdk/bin/javac" --release 11 \
   "$tmp/DoomPlayerMovementBench.java" "$tmp/DoomCommonActorTickBench.java" \
   "$tmp/DoomActorWakeBench.java" "$tmp/DoomRetainedLosBench.java" \
   "$tmp/DoomMonsterChaseBench.java" "$tmp/DoomFreshDeathTickBench.java" \
-  "$tmp/DoomRetainedWorldStateBench.java" "$tmp/DoomUnifiedActorStateBench.java"
+  "$tmp/DoomRetainedWorldStateBench.java" "$tmp/DoomBspKernelBench.java" \
+  "$tmp/DoomRetainedRenderSceneBench.java" "$tmp/DoomUnifiedActorStateBench.java"
 docker exec "$container" sh -c \
   "exec '$java_home/bin/loadjava' -force -resolve -user DOOM@FREEPDB1 \
   '$tmp/DoomResidentSimulationBench.class' '$tmp/DoomOracleNumberParityBench.class' \
@@ -67,6 +72,8 @@ docker exec "$container" sh -c \
   '$tmp'/DoomMonsterChaseBench*.class \
   '$tmp'/DoomFreshDeathTickBench*.class \
   '$tmp'/DoomRetainedWorldStateBench*.class \
+  '$tmp'/DoomBspKernelBench*.class \
+  '$tmp'/DoomRetainedRenderSceneBench*.class \
   '$tmp'/DoomUnifiedActorStateBench*.class \
   < /run/secrets/doom_password"
 fi
@@ -80,6 +87,7 @@ run_sql "$root/scripts/performance/ojvm-retained-los-calls.sql"
 run_sql "$root/scripts/performance/ojvm-monster-chase-calls.sql"
 run_sql "$root/scripts/performance/ojvm-fresh-death-calls.sql"
 run_sql "$root/scripts/performance/ojvm-retained-world-state-calls.sql"
+run_sql "$root/scripts/performance/ojvm-retained-render-scene-calls.sql"
 run_sql "$root/scripts/performance/ojvm-unified-actor-state-calls.sql"
 run_sql "$root/sql/accel/019_simulation_kernel_pack.sql"
 run_sql "$root/scripts/performance/ojvm-resident-simulation-parity.sql"
@@ -100,4 +108,6 @@ run_sql "$root/scripts/performance/ojvm-unified-world-owner-parity.sql"
 run_sql "$root/scripts/performance/ojvm-unified-actor-state-parity.sql"
 run_sql "$root/scripts/performance/ojvm-unified-actor-attack-parity.sql"
 run_sql "$root/scripts/performance/ojvm-unified-tic-parity.sql"
+run_sql "$root/scripts/performance/ojvm-retained-render-dtic-parity.sql"
+run_sql "$root/scripts/performance/ojvm-unified-command-tic-parity.sql"
 run_sql "$root/scripts/performance/ojvm-resident-simulation-benchmark.sql"

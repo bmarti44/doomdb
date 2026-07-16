@@ -4,6 +4,7 @@ set serveroutput on size unlimited
 declare
   session_ varchar2(32);lineage_ varchar2(64);payload_ blob;map_clob_ clob;map_blob_ blob;
   map_sha_ varchar2(64);result_ varchar2(4000);delta_ raw(32767);request_ varchar2(32);
+  command_ raw(24);move_ clob;angle_ number;expected_x_ number;expected_y_ number;expected_z_ number;
   tic_ number;seq_ number;rng_ number;next_mobj_ number;next_event_ number;actors_ pls_integer;
   spawns_ pls_integer;events_ pls_integer;draws_ pls_integer;off_ pls_integer;idx_ pls_integer;
   pain_id_ number;death_id_ number;corpse_id_ number;melee_id_ number;hitscan_id_ number;
@@ -85,7 +86,7 @@ begin
     raise_application_error(-20000,'TIC delta '||doom_unified_actor_last_error);end if;
   eq(u16(delta_,19),actors_,'TIC source actor count');
   spawns_:=u16(delta_,21);events_:=u16(delta_,23);draws_:=u16(delta_,25);
-  doom_monsters.advance(session_,tic_);
+  doom_monsters.advance(session_,tic_+1);
   select rng_cursor into off_ from game_sessions where session_token=session_;eq(int_(delta_,29),off_,'TIC RNG');
   eq(int_(delta_,49),next_mobj_+spawns_,'TIC next mobj frontier');
   eq(int_(delta_,53),next_event_+events_,'TIC next event frontier');
@@ -126,7 +127,7 @@ begin
   end loop;
   eq(spawn_idx_,spawns_,'TIC spawns');event_idx_:=0;
   for e in (select event_ordinal,event_type,actor_mobj_id,target_mobj_id,number_value,text_value
-    from game_events where session_token=session_ and tic=tic_ order by event_ordinal) loop
+    from game_events where session_token=session_ and tic=tic_+1 order by event_ordinal) loop
     eq(int_(delta_,off_),e.event_ordinal,'TIC event ordinal');
     eq(int_(delta_,off_+4),case e.event_type when 'MONSTER_HIT' then 1 when 'MONSTER_MISS' then 2
       when 'MONSTER_PAIN' then 3 when 'MONSTER_DEATH' then 4 when 'MONSTER_DROP' then 5
@@ -153,6 +154,31 @@ begin
     int_(delta_,29),int_(delta_,49),0,cast(null as clob),300);
   if substr(result_,1,3)<>'OK|' then raise_application_error(-20000,'TIC benchmark '||result_);end if;
   dbms_output.put_line('unified_tic_prepare_discard_ns='||result_);
+  -- A second command-driven TIC advances the already-mixed pain/death/wake/attack owner.
+  rng_:=int_(delta_,29);next_mobj_:=int_(delta_,49);
+  select p.x,p.y,p.z,p.angle into px_,py_,pz_,angle_ from players p join game_sessions g
+    on g.session_token=p.session_token and g.current_player_id=p.player_id where g.session_token=session_;
+  move_:=doom_player_move_payload(session_,cos(angle_*acos(-1)/180)*8,sin(angle_*acos(-1)/180)*8);
+  expected_x_:=json_value(move_,'$.dest_x' returning number);expected_y_:=json_value(move_,'$.dest_y' returning number);
+  expected_z_:=json_value(move_,'$.dest_z' returning number);
+  command_:=hextoraw('444d53430201000000000000000000020001000000000000');request_:=lower(rawtohex(sys_guid()));
+  delta_:=doom_unified_command_tic_prepare(session_,lineage_,1,request_,tic_+1,seq_+1,rng_,next_mobj_,0,command_);
+  if rawtohex(utl_raw.substr(delta_,1,8))<>'44554F5001000500' then
+    raise_application_error(-20000,'mixed command TIC '||doom_unified_actor_last_error);end if;
+  update players set x=expected_x_,y=expected_y_,z=expected_z_ where session_token=session_
+    and player_id=(select current_player_id from game_sessions where session_token=session_);
+  doom_monsters.advance(session_,tic_+2);
+  update game_sessions set current_tic=tic_+2,last_command_seq=seq_+2 where session_token=session_;
+  result_:=doom_unified_actor_accept(session_,lineage_,1,request_);if result_<>'OK' then raise_application_error(-20000,result_);end if;
+  result_:=doom_unified_owner_sql_parity(session_,lineage_,1);
+  if result_ not like 'OK|%' then raise_application_error(-20000,'mixed command owner '||result_);end if;
+  result_:=doom_unified_world_checkpoint(session_,lineage_,1,restart_);
+  if substr(result_,1,3)<>'OK|' then raise_application_error(-20000,'mixed command checkpoint '||result_);end if;
+  result_:=doom_unified_world_restore(session_,lineage_,1,restart_);
+  if substr(result_,1,3)<>'OK|' then raise_application_error(-20000,'mixed command restore '||result_);end if;
+  result_:=doom_unified_owner_sql_parity(session_,lineage_,1);
+  if result_ not like 'OK|%' then raise_application_error(-20000,'mixed command restart '||result_);end if;
+  dbms_output.put_line('unified_command_tic_mixed_combat=PASS frontier='||(tic_+2)||'|'||(seq_+2));
   doom_api.new_game(3,session_,payload_);select save_lineage into lineage_ from game_sessions where session_token=session_;
   result_:=doom_unified_actor_load(session_,lineage_,1,map_sha_);
   if substr(result_,1,3)<>'OK|' then raise_application_error(-20000,'accepted TIC load '||result_);end if;

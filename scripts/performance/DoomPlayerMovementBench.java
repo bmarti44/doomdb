@@ -19,6 +19,10 @@ public final class DoomPlayerMovementBench {
   static NUMBER resultX;
   static NUMBER resultY;
   static NUMBER resultZ;
+  static int resultSector;
+  static boolean traceEnabled;
+  static long traceCandidateNs,traceSideNs,traceInteriorNs,traceEndpointNs,tracePortalNs;
+  static int traceCandidates,traceSideTests,traceInteriorTests,traceEndpointTests;
   private static boolean[] reachableScratch;
   private static boolean[] nextScratch;
   private static int[] candidateLines;
@@ -103,7 +107,9 @@ public final class DoomPlayerMovementBench {
     double maxX = Math.max(px, px + mx) + RADIUS_DOUBLE;
     double minY = Math.min(py, py + my) - RADIUS_DOUBLE;
     double maxY = Math.max(py, py + my) + RADIUS_DOUBLE;
+    long phase=traceEnabled?System.nanoTime():0;
     collectCandidates(px, py, px + mx, py + my, RADIUS_DOUBLE);
+    if(traceEnabled){traceCandidateNs+=System.nanoTime()-phase;traceCandidates+=candidateCount;}
     for (int candidate = 0; candidate < candidateCount; candidate++) {
       int line = candidateLines[candidate];
       if (DoomSimCatalogBench.lineId[line] == excludedLine || !blocking(line, pz)) continue;
@@ -111,7 +117,7 @@ public final class DoomPlayerMovementBench {
       double y1d = DoomSimCatalogBench.lineY1[line], y2d = DoomSimCatalogBench.lineY2[line];
       if (Math.min(x1d, x2d) > maxX || Math.max(x1d, x2d) < minX ||
           Math.min(y1d, y2d) > maxY || Math.max(y1d, y2d) < minY) continue;
-
+      phase=traceEnabled?System.nanoTime():0;long interiorBefore=traceInteriorNs;
       NUMBER x1 = integerCoordinate(x1d), y1 = integerCoordinate(y1d);
       NUMBER directionX = DoomSimCatalogBench.lineDirectionXExact[line];
       NUMBER directionY = DoomSimCatalogBench.lineDirectionYExact[line];
@@ -120,22 +126,27 @@ public final class DoomPlayerMovementBench {
       NUMBER velocityNormal = dx.mul(normalX).add(dy.mul(normalY));
       if (!velocityNormal.isZero()) {
         for (int side = -1; side <= 1; side += 2) {
+          if(traceEnabled)traceSideTests++;
           NUMBER sideNumber = new NUMBER(side);
           NUMBER t = sideNumber.mul(RADIUS).sub(distance).div(velocityNormal);
           if (t.compareTo(ZERO) < 0 || t.compareTo(ONE) > 0 ||
               sideNumber.mul(velocityNormal).compareTo(ZERO) >= 0) continue;
           NUMBER hitX = x.add(t.mul(dx)), hitY = y.add(t.mul(dy));
+          long interior=traceEnabled?System.nanoTime():0;if(traceEnabled)traceInteriorTests++;
           NUMBER along = hitX.sub(x1).mul(directionX).add(hitY.sub(y1).mul(directionY));
+          if(traceEnabled)traceInteriorNs+=System.nanoTime()-interior;
           if (along.compareTo(ZERO) >= 0 &&
               along.compareTo(DoomSimCatalogBench.lineLengthExact[line]) <= 0) {
             consider(line, t, directionX, directionY);
           }
         }
       }
-
+      if(traceEnabled)traceSideNs+=System.nanoTime()-phase-(traceInteriorNs-interiorBefore);
+      phase=traceEnabled?System.nanoTime():0;
       NUMBER qa = dx.mul(dx).add(dy.mul(dy));
-      if (qa.isZero()) continue;
+      if (qa.isZero()){if(traceEnabled)traceEndpointNs+=System.nanoTime()-phase;continue;}
       for (int endpoint = 0; endpoint < 2; endpoint++) {
+        if(traceEnabled)traceEndpointTests++;
         NUMBER ex = integerCoordinate(endpoint == 0 ? x1d : x2d);
         NUMBER ey = integerCoordinate(endpoint == 0 ? y1d : y2d);
         NUMBER rx = x.sub(ex), ry = y.sub(ey);
@@ -151,6 +162,7 @@ public final class DoomPlayerMovementBench {
         // fail-closed until its dedicated parity corpus lands.
         if (approach.compareTo(ZERO) <= 0) consider(line, t, directionX, directionY);
       }
+      if(traceEnabled)traceEndpointNs+=System.nanoTime()-phase;
     }
   }
 
@@ -198,14 +210,17 @@ public final class DoomPlayerMovementBench {
     return false;
   }
 
-  public static String move(NUMBER startX, NUMBER startY, NUMBER startZ, int angleIndex,
-      int forward, int strafe, int run) {
+  private static String moveInternal(NUMBER startX, NUMBER startY, NUMBER startZ, int angleIndex,
+      int forward, int strafe, int run, boolean report) {
     try {
+      if(traceEnabled){traceCandidateNs=traceSideNs=traceInteriorNs=traceEndpointNs=tracePortalNs=0;
+        traceCandidates=traceSideTests=traceInteriorTests=traceEndpointTests=0;}
       require(startX != null && startY != null && startZ != null, "missing position");
       NUMBER deltaX = DoomSimCatalogBench.movementX(angleIndex, forward, strafe, run);
       NUMBER deltaY = DoomSimCatalogBench.movementY(angleIndex, forward, strafe, run);
       require(deltaX != null && deltaY != null, DoomSimCatalogBench.lastError());
-      int startSector = DoomSimCatalogBench.locateSector(startX.doubleValue(), startY.doubleValue());
+      long portal=traceEnabled?System.nanoTime():0;int startSector = DoomSimCatalogBench.locateSector(startX.doubleValue(), startY.doubleValue());
+      if(traceEnabled)tracePortalNs+=System.nanoTime()-portal;
       require(startSector >= 0, DoomSimCatalogBench.lastError());
       NUMBER x = startX, y = startY, remainingX = deltaX, remainingY = deltaY;
       int firstLine = -1, secondLine = -1; NUMBER firstT = null, secondT = null;
@@ -229,16 +244,17 @@ public final class DoomPlayerMovementBench {
       } else {
         x = x.add(remainingX); y = y.add(remainingY);
       }
-      int sector = DoomSimCatalogBench.locateSector(x.doubleValue(), y.doubleValue());
+      portal=traceEnabled?System.nanoTime():0;int sector = DoomSimCatalogBench.locateSector(x.doubleValue(), y.doubleValue());
       require(sector >= 0, DoomSimCatalogBench.lastError());
       if (!portalTransition(startX.doubleValue(), startY.doubleValue(), startZ.doubleValue(),
           x.doubleValue(), y.doubleValue(), startSector, sector)) {
         x = startX; y = startY; sector = startSector;
         firstLine = -1; secondLine = -1; firstT = null; secondT = null;
       }
+      if(traceEnabled)tracePortalNs+=System.nanoTime()-portal;
       NUMBER z = new NUMBER((long) DoomSimCatalogBench.baseFloor[sector]);
-      resultX = x; resultY = y; resultZ = z;
-      lastError = "";
+      resultX = x; resultY = y; resultZ = z; resultSector = sector;
+      lastError = "";if (!report) return "OK";
       return "{\"dest_x\":" + x.stringValue() + ",\"dest_y\":" + y.stringValue() +
           ",\"dest_z\":" + z.stringValue() + ",\"destination_sector_id\":" + sector +
           ",\"contact_count\":" + (firstLine < 0 ? 0 : secondLine < 0 ? 1 : 2) +
@@ -250,6 +266,17 @@ public final class DoomPlayerMovementBench {
       lastError = error.getClass().getName() + ":" + error.getMessage();
       return "{\"error\":\"movement failed\"}";
     }
+  }
+
+  public static String move(NUMBER startX, NUMBER startY, NUMBER startZ, int angleIndex,
+      int forward, int strafe, int run) {
+    return moveInternal(startX,startY,startZ,angleIndex,forward,strafe,run,true);
+  }
+
+  /** Allocation-light retained-owner boundary; exact results remain in the package fields. */
+  static String moveRetained(NUMBER startX, NUMBER startY, NUMBER startZ, int angleIndex,
+      int forward, int strafe, int run) {
+    return moveInternal(startX,startY,startZ,angleIndex,forward,strafe,run,false);
   }
 
   public static String benchmark(int iterations) {
