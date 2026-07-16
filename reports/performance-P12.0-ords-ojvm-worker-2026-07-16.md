@@ -280,6 +280,11 @@ With LOS in the same retained pass, all 53 visible wakes and their ordered
 the same prior-snapshot mobj order as SQL: all 53 actor rows and cursor advances
 match, and the 36 successful rolls emit 36/36 ordered `MONSTER_PAIN` events.
 
+The next bounded active-state phase handles awake actors whose old state timer
+is greater than one. All 53 rows decrement from three tics to two exactly like
+SQL, with zero events and an unchanged RNG cursor. State transition and action
+dispatch remain fail-closed at `state_tics <= 1`.
+
 Repeated `loadjava -force` during iterative development eventually caused the
 2 GiB local instance's MMAN to terminate with fatal `ORA-00822`. The Oracle
 alert trace identifies MMAN memory management rather than an uncaught Java game

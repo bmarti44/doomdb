@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | Renderer: 15.671/17.590 ms p50/p95. Movement: 270/270 SQL tics. Exact LOS: 270/270 rays at 0.240 ms p95 per 53 actors. Quiet, HEARD, SEEN, and pain actor rows: 53/53; pain events: 36/36. Full actors, persistence, and public integration remain. |
+| P12.0 | Active playability gate | Renderer: 15.671/17.590 ms p50/p95. Movement and LOS pass. Quiet, HEARD, SEEN, pain, and active-state countdown rows: 53/53 each; pain events: 36/36. Death, action dispatch, persistence, and public integration remain. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -185,7 +185,8 @@ The bounded actor phases match 53/53 quiet rows, 53/53 audible `HEARD` wakes,
 and 53/53 visible `SEEN` wakes with ordered events. Pain also matches all 53
 actor and RNG transitions plus 36/36 successful-roll events. Exact BLOCKMAP LOS matches
 270/270 SQL rays and costs 0.074/0.240 ms p50/p95 for one warmed 53-actor batch.
-Death, active state transitions, chase, attack, and drops remain before the actor loop
+Awake state countdown also matches 53/53 with no events or RNG changes. Death,
+next-state/action dispatch, chase, attack, and drops remain before the actor loop
 is production-routable. The incomplete fast-path projection is roughly 25–32
 FPS; it is not a measured gameplay result.
 Playability requires 270+ unique moving frames to sustain 30 FPS at both p50

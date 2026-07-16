@@ -145,26 +145,32 @@ public final class DoomActorWakeBench {
       for (int index = 0; index < count; index++) {
         int rejected = DoomSimCatalogBench.rejected(sector[index], playerSector);
         int reaches = DoomSimCatalogBench.soundReach(playerSector, sector[index]);
-        require(health[index] > 0 && awake[index] == 0 && seen[index] >= -1,
+        require(health[index] > 0 && seen[index] >= -1,
             "unsupported wake actor mobj=" + id[index]);
         int roll = -1; boolean pain = false;
         if (seen[index] >= 0 && health[index] < seen[index]) {
           roll = DoomSimCatalogBench.rng(cursor); require(roll >= 0, DoomSimCatalogBench.lastError());
           cursor = (cursor + 1) & 255; draws++; pain = roll < painChance[index];
         }
-        int visible = pain || rejected == 1 ? 0 :
+        boolean activeTick = awake[index] == 1 && !pain;
+        if (activeTick) require(stateTics[index] > 1,
+            "active state transition mobj=" + id[index]);
+        int visible = pain || activeTick || rejected == 1 ? 0 :
             DoomRetainedLosBench.visible(x[index], y[index], sector[index],
               playerX, playerY, playerSector);
         require(visible >= 0, DoomRetainedLosBench.lastError());
-        boolean wake = !pain && (visible == 1 || (playerMadeSound == 1 && reaches == 1));
+        boolean wake = !pain && !activeTick &&
+            (visible == 1 || (playerMadeSound == 1 && reaches == 1));
         nextSeen[index] = health[index]; nextCooldown[index] = Math.max(0, cooldown[index] - 1);
         nextAwake[index] = pain || wake ? 1 : awake[index];
         nextStateIndex[index] = pain ? painStateIndex[index] :
             wake ? seeStateIndex[index] : stateIndex[index];
         nextStateTics[index] = pain ? painStateTics[index] :
-            wake ? seeStateTics[index] : stateTics[index];
+            wake ? seeStateTics[index] : activeTick ? stateTics[index] - 1 : stateTics[index];
         nextTarget[index] = wake ? playerTarget : target[index];
-        if (nextSeen[index] != seen[index] || nextCooldown[index] != cooldown[index] || pain || wake)
+        if (nextSeen[index] != seen[index] || nextCooldown[index] != cooldown[index] ||
+            nextAwake[index] != awake[index] || nextStateIndex[index] != stateIndex[index] ||
+            nextStateTics[index] != stateTics[index] || nextTarget[index] != target[index])
           dirtyIndex[dirty++] = index;
         if (pain || wake) {
           wakeIndex[wakes] = index; wakeReason[wakes] = pain ? 3 : visible == 1 ? 1 : 2;
@@ -179,7 +185,8 @@ public final class DoomActorWakeBench {
       for (int item = 0; item < dirty; item++) {
         int actor = dirtyIndex[item], offset = 12 + item * 32;
         int mask = (nextSeen[actor] != seen[actor] || nextCooldown[actor] != cooldown[actor] ? 1 : 0) |
-            (nextAwake[actor] != awake[actor] ? 2 : 0);
+            (nextAwake[actor] != awake[actor] || nextStateIndex[actor] != stateIndex[actor] ||
+             nextStateTics[actor] != stateTics[actor] || nextTarget[actor] != target[actor] ? 2 : 0);
         putInt(delta, offset, id[actor]); putInt(delta, offset + 4, mask);
         putInt(delta, offset + 8, nextSeen[actor]); putInt(delta, offset + 12, nextCooldown[actor]);
         putInt(delta, offset + 16, nextAwake[actor]); putInt(delta, offset + 20, nextStateIndex[actor]);

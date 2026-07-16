@@ -1476,6 +1476,12 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   emits 36/36 ordered `MONSTER_PAIN` events for successful rolls. Next add
   death and active state/action phases. The transitional sound bit must ultimately come from the retained
   current-tic event buffer, not a per-tic SQL scalar.
+- Retained active-state countdown (2026-07-16): awake live actors whose old
+  `state_tics` is greater than one now decrement in retained state and stop at
+  the same prior-snapshot boundary as SQL. The controlled differential matches
+  53/53 actor rows with zero events and no RNG movement; the HEARD, SEEN, and
+  pain corpora remain green. `state_tics <= 1` still fails closed until the
+  next-state/action graph and CHASE/attack dispatch are retained.
 - OJVM deployment-memory guard (2026-07-16): repeated iterative
   `loadjava -force` cycles eventually drove the 2 GiB local instance's MMAN to
   fatal `ORA-00822`; the alert trace identifies MMAN, not an uncaught game
