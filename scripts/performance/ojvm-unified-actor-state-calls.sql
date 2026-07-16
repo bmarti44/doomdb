@@ -32,3 +32,28 @@ create or replace function doom_unified_actor_benchmark(
 return varchar2 as language java name
   'DoomUnifiedActorStateBench.benchmark(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,java.sql.Clob,int) return java.lang.String';
 /
+create or replace function doom_unified_world_checkpoint(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_output in blob)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.worldCheckpoint(java.lang.String,java.lang.String,long,java.sql.Blob) return java.lang.String';
+/
+create or replace function doom_unified_world_restore(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_input in blob)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.worldRestore(java.lang.String,java.lang.String,long,java.sql.Blob) return java.lang.String';
+/
+create or replace function doom_unified_world_sql_parity(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.worldSqlParity(java.lang.String,java.lang.String,long) return java.lang.String';
+/
+create or replace function doom_unified_world_spawn_remove(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.worldSpawnRemoveProbe(java.lang.String,java.lang.String,long) return java.lang.String';
+/
+create or replace function doom_unified_tic_accept_benchmark(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_iterations in number)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.benchmarkAcceptedTics(java.lang.String,java.lang.String,long,int) return java.lang.String';
+/

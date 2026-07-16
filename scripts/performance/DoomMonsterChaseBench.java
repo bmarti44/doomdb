@@ -17,6 +17,8 @@ public final class DoomMonsterChaseBench {
   private static long generation;
   private static int count;
   private static int[] id, health;
+  private static int[] selectedWorld;
+  private static boolean sharedWorldResult;
   private static NUMBER[] x, y, z, radius, height, speed;
   private static NUMBER[] negativeSpeed, xMinus, xPlus, yMinus, yPlus;
   private static byte[][] xCenterField, xMinusField, xPlusField;
@@ -487,7 +489,12 @@ public final class DoomMonsterChaseBench {
       delta[0] = 'D'; delta[1] = 'M'; delta[2] = 'C'; delta[3] = 'H';
       delta[4] = 1; delta[5] = 0; putShort(delta, 6, count);
       for (int actor = 0; actor < count; actor++) {
-        require(health[actor] > 0, "dead CHASE actor mobj=" + id[actor]);
+        if(selectedWorld!=null&&selectedWorld[actor]==0){int offset=8+actor*RECORD_BYTES;
+          putInt(delta,offset,id[actor]);System.arraycopy(xCenterField[actor],0,delta,offset+4,23);
+          System.arraycopy(yCenterField[actor],0,delta,offset+27,23);
+          int currentSector=DoomSimCatalogBench.locateSector(xd[actor],yd[actor]);
+          require(currentSector>=0,"chase current sector");putInt(delta,offset+50,currentSector);
+          putInt(delta,offset+54,-1);continue;}
         int sx = playerX.compareTo(x[actor]); int sy = playerY.compareTo(y[actor]);
         NUMBER destinationX = x[actor], destinationY = y[actor]; int moveDirection = -1;
         int selectedX = 0, selectedY = 0;
@@ -522,9 +529,22 @@ public final class DoomMonsterChaseBench {
             yPlusField[actor] : yCenterField[actor], 0, delta, offset + 27, 23);
         putInt(delta, offset + 50, destinationSector); putInt(delta, offset + 54, moveDirection);
       }
+      if(sharedWorldResult){lastError="";return delta;}
       byte[] result = new byte[8 + count * RECORD_BYTES];
       System.arraycopy(delta, 0, result, 0, result.length); lastError = ""; return result;
     } catch (Throwable error) { return failure(error); }
+  }
+
+  /** Coordinator-only movement oracle with the retained prior-tic health mask. */
+  public static byte[] prepareWorld(String expectedSession,String expectedLineage,
+      long expectedGeneration,String request,NUMBER playerX,NUMBER playerY,int[] snapshotHealth,
+      int[] selected){
+    int[] saved=health;
+    try{require(snapshotHealth!=null&&snapshotHealth.length==count&&selected!=null&&selected.length==count,
+          "chase world health");selectedWorld=selected;
+      health=snapshotHealth;sharedWorldResult=true;
+      return prepare(expectedSession,expectedLineage,expectedGeneration,request,playerX,playerY);
+    }finally{health=saved;selectedWorld=null;sharedWorldResult=false;}
   }
 
   /** Publish a coordinator-owned, previously prepared CHASE delta after commit. */
