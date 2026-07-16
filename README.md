@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | Direct retained rendering is 7.135/9.505 ms p50/p95 with exact camera, sector, and MOBJ changes. The four-slot AQ/Scheduler worker passes two-session isolation, response correlation, restart fencing, and terminal replay. The single-pass actor tic, durable deltas, and public 30 FPS proof remain. |
+| P12.0 | Active playability gate | Direct retained rendering is 7.135/9.505 ms p50/p95. One ordered all-MOBJ actor tic now includes death, pain, wake, CHASE, melee, hitscan, projectiles, and drops at 0.316/0.747 ms warm p50/p95; cold p95 is 4.160 ms. Durable command integration and the public 30 FPS proof remain. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -179,11 +179,21 @@ Default-off rollout, rollback isolation, lost-response replay across restart,
 and stale-work fencing pass live. SQL remains the independent differential
 oracle and authoritative durable store.
 
-The remaining critical work is one actor-ordered retained tic that composes
-death, pain, wake, state advancement, melee/hitscan/projectile attacks, and
-CHASE exactly once, followed by durable delta persistence and the fixed
-270-frame AutoREST/browser measurement. Playability requires both p50 and p95
-to remain at or below 33.3 ms through that public path. See the
+The retained actor prerequisite is complete. One frozen MOBJ-order pass now
+composes death, pain, wake, state advancement, melee, hitscan, projectile
+spawning, drops, and CHASE exactly once. A mixed differential matches 53 actors,
+two spawns, seven ordered events, five RNG draws, and the accepted 282-row world.
+The full 280-row owner checkpoint restores atomically, and arbitrary removal
+clears inbound target, tracer, and owner references. Over 300 unique accepted
+tics the kernel measures 0.316/0.747 ms p50/p95 after warmup; a separate cold
+post-load run measures 3.439/4.160 ms.
+
+The remaining critical work is integrating the retained player command into
+that same pending transaction, validating and durably applying its compact
+delta, generating the canonical state hash from retained state, and coupling
+the result to the retained renderer and public AutoREST route. The fixed
+270-frame browser measurement must keep both p50 and p95 at or below 33.3 ms.
+See the
 [ORDS/OJVM worker report](reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md).
 
 ## Local review

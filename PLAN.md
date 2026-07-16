@@ -1576,6 +1576,28 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   cross-generation terminal replay, and stale-generation fencing. The installed
   worker remains rollback-only until the unified retained tic and durable delta
   writer replace the scaffold.
+- Unified all-MOBJ actor-tic gate (2026-07-16): the executable retained owner
+  now captures all 280 MOBJs and every runtime MOBJ column, not only the 53
+  monster behavior rows. Its 27,548-byte full-owner checkpoint is fenced by
+  session, lineage, state-map SHA, generation, tic/command/RNG/ID/event
+  frontiers, and retained player combat/position/sound state; restore validates
+  before atomically publishing and rebuilding the movement cache. Stable ID
+  lookup, arbitrary removal, and inbound target/tracer/owner cleanup pass.
+  One frozen MOBJ-order pass now performs fresh and processed death, pain,
+  HEARD/SEEN wake, state transitions, melee, hitscan, projectile spawn, drop,
+  and CHASE exactly once. The mixed SQL differential matches 53 actors, two
+  spawned MOBJs, seven ordered events, five RNG draws, exact player/frontier
+  values, and the accepted 282-row world in one 5,640-byte delta.
+- Actor-tic allocation rejection and repair (2026-07-16): the first correct
+  full-owner prepare deep-cloned 28 arrays and rebuilt a boxed ID map, measuring
+  10.066/14.693/18.370 ms p50/p95/max; it was rejected. Reusable committed/
+  pending buffers, capacity-backed append, retained scratch/masks, selective
+  movement, shared exact output, and deferred publish encoding preserve parity.
+  A cold-after-load 300-unique-tic run measures 3.439/4.160/11.128 ms and the
+  warmed repeat measures 0.316/0.747/5.662 ms, ending at exact tic/command
+  frontier 320/320. The next production slice integrates the already-selected
+  DMSC/v2 player command/movement into this same pending owner; component modes
+  remain differential oracles and may not be composed as separate tic phases.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior
