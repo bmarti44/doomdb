@@ -25,8 +25,10 @@ per-column upper/lower portal clips. The two-pass design avoids assuming that
 seg storage order inside a subsector is strict ray-depth order. Exact wall
 regions are drawn front-to-back into one reusable indexed buffer, sampling the
 real relational textures and colormap. Sector intervals also bound an exact
-array-based floor/ceiling/sky raster into the same buffer. It does not yet
-implement masked fragments or the production codec; horizontal plane-span
+array-based floor/ceiling/sky raster into the same buffer. Transparent middle
+walls and relational sprite-state/rotation primitives are depth-ranked into a
+reusable presentation buffer. It does not yet implement sparse first-person
+presentation or the production codec; horizontal plane-span
 coalescing remains a later resolution-scaling optimization.
 
 The runner compiles with the pinned database image's Java 11 HotSpot VM and uses
@@ -56,6 +58,9 @@ pair. The selected run found:
 | Java wall missing / extra / palette mismatch | 0 / 0 / 0 |
 | Production SQL complete world pixels | 64,000 |
 | Java world missing / extra / palette mismatch | 0 / 0 / 0 |
+| Globally selected SQL masked-wall pixels | 4,702 |
+| Globally selected SQL sprite pixels | 2,404 |
+| Java full masked missing / extra / palette mismatch | 0 / 0 / 0 |
 | Maximum nodes visited | 614 / 681 |
 | Maximum subsectors visited | 588 / 682 |
 
@@ -71,6 +76,12 @@ stored 20,480 ray components, the database-computed projection constant, and
 raw binary-double flooring for negative world coordinates. The fail-closed
 oracle now guards all 64,000 world bytes.
 
+The tic-zero dynamic snapshot resolves symbolic state identifiers to dense
+primitive catalog indices at load time. The renderer then applies the exact
+rotation, screen bounds, interval/solid visibility, flip, transparency, and
+depth/source/asset-coordinate tie rules. All 7,106 globally selected masked
+pixels match SQL exactly.
+
 ## HotSpot timing
 
 After 5,000 warmups, 20,000 unique angle/nearby-position samples measured with a
@@ -78,14 +89,15 @@ After 5,000 warmups, 20,000 unique angle/nearby-position samples measured with a
 
 | Metric | Result |
 | --- | ---: |
-| Immutable relational load including walls/flats/rays | 4,998.740 ms |
-| Complete exact 64,000-pixel world p50 | 2.730063 ms |
-| Complete exact 64,000-pixel world p95 | 4.794134 ms |
-| Complete exact 64,000-pixel world p99 | 5.348201 ms |
+| Immutable relational load including walls/flats/sprites/rays | 5,713.943 ms |
+| Complete exact world + masked p50 | 3.060035 ms |
+| Complete exact world + masked p95 | 5.389510 ms |
+| Complete exact world + masked p99 | 5.942101 ms |
 
 The geometry/clip portion previously passed its <=3 ms component gate, and the
 complete exact world remains inside the <=8 ms opaque-world gate on HotSpot.
-The 5.00-second row-by-row cold load is not in the frame path, but it is
+Masked composition adds about 0.60 ms at p95, passing its <=3 ms gate. The
+5.71-second row-by-row cold load is not in the frame path, but it is
 not an acceptable pooled-session prewarm path; the planned revision-keyed
 relational BLOB packs remain necessary.
 
@@ -117,8 +129,8 @@ Consequences:
 
 ## Next implementation
 
-1. Add exact masked wall/sprite primitive fragments and require full
-   world+masked parity plus <=3 ms for that stage.
+1. Add exact first-person weapon/HUD/pause/menu presentation and compare the
+   composed indexed frame.
 2. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and
    enforce the 12 MiB/session and 5 ms warm-snapshot gates.
 3. Externally compile/load the representative methods, allow bounded cold JIT

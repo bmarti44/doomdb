@@ -76,6 +76,19 @@ public final class DoomBspKernelBench {
   private static int intervalTotal;
   private static double farDistance;
   private static double projectionK;
+  private static short[] presentationFrame, overlayPalette;
+  private static double[] overlayDepth;
+  private static byte[] overlayKind;
+  private static int[] overlaySource, overlayAssetX, overlayAssetY;
+  private static Map<Integer, Integer> spriteAssetById;
+  private static int[] spriteAssetWidth, spriteAssetHeight;
+  private static short[][] spriteAssetTexels;
+  private static int catalogStateCount;
+  private static Map<String, Integer> stateIndexByName;
+  private static int[] catalogAsset, catalogLeft, catalogTop;
+  private static byte[] catalogFlip, catalogPresent;
+  private static int mobjCount;
+  private static int[] mobjId, mobjX, mobjY, mobjZ, mobjAngle, mobjState;
 
   private static int visitedNodes;
   private static int visitedSubsectors;
@@ -325,6 +338,83 @@ public final class DoomBspKernelBench {
       }
       require(texels == 200_704, "flat texel count mismatch");
     }
+    int spriteAssetCount;
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select count(*) from doom_asset where asset_kind='sprite_patch'")) {
+      rows.next(); spriteAssetCount = rows.getInt(1);
+    }
+    spriteAssetById = new HashMap<>();
+    spriteAssetWidth = new int[spriteAssetCount]; spriteAssetHeight = new int[spriteAssetCount];
+    spriteAssetTexels = new short[spriteAssetCount][];
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select asset_id,width,height from doom_asset where asset_kind='sprite_patch' " +
+             "order by asset_id")) {
+      int index = 0;
+      while (rows.next()) {
+        spriteAssetById.put(rows.getInt(1), index);
+        spriteAssetWidth[index] = rows.getInt(2); spriteAssetHeight[index] = rows.getInt(3);
+        spriteAssetTexels[index] = new short[spriteAssetWidth[index] * spriteAssetHeight[index]];
+        index++;
+      }
+      require(index == spriteAssetCount, "sprite asset count mismatch");
+    }
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select t.a,t.x,t.y,t.c from at t join doom_asset a on a.asset_id=t.a " +
+             "where a.asset_kind='sprite_patch' order by t.a,t.x,t.y")) {
+      int texels = 0;
+      while (rows.next()) {
+        int asset = spriteAssetById.get(rows.getInt(1));
+        int offset = rows.getInt(2) * spriteAssetHeight[asset] + rows.getInt(3);
+        spriteAssetTexels[asset][offset] = (short) rows.getInt(4); texels++;
+      }
+      require(texels == 331_474, "sprite texel count mismatch");
+    }
+    stateIndexByName = new HashMap<>();
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery("select state_id from doom_state_def order by state_id")) {
+      while (rows.next()) stateIndexByName.put(rows.getString(1), stateIndexByName.size());
+      catalogStateCount = stateIndexByName.size();
+    }
+    int catalogSize = catalogStateCount * 9;
+    catalogAsset = new int[catalogSize]; catalogLeft = new int[catalogSize];
+    catalogTop = new int[catalogSize]; catalogFlip = new byte[catalogSize];
+    catalogPresent = new byte[catalogSize];
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select state_id,rotation_no,asset_id,left_offset,top_offset,flip_x " +
+             "from doom_r2_world_sprite_catalog order by state_id,rotation_no")) {
+      while (rows.next()) {
+        int index = stateIndexByName.get(rows.getString(1)) * 9 + rows.getInt(2);
+        catalogAsset[index] = spriteAssetById.get(rows.getInt(3));
+        catalogLeft[index] = rows.getInt(4); catalogTop[index] = rows.getInt(5);
+        catalogFlip[index] = (byte) rows.getInt(6); catalogPresent[index] = 1;
+      }
+    }
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select count(*) from doom_map_thing t join doom_thing_type_def d " +
+             "on d.thing_type=t.thing_type where t.thing_type<>1 and d.spawn_state_id is not null")) {
+      rows.next(); mobjCount = rows.getInt(1);
+    }
+    mobjId = new int[mobjCount]; mobjX = new int[mobjCount]; mobjY = new int[mobjCount];
+    mobjZ = new int[mobjCount]; mobjAngle = new int[mobjCount]; mobjState = new int[mobjCount];
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select t.thing_id,t.x,t.y,0,t.angle,d.spawn_state_id from doom_map_thing t " +
+             "join doom_thing_type_def d on d.thing_type=t.thing_type " +
+             "where t.thing_type<>1 and d.spawn_state_id is not null order by t.thing_id")) {
+      int index = 0;
+      while (rows.next()) {
+        mobjId[index] = rows.getInt(1); mobjX[index] = rows.getInt(2);
+        mobjY[index] = rows.getInt(3); mobjZ[index] = rows.getInt(4);
+        mobjAngle[index] = rows.getInt(5);
+        mobjState[index] = stateIndexByName.get(rows.getString(6)); index++;
+      }
+      require(index == mobjCount, "mobj count mismatch");
+    }
     colormap = new short[32 * 256];
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
@@ -392,6 +482,10 @@ public final class DoomBspKernelBench {
     intervalSector = new int[MAX_INTERVALS]; intervalStart = new double[MAX_INTERVALS];
     intervalEnd = new double[MAX_INTERVALS]; intervalClipTop = new double[MAX_INTERVALS];
     intervalClipBottom = new double[MAX_INTERVALS];
+    presentationFrame = new short[wallFrame.length]; overlayPalette = new short[wallFrame.length];
+    overlayDepth = new double[wallFrame.length]; overlayKind = new byte[wallFrame.length];
+    overlaySource = new int[wallFrame.length]; overlayAssetX = new int[wallFrame.length];
+    overlayAssetY = new int[wallFrame.length];
   }
 
   private static int side(int px, int py, int id) {
@@ -474,6 +568,8 @@ public final class DoomBspKernelBench {
     intervalTotal = 0;
     Arrays.fill(wallFrame, (short) -1); Arrays.fill(wallOwned, (byte) 0);
     Arrays.fill(wallColored, (byte) 0); Arrays.fill(intervalCount, 0);
+    Arrays.fill(overlayDepth, Double.POSITIVE_INFINITY);
+    Arrays.fill(overlayKind, (byte) 0);
     if (retainCandidates) Arrays.fill(portalCandidates, (byte) 0);
     for (int column = 0; column < WIDTH; column++) {
       intervalOffset[column] = intervalTotal;
@@ -514,6 +610,8 @@ public final class DoomBspKernelBench {
         int to = oppositeSector(id, px, py);
         drawActiveWall(id, column, px, py, orderedDepths[i], dirX, dirY, plnX,
             plnY, from, to, clipTop, clipBottom, eyeZ);
+        if (to >= 0) drawMaskedWall(id, column, px, py, orderedDepths[i], dirX,
+            dirY, plnX, plnY, from, clipTop, clipBottom, eyeZ);
         if (to < 0) {
           terminated = true;
         } else {
@@ -534,6 +632,10 @@ public final class DoomBspKernelBench {
       portalClipBottom[column] = Math.min(200.0, clipBottom);
     }
     drawPlanes(px, py, dirX, dirY, plnX, plnY);
+    drawSprites(px, py, dirX, dirY);
+    System.arraycopy(wallFrame, 0, presentationFrame, 0, wallFrame.length);
+    for (int index = 0; index < presentationFrame.length; index++)
+      if (overlayKind[index] != 0) presentationFrame[index] = overlayPalette[index];
   }
 
   private static void addInterval(int column, double start, double end, int sector,
@@ -590,6 +692,71 @@ public final class DoomBspKernelBench {
           if (raw < 0) continue;
           int lightBand = Math.max(0, Math.min(31, (255 - light) / 8));
           wallFrame[frameOffset] = colormap[lightBand * 256 + raw];
+        }
+      }
+    }
+  }
+
+  private static void drawSprites(int px, int py, double forwardX, double forwardY) {
+    int centerColumn = WIDTH / 2;
+    if (intervalCount[centerColumn] == 0) return;
+    double eyeZ = sectorFloor[intervalSector[intervalOffset[centerColumn]]] + 41.0;
+    for (int mobj = 0; mobj < mobjCount; mobj++) {
+      double relX = mobjX[mobj] - px, relY = mobjY[mobj] - py;
+      double depth = relX * forwardX + relY * forwardY;
+      if (depth <= 1.0) continue;
+      double lateral = -relX * forwardY + relY * forwardX;
+      double bearing = Math.atan2(py - mobjY[mobj], px - mobjX[mobj]) * 180.0 / Math.PI;
+      double normalized = (bearing - mobjAngle[mobj] + 720.0) % 360.0;
+      int rotation = ((int) Math.floor((normalized + 22.5) / 45.0)) % 8 + 1;
+      int state = mobjState[mobj];
+      if (state < 0 || state >= catalogStateCount) continue;
+      int catalog = state * 9 + (catalogPresent[state * 9] != 0 ? 0 : rotation);
+      if (catalogPresent[catalog] == 0) continue;
+      int asset = catalogAsset[catalog];
+      int width = spriteAssetWidth[asset], height = spriteAssetHeight[asset];
+      double screenCenter = 160.0 + lateral * 160.0 / depth;
+      double scale = 160.0 / depth;
+      int left = (int) Math.floor(screenCenter - catalogLeft[catalog] * scale);
+      int right = (int) Math.ceil(screenCenter +
+          (width - catalogLeft[catalog]) * scale) - 1;
+      int top = (int) Math.floor(100.0 -
+          (mobjZ[mobj] + catalogTop[catalog] - eyeZ) * scale);
+      int bottom = (int) Math.ceil(100.0 -
+          (mobjZ[mobj] + catalogTop[catalog] - height - eyeZ) * scale) - 1;
+      int firstColumn = Math.max(0, left), endColumn = Math.min(WIDTH, right + 1);
+      int screenWidth = right - left + 1, screenHeight = bottom - top + 1;
+      if (firstColumn >= endColumn || screenWidth <= 0 || screenHeight <= 0) continue;
+      for (int column = firstColumn; column < endColumn; column++) {
+        if (!(depth < nearestSolidDepth[column] - 1e-9)) continue;
+        int interval = -1;
+        int firstInterval = intervalOffset[column];
+        int endInterval = firstInterval + intervalCount[column];
+        for (int candidate = firstInterval; candidate < endInterval; candidate++) {
+          if (depth >= intervalStart[candidate] && depth < intervalEnd[candidate]) {
+            interval = candidate; break;
+          }
+        }
+        if (interval < 0) continue;
+        int firstRow = Math.max(Math.max(0, top),
+            (int) Math.ceil(intervalClipTop[interval] - .5));
+        int endRow = Math.min(Math.min(200, bottom + 1),
+            (int) Math.ceil(intervalClipBottom[interval] - .5));
+        if (firstRow >= endRow) continue;
+        int assetX = (int) Math.min(width - 1, Math.max(0,
+            ((long) (column - left) * width) / screenWidth));
+        int sampleX = catalogFlip[catalog] != 0 ? width - 1 - assetX : assetX;
+        for (int row = firstRow; row < endRow; row++) {
+          int assetY = (int) Math.min(height - 1, Math.max(0,
+              ((long) (row - top) * height) / screenHeight));
+          int raw = spriteAssetTexels[asset][sampleX * height + assetY];
+          if (raw < 0) continue;
+          int index = column * 200 + row;
+          if (overlayWins(index, depth, (byte) 2, mobjId[mobj], assetY, assetX)) {
+            overlayDepth[index] = depth; overlayKind[index] = 2;
+            overlaySource[index] = mobjId[mobj]; overlayAssetX[index] = assetX;
+            overlayAssetY[index] = assetY; overlayPalette[index] = (short) raw;
+          }
         }
       }
     }
@@ -701,6 +868,54 @@ public final class DoomBspKernelBench {
       drawWallPiece(id, column, depth, hitU, clipTop, clipBottom,
           sectorCeiling[from], sectorCeiling[to], upper, anchor,
           xOffset, yOffset, sectorLight[from], eyeZ);
+    }
+  }
+
+  private static boolean overlayWins(int index, double depth, byte kind, int source,
+      int assetY, int assetX) {
+    if (depth < overlayDepth[index]) return true;
+    if (depth > overlayDepth[index]) return false;
+    if (overlayKind[index] == 0 || kind < overlayKind[index]) return true;
+    if (kind > overlayKind[index]) return false;
+    if (source < overlaySource[index]) return true;
+    if (source > overlaySource[index]) return false;
+    if (assetY < overlayAssetY[index]) return true;
+    return assetY == overlayAssetY[index] && assetX < overlayAssetX[index];
+  }
+
+  private static void drawMaskedWall(int id, int column, int px, int py,
+      double depth, double dirX, double dirY, double plnX, double plnY,
+      int from, double clipTop, double clipBottom, double eyeZ) {
+    long cross = (long) (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
+        - (long) (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
+    boolean right = cross > 0;
+    String texture = right ? rightMiddle[id] : leftMiddle[id];
+    if (texture == null || "-".equals(texture)) return;
+    Integer asset = wallAssetByName.get(texture);
+    if (asset == null) return;
+    int xOffset = right ? rightXOffset[id] : leftXOffset[id];
+    int yOffset = right ? rightYOffset[id] : leftYOffset[id];
+    double hitU = acceptedU(id, column, px, py, dirX, dirY, plnX, plnY);
+    double deltaX = segEndX[id] - segStartX[id];
+    double deltaY = segEndY[id] - segStartY[id];
+    double length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    int assetX = wrap(sqlFloor(segOffset[id] + xOffset + hitU * length),
+        wallAssetWidth[asset]);
+    int first = Math.max(0, (int) Math.ceil(Math.max(0.0, clipTop) - .5));
+    int end = Math.min(200, (int) Math.ceil(Math.min(200.0, clipBottom) - .5));
+    for (int row = first; row < end; row++) {
+      double center = row + .5;
+      double sampleY = sectorCeiling[from] -
+          (eyeZ + (100.0 - center) * depth / 160.0) + yOffset;
+      int assetY = wrap(sqlFloor(sampleY), wallAssetHeight[asset]);
+      int raw = wallAssetTexels[asset][assetX * wallAssetHeight[asset] + assetY];
+      if (raw < 0) continue;
+      int index = column * 200 + row;
+      if (overlayWins(index, depth, (byte) 1, segLineId[id], assetY, assetX)) {
+        overlayDepth[index] = depth; overlayKind[index] = 1;
+        overlaySource[index] = segLineId[id]; overlayAssetX[index] = assetX;
+        overlayAssetY[index] = assetY; overlayPalette[index] = (short) raw;
+      }
     }
   }
 
@@ -825,8 +1040,12 @@ public final class DoomBspKernelBench {
     int sqlActive = 0, missing = 0, extra = 0, clipMismatch = 0;
     int sqlWallPixels = 0, wallMissing = 0, wallColorMismatch = 0, wallExtra = 0;
     int sqlWorldPixels = 0, worldMissing = 0, worldColorMismatch = 0, worldExtra = 0;
+    int sqlMaskedWall = 0, maskedWallMissing = 0, maskedWallColor = 0, maskedWallExtra = 0;
+    int sqlMaskedTotal = 0, maskedMissing = 0, maskedColor = 0, maskedExtra = 0;
     byte[] oracleWall = new byte[wallFrame.length];
     byte[] oracleWorld = new byte[wallFrame.length];
+    byte[] oracleMasked = new byte[wallFrame.length];
+    byte[] oracleMaskedTotal = new byte[wallFrame.length];
     try {
       try (CallableStatement call = connection.prepareCall("{call doom_api.new_game(?,?,?)}")) {
         call.setInt(1, 3);
@@ -854,7 +1073,15 @@ public final class DoomBspKernelBench {
                "where h.session_token=? and h.is_active=1 group by h.column_no");
            PreparedStatement wallOracle = connection.prepareStatement(
                "select column_no,row_no,palette_index,layer_ordinal " +
-               "from doom_r2_staged_pixel_rows where session_token=?")) {
+               "from doom_r2_staged_pixel_rows where session_token=?");
+           PreparedStatement maskedOracle = connection.prepareStatement(
+               "select column_no,row_no,palette_index from " +
+               "doom_r2_staged_masked_candidate_rows where session_token=? " +
+               "and source_kind='MASKED' and is_selected=1");
+           PreparedStatement fullMaskedOracle = connection.prepareStatement(
+               "select column_no,row_no,palette_index from " +
+               "doom_r2_staged_masked_candidate_rows where session_token=? " +
+               "and is_selected=1")) {
         for (int pose = 0; pose < 12; pose++) {
           int angle = pose * 5;
           update.setDouble(1, angleDegrees[angle]); update.setString(2, session);
@@ -919,6 +1146,32 @@ public final class DoomBspKernelBench {
               if (wallColored[index] != 0 && oracleWall[index] == 0) wallExtra++;
               if (wallFrame[index] >= 0 && oracleWorld[index] == 0) worldExtra++;
             }
+            maskedOracle.setString(1, session);
+            Arrays.fill(oracleMasked, (byte) 0);
+            try (ResultSet rows = maskedOracle.executeQuery()) {
+              while (rows.next()) {
+                sqlMaskedWall++;
+                int index = rows.getInt(1) * 200 + rows.getInt(2);
+                oracleMasked[index] = 1;
+                if (overlayKind[index] != 1) maskedWallMissing++;
+                else if (overlayPalette[index] != rows.getInt(3)) maskedWallColor++;
+              }
+            }
+            for (int index = 0; index < overlayKind.length; index++)
+              if (overlayKind[index] == 1 && oracleMasked[index] == 0) maskedWallExtra++;
+            fullMaskedOracle.setString(1, session);
+            Arrays.fill(oracleMaskedTotal, (byte) 0);
+            try (ResultSet rows = fullMaskedOracle.executeQuery()) {
+              while (rows.next()) {
+                sqlMaskedTotal++;
+                int index = rows.getInt(1) * 200 + rows.getInt(2);
+                oracleMaskedTotal[index] = 1;
+                if (overlayKind[index] == 0) maskedMissing++;
+                else if (overlayPalette[index] != rows.getInt(3)) maskedColor++;
+              }
+            }
+            for (int index = 0; index < overlayKind.length; index++)
+              if (overlayKind[index] != 0 && oracleMaskedTotal[index] == 0) maskedExtra++;
           }
         }
       }
@@ -935,7 +1188,9 @@ public final class DoomBspKernelBench {
     }
     return new int[] {sqlActive, missing, extra, clipMismatch, sqlWallPixels,
         wallMissing, wallColorMismatch, wallExtra, sqlWorldPixels, worldMissing,
-        worldColorMismatch, worldExtra};
+        worldColorMismatch, worldExtra, sqlMaskedWall, maskedWallMissing,
+        maskedWallColor, maskedWallExtra, sqlMaskedTotal, maskedMissing,
+        maskedColor, maskedExtra};
   }
 
   private static double percentile(long[] sorted, double quantile) {
@@ -973,12 +1228,17 @@ public final class DoomBspKernelBench {
       int[] portalOracle = productionPortalOracle(connection, px, py);
       require(portalOracle[1] == 0 && portalOracle[2] == 0 && portalOracle[3] == 0 &&
           portalOracle[5] == 0 && portalOracle[6] == 0 && portalOracle[7] == 0 &&
-          portalOracle[9] == 0 && portalOracle[10] == 0 && portalOracle[11] == 0,
+          portalOracle[9] == 0 && portalOracle[10] == 0 && portalOracle[11] == 0 &&
+          portalOracle[13] == 0 && portalOracle[14] == 0 && portalOracle[15] == 0 &&
+          portalOracle[17] == 0 && portalOracle[18] == 0 && portalOracle[19] == 0,
           "portal walk differs from production SQL: missing=" + portalOracle[1] +
           " extra=" + portalOracle[2] + " clip_mismatch=" + portalOracle[3] +
           " wall_missing=" + portalOracle[5] + " wall_color=" + portalOracle[6] +
           " wall_extra=" + portalOracle[7] + " world_missing=" + portalOracle[9] +
-          " world_color=" + portalOracle[10] + " world_extra=" + portalOracle[11]);
+          " world_color=" + portalOracle[10] + " world_extra=" + portalOracle[11] +
+          " masked_missing=" + portalOracle[13] + " masked_color=" + portalOracle[14] +
+          " masked_extra=" + portalOracle[15] + " full_masked_missing=" + portalOracle[17] +
+          " full_masked_color=" + portalOracle[18] + " full_masked_extra=" + portalOracle[19]);
 
       for (int i = 0; i < 5000; i++)
         traverseAndProject(px + (i % 7) - 3, py + (i % 11) - 5, i % ANGLES, false);
@@ -1002,12 +1262,16 @@ public final class DoomBspKernelBench {
           "sql_portal_active=%d portal_missing=%d portal_extra=%d clip_mismatch=%d " +
           "sql_wall_pixels=%d wall_missing=%d wall_color=%d wall_extra=%d " +
           "sql_world_pixels=%d world_missing=%d world_color=%d world_extra=%d " +
+          "sql_masked_wall=%d masked_missing=%d masked_color=%d masked_extra=%d " +
+          "sql_masked_total=%d full_masked_missing=%d full_masked_color=%d full_masked_extra=%d " +
           "max_nodes=%d max_ssectors=%d sink=%d%n",
           loadMs, percentile(samples, .50), p95, percentile(samples, .99),
           auditAccepted, auditMissing, retention, auditVisible, auditVisibleMissing,
           visibleRetention, portalOracle[0], portalOracle[1], portalOracle[2], portalOracle[3],
           portalOracle[4], portalOracle[5], portalOracle[6], portalOracle[7],
           portalOracle[8], portalOracle[9], portalOracle[10], portalOracle[11],
+          portalOracle[12], portalOracle[13], portalOracle[14], portalOracle[15],
+          portalOracle[16], portalOracle[17], portalOracle[18], portalOracle[19],
           maxNodes, maxSubsectors, sink);
     }
   }

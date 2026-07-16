@@ -1158,6 +1158,15 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   does not block the 320x200 masked-fragment slice. Cold row loading including
   1,256,192 wall texels, 200,704 flat texels, and stored rays is 4.999 seconds,
   further confirming the packed relational BLOB requirement.
+- Exact masked composition now resolves symbolic state IDs to primitive catalog
+  indices and applies the production rotation, flip, bounds, interval/solid
+  visibility, transparency, and depth/source/asset tie rules. At tic zero, all
+  4,702 globally selected masked-wall pixels and 2,404 sprite pixels match SQL:
+  7,106 total with 0 missing, 0 extra, and 0 palette mismatches. Complete
+  world+masked timing is 3.060035/5.389510/5.942101 ms p50/p95/p99 over 20,000
+  samples; the masked increment is about 0.60 ms p95, passing the <=3 ms stage
+  gate. Row loading including 331,474 sprite texels is 5.714 seconds. Exact
+  first-person presentation is next.
 - Local native-method evidence correction (2026-07-15): Oracle's foreground
   trace proves the disposable one-line `(I)I` method compiled successfully in
   59,470 ms; the client cutoff landed at completion. JIT, the descriptor, and

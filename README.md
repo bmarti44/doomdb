@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | The complete 64,000-pixel world matches SQL byte-for-byte at 4.794 ms p95. Masked drawing, presentation/codec, compiled OJVM integration, packed loading, and simulation remain active. |
+| P12.0 | Active playability gate | Exact world+masked rendering matches all 64,000 world and 7,106 masked SQL pixels at 5.390 ms p95. Presentation/codec, compiled OJVM integration, packed loading, and simulation remain active. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -119,6 +119,12 @@ pixels match production SQL with zero missing, extra, or palette differences.
 The complete world path measures 2.730 ms p50 / 4.794 ms p95 / 5.348 ms p99
 over 20,000 samples, passing the 8 ms opaque-world gate. The next parity slice
 is masked walls and sprites.
+
+Masked middle walls and tic-zero sprites now use the real state/rotation catalog
+and sprite texels. All 4,702 selected masked-wall pixels and 2,404 sprite pixels
+match SQL exactly. Complete world+masked rendering measures 3.060 ms p50 /
+5.390 ms p95 / 5.942 ms p99; masked work adds only about 0.60 ms p95, passing
+its 3 ms stage gate. Sparse first-person presentation and the codec are next.
 
 ## Is it playable yet?
 
