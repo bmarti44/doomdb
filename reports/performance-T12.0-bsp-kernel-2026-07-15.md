@@ -20,10 +20,10 @@ JDBC into exact-width primitive arrays:
 The measured hot path performs allocation-free iterative front-to-back BSP
 traversal, conservative child-box field-of-view rejection, exact near-plane seg
 clipping, bounded column projection, exact determinant/t/u acceptance, and a
-two-pass nearest-solid-depth clip. The two-pass design avoids assuming that seg
-storage order inside a subsector is strict ray-depth order. It does not yet
-implement vertical portal clips, wall drawing, plane spans, masked fragments, or
-the production codec.
+two-pass nearest-solid-depth clip, an exact ordered sector portal walk, and
+per-column upper/lower portal clips. The two-pass design avoids assuming that
+seg storage order inside a subsector is strict ray-depth order. It does not yet
+implement wall drawing, plane spans, masked fragments, or the production codec.
 
 The runner compiles with the pinned database image's Java 11 HotSpot VM and uses
 the image's `ojdbc11.jar`. The password is read only from the Compose secret
@@ -45,13 +45,17 @@ pair. The selected run found:
 | SQL-visible hits through the first solid wall | 21,050 |
 | Missing after Java solid-depth coverage | 0 |
 | Visible retention vs. brute grids | 0.2706% |
+| Production SQL active portal hits | 12,487 |
+| Java portal missing / extra | 0 / 0 |
+| Final upper/lower clip mismatches | 0 |
 | Maximum nodes visited | 614 / 681 |
 | Maximum subsectors visited | 588 / 682 |
 
 Both zero-miss results pass the correctness gate. Projection retains 0.7218% of
 brute pairs, and exact solid-depth coverage reduces that to 0.2706%; both pass
 the no-more-than-25% gate by a wide margin. Node/subsector visitation remains
-high, so vertical portal clips are still required before drawing.
+high. The portal stream and final clip arrays now match the production SQL
+`MATCH_RECOGNIZE` oracle exactly across the same 12 directions.
 
 ## HotSpot timing
 
@@ -61,31 +65,34 @@ After 5,000 warmups, 20,000 unique angle/nearby-position samples measured with a
 | Metric | Result |
 | --- | ---: |
 | Immutable relational load | 2,357.122 ms |
-| Traversal + projection + solid coverage p50 | 0.096178 ms |
-| Traversal + projection + solid coverage p95 | 0.447939 ms |
-| Traversal + projection + solid coverage p99 | 0.514542 ms |
+| Traversal + projection + solid/portal clips p50 | 0.167218 ms |
+| Traversal + projection + solid/portal clips p95 | 0.728709 ms |
+| Traversal + projection + solid/portal clips p99 | 0.859567 ms |
 
 This passes the <=3 ms component gate on HotSpot. The 2.36-second cold load is
 not in the frame path, but it is not an acceptable pooled-session prewarm path;
 the planned revision-keyed relational BLOB packs remain necessary.
 
-## OJVM JIT gate failure
+## OJVM JIT cold-bootstrap result
 
 The same day, `DBMS_JAVA.COMPILE_METHOD` was tested with a disposable one-line
-`public static int f(int)` method and the JVM descriptor `(I)I`. The call failed
-to return within the mandatory 60-second limit. It was interrupted and removed
-with zero probe objects and zero invalid objects.
+`public static int f(int)` method and the JVM descriptor `(I)I`. The foreground
+Oracle trace later established that the method successfully compiled in 59,470
+ms. The client-side cutoff landed almost exactly at completion. The descriptor,
+JIT support, and executable 256 MiB `/dev/shm` are therefore valid.
 
-A controlled database restart reduced container memory from 94% to 82% of the
-2 GiB limit. The identical one-line compilation still exceeded 60 seconds.
-`java_jit_enabled` is `TRUE`, `/dev/shm` is a 256 MiB executable tmpfs with about
-204 MiB free, and the database remains healthy. This rules out trace residue and
-simple PGA pressure; it does not establish the deeper Oracle compiler cause.
+Sol/max inspection found cold single-worker self-hosting JIT bootstrap under
+severe cgroup contention: memory reached 99.4% of 2 GiB, CDB PGA reached 675.2
+MiB against a 256 MiB target, MZ00 held about 148.5 MiB, and CPU quota throttled
+17.68 seconds. The compiler was building a large JDK/Javac/Oracle compiler
+method cascade. Cold deployment compilation is separated from frame latency;
+the next compile probe uses an external Java 11 class and a bounded 5-10 minute
+deployment window, then requires `IS_COMPILED=YES` before timing calls.
 
 Consequences:
 
 - interpreted OJVM timing cannot select the production renderer;
-- the local pinned Oracle Free image currently fails the native-method gate;
+- the local pinned Oracle Free image supports JIT but has a costly cold compile;
 - the algorithm work may continue in the checked-in Java 11 HotSpot harness;
 - production selection requires the one-line probe and every renderer hot
   method to compile within 60 seconds and report `IS_COMPILED=YES` on the target
@@ -94,14 +101,12 @@ Consequences:
 
 ## Next implementation
 
-1. Add per-column upper/lower portal clip arrays while retaining the zero-miss
-   audit.
-2. Draw exact opaque wall columns into one reusable 320x200 palette buffer and
+1. Draw exact opaque wall columns into one reusable 320x200 palette buffer and
    compare world bytes against the SQL oracle.
-3. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and
+2. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and
    enforce the 12 MiB/session and 5 ms warm-snapshot gates.
-4. Re-run the minimal JIT probe on a second supported Oracle environment before
-   investing in an OJVM wrapper or production integration.
+3. Externally compile/load the representative methods, allow bounded cold JIT
+   warmup, and require compiled steady-state timing before integration.
 
 Run the current reproducible gate with:
 

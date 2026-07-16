@@ -2,10 +2,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.Connection;
+import java.sql.Blob;
+import java.sql.CallableStatement;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.Arrays;
 
 /**
@@ -26,7 +29,10 @@ public final class DoomBspKernelBench {
   private static int[] firstSeg, segCount;
   private static int segTotal;
   private static int[] segStartX, segStartY, segEndX, segEndY;
+  private static int[] segLineId, lineStartX, lineStartY, lineEndX, lineEndY;
+  private static int[] rightSector, leftSector;
   private static byte[] segSolid;
+  private static int[] sectorFloor, sectorCeiling;
   private static double[] camX;
   private static final int ANGLES = 64;
   private static double[] angleDegrees = new double[ANGLES];
@@ -40,6 +46,10 @@ public final class DoomBspKernelBench {
   private static byte[] visibleCandidates;
   private static int[] projectedFirst, projectedLast;
   private static double[] nearestSolidDepth;
+  private static int[] columnCounts, columnSegs, orderedSegs;
+  private static double[] orderedDepths;
+  private static byte[] portalCandidates;
+  private static double[] portalClipTop, portalClipBottom;
 
   private static int visitedNodes;
   private static int visitedSubsectors;
@@ -47,6 +57,7 @@ public final class DoomBspKernelBench {
   private static int candidatePairs;
   private static int acceptedPairs;
   private static int visiblePairs;
+  private static int activePortalPairs;
   private static volatile long sink;
 
   private DoomBspKernelBench() {}
@@ -118,18 +129,55 @@ public final class DoomBspKernelBench {
     }
     segStartX = new int[segTotal]; segStartY = new int[segTotal];
     segEndX = new int[segTotal]; segEndY = new int[segTotal];
+    segLineId = new int[segTotal];
+    lineStartX = new int[segTotal]; lineStartY = new int[segTotal];
+    lineEndX = new int[segTotal]; lineEndY = new int[segTotal];
+    rightSector = new int[segTotal]; leftSector = new int[segTotal];
     segSolid = new byte[segTotal];
+    Arrays.fill(leftSector, -1);
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
-             "select s.seg_id,a.x,a.y,b.x,b.y from doom_map_seg s " +
+             "select s.seg_id,a.x,a.y,b.x,b.y,l.linedef_id,la.x,la.y,lb.x,lb.y," +
+             "rs.sector_id,ls.sector_id from doom_map_seg s " +
+             "join doom_map_linedef l on l.linedef_id=s.linedef_id " +
              "join doom_map_vertex a on a.vertex_id=s.start_vertex_id " +
-             "join doom_map_vertex b on b.vertex_id=s.end_vertex_id order by s.seg_id")) {
+             "join doom_map_vertex b on b.vertex_id=s.end_vertex_id " +
+             "join doom_map_vertex la on la.vertex_id=l.start_vertex_id " +
+             "join doom_map_vertex lb on lb.vertex_id=l.end_vertex_id " +
+             "join doom_map_sidedef r on r.sidedef_id=l.right_sidedef_id " +
+             "join doom_map_sector rs on rs.sector_id=r.sector_id " +
+             "left join doom_map_sidedef q on q.sidedef_id=l.left_sidedef_id " +
+             "left join doom_map_sector ls on ls.sector_id=q.sector_id order by s.seg_id")) {
       int expected = 0;
       while (rows.next()) {
         int id = rows.getInt(1);
         require(id == expected++, "seg order mismatch");
         segStartX[id] = rows.getInt(2); segStartY[id] = rows.getInt(3);
         segEndX[id] = rows.getInt(4); segEndY[id] = rows.getInt(5);
+        segLineId[id] = rows.getInt(6);
+        lineStartX[id] = rows.getInt(7); lineStartY[id] = rows.getInt(8);
+        lineEndX[id] = rows.getInt(9); lineEndY[id] = rows.getInt(10);
+        rightSector[id] = rows.getInt(11);
+        int left = rows.getInt(12);
+        if (!rows.wasNull()) leftSector[id] = left;
+      }
+    }
+    int sectorCount;
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery("select count(*),max(sector_id) from doom_map_sector")) {
+      rows.next();
+      sectorCount = rows.getInt(1);
+      require(sectorCount == rows.getInt(2) + 1, "sector ids are not dense");
+    }
+    sectorFloor = new int[sectorCount]; sectorCeiling = new int[sectorCount];
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select sector_id,floor_height,ceiling_height from doom_map_sector order by sector_id")) {
+      int expected = 0;
+      while (rows.next()) {
+        int id = rows.getInt(1);
+        require(id == expected++, "sector order mismatch");
+        sectorFloor[id] = rows.getInt(2); sectorCeiling[id] = rows.getInt(3);
       }
     }
     try (Statement statement = connection.createStatement();
@@ -181,8 +229,12 @@ public final class DoomBspKernelBench {
     stackLeaf = new byte[stackId.length];
     rawCandidates = new byte[segTotal * WIDTH];
     visibleCandidates = new byte[segTotal * WIDTH];
+    portalCandidates = new byte[segTotal * WIDTH];
     projectedFirst = new int[segTotal]; projectedLast = new int[segTotal];
     nearestSolidDepth = new double[WIDTH];
+    columnCounts = new int[WIDTH]; columnSegs = new int[WIDTH * segTotal];
+    orderedSegs = new int[segTotal]; orderedDepths = new double[segTotal];
+    portalClipTop = new double[WIDTH]; portalClipBottom = new double[WIDTH];
   }
 
   private static int side(int px, int py, int id) {
@@ -239,9 +291,77 @@ public final class DoomBspKernelBench {
     candidatePairs += last - first + 1;
     projectedFirst[id] = first;
     projectedLast[id] = last;
+    for (int column = first; column <= last; column++)
+      columnSegs[column * segTotal + columnCounts[column]++] = id;
     if (retainCandidates) {
       int base = id * WIDTH;
       Arrays.fill(rawCandidates, base + first, base + last + 1, (byte) 1);
+    }
+  }
+
+  private static int facingSector(int id, int px, int py) {
+    long cross = (long) (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
+        - (long) (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
+    return cross > 0 ? rightSector[id] : leftSector[id];
+  }
+
+  private static int oppositeSector(int id, int px, int py) {
+    long cross = (long) (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
+        - (long) (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
+    return cross > 0 ? leftSector[id] : rightSector[id];
+  }
+
+  private static void applyPortalWalk(int px, int py, double dirX, double dirY,
+      double plnX, double plnY, boolean retainCandidates) {
+    activePortalPairs = 0;
+    if (retainCandidates) Arrays.fill(portalCandidates, (byte) 0);
+    for (int column = 0; column < WIDTH; column++) {
+      portalClipTop[column] = 0.0; portalClipBottom[column] = 200.0;
+      int orderedCount = 0;
+      int base = column * segTotal;
+      for (int i = 0; i < columnCounts[column]; i++) {
+        int id = columnSegs[base + i];
+        double depth = acceptedDepth(id, column, px, py, dirX, dirY, plnX, plnY);
+        if (Double.isNaN(depth)) continue;
+        int at = orderedCount;
+        while (at > 0 && (orderedDepths[at - 1] > depth ||
+            (orderedDepths[at - 1] == depth &&
+             (segLineId[orderedSegs[at - 1]] > segLineId[id] ||
+              (segLineId[orderedSegs[at - 1]] == segLineId[id] &&
+               orderedSegs[at - 1] > id))))) {
+          orderedDepths[at] = orderedDepths[at - 1];
+          orderedSegs[at] = orderedSegs[at - 1];
+          at--;
+        }
+        orderedDepths[at] = depth; orderedSegs[at] = id; orderedCount++;
+      }
+      if (orderedCount == 0) continue;
+      int currentSector = facingSector(orderedSegs[0], px, py);
+      double eyeZ = sectorFloor[currentSector] + 41.0;
+      double clipTop = 0.0, clipBottom = 200.0;
+      boolean terminated = false;
+      for (int i = 0; i < orderedCount && !terminated; i++) {
+        int id = orderedSegs[i];
+        int from = facingSector(id, px, py);
+        if (from != currentSector) continue;
+        activePortalPairs++;
+        if (retainCandidates) portalCandidates[id * WIDTH + column] = 1;
+        int to = oppositeSector(id, px, py);
+        if (to < 0) {
+          terminated = true;
+        } else {
+          int openingTop = Math.min(sectorCeiling[from], sectorCeiling[to]);
+          int openingBottom = Math.max(sectorFloor[from], sectorFloor[to]);
+          clipTop = Math.max(clipTop,
+              100.0 - (openingTop - eyeZ) * 160.0 / orderedDepths[i]);
+          clipBottom = Math.min(clipBottom,
+              100.0 - (openingBottom - eyeZ) * 160.0 / orderedDepths[i]);
+          if (openingTop <= openingBottom) terminated = true;
+          else currentSector = to;
+        }
+      }
+      portalClipTop[column] = Math.max(0.0, clipTop);
+      portalClipBottom[column] = Math.min(200.0, clipBottom);
     }
   }
 
@@ -293,6 +413,7 @@ public final class DoomBspKernelBench {
   private static int traverseAndProject(int px, int py, int angle, boolean retainCandidates) {
     visitedNodes = 0; visitedSubsectors = 0; projectedSegs = 0; candidatePairs = 0;
     Arrays.fill(projectedLast, -1);
+    Arrays.fill(columnCounts, 0);
     if (retainCandidates) Arrays.fill(rawCandidates, (byte) 0);
     double dirX = directionX[angle], dirY = directionY[angle];
     double plnX = planeX[angle], plnY = planeY[angle];
@@ -321,8 +442,9 @@ public final class DoomBspKernelBench {
       }
     }
     applySolidCoverage(px, py, dirX, dirY, plnX, plnY, retainCandidates);
-    sink += visiblePairs + candidatePairs + visitedNodes;
-    return visiblePairs;
+    applyPortalWalk(px, py, dirX, dirY, plnX, plnY, retainCandidates);
+    sink += activePortalPairs + visiblePairs + candidatePairs + visitedNodes;
+    return activePortalPairs;
   }
 
   private static int[] sqlOracle(Connection connection, int px, int py, int angleProfile) throws Exception {
@@ -371,6 +493,86 @@ public final class DoomBspKernelBench {
     return new int[] {accepted, missing, visible, visibleMissing};
   }
 
+  private static int[] productionPortalOracle(Connection connection, int px, int py)
+      throws Exception {
+    String session = null;
+    byte[] oracleActive = new byte[segTotal * WIDTH];
+    int sqlActive = 0, missing = 0, extra = 0, clipMismatch = 0;
+    try {
+      try (CallableStatement call = connection.prepareCall("{call doom_api.new_game(?,?,?)}")) {
+        call.setInt(1, 3);
+        call.registerOutParameter(2, Types.VARCHAR);
+        call.registerOutParameter(3, Types.BLOB);
+        call.execute();
+        session = call.getString(2);
+        Blob payload = call.getBlob(3);
+        if (payload != null) payload.free();
+      }
+      connection.setAutoCommit(false);
+      try (PreparedStatement update = connection.prepareStatement(
+               "update players set angle=? where session_token=? and player_id=0");
+           Statement staging = connection.createStatement();
+           PreparedStatement oracle = connection.prepareStatement(
+               "select seg_id,column_no from doom_r2_staged_portal_hit_rows " +
+               "where session_token=? and is_active=1");
+           PreparedStatement clipOracle = connection.prepareStatement(
+               "select h.column_no,greatest(0,coalesce(max(100-(h.opening_top-" +
+               "(p.z+p.view_height+p.view_bob))*160/h.hit_t),0))," +
+               "least(200,coalesce(min(100-(h.opening_bottom-" +
+               "(p.z+p.view_height+p.view_bob))*160/h.hit_t),200)) " +
+               "from doom_r2_staged_portal_hit_rows h join players p " +
+               "on p.session_token=h.session_token and p.player_id=0 " +
+               "where h.session_token=? and h.is_active=1 group by h.column_no")) {
+        for (int pose = 0; pose < 12; pose++) {
+          int angle = pose * 5;
+          update.setDouble(1, angleDegrees[angle]); update.setString(2, session);
+          require(update.executeUpdate() == 1, "portal oracle player update failed");
+          staging.executeUpdate("delete from frame_render_seg_bound");
+          staging.executeUpdate("insert into frame_render_seg_bound select * " +
+              "from doom_r1_staged_segment_bound_rows where session_token='" + session + "'");
+          staging.executeUpdate("delete from frame_r1_hit");
+          staging.executeUpdate("insert into frame_r1_hit select * " +
+              "from doom_r1_staged_hit_rows where session_token='" + session + "'");
+          traverseAndProject(px, py, angle, true);
+          Arrays.fill(oracleActive, (byte) 0);
+          oracle.setString(1, session);
+          int poseSql = 0;
+          try (ResultSet rows = oracle.executeQuery()) {
+            while (rows.next()) {
+              poseSql++;
+              int index = rows.getInt(1) * WIDTH + rows.getInt(2);
+              oracleActive[index] = 1;
+              if (portalCandidates[index] == 0) missing++;
+            }
+          }
+          sqlActive += poseSql;
+          for (int index = 0; index < portalCandidates.length; index++)
+            if (portalCandidates[index] != 0 && oracleActive[index] == 0) extra++;
+          clipOracle.setString(1, session);
+          try (ResultSet rows = clipOracle.executeQuery()) {
+            while (rows.next()) {
+              int column = rows.getInt(1);
+              if (Math.abs(rows.getDouble(2) - portalClipTop[column]) > 1e-8 ||
+                  Math.abs(rows.getDouble(3) - portalClipBottom[column]) > 1e-8)
+                clipMismatch++;
+            }
+          }
+        }
+      }
+      connection.rollback();
+    } finally {
+      if (session != null) {
+        connection.rollback();
+        connection.setAutoCommit(true);
+        try (PreparedStatement cleanup = connection.prepareStatement(
+            "delete from game_sessions where session_token=?")) {
+          cleanup.setString(1, session); cleanup.executeUpdate();
+        }
+      }
+    }
+    return new int[] {sqlActive, missing, extra, clipMismatch};
+  }
+
   private static double percentile(long[] sorted, double quantile) {
     int index = (int) Math.ceil(sorted.length * quantile) - 1;
     return sorted[Math.max(0, index)] / 1_000_000.0;
@@ -403,6 +605,10 @@ public final class DoomBspKernelBench {
       require(auditMissing == 0, "BSP/projection omitted SQL-accepted pairs: " + auditMissing);
       require(auditVisibleMissing == 0,
           "solid coverage omitted SQL-visible pairs: " + auditVisibleMissing);
+      int[] portalOracle = productionPortalOracle(connection, px, py);
+      require(portalOracle[1] == 0 && portalOracle[2] == 0 && portalOracle[3] == 0,
+          "portal walk differs from production SQL: missing=" + portalOracle[1] +
+          " extra=" + portalOracle[2] + " clip_mismatch=" + portalOracle[3]);
 
       for (int i = 0; i < 5000; i++)
         traverseAndProject(px + (i % 7) - 3, py + (i % 11) - 5, i % ANGLES, false);
@@ -423,10 +629,12 @@ public final class DoomBspKernelBench {
           "BSP_KERNEL load_ms=%.3f p50_ms=%.6f p95_ms=%.6f p99_ms=%.6f " +
           "audit_poses=12 sql_accepted=%d missing=%d candidate_retention=%.6f " +
           "sql_visible=%d visible_missing=%d visible_retention=%.6f " +
+          "sql_portal_active=%d portal_missing=%d portal_extra=%d clip_mismatch=%d " +
           "max_nodes=%d max_ssectors=%d sink=%d%n",
           loadMs, percentile(samples, .50), p95, percentile(samples, .99),
           auditAccepted, auditMissing, retention, auditVisible, auditVisibleMissing,
-          visibleRetention, maxNodes, maxSubsectors, sink);
+          visibleRetention, portalOracle[0], portalOracle[1], portalOracle[2], portalOracle[3],
+          maxNodes, maxSubsectors, sink);
     }
   }
 }

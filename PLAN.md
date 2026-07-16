@@ -1132,16 +1132,22 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   coverage measured 0.096178/0.447939/0.514542 ms p50/p95/p99 over 20,000
   samples. The next renderer slice is vertical portal clips plus exact opaque
   wall columns; solid coverage alone is not portal-safe.
-- Local native-method blocker (2026-07-15): a disposable one-line `(I)I` method
-  failed to return from `DBMS_JAVA.COMPILE_METHOD` within 60 seconds both before
-  and after a controlled restart reduced database memory from 94% to 82% of the
-  2 GiB limit. JIT is enabled and the executable 256 MiB `/dev/shm` has ample
-  free space; both attempts were interrupted and removed with zero invalid or
-  probe objects. The pinned local image therefore currently fails the OJVM JIT
-  selection gate. Continue clean-room algorithm work in the Java 11 HotSpot
-  harness, keep SQL in production, and require the minimal probe plus every hot
-  renderer method to compile on a second target Oracle environment before OJVM
-  integration. Interpreted OJVM timings may not select the renderer.
+- Ordered sector portal walk and upper/lower screen clips now match 12,487
+  production SQL `MATCH_RECOGNIZE` active hits with 0 missing, 0 extra, and 0
+  final clip mismatches across 12 poses. The complete allocation-free
+  traversal/projection/solid/portal-clip kernel measures
+  0.167218/0.728709/0.859567 ms p50/p95/p99 over 20,000 samples. Exact opaque
+  wall columns are the next slice.
+- Local native-method evidence correction (2026-07-15): Oracle's foreground
+  trace proves the disposable one-line `(I)I` method compiled successfully in
+  59,470 ms; the client cutoff landed at completion. JIT, the descriptor, and
+  the executable 256 MiB `/dev/shm` are valid. Sol/max inspection instead found
+  cold single-worker self-hosting JIT bootstrap at 99.4% cgroup memory, 675.2
+  MiB PGA versus a 256 MiB target, about 148.5 MiB MZ00 PGA, and 17.68 seconds
+  of CPU throttling. Treat this as deployment warmup, not frame latency: use
+  externally compiled Java 11 classes, a bounded 5-10 minute cold deployment
+  window, and require every hot method to report `IS_COMPILED=YES` before timing.
+  Interpreted OJVM timings still may not select the renderer.
 - Fresh 10046/TKPROF triage (2026-07-15): two consecutive exact frames measured
   11.14 and 10.57 s with stable plan hashes and 92,658-byte payloads. The warm
   frame is world pixels 6.53 s (5.62 s CPU, 14,685 TEMP/physical blocks), masked
