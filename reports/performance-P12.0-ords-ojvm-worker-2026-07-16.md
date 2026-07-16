@@ -290,9 +290,13 @@ CHASE, melee, hitscan, and projectile dispatch remain fail-closed. The resulting
 catalog is 202,515 bytes with SHA-256
 `21719458f28e3e91efe4691081e02ef54959a75186a93566191b4cdf8e3e191d`.
 Already-processed corpses also follow timer and next-state edges at 53/53 SQL
-parity with zero events and unchanged RNG. Fresh death remains fail-closed until
-kill credit, death events, field cleanup, and optional drops can commit as one
-fenced delta.
+parity with zero events and unchanged RNG. The fresh-death extension matches
+53/53 actor mutations, 25/25 full drop spawns, and 78/78 ordered death/drop
+events, including kill credit, MOBJ allocation, cleanup fields, and transaction
+fences. A separate no-attack CHASE helper matches 212/212 movements across four
+target quadrants using exact coordinates and the frozen prior-actor snapshot.
+Both remain differential kernels until player, actor, RNG, ID, event, and tic
+frontiers are merged behind one prepare/persist/commit/accept boundary.
 
 Repeated `loadjava -force` during iterative development eventually caused the
 2 GiB local instance's MMAN to terminate with fatal `ORA-00822`. The Oracle

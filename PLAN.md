@@ -1496,6 +1496,22 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   state graph with 53/53 SQL parity, zero events, and unchanged RNG. Unprocessed
   deaths still fail closed; kill credit, first-death events, flags/target
   cleanup, and drop creation remain one atomic differential slice.
+- Retained fresh death/drop gate (2026-07-16): the frozen actor pass matches all
+  53 fresh-death mutations, 25 resolved drop spawns, and 78 ordered
+  `MONSTER_DEATH`/`MONSTER_DROP` events. Kill credit, sequential MOBJ allocation,
+  cleanup fields, pending accept/discard, malformed-drop rejection, and repeat-
+  death fences pass together; death and drop are never split across commits.
+- Retained no-attack CHASE gate (2026-07-16): a variable-radius/height monster
+  movement helper uses the retained BLOCKMAP, exact Oracle `NUMBER` coordinates,
+  live sector heights, and the immutable prior-actor snapshot. Diagonal,
+  horizontal, vertical, and blocked preferences match 212/212 SQL results over
+  four target quadrants. This is a pure movement helper, not an independently
+  authoritative frontier.
+- Unified-world prerequisite (2026-07-16): before melee/hitscan/projectile work,
+  merge the player, actor, RNG, next-MOBJ, event, tic, and command frontiers into
+  one committed/pending retained state and one fenced prepare/persist/commit/
+  accept coordinator. Independent player and actor statics are differential
+  prototypes only and may not be routed to production attacks.
 - OJVM deployment-memory guard (2026-07-16): repeated iterative
   `loadjava -force` cycles eventually drove the 2 GiB local instance's MMAN to
   fatal `ORA-00822`; the alert trace identifies MMAN, not an uncaught game
