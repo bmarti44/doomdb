@@ -29,6 +29,13 @@ language java name 'DoomBspKernelBench.renderSnapshot(
   java.sql.Blob,java.lang.String,java.sql.Blob) return java.lang.String';
 /
 
+create or replace function doom_bsp_render_packed_session(
+  p_session in varchar2,p_snapshot in blob,p_state_sha in varchar2,p_payload in blob
+) return varchar2 as
+language java name 'DoomBspKernelBench.renderPackedSession(
+  java.lang.String,java.sql.Blob,java.lang.String,java.sql.Blob) return java.lang.String';
+/
+
 create or replace function doom_bsp_compare_session(p_session in varchar2)
 return varchar2 as
 language java name 'DoomBspKernelBench.compareSessionOracle(
@@ -41,6 +48,12 @@ create or replace function doom_bsp_compare_sql_payload(
 ) return varchar2 as
 language java name 'DoomBspKernelBench.compareSqlPayload(
   java.lang.String,java.sql.Blob) return java.lang.String';
+/
+
+create or replace function doom_bsp_compare_current_payload(p_sql_payload in blob)
+return varchar2 as
+language java name 'DoomBspKernelBench.compareCurrentSqlPayload(
+  java.sql.Blob) return java.lang.String';
 /
 
 create or replace function doom_bsp_last_render_ns return number as
@@ -85,4 +98,29 @@ language java name 'DoomBspKernelBench.lastKernelLoadNanos() return long';
 
 create or replace function doom_bsp_last_snapshot_ns return number as
 language java name 'DoomBspKernelBench.lastSnapshotNanos() return long';
+/
+
+create or replace function doom_bsp_last_dynamic_failure return varchar2 as
+language java name 'DoomBspKernelBench.lastDynamicFailure() return java.lang.String';
+/
+
+create or replace function doom_retained_render_load(
+  p_session in varchar2,p_generation in number,p_snapshot in blob) return varchar2 as
+language java name 'DoomRetainedRenderSceneBench.load(
+  java.lang.String,long,java.sql.Blob) return java.lang.String';
+/
+
+create or replace function doom_retained_render_update(
+  p_session in varchar2,p_generation in number,p_delta in blob,
+  p_state_sha in varchar2,p_payload in blob) return varchar2 as
+language java name 'DoomRetainedRenderSceneBench.updateRender(
+  java.lang.String,long,java.sql.Blob,java.lang.String,java.sql.Blob) return java.lang.String';
+/
+
+create or replace function doom_retained_render_last_update_ns return number as
+language java name 'DoomRetainedRenderSceneBench.lastUpdateNanos() return long';
+/
+
+create or replace function doom_retained_render_last_error return varchar2 as
+language java name 'DoomRetainedRenderSceneBench.lastError() return java.lang.String';
 /

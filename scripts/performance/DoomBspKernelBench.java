@@ -144,6 +144,8 @@ public final class DoomBspKernelBench {
   private static final int KERNEL_PACK_MAGIC = 0x44424b50;
   private static final int KERNEL_PACK_VERSION = 1;
   private static long lastKernelLoadNanos, lastSnapshotNanos;
+  private static long lastRetainedUpdateNanos;
+  private static String lastDynamicFailure="";
   private static long lastRenderNanos, lastCodecNanos, lastBlobNanos;
   private static long lastBspNanos, lastSolidNanos, lastPortalNanos;
   private static long lastPlaneNanos, lastSpriteNanos, lastPresentationNanos;
@@ -427,11 +429,17 @@ public final class DoomBspKernelBench {
     return bytes;
   }
 
-  private static void decodeDynamicSnapshot(Blob snapshot) throws Exception {
+  private static void decodeDynamicSnapshot(Blob snapshot,String expectedSession) throws Exception {
     byte[] encoded=snapshotBytes(snapshot);
-    if(encoded.length>0&&encoded[0]=='{'){decodeJsonSnapshot(new JsonInput(encoded));return;}
+    if(encoded.length>0&&encoded[0]=='{'){
+      require(expectedSession==null,"session-fenced renderer requires binary snapshot");
+      decodeJsonSnapshot(new JsonInput(encoded));return;}
     KernelInput in=new KernelInput(encoded);
-    require(in.readInt()==0x44525331,"dynamic snapshot magic mismatch");
+    int magic=in.readInt();
+    if(magic==0x44525332){String owner=readString(in);
+      require(owner.matches("[0-9a-f]{32}"),"dynamic snapshot owner invalid");
+      if(expectedSession!=null)require(owner.equals(expectedSession),"dynamic snapshot session fence");}
+    else require(magic==0x44525331&&expectedSession==null,"dynamic snapshot magic mismatch");
     int sectors=0,mobjs=0,playerRows=0,audioCount=0;
     StringBuilder audio=new StringBuilder("[");
     while(!in.exhausted()) {
@@ -480,6 +488,88 @@ public final class DoomBspKernelBench {
           Math.min(sectorCeiling[left],sectorCeiling[right])<=
           Math.max(sectorFloor[left],sectorFloor[right])?1:0);
     }
+  }
+
+  private static int retainedMobjIndex(int id) {
+    for(int index=0;index<mobjCount;index++)if(mobjId[index]==id)return index;
+    return -1;
+  }
+
+  private static void refreshLiveGeometry() {
+    prepareExactSegmentRelatives();
+    for(int id=0;id<segTotal;id++){int left=leftSector[id],right=rightSector[id];
+      segSolid[id]=(byte)(left<0||right<0||Math.min(sectorCeiling[left],sectorCeiling[right])<=
+        Math.max(sectorFloor[left],sectorFloor[right])?1:0);}
+  }
+
+  private static void decodeRetainedDelta(Blob delta,String expectedSession) throws Exception {
+    byte[] encoded=snapshotBytes(delta);KernelInput in=new KernelInput(encoded);
+    require(in.readInt()==0x44524431,"retained delta magic mismatch");
+    String owner=readString(in);require(owner.equals(expectedSession),"retained delta session fence");
+    int playerRows=0,audioCount=0;StringBuilder audio=new StringBuilder("[");
+    while(!in.exhausted()){
+      int kind=in.readInt();if(kind==4)break;
+      if(kind==0){playerRows++;liveTic=in.readInt();liveMode=readString(in);
+        String weapon=readString(in);liveComplete=in.readInt();livePaused=in.readInt();
+        liveExactCameraX=new BigDecimal(readString(in));liveExactCameraY=new BigDecimal(readString(in));
+        liveCameraX=liveExactCameraX.doubleValue();liveCameraY=liveExactCameraY.doubleValue();
+        cameraEyeZ=in.readDouble();liveAngle=angleProfile(in.readDouble());
+        liveHealth=in.readInt();liveArmor=in.readInt();liveBlueKey=in.readInt();
+        liveYellowKey=in.readInt();liveRedKey=in.readInt();
+        int bullets=in.readInt(),shells=in.readInt(),rockets=in.readInt(),cells=in.readInt();
+        liveAmmo="SHOTGUN".equals(weapon)?shells:"ROCKET_LAUNCHER".equals(weapon)?rockets:
+          "PLASMA_RIFLE".equals(weapon)?cells:bullets;
+        Integer selected=spriteAssetByName.get(weaponPatch(weapon));
+        require(selected!=null,"selected weapon patch missing");weaponAsset=selected;
+      }else if(kind==1){int id=in.readInt();require(id>=0&&id<sectorFloor.length,
+          "retained sector invalid");sectorFloor[id]=in.readDouble();
+        sectorCeiling[id]=in.readDouble();sectorLight[id]=in.readInt();
+        sectorLightBand[id]=Math.max(0,Math.min(31,(255-sectorLight[id])/8));
+      }else if(kind==2){int id=in.readInt();int index=retainedMobjIndex(id);
+        if(index<0){ensureMobjCapacity(mobjCount+1);index=mobjCount++;mobjId[index]=id;}
+        Integer state=stateIndexByName.get(readString(in));mobjState[index]=state==null?-1:state;
+        mobjX[index]=in.readDouble();mobjY[index]=in.readDouble();mobjZ[index]=in.readDouble();
+        mobjAngle[index]=in.readDouble();
+      }else if(kind==3){int ordinal=in.readInt();String asset=readString(in);
+        require(asset.matches("[A-Z0-9_]+"),"invalid retained audio asset");
+        if(audioCount++!=0)audio.append(',');audio.append('[').append(liveTic).append(',')
+          .append(ordinal).append(",\"").append(asset).append("\",").append(in.readInt())
+          .append(',').append(in.readInt()).append(']');
+      }else if(kind==5){int id=in.readInt();int index=retainedMobjIndex(id);
+        if(index>=0){int last=--mobjCount;mobjId[index]=mobjId[last];mobjState[index]=mobjState[last];
+          mobjX[index]=mobjX[last];mobjY[index]=mobjY[last];mobjZ[index]=mobjZ[last];
+          mobjAngle[index]=mobjAngle[last];}
+      }else throw new IllegalStateException("retained delta record invalid");
+    }
+    require(in.exhausted()&&playerRows==1,"retained delta incomplete");
+    liveAudio=audio.append(']').toString();refreshLiveGeometry();
+  }
+
+  static void loadRetainedScene(String session,Blob snapshot) throws Exception {
+    require(session!=null&&session.matches("[0-9a-f]{32}"),"invalid retained session");
+    if(!databaseCacheLoaded){Connection internal=DriverManager.getConnection(
+        "jdbc:default:connection:");loadKernelPack(internal);databaseCacheLoaded=true;}
+    decodeDynamicSnapshot(snapshot,session);
+  }
+
+  static String updateRetainedSceneAndRender(String session,Blob delta,String stateSha,
+      Blob payload) throws Exception {
+    require(payload!=null&&stateSha!=null&&stateSha.matches("[0-9a-f]{64}"),
+        "retained render input");
+    long started=System.nanoTime();decodeRetainedDelta(delta,session);
+    lastRetainedUpdateNanos=System.nanoTime()-started;
+    require("game".equals(liveMode)||"dead".equals(liveMode),"retained renderer mode");
+    started=System.nanoTime();traverseAndProject(liveCameraX,liveCameraY,liveAngle,false);
+    lastRenderNanos=System.nanoTime()-started;
+    started=System.nanoTime();encodePackedTicZeroPayload(stateSha);
+    lastCodecNanos=System.nanoTime()-started;
+    started=System.nanoTime();payload.truncate(0);int first=Math.min(32767,codecGzipLength);
+    int written=payload.setBytes(1,codecGzip,0,first);
+    if(codecGzipLength>first)written+=payload.setBytes(first+1,codecGzip,first,
+        codecGzipLength-first);require(written==codecGzipLength,"short retained BLOB write");
+    lastBlobNanos=System.nanoTime()-started;StringBuilder sha=new StringBuilder(64);
+    for(byte value:codecDigest){sha.append((char)HEX[(value>>>4)&15]);
+      sha.append((char)HEX[value&15]);}return sha.toString();
   }
 
   private static final class JsonInput {
@@ -1422,6 +1512,10 @@ public final class DoomBspKernelBench {
       }
       if (orderedCount == 0) continue;
       int currentSector = facingSector(orderedSegs[0], px, py);
+      // SQL retains back-facing one-sided hits as solid diagnostics, but their
+      // null facing sidedef makes the complete R2 ACTIVE walk empty. Preserve
+      // that empty column instead of trying to sample a nonexistent texture.
+      if (currentSector < 0) continue;
       double eyeZ = cameraEyeZ;
       double clipTop = 0.0, clipBottom = 200.0;
       double tStart = 0.0;
@@ -1711,7 +1805,9 @@ public final class DoomBspKernelBench {
     int end = Math.min(200, (int) Math.ceil(Math.min(clipBottom, screenBottom) - .5));
     if (first >= end) return;
     Integer baseAsset = wallAssetByName.get(texture);
-    require(baseAsset != null, "wall texture missing");
+    // SQL's asset join emits no candidate pixels for null/"-" termination
+    // textures while the hit still terminates the portal walk.
+    if (baseAsset == null) return;
     int asset = animatedAsset("wall_texture", texture, baseAsset);
     double deltaX = segEndX[id] - segStartX[id];
     double deltaY = segEndY[id] - segStartY[id];
@@ -2394,8 +2490,9 @@ public final class DoomBspKernelBench {
 
   public static String renderSession(String session, String stateSha, Blob payload) {
     try {
-      return renderSessionUnsafe(session, stateSha, payload);
+      String result=renderSessionUnsafe(session, stateSha, payload);lastDynamicFailure="";return result;
     } catch (Throwable failure) {
+      lastDynamicFailure=failure.getClass().getName()+":"+failure.getMessage();
       try { if (payload != null) payload.truncate(0); } catch (Throwable ignored) {}
       return "ERROR:" + failure.getClass().getName();
     }
@@ -2409,7 +2506,7 @@ public final class DoomBspKernelBench {
       Connection internal=DriverManager.getConnection("jdbc:default:connection:");
       loadKernelPack(internal);databaseCacheLoaded=true;
     }
-    long started=System.nanoTime();decodeDynamicSnapshot(snapshot);
+    long started=System.nanoTime();decodeDynamicSnapshot(snapshot,null);
     lastSnapshotNanos=System.nanoTime()-started;
     require("game".equals(liveMode)||"dead".equals(liveMode),
         "dynamic renderer currently supports GAME/DEAD only");
@@ -2436,6 +2533,43 @@ public final class DoomBspKernelBench {
     catch(Throwable failure){try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}
       return "ERROR:"+failure.getClass().getName();}
   }
+
+  private static String renderPackedSessionUnsafe(String session,Blob snapshot,
+      String stateSha,Blob payload) throws Exception {
+    require(session!=null&&session.matches("[0-9a-f]{32}"),"invalid session token");
+    require(payload!=null,"caller-owned BLOB is required");
+    require(stateSha!=null&&stateSha.matches("[0-9a-f]{64}"),"invalid state SHA");
+    if(!databaseCacheLoaded){Connection internal=DriverManager.getConnection(
+        "jdbc:default:connection:");loadKernelPack(internal);databaseCacheLoaded=true;}
+    long started=System.nanoTime();decodeDynamicSnapshot(snapshot,session);
+    lastSnapshotNanos=System.nanoTime()-started;
+    require("game".equals(liveMode)||"dead".equals(liveMode),
+        "dynamic renderer currently supports GAME/DEAD only");
+    started=System.nanoTime();traverseAndProject(liveCameraX,liveCameraY,liveAngle,false);
+    lastRenderNanos=System.nanoTime()-started;
+    started=System.nanoTime();encodePackedTicZeroPayload(stateSha);
+    lastCodecNanos=System.nanoTime()-started;
+    started=System.nanoTime();payload.truncate(0);
+    int firstLength=Math.min(32767,codecGzipLength);
+    int written=payload.setBytes(1,codecGzip,0,firstLength);
+    if(codecGzipLength>firstLength)written+=payload.setBytes(firstLength+1,codecGzip,
+        firstLength,codecGzipLength-firstLength);
+    require(written==codecGzipLength,"short session snapshot BLOB write");
+    lastBlobNanos=System.nanoTime()-started;
+    StringBuilder frameSha=new StringBuilder(64);
+    for(byte value:codecDigest){frameSha.append((char)HEX[(value>>>4)&15]);
+      frameSha.append((char)HEX[value&15]);}
+    return frameSha.toString();
+  }
+
+  public static String renderPackedSession(String session,Blob snapshot,String stateSha,
+      Blob payload){try{String result=renderPackedSessionUnsafe(session,snapshot,stateSha,payload);
+      lastDynamicFailure="";return result;}
+    catch(Throwable failure){lastDynamicFailure=failure.getClass().getName()+":"+failure.getMessage();
+      try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}
+      return "ERROR:"+failure.getClass().getName();}}
+
+  public static String lastDynamicFailure(){return lastDynamicFailure;}
 
   public static String compareSessionOracle(String session) throws Exception {
     Connection internal = DriverManager.getConnection("jdbc:default:connection:");
@@ -2484,7 +2618,8 @@ public final class DoomBspKernelBench {
     require(at[0] < json.length && json[at[0]++] == value, "invalid SQL RLE syntax");
   }
 
-  public static String compareSqlPayload(String session, Blob sqlPayload) throws Exception {
+  private static String compareSqlPayloadInternal(String session, Blob sqlPayload,
+      boolean refresh) throws Exception {
     require(sqlPayload != null && sqlPayload.length() <= Integer.MAX_VALUE,
         "SQL oracle payload is required");
     byte[] compressed = sqlPayload.getBytes(1, (int) sqlPayload.length());
@@ -2518,13 +2653,11 @@ public final class DoomBspKernelBench {
       expect(json, at, ']'); require(nextRow == 200, "incomplete SQL RLE column");
     }
     expect(json, at, ']');
-    Connection internal = DriverManager.getConnection("jdbc:default:connection:");
-    if (!databaseCacheLoaded) {
-      codecSha256 = MessageDigest.getInstance("SHA-256");
-      loadKernelPack(internal); databaseCacheLoaded = true;
-    }
-    refreshPackedLiveState(internal, session);
-    traverseAndProject(liveCameraX, liveCameraY, liveAngle, false);
+    if(refresh){Connection internal=DriverManager.getConnection("jdbc:default:connection:");
+      if(!databaseCacheLoaded){codecSha256=MessageDigest.getInstance("SHA-256");
+        loadKernelPack(internal);databaseCacheLoaded=true;}
+      refreshPackedLiveState(internal,session);
+      traverseAndProject(liveCameraX,liveCameraY,liveAngle,false);}
     int differences = 0, world = 0, hud = 0;
     int minColumn = WIDTH, maxColumn = -1, minRow = 200, maxRow = -1;
     StringBuilder samples = new StringBuilder();
@@ -2554,6 +2687,15 @@ public final class DoomBspKernelBench {
         maxColumn + "|" + minRow + "|" + maxRow + samples;
   }
 
+  public static String compareSqlPayload(String session,Blob sqlPayload) throws Exception {
+    return compareSqlPayloadInternal(session,sqlPayload,true);
+  }
+
+  public static String compareCurrentSqlPayload(Blob sqlPayload) throws Exception {
+    require(databaseCacheLoaded,"renderer cache not loaded");
+    return compareSqlPayloadInternal(null,sqlPayload,false);
+  }
+
   public static long lastRenderNanos() { return lastRenderNanos; }
   public static long lastCodecNanos() { return lastCodecNanos; }
   public static long lastBlobNanos() { return lastBlobNanos; }
@@ -2565,6 +2707,7 @@ public final class DoomBspKernelBench {
   public static long lastPresentationNanos() { return lastPresentationNanos; }
   public static long lastKernelLoadNanos() { return lastKernelLoadNanos; }
   public static long lastSnapshotNanos() { return lastSnapshotNanos; }
+  static long retainedUpdateNanos() { return lastRetainedUpdateNanos; }
 
   private static byte[] gunzip(byte[] bytes, int length) throws Exception {
     try (GZIPInputStream input = new GZIPInputStream(new ByteArrayInputStream(bytes, 0, length));
