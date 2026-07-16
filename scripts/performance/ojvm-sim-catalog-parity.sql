@@ -71,8 +71,13 @@ begin
     end if;
   end loop;
   for difference_ in -255..255 loop
-    if not same_number(doom_sim_catalog_hitscan_sin(difference_),
-        sin(difference_*2*acos(-1)/4096)) then
+    if not same_number(doom_sim_catalog_hitscan_spread(difference_),
+          difference_*2*acos(-1)/4096) or
+       not same_number(doom_sim_catalog_hitscan_sin(difference_),
+          sin(difference_*2*acos(-1)/4096)) or
+       doom_sim_catalog_hitscan_spread_text(difference_)<>
+          to_char(difference_*2*acos(-1)/4096,'TM9',
+            'NLS_NUMERIC_CHARACTERS=''.,''') then
       raise_application_error(-20000,'hitscan spread mismatch difference='||difference_);
     end if;
     spread_cases_:=spread_cases_+1;

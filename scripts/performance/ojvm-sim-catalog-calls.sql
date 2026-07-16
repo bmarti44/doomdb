@@ -38,6 +38,14 @@ create or replace function doom_sim_catalog_hitscan_sin(p_difference in number)
 return number as language java name
   'DoomSimCatalogBench.hitscanSin(int) return oracle.sql.NUMBER';
 /
+create or replace function doom_sim_catalog_hitscan_spread(p_difference in number)
+return number as language java name
+  'DoomSimCatalogBench.hitscanSpread(int) return oracle.sql.NUMBER';
+/
+create or replace function doom_sim_catalog_hitscan_spread_text(p_difference in number)
+return varchar2 as language java name
+  'DoomSimCatalogBench.hitscanSpreadText(int) return java.lang.String';
+/
 create or replace function doom_sim_catalog_state_tics(p_index in number)
 return number as language java name 'DoomSimCatalogBench.stateTics(int) return int';
 /

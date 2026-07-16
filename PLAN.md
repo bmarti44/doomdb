@@ -1533,12 +1533,12 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   6 intentional failures, 4 discards, and 1 reconstruction, then removed every
   probe object/job. Production integration must return exact-length deltas; it
   may not expose the legacy 104-byte capacity buffer.
-- Exact hitscan spread catalog (2026-07-16): catalog version 5 precomputes all
-  511 possible `sin((rng_a-rng_b)*2*pi/4096)` values as raw Oracle `NUMBER`
-  encodings. All 511 match SQL byte-for-byte, avoiding per-attack trigonometric
-  conversion without changing RNG order. The current catalog is 213,737 bytes
-  with SHA-256
-  `a2d3d2c293603b75340914734ebae178d5df76557ca4c685b5b0409971183472`.
+- Exact hitscan spread catalog (2026-07-16): catalog version 6 precomputes all
+  511 possible `(rng_a-rng_b)*2*pi/4096` spreads, their sine values, and the
+  exact `TM9` event text. Every raw Oracle `NUMBER` and string matches SQL,
+  avoiding per-attack trigonometric/text conversion without changing RNG order.
+  The current catalog is 247,103 bytes with SHA-256
+  `6b267e35b08c017d57bc51bc8f74ca9c44245d31f89c0e991f761da2fc3fe51b`.
 - OJVM deployment-memory guard (2026-07-16): repeated iterative
   `loadjava -force` cycles eventually drove the 2 GiB local instance's MMAN to
   fatal `ORA-00822`; the alert trace identifies MMAN, not an uncaught game

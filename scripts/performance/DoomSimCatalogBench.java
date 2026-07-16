@@ -14,7 +14,7 @@ import oracle.sql.NUMBER;
 /** Immutable SQL-built simulation catalog retained by one database worker. */
 public final class DoomSimCatalogBench {
   private static final int MAGIC = 0x44534350; // DSCP
-  private static final int VERSION = 5;
+  private static final int VERSION = 6;
   private static boolean loaded;
   private static int[] nodeX, nodeY, nodeDx, nodeDy, child0, child1;
   private static byte[] child0Leaf, child1Leaf;
@@ -31,6 +31,8 @@ public final class DoomSimCatalogBench {
   static byte[] rejectBits, soundReachBits;
   static int[] rngValue;
   static NUMBER[] hitscanSin;
+  static NUMBER[] hitscanSpread;
+  static String[] hitscanSpreadText;
   static int[] stateTics, stateNext, stateAction;
   static byte[][] movementDeltaX, movementDeltaY;
   static NUMBER[] movementXExact, movementYExact;
@@ -220,12 +222,16 @@ public final class DoomSimCatalogBench {
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
              "select level-256 spread_difference," +
-             "utl_raw.cast_from_number(sin((level-256)*2*acos(-1)/4096)) " +
+             "utl_raw.cast_from_number((level-256)*2*acos(-1)/4096)," +
+             "utl_raw.cast_from_number(sin((level-256)*2*acos(-1)/4096))," +
+             "to_char((level-256)*2*acos(-1)/4096,'TM9'," +
+             "'NLS_NUMERIC_CHARACTERS=''.,''') " +
              "from dual connect by level<=511 order by spread_difference")) {
       int difference = -255;
       while (rows.next()) {
         require(rows.getInt(1) == difference++, "hitscan spread order");
-        writeNumber(out, rows.getBytes(2));
+        writeNumber(out, rows.getBytes(2)); writeNumber(out, rows.getBytes(3));
+        out.writeUTF(rows.getString(4));
       }
       require(difference == 256, "hitscan spread count");
     }
@@ -365,8 +371,12 @@ public final class DoomSimCatalogBench {
       rngValue[index] = in.readInt(); require(rngValue[index] >= 0 && rngValue[index] <= 255, "RNG value");
     }
     int spreadCount = in.readInt(); require(spreadCount == 511, "hitscan spread count");
-    hitscanSin = new NUMBER[spreadCount];
-    for (int index = 0; index < spreadCount; index++) hitscanSin[index] = new NUMBER(readNumber(in));
+    hitscanSpread = new NUMBER[spreadCount]; hitscanSin = new NUMBER[spreadCount];
+    hitscanSpreadText = new String[spreadCount];
+    for (int index = 0; index < spreadCount; index++) {
+      hitscanSpread[index] = new NUMBER(readNumber(in));
+      hitscanSin[index] = new NUMBER(readNumber(in)); hitscanSpreadText[index] = in.readUTF();
+    }
     int stateCount = in.readInt(); require(stateCount > 0 && stateCount <= 4096, "state count");
     stateTics = new int[stateCount]; stateNext = new int[stateCount]; stateAction = new int[stateCount];
     for (int index = 0; index < stateCount; index++) {
@@ -481,6 +491,24 @@ public final class DoomSimCatalogBench {
     try {
       require(loaded && difference >= -255 && difference <= 255, "hitscan spread difference");
       return hitscanSin[difference + 255];
+    } catch (Throwable error) {
+      lastError = error.getClass().getName() + ":" + error.getMessage(); return null;
+    }
+  }
+
+  public static NUMBER hitscanSpread(int difference) {
+    try {
+      require(loaded && difference >= -255 && difference <= 255, "hitscan spread difference");
+      return hitscanSpread[difference + 255];
+    } catch (Throwable error) {
+      lastError = error.getClass().getName() + ":" + error.getMessage(); return null;
+    }
+  }
+
+  public static String hitscanSpreadText(int difference) {
+    try {
+      require(loaded && difference >= -255 && difference <= 255, "hitscan spread difference");
+      return hitscanSpreadText[difference + 255];
     } catch (Throwable error) {
       lastError = error.getClass().getName() + ":" + error.getMessage(); return null;
     }

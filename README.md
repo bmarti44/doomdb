@@ -172,11 +172,11 @@ turn results plus a four-command packed batch; that is a component parity gate,
 not a playable game result. Its pending state stays invisible until explicit
 post-commit acceptance, and session/lineage/generation fences pass. Oracle
 `NUMBER` also matches all 1,152 movement deltas and the first quadratic contact
-root byte-for-byte. A SHA-verified 213,737-byte worker catalog now retains all
+root byte-for-byte. A SHA-verified 247,103-byte worker catalog now retains all
 681 BSP nodes, 682 subsector owners, 1,175 collision lines, 182 sectors, and the
 movement matrix, BLOCKMAP, compact REJECT/sound matrices, all 256 RNG bytes,
 the database-defined 151-state actor graph, and all 511 possible exact hitscan
-spread-sine values. Its BSP locator
+spread, sine, and event-text values. Its BSP locator
 matches 270/270 SQL cases and all 33,124 directed sector pairs match SQL; the
 exact swept collision matches 270/270 sequential moves with 124 contact cases.
 BLOCKMAP pruning reduced that movement kernel from 16.746 ms to 0.734 ms p95.
