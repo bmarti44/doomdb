@@ -248,7 +248,7 @@ create or replace package body doom_unified_worker as
     l_next_mobj number;l_result_tic number;l_result_seq number;
     l_ledger_sha varchar2(64);l_state_locator blob;
     l_delta_locator blob;l_response_locator blob;l_delta raw(32767);
-    l_render_payload blob;
+    l_state_payload blob;l_render_payload blob;
     l_committed_tic number;l_committed_seq number;l_delta_version number;
     l_delta_count number;l_delta_sha varchar2(64);l_state_sha varchar2(64);
     l_frame_sha varchar2(4000);l_response_sha varchar2(64);
@@ -256,7 +256,11 @@ create or replace package body doom_unified_worker as
     l_prepared number:=0;l_committed number:=0;l_failpoint number;
     l_stage timestamp with time zone;l_prepare_us number;l_apply_us number;
     l_state_us number;l_render_us number;l_finalize_us number;
-    l_render_kernel_us number;l_codec_us number;l_blob_us number;
+    l_render_call_us number;l_render_update_us number;l_render_kernel_us number;
+    l_codec_us number;l_blob_us number;l_response_copy_us number;
+    l_response_hash_us number;l_state_encode_us number;l_state_blob_us number;
+    l_state_compare_us number;l_state_object_encode_us number;
+    l_state_changed number;l_state_reused number;l_state_removed number;
   begin
     begin
       select worker_slot,session_token,save_lineage,generation,expected_tic,
@@ -343,13 +347,33 @@ create or replace package body doom_unified_worker as
       l_stage:=systimestamp;
       dbms_lob.trim(l_delta_locator,0);
       dbms_lob.writeappend(l_delta_locator,utl_raw.length(l_delta),l_delta);
-      doom_canonical_state.build_into_locator(
-        l_session,0,l_state_locator,l_state_sha);
+      -- The retained owner already has every canonical field in primitive
+      -- arrays. Reuse byte-exact JSON fragments for unchanged actors, write
+      -- into a temporary locator, then perform one bounded SecureFile copy.
+      -- This avoids both relational row walking and persistent JDBC writes.
+      dbms_lob.createtemporary(l_state_payload,true,dbms_lob.call);
+      l_state_sha:=doom_unified_state_fill(l_session,l_lineage,l_generation,
+        p_request,l_state_payload);
+      if not regexp_like(l_state_sha,'^[0-9a-f]{64}$') then
+        raise_application_error(c_invalid,'retained state codec: '||
+          substr(l_state_sha,1,3000));
+      end if;
+      dbms_lob.trim(l_state_locator,0);
+      dbms_lob.copy(l_state_locator,l_state_payload,
+        dbms_lob.getlength(l_state_payload),1,1);
       l_state_us:=elapsed_us(l_stage);
+      l_state_encode_us:=round(doom_unified_state_encode_ns/1000);
+      l_state_blob_us:=round(doom_unified_state_blob_ns/1000);
+      l_state_compare_us:=round(doom_unified_state_compare_ns/1000);
+      l_state_object_encode_us:=round(doom_unified_state_object_encode_ns/1000);
+      l_state_changed:=doom_unified_state_changed;
+      l_state_reused:=doom_unified_state_reused;
+      l_state_removed:=doom_unified_state_removed;
       l_stage:=systimestamp;
       dbms_lob.createtemporary(l_render_payload,true,dbms_lob.call);
       l_frame_sha:=doom_unified_render_pending(l_session,l_lineage,l_generation,
         p_request,l_state_sha,l_render_payload);
+      l_render_call_us:=elapsed_us(l_stage);
       if not regexp_like(l_frame_sha,'^[0-9a-f]{64}$') then
         raise_application_error(c_invalid,'direct pending renderer: '||
           substr(l_frame_sha,1,3000));
@@ -357,16 +381,21 @@ create or replace package body doom_unified_worker as
       -- Keep server-side JDBC off the persistent SecureFile locator: its
       -- measured write tail dominates otherwise. Java fills a temporary BLOB;
       -- PL/SQL performs one bounded durable copy in the owning transaction.
+      l_stage:=systimestamp;
       dbms_lob.trim(l_response_locator,0);
       dbms_lob.copy(l_response_locator,l_render_payload,
         dbms_lob.getlength(l_render_payload),1,1);
+      l_response_copy_us:=elapsed_us(l_stage);
       l_response_bytes:=dbms_lob.getlength(l_response_locator);
       if l_response_bytes=0 then
         raise_application_error(c_invalid,'empty worker response');
       end if;
+      l_stage:=systimestamp;
       l_response_sha:=lower(rawtohex(dbms_crypto.hash(
         l_response_locator,dbms_crypto.hash_sh256)));
-      l_render_us:=elapsed_us(l_stage);
+      l_response_hash_us:=elapsed_us(l_stage);
+      l_render_us:=l_render_call_us+l_response_copy_us+l_response_hash_us;
+      l_render_update_us:=round(doom_retained_render_last_update_ns/1000);
       l_render_kernel_us:=round(doom_bsp_last_render_ns/1000);
       l_codec_us:=round(doom_bsp_last_codec_ns/1000);
       l_blob_us:=round(doom_bsp_last_blob_ns/1000);
@@ -385,8 +414,15 @@ create or replace package body doom_unified_worker as
         delta_sha=l_delta_sha,state_sha=l_state_sha,frame_sha=l_frame_sha,
         response_bytes=l_response_bytes,response_sha=l_response_sha,
         prepare_us=l_prepare_us,apply_us=l_apply_us,state_us=l_state_us,
-        render_us=l_render_us,render_kernel_us=l_render_kernel_us,
-        codec_us=l_codec_us,blob_us=l_blob_us,finalize_us=l_finalize_us
+        state_encode_us=l_state_encode_us,state_blob_us=l_state_blob_us,
+        state_compare_us=l_state_compare_us,
+        state_object_encode_us=l_state_object_encode_us,
+        state_changed=l_state_changed,state_reused=l_state_reused,
+        state_removed=l_state_removed,render_us=l_render_us,
+        render_call_us=l_render_call_us,render_update_us=l_render_update_us,
+        render_kernel_us=l_render_kernel_us,codec_us=l_codec_us,
+        blob_us=l_blob_us,response_copy_us=l_response_copy_us,
+        response_hash_us=l_response_hash_us,finalize_us=l_finalize_us
         where request_id=p_request;
       if sql%rowcount<>1 then
         raise_application_error(c_invalid,'worker result finalize race');
@@ -443,8 +479,9 @@ create or replace package body doom_unified_worker as
         raise_application_error(c_invalid,'post-commit accept: '||
           substr(l_result,1,3000));
       end if;
-      audit_event(p_request,p_slot,l_generation,'COMMITTED',
-        l_state_sha||'|'||l_frame_sha);
+      -- DOOM_WORKER_RESULT and DOOM_WORKER_REQUEST already form the durable
+      -- success ledger. Avoid a second autonomous commit/audit row on every
+      -- tic; audit remains reserved for lifecycle, replay, and failure events.
     exception when others then
       l_error:=substr(sqlerrm||' '||dbms_utility.format_error_backtrace,1,4000);
       audit_event(p_request,p_slot,l_generation,'POSTCOMMIT_ACCEPT_FAILED',l_error);

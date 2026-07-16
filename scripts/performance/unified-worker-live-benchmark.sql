@@ -5,7 +5,7 @@ set serveroutput on size unlimited feedback off verify off
 -- owner, transactional AQ rendezvous, canonical state, durable delta/history,
 -- direct render/codec/BLOB, commit, accept, and correlated response lookup.
 declare
-  c_warm constant pls_integer:=500;
+  c_warm constant pls_integer:=30;
   c_samples constant pls_integer:=300;
   session_ varchar2(32);lineage_ varchar2(64);initial_ blob;
   generation_ number;ready_ number;map_sha_ varchar2(64);error_ varchar2(4000);
@@ -111,25 +111,40 @@ begin
     round(p95_,3)||'|'||round(max_,3));
   for stage_ in (
     with measured as (
-      select x.committed_tic,x.prepare_us,x.apply_us,x.state_us,x.render_us,x.render_kernel_us,
-        x.codec_us,x.blob_us,x.finalize_us,
+      select x.committed_tic,x.prepare_us,x.apply_us,x.state_us,x.state_encode_us,
+        x.state_blob_us,x.state_compare_us,x.state_object_encode_us,x.state_changed,
+        x.state_reused,x.state_removed,x.render_us,x.render_call_us,x.render_update_us,
+        x.render_kernel_us,x.codec_us,x.blob_us,x.response_copy_us,x.response_hash_us,x.finalize_us,
         row_number() over(order by r.created_at,r.request_id) sample_no
       from doom_worker_request r join doom_worker_result x
         on x.request_id=r.request_id
       where r.session_token=session_ and r.request_status='COMMITTED'
     ), values_ as (
-      select 'prepare' stage,prepare_us/1000 value from measured where sample_no>500
-      union all select 'apply',apply_us/1000 from measured where sample_no>500
-      union all select 'state',state_us/1000 from measured where sample_no>500
-      union all select 'render',render_us/1000 from measured where sample_no>500
-      union all select 'render_kernel',render_kernel_us/1000 from measured where sample_no>500
-      union all select 'codec',codec_us/1000 from measured where sample_no>500
-      union all select 'blob',blob_us/1000 from measured where sample_no>500
-      union all select 'finalize',finalize_us/1000 from measured where sample_no>500
+      select 'prepare' stage,prepare_us/1000 value from measured where sample_no>30
+      union all select 'apply',apply_us/1000 from measured where sample_no>30
+      union all select 'state',state_us/1000 from measured where sample_no>30
+      union all select 'state_encode',state_encode_us/1000 from measured where sample_no>30
+      union all select 'state_blob',state_blob_us/1000 from measured where sample_no>30
+      union all select 'state_compare',state_compare_us/1000 from measured where sample_no>30
+      union all select 'state_object_encode',state_object_encode_us/1000 from measured where sample_no>30
+      union all select 'state_changed',state_changed from measured where sample_no>30
+      union all select 'state_reused',state_reused from measured where sample_no>30
+      union all select 'state_removed',state_removed from measured where sample_no>30
+      union all select 'render',render_us/1000 from measured where sample_no>30
+      union all select 'render_call',render_call_us/1000 from measured where sample_no>30
+      union all select 'render_update',render_update_us/1000 from measured where sample_no>30
+      union all select 'render_other',greatest(render_us-render_kernel_us-
+        codec_us-blob_us,0)/1000 from measured where sample_no>30
+      union all select 'render_kernel',render_kernel_us/1000 from measured where sample_no>30
+      union all select 'codec',codec_us/1000 from measured where sample_no>30
+      union all select 'blob',blob_us/1000 from measured where sample_no>30
+      union all select 'response_copy',response_copy_us/1000 from measured where sample_no>30
+      union all select 'response_hash',response_hash_us/1000 from measured where sample_no>30
+      union all select 'finalize',finalize_us/1000 from measured where sample_no>30
       union all select 'finalize_checkpoint',finalize_us/1000 from measured
-        where sample_no>500 and mod(committed_tic,4)=0
+        where sample_no>30 and mod(committed_tic,4)=0
       union all select 'finalize_regular',finalize_us/1000 from measured
-        where sample_no>500 and mod(committed_tic,4)<>0
+        where sample_no>30 and mod(committed_tic,4)<>0
     )
     select stage,percentile_cont(.5) within group(order by value) p50,
       percentile_cont(.95) within group(order by value) p95,max(value) maximum

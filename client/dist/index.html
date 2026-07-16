@@ -56,8 +56,8 @@
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">30 FPS playability gate<br><span>durable worker at 28.5 / 22.7 FPS p50/p95</span></p>
-      <p class="muted">The full database worker now commits movement, canonical state/history, exact retained rendering, and a correlated response in 35.041 / 44.091 ms p50/p95 after 500 warm tics. It is correct and restart-safe, but has not passed the 33.3 ms end-to-end gate.</p>
+      <p class="big">30 FPS playability gate<br><span>durable worker at 32.1 / 25.4 FPS p50/p95</span></p>
+      <p class="muted">The full database worker now commits movement, canonical state/history, exact retained rendering, and a correlated response in 31.181 / 39.376 ms p50/p95. Median is playable and exact gates pass; p95 and end-to-end AutoREST/browser timing remain open.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -71,7 +71,7 @@
     <h2>Live implementation status · July 16, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate; public <code>DOOM_TIC_TX.APPLY_BATCH</code> only; lift 1 completed and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived AQ/Scheduler workers. Live worker acceptance passes durable commit, exact replay, rollback/discard, post-commit reconstruction, restart fencing, and two simultaneous isolated sessions. Current p95 stages are render 12.088 ms, canonical state 11.326 ms, strict apply 7.680 ms, finalization 6.940 ms, and prepare 2.396 ms. A temporary-BLOB boundary cut Java BLOB output to 0.063 ms p95. The worker remains default-off; the public SQL route remains about 0.128 FPS until the worker clears 33.3 ms and is routed through <code>DOOM_API.STEP</code>.</p>
+    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived AQ/Scheduler workers. Live worker acceptance passes exact state and moving-frame parity, durable commit/replay, rollback reconstruction, restart fencing, and two simultaneous isolated sessions. Current p95 stages are render 14.505 ms, strict apply 8.947 ms, four-tic checkpoint finalization 8.114 ms (ordinary tics 0.741 ms), canonical state 4.745 ms, and prepare 2.791 ms. The worker remains default-off; the public SQL route remains about 0.128 FPS until p95 clears 33.3 ms and the same dynamic path is routed through <code>DOOM_API.STEP</code>.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">
@@ -131,7 +131,7 @@
     <div class="metric"><strong>1,430</strong><span class="muted">public route tics</span></div>
     <div class="metric"><strong>46 HP</strong><span class="muted">current checkpoint</span></div>
     <div class="metric"><strong>9 kills</strong><span class="muted">current checkpoint</span></div>
-    <div class="metric"><strong>10.872 ms</strong><span class="muted">dynamic render p95</span></div>
+    <div class="metric"><strong>14.505 ms</strong><span class="muted">worker render p95</span></div>
     <div class="metric"><strong>2.969 ms</strong><span class="muted">moving command tic p95</span></div>
   </section>
 
@@ -161,7 +161,7 @@
     <article class="panel phase done"><b>P5.4</b><span>Presentation</span><p class="muted">HUD, weapons, menu, pause, automap, intermission</p></article>
     <article class="panel phase done"><b>P6</b><span>Simulation</span><p class="muted">tic, movement, machines, history, replay</p></article>
     <article class="panel phase done"><b>P7</b><span>Gameplay</span><p class="muted">weapons, monsters, pickups, audio</p></article>
-    <article class="panel phase active"><b>P12.0</b><span>30 FPS gate</span><p class="muted">durable worker 35.041 / 44.091 ms; default-off</p></article>
+    <article class="panel phase active"><b>P12.0</b><span>30 FPS gate</span><p class="muted">durable worker 31.181 / 39.376 ms; default-off</p></article>
     <article class="panel phase"><b>P8.1</b><span>Completion route</span><p class="muted">preserved at tic 1430 · resumes after gate</p></article>
   </section>
   <footer>Build-review surface only · no credentials or evaluator data are exposed to the browser.</footer>

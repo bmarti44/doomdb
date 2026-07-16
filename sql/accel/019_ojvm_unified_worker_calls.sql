@@ -35,6 +35,36 @@ create or replace function doom_unified_actor_discard(
 return varchar2 as language java name
   'DoomUnifiedActorStateBench.discard(java.lang.String,java.lang.String,long,java.lang.String) return java.lang.String';
 /
+create or replace function doom_unified_state_fill(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_payload in blob)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.fillPendingState(java.lang.String,java.lang.String,long,java.lang.String,java.sql.Blob) return java.lang.String';
+/
+create or replace function doom_unified_state_total_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastStateTotalNanos() return long';
+/
+create or replace function doom_unified_state_encode_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastStateEncodeNanos() return long';
+/
+create or replace function doom_unified_state_blob_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastStateBlobNanos() return long';
+/
+create or replace function doom_unified_state_compare_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastStateCompareNanos() return long';
+/
+create or replace function doom_unified_state_object_encode_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastStateObjectEncodeNanos() return long';
+/
+create or replace function doom_unified_state_changed return number as language java name
+  'DoomUnifiedActorStateBench.lastStateChanged() return int';
+/
+create or replace function doom_unified_state_reused return number as language java name
+  'DoomUnifiedActorStateBench.lastStateReused() return int';
+/
+create or replace function doom_unified_state_removed return number as language java name
+  'DoomUnifiedActorStateBench.lastStateRemoved() return int';
+/
 create or replace function doom_unified_render_pending(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,
   p_request in varchar2,p_state_sha in varchar2,p_payload in blob)

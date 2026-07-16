@@ -50,11 +50,15 @@ public final class DoomBspKernelBench {
   private static double[] segRelativeStartX, segRelativeStartY;
   private static double[] segRelativeEndX, segRelativeEndY;
   private static double[] segExactTNumerator;
+  private static int[] segExactEpoch;
+  private static int exactGeometryEpoch=1;
   private static int[] uniqueMapX,uniqueMapY,segStartXIndex,segStartYIndex;
   private static int[] segEndXIndex,segEndYIndex,uniqueDirectionX,uniqueDirectionY,segDirectionIndex;
   private static long[] segCrossBase;
   private static double[] exactRelativeX,exactRelativeY;
-  private static BigDecimal[] exactDirectionCamera;
+  private static double[] exactDirectionHi,exactDirectionLo;
+  private static double exactCameraXHi,exactCameraXLo,exactCameraYHi,exactCameraYLo;
+  private static int[] exactDirectionEpoch;
   private static BigDecimal preparedCameraX,preparedCameraY;
   private static int[] segLineId, lineStartX, lineStartY, lineEndX, lineEndY;
   private static int[] rightSector, leftSector;
@@ -222,22 +226,51 @@ public final class DoomBspKernelBench {
 
   private static void prepareExactSegmentRelatives() {
     if(liveExactCameraX.equals(preparedCameraX)&&liveExactCameraY.equals(preparedCameraY))return;
-    for(int index=0;index<uniqueMapX.length;index++)exactRelativeX[index]=
-        BigDecimal.valueOf(uniqueMapX[index]).subtract(liveExactCameraX).doubleValue();
-    for(int index=0;index<uniqueMapY.length;index++)exactRelativeY[index]=
-        BigDecimal.valueOf(uniqueMapY[index]).subtract(liveExactCameraY).doubleValue();
-    for(int index=0;index<uniqueDirectionX.length;index++)exactDirectionCamera[index]=
-        liveExactCameraY.multiply(BigDecimal.valueOf(uniqueDirectionX[index])).subtract(
-          liveExactCameraX.multiply(BigDecimal.valueOf(uniqueDirectionY[index])));
+    double cameraX=liveExactCameraX.doubleValue(),cameraY=liveExactCameraY.doubleValue();
+    exactCameraXHi=cameraX;exactCameraYHi=cameraY;
+    exactCameraXLo=liveExactCameraX.subtract(new BigDecimal(cameraX)).doubleValue();
+    exactCameraYLo=liveExactCameraY.subtract(new BigDecimal(cameraY)).doubleValue();
+    for(int index=0;index<uniqueMapX.length;index++)exactRelativeX[index]=uniqueMapX[index]-cameraX;
+    for(int index=0;index<uniqueMapY.length;index++)exactRelativeY[index]=uniqueMapY[index]-cameraY;
     for (int id = 0; id < segTotal; id++) {
       segRelativeStartX[id]=exactRelativeX[segStartXIndex[id]];
       segRelativeStartY[id]=exactRelativeY[segStartYIndex[id]];
       segRelativeEndX[id]=exactRelativeX[segEndXIndex[id]];
       segRelativeEndY[id]=exactRelativeY[segEndYIndex[id]];
-      segExactTNumerator[id]=BigDecimal.valueOf(segCrossBase[id]).add(
-          exactDirectionCamera[segDirectionIndex[id]]).doubleValue();
     }
+    if(exactGeometryEpoch==Integer.MAX_VALUE){Arrays.fill(segExactEpoch,0);
+      Arrays.fill(exactDirectionEpoch,0);exactGeometryEpoch=1;}
+    else exactGeometryEpoch++;
     preparedCameraX=liveExactCameraX;preparedCameraY=liveExactCameraY;
+  }
+
+  private static double exactTNumerator(int id){
+    if(segExactEpoch[id]!=exactGeometryEpoch){
+      int direction=segDirectionIndex[id];
+      if(exactDirectionEpoch[direction]!=exactGeometryEpoch){
+        double dx=uniqueDirectionX[direction],dy=uniqueDirectionY[direction];
+        double yp=exactCameraYHi*dx,ye=productError(exactCameraYHi,dx,yp)+exactCameraYLo*dx;
+        double xp=exactCameraXHi*dy,xe=productError(exactCameraXHi,dy,xp)+exactCameraXLo*dy;
+        double high=yp-xp,virtualNegative=high-yp;
+        double low=(yp-(high-virtualNegative))+(-xp-virtualNegative)+ye-xe;
+        double normalized=high+low;
+        exactDirectionHi[direction]=normalized;
+        exactDirectionLo[direction]=(high-normalized)+low;
+        exactDirectionEpoch[direction]=exactGeometryEpoch;
+      }
+      double cross=segCrossBase[id],high=exactDirectionHi[direction],sum=cross+high;
+      double virtualHigh=sum-cross;
+      double error=(cross-(sum-virtualHigh))+(high-virtualHigh);
+      segExactTNumerator[id]=sum+(error+exactDirectionLo[direction]);
+      segExactEpoch[id]=exactGeometryEpoch;
+    }
+    return segExactTNumerator[id];
+  }
+
+  private static double productError(double left,double right,double product){
+    double splitLeft=134217729.0*left,leftHigh=splitLeft-(splitLeft-left),leftLow=left-leftHigh;
+    double splitRight=134217729.0*right,rightHigh=splitRight-(splitRight-right),rightLow=right-rightHigh;
+    return ((leftHigh*rightHigh-product)+leftHigh*rightLow+leftLow*rightHigh)+leftLow*rightLow;
   }
 
   private static void buildExactGeometryCache() {
@@ -263,7 +296,9 @@ public final class DoomBspKernelBench {
     for(Map.Entry<Long,Integer> e:dirs.entrySet()){uniqueDirectionX[e.getValue()]=(int)(e.getKey()>>32);
       uniqueDirectionY[e.getValue()]=(int)(long)e.getKey();}
     exactRelativeX=new double[uniqueMapX.length];exactRelativeY=new double[uniqueMapY.length];
-    exactDirectionCamera=new BigDecimal[dirs.size()];preparedCameraX=null;preparedCameraY=null;
+    exactDirectionEpoch=new int[dirs.size()];exactDirectionHi=new double[dirs.size()];
+    exactDirectionLo=new double[dirs.size()];
+    preparedCameraX=null;preparedCameraY=null;
   }
 
   private static void refreshLiveState(Connection connection, String session) throws Exception {
@@ -1130,7 +1165,7 @@ public final class DoomBspKernelBench {
   private static void allocateWorkBuffers() {
     segRelativeStartX = new double[segTotal]; segRelativeStartY = new double[segTotal];
     segRelativeEndX = new double[segTotal]; segRelativeEndY = new double[segTotal];
-    segExactTNumerator = new double[segTotal];
+    segExactTNumerator = new double[segTotal]; segExactEpoch = new int[segTotal];
     planeCeilingDistance = new double[sectorFloor.length * 200];
     planeFloorDistance = new double[sectorFloor.length * 200];
     activeSectorCeilingAsset=new int[sectorFloor.length];
@@ -1348,7 +1383,7 @@ public final class DoomBspKernelBench {
     segEndX = new int[segTotal]; segEndY = new int[segTotal];
     segRelativeStartX = new double[segTotal]; segRelativeStartY = new double[segTotal];
     segRelativeEndX = new double[segTotal]; segRelativeEndY = new double[segTotal];
-    segExactTNumerator = new double[segTotal];
+    segExactTNumerator = new double[segTotal]; segExactEpoch = new int[segTotal];
     segLineId = new int[segTotal];
     lineStartX = new int[segTotal]; lineStartY = new int[segTotal];
     lineEndX = new int[segTotal]; lineEndY = new int[segTotal];
@@ -2064,7 +2099,7 @@ public final class DoomBspKernelBench {
     double determinant = rayX * segY - rayY * segX;
     if (Math.abs(determinant) < 1e-12) return Double.NaN;
     double relX = segRelativeStartX[id], relY = segRelativeStartY[id];
-    double hitT = segExactTNumerator[id] / determinant;
+    double hitT = exactTNumerator(id) / determinant;
     if (hitT <= NEAR) return Double.NaN;
     double hitU = (relX * rayY - relY * rayX) / determinant;
     return hitU >= 0.0 && hitU <= 1.0 ? hitT : Double.NaN;

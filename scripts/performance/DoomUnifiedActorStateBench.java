@@ -4,11 +4,14 @@ import java.io.DataOutputStream;
 import java.io.DataInputStream;
 import java.sql.Clob;
 import java.sql.Blob;
+import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.sql.Types;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Arrays;
@@ -23,6 +26,7 @@ public final class DoomUnifiedActorStateBench {
   private static Owner committed,pending,spare;
   private static String pendingRequest,lastError="";
   private static int pendingMode;
+  private static boolean pendingStateEncoded;
   private static byte[] pendingChild;
   private static long ticChaseNs,ticLoopNs,ticEncodeNs;
   private static long lastActorTicNs,lastCommandEncodeNs;
@@ -32,8 +36,19 @@ public final class DoomUnifiedActorStateBench {
   private static int[] renderOp=new int[0],renderId=new int[0],renderState=new int[0];
   private static NUMBER[] renderX=new NUMBER[0],renderY=new NUMBER[0],renderZ=new NUMBER[0],renderAngle=new NUMBER[0];
   private static int lastRenderUpserts,lastRenderRemoves;
+  private static byte[] stateOutput=new byte[262144];
+  private static int stateOutputLength;
+  private static MessageDigest stateDigest;
+  private static long lastStateEncodeNs,lastStateBlobNs,lastStateTotalNs;
+  private static long lastStateCompareNs,lastStateObjectEncodeNs;
+  private static int lastStateChanged,lastStateReused,lastStateRemoved;
 
   private DoomUnifiedActorStateBench() {}
+
+  private static NUMBER canonicalNumber(NUMBER value){
+    try{return new NUMBER(value.toBytes());}
+    catch(Exception failure){throw new IllegalStateException("canonical NUMBER",failure);}
+  }
 
   private static final class Owner {
     String session,lineage,stateMapSha;long generation,tic,seq;
@@ -56,6 +71,7 @@ public final class DoomUnifiedActorStateBench {
     int[] spawnThing,spawnState;NUMBER[] spawnRadius,spawnHeight;
     int[] projectileThing,projectileState;NUMBER[] projectileSpeed,projectileRadius,projectileHeight;
     String[] projectileKind;
+    byte[][] stateFragments,stateMobjFragments;
     WorldMobjs world;int[] worldSlot;
     Owner copy(){
       Owner o=new Owner();o.session=session;o.lineage=lineage;o.stateMapSha=stateMapSha;
@@ -83,7 +99,9 @@ public final class DoomUnifiedActorStateBench {
       o.spawnRadius=spawnRadius;o.spawnHeight=spawnHeight;o.projectileThing=projectileThing;
       o.projectileState=projectileState;o.projectileSpeed=projectileSpeed;
       o.projectileRadius=projectileRadius;o.projectileHeight=projectileHeight;
-      o.projectileKind=projectileKind;o.world=world.copy();o.worldSlot=worldSlot.clone();return o;
+      o.projectileKind=projectileKind;o.stateFragments=stateFragments;
+      o.stateMobjFragments=stateMobjFragments==null?null:stateMobjFragments.clone();
+      o.world=world.copy();o.worldSlot=worldSlot.clone();return o;
     }
     void copyFrom(Owner s){session=s.session;lineage=s.lineage;stateMapSha=s.stateMapSha;generation=s.generation;
       tic=s.tic;seq=s.seq;rng=s.rng;nextMobj=s.nextMobj;nextEvent=s.nextEvent;playerId=s.playerId;
@@ -91,6 +109,8 @@ public final class DoomUnifiedActorStateBench {
       playerArmor=s.playerArmor;playerArmorType=s.playerArmorType;playerAlive=s.playerAlive;
       playerSector=s.playerSector;playerAngleIndex=s.playerAngleIndex;playerSound=s.playerSound;
       playerX=s.playerX;playerY=s.playerY;playerZ=s.playerZ;playerEyeZ=s.playerEyeZ;
+      stateFragments=s.stateFragments;
+      stateMobjFragments=s.stateMobjFragments==null?null:s.stateMobjFragments.clone();
       System.arraycopy(s.stateIndex,0,stateIndex,0,count);System.arraycopy(s.stateTics,0,stateTics,0,count);
       System.arraycopy(s.health,0,health,0,count);System.arraycopy(s.flags,0,flags,0,count);
       System.arraycopy(s.target,0,target,0,count);System.arraycopy(s.sector,0,sector,0,count);
@@ -150,8 +170,10 @@ public final class DoomUnifiedActorStateBench {
       int i=count;id[i]=p.id;thing[i]=p.thing;state[i]=p.state;tics[i]=p.tics;health[i]=p.health;flags[i]=p.flags;
       target[i]=p.target;tracer[i]=p.tracer;reaction[i]=p.reaction;spawnThing[i]=p.spawnThing;owner[i]=p.owner;
       exploded[i]=p.exploded;sector[i]=p.sector;direction[i]=-1;awake[i]=0;cooldown[i]=0;healthSeen[i]=-1;
-      deathProcessed[i]=0;x[i]=p.x;y[i]=p.y;z[i]=p.z;mx[i]=p.mx;my[i]=p.my;mz[i]=p.mz;
-      angle[i]=NUMBER.zero();radius[i]=p.radius;height[i]=p.height;projectileKind[i]=p.kind;
+      deathProcessed[i]=0;x[i]=canonicalNumber(p.x);y[i]=canonicalNumber(p.y);z[i]=canonicalNumber(p.z);
+      mx[i]=canonicalNumber(p.mx);my[i]=canonicalNumber(p.my);mz[i]=canonicalNumber(p.mz);
+      angle[i]=NUMBER.zero();radius[i]=canonicalNumber(p.radius);height[i]=canonicalNumber(p.height);
+      projectileKind[i]=p.kind;
       require(slot.put(Integer.valueOf(p.id),Integer.valueOf(i))==null,"world append duplicate");count=n;}
     void remove(int expected){int at=slot(expected);require(at>=0,"world remove id");
       for(int i=0;i<count;i++){if(target[i]==expected)target[i]=-1;if(tracer[i]==expected)tracer[i]=-1;
@@ -196,6 +218,172 @@ public final class DoomUnifiedActorStateBench {
     char[] out=new char[bytes.length*2],digits="0123456789abcdef".toCharArray();
     for(int i=0;i<bytes.length;i++){out[i*2]=digits[(bytes[i]>>>4)&15];out[i*2+1]=digits[bytes[i]&15];}
     return new String(out);
+  }
+  private static int jsonSpace(byte[] value,int p){while(p<value.length&&(value[p]==' '||value[p]=='\n'||
+      value[p]=='\r'||value[p]=='\t'))p++;return p;}
+  private static int jsonStringEnd(byte[] value,int p){
+    require(p<value.length&&value[p]=='"',"state seed string");p++;
+    while(p<value.length){int b=value[p++]&255;if(b=='"')return p;if(b=='\\'){
+        require(p<value.length,"state seed escape");p++;}}
+    throw new IllegalStateException("state seed unterminated string");
+  }
+  private static int jsonValueEnd(byte[] value,int p){
+    p=jsonSpace(value,p);require(p<value.length,"state seed value");
+    if(value[p]=='"')return jsonStringEnd(value,p);
+    if(value[p]=='{'||value[p]=='['){int depth=0;
+      while(p<value.length){int b=value[p]&255;if(b=='"'){p=jsonStringEnd(value,p);continue;}
+        if(b=='{'||b=='[')depth++;else if(b=='}'||b==']'){depth--;if(depth==0)return p+1;}p++;}
+      throw new IllegalStateException("state seed unterminated container");
+    }
+    int start=p;while(p<value.length&&value[p]!=','&&value[p]!='}'&&value[p]!=']'&&
+        value[p]!=' '&&value[p]!='\n'&&value[p]!='\r'&&value[p]!='\t')p++;
+    require(p>start,"state seed primitive");return p;
+  }
+  private static boolean asciiEquals(byte[] value,int start,int end,String expected){
+    if(end-start!=expected.length())return false;
+    for(int i=0;i<expected.length();i++)if((value[start+i]&255)!=expected.charAt(i))return false;
+    return true;
+  }
+  private static int[] jsonObjectValue(byte[] value,int objectStart,String expected){
+    int p=jsonSpace(value,objectStart);require(p<value.length&&value[p]=='{',"state seed object");p++;
+    for(;;){p=jsonSpace(value,p);require(p<value.length,"state seed object end");
+      if(value[p]=='}')break;int keyStart=p+1,keyEnd=jsonStringEnd(value,p)-1;
+      p=jsonSpace(value,keyEnd+1);require(p<value.length&&value[p]==':',"state seed colon");
+      int start=jsonSpace(value,p+1),end=jsonValueEnd(value,start);
+      if(asciiEquals(value,keyStart,keyEnd,expected))return new int[]{start,end};
+      p=jsonSpace(value,end);require(p<value.length&&(value[p]==','||value[p]=='}'),"state seed delimiter");
+      if(value[p]=='}')break;p++;
+    }
+    throw new IllegalStateException("state seed missing "+expected);
+  }
+  private static byte[] slice(byte[] value,int start,int end){return Arrays.copyOfRange(value,start,end);}
+  private static void ensureState(int bytes){if(stateOutputLength+bytes<=stateOutput.length)return;
+    stateOutput=Arrays.copyOf(stateOutput,Math.max(stateOutput.length*2,stateOutputLength+bytes));}
+  private static void stateBytes(byte[] value){ensureState(value.length);
+    System.arraycopy(value,0,stateOutput,stateOutputLength,value.length);stateOutputLength+=value.length;}
+  private static void stateAscii(String value){ensureState(value.length());
+    for(int i=0;i<value.length();i++)stateOutput[stateOutputLength++]=(byte)value.charAt(i);}
+  private static void stateQuoted(String value){
+    if(value==null){stateAscii("null");return;}ensureState(value.length()*3+2);stateOutput[stateOutputLength++]='"';
+    final char[] hex="0123456789abcdef".toCharArray();
+    for(int offset=0;offset<value.length();){int cp=value.codePointAt(offset);offset+=Character.charCount(cp);
+      if(cp=='"'||cp=='\\'){stateOutput[stateOutputLength++]='\\';stateOutput[stateOutputLength++]=(byte)cp;}
+      else if(cp=='\b')stateAscii("\\b");else if(cp=='\f')stateAscii("\\f");
+      else if(cp=='\n')stateAscii("\\n");else if(cp=='\r')stateAscii("\\r");else if(cp=='\t')stateAscii("\\t");
+      else if(cp<32){stateAscii("\\u00");stateOutput[stateOutputLength++]=(byte)hex[(cp>>>4)&15];
+        stateOutput[stateOutputLength++]=(byte)hex[cp&15];}
+      else{byte[] bytes=new String(Character.toChars(cp)).getBytes(StandardCharsets.UTF_8);stateBytes(bytes);}}
+    stateOutput[stateOutputLength++]='"';
+  }
+  private static void stateNumber(BigDecimal value){value=value.stripTrailingZeros();
+    if(value.signum()==0){stateAscii("0");return;}
+    int integerDigits=value.precision()-value.scale();
+    if(value.scale()>40||integerDigits>40){String digits=value.unscaledValue().abs().toString();
+      if(value.signum()<0)stateAscii("-");stateOutput[stateOutputLength++]=(byte)digits.charAt(0);
+      if(digits.length()>1){stateOutput[stateOutputLength++]='.';stateAscii(digits.substring(1));}
+      stateAscii("E"+Integer.toString(integerDigits-1));
+    }else stateAscii(value.toPlainString());}
+  private static void stateNumber(NUMBER value)throws Exception{stateNumber(value.bigDecimalValue());}
+  private static void stateInt(int value){stateAscii(Integer.toString(value));}
+  private static void stateLong(long value){stateAscii(Long.toString(value));}
+  private static void stateNullable(int value){if(value<0)stateAscii("null");else stateInt(value);}
+  private static void stateKey(String key,boolean first){if(!first)stateOutput[stateOutputLength++]=',';
+    stateQuoted(key);stateOutput[stateOutputLength++]=':';}
+  private static boolean sameStateNumber(NUMBER a,NUMBER b)throws Exception{
+    return a==b||(a!=null&&b!=null&&a.compareTo(b)==0);
+  }
+  private static boolean sameStateText(String a,String b){return a==b||(a!=null&&a.equals(b));}
+  private static boolean sameStateMobj(WorldMobjs a,int ai,WorldMobjs b,int bi)throws Exception{
+    long started=System.nanoTime();boolean same=
+      a.id[ai]==b.id[bi]&&a.thing[ai]==b.thing[bi]&&a.state[ai]==b.state[bi]&&a.tics[ai]==b.tics[bi]&&
+      sameStateNumber(a.x[ai],b.x[bi])&&sameStateNumber(a.y[ai],b.y[bi])&&sameStateNumber(a.z[ai],b.z[bi])&&
+      sameStateNumber(a.mx[ai],b.mx[bi])&&sameStateNumber(a.my[ai],b.my[bi])&&sameStateNumber(a.mz[ai],b.mz[bi])&&
+      sameStateNumber(a.angle[ai],b.angle[bi])&&sameStateNumber(a.radius[ai],b.radius[bi])&&
+      sameStateNumber(a.height[ai],b.height[bi])&&a.health[ai]==b.health[bi]&&a.flags[ai]==b.flags[bi]&&
+      a.target[ai]==b.target[bi]&&a.tracer[ai]==b.tracer[bi]&&a.reaction[ai]==b.reaction[bi]&&
+      a.spawnThing[ai]==b.spawnThing[bi]&&a.owner[ai]==b.owner[bi]&&
+      sameStateText(a.projectileKind[ai],b.projectileKind[bi])&&a.exploded[ai]==b.exploded[bi]&&
+      a.sector[ai]==b.sector[bi]&&a.direction[ai]==b.direction[bi]&&a.awake[ai]==b.awake[bi]&&
+      a.cooldown[ai]==b.cooldown[bi]&&a.healthSeen[ai]==b.healthSeen[bi]&&
+      a.deathProcessed[ai]==b.deathProcessed[bi];
+    lastStateCompareNs+=System.nanoTime()-started;return same;
+  }
+  private static void stateMobj(Owner o,int i)throws Exception{
+    WorldMobjs w=o.world;stateOutput[stateOutputLength++]='{';
+      stateKey("mobj_id",true);stateInt(w.id[i]);stateKey("thing_type",false);stateInt(w.thing[i]);
+      stateKey("state_id",false);stateQuoted(o.stateId[w.state[i]]);stateKey("state_tics",false);stateInt(w.tics[i]);
+      stateKey("x",false);stateNumber(w.x[i]);stateKey("y",false);stateNumber(w.y[i]);
+      stateKey("z",false);stateNumber(w.z[i]);stateKey("momentum_x",false);stateNumber(w.mx[i]);
+      stateKey("momentum_y",false);stateNumber(w.my[i]);stateKey("momentum_z",false);stateNumber(w.mz[i]);
+      stateKey("angle",false);stateNumber(w.angle[i]);stateKey("radius",false);stateNumber(w.radius[i]);
+      stateKey("height",false);stateNumber(w.height[i]);stateKey("health",false);stateInt(w.health[i]);
+      stateKey("flags",false);stateInt(w.flags[i]);stateKey("target_mobj_id",false);stateNullable(w.target[i]);
+      stateKey("tracer_mobj_id",false);stateNullable(w.tracer[i]);stateKey("reaction_time",false);stateInt(w.reaction[i]);
+      stateKey("spawn_thing_id",false);stateNullable(w.spawnThing[i]);stateKey("owner_mobj_id",false);stateNullable(w.owner[i]);
+      stateKey("projectile_kind",false);stateQuoted(w.projectileKind[i]);stateKey("exploded",false);stateInt(w.exploded[i]);
+      stateKey("sector_id",false);stateNullable(w.sector[i]);stateKey("move_direction",false);stateInt(w.direction[i]);
+      stateKey("awake",false);stateInt(w.awake[i]);stateKey("attack_cooldown",false);stateInt(w.cooldown[i]);
+      stateKey("monster_health_seen",false);stateNullable(w.healthSeen[i]);
+      stateKey("death_processed",false);stateInt(w.deathProcessed[i]);stateOutput[stateOutputLength++]='}';
+  }
+  private static void stateWorld(Owner before,Owner after)throws Exception{
+    WorldMobjs old=before.world,next=after.world;byte[][] fragments=new byte[next.count][];
+    lastStateChanged=lastStateReused=lastStateRemoved=0;lastStateCompareNs=lastStateObjectEncodeNs=0;
+    stateOutput[stateOutputLength++]='[';int oi=0;
+    for(int ni=0;ni<next.count;ni++){require(ni==0||next.id[ni]>next.id[ni-1],"state pending mobj order");
+      while(oi<old.count&&old.id[oi]<next.id[ni]){lastStateRemoved++;oi++;}
+      if(ni>0)stateOutput[stateOutputLength++]=',';byte[] fragment=null;
+      if(oi<old.count&&old.id[oi]==next.id[ni]&&before.stateMobjFragments!=null&&
+          oi<before.stateMobjFragments.length&&before.stateMobjFragments[oi]!=null&&
+          sameStateMobj(old,oi,next,ni)){
+        fragment=before.stateMobjFragments[oi];
+        stateBytes(fragment);lastStateReused++;oi++;
+      }else{long started=System.nanoTime();int start=stateOutputLength;stateMobj(after,ni);
+        fragment=slice(stateOutput,start,stateOutputLength);lastStateObjectEncodeNs+=System.nanoTime()-started;
+        lastStateChanged++;if(oi<old.count&&old.id[oi]==next.id[ni])oi++;}
+      fragments[ni]=fragment;
+    }
+    lastStateRemoved+=old.count-oi;after.stateMobjFragments=fragments;stateOutput[stateOutputLength++]=']';
+  }
+  private static void encodeState(Owner before,Owner after)throws Exception{
+    require(after.stateFragments!=null&&after.stateFragments.length==13,"state template");stateOutputLength=0;
+    stateBytes(after.stateFragments[0]);stateLong(after.tic);stateBytes(after.stateFragments[1]);stateInt(after.rng);
+    stateBytes(after.stateFragments[2]);stateNumber(after.playerX);stateBytes(after.stateFragments[3]);stateNumber(after.playerY);
+    stateBytes(after.stateFragments[4]);stateNumber(after.playerZ);stateBytes(after.stateFragments[5]);
+    stateNumber(BigDecimal.valueOf(after.playerAngleIndex).multiply(new BigDecimal("5.625")));
+    stateBytes(after.stateFragments[6]);stateInt(after.playerHealth);stateBytes(after.stateFragments[7]);stateInt(after.playerArmor);
+    stateBytes(after.stateFragments[8]);stateInt(after.playerArmorType);stateBytes(after.stateFragments[9]);stateInt(after.killCount);
+    stateBytes(after.stateFragments[10]);stateInt(after.playerAlive);stateBytes(after.stateFragments[11]);
+    stateWorld(before,after);stateBytes(after.stateFragments[12]);
+  }
+  private static String stateSha()throws Exception{if(stateDigest==null)stateDigest=MessageDigest.getInstance("SHA-256");
+    stateDigest.reset();stateDigest.update(stateOutput,0,stateOutputLength);return hex(stateDigest.digest());}
+  private static void loadStateTemplate(Connection c,String session,Owner o)throws Exception{
+    byte[] seed;String expectedSha;
+    try(CallableStatement call=c.prepareCall("begin doom_canonical_state.build(?,0,?,?); end;")){
+      call.setString(1,session);call.registerOutParameter(2,Types.BLOB);call.registerOutParameter(3,Types.VARCHAR);
+      call.execute();Blob blob=call.getBlob(2);expectedSha=call.getString(3);
+      require(blob!=null&&blob.length()<=1048576,"state seed BLOB");seed=blob.getBytes(1,(int)blob.length());blob.free();}
+    int[] tic=jsonObjectValue(seed,0,"tic"),rng=jsonObjectValue(seed,0,"rng_cursor");
+    int[] player=jsonObjectValue(seed,0,"player"),mobjs=jsonObjectValue(seed,0,"mobjs");
+    String[] playerKeys={"x","y","z","angle","health","armor","armor_type","kill_count","alive"};
+    int[][] spans=new int[12][];spans[0]=tic;spans[1]=rng;
+    for(int i=0;i<playerKeys.length;i++)spans[i+2]=jsonObjectValue(seed,player[0],playerKeys[i]);
+    spans[11]=mobjs;o.stateFragments=new byte[13][];int p=0;
+    for(int i=0;i<spans.length;i++){require(spans[i][0]>=p&&spans[i][1]>=spans[i][0],"state seed order");
+      o.stateFragments[i]=slice(seed,p,spans[i][0]);p=spans[i][1];}
+    o.stateFragments[12]=slice(seed,p,seed.length);
+    o.stateMobjFragments=new byte[o.world.count][];p=jsonSpace(seed,mobjs[0]);
+    require(seed[p++]=='[',"state seed mobj array");
+    for(int i=0;i<o.world.count;i++){p=jsonSpace(seed,p);if(i>0){require(seed[p++]==',',"state seed mobj comma");
+        p=jsonSpace(seed,p);}int end=jsonValueEnd(seed,p);require(seed[p]=='{',"state seed mobj object");
+      int[] id=jsonObjectValue(seed,p,"mobj_id");int parsed=Integer.parseInt(
+        new String(seed,id[0],id[1]-id[0],StandardCharsets.US_ASCII));
+      require(parsed==o.world.id[i],"state seed mobj ID");o.stateMobjFragments[i]=slice(seed,p,end);p=end;}
+    p=jsonSpace(seed,p);require(seed[p++]==']'&&p==mobjs[1],"state seed mobj count");
+    encodeState(o,o);
+    require(stateOutputLength==seed.length&&Arrays.equals(seed,Arrays.copyOf(stateOutput,stateOutputLength)),
+        "state template initial bytes");require(expectedSha.equals(stateSha()),"state template initial SHA");
   }
   private static String stateMapSha(Connection c)throws Exception{
     try(Statement s=c.createStatement();ResultSet r=s.executeQuery(
@@ -350,6 +538,7 @@ public final class DoomUnifiedActorStateBench {
         Integer bi=behavior.get(Integer.valueOf(o.thingType[i]));require(bi!=null,"unified behavior");
         o.behaviorIndex[i]=bi.intValue();o.worldSlot[i]=o.world.slot(o.id[i]);
         require(o.worldSlot[i]>=0,"unified actor world slot");i++;}require(i==n,"unified actor rows");}}
+    loadStateTemplate(c,session,o);
     return o;
   }
 
@@ -401,7 +590,7 @@ public final class DoomUnifiedActorStateBench {
   }
 
   private static void invalidateForRecovery(){
-    pending=null;pendingRequest=null;pendingChild=null;pendingMode=0;committed=null;spare=null;
+    pending=null;pendingRequest=null;pendingChild=null;pendingMode=0;pendingStateEncoded=false;committed=null;spare=null;
     lastRenderUpserts=lastRenderRemoves=0;DoomFreshDeathTickBench.invalidateForRecovery();
   }
   public static String forceLoad(String session,String lineage,long generation,String stateMapSha){
@@ -738,6 +927,7 @@ public final class DoomUnifiedActorStateBench {
       putNumberFixed(child,74,candidate.playerZ);putInt(child,97,candidate.playerSector);
       putInt(child,101,nestedLength);System.arraycopy(nested,0,child,COMMAND_CHILD_HEADER,nestedLength);
       byte[] result=wrap(MODE_COMMAND_TIC,child,child.length);pending=candidate;pendingRequest=request;
+      pendingStateEncoded=false;
       if(DoomPlayerMovementBench.traceEnabled)lastCommandEncodeNs=System.nanoTime()-encodeStarted;
       pendingMode=MODE_COMMAND_TIC;
       pendingChild=null;lastError="";return result;
@@ -838,7 +1028,8 @@ public final class DoomUnifiedActorStateBench {
     o.playerSound=in.readInt();o.playerX=checkpointNumber(in);o.playerY=checkpointNumber(in);o.playerZ=checkpointNumber(in);
     o.playerEyeZ=checkpointNumber(in);
     int length=in.readInt();require(length>=12&&length<=1048576,"owner world length");byte[] world=new byte[length];
-    in.readFully(world);require(in.available()==0,"owner restore trailing");o.world=worldBytes(world);validateWorld(o,o.world);
+    in.readFully(world);require(in.available()==0,"owner restore trailing");o.world=worldBytes(world);
+    o.stateMobjFragments=null;validateWorld(o,o.world);
     bindMonsters(o);return o;
   }
   public static String worldCheckpoint(String s,String l,long g,Blob output){
@@ -944,6 +1135,7 @@ public final class DoomUnifiedActorStateBench {
         selected=MODE_TIC;child=ticDelta(candidate,s,l,g,request);childLength=ticOutputLength;
       }else throw new IllegalStateException("unified mode");
       byte[] result=wrap(selected,child,childLength);pending=candidate;pendingRequest=request;
+      pendingStateEncoded=false;
       pendingMode=selected;pendingChild=selected==MODE_TIC?null:Arrays.copyOf(child,childLength);
       lastError="";return result;
     }catch(Throwable e){
@@ -963,7 +1155,9 @@ public final class DoomUnifiedActorStateBench {
       require("OK".equals(child)||child.startsWith("OK|"),"unified child accept "+child);
       if(DoomRetainedRenderSceneBench.ownerTicPending())require("OK".equals(
           DoomRetainedRenderSceneBench.acceptOwnerTic(s,g,request)),"unified renderer accept");
+      if(!pendingStateEncoded)pending.stateMobjFragments=null;
       Owner previous=committed;committed=pending;spare=previous;pending=null;pendingRequest=null;
+      pendingStateEncoded=false;
       pendingChild=null;lastError="";return "OK";
     }catch(Throwable e){try{if(DoomRetainedRenderSceneBench.ownerTicPending())
         DoomRetainedRenderSceneBench.discardOwnerTic(s,g,request);}catch(Throwable ignored){}
@@ -976,9 +1170,31 @@ public final class DoomUnifiedActorStateBench {
         require("OK".equals(child),"unified child discard "+child);}
       if(DoomRetainedRenderSceneBench.ownerTicPending())require("OK".equals(
           DoomRetainedRenderSceneBench.discardOwnerTic(s,g,request)),"unified renderer discard");
-      spare=pending;pending=null;pendingRequest=null;
+      spare=pending;pending=null;pendingRequest=null;pendingStateEncoded=false;
       pendingChild=null;lastError="";return "OK";
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}}
+  public static String fillPendingState(String s,String l,long g,String request,Blob payload){
+    long totalStarted=System.nanoTime();
+    try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
+        committed.generation==g&&request!=null&&request.equals(pendingRequest)&&payload!=null&&
+        (pendingMode==MODE_TIC||pendingMode==MODE_COMMAND_TIC),"unified state pending fence");
+      long phase=System.nanoTime();encodeState(committed,pending);String sha=stateSha();lastStateEncodeNs=System.nanoTime()-phase;
+      phase=System.nanoTime();payload.truncate(0);int offset=0;
+      while(offset<stateOutputLength){int count=Math.min(32767,stateOutputLength-offset);
+        int written=payload.setBytes(offset+1L,stateOutput,offset,count);
+        require(written==count,"unified state short BLOB write");offset+=count;}
+      lastStateBlobNs=System.nanoTime()-phase;lastStateTotalNs=System.nanoTime()-totalStarted;
+      pendingStateEncoded=true;lastError="";return sha;
+    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();
+      try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}return "ERR|"+lastError;}}
+  public static long lastStateEncodeNanos(){return lastStateEncodeNs;}
+  public static long lastStateBlobNanos(){return lastStateBlobNs;}
+  public static long lastStateTotalNanos(){return lastStateTotalNs;}
+  public static long lastStateCompareNanos(){return lastStateCompareNs;}
+  public static long lastStateObjectEncodeNanos(){return lastStateObjectEncodeNs;}
+  public static int lastStateChanged(){return lastStateChanged;}
+  public static int lastStateReused(){return lastStateReused;}
+  public static int lastStateRemoved(){return lastStateRemoved;}
   public static String renderPending(String s,String l,long g,String request,String stateSha,Blob payload){
     try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
         committed.generation==g&&request!=null&&request.equals(pendingRequest)&&
@@ -1043,7 +1259,7 @@ public final class DoomUnifiedActorStateBench {
           times[149]+"|"+times[284]+"|"+times[299]+phases;
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
     finally{if(activeRequest!=null&&activeRequest.equals(pendingRequest)){
-        pending=null;pendingRequest=null;pendingChild=null;}
+        pending=null;pendingRequest=null;pendingChild=null;pendingStateEncoded=false;}
       if(savedX!=null&&committed!=null){committed.playerX=savedX;committed.playerY=savedY;
       committed.playerSector=savedSector;}}
   }

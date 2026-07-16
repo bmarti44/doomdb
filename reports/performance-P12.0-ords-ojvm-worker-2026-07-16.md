@@ -380,3 +380,35 @@ exact Oracle number, and MOBJ order stays by ID. Selection requires 300 mixed
 tics with byte-for-byte BLOB and SHA parity against `doom_canonical_state`, plus
 mid-route reconstruction and continuation. State-hash semantics and the
 reviewed history cadence remain unchanged.
+
+## Retained state and exact moving-geometry follow-up
+
+The selected state codec parses the canonical seed into immutable byte
+fragments, shallow-copies only fragment arrays, compares all 28 canonical MOBJ
+fields, and re-encodes only changed/new objects. A 300-tic mixed command/plain
+gate with a generation-changing recovery, drop, and projectiles passed with
+zero byte or SHA mismatches against `DOOM_CANONICAL_STATE`. In the integrated
+worker the state stage is now 3.755/4.745 ms p50/p95.
+
+Per-request tracing split render call, retained update, kernel, codec, Java BLOB
+write, persistent copy, and persistent hash. It showed that moving frames spent
+about 20 ms rebuilding exact segment numerators with per-segment `BigDecimal`
+objects. Primitive-only arithmetic was rejected by the SQL pixel oracle (53
+pixel mismatches). The selected implementation computes camera residuals once,
+uses error-free primitive products and sums, and evaluates only visible segment
+numerators. The moving SQL pixel oracle remains exact; retained update is
+0.044/0.141 ms and the full render is 11.147/14.505 ms p50/p95.
+
+After the database's background OJVM compiler queue drained, 30 warm tics plus
+300 unique durable movement tics measured 31.181/39.376 ms p50/p95 at the
+database caller (32.1/25.4 FPS). Apply is 6.828/8.947 ms, state 3.755/4.745,
+render 11.147/14.505, and prepare 1.698/2.791. Four-tic checkpoint finalization
+is 5.322/8.114 ms versus 0.459/0.741 ms for ordinary tics; persistent response
+copy is 2.182/5.060 ms. The stage percentiles are independently ranked.
+
+Exact moving-frame/state gates, live rollback/discard and post-commit recovery,
+restart fencing, terminal replay, and two-session slot isolation pass. The
+worker stays default-off and the public API remains unchanged. The next bounded
+slice must accelerate the exact four-tic history snapshot without changing its
+reviewed cadence or bytes; only then can public AutoREST and browser timing be
+meaningfully gated.

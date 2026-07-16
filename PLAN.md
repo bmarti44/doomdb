@@ -1645,6 +1645,20 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   static session/player and sector/line/mover/switch fragments at recovery,
   serialize pending player/all-MOBJ arrays without JDBC row walking, and require
   300-tic byte/SHA parity plus mid-route recovery before worker selection.
+- Retained state/geometry follow-up (2026-07-16): the exact state codec now
+  reuses immutable canonical JSON fragments for unchanged MOBJ rows and
+  re-encodes only changed/new actors. Its 300-tic mixed command/plain/recovery
+  gate is byte- and SHA-identical to `DOOM_CANONICAL_STATE`. The worker state
+  stage is now 3.755/4.745 ms p50/p95. Detailed tracing isolated moving-camera
+  decimal construction; lazy visible-segment evaluation plus compensated
+  primitive products preserves the moving SQL pixel oracle and reduces retained
+  scene update to 0.044/0.141 ms. After the OJVM compiler queue drained, the
+  integrated 300-frame worker measured 31.181/39.376 ms (32.1/25.4 FPS)
+  p50/p95. Render is 11.147/14.505 ms, apply 6.828/8.947, state 3.755/4.745,
+  and prepare 1.698/2.791. The remaining regular p95 blocker is the reviewed
+  four-tic history checkpoint: 5.322/8.114 ms versus 0.459/0.741 ms for normal
+  finalization. Preserve its cadence and snapshot bytes; optimize construction
+  rather than hiding checkpoints from the sample. Public cutover remains barred.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

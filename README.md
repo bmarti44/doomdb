@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | The durable AQ/Scheduler worker now commits dynamic movement, canonical state/history, exact retained rendering, and correlated responses. Its 500-warm/300-frame database-caller result is 35.041/44.091 ms p50/p95 (28.5/22.7 FPS). The 30 FPS end-to-end gate has not passed. |
+| P12.0 | Active playability gate | The durable AQ/Scheduler worker now commits dynamic movement, canonical state/history, exact retained rendering, and correlated responses. Its settled warm 300-frame database-caller result is 31.181/39.376 ms p50/p95 (32.1/25.4 FPS). Median is playable; the 30 FPS p95/end-to-end gate has not passed. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -53,16 +53,19 @@ procedure.
 
 The worker now passes live commit, idempotent replay, rollback/discard,
 post-commit reconstruction, restart fencing, and two-session isolation. Its
-current 300-frame database-side result is 35.041 ms p50 and 44.091 ms p95 after
-500 warm tics. Detailed p95 tracing attributes 12.088 ms to render, 11.326 ms
-to canonical state, 7.680 ms to strict durable apply, 6.940 ms to finalization
-(including every-fourth-tic history checkpoints), and 2.396 ms to preparation;
-stages overlap in percentile rank, so those p95 values are not additive.
-Switching Java output from a persistent SecureFile locator to a temporary BLOB
-plus one PL/SQL copy removed the previous 13.715 ms BLOB-write tail; the Java
-BLOB stage is now 0.063 ms p95. The remaining work is the exact retained-state
-codec/history path, followed by real AutoREST, wire, decode, and browser-blit
-measurement. No end-to-end 30 FPS claim is made yet.
+current settled warm 300-frame database-side result is 31.181 ms p50 and
+39.376 ms p95. The exact retained state codec reuses unchanged actor fragments,
+and compensated primitive geometry preserves the moving SQL pixel oracle while
+avoiding per-segment decimal allocation. Current p95 stages are render 14.505 ms
+(kernel 7.361, codec 2.768), strict durable apply 8.947 ms, finalization 5.940 ms,
+canonical state 4.745 ms, and preparation 2.791 ms. The four-tic history
+checkpoint is now the principal regular tail: checkpoint finalization is
+8.114 ms p95 versus 0.741 ms on ordinary tics. Persistent response copying is
+2.182/5.060 ms p50/p95. Stage percentiles are independently ranked and are not
+additive. Exact state parity, moving-frame parity, rollback/reconstruction,
+restart fencing, and two-session isolation pass. Remaining work is exact faster
+history checkpoint construction, then public AutoREST cutover and ORDS/wire/
+decode/browser measurement. No end-to-end 30 FPS claim is made yet.
 
 The current public route checkpoint is alive at tic 1430 with 46 health, 9
 kills, and 15 shotgun shells. It has legitimately opened the corridor doors,
