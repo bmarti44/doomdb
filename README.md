@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | The renderer worker passes at 15.671/17.590 ms p50/p95. Packed transactional movement passes 270/270 SQL tics and prepare fences at 0.261/0.762 ms p50/p95; common actors, canonical persistence, and public integration remain. |
+| P12.0 | Active playability gate | The renderer worker passes at 15.671/17.590 ms p50/p95. Packed movement passes 270/270 SQL tics at 0.261/0.762 ms; the bounded quiet-actor phase passes 53/53 at 0.598/0.802 ms. Full actors, canonical persistence, and public integration remain. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -180,6 +180,10 @@ BLOCKMAP pruning reduced that movement kernel from 16.746 ms to 0.734 ms p95.
 The kernel is now wired into the worker's pending state: 270/270 packed tics
 match SQL exactly, committed state remains unchanged before `accept`, and the
 combined prepare/accept boundary measures 0.261/0.762 ms p50/p95.
+The first bounded common-actor phase also matches 53/53 SQL rows and preserves
+all non-housekeeping actor state plus RNG at 0.598/0.802 ms p50/p95. It is not
+yet production-routable: no-sound and REJECT-hidden eligibility are explicit
+fail-closed inputs while pain, wake, state, chase, attack, and drop phases remain.
 Playability requires
 270+ unique moving frames to sustain 30 FPS at both p50 and p95 through the
 public browser path. See the

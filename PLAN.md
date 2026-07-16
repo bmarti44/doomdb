@@ -1449,6 +1449,18 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   This slice is selected. Implement dynamic double-buffered sector heights and
   the complete quiet/common actor tick next, then write canonical state directly
   from arrays; do not spend more time on ordinary movement micro-tuning.
+- Retained common-actor slice (2026-07-16): an independently authored
+  array-resident kernel now matches all 53 SQL-oracle monster rows for the
+  provably quiet housekeeping phase (`monster_health_seen` plus cooldown),
+  preserves every other actor field and the RNG cursor, and passes pending
+  load/accept/discard/session/lineage/generation/request fences. After five
+  warmups its 300 retained `prepare+accept` calls measured
+  0.598/0.802/1.966 ms p50/p95/max in the final full-harness run. This is a bounded component, not yet a
+  production actor loop: its entry requires explicit no-sound and all-REJECT-
+  hidden proofs and fails closed otherwise. The next actor slice must compute
+  those proofs inside retained state, preserve prior-snapshot mobj-id order and
+  old-cooldown attack semantics, then add pain/wake/state/action behavior with
+  adversarial differential cases before routing real tics through it.
 - Fable/ORDS reconciliation (2026-07-16): Fable independently confirmed that
   ORDS cleanup has no supported off switch and OJVM application arrays are
   session-private. Its unmeasured DBMS_PIPE proposal is archived as fallback,
@@ -1457,6 +1469,9 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   proving ORDS cleanup—not service `LEVEL1`—causes the observed reset. Production
   adds an exclusive `DBMS_LOCK` worker singleton; global application context is
   permitted only for <=4 KB heartbeat/revision metadata, never game state.
+  Keep log-file-sync/commit as a distinct timing stage as dirty volume grows,
+  and require a worker-kill/reconstruction test that resumes the exact state and
+  frame SHA chain mid-lineage before the public gate.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

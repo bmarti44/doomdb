@@ -236,6 +236,28 @@ unchanged. A separate 300-call production-shaped prepare+accept matrix measured
 0.261/0.762/5.821 ms p50/p95/max. This excludes dirty-row DML and render but
 includes command decode, exact movement, delta encode, and both Java boundaries.
 
+## Bounded common-actor phase
+
+The next retained component implements only the common monster housekeeping
+that precedes the SQL actor loop: copy current health into
+`monster_health_seen` and decrement positive attack cooldown. A rollback-only
+fixture makes all 53 E1M1 monsters alive, asleep, unheard, and REJECT-hidden,
+then compares the packed retained deltas against the untouched
+`DOOM_MONSTERS.ADVANCE` oracle in stable mobj-id order.
+
+The result is 53/53 exact rows. Every non-housekeeping actor field and the RNG
+cursor remain unchanged; pending load, wrong-request accept/discard, double
+accept/discard, and all worker fences reject without publishing state. After
+five warmups, 300 retained prepare+accept calls measured
+0.598/0.802/1.966 ms p50/p95/max in the final full-harness run.
+
+This is not a complete actor tic or a playability result. The entry point
+requires explicit no-sound and all-REJECT-hidden proofs and fails closed if
+either is absent. Production routing waits for retained computation of those
+proofs plus exact pain, wake, state transition, chase, attack, drop, RNG, and
+event ordering. Later decisions must use the prior actor snapshot—including
+the old cooldown—even though the common delta is persisted first.
+
 Large frames remain in relational SecureFile rows. AQ carries only a small,
 unguessable request identifier and command metadata. The worker commits the
 authoritative state and response before signaling completion. AutoREST enforces
