@@ -56,7 +56,7 @@
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">30 FPS playability gate<br><span>world + masked pass · presentation active</span></p>
+      <p class="big">30 FPS playability gate<br><span>tic-zero presentation passes · codec active</span></p>
       <p class="muted">P12.0 is pulled ahead of parity. P8.1 remains safely preserved at tic 1430 with 46 health and 9 kills while renderer work targets unique moving frames at no more than 33.3 ms.</p>
     </article>
     <article class="panel">
@@ -71,7 +71,7 @@
     <h2>Live implementation status · July 15, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate; public <code>DOOM_TIC_TX.APPLY_BATCH</code> only; lift 1 completed and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> the real-map allocation-free kernel now draws exact world plus masked walls and sprites in 3.060 / 5.390 ms p50/p95 over 20,000 HotSpot samples. All 64,000 world pixels and all 7,106 selected masked pixels match production SQL with zero missing, extra, or palette differences. Masked work adds about 0.60 ms p95 and passes its 3 ms gate. The complete-frame gate still needs first-person presentation, codec, compiled OJVM integration, packed loading, and faster simulation. OJVM JIT works; its 59.47-second cold bootstrap is a deployment cost. Render-free simulation remains 41.4 / 70.6 ms p50/p95. The game is not yet interactively playable.</p>
+    <p><strong>Performance:</strong> the real-map allocation-free kernel now draws the exact tic-zero GAME presentation in 3.268 / 5.706 ms p50/p95 over 20,000 HotSpot samples. All 64,000 final pixels—including world, masked walls, sprites, pistol, status bar, and HUD digits—match production SQL with zero missing, extra, or palette differences. The complete-frame gate still needs the codec, dynamic presentation modes, compiled OJVM integration, packed loading, and faster simulation. OJVM JIT works; its 59.47-second cold bootstrap is a deployment cost. Render-free simulation remains 41.4 / 70.6 ms p50/p95. The game is not yet interactively playable.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">
@@ -132,7 +132,7 @@
     <div class="metric"><strong>20 HP</strong><span class="muted">current checkpoint</span></div>
     <div class="metric"><strong>7 / 10</strong><span class="muted">kills / items</span></div>
     <div class="metric"><strong>70.6 ms</strong><span class="muted">render-free simulation p95</span></div>
-    <div class="metric"><strong>5.390 ms</strong><span class="muted">exact world+masked p95</span></div>
+    <div class="metric"><strong>5.706 ms</strong><span class="muted">exact presentation p95</span></div>
   </section>
 
   <section class="panel review-grid" aria-label="database ray diagnostic">

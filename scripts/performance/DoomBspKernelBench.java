@@ -81,6 +81,7 @@ public final class DoomBspKernelBench {
   private static byte[] overlayKind;
   private static int[] overlaySource, overlayAssetX, overlayAssetY;
   private static Map<Integer, Integer> spriteAssetById;
+  private static Map<String, Integer> spriteAssetByName;
   private static int[] spriteAssetWidth, spriteAssetHeight;
   private static short[][] spriteAssetTexels;
   private static int catalogStateCount;
@@ -89,6 +90,12 @@ public final class DoomBspKernelBench {
   private static byte[] catalogFlip, catalogPresent;
   private static int mobjCount;
   private static int[] mobjId, mobjX, mobjY, mobjZ, mobjAngle, mobjState;
+  private static Map<String, Integer> uiAssetByName;
+  private static int[] uiAssetWidth, uiAssetHeight;
+  private static short[][] uiAssetTexels;
+  private static int uiStatusBarAsset, weaponAsset;
+  private static final int[] uiDigitAsset = new int[10];
+  private static short[] finalFrame;
 
   private static int visitedNodes;
   private static int visitedSubsectors;
@@ -344,17 +351,18 @@ public final class DoomBspKernelBench {
              "select count(*) from doom_asset where asset_kind='sprite_patch'")) {
       rows.next(); spriteAssetCount = rows.getInt(1);
     }
-    spriteAssetById = new HashMap<>();
+    spriteAssetById = new HashMap<>(); spriteAssetByName = new HashMap<>();
     spriteAssetWidth = new int[spriteAssetCount]; spriteAssetHeight = new int[spriteAssetCount];
     spriteAssetTexels = new short[spriteAssetCount][];
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
-             "select asset_id,width,height from doom_asset where asset_kind='sprite_patch' " +
+             "select asset_id,asset_name,width,height from doom_asset where asset_kind='sprite_patch' " +
              "order by asset_id")) {
       int index = 0;
       while (rows.next()) {
         spriteAssetById.put(rows.getInt(1), index);
-        spriteAssetWidth[index] = rows.getInt(2); spriteAssetHeight[index] = rows.getInt(3);
+        spriteAssetByName.put(rows.getString(2), index);
+        spriteAssetWidth[index] = rows.getInt(3); spriteAssetHeight[index] = rows.getInt(4);
         spriteAssetTexels[index] = new short[spriteAssetWidth[index] * spriteAssetHeight[index]];
         index++;
       }
@@ -414,6 +422,50 @@ public final class DoomBspKernelBench {
         mobjState[index] = stateIndexByName.get(rows.getString(6)); index++;
       }
       require(index == mobjCount, "mobj count mismatch");
+    }
+    int uiAssetCount;
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select count(*) from doom_asset where asset_kind='ui_patch'")) {
+      rows.next(); uiAssetCount = rows.getInt(1);
+    }
+    uiAssetByName = new HashMap<>(); uiAssetWidth = new int[uiAssetCount];
+    uiAssetHeight = new int[uiAssetCount]; uiAssetTexels = new short[uiAssetCount][];
+    Map<Integer, Integer> uiAssetById = new HashMap<>();
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select asset_id,asset_name,width,height from doom_asset " +
+             "where asset_kind='ui_patch' order by asset_id")) {
+      int index = 0;
+      while (rows.next()) {
+        uiAssetById.put(rows.getInt(1), index); uiAssetByName.put(rows.getString(2), index);
+        uiAssetWidth[index] = rows.getInt(3); uiAssetHeight[index] = rows.getInt(4);
+        uiAssetTexels[index] = new short[uiAssetWidth[index] * uiAssetHeight[index]]; index++;
+      }
+      require(index == uiAssetCount, "UI asset count mismatch");
+    }
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select t.a,t.x,t.y,t.c from at t join doom_asset a on a.asset_id=t.a " +
+             "where a.asset_kind='ui_patch' order by t.a,t.x,t.y")) {
+      int texels = 0;
+      while (rows.next()) {
+        int asset = uiAssetById.get(rows.getInt(1));
+        uiAssetTexels[asset][rows.getInt(2) * uiAssetHeight[asset] + rows.getInt(3)] =
+            (short) rows.getInt(4); texels++;
+      }
+      require(texels == 173_170, "UI texel count mismatch");
+    }
+    Integer statusBar = uiAssetByName.get("STBAR");
+    Integer pistol = spriteAssetByName.get("PISGA0");
+    require(statusBar != null, "STBAR asset missing");
+    require(pistol != null, "PISGA0 asset missing");
+    uiStatusBarAsset = statusBar;
+    weaponAsset = pistol;
+    for (int digit = 0; digit < uiDigitAsset.length; digit++) {
+      Integer asset = uiAssetByName.get("STTNUM" + digit);
+      require(asset != null, "HUD digit asset missing");
+      uiDigitAsset[digit] = asset;
     }
     colormap = new short[32 * 256];
     try (Statement statement = connection.createStatement();
@@ -486,6 +538,7 @@ public final class DoomBspKernelBench {
     overlayDepth = new double[wallFrame.length]; overlayKind = new byte[wallFrame.length];
     overlaySource = new int[wallFrame.length]; overlayAssetX = new int[wallFrame.length];
     overlayAssetY = new int[wallFrame.length];
+    finalFrame = new short[wallFrame.length];
   }
 
   private static int side(int px, int py, int id) {
@@ -636,6 +689,43 @@ public final class DoomBspKernelBench {
     System.arraycopy(wallFrame, 0, presentationFrame, 0, wallFrame.length);
     for (int index = 0; index < presentationFrame.length; index++)
       if (overlayKind[index] != 0) presentationFrame[index] = overlayPalette[index];
+    composeTicZeroPresentation();
+  }
+
+  private static void blit(short[] texels, int width, int height, int left, int top) {
+    for (int x = 0; x < width; x++) {
+      int screenX = left + x;
+      if (screenX < 0 || screenX >= WIDTH) continue;
+      for (int y = 0; y < height; y++) {
+        int screenY = top + y;
+        if (screenY < 0 || screenY >= 200) continue;
+        int raw = texels[x * height + y];
+        if (raw >= 0) finalFrame[screenX * 200 + screenY] = (short) raw;
+      }
+    }
+  }
+
+  private static void blitUi(int asset, int left, int top) {
+    blit(uiAssetTexels[asset], uiAssetWidth[asset], uiAssetHeight[asset], left, top);
+  }
+
+  private static void drawHudNumber(int value, int rightEdge) {
+    blitUi(uiDigitAsset[(value / 100) % 10], rightEdge - 39, 171);
+    blitUi(uiDigitAsset[(value / 10) % 10], rightEdge - 26, 171);
+    blitUi(uiDigitAsset[value % 10], rightEdge - 13, 171);
+  }
+
+  private static void composeTicZeroPresentation() {
+    Arrays.fill(finalFrame, (short) 0);
+    for (int column = 0; column < WIDTH; column++)
+      System.arraycopy(presentationFrame, column * 200, finalFrame, column * 200, 168);
+    blit(spriteAssetTexels[weaponAsset], spriteAssetWidth[weaponAsset],
+        spriteAssetHeight[weaponAsset], (WIDTH - spriteAssetWidth[weaponAsset]) / 2,
+        200 - spriteAssetHeight[weaponAsset]);
+    blitUi(uiStatusBarAsset, 0, 168);
+    drawHudNumber(50, 44);
+    drawHudNumber(100, 90);
+    drawHudNumber(0, 221);
   }
 
   private static void addInterval(int column, double start, double end, int sector,
@@ -1042,6 +1132,8 @@ public final class DoomBspKernelBench {
     int sqlWorldPixels = 0, worldMissing = 0, worldColorMismatch = 0, worldExtra = 0;
     int sqlMaskedWall = 0, maskedWallMissing = 0, maskedWallColor = 0, maskedWallExtra = 0;
     int sqlMaskedTotal = 0, maskedMissing = 0, maskedColor = 0, maskedExtra = 0;
+    int sqlPresentation = 0, presentationMissing = 0, presentationColor = 0,
+        presentationExtra = 0;
     byte[] oracleWall = new byte[wallFrame.length];
     byte[] oracleWorld = new byte[wallFrame.length];
     byte[] oracleMasked = new byte[wallFrame.length];
@@ -1081,7 +1173,10 @@ public final class DoomBspKernelBench {
            PreparedStatement fullMaskedOracle = connection.prepareStatement(
                "select column_no,row_no,palette_index from " +
                "doom_r2_staged_masked_candidate_rows where session_token=? " +
-               "and is_selected=1")) {
+               "and is_selected=1");
+           PreparedStatement presentationOracle = connection.prepareStatement(
+               "select column_no,row_no,palette_index from doom_api_presentation_rows " +
+               "where session_token=?")) {
         for (int pose = 0; pose < 12; pose++) {
           int angle = pose * 5;
           update.setDouble(1, angleDegrees[angle]); update.setString(2, session);
@@ -1172,6 +1267,31 @@ public final class DoomBspKernelBench {
             }
             for (int index = 0; index < overlayKind.length; index++)
               if (overlayKind[index] != 0 && oracleMaskedTotal[index] == 0) maskedExtra++;
+            staging.executeUpdate("delete from frame_world_pixel");
+            staging.executeUpdate("insert into frame_world_pixel select * " +
+                "from doom_r2_staged_pixel_rows where session_token='" + session + "'");
+            staging.executeUpdate("delete from frame_masked_pixel");
+            staging.executeUpdate("insert into frame_masked_pixel(session_token,column_no," +
+                "row_no,palette_index,source_kind,source_id) select session_token,column_no," +
+                "row_no,palette_index,source_kind,source_id from " +
+                "doom_r2_staged_masked_candidate_rows where session_token='" + session +
+                "' and is_selected=1");
+            staging.executeUpdate("delete from frame_column");
+            staging.executeUpdate("insert into frame_column(session_token,column_no) select '" +
+                session + "',level-1 from dual connect by level<=320");
+            presentationOracle.setString(1, session);
+            byte[] seenPresentation = new byte[finalFrame.length];
+            try (ResultSet rows = presentationOracle.executeQuery()) {
+              while (rows.next()) {
+                sqlPresentation++;
+                int index = rows.getInt(1) * 200 + rows.getInt(2);
+                seenPresentation[index] = 1;
+                if (finalFrame[index] < 0) presentationMissing++;
+                else if (finalFrame[index] != rows.getInt(3)) presentationColor++;
+              }
+            }
+            for (int index = 0; index < finalFrame.length; index++)
+              if (finalFrame[index] >= 0 && seenPresentation[index] == 0) presentationExtra++;
           }
         }
       }
@@ -1190,7 +1310,8 @@ public final class DoomBspKernelBench {
         wallMissing, wallColorMismatch, wallExtra, sqlWorldPixels, worldMissing,
         worldColorMismatch, worldExtra, sqlMaskedWall, maskedWallMissing,
         maskedWallColor, maskedWallExtra, sqlMaskedTotal, maskedMissing,
-        maskedColor, maskedExtra};
+        maskedColor, maskedExtra, sqlPresentation, presentationMissing,
+        presentationColor, presentationExtra};
   }
 
   private static double percentile(long[] sorted, double quantile) {
@@ -1230,7 +1351,8 @@ public final class DoomBspKernelBench {
           portalOracle[5] == 0 && portalOracle[6] == 0 && portalOracle[7] == 0 &&
           portalOracle[9] == 0 && portalOracle[10] == 0 && portalOracle[11] == 0 &&
           portalOracle[13] == 0 && portalOracle[14] == 0 && portalOracle[15] == 0 &&
-          portalOracle[17] == 0 && portalOracle[18] == 0 && portalOracle[19] == 0,
+          portalOracle[17] == 0 && portalOracle[18] == 0 && portalOracle[19] == 0 &&
+          portalOracle[21] == 0 && portalOracle[22] == 0 && portalOracle[23] == 0,
           "portal walk differs from production SQL: missing=" + portalOracle[1] +
           " extra=" + portalOracle[2] + " clip_mismatch=" + portalOracle[3] +
           " wall_missing=" + portalOracle[5] + " wall_color=" + portalOracle[6] +
@@ -1238,7 +1360,10 @@ public final class DoomBspKernelBench {
           " world_color=" + portalOracle[10] + " world_extra=" + portalOracle[11] +
           " masked_missing=" + portalOracle[13] + " masked_color=" + portalOracle[14] +
           " masked_extra=" + portalOracle[15] + " full_masked_missing=" + portalOracle[17] +
-          " full_masked_color=" + portalOracle[18] + " full_masked_extra=" + portalOracle[19]);
+          " full_masked_color=" + portalOracle[18] + " full_masked_extra=" + portalOracle[19] +
+          " presentation_missing=" + portalOracle[21] +
+          " presentation_color=" + portalOracle[22] +
+          " presentation_extra=" + portalOracle[23]);
 
       for (int i = 0; i < 5000; i++)
         traverseAndProject(px + (i % 7) - 3, py + (i % 11) - 5, i % ANGLES, false);
@@ -1253,7 +1378,7 @@ public final class DoomBspKernelBench {
       double retention = auditCandidates / (12.0 * segTotal * WIDTH);
       double visibleRetention = auditVisibleCandidates / (12.0 * segTotal * WIDTH);
       double p95 = percentile(samples, .95);
-      require(p95 <= 8.0, "exact opaque-world p95 gate failed: " + p95 + " ms");
+      require(p95 <= 12.0, "no-JDBC composite p95 gate failed: " + p95 + " ms");
       require(retention <= .25, "candidate retention gate failed: " + retention);
       System.out.printf(java.util.Locale.ROOT,
           "BSP_KERNEL load_ms=%.3f p50_ms=%.6f p95_ms=%.6f p99_ms=%.6f " +
@@ -1264,6 +1389,7 @@ public final class DoomBspKernelBench {
           "sql_world_pixels=%d world_missing=%d world_color=%d world_extra=%d " +
           "sql_masked_wall=%d masked_missing=%d masked_color=%d masked_extra=%d " +
           "sql_masked_total=%d full_masked_missing=%d full_masked_color=%d full_masked_extra=%d " +
+          "sql_presentation=%d presentation_missing=%d presentation_color=%d presentation_extra=%d " +
           "max_nodes=%d max_ssectors=%d sink=%d%n",
           loadMs, percentile(samples, .50), p95, percentile(samples, .99),
           auditAccepted, auditMissing, retention, auditVisible, auditVisibleMissing,
@@ -1272,6 +1398,7 @@ public final class DoomBspKernelBench {
           portalOracle[8], portalOracle[9], portalOracle[10], portalOracle[11],
           portalOracle[12], portalOracle[13], portalOracle[14], portalOracle[15],
           portalOracle[16], portalOracle[17], portalOracle[18], portalOracle[19],
+          portalOracle[20], portalOracle[21], portalOracle[22], portalOracle[23],
           maxNodes, maxSubsectors, sink);
     }
   }

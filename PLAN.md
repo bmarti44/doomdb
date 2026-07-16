@@ -1167,6 +1167,15 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   samples; the masked increment is about 0.60 ms p95, passing the <=3 ms stage
   gate. Row loading including 331,474 sprite texels is 5.714 seconds. Exact
   first-person presentation is next.
+- Exact tic-zero `GAME` presentation now composes the real `PISGA0` weapon,
+  `STBAR`, and ammo/health/armor digits over the world+masked buffer. All 64,000
+  final indexed pixels match `DOOM_API_PRESENTATION_ROWS` with 0 missing, 0
+  extra, and 0 palette mismatches. Complete presentation timing is
+  3.268134/5.706218/6.493983 ms p50/p95/p99 over 20,000 samples. Cold row
+  loading including 173,170 UI texels is 6.494 seconds,
+  reinforcing the packed-BLOB requirement. Exact frame hash/RLE/canonical
+  JSON/GZIP/BLOB codec parity is next; dynamic weapons/HUD values and the
+  pause/menu/automap/intermission modes remain after the tic-zero slice.
 - Local native-method evidence correction (2026-07-15): Oracle's foreground
   trace proves the disposable one-line `(I)I` method compiled successfully in
   59,470 ms; the client cutoff landed at completion. JIT, the descriptor, and

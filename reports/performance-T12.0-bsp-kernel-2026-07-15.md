@@ -27,9 +27,11 @@ regions are drawn front-to-back into one reusable indexed buffer, sampling the
 real relational textures and colormap. Sector intervals also bound an exact
 array-based floor/ceiling/sky raster into the same buffer. Transparent middle
 walls and relational sprite-state/rotation primitives are depth-ranked into a
-reusable presentation buffer. It does not yet implement sparse first-person
-presentation or the production codec; horizontal plane-span
-coalescing remains a later resolution-scaling optimization.
+reusable presentation buffer. The tic-zero `GAME` presentation then composes
+the real pistol, status bar, ammo, health, and armor assets into the final
+indexed frame. It does not yet implement dynamic weapon/HUD states,
+pause/menu/automap/intermission modes, or the production codec; horizontal
+plane-span coalescing remains a later resolution-scaling optimization.
 
 The runner compiles with the pinned database image's Java 11 HotSpot VM and uses
 the image's `ojdbc11.jar`. The password is read only from the Compose secret
@@ -61,6 +63,8 @@ pair. The selected run found:
 | Globally selected SQL masked-wall pixels | 4,702 |
 | Globally selected SQL sprite pixels | 2,404 |
 | Java full masked missing / extra / palette mismatch | 0 / 0 / 0 |
+| Production SQL tic-zero presentation pixels | 64,000 |
+| Java presentation missing / extra / palette mismatch | 0 / 0 / 0 |
 | Maximum nodes visited | 614 / 681 |
 | Maximum subsectors visited | 588 / 682 |
 
@@ -82,6 +86,11 @@ rotation, screen bounds, interval/solid visibility, flip, transparency, and
 depth/source/asset-coordinate tie rules. All 7,106 globally selected masked
 pixels match SQL exactly.
 
+The final presentation pass copies the visible world, draws the real `PISGA0`
+weapon and `STBAR`, and renders the tic-zero ammo/health/armor digits. All
+64,000 final indexed bytes match `DOOM_API_PRESENTATION_ROWS`, so the oracle
+also detects any incorrect overwrite ordering or transparent UI texel.
+
 ## HotSpot timing
 
 After 5,000 warmups, 20,000 unique angle/nearby-position samples measured with a
@@ -89,15 +98,16 @@ After 5,000 warmups, 20,000 unique angle/nearby-position samples measured with a
 
 | Metric | Result |
 | --- | ---: |
-| Immutable relational load including walls/flats/sprites/rays | 5,713.943 ms |
-| Complete exact world + masked p50 | 3.060035 ms |
-| Complete exact world + masked p95 | 5.389510 ms |
-| Complete exact world + masked p99 | 5.942101 ms |
+| Immutable relational load including walls/flats/sprites/rays/UI | 6,493.898 ms |
+| Complete tic-zero presentation p50 | 3.268134 ms |
+| Complete tic-zero presentation p95 | 5.706218 ms |
+| Complete tic-zero presentation p99 | 6.493983 ms |
 
 The geometry/clip portion previously passed its <=3 ms component gate, and the
 complete exact world remains inside the <=8 ms opaque-world gate on HotSpot.
-Masked composition adds about 0.60 ms at p95, passing its <=3 ms gate. The
-5.71-second row-by-row cold load is not in the frame path, but it is
+Masked composition adds about 0.60 ms at p95, passing its <=3 ms gate. Tic-zero
+presentation remains a small fraction of the frame. The 6.49-second row-by-row cold load is not
+in the frame path, but it is
 not an acceptable pooled-session prewarm path; the planned revision-keyed
 relational BLOB packs remain necessary.
 
@@ -129,13 +139,15 @@ Consequences:
 
 ## Next implementation
 
-1. Add exact first-person weapon/HUD/pause/menu presentation and compare the
-   composed indexed frame.
-2. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and
+1. Add the exact frame hash/RLE/canonical JSON/GZIP/BLOB codec and compare it to
+   the production SQL payload.
+2. Parameterize weapon/HUD values and add pause/menu/automap/intermission
+   presentation parity.
+3. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and
    enforce the 12 MiB/session and 5 ms warm-snapshot gates.
-3. Externally compile/load the representative methods, allow bounded cold JIT
+4. Externally compile/load the representative methods, allow bounded cold JIT
    warmup, and require compiled steady-state timing before integration.
-4. Coalesce plane work into horizontal spans before activating 640x400; the
+5. Coalesce plane work into horizontal spans before activating 640x400; the
    current direct indexed raster already passes 320x200 but scales per pixel.
 
 Run the current reproducible gate with:
