@@ -33,9 +33,10 @@ docker exec "$container" "$java_home/jdk/bin/javac" --release 11 \
   -cp "$java_home/jdbc/lib/ojdbc11.jar" "$tmp/DoomBspKernelBench.java"
 docker exec "$container" sh -c \
   "exec '$java_home/bin/loadjava' -force -resolve -user DOOM@FREEPDB1 \
-  '$tmp/DoomBspKernelBench.class' < /run/secrets/doom_password"
+  '$tmp'/DoomBspKernelBench*.class < /run/secrets/doom_password"
 
 run_sql "$root/sql/accel/020_ojvm_renderer_calls.sql"
+run_sql <(printf 'whenever sqlerror exit failure rollback\nexec doom_bsp_build_kernel_pack\n')
 run_sql "$root/scripts/performance/ojvm-renderer-warmup.sql"
 
 printf 'OJVM renderer deployed and warmed\n'

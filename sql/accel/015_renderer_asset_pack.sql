@@ -46,6 +46,9 @@ begin
   build_pack('flat',200704);
   build_pack('sprite_patch',331474);
   build_pack('ui_patch',173170);
+  insert into doom_renderer_asset_pack(asset_kind,format_version,
+    element_count,payload_sha256,encoded_bytes)
+  values('renderer_kernel',1,1,rpad('0',64,'0'),empty_blob());
 end;
 /
 

@@ -1,6 +1,8 @@
 whenever sqlerror exit failure rollback
 set serveroutput on feedback off heading off timing off
 
+select doom_bsp_warm_kernel_pack(30) from dual;
+
 declare
   payload blob;
   batch_started number;
@@ -32,8 +34,8 @@ begin
       'traverseAndProject', 'projectSeg', 'applySolidCoverage',
       'applyPortalWalk', 'drawActiveWall', 'drawWallPiece', 'drawPlanes',
       'drawMaskedWall', 'drawSprites', 'projectSprite', 'rasterSprite',
-      'composeTicZeroPresentation', 'prepareFrameSha',
-      'buildPackedTicZeroJson', 'compressJson', 'renderTicZero'
+      'composeLivePresentation', 'prepareFrameSha',
+      'buildPackedLiveJson', 'compressJson', 'renderTicZero'
     )
     and is_compiled <> 'YES';
   if missing_methods <> 0 then

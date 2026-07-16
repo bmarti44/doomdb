@@ -16,13 +16,21 @@ export type Command = {
 type RestDocument = Record<string, unknown>;
 
 const ROOT = '/ords/doom/doom_api/';
+let uppercaseProcedures = false;
 
 async function post(path: string, body: RestDocument): Promise<RestDocument> {
-  const response = await fetch(`${ROOT}${path}/`, {
+  const request = () => fetch(`${ROOT}${uppercaseProcedures ? path.toUpperCase() : path}/`, {
     method: 'POST',
     headers: {'content-type': 'application/json'},
     body: JSON.stringify(body)
   });
+  let response = await request();
+  // ORDS 26.2's generated package endpoints retain the catalog procedure
+  // case even though older/local test doubles accept lowercase routes.
+  if (response.status === 404 && !uppercaseProcedures) {
+    uppercaseProcedures = true;
+    response = await request();
+  }
   if (!response.ok) throw new Error(`${path} request failed: ${response.status}`);
   const value: unknown = await response.json();
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {

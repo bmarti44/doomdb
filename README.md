@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | The complete tic-zero OJVM renderer/codec kernel passes at 10.517 ms p95. SQL simulation reached 21.260/30.856 ms in its best clean turn-only run and 24.162/36.939 ms in a conservative later restart repeat; dynamic STEP rendering and the integrated 30 FPS gate remain incomplete. |
+| P12.0 | Active playability gate | A retained in-database AQ/Scheduler renderer worker passes at 15.671/17.590 ms p50/p95 request-through-commit. The exact live relational snapshot composite is still 29.265/42.373 ms, and conservative SQL simulation remains 24.162/36.939 ms; the array-resident worker simulation amendment is active. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -160,14 +160,16 @@ BLOB handoff is 0.063 ms p95 and the full renderer+codec+BLOB total is
 
 ## Is it playable yet?
 
-The complete tic-zero renderer kernel is fast enough at 10.517 ms p95, and the
-exact moving/firing simulation route is now roughly 29.6 tics/s including setup
-and assertions. The game is still not verified as interactively playable:
-dynamic OJVM STEP rendering is not integrated, and the conservative turn-only
-simulation repeat is 24.162/36.939 ms p50/p95 before render, ORDS, decode, or
-blit. Its component p95 plus the renderer kernel is about 47.5 ms. P12.0 remains
-active until the same unique moving frames sustain 30 FPS at both p50 and p95
-through the public browser path.
+Not yet. The retained database worker proves that recurring ORDS/OJVM cold
+starts can be removed: its exact static 300-frame path is 15.671/17.590 ms
+p50/p95 through committed BLOB response. The real relational live-state
+snapshot composite is still 29.265/42.373 ms before simulation, ORDS, decode,
+or blit, while conservative SQL simulation is 24.162/36.939 ms. P12.0 is now
+implementing one array-resident simulation/render worker with relational
+deltas, checkpoints, and exact SQL differential oracles. Playability requires
+270+ unique moving frames to sustain 30 FPS at both p50 and p95 through the
+public browser path. See the
+[ORDS/OJVM worker report](reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md).
 
 ## Local review
 

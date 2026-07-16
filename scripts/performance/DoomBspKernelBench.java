@@ -1,10 +1,12 @@
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.sql.Connection;
 import java.sql.Blob;
@@ -40,6 +42,15 @@ public final class DoomBspKernelBench {
   private static int[] firstSeg, segCount;
   private static int segTotal;
   private static int[] segStartX, segStartY, segEndX, segEndY;
+  private static double[] segRelativeStartX, segRelativeStartY;
+  private static double[] segRelativeEndX, segRelativeEndY;
+  private static double[] segExactTNumerator;
+  private static int[] uniqueMapX,uniqueMapY,segStartXIndex,segStartYIndex;
+  private static int[] segEndXIndex,segEndYIndex,uniqueDirectionX,uniqueDirectionY,segDirectionIndex;
+  private static long[] segCrossBase;
+  private static double[] exactRelativeX,exactRelativeY;
+  private static BigDecimal[] exactDirectionCamera;
+  private static BigDecimal preparedCameraX,preparedCameraY;
   private static int[] segLineId, lineStartX, lineStartY, lineEndX, lineEndY;
   private static int[] rightSector, leftSector;
   private static int[] lineFlags, segOffset, rightXOffset, rightYOffset;
@@ -47,10 +58,11 @@ public final class DoomBspKernelBench {
   private static String[] rightUpper, rightLower, rightMiddle;
   private static String[] leftUpper, leftLower, leftMiddle;
   private static byte[] segSolid;
-  private static int[] sectorFloor, sectorCeiling;
+  private static double[] sectorFloor, sectorCeiling;
   private static int[] sectorLight;
   private static String[] sectorCeilingFlat, sectorFloorFlat;
   private static int[] sectorCeilingAsset, sectorFloorAsset, sectorLightBand;
+  private static int[] activeSectorCeilingAsset, activeSectorFloorAsset;
   private static byte[] sectorCeilingSky;
   private static double[] planeCeilingDistance, planeFloorDistance;
   private static int skyAsset;
@@ -59,6 +71,8 @@ public final class DoomBspKernelBench {
   private static short[][] wallAssetTexels;
   private static Map<String, Integer> flatAssetByName;
   private static short[][] flatAssetTexels;
+  private static Map<String, int[]> animationByAsset;
+  private static Map<String, int[]> animationByGroup;
   private static short[] colormap;
   private static double[] camX;
   private static final int ANGLES = 64;
@@ -103,11 +117,13 @@ public final class DoomBspKernelBench {
   private static int[] catalogAsset, catalogLeft, catalogTop;
   private static byte[] catalogFlip, catalogPresent;
   private static int mobjCount;
-  private static int[] mobjId, mobjX, mobjY, mobjZ, mobjAngle, mobjState;
+  private static int[] mobjId, mobjState;
+  private static double[] mobjX, mobjY, mobjZ, mobjAngle;
   private static Map<String, Integer> uiAssetByName;
   private static int[] uiAssetWidth, uiAssetHeight;
   private static short[][] uiAssetTexels;
-  private static int uiStatusBarAsset, weaponAsset;
+  private static int uiStatusBarAsset, uiPauseAsset, weaponAsset;
+  private static final int[] uiKeyAsset = new int[3];
   private static final int[] uiDigitAsset = new int[10];
   private static short[] finalFrame;
   private static final byte[] codecFrame = new byte[WIDTH * 200];
@@ -125,9 +141,20 @@ public final class DoomBspKernelBench {
   private static final Deflater codecDeflater = new Deflater(1, true);
   private static int codecJsonLength, codecGzipLength, codecRunCount;
   private static boolean databaseCacheLoaded;
+  private static final int KERNEL_PACK_MAGIC = 0x44424b50;
+  private static final int KERNEL_PACK_VERSION = 1;
+  private static long lastKernelLoadNanos, lastSnapshotNanos;
   private static long lastRenderNanos, lastCodecNanos, lastBlobNanos;
   private static long lastBspNanos, lastSolidNanos, lastPortalNanos;
   private static long lastPlaneNanos, lastSpriteNanos, lastPresentationNanos;
+  private static double cameraEyeZ = 41.0;
+  private static double liveCameraX = -416.0, liveCameraY = 256.0;
+  private static BigDecimal liveExactCameraX = BigDecimal.valueOf(-416);
+  private static BigDecimal liveExactCameraY = BigDecimal.valueOf(256);
+  private static int liveAngle;
+  private static int liveTic, liveAmmo = 50, liveHealth = 100, liveArmor;
+  private static int liveBlueKey, liveYellowKey, liveRedKey, livePaused, liveComplete;
+  private static String liveMode = "game", liveAudio = "[]";
 
   private static int visitedNodes;
   private static int visitedSubsectors;
@@ -142,6 +169,405 @@ public final class DoomBspKernelBench {
 
   private static void require(boolean condition, String message) {
     if (!condition) throw new IllegalStateException(message);
+  }
+
+  private static int angleProfile(double degrees) {
+    double normalized = ((degrees % 360.0) + 360.0) % 360.0;
+    int profile = (int) Math.round(normalized / 5.625) % ANGLES;
+    require(Math.abs(normalized - profile * 5.625) < 1e-9 ||
+        Math.abs(normalized - 360.0) < 1e-9, "camera angle is outside canonical profiles");
+    return profile;
+  }
+
+  private static String weaponPatch(String weapon) {
+    if ("FIST".equals(weapon)) return "PUNGA0";
+    if ("SHOTGUN".equals(weapon)) return "SHTGA0";
+    if ("CHAINGUN".equals(weapon)) return "CHGGA0";
+    if ("ROCKET_LAUNCHER".equals(weapon)) return "MISGA0";
+    if ("PLASMA_RIFLE".equals(weapon)) return "PLSGA0";
+    if ("CHAINSAW".equals(weapon)) return "SAWGA0";
+    return "PISGA0";
+  }
+
+  private static void ensureMobjCapacity(int capacity) {
+    if (mobjId.length >= capacity) return;
+    int next = Math.max(capacity, Math.max(32, mobjId.length * 2));
+    mobjId = Arrays.copyOf(mobjId, next); mobjState = Arrays.copyOf(mobjState, next);
+    mobjX = Arrays.copyOf(mobjX, next); mobjY = Arrays.copyOf(mobjY, next);
+    mobjZ = Arrays.copyOf(mobjZ, next); mobjAngle = Arrays.copyOf(mobjAngle, next);
+  }
+
+  private static void prepareExactSegmentRelatives() {
+    if(liveExactCameraX.equals(preparedCameraX)&&liveExactCameraY.equals(preparedCameraY))return;
+    for(int index=0;index<uniqueMapX.length;index++)exactRelativeX[index]=
+        BigDecimal.valueOf(uniqueMapX[index]).subtract(liveExactCameraX).doubleValue();
+    for(int index=0;index<uniqueMapY.length;index++)exactRelativeY[index]=
+        BigDecimal.valueOf(uniqueMapY[index]).subtract(liveExactCameraY).doubleValue();
+    for(int index=0;index<uniqueDirectionX.length;index++)exactDirectionCamera[index]=
+        liveExactCameraY.multiply(BigDecimal.valueOf(uniqueDirectionX[index])).subtract(
+          liveExactCameraX.multiply(BigDecimal.valueOf(uniqueDirectionY[index])));
+    for (int id = 0; id < segTotal; id++) {
+      segRelativeStartX[id]=exactRelativeX[segStartXIndex[id]];
+      segRelativeStartY[id]=exactRelativeY[segStartYIndex[id]];
+      segRelativeEndX[id]=exactRelativeX[segEndXIndex[id]];
+      segRelativeEndY[id]=exactRelativeY[segEndYIndex[id]];
+      segExactTNumerator[id]=BigDecimal.valueOf(segCrossBase[id]).add(
+          exactDirectionCamera[segDirectionIndex[id]]).doubleValue();
+    }
+    preparedCameraX=liveExactCameraX;preparedCameraY=liveExactCameraY;
+  }
+
+  private static void buildExactGeometryCache() {
+    Map<Integer,Integer> xs=new HashMap<>(),ys=new HashMap<>();Map<Long,Integer> dirs=new HashMap<>();
+    segStartXIndex=new int[segTotal];segStartYIndex=new int[segTotal];
+    segEndXIndex=new int[segTotal];segEndYIndex=new int[segTotal];
+    segDirectionIndex=new int[segTotal];segCrossBase=new long[segTotal];
+    for(int id=0;id<segTotal;id++) {
+      if(!xs.containsKey(segStartX[id]))xs.put(segStartX[id],xs.size());
+      if(!xs.containsKey(segEndX[id]))xs.put(segEndX[id],xs.size());
+      if(!ys.containsKey(segStartY[id]))ys.put(segStartY[id],ys.size());
+      if(!ys.containsKey(segEndY[id]))ys.put(segEndY[id],ys.size());
+      segStartXIndex[id]=xs.get(segStartX[id]);segEndXIndex[id]=xs.get(segEndX[id]);
+      segStartYIndex[id]=ys.get(segStartY[id]);segEndYIndex[id]=ys.get(segEndY[id]);
+      int dx=segEndX[id]-segStartX[id],dy=segEndY[id]-segStartY[id];
+      long key=((long)dx<<32)|(dy&0xffffffffL);
+      if(!dirs.containsKey(key))dirs.put(key,dirs.size());segDirectionIndex[id]=dirs.get(key);
+      segCrossBase[id]=(long)segStartX[id]*dy-(long)segStartY[id]*dx;
+    }
+    uniqueMapX=new int[xs.size()];for(Map.Entry<Integer,Integer> e:xs.entrySet())uniqueMapX[e.getValue()]=e.getKey();
+    uniqueMapY=new int[ys.size()];for(Map.Entry<Integer,Integer> e:ys.entrySet())uniqueMapY[e.getValue()]=e.getKey();
+    uniqueDirectionX=new int[dirs.size()];uniqueDirectionY=new int[dirs.size()];
+    for(Map.Entry<Long,Integer> e:dirs.entrySet()){uniqueDirectionX[e.getValue()]=(int)(e.getKey()>>32);
+      uniqueDirectionY[e.getValue()]=(int)(long)e.getKey();}
+    exactRelativeX=new double[uniqueMapX.length];exactRelativeY=new double[uniqueMapY.length];
+    exactDirectionCamera=new BigDecimal[dirs.size()];preparedCameraX=null;preparedCameraY=null;
+  }
+
+  private static void refreshLiveState(Connection connection, String session) throws Exception {
+    require(session != null && session.matches("[0-9a-f]{32}"), "invalid session token");
+    try (PreparedStatement statement = connection.prepareStatement(
+        "select s.current_tic,lower(s.game_mode),case when s.map_status='DONE' then 1 else 0 end," +
+        "s.paused,p.x,p.y,p.z+p.view_height+p.view_bob,p.angle,p.health,p.armor," +
+        "p.blue_key,p.yellow_key,p.red_key,p.ammo_bullets,p.ammo_shells,p.ammo_rockets," +
+        "p.ammo_cells,p.selected_weapon from game_sessions s join players p on " +
+        "p.session_token=s.session_token and p.player_id=s.current_player_id " +
+        "where s.session_token=?")) {
+      statement.setString(1, session);
+      try (ResultSet rows = statement.executeQuery()) {
+        require(rows.next(), "render session not found");
+        liveTic = rows.getInt(1); liveMode = rows.getString(2); liveComplete = rows.getInt(3);
+        livePaused = rows.getInt(4); liveCameraX = rows.getDouble(5);
+        liveCameraY = rows.getDouble(6); cameraEyeZ = rows.getDouble(7);
+        liveAngle = angleProfile(rows.getDouble(8)); liveHealth = rows.getInt(9);
+        liveArmor = rows.getInt(10); liveBlueKey = rows.getInt(11);
+        liveYellowKey = rows.getInt(12); liveRedKey = rows.getInt(13);
+        String weapon = rows.getString(18);
+        if ("SHOTGUN".equals(weapon)) liveAmmo = rows.getInt(15);
+        else if ("ROCKET_LAUNCHER".equals(weapon)) liveAmmo = rows.getInt(16);
+        else if ("PLASMA_RIFLE".equals(weapon)) liveAmmo = rows.getInt(17);
+        else liveAmmo = rows.getInt(14);
+        Integer selected = spriteAssetByName.get(weaponPatch(weapon));
+        require(selected != null, "selected weapon patch missing");
+        weaponAsset = selected;
+        require(!rows.next(), "duplicate render session");
+      }
+    }
+    int sectors = 0;
+    try (PreparedStatement statement = connection.prepareStatement(
+        "select sector_id,floor_height,ceiling_height,light_level from sector_state " +
+        "where session_token=? order by sector_id")) {
+      statement.setString(1, session); statement.setFetchSize(256);
+      try (ResultSet rows = statement.executeQuery()) {
+        while (rows.next()) {
+          int id = rows.getInt(1);
+          require(id >= 0 && id < sectorFloor.length, "live sector id out of range");
+          sectorFloor[id] = rows.getDouble(2); sectorCeiling[id] = rows.getDouble(3);
+          sectorLight[id] = rows.getInt(4);
+          sectorLightBand[id] = Math.max(0, Math.min(31, (255 - sectorLight[id]) / 8));
+          sectors++;
+        }
+      }
+    }
+    require(sectors == sectorFloor.length, "live sector snapshot incomplete");
+    for (int id = 0; id < segTotal; id++) {
+      int left = leftSector[id], right = rightSector[id];
+      segSolid[id] = (byte) (left < 0 || right < 0 ||
+          Math.min(sectorCeiling[left], sectorCeiling[right]) <=
+          Math.max(sectorFloor[left], sectorFloor[right]) ? 1 : 0);
+    }
+    int count = 0;
+    try (PreparedStatement statement = connection.prepareStatement(
+        "select mobj_id,x,y,z,angle,state_id from mobjs where session_token=? order by mobj_id")) {
+      statement.setString(1, session); statement.setFetchSize(256);
+      try (ResultSet rows = statement.executeQuery()) {
+        while (rows.next()) {
+          ensureMobjCapacity(count + 1);
+          mobjId[count] = rows.getInt(1); mobjX[count] = rows.getDouble(2);
+          mobjY[count] = rows.getDouble(3); mobjZ[count] = rows.getDouble(4);
+          mobjAngle[count] = rows.getDouble(5);
+          Integer state = stateIndexByName.get(rows.getString(6));
+          mobjState[count] = state == null ? -1 : state; count++;
+        }
+      }
+    }
+    mobjCount = count;
+    StringBuilder audio = new StringBuilder("[");
+    try (PreparedStatement statement = connection.prepareStatement(
+        "select event_ordinal,asset_name,volume,separation from audio_events " +
+        "where session_token=? and tic=? order by event_ordinal")) {
+      statement.setString(1, session); statement.setInt(2, liveTic);
+      try (ResultSet rows = statement.executeQuery()) {
+        int countAudio = 0;
+        while (rows.next()) {
+          if (countAudio != 0) audio.append(',');
+          int ordinal = rows.getInt(1);
+          String asset = rows.getString(2);
+          require(asset.matches("[A-Z0-9_]+"), "invalid audio asset name");
+          audio.append('[').append(liveTic).append(',').append(ordinal).append(",\"")
+              .append(asset).append("\",").append(rows.getInt(3)).append(',')
+              .append(rows.getInt(4)).append(']');
+          countAudio++;
+        }
+      }
+    }
+    liveAudio = audio.append(']').toString();
+  }
+
+  private static void refreshPackedLiveState(Connection connection, String session)
+      throws Exception {
+    require(session != null && session.matches("[0-9a-f]{32}"), "invalid session token");
+    String sql =
+        "select kind,id1,text1,text2,n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12,n13,n14,n15 from (" +
+        "select 0 kind,s.current_tic id1,lower(s.game_mode) text1,p.selected_weapon text2," +
+        "case when s.map_status='DONE' then 1 else 0 end n1,s.paused n2,p.x n3,p.y n4," +
+        "p.z+p.view_height+p.view_bob n5,p.angle n6,p.health n7,p.armor n8," +
+        "p.blue_key n9,p.yellow_key n10,p.red_key n11,p.ammo_bullets n12," +
+        "p.ammo_shells n13,p.ammo_rockets n14,p.ammo_cells n15 " +
+        "from game_sessions s join players p on p.session_token=s.session_token " +
+        "and p.player_id=s.current_player_id where s.session_token=? union all " +
+        "select 1,sector_id,null,null,floor_height,ceiling_height,light_level," +
+        "null,null,null,null,null,null,null,null,null,null,null,null from sector_state " +
+        "where session_token=? union all " +
+        "select 2,mobj_id,state_id,null,x,y,z,angle,null,null,null,null,null,null,null,null,null,null,null " +
+        "from mobjs where session_token=? union all " +
+        "select 3,event_ordinal,asset_name,null,volume,separation,null,null,null,null,null,null,null,null,null,null,null,null,null " +
+        "from audio_events where session_token=? and tic=(select current_tic from game_sessions where session_token=?)) " +
+        "order by kind,id1";
+    int sectors = 0, mobjs = 0, playerRows = 0;
+    StringBuilder audio = new StringBuilder("[");
+    int audioCount = 0;
+    try (PreparedStatement statement = connection.prepareStatement(sql)) {
+      for (int bind = 1; bind <= 5; bind++) statement.setString(bind, session);
+      statement.setFetchSize(256);
+      try (ResultSet rows = statement.executeQuery()) {
+        while (rows.next()) {
+          int kind = rows.getInt(1), id = rows.getInt(2);
+          if (kind == 0) {
+            playerRows++;
+            liveTic = id; liveMode = rows.getString(3);
+            String weapon = rows.getString(4);
+            liveComplete = rows.getInt(5); livePaused = rows.getInt(6);
+            liveExactCameraX = rows.getBigDecimal(7); liveExactCameraY = rows.getBigDecimal(8);
+            liveCameraX = liveExactCameraX.doubleValue(); liveCameraY = liveExactCameraY.doubleValue();
+            cameraEyeZ = rows.getDouble(9); liveAngle = angleProfile(rows.getDouble(10));
+            liveHealth = rows.getInt(11); liveArmor = rows.getInt(12);
+            liveBlueKey = rows.getInt(13); liveYellowKey = rows.getInt(14);
+            liveRedKey = rows.getInt(15);
+            if ("SHOTGUN".equals(weapon)) liveAmmo = rows.getInt(17);
+            else if ("ROCKET_LAUNCHER".equals(weapon)) liveAmmo = rows.getInt(18);
+            else if ("PLASMA_RIFLE".equals(weapon)) liveAmmo = rows.getInt(19);
+            else liveAmmo = rows.getInt(16);
+            Integer selected = spriteAssetByName.get(weaponPatch(weapon));
+            require(selected != null, "selected weapon patch missing");
+            weaponAsset = selected;
+          } else if (kind == 1) {
+            require(id >= 0 && id < sectorFloor.length, "live sector id out of range");
+            sectorFloor[id] = rows.getDouble(5); sectorCeiling[id] = rows.getDouble(6);
+            sectorLight[id] = rows.getInt(7);
+            sectorLightBand[id] = Math.max(0, Math.min(31, (255 - sectorLight[id]) / 8));
+            sectors++;
+          } else if (kind == 2) {
+            ensureMobjCapacity(mobjs + 1);
+            mobjId[mobjs] = id; mobjState[mobjs] = -1;
+            Integer state = stateIndexByName.get(rows.getString(3));
+            if (state != null) mobjState[mobjs] = state;
+            mobjX[mobjs] = rows.getDouble(5); mobjY[mobjs] = rows.getDouble(6);
+            mobjZ[mobjs] = rows.getDouble(7); mobjAngle[mobjs] = rows.getDouble(8);
+            mobjs++;
+          } else {
+            if (audioCount++ != 0) audio.append(',');
+            String asset = rows.getString(3);
+            require(asset.matches("[A-Z0-9_]+"), "invalid audio asset name");
+            audio.append('[').append(liveTic).append(',').append(id).append(",\"")
+                .append(asset).append("\",").append(rows.getInt(5)).append(',')
+                .append(rows.getInt(6)).append(']');
+          }
+        }
+      }
+    }
+    require(playerRows == 1, "render session not found or duplicated");
+    require(sectors == sectorFloor.length, "live sector snapshot incomplete");
+    mobjCount = mobjs; liveAudio = audio.append(']').toString();
+    prepareExactSegmentRelatives();
+    for (int id = 0; id < segTotal; id++) {
+      int left = leftSector[id], right = rightSector[id];
+      segSolid[id] = (byte) (left < 0 || right < 0 ||
+          Math.min(sectorCeiling[left], sectorCeiling[right]) <=
+          Math.max(sectorFloor[left], sectorFloor[right]) ? 1 : 0);
+    }
+  }
+
+  private static byte[] snapshotBytes(Blob snapshot) throws Exception {
+    require(snapshot!=null&&snapshot.length()<=32767,"dynamic snapshot missing or too large");
+    byte[] bytes=new byte[(int)snapshot.length()];int offset=0;
+    try(InputStream in=snapshot.getBinaryStream()) {
+      while(offset<bytes.length){int count=in.read(bytes,offset,bytes.length-offset);
+        require(count>0,"dynamic snapshot short read");offset+=count;}
+    }
+    return bytes;
+  }
+
+  private static void decodeDynamicSnapshot(Blob snapshot) throws Exception {
+    byte[] encoded=snapshotBytes(snapshot);
+    if(encoded.length>0&&encoded[0]=='{'){decodeJsonSnapshot(new JsonInput(encoded));return;}
+    KernelInput in=new KernelInput(encoded);
+    require(in.readInt()==0x44525331,"dynamic snapshot magic mismatch");
+    int sectors=0,mobjs=0,playerRows=0,audioCount=0;
+    StringBuilder audio=new StringBuilder("[");
+    while(!in.exhausted()) {
+      int kind=in.readInt();
+      if(kind==4) break;
+      if(kind==0) {
+        playerRows++;liveTic=in.readInt();liveMode=readString(in);
+        String weapon=readString(in);liveComplete=in.readInt();livePaused=in.readInt();
+        liveExactCameraX=new BigDecimal(readString(in));
+        liveExactCameraY=new BigDecimal(readString(in));
+        liveCameraX=liveExactCameraX.doubleValue();liveCameraY=liveExactCameraY.doubleValue();
+        cameraEyeZ=in.readDouble();liveAngle=angleProfile(in.readDouble());
+        liveHealth=in.readInt();liveArmor=in.readInt();liveBlueKey=in.readInt();
+        liveYellowKey=in.readInt();liveRedKey=in.readInt();
+        int bullets=in.readInt(),shells=in.readInt(),rockets=in.readInt(),cells=in.readInt();
+        if("SHOTGUN".equals(weapon))liveAmmo=shells;
+        else if("ROCKET_LAUNCHER".equals(weapon))liveAmmo=rockets;
+        else if("PLASMA_RIFLE".equals(weapon))liveAmmo=cells;else liveAmmo=bullets;
+        Integer selected=spriteAssetByName.get(weaponPatch(weapon));
+        require(selected!=null,"selected weapon patch missing");weaponAsset=selected;
+      } else if(kind==1) {
+        int id=in.readInt();require(id>=0&&id<sectorFloor.length,"snapshot sector invalid");
+        sectorFloor[id]=in.readDouble();sectorCeiling[id]=in.readDouble();
+        sectorLight[id]=in.readInt();
+        sectorLightBand[id]=Math.max(0,Math.min(31,(255-sectorLight[id])/8));sectors++;
+      } else if(kind==2) {
+        ensureMobjCapacity(mobjs+1);mobjId[mobjs]=in.readInt();
+        Integer state=stateIndexByName.get(readString(in));mobjState[mobjs]=state==null?-1:state;
+        mobjX[mobjs]=in.readDouble();mobjY[mobjs]=in.readDouble();mobjZ[mobjs]=in.readDouble();
+        mobjAngle[mobjs]=in.readDouble();mobjs++;
+      } else if(kind==3) {
+        int ordinal=in.readInt();String asset=readString(in);
+        require(asset.matches("[A-Z0-9_]+"),"invalid audio asset name");
+        if(audioCount++!=0)audio.append(',');
+        audio.append('[').append(liveTic).append(',').append(ordinal).append(",\"")
+            .append(asset).append("\",").append(in.readInt()).append(',')
+            .append(in.readInt()).append(']');
+      } else throw new IllegalStateException("dynamic snapshot record invalid");
+    }
+    require(in.exhausted(),"dynamic snapshot trailing bytes");
+    require(playerRows==1&&sectors==sectorFloor.length,"dynamic snapshot incomplete");
+    mobjCount=mobjs;liveAudio=audio.append(']').toString();prepareExactSegmentRelatives();
+    for(int id=0;id<segTotal;id++) {
+      int left=leftSector[id],right=rightSector[id];
+      segSolid[id]=(byte)(left<0||right<0||
+          Math.min(sectorCeiling[left],sectorCeiling[right])<=
+          Math.max(sectorFloor[left],sectorFloor[right])?1:0);
+    }
+  }
+
+  private static final class JsonInput {
+    private final byte[] bytes;private int offset;
+    JsonInput(byte[] bytes){this.bytes=bytes;}
+    void whitespace(){while(offset<bytes.length&&(bytes[offset]==' '||bytes[offset]=='\n'||
+        bytes[offset]=='\r'||bytes[offset]=='\t'))offset++;}
+    void expect(char value){whitespace();require(offset<bytes.length&&bytes[offset]==value,
+        "dynamic JSON syntax mismatch");offset++;}
+    boolean take(char value){whitespace();if(offset<bytes.length&&bytes[offset]==value){offset++;return true;}return false;}
+    String string(){expect('"');StringBuilder value=new StringBuilder();
+      while(offset<bytes.length){int next=bytes[offset++]&255;if(next=='"')return value.toString();
+        require(next!='\\',"escaped dynamic JSON string unsupported");value.append((char)next);}
+      throw new IllegalStateException("unterminated dynamic JSON string");}
+    String number(){whitespace();int start=offset;
+      while(offset<bytes.length){int c=bytes[offset]&255;
+        if((c>='0'&&c<='9')||c=='-'||c=='+'||c=='.'||c=='e'||c=='E')offset++;else break;}
+      require(offset>start,"dynamic JSON number missing");
+      return new String(bytes,start,offset-start,StandardCharsets.US_ASCII);}
+    int integer(){whitespace();boolean negative=offset<bytes.length&&bytes[offset]=='-';
+      if(negative)offset++;long value=0;int digits=0;
+      while(offset<bytes.length&&bytes[offset]>='0'&&bytes[offset]<='9'){
+        value=value*10+(bytes[offset++]-'0');digits++;}
+      require(digits>0&&value<=Integer.MAX_VALUE+(negative?1L:0L),"dynamic JSON integer invalid");
+      return (int)(negative?-value:value);}
+    double decimal(){whitespace();int start=offset;boolean simple=true;
+      if(offset<bytes.length&&(bytes[offset]=='-'||bytes[offset]=='+'))offset++;
+      int digits=0;long value=0;
+      while(offset<bytes.length){int c=bytes[offset]&255;
+        if(c>='0'&&c<='9'){if(value<=900719925474099L)value=value*10+(c-'0');digits++;offset++;}
+        else{if(c=='.'||c=='e'||c=='E'||c=='+')simple=false;break;}}
+      require(digits>0,"dynamic JSON decimal missing");
+      if(simple)return bytes[start]=='-'?-value:value;
+      offset=start;return Double.parseDouble(number());}
+    BigDecimal exact(){return new BigDecimal(number());}
+    boolean nullValue(){whitespace();if(offset+4<=bytes.length&&bytes[offset]=='n'&&bytes[offset+1]=='u'
+        &&bytes[offset+2]=='l'&&bytes[offset+3]=='l'){offset+=4;return true;}return false;}
+    boolean exhausted(){whitespace();return offset==bytes.length;}
+  }
+
+  private static void decodeJsonSnapshot(JsonInput in) {
+    in.expect('{');require("p".equals(in.string()),"dynamic JSON player key mismatch");in.expect(':');
+    in.expect('[');liveTic=in.integer();in.expect(',');liveMode=in.string();in.expect(',');
+    String weapon=in.string();in.expect(',');liveComplete=in.integer();in.expect(',');
+    livePaused=in.integer();in.expect(',');liveExactCameraX=in.exact();in.expect(',');
+    liveExactCameraY=in.exact();liveCameraX=liveExactCameraX.doubleValue();
+    liveCameraY=liveExactCameraY.doubleValue();in.expect(',');cameraEyeZ=in.decimal();
+    in.expect(',');liveAngle=angleProfile(in.decimal());in.expect(',');liveHealth=in.integer();
+    in.expect(',');liveArmor=in.integer();in.expect(',');liveBlueKey=in.integer();
+    in.expect(',');liveYellowKey=in.integer();in.expect(',');liveRedKey=in.integer();
+    in.expect(',');int bullets=in.integer();in.expect(',');int shells=in.integer();
+    in.expect(',');int rockets=in.integer();in.expect(',');int cells=in.integer();in.expect(']');
+    liveAmmo="SHOTGUN".equals(weapon)?shells:"ROCKET_LAUNCHER".equals(weapon)?rockets:
+        "PLASMA_RIFLE".equals(weapon)?cells:bullets;
+    Integer selected=spriteAssetByName.get(weaponPatch(weapon));
+    require(selected!=null,"selected weapon patch missing");weaponAsset=selected;
+
+    in.expect(',');require("s".equals(in.string()),"dynamic JSON sector key mismatch");in.expect(':');
+    in.expect('[');int sectors=0;
+    if(!in.take(']'))do{in.expect('[');int id=in.integer();in.expect(',');
+      require(id>=0&&id<sectorFloor.length,"dynamic JSON sector invalid");
+      sectorFloor[id]=in.decimal();in.expect(',');sectorCeiling[id]=in.decimal();in.expect(',');
+      sectorLight[id]=in.integer();sectorLightBand[id]=Math.max(0,Math.min(31,(255-sectorLight[id])/8));
+      sectors++;in.expect(']');}while(in.take(','));
+    if(sectors>0)in.take(']');require(sectors==sectorFloor.length,"dynamic JSON sectors incomplete");
+
+    in.expect(',');require("m".equals(in.string()),"dynamic JSON mobj key mismatch");in.expect(':');
+    in.expect('[');int mobjs=0;
+    if(!in.take(']'))do{in.expect('[');ensureMobjCapacity(mobjs+1);mobjId[mobjs]=in.integer();
+      in.expect(',');Integer state=stateIndexByName.get(in.string());mobjState[mobjs]=state==null?-1:state;
+      in.expect(',');mobjX[mobjs]=in.decimal();in.expect(',');mobjY[mobjs]=in.decimal();
+      in.expect(',');mobjZ[mobjs]=in.decimal();in.expect(',');mobjAngle[mobjs]=in.decimal();
+      mobjs++;in.expect(']');}while(in.take(','));
+    if(mobjs>0)in.take(']');mobjCount=mobjs;
+
+    in.expect(',');require("a".equals(in.string()),"dynamic JSON audio key mismatch");in.expect(':');
+    StringBuilder audio=new StringBuilder("[");int audioCount=0;
+    if(!in.nullValue()){in.expect('[');if(!in.take(']'))do{in.expect('[');int ordinal=in.integer();
+      in.expect(',');String asset=in.string();require(asset.matches("[A-Z0-9_]+"),"invalid audio asset");
+      in.expect(',');int volume=in.integer();in.expect(',');int separation=in.integer();in.expect(']');
+      if(audioCount++!=0)audio.append(',');audio.append('[').append(liveTic).append(',')
+        .append(ordinal).append(",\"").append(asset).append("\",").append(volume).append(',')
+        .append(separation).append(']');}while(in.take(','));if(audioCount>0)in.take(']');}
+    in.expect('}');require(in.exhausted(),"dynamic JSON trailing bytes");
+    liveAudio=audio.append(']').toString();prepareExactSegmentRelatives();
+    for(int id=0;id<segTotal;id++){int left=leftSector[id],right=rightSector[id];
+      segSolid[id]=(byte)(left<0||right<0||Math.min(sectorCeiling[left],sectorCeiling[right])<=
+        Math.max(sectorFloor[left],sectorFloor[right])?1:0);}
   }
 
   private static void loadPackedTexels(Connection connection, String kind,
@@ -173,6 +599,292 @@ public final class DoomBspKernelBench {
         require(count == expected, kind + " renderer pack element mismatch");
         require(!rows.next(), kind + " renderer pack duplicate");
       }
+    }
+  }
+
+  private static void writeInts(DataOutputStream out, int[] values) throws Exception {
+    out.writeInt(values.length);
+    for (int value : values) out.writeInt(value);
+  }
+
+  private static int[] readInts(KernelInput in) {
+    int[] values = new int[in.readInt()];
+    for (int index = 0; index < values.length; index++) values[index] = in.readInt();
+    return values;
+  }
+
+  private static void writeBytes(DataOutputStream out, byte[] values) throws Exception {
+    out.writeInt(values.length); out.write(values);
+  }
+
+  private static byte[] readBytes(KernelInput in) {
+    return in.readBytes(in.readInt());
+  }
+
+  private static void writeDoubles(DataOutputStream out, double[] values) throws Exception {
+    out.writeInt(values.length);
+    for (double value : values) out.writeDouble(value);
+  }
+
+  private static double[] readDoubles(KernelInput in) {
+    double[] values = new double[in.readInt()];
+    for (int index = 0; index < values.length; index++) values[index] = in.readDouble();
+    return values;
+  }
+
+  private static void writeShorts(DataOutputStream out, short[] values) throws Exception {
+    out.writeInt(values.length);
+    for (short value : values) out.writeShort(value);
+  }
+
+  private static short[] readShorts(KernelInput in) {
+    short[] values = new short[in.readInt()];
+    for (int index = 0; index < values.length; index++) values[index] = in.readShort();
+    return values;
+  }
+
+  private static void writeShortMatrix(DataOutputStream out, short[][] values) throws Exception {
+    out.writeInt(values.length);
+    for (short[] value : values) writeShorts(out, value);
+  }
+
+  private static short[][] readShortMatrix(KernelInput in) {
+    short[][] values = new short[in.readInt()][];
+    for (int index = 0; index < values.length; index++) values[index] = readShorts(in);
+    return values;
+  }
+
+  private static void writeString(DataOutputStream out, String value) throws Exception {
+    if (value == null) { out.writeInt(-1); return; }
+    byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+    out.writeInt(bytes.length); out.write(bytes);
+  }
+
+  private static String readString(KernelInput in) {
+    int length = in.readInt();
+    if (length < 0) return null;
+    byte[] bytes = in.readBytes(length);
+    return new String(bytes, StandardCharsets.UTF_8);
+  }
+
+  private static void writeStrings(DataOutputStream out, String[] values) throws Exception {
+    out.writeInt(values.length);
+    for (String value : values) writeString(out, value);
+  }
+
+  private static String[] readStrings(KernelInput in) {
+    String[] values = new String[in.readInt()];
+    for (int index = 0; index < values.length; index++) values[index] = readString(in);
+    return values;
+  }
+
+  private static void writeStringIntMap(DataOutputStream out, Map<String, Integer> values)
+      throws Exception {
+    String[] keys = values.keySet().toArray(new String[0]); Arrays.sort(keys);
+    out.writeInt(keys.length);
+    for (String key : keys) { writeString(out, key); out.writeInt(values.get(key)); }
+  }
+
+  private static Map<String, Integer> readStringIntMap(KernelInput in) {
+    Map<String, Integer> values = new HashMap<>(); int count = in.readInt();
+    for (int index = 0; index < count; index++) values.put(readString(in), in.readInt());
+    return values;
+  }
+
+  private static void writeStringIntArrayMap(DataOutputStream out, Map<String, int[]> values)
+      throws Exception {
+    String[] keys = values.keySet().toArray(new String[0]); Arrays.sort(keys);
+    out.writeInt(keys.length);
+    for (String key : keys) { writeString(out, key); writeInts(out, values.get(key)); }
+  }
+
+  private static Map<String, int[]> readStringIntArrayMap(KernelInput in) {
+    Map<String, int[]> values = new HashMap<>(); int count = in.readInt();
+    for (int index = 0; index < count; index++) values.put(readString(in), readInts(in));
+    return values;
+  }
+
+  private static byte[] encodeKernelPack() throws Exception {
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream(6_000_000);
+    try (DataOutputStream out = new DataOutputStream(bytes)) {
+      out.writeInt(KERNEL_PACK_MAGIC); out.writeInt(KERNEL_PACK_VERSION);
+      out.writeInt(nodeCount); out.writeInt(ssectorCount); out.writeInt(segTotal);
+      out.writeDouble(farDistance); out.writeDouble(projectionK); out.writeInt(skyAsset);
+      out.writeInt(catalogStateCount); out.writeInt(mobjCount);
+      out.writeInt(uiStatusBarAsset); out.writeInt(uiPauseAsset); out.writeInt(weaponAsset);
+      int[][] ints = {nodeX,nodeY,nodeDx,nodeDy,bboxTop,bboxBottom,bboxLeft,bboxRight,childId,
+          firstSeg,segCount,segStartX,segStartY,segEndX,segEndY,segLineId,lineStartX,lineStartY,
+          lineEndX,lineEndY,rightSector,leftSector,lineFlags,segOffset,rightXOffset,rightYOffset,
+          leftXOffset,leftYOffset,sectorLight,sectorCeilingAsset,sectorFloorAsset,sectorLightBand,
+          wallAssetWidth,wallAssetHeight,spriteAssetWidth,spriteAssetHeight,catalogAsset,
+          catalogLeft,catalogTop,mobjId,mobjState,uiAssetWidth,uiAssetHeight,uiKeyAsset,uiDigitAsset};
+      out.writeInt(ints.length); for (int[] values : ints) writeInts(out, values);
+      byte[][] byteArrays = {childLeaf,segSolid,sectorCeilingSky,catalogFlip,catalogPresent};
+      out.writeInt(byteArrays.length); for (byte[] values : byteArrays) writeBytes(out, values);
+      double[][] doubles = {sectorFloor,sectorCeiling,camX,angleDegrees,directionX,directionY,
+          planeX,planeY,rayXProfile,rayYProfile,mobjX,mobjY,mobjZ,mobjAngle};
+      out.writeInt(doubles.length); for (double[] values : doubles) writeDoubles(out, values);
+      String[][] strings = {rightUpper,rightLower,rightMiddle,leftUpper,leftLower,leftMiddle,
+          sectorCeilingFlat,sectorFloorFlat};
+      out.writeInt(strings.length); for (String[] values : strings) writeStrings(out, values);
+      writeShorts(out,colormap);writeShortMatrix(out,wallAssetTexels);
+      writeShortMatrix(out,flatAssetTexels);writeShortMatrix(out,spriteAssetTexels);
+      writeShortMatrix(out,uiAssetTexels);
+      writeStringIntMap(out,wallAssetByName); writeStringIntMap(out,flatAssetByName);
+      writeStringIntMap(out,spriteAssetByName); writeStringIntMap(out,stateIndexByName);
+      writeStringIntArrayMap(out,animationByAsset);
+    }
+    return bytes.toByteArray();
+  }
+
+  private static void allocateWorkBuffers() {
+    segRelativeStartX = new double[segTotal]; segRelativeStartY = new double[segTotal];
+    segRelativeEndX = new double[segTotal]; segRelativeEndY = new double[segTotal];
+    segExactTNumerator = new double[segTotal];
+    planeCeilingDistance = new double[sectorFloor.length * 200];
+    planeFloorDistance = new double[sectorFloor.length * 200];
+    activeSectorCeilingAsset=new int[sectorFloor.length];
+    activeSectorFloorAsset=new int[sectorFloor.length];
+    stackId = new int[nodeCount * 2 + 4]; stackLeaf = new byte[stackId.length];
+    rawCandidates = new byte[segTotal * WIDTH]; visibleCandidates = new byte[segTotal * WIDTH];
+    portalCandidates = new byte[segTotal * WIDTH]; projectedFirst = new int[segTotal];
+    projectedLast = new int[segTotal]; nearestSolidDepth = new double[WIDTH];
+    columnVisibleCount = new int[WIDTH];
+    columnVisibleSeg = new int[WIDTH * MAX_VISIBLE_PER_COLUMN];
+    columnVisibleDepth = new double[WIDTH * MAX_VISIBLE_PER_COLUMN];
+    orderedSegs = new int[segTotal]; orderedDepths = new double[segTotal];
+    portalClipTop = new double[WIDTH]; portalClipBottom = new double[WIDTH];
+    wallFrame = new short[WIDTH * 200]; wallOwned = new byte[wallFrame.length];
+    wallColored = new byte[wallFrame.length]; intervalOffset = new int[WIDTH];
+    intervalCount = new int[WIDTH]; intervalSector = new int[MAX_INTERVALS];
+    intervalStart = new double[MAX_INTERVALS]; intervalEnd = new double[MAX_INTERVALS];
+    intervalClipTop = new double[MAX_INTERVALS]; intervalClipBottom = new double[MAX_INTERVALS];
+    presentationFrame = new short[wallFrame.length]; overlayPalette = new short[wallFrame.length];
+    overlayDepth = new double[wallFrame.length]; overlayKind = new byte[wallFrame.length];
+    overlaySource = new int[wallFrame.length]; overlayAssetX = new int[wallFrame.length];
+    overlayAssetY = new int[wallFrame.length]; finalFrame = new short[wallFrame.length];
+    buildExactGeometryCache();
+  }
+
+  private static final class KernelInput {
+    private final byte[] bytes; private int offset;
+    KernelInput(byte[] bytes) { this.bytes=bytes; }
+    int readInt() {
+      require(offset+4<=bytes.length,"renderer kernel pack truncated");
+      int value=((bytes[offset]&255)<<24)|((bytes[offset+1]&255)<<16)|
+          ((bytes[offset+2]&255)<<8)|(bytes[offset+3]&255); offset+=4; return value;
+    }
+    long readLong() { return ((long)readInt()<<32)|(readInt()&0xffffffffL); }
+    double readDouble() { return Double.longBitsToDouble(readLong()); }
+    short readShort() {
+      require(offset+2<=bytes.length,"renderer kernel pack truncated");
+      short value=(short)(((bytes[offset]&255)<<8)|(bytes[offset+1]&255)); offset+=2; return value;
+    }
+    byte[] readBytes(int length) {
+      require(length>=0&&offset+length<=bytes.length,"renderer kernel byte length invalid");
+      byte[] value=Arrays.copyOfRange(bytes,offset,offset+length); offset+=length; return value;
+    }
+    boolean exhausted() { return offset==bytes.length; }
+  }
+
+  private static void decodeKernelPack(KernelInput in) throws Exception {
+    require(in.readInt() == KERNEL_PACK_MAGIC, "renderer kernel pack magic mismatch");
+    require(in.readInt() == KERNEL_PACK_VERSION, "renderer kernel pack version mismatch");
+    nodeCount=in.readInt(); ssectorCount=in.readInt(); segTotal=in.readInt();
+    farDistance=in.readDouble(); projectionK=in.readDouble(); skyAsset=in.readInt();
+    catalogStateCount=in.readInt(); mobjCount=in.readInt();
+    uiStatusBarAsset=in.readInt(); uiPauseAsset=in.readInt(); weaponAsset=in.readInt();
+    require(in.readInt()==45,"renderer kernel int-array count mismatch");
+    nodeX=readInts(in);nodeY=readInts(in);nodeDx=readInts(in);nodeDy=readInts(in);
+    bboxTop=readInts(in);bboxBottom=readInts(in);bboxLeft=readInts(in);bboxRight=readInts(in);
+    childId=readInts(in);firstSeg=readInts(in);segCount=readInts(in);segStartX=readInts(in);
+    segStartY=readInts(in);segEndX=readInts(in);segEndY=readInts(in);segLineId=readInts(in);
+    lineStartX=readInts(in);lineStartY=readInts(in);lineEndX=readInts(in);lineEndY=readInts(in);
+    rightSector=readInts(in);leftSector=readInts(in);lineFlags=readInts(in);segOffset=readInts(in);
+    rightXOffset=readInts(in);rightYOffset=readInts(in);leftXOffset=readInts(in);
+    leftYOffset=readInts(in);sectorLight=readInts(in);sectorCeilingAsset=readInts(in);
+    sectorFloorAsset=readInts(in);sectorLightBand=readInts(in);wallAssetWidth=readInts(in);
+    wallAssetHeight=readInts(in);spriteAssetWidth=readInts(in);spriteAssetHeight=readInts(in);
+    catalogAsset=readInts(in);catalogLeft=readInts(in);catalogTop=readInts(in);
+    mobjId=readInts(in);mobjState=readInts(in);uiAssetWidth=readInts(in);uiAssetHeight=readInts(in);
+    int[] keys=readInts(in),digits=readInts(in);System.arraycopy(keys,0,uiKeyAsset,0,3);
+    System.arraycopy(digits,0,uiDigitAsset,0,10);
+    require(in.readInt()==5,"renderer kernel byte-array count mismatch");
+    childLeaf=readBytes(in);segSolid=readBytes(in);sectorCeilingSky=readBytes(in);
+    catalogFlip=readBytes(in);catalogPresent=readBytes(in);
+    require(in.readInt()==14,"renderer kernel double-array count mismatch");
+    sectorFloor=readDoubles(in);sectorCeiling=readDoubles(in);camX=readDoubles(in);
+    angleDegrees=readDoubles(in);directionX=readDoubles(in);directionY=readDoubles(in);
+    planeX=readDoubles(in);planeY=readDoubles(in);rayXProfile=readDoubles(in);
+    rayYProfile=readDoubles(in);mobjX=readDoubles(in);mobjY=readDoubles(in);
+    mobjZ=readDoubles(in);mobjAngle=readDoubles(in);
+    require(in.readInt()==8,"renderer kernel string-array count mismatch");
+    rightUpper=readStrings(in);rightLower=readStrings(in);rightMiddle=readStrings(in);
+    leftUpper=readStrings(in);leftLower=readStrings(in);leftMiddle=readStrings(in);
+    sectorCeilingFlat=readStrings(in);sectorFloorFlat=readStrings(in);
+    colormap=readShorts(in);wallAssetTexels=readShortMatrix(in);flatAssetTexels=readShortMatrix(in);
+    spriteAssetTexels=readShortMatrix(in);uiAssetTexels=readShortMatrix(in);
+    wallAssetByName=readStringIntMap(in);flatAssetByName=readStringIntMap(in);
+    spriteAssetByName=readStringIntMap(in);stateIndexByName=readStringIntMap(in);
+    animationByAsset=readStringIntArrayMap(in);
+    require(in.exhausted(),"renderer kernel pack trailing bytes");
+    allocateWorkBuffers(); prepareExactSegmentRelatives();
+  }
+
+  private static void loadKernelPack(Connection connection) throws Exception {
+    long started=System.nanoTime();
+    if(codecSha256==null) codecSha256=MessageDigest.getInstance("SHA-256");
+    try (Statement statement=connection.createStatement(); ResultSet rows=statement.executeQuery(
+        "select encoded_bytes from doom_renderer_asset_pack where asset_kind='renderer_kernel' " +
+        "and payload_sha256<>rpad('0',64,'0')")) {
+      require(rows.next(),"renderer kernel pack missing"); Blob blob=rows.getBlob(1);
+      require(blob.length()<=Integer.MAX_VALUE,"renderer kernel pack too large");
+      byte[] bytes=new byte[(int)blob.length()]; int offset=0;
+      try (InputStream in=blob.getBinaryStream()) {
+        while(offset<bytes.length){int count=in.read(bytes,offset,bytes.length-offset);
+          require(count>0,"renderer kernel pack short read");offset+=count;}
+      }
+      decodeKernelPack(new KernelInput(bytes));
+      blob.free(); require(!rows.next(),"renderer kernel pack duplicate");
+    }
+    lastKernelLoadNanos=System.nanoTime()-started;
+  }
+
+  public static void buildKernelPack() throws Exception {
+    Connection connection=DriverManager.getConnection("jdbc:default:connection:");
+    codecSha256=MessageDigest.getInstance("SHA-256"); load(connection);
+    byte[] bytes=encodeKernelPack(); byte[] digest=codecSha256.digest(bytes);
+    StringBuilder sha=new StringBuilder(64);
+    for(byte value:digest){sha.append((char)HEX[(value>>>4)&15]);sha.append((char)HEX[value&15]);}
+    try (Statement statement=connection.createStatement(); ResultSet rows=statement.executeQuery(
+        "select encoded_bytes from doom_renderer_asset_pack where asset_kind='renderer_kernel' for update")) {
+      require(rows.next(),"renderer kernel placeholder missing"); Blob blob=rows.getBlob(1); blob.truncate(0);
+      for(int offset=0;offset<bytes.length;offset+=32767)
+        blob.setBytes(offset+1,bytes,offset,Math.min(32767,bytes.length-offset));
+      blob.free(); require(!rows.next(),"renderer kernel placeholder duplicate");
+    }
+    try (PreparedStatement statement=connection.prepareStatement(
+        "update doom_renderer_asset_pack set element_count=?,payload_sha256=? where asset_kind='renderer_kernel'")) {
+      statement.setInt(1,bytes.length); statement.setString(2,sha.toString());
+      require(statement.executeUpdate()==1,"renderer kernel metadata update failed");
+    }
+    databaseCacheLoaded=true;
+  }
+
+  public static String warmKernelPack(int iterations) {
+    try {
+      require(iterations >= 1 && iterations <= 200, "kernel warmup iterations out of range");
+      Connection connection=DriverManager.getConnection("jdbc:default:connection:");
+      long minimum=Long.MAX_VALUE,started=System.nanoTime();
+      for(int iteration=0;iteration<iterations;iteration++) {
+        loadKernelPack(connection); minimum=Math.min(minimum,lastKernelLoadNanos);
+      }
+      databaseCacheLoaded=true;
+      return "OK iterations="+iterations+" total_ms="+
+          ((System.nanoTime()-started)/1_000_000L)+" min_ms="+(minimum/1_000_000.0);
+    } catch(Throwable failure) {
+      databaseCacheLoaded=false;
+      return "ERROR:"+failure.getClass().getName();
     }
   }
 
@@ -239,6 +951,9 @@ public final class DoomBspKernelBench {
     }
     segStartX = new int[segTotal]; segStartY = new int[segTotal];
     segEndX = new int[segTotal]; segEndY = new int[segTotal];
+    segRelativeStartX = new double[segTotal]; segRelativeStartY = new double[segTotal];
+    segRelativeEndX = new double[segTotal]; segRelativeEndY = new double[segTotal];
+    segExactTNumerator = new double[segTotal];
     segLineId = new int[segTotal];
     lineStartX = new int[segTotal]; lineStartY = new int[segTotal];
     lineEndX = new int[segTotal]; lineEndY = new int[segTotal];
@@ -295,7 +1010,7 @@ public final class DoomBspKernelBench {
       sectorCount = rows.getInt(1);
       require(sectorCount == rows.getInt(2) + 1, "sector ids are not dense");
     }
-    sectorFloor = new int[sectorCount]; sectorCeiling = new int[sectorCount];
+    sectorFloor = new double[sectorCount]; sectorCeiling = new double[sectorCount];
     sectorLight = new int[sectorCount]; sectorCeilingFlat = new String[sectorCount];
     sectorFloorFlat = new String[sectorCount];
     try (Statement statement = connection.createStatement();
@@ -306,7 +1021,7 @@ public final class DoomBspKernelBench {
       while (rows.next()) {
         int id = rows.getInt(1);
         require(id == expected++, "sector order mismatch");
-        sectorFloor[id] = rows.getInt(2); sectorCeiling[id] = rows.getInt(3);
+        sectorFloor[id] = rows.getDouble(2); sectorCeiling[id] = rows.getDouble(3);
         sectorLight[id] = rows.getInt(4); sectorCeilingFlat[id] = rows.getString(5);
         sectorFloorFlat[id] = rows.getString(6);
       }
@@ -388,6 +1103,33 @@ public final class DoomBspKernelBench {
       require(index == flatAssetCount, "flat asset count mismatch");
     }
     loadPackedTexels(connection, "flat", flatAssetTexels, null, null, 200_704);
+    animationByAsset = new HashMap<>(); animationByGroup = new HashMap<>();
+    Map<String, Integer> animationOrdinal = new HashMap<>();
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select asset_kind,group_name,frame_name,frame_ordinal,tic_period,frame_count " +
+             "from doom_r2_animation_frames order by asset_kind,group_name,frame_ordinal")) {
+      while (rows.next()) {
+        String kind = rows.getString(1), group = kind + ":" + rows.getString(2);
+        String name = rows.getString(3); int ordinal = rows.getInt(4);
+        int[] packed = animationByGroup.get(group);
+        if (packed == null) {
+          packed = new int[2 + rows.getInt(6)]; packed[0] = rows.getInt(5);
+          packed[1] = rows.getInt(6); animationByGroup.put(group, packed);
+        }
+        Integer asset = "flat".equals(kind) ? flatAssetByName.get(name) : wallAssetByName.get(name);
+        require(asset != null && ordinal >= 0 && ordinal < packed[1], "animation asset invalid");
+        packed[2 + ordinal] = asset;
+        animationByAsset.put(kind + ":" + name, packed);
+        animationOrdinal.put(kind + ":" + name, ordinal);
+      }
+    }
+    for (Map.Entry<String, int[]> entry : animationByAsset.entrySet()) {
+      int[] group = entry.getValue();
+      int[] base = Arrays.copyOf(group, group.length + 1);
+      base[group.length] = animationOrdinal.get(entry.getKey());
+      entry.setValue(base);
+    }
     Integer sky = wallAssetByName.get("SKY1");
     require(sky != null, "SKY1 asset missing");
     skyAsset = sky;
@@ -463,8 +1205,8 @@ public final class DoomBspKernelBench {
              "on d.thing_type=t.thing_type where t.thing_type<>1 and d.spawn_state_id is not null")) {
       rows.next(); mobjCount = rows.getInt(1);
     }
-    mobjId = new int[mobjCount]; mobjX = new int[mobjCount]; mobjY = new int[mobjCount];
-    mobjZ = new int[mobjCount]; mobjAngle = new int[mobjCount]; mobjState = new int[mobjCount];
+    mobjId = new int[mobjCount]; mobjX = new double[mobjCount]; mobjY = new double[mobjCount];
+    mobjZ = new double[mobjCount]; mobjAngle = new double[mobjCount]; mobjState = new int[mobjCount];
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
              "select t.thing_id,t.x,t.y,0,t.angle,d.spawn_state_id from doom_map_thing t " +
@@ -472,9 +1214,9 @@ public final class DoomBspKernelBench {
              "where t.thing_type<>1 and d.spawn_state_id is not null order by t.thing_id")) {
       int index = 0;
       while (rows.next()) {
-        mobjId[index] = rows.getInt(1); mobjX[index] = rows.getInt(2);
-        mobjY[index] = rows.getInt(3); mobjZ[index] = rows.getInt(4);
-        mobjAngle[index] = rows.getInt(5);
+        mobjId[index] = rows.getInt(1); mobjX[index] = rows.getDouble(2);
+        mobjY[index] = rows.getDouble(3); mobjZ[index] = rows.getDouble(4);
+        mobjAngle[index] = rows.getDouble(5);
         mobjState[index] = stateIndexByName.get(rows.getString(6)); index++;
       }
       require(index == mobjCount, "mobj count mismatch");
@@ -508,6 +1250,14 @@ public final class DoomBspKernelBench {
     require(pistol != null, "PISGA0 asset missing");
     uiStatusBarAsset = statusBar;
     weaponAsset = pistol;
+    Integer pause = uiAssetByName.get("M_PAUSE");
+    require(pause != null, "M_PAUSE asset missing");
+    uiPauseAsset = pause;
+    for (int key = 0; key < uiKeyAsset.length; key++) {
+      Integer asset = uiAssetByName.get("STKEYS" + key);
+      require(asset != null, "HUD key asset missing");
+      uiKeyAsset[key] = asset;
+    }
     for (int digit = 0; digit < uiDigitAsset.length; digit++) {
       Integer asset = uiAssetByName.get("STTNUM" + digit);
       require(asset != null, "HUD digit asset missing");
@@ -564,40 +1314,19 @@ public final class DoomBspKernelBench {
       }
       require(index == rayXProfile.length, "ray profile size mismatch");
     }
-    stackId = new int[nodeCount * 2 + 4];
-    stackLeaf = new byte[stackId.length];
-    rawCandidates = new byte[segTotal * WIDTH];
-    visibleCandidates = new byte[segTotal * WIDTH];
-    portalCandidates = new byte[segTotal * WIDTH];
-    projectedFirst = new int[segTotal]; projectedLast = new int[segTotal];
-    nearestSolidDepth = new double[WIDTH];
-    columnVisibleCount = new int[WIDTH];
-    columnVisibleSeg = new int[WIDTH * MAX_VISIBLE_PER_COLUMN];
-    columnVisibleDepth = new double[WIDTH * MAX_VISIBLE_PER_COLUMN];
-    orderedSegs = new int[segTotal]; orderedDepths = new double[segTotal];
-    portalClipTop = new double[WIDTH]; portalClipBottom = new double[WIDTH];
-    wallFrame = new short[WIDTH * 200]; wallOwned = new byte[wallFrame.length];
-    wallColored = new byte[wallFrame.length];
-    intervalOffset = new int[WIDTH]; intervalCount = new int[WIDTH];
-    intervalSector = new int[MAX_INTERVALS]; intervalStart = new double[MAX_INTERVALS];
-    intervalEnd = new double[MAX_INTERVALS]; intervalClipTop = new double[MAX_INTERVALS];
-    intervalClipBottom = new double[MAX_INTERVALS];
-    presentationFrame = new short[wallFrame.length]; overlayPalette = new short[wallFrame.length];
-    overlayDepth = new double[wallFrame.length]; overlayKind = new byte[wallFrame.length];
-    overlaySource = new int[wallFrame.length]; overlayAssetX = new int[wallFrame.length];
-    overlayAssetY = new int[wallFrame.length];
-    finalFrame = new short[wallFrame.length];
+    allocateWorkBuffers();
+    prepareExactSegmentRelatives();
   }
 
-  private static int side(int px, int py, int id) {
+  private static int side(double px, double py, int id) {
     int dx = nodeDx[id], dy = nodeDy[id];
     if (dx == 0) return px <= nodeX[id] ? (dy > 0 ? 1 : 0) : (dy < 0 ? 1 : 0);
     if (dy == 0) return py <= nodeY[id] ? (dx < 0 ? 1 : 0) : (dx > 0 ? 1 : 0);
-    long cross = (long) (px - nodeX[id]) * dy - (long) (py - nodeY[id]) * dx;
+    double cross = (px - nodeX[id]) * dy - (py - nodeY[id]) * dx;
     return cross > 0 ? 0 : 1;
   }
 
-  private static boolean bboxVisible(int offset, int px, int py,
+  private static boolean bboxVisible(int offset, double px, double py,
       double dirX, double dirY, double plnX, double plnY, double planeSquared) {
     int left = bboxLeft[offset], right = bboxRight[offset];
     int bottom = bboxBottom[offset], top = bboxTop[offset];
@@ -619,10 +1348,10 @@ public final class DoomBspKernelBench {
     return max >= camX[0] - PAD && min <= camX[WIDTH - 1] + PAD;
   }
 
-  private static void projectSeg(int id, int px, int py, double dirX, double dirY,
+  private static void projectSeg(int id, double px, double py, double dirX, double dirY,
       double plnX, double plnY, double planeSquared, boolean retainCandidates) {
-    double ax = segStartX[id] - px, ay = segStartY[id] - py;
-    double bx = segEndX[id] - px, by = segEndY[id] - py;
+    double ax = segRelativeStartX[id], ay = segRelativeStartY[id];
+    double bx = segRelativeEndX[id], by = segRelativeEndY[id];
     double ad = ax * dirX + ay * dirY, bd = bx * dirX + by * dirY;
     if (Math.max(ad, bd) <= NEAR) return;
     double ap = ax * plnX + ay * plnY, bp = bx * plnX + by * plnY;
@@ -649,19 +1378,19 @@ public final class DoomBspKernelBench {
     }
   }
 
-  private static int facingSector(int id, int px, int py) {
-    long cross = (long) (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
-        - (long) (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
+  private static int facingSector(int id, double px, double py) {
+    double cross = (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
+        - (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
     return cross > 0 ? rightSector[id] : leftSector[id];
   }
 
-  private static int oppositeSector(int id, int px, int py) {
-    long cross = (long) (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
-        - (long) (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
+  private static int oppositeSector(int id, double px, double py) {
+    double cross = (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
+        - (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
     return cross > 0 ? leftSector[id] : rightSector[id];
   }
 
-  private static void applyPortalWalk(int px, int py, double dirX, double dirY,
+  private static void applyPortalWalk(double px, double py, double dirX, double dirY,
       double plnX, double plnY, boolean retainCandidates) {
     long stageStarted = System.nanoTime();
     activePortalPairs = 0;
@@ -693,7 +1422,7 @@ public final class DoomBspKernelBench {
       }
       if (orderedCount == 0) continue;
       int currentSector = facingSector(orderedSegs[0], px, py);
-      double eyeZ = sectorFloor[currentSector] + 41.0;
+      double eyeZ = cameraEyeZ;
       double clipTop = 0.0, clipBottom = 200.0;
       double tStart = 0.0;
       boolean hadActive = false;
@@ -714,8 +1443,8 @@ public final class DoomBspKernelBench {
         if (to < 0) {
           terminated = true;
         } else {
-          int openingTop = Math.min(sectorCeiling[from], sectorCeiling[to]);
-          int openingBottom = Math.max(sectorFloor[from], sectorFloor[to]);
+          double openingTop = Math.min(sectorCeiling[from], sectorCeiling[to]);
+          double openingBottom = Math.max(sectorFloor[from], sectorFloor[to]);
           clipTop = Math.max(clipTop,
               100.0 - (openingTop - eyeZ) * projectionK / orderedDepths[i]);
           clipBottom = Math.min(clipBottom,
@@ -741,11 +1470,11 @@ public final class DoomBspKernelBench {
     System.arraycopy(wallFrame, 0, presentationFrame, 0, wallFrame.length);
     for (int index = 0; index < presentationFrame.length; index++)
       if (overlayKind[index] != 0) presentationFrame[index] = overlayPalette[index];
-    composeTicZeroPresentation();
+    composeLivePresentation();
     lastPresentationNanos = System.nanoTime() - stageStarted;
   }
 
-  private static void blit(short[] texels, int width, int height, int left, int top) {
+  private static void blit(short[] texels,int width,int height,int left,int top) {
     for (int x = 0; x < width; x++) {
       int screenX = left + x;
       if (screenX < 0 || screenX >= WIDTH) continue;
@@ -759,7 +1488,7 @@ public final class DoomBspKernelBench {
   }
 
   private static void blitUi(int asset, int left, int top) {
-    blit(uiAssetTexels[asset], uiAssetWidth[asset], uiAssetHeight[asset], left, top);
+    blit(uiAssetTexels[asset],uiAssetWidth[asset],uiAssetHeight[asset],left,top);
   }
 
   private static void drawHudNumber(int value, int rightEdge) {
@@ -768,17 +1497,22 @@ public final class DoomBspKernelBench {
     blitUi(uiDigitAsset[value % 10], rightEdge - 13, 171);
   }
 
-  private static void composeTicZeroPresentation() {
+  private static void composeLivePresentation() {
     Arrays.fill(finalFrame, (short) 0);
     for (int column = 0; column < WIDTH; column++)
       System.arraycopy(presentationFrame, column * 200, finalFrame, column * 200, 168);
-    blit(spriteAssetTexels[weaponAsset], spriteAssetWidth[weaponAsset],
-        spriteAssetHeight[weaponAsset], (WIDTH - spriteAssetWidth[weaponAsset]) / 2,
-        200 - spriteAssetHeight[weaponAsset]);
+    blit(spriteAssetTexels[weaponAsset],spriteAssetWidth[weaponAsset],
+        spriteAssetHeight[weaponAsset],(WIDTH-spriteAssetWidth[weaponAsset])/2,
+        200-spriteAssetHeight[weaponAsset]);
     blitUi(uiStatusBarAsset, 0, 168);
-    drawHudNumber(50, 44);
-    drawHudNumber(100, 90);
-    drawHudNumber(0, 221);
+    drawHudNumber(liveAmmo, 44);
+    drawHudNumber(liveHealth, 90);
+    drawHudNumber(liveArmor, 221);
+    if (liveBlueKey != 0) blitUi(uiKeyAsset[0], 239, 171);
+    if (liveYellowKey != 0) blitUi(uiKeyAsset[1], 249, 171);
+    if (liveRedKey != 0) blitUi(uiKeyAsset[2], 259, 171);
+    if (livePaused != 0)
+      blitUi(uiPauseAsset, (WIDTH - uiAssetWidth[uiPauseAsset]) / 2, 4);
   }
 
   private static void addInterval(int column, double start, double end, int sector,
@@ -791,11 +1525,15 @@ public final class DoomBspKernelBench {
     intervalTotal++; intervalCount[column]++;
   }
 
-  private static void drawPlanes(int px, int py, double dirX, double dirY,
+  private static void drawPlanes(double px, double py, double dirX, double dirY,
       double plnX, double plnY) {
     int centerInterval = intervalOffset[WIDTH / 2];
-    double eyeZ = sectorFloor[intervalSector[centerInterval]] + 41.0;
+    double eyeZ = cameraEyeZ;
     for (int sector = 0; sector < sectorFloor.length; sector++) {
+      activeSectorCeilingAsset[sector]=sectorCeilingSky[sector]!=0 ? -1 :
+          animatedAsset("flat",sectorCeilingFlat[sector],sectorCeilingAsset[sector]);
+      activeSectorFloorAsset[sector]=
+          animatedAsset("flat",sectorFloorFlat[sector],sectorFloorAsset[sector]);
       int base = sector * 200;
       for (int row = 0; row < 100; row++)
         planeCeilingDistance[base + row] =
@@ -831,7 +1569,7 @@ public final class DoomBspKernelBench {
             raw = wallAssetTexels[skyAsset][x * wallAssetHeight[skyAsset] + y];
             light = 255;
           } else {
-            int asset = ceiling ? sectorCeilingAsset[sector] : sectorFloorAsset[sector];
+            int asset=ceiling ? activeSectorCeilingAsset[sector] : activeSectorFloorAsset[sector];
             int x = wrap((int) Math.floor(px + rayX * distance), 64);
             int y = wrap((int) Math.floor(py + rayY * distance), 64);
             raw = flatAssetTexels[asset][x * 64 + y];
@@ -845,15 +1583,15 @@ public final class DoomBspKernelBench {
     }
   }
 
-  private static void drawSprites(int px, int py, double forwardX, double forwardY) {
+  private static void drawSprites(double px, double py, double forwardX, double forwardY) {
     int centerColumn = WIDTH / 2;
     if (intervalCount[centerColumn] == 0) return;
-    double eyeZ = sectorFloor[intervalSector[intervalOffset[centerColumn]]] + 41.0;
+    double eyeZ = cameraEyeZ;
     for (int mobj = 0; mobj < mobjCount; mobj++)
       projectSprite(mobj, px, py, forwardX, forwardY, eyeZ);
   }
 
-  private static void projectSprite(int mobj, int px, int py, double forwardX,
+  private static void projectSprite(int mobj, double px, double py, double forwardX,
       double forwardY, double eyeZ) {
     double relX = mobjX[mobj] - px, relY = mobjY[mobj] - py;
     double depth = relX * forwardX + relY * forwardY;
@@ -918,7 +1656,7 @@ public final class DoomBspKernelBench {
     }
   }
 
-  private static double acceptedDepth(int id, int column, int px, int py,
+  private static double acceptedDepth(int id, int column, double px, double py,
       double dirX, double dirY, double plnX, double plnY) {
     double rayX = rayXProfile[activeAngle * WIDTH + column];
     double rayY = rayYProfile[activeAngle * WIDTH + column];
@@ -926,27 +1664,35 @@ public final class DoomBspKernelBench {
     double segY = segEndY[id] - segStartY[id];
     double determinant = rayX * segY - rayY * segX;
     if (Math.abs(determinant) < 1e-12) return Double.NaN;
-    double relX = segStartX[id] - px, relY = segStartY[id] - py;
-    double hitT = (relX * segY - relY * segX) / determinant;
+    double relX = segRelativeStartX[id], relY = segRelativeStartY[id];
+    double hitT = segExactTNumerator[id] / determinant;
     if (hitT <= NEAR) return Double.NaN;
     double hitU = (relX * rayY - relY * rayX) / determinant;
     return hitU >= 0.0 && hitU <= 1.0 ? hitT : Double.NaN;
   }
 
-  private static double acceptedU(int id, int column, int px, int py,
+  private static double acceptedU(int id, int column, double px, double py,
       double dirX, double dirY, double plnX, double plnY) {
     double rayX = rayXProfile[activeAngle * WIDTH + column];
     double rayY = rayYProfile[activeAngle * WIDTH + column];
     double segX = segEndX[id] - segStartX[id];
     double segY = segEndY[id] - segStartY[id];
     double determinant = rayX * segY - rayY * segX;
-    double relX = segStartX[id] - px, relY = segStartY[id] - py;
+    double relX = segRelativeStartX[id], relY = segRelativeStartY[id];
     return (relX * rayY - relY * rayX) / determinant;
   }
 
   private static int wrap(int value, int modulus) {
     int result = value % modulus;
     return result < 0 ? result + modulus : result;
+  }
+
+  private static int animatedAsset(String kind, String baseName, int fallback) {
+    int[] animation = animationByAsset.get(kind + ":" + baseName);
+    if (animation == null) return fallback;
+    int count = animation[1];
+    int ordinal = (animation[animation.length - 1] + liveTic / animation[0]) % count;
+    return animation[2 + ordinal];
   }
 
   private static int sqlFloor(double value) {
@@ -964,7 +1710,9 @@ public final class DoomBspKernelBench {
     int first = Math.max(0, (int) Math.ceil(Math.max(clipTop, screenTop) - .5));
     int end = Math.min(200, (int) Math.ceil(Math.min(clipBottom, screenBottom) - .5));
     if (first >= end) return;
-    Integer asset = wallAssetByName.get(texture);
+    Integer baseAsset = wallAssetByName.get(texture);
+    require(baseAsset != null, "wall texture missing");
+    int asset = animatedAsset("wall_texture", texture, baseAsset);
     double deltaX = segEndX[id] - segStartX[id];
     double deltaY = segEndY[id] - segStartY[id];
     double length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
@@ -974,7 +1722,6 @@ public final class DoomBspKernelBench {
       int frameOffset = base + row;
       if (wallOwned[frameOffset] != 0) continue;
       wallOwned[frameOffset] = 1;
-      if (asset == null) continue;
       int sampleColumn = wrap(sqlFloor(sampleX), wallAssetWidth[asset]);
       double sampleY = anchor - (eyeZ + (100.0 - (row + .5)) * depth / projectionK) + yOffset;
       int sampleRow = wrap(sqlFloor(sampleY), wallAssetHeight[asset]);
@@ -986,11 +1733,11 @@ public final class DoomBspKernelBench {
     }
   }
 
-  private static void drawActiveWall(int id, int column, int px, int py,
+  private static void drawActiveWall(int id, int column, double px, double py,
       double depth, double dirX, double dirY, double plnX, double plnY,
       int from, int to, double clipTop, double clipBottom, double eyeZ) {
-    long cross = (long) (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
-        - (long) (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
+    double cross = (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
+        - (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
     boolean right = cross > 0;
     String upper = right ? rightUpper[id] : leftUpper[id];
     String lower = right ? rightLower[id] : leftLower[id];
@@ -1039,11 +1786,11 @@ public final class DoomBspKernelBench {
     return assetY == overlayAssetY[index] && assetX < overlayAssetX[index];
   }
 
-  private static void drawMaskedWall(int id, int column, int px, int py,
+  private static void drawMaskedWall(int id, int column, double px, double py,
       double depth, double dirX, double dirY, double plnX, double plnY,
       int from, double clipTop, double clipBottom, double eyeZ) {
-    long cross = (long) (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
-        - (long) (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
+    double cross = (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
+        - (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
     boolean right = cross > 0;
     String texture = right ? rightMiddle[id] : leftMiddle[id];
     if (texture == null || "-".equals(texture)) return;
@@ -1075,7 +1822,7 @@ public final class DoomBspKernelBench {
     }
   }
 
-  private static void applySolidCoverage(int px, int py, double dirX, double dirY,
+  private static void applySolidCoverage(double px, double py, double dirX, double dirY,
       double plnX, double plnY, boolean retainCandidates) {
     Arrays.fill(nearestSolidDepth, Double.POSITIVE_INFINITY);
     Arrays.fill(columnVisibleCount, 0);
@@ -1112,7 +1859,13 @@ public final class DoomBspKernelBench {
     }
   }
 
-  private static int traverseAndProject(int px, int py, int angle, boolean retainCandidates) {
+  private static int traverseAndProject(double px, double py, int angle, boolean retainCandidates) {
+    if (Double.doubleToLongBits(px) != Double.doubleToLongBits(liveCameraX) ||
+        Double.doubleToLongBits(py) != Double.doubleToLongBits(liveCameraY)) {
+      liveCameraX = px; liveCameraY = py;
+      liveExactCameraX = BigDecimal.valueOf(px); liveExactCameraY = BigDecimal.valueOf(py);
+      prepareExactSegmentRelatives();
+    }
     long stageStarted = System.nanoTime();
     activeAngle = angle;
     visitedNodes = 0; visitedSubsectors = 0; projectedSegs = 0; candidatePairs = 0;
@@ -1153,7 +1906,7 @@ public final class DoomBspKernelBench {
     return activePortalPairs;
   }
 
-  private static int[] sqlOracle(Connection connection, int px, int py, int angleProfile) throws Exception {
+  private static int[] sqlOracle(Connection connection, double px, double py, int angleProfile) throws Exception {
     String sql =
         "select s.seg_id,r.column_no,case when l.left_sidedef_id is null then 1 " +
         "when least(rs.ceiling_height,ls.ceiling_height)-" +
@@ -1176,9 +1929,9 @@ public final class DoomBspKernelBench {
     int accepted = 0, missing = 0, visible = 0, visibleMissing = 0;
     try (PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setDouble(1, angleDegrees[angleProfile]);
-      statement.setInt(2, px); statement.setInt(3, py);
-      statement.setInt(4, px); statement.setInt(5, py);
-      statement.setInt(6, px); statement.setInt(7, py);
+      statement.setDouble(2, px); statement.setDouble(3, py);
+      statement.setDouble(4, px); statement.setDouble(5, py);
+      statement.setDouble(6, px); statement.setDouble(7, py);
       try (ResultSet rows = statement.executeQuery()) {
         int priorColumn = -1;
         boolean blocked = false;
@@ -1199,7 +1952,7 @@ public final class DoomBspKernelBench {
     return new int[] {accepted, missing, visible, visibleMissing};
   }
 
-  private static int[] productionPortalOracle(Connection connection, int px, int py)
+  private static int[] productionPortalOracle(Connection connection, double px, double py)
       throws Exception {
     String session = null;
     byte[] oracleDocument = null;
@@ -1516,9 +2269,12 @@ public final class DoomBspKernelBench {
     codecGzipLength = compressed + 8;
   }
 
-  private static void buildPackedTicZeroJson(String stateSha) {
-    int offset = appendAscii(0, "{\"v\":2,\"tic\":0,\"w\":320,\"h\":200,\"mode\":\"game\"," +
-        "\"state_sha\":\"");
+  private static void buildPackedLiveJson(String stateSha) {
+    int offset = appendAscii(0, "{\"v\":2,\"tic\":");
+    offset = appendNumber(offset, liveTic);
+    offset = appendAscii(offset, ",\"w\":320,\"h\":200,\"mode\":\"");
+    offset = appendAscii(offset, liveMode);
+    offset = appendAscii(offset, "\",\"state_sha\":\"");
     offset = appendAscii(offset, stateSha);
     offset = appendAscii(offset, "\",\"frame_sha\":\"");
     offset = appendHexDigest(offset);
@@ -1546,13 +2302,17 @@ public final class DoomBspKernelBench {
       }
       codecJson[offset++] = '=';
     }
-    offset = appendAscii(offset, "\",\"audio\":[],\"complete\":0}");
+    offset = appendAscii(offset, "\",\"audio\":");
+    offset = appendAscii(offset, liveAudio);
+    offset = appendAscii(offset, ",\"complete\":");
+    offset = appendNumber(offset, liveComplete);
+    codecJson[offset++] = '}';
     codecJsonLength = offset;
   }
 
   private static void encodePackedTicZeroPayload(String stateSha) throws Exception {
     prepareFrameSha();
-    buildPackedTicZeroJson(stateSha);
+    buildPackedLiveJson(stateSha);
     compressJson();
   }
 
@@ -1567,11 +2327,18 @@ public final class DoomBspKernelBench {
     if (!databaseCacheLoaded) {
       codecSha256 = MessageDigest.getInstance("SHA-256");
       Connection internal = DriverManager.getConnection("jdbc:default:connection:");
-      load(internal);
+      loadKernelPack(internal);
       databaseCacheLoaded = true;
     }
+    liveTic = 0; liveMode = "game"; liveComplete = 0; livePaused = 0;
+    liveCameraX = -416.0; liveCameraY = 256.0; cameraEyeZ = 41.0; liveAngle = 0;
+    liveExactCameraX = BigDecimal.valueOf(-416); liveExactCameraY = BigDecimal.valueOf(256);
+    prepareExactSegmentRelatives();
+    liveAmmo = 50; liveHealth = 100; liveArmor = 0;
+    liveBlueKey = 0; liveYellowKey = 0; liveRedKey = 0; liveAudio = "[]";
+    weaponAsset = spriteAssetByName.get("PISGA0");
     long started = System.nanoTime();
-    traverseAndProject(-416, 256, 0, false);
+    traverseAndProject(liveCameraX, liveCameraY, liveAngle, false);
     lastRenderNanos = System.nanoTime() - started;
     started = System.nanoTime();
     encodePackedTicZeroPayload(ZERO_SHA);
@@ -1587,6 +2354,206 @@ public final class DoomBspKernelBench {
     lastBlobNanos = System.nanoTime() - started;
   }
 
+  private static String renderSessionUnsafe(String session, String stateSha, Blob payload)
+      throws Exception {
+    require(payload != null, "caller-owned BLOB is required");
+    require(stateSha != null && stateSha.matches("[0-9a-f]{64}"), "invalid state SHA");
+    Connection internal = DriverManager.getConnection("jdbc:default:connection:");
+    if (!databaseCacheLoaded) {
+      codecSha256 = MessageDigest.getInstance("SHA-256");
+      loadKernelPack(internal);
+      databaseCacheLoaded = true;
+    }
+    long snapshotStarted = System.nanoTime();
+    refreshPackedLiveState(internal, session);
+    lastSnapshotNanos = System.nanoTime() - snapshotStarted;
+    require("game".equals(liveMode) || "dead".equals(liveMode),
+        "dynamic renderer currently supports GAME/DEAD only");
+    long started = System.nanoTime();
+    traverseAndProject(liveCameraX, liveCameraY, liveAngle, false);
+    lastRenderNanos = System.nanoTime() - started;
+    started = System.nanoTime();
+    encodePackedTicZeroPayload(stateSha);
+    lastCodecNanos = System.nanoTime() - started;
+    started = System.nanoTime();
+    payload.truncate(0);
+    int firstLength = Math.min(32767, codecGzipLength);
+    int written = payload.setBytes(1, codecGzip, 0, firstLength);
+    if (codecGzipLength > firstLength)
+      written += payload.setBytes(firstLength + 1, codecGzip, firstLength,
+          codecGzipLength - firstLength);
+    require(written == codecGzipLength, "short dynamic BLOB write");
+    lastBlobNanos = System.nanoTime() - started;
+    StringBuilder frameSha = new StringBuilder(64);
+    for (byte value : codecDigest) {
+      frameSha.append((char) HEX[(value >>> 4) & 15]);
+      frameSha.append((char) HEX[value & 15]);
+    }
+    return frameSha.toString();
+  }
+
+  public static String renderSession(String session, String stateSha, Blob payload) {
+    try {
+      return renderSessionUnsafe(session, stateSha, payload);
+    } catch (Throwable failure) {
+      try { if (payload != null) payload.truncate(0); } catch (Throwable ignored) {}
+      return "ERROR:" + failure.getClass().getName();
+    }
+  }
+
+  private static String renderSnapshotUnsafe(Blob snapshot,String stateSha,Blob payload)
+      throws Exception {
+    require(payload!=null,"caller-owned BLOB is required");
+    require(stateSha!=null&&stateSha.matches("[0-9a-f]{64}"),"invalid state SHA");
+    if(!databaseCacheLoaded) {
+      Connection internal=DriverManager.getConnection("jdbc:default:connection:");
+      loadKernelPack(internal);databaseCacheLoaded=true;
+    }
+    long started=System.nanoTime();decodeDynamicSnapshot(snapshot);
+    lastSnapshotNanos=System.nanoTime()-started;
+    require("game".equals(liveMode)||"dead".equals(liveMode),
+        "dynamic renderer currently supports GAME/DEAD only");
+    started=System.nanoTime();traverseAndProject(liveCameraX,liveCameraY,liveAngle,false);
+    lastRenderNanos=System.nanoTime()-started;
+    started=System.nanoTime();encodePackedTicZeroPayload(stateSha);
+    lastCodecNanos=System.nanoTime()-started;
+    started=System.nanoTime();payload.truncate(0);
+    int firstLength=Math.min(32767,codecGzipLength);
+    int written=payload.setBytes(1,codecGzip,0,firstLength);
+    if(codecGzipLength>firstLength)
+      written+=payload.setBytes(firstLength+1,codecGzip,firstLength,
+          codecGzipLength-firstLength);
+    require(written==codecGzipLength,"short packed-snapshot BLOB write");
+    lastBlobNanos=System.nanoTime()-started;
+    StringBuilder frameSha=new StringBuilder(64);
+    for(byte value:codecDigest){frameSha.append((char)HEX[(value>>>4)&15]);
+      frameSha.append((char)HEX[value&15]);}
+    return frameSha.toString();
+  }
+
+  public static String renderSnapshot(Blob snapshot,String stateSha,Blob payload) {
+    try{return renderSnapshotUnsafe(snapshot,stateSha,payload);}
+    catch(Throwable failure){try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}
+      return "ERROR:"+failure.getClass().getName();}
+  }
+
+  public static String compareSessionOracle(String session) throws Exception {
+    Connection internal = DriverManager.getConnection("jdbc:default:connection:");
+    if (!databaseCacheLoaded) {
+      codecSha256 = MessageDigest.getInstance("SHA-256");
+      loadKernelPack(internal); databaseCacheLoaded = true;
+    }
+    refreshPackedLiveState(internal, session);
+    traverseAndProject(liveCameraX, liveCameraY, liveAngle, false);
+    int differences = 0, world = 0, hud = 0;
+    int minColumn = WIDTH, maxColumn = -1, minRow = 200, maxRow = -1, rowsSeen = 0;
+    try (PreparedStatement statement = internal.prepareStatement(
+        "select column_no,row_no,palette_index from frame_pixel " +
+        "where session_token=? order by column_no,row_no")) {
+      statement.setString(1, session); statement.setFetchSize(1024);
+      try (ResultSet rows = statement.executeQuery()) {
+        while (rows.next()) {
+          int column = rows.getInt(1), row = rows.getInt(2);
+          require(column * 200 + row == rowsSeen, "SQL oracle frame is incomplete");
+          int actual = finalFrame[rowsSeen] & 255;
+          if (actual != rows.getInt(3)) {
+            differences++;
+            if (row < 168) world++; else hud++;
+            minColumn = Math.min(minColumn, column); maxColumn = Math.max(maxColumn, column);
+            minRow = Math.min(minRow, row); maxRow = Math.max(maxRow, row);
+          }
+          rowsSeen++;
+        }
+      }
+    }
+    require(rowsSeen == WIDTH * 200, "SQL oracle frame row count mismatch");
+    return differences + "|" + world + "|" + hud + "|" + minColumn + "|" +
+        maxColumn + "|" + minRow + "|" + maxRow;
+  }
+
+  private static int parseUnsigned(byte[] json, int[] at) {
+    int value = 0, digits = 0;
+    while (at[0] < json.length && json[at[0]] >= '0' && json[at[0]] <= '9') {
+      value = value * 10 + json[at[0]++] - '0'; digits++;
+    }
+    require(digits != 0, "invalid SQL RLE number");
+    return value;
+  }
+
+  private static void expect(byte[] json, int[] at, int value) {
+    require(at[0] < json.length && json[at[0]++] == value, "invalid SQL RLE syntax");
+  }
+
+  public static String compareSqlPayload(String session, Blob sqlPayload) throws Exception {
+    require(sqlPayload != null && sqlPayload.length() <= Integer.MAX_VALUE,
+        "SQL oracle payload is required");
+    byte[] compressed = sqlPayload.getBytes(1, (int) sqlPayload.length());
+    byte[] json = gunzip(compressed, compressed.length);
+    byte[] marker = "\"cols\":[".getBytes(StandardCharsets.US_ASCII);
+    int start = -1;
+    outer: for (int index = 0; index <= json.length - marker.length; index++) {
+      for (int match = 0; match < marker.length; match++)
+        if (json[index + match] != marker[match]) continue outer;
+      start = index + marker.length; break;
+    }
+    require(start >= 0, "SQL oracle cols missing");
+    byte[] expected = new byte[WIDTH * 200];
+    int[] at = {start};
+    for (int column = 0; column < WIDTH; column++) {
+      if (column != 0) expect(json, at, ',');
+      expect(json, at, '[');
+      int nextRow = 0, runs = 0;
+      while (json[at[0]] != ']') {
+        if (runs++ != 0) expect(json, at, ',');
+        expect(json, at, '[');
+        int y0 = parseUnsigned(json, at); expect(json, at, ',');
+        int length = parseUnsigned(json, at); expect(json, at, ',');
+        int palette = parseUnsigned(json, at); expect(json, at, ']');
+        require(y0 == nextRow && length > 0 && y0 + length <= 200 && palette <= 255,
+            "invalid SQL RLE run");
+        Arrays.fill(expected, column * 200 + y0, column * 200 + y0 + length,
+            (byte) palette);
+        nextRow += length;
+      }
+      expect(json, at, ']'); require(nextRow == 200, "incomplete SQL RLE column");
+    }
+    expect(json, at, ']');
+    Connection internal = DriverManager.getConnection("jdbc:default:connection:");
+    if (!databaseCacheLoaded) {
+      codecSha256 = MessageDigest.getInstance("SHA-256");
+      loadKernelPack(internal); databaseCacheLoaded = true;
+    }
+    refreshPackedLiveState(internal, session);
+    traverseAndProject(liveCameraX, liveCameraY, liveAngle, false);
+    int differences = 0, world = 0, hud = 0;
+    int minColumn = WIDTH, maxColumn = -1, minRow = 200, maxRow = -1;
+    StringBuilder samples = new StringBuilder();
+    for (int index = 0; index < expected.length; index++) {
+      if ((expected[index] & 255) == (finalFrame[index] & 255)) continue;
+      int column = index / 200, row = index % 200;
+      if (differences < 12) {
+        int owningSector = -1;
+        for (int interval = intervalOffset[column];
+             interval < intervalOffset[column] + intervalCount[column]; interval++) {
+          int sector = intervalSector[interval];
+          double distance = row < 100 ? planeCeilingDistance[sector * 200 + row] :
+              planeFloorDistance[sector * 200 + row];
+          if (distance >= intervalStart[interval] && distance < intervalEnd[interval]) {
+            owningSector = sector; break;
+          }
+        }
+        samples.append('|').append(column).append(',').append(row)
+            .append(',').append(expected[index] & 255).append(',').append(finalFrame[index] & 255)
+            .append(',').append(wallFrame[index] >= 0 ? 'W' : 'P').append(',').append(owningSector);
+      }
+      differences++; if (row < 168) world++; else hud++;
+      minColumn = Math.min(minColumn, column); maxColumn = Math.max(maxColumn, column);
+      minRow = Math.min(minRow, row); maxRow = Math.max(maxRow, row);
+    }
+    return differences + "|" + world + "|" + hud + "|" + minColumn + "|" +
+        maxColumn + "|" + minRow + "|" + maxRow + samples;
+  }
+
   public static long lastRenderNanos() { return lastRenderNanos; }
   public static long lastCodecNanos() { return lastCodecNanos; }
   public static long lastBlobNanos() { return lastBlobNanos; }
@@ -1596,6 +2563,8 @@ public final class DoomBspKernelBench {
   public static long lastPlaneNanos() { return lastPlaneNanos; }
   public static long lastSpriteNanos() { return lastSpriteNanos; }
   public static long lastPresentationNanos() { return lastPresentationNanos; }
+  public static long lastKernelLoadNanos() { return lastKernelLoadNanos; }
+  public static long lastSnapshotNanos() { return lastSnapshotNanos; }
 
   private static byte[] gunzip(byte[] bytes, int length) throws Exception {
     try (GZIPInputStream input = new GZIPInputStream(new ByteArrayInputStream(bytes, 0, length));
@@ -1614,7 +2583,7 @@ public final class DoomBspKernelBench {
     return true;
   }
 
-  private static void runCodecOnly(int px, int py) throws Exception {
+  private static void runCodecOnly(double px, double py) throws Exception {
     traverseAndProject(px, py, 0, false);
     encodePackedTicZeroPayload(ZERO_SHA);
     byte[] packedRoundTrip = gunzip(codecGzip, codecGzipLength);
@@ -1636,7 +2605,7 @@ public final class DoomBspKernelBench {
       long t0 = System.nanoTime();
       prepareFrameSha();
       long t1 = System.nanoTime();
-      buildPackedTicZeroJson(ZERO_SHA);
+      buildPackedLiveJson(ZERO_SHA);
       long t2 = System.nanoTime();
       compressJson();
       long t3 = System.nanoTime();
@@ -1663,7 +2632,7 @@ public final class DoomBspKernelBench {
       password = null;
       load(connection);
       double loadMs = (System.nanoTime() - loadStart) / 1_000_000.0;
-      int px = -416, py = 256;
+      double px = -416, py = 256;
       if (args.length == 2) {
         runCodecOnly(px, py);
         return;

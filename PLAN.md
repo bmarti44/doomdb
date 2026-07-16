@@ -17,11 +17,11 @@ Database owns the game:
 
 - WAD geometry, render assets, engine definitions, live objects, player state,
   sector machines, saves, replays, and audio events are relational data.
-- SQL performs collision, triggers, weapons, projectiles, damage, pickups,
-  monster state advancement, perception, and AI decisions. Under the approved
-  P12.0 amendment, a project-owned Java 11 stored procedure inside Oracle JVM
-  may perform the production visibility, projection, texture/sprite sampling,
-  lighting, composition, frame hashing, RLE, JSON, and GZIP hot path.
+- SQL remains the independent simulation oracle. Under the approved P12.0
+  amendments, a project-owned Java 11 worker inside Oracle JVM may perform the
+  production simulation and render/codec hot paths over retained primitive
+  state, while each committed tic persists exact relational deltas,
+  checkpoints, commands, hashes, events, and response BLOBs in Oracle.
 - Thin PL/SQL procedures lock a game session, validate input, execute set-based
   statements, persist the result, and return a frame. They do not contain a
   second procedural game engine.
@@ -72,9 +72,10 @@ are green.
 
 - No byte-for-byte vanilla framebuffer, state, savegame, or .lmp compatibility.
 - No claim that the project reproduces vanilla bugs or integer overflow.
-- No MLE JavaScript, WebAssembly, native extproc, or embedded Doom engine in the
-  simulation or render path. The sole Java exception is the narrow, clean-room
-  Oracle JVM render/codec procedure approved for P12.0; simulation remains SQL.
+- No MLE JavaScript, WebAssembly, native extproc, or externally embedded Doom
+  engine in the simulation or render path. The sole Java exception is the
+  clean-room Oracle JVM worker approved for P12.0; SQL remains the independent
+  simulation oracle and relational persistence contract.
 - No custom ORDS modules, templates, or handlers.
 - No client-side prediction, interpolation, gameplay, collision, ray casting,
   sprite sorting, or reference implementation.
@@ -109,6 +110,29 @@ SQL renderer and MATCH_RECOGNIZE codec remain independently callable parity
 oracles. No JavaBox, Mocha Doom, id Doom, or other engine code, tables, data,
 constants, or translated control flow may be copied. Selection requires exact
 byte/hash/RLE/schema parity and the complete T5-T7 suite.
+
+#### Approved P12.0 database-worker simulation amendment — 2026-07-16
+
+The user's explicit instruction to approve all remaining work without further
+approval prompts, continue fully autonomously, use Sol Max when blocked, and
+reach 30 FPS approves this evidence-triggered amendment. The measured SQL
+simulation p95 is 36.939 ms before rendering, and the exact live-state worker
+boundary is 42.373 ms p95 before simulation/ORDS; the prior charter is therefore
+in direct conflict with the required 33.3 ms end-to-end gate.
+
+A clean-room, array-resident Java 11 simulation loop may run only inside a
+long-lived `DBMS_SCHEDULER` worker session in Oracle Database. ORDS AutoREST
+enqueues authenticated commands through AQ and waits for a correlated committed
+response. Oracle relational tables remain authoritative durable state: every
+tic writes deterministic changed-row deltas, command/state/frame hashes, events,
+history/checkpoints, and the response BLOB before completion is signaled. The
+accepted SQL simulation and SQL renderer remain independently executable
+differential oracles; no evaluator/golden is weakened. Selection requires exact
+300-frame state/frame/payload parity, duplicate/idempotent request behavior,
+worker generation fencing and restart reconstruction, the full T5-T7 suite,
+and <=33.3 ms p50/p95 end-to-end. No GPL engine code, control flow, constants,
+or tables may be copied or translated; the implementation remains independently
+designed from this project's SQL contracts and public behavior documentation.
 
 ## 1. Grounded facts and corrected contracts
 
@@ -1253,15 +1277,18 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   composition exceeds 3 ms p95, warm snapshot plus render exceeds 17 ms p95,
   or renderer+codec+handoff exceeds 20 ms p95. Any missing SQL-winning primitive
   or unexplained pixel/RLE/payload mismatch fails immediately.
-- OJVM data architecture: load the selected deterministic revision-keyed
-  relational BLOB packs into exact-width primitive session arrays through
-  internal JDBC; do not
-  fetch 3,040,239 `AT` rows per pooled session and do not embed a WAD. Cap and
-  prewarm the real ORDS pool because OJVM static caches are database-session
-  private. Retained immutable cache is capped at 12 MiB per pooled session and a
-  warm dynamic snapshot at 5 ms p95. Reuse one profile-sized indexed framebuffer,
-  column clip/interval arrays, plane bounds, masked primitive indexes, and codec
-  buffers with no full GC in the 300-frame corpus.
+- OJVM data architecture: load selected deterministic revision-keyed relational
+  BLOB packs into exact-width primitive arrays through internal JDBC; do not
+  fetch 3,040,239 `AT` rows per request and do not embed a WAD.  The 2026-07-16
+  ORDS probe disproved retained session caches: 240 consecutive requests used
+  the same SID/AUDSID, while both a Java static and PL/SQL package global reset
+  to `1` on every request because ORDS reinitializes package/JVM state during
+  cleanup.  Pool pinning prevents connection churn but cannot preserve Java
+  statics.  Therefore a selected renderer must rebuild from one bounded
+  immutable kernel-pack BLOB plus one packed dynamic-state buffer on every
+  request, with no relational row walking.  Immutable decode plus dynamic
+  snapshot remains capped at 5 ms p95; reuse within one call is allowed, but
+  cross-request correctness or performance dependence is forbidden.
 - Exact production composition writes opaque world, planes, masked fragments,
   weapon, HUD, and overlays into that single indexed framebuffer, then performs
   one pass for frame hash, canonical Java RLE/JSON, GZIP, and caller-owned BLOB.
@@ -1308,6 +1335,78 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   dynamic STEP integration.  No integrated 30 FPS claim is permitted.  The next
   structural work is the dynamic actor/sector snapshot plus production OJVM
   STEP integration; canonical SQL remains the differential oracle.
+- Reconciled P12.0 handoff (2026-07-16): the exact OJVM state serializer is a
+  measured rejection at 69.286/106.270 ms p50/p95.  It proves that OJVM is for
+  compute over packed arrays, not repeated internal-JDBC row walks.  Do not
+  retry it.  The remaining SQL simulation work is checkpoint-cadence state
+  serialization only if the per-tic `state_sha` contract can remain exact,
+  plus an actor split that reserves visibility/LOS work for awake, near actors
+  at its documented cadence.  Assemble a narrow array-resident OJVM simulation
+  amendment and differential gates as evidence only; simulation remains SQL
+  unless the user separately approves that charter amendment.
+- ORDS transport correction (2026-07-16): pinned ORDS 26.2 generated package
+  procedure paths are case-sensitive (`DOOM_API/NEW_GAME`, `DOOM_API/STEP`,
+  and peers), while lowercase procedure paths return 404.  The client may
+  perform one startup casing probe/fallback, then must reuse the discovered
+  casing without a second request per frame.  A one-connection pool returned
+  500 during AutoREST discovery; the smallest viable fixed local pool is
+  `InitialLimit=MinLimit=MaxLimit=2`, with high reuse, long inactivity timeout,
+  and `RECYCLE` cleanup.  This does not override the stateless-cache result.
+- ORDS/OJVM architecture correction (2026-07-16): rebuilding immutable
+  renderer state in every AutoREST request is measured and rejected. The
+  4,587,043-byte exact pack required 93.076 ms even after decoder/JIT warmup;
+  a byte-palette/opacity-bitset pack retained exact tic-8 parity and shrank to
+  2,872,196 bytes, but a decisive fresh session still took 167.014 ms pack +
+  268.258 ms snapshot + 42.201 ms render + 3.531 ms codec. Oracle shares OJVM
+  code/JIT, not application arrays, and ORDS exposes no supported AutoREST
+  switch that skips `MODIFY_PACKAGE_STATE(REINITIALIZE)`. Do not retry pool
+  pinning, per-request relational loads, or per-request immutable-pack decode.
+  The next bounded architecture probe is a persistent-AQ command/completion
+  pair with a long-lived `DBMS_SCHEDULER` database worker. AutoREST remains the
+  sole HTTP surface and waits for a correlated committed result; SQL remains
+  authoritative; the worker session owns the warm OJVM renderer and one packed
+  dynamic-state buffer. Select only if 300 unique echo messages meet <=5 ms
+  p95 database queue round-trip, worker restart/idempotency/fencing gates pass,
+  and the subsequent warm render+codec+BLOB path remains <=20 ms p95. See
+  `reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md`.
+  The first disposable persistent-AQ echo passed: 300 unique correlated
+  messages, one worker generation/SID, zero mismatches, 2.122 ms p50, 3.843 ms
+  p95, and 54.740 ms maximum. Proceed to restart/idempotency/fencing and warm
+  renderer coupling; retain the maximum outlier in integrated evidence.
+  The 300-frame warm-worker follow-up used one generation/SID and persistent
+  response BLOBs: request-through-commit was 28.040/32.414 ms p50/p95 with a
+  330.654 ms maximum; fill p95 was 28.216 ms, comprising renderer 22.105,
+  codec 3.069, and BLOB 0.640 ms p95. The worker architecture is viable, but
+  this renderer misses the <=20 ms slice and leaves no simulation/transport
+  budget, so it is not selected. A 500-frame JIT bootstrap inside the worker
+  was stopped with its job slave after 2:22, and `COMPILE_CLASS` returned 0.
+  Keep the bounded foreground JIT warmup plus post-race compiled-method audit;
+  workers perform only cache load and a small settling loop.
+  Stage tracing then found an accidental per-plane-pixel animated-asset
+  HashMap/string lookup (planes alone 21.607 ms p95). Hoisting two animation
+  resolutions per sector retained exact tic-8 SQL payload parity and changed
+  the repeated 300-frame worker result to 15.671/17.590 ms p50/p95
+  request-through-commit, 13.643 ms fill p95, 7.471 renderer, 3.168 codec, and
+  0.639 BLOB ms p95. The <=20 ms renderer slice now passes. Keep the 208.068
+  ms maximum as cold-settling evidence and never route traffic before warmup
+  plus the post-race compiled-method audit succeeds.
+  The live-state follow-up rejected the remaining boundary rebuilds. One
+  internal-JDBC UNION snapshot was 95.343 ms p95; a procedural 21,834-byte
+  binary pack was 23.9 ms average after chunking. Native SQL/JSON generated a
+  14,099-byte snapshot in about 2 ms average and retained exact frame SHA, but
+  the 300-frame worker composite was still 29.265/42.373 ms p50/p95: SQL pack
+  4.031, Java snapshot/geometry 10.874, renderer 16.088, codec 5.511, and BLOB
+  0.987 ms p95. Do not bootstrap either snapshot experiment. This establishes
+  the charter-versus-hardware conflict for the narrow array-resident worker
+  amendment: simulation and rendering share retained primitive state, SQL
+  persists authoritative per-tic deltas/checkpoints and remains the parity
+  oracle, and no request rebuilds Java state by relational row walking.
+- Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
+  record assignment loop with `BULK COLLECT` passed T7.2 and the exact
+  163-command route, but measured 1,168.745 ms over the route versus the prior
+  1,157.735 ms. Oracle charged essentially the same row materialization to the
+  cursor. The experiment was reverted; do not retry it without reducing the
+  relational/visibility work or snapshot width itself.
 - New ray, screen-axis, clip, span, and cache-key relations use an explicit
   resolution profile.  `CANONICAL_320X200` remains the only selected profile and
   keeps all reviewed hashes.  A future 640x400 profile is a required design
