@@ -1628,6 +1628,23 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   5.590/7.868/13.034 ms p50/p95/max, versus the 11.331/14.033/33.548 ms
   baseline. The improvement is selected, but the observed tail variability is
   retained in projections; this is not an end-to-end 30 FPS result.
+- Production retained-worker gate (2026-07-16): one default-off Scheduler/OJVM
+  owner now performs DMSC/v2 prepare, strict durable apply, canonical
+  state/history, direct render, commit, post-commit accept, and correlated AQ
+  response. Live acceptance passes exact result hashes/bytes, terminal replay,
+  precommit rollback/discard, generation-advancing reconstruction after discard
+  or accept failure, restart fencing, and two simultaneous sessions on distinct
+  slots/SIDs. A 500-warm/300-unique-tic database-caller run measures
+  35.041/44.091 ms p50/p95 (28.5/22.7 FPS) before ORDS/browser work, so the
+  30 FPS gate remains open and `DOOM_API.STEP` is not cut over. Detailed p95
+  stages are render 12.088 ms (kernel 6.800, codec 1.938), canonical state
+  11.326, strict apply 7.680, finalization 6.940, and prepare 2.396 ms.
+  Replacing direct Java-to-SecureFile output with Java temporary BLOB plus one
+  PL/SQL copy reduced the Java BLOB stage from 13.715 to 0.063 ms p95. The next
+  selected slice is an exact retained canonical-state codec: cache the missing
+  static session/player and sector/line/mover/switch fragments at recovery,
+  serialize pending player/all-MOBJ arrays without JDBC row walking, and require
+  300-tic byte/SHA parity plus mid-route recovery before worker selection.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

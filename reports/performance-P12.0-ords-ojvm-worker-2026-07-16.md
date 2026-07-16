@@ -346,3 +346,37 @@ and 6.954/9.406/19.548 ms. This is a material improvement, but the second run
 confirms real tail variability. Budget projections therefore use the slower
 7.868 ms apply and 9.406 ms transaction p95 until the integrated worker route
 provides a larger end-to-end sample.
+
+## Integrated durable worker result
+
+The default-off production worker now completes the full database transaction:
+DMSC/v2 ledger append, retained prepare, strict relational apply, canonical
+state/history, direct retained render, durable result/request commit,
+post-commit Java accept, and correlated AQ response. Live gates cover exact
+response/delta/state/frame hashes, replay, rollback/discard, reconstruction
+after discard or accept failure, restart fencing, and simultaneous isolated
+worker sessions.
+
+After 500 warm tics, 300 unique movement tics measured 35.041/44.091 ms
+p50/p95 at the database caller, equivalent to 28.5/22.7 FPS before ORDS, wire,
+decode, or blit. This is the first production-shaped fast-path FPS result and it
+does not pass the 33.3 ms gate. Detailed p95 tracing measured render at 12.088
+ms (kernel 6.800, codec 1.938), canonical state at 11.326 ms, strict apply at
+7.680 ms, finalization at 6.940 ms, and preparation at 2.396 ms. Stage
+percentiles are independently ranked and must not be summed as one observation.
+
+The initial persistent-locator renderer had a 13.715 ms Java BLOB-write p95 and
+107.812 ms maximum. Java now writes a temporary BLOB and PL/SQL performs one
+bounded copy into the result SecureFile locator; Java BLOB output is 0.033/0.063
+ms p50/p95, while the complete render stage is 10.096/12.088 ms. Exact worker
+lifecycle and two-session pool gates pass after this change.
+
+The next bounded optimization is an exact retained canonical-state codec. It
+must cache one packed seed at load/recovery for static session/player fields and
+the canonical sector/line/mover/switch tails, then serialize pending player and
+all-MOBJ primitive arrays without JDBC row walking. `-1` references encode JSON
+null, `state_id` maps through the retained catalog, player angle preserves the
+exact Oracle number, and MOBJ order stays by ID. Selection requires 300 mixed
+tics with byte-for-byte BLOB and SHA parity against `doom_canonical_state`, plus
+mid-route reconstruction and continuation. State-hash semantics and the
+reviewed history cadence remain unchanged.
