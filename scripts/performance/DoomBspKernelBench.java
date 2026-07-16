@@ -1,5 +1,7 @@
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -48,6 +50,10 @@ public final class DoomBspKernelBench {
   private static int[] sectorFloor, sectorCeiling;
   private static int[] sectorLight;
   private static String[] sectorCeilingFlat, sectorFloorFlat;
+  private static int[] sectorCeilingAsset, sectorFloorAsset, sectorLightBand;
+  private static byte[] sectorCeilingSky;
+  private static double[] planeCeilingDistance, planeFloorDistance;
+  private static int skyAsset;
   private static Map<String, Integer> wallAssetByName;
   private static int[] wallAssetWidth, wallAssetHeight;
   private static short[][] wallAssetTexels;
@@ -70,8 +76,9 @@ public final class DoomBspKernelBench {
   private static byte[] visibleCandidates;
   private static int[] projectedFirst, projectedLast;
   private static double[] nearestSolidDepth;
-  private static int[] columnCounts, columnSegs, orderedSegs;
-  private static double[] orderedDepths;
+  private static final int MAX_VISIBLE_PER_COLUMN = 128;
+  private static int[] columnVisibleCount, columnVisibleSeg, orderedSegs;
+  private static double[] columnVisibleDepth, orderedDepths;
   private static byte[] portalCandidates;
   private static double[] portalClipTop, portalClipBottom;
   private static short[] wallFrame;
@@ -117,6 +124,10 @@ public final class DoomBspKernelBench {
   private static final CRC32 codecCrc = new CRC32();
   private static final Deflater codecDeflater = new Deflater(1, true);
   private static int codecJsonLength, codecGzipLength, codecRunCount;
+  private static boolean databaseCacheLoaded;
+  private static long lastRenderNanos, lastCodecNanos, lastBlobNanos;
+  private static long lastBspNanos, lastSolidNanos, lastPortalNanos;
+  private static long lastPlaneNanos, lastSpriteNanos, lastPresentationNanos;
 
   private static int visitedNodes;
   private static int visitedSubsectors;
@@ -131,6 +142,38 @@ public final class DoomBspKernelBench {
 
   private static void require(boolean condition, String message) {
     if (!condition) throw new IllegalStateException(message);
+  }
+
+  private static void loadPackedTexels(Connection connection, String kind,
+      short[][] texels, int[] widths, int[] heights, int expected) throws Exception {
+    try (PreparedStatement statement = connection.prepareStatement(
+        "select format_version,element_count,encoded_bytes " +
+        "from doom_renderer_asset_pack where asset_kind=?")) {
+      statement.setString(1, kind);
+      try (ResultSet rows = statement.executeQuery()) {
+        require(rows.next() && rows.getInt(1) == 1 && rows.getInt(2) == expected,
+            kind + " renderer pack missing or invalid");
+        Blob blob = rows.getBlob(3);
+        require(blob.length() == expected * 2L, kind + " renderer pack byte mismatch");
+        int count = 0;
+        try (InputStream raw = blob.getBinaryStream(); DataInputStream input = new DataInputStream(raw)) {
+          for (int asset = 0; asset < texels.length; asset++) {
+            int width = widths == null ? 64 : widths[asset];
+            int height = heights == null ? 64 : heights[asset];
+            for (int y = 0; y < height; y++) {
+              for (int x = 0; x < width; x++) {
+                texels[asset][x * height + y] = (short) (input.readUnsignedShort() - 1);
+                count++;
+              }
+            }
+          }
+          require(input.read() == -1, kind + " renderer pack trailing bytes");
+        }
+        blob.free();
+        require(count == expected, kind + " renderer pack element mismatch");
+        require(!rows.next(), kind + " renderer pack duplicate");
+      }
+    }
   }
 
   private static void load(Connection connection) throws Exception {
@@ -321,18 +364,8 @@ public final class DoomBspKernelBench {
       }
       require(index == wallAssetCount, "wall asset count mismatch");
     }
-    try (Statement statement = connection.createStatement();
-         ResultSet rows = statement.executeQuery(
-             "select t.a,t.x,t.y,t.c from at t join doom_asset a on a.asset_id=t.a " +
-             "where a.asset_kind='wall_texture' order by t.a,t.x,t.y")) {
-      int texels = 0;
-      while (rows.next()) {
-        int asset = wallAssetById.get(rows.getInt(1));
-        int offset = rows.getInt(2) * wallAssetHeight[asset] + rows.getInt(3);
-        wallAssetTexels[asset][offset] = (short) rows.getInt(4); texels++;
-      }
-      require(texels == 1_256_192, "wall texel count mismatch");
-    }
+    loadPackedTexels(connection, "wall_texture", wallAssetTexels,
+        wallAssetWidth, wallAssetHeight, 1_256_192);
     int flatAssetCount;
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
@@ -354,18 +387,30 @@ public final class DoomBspKernelBench {
       }
       require(index == flatAssetCount, "flat asset count mismatch");
     }
-    try (Statement statement = connection.createStatement();
-         ResultSet rows = statement.executeQuery(
-             "select t.a,t.x,t.y,t.c from at t join doom_asset a on a.asset_id=t.a " +
-             "where a.asset_kind='flat' order by t.a,t.x,t.y")) {
-      int texels = 0;
-      while (rows.next()) {
-        int asset = flatAssetById.get(rows.getInt(1));
-        flatAssetTexels[asset][rows.getInt(2) * 64 + rows.getInt(3)] =
-            (short) rows.getInt(4); texels++;
+    loadPackedTexels(connection, "flat", flatAssetTexels, null, null, 200_704);
+    Integer sky = wallAssetByName.get("SKY1");
+    require(sky != null, "SKY1 asset missing");
+    skyAsset = sky;
+    sectorCeilingAsset = new int[sectorFloor.length];
+    sectorFloorAsset = new int[sectorFloor.length];
+    sectorLightBand = new int[sectorFloor.length];
+    sectorCeilingSky = new byte[sectorFloor.length];
+    for (int sector = 0; sector < sectorFloor.length; sector++) {
+      Integer floorAsset = flatAssetByName.get(sectorFloorFlat[sector]);
+      require(floorAsset != null, "floor flat missing");
+      sectorFloorAsset[sector] = floorAsset;
+      if ("F_SKY1".equals(sectorCeilingFlat[sector])) {
+        sectorCeilingSky[sector] = 1;
+        sectorCeilingAsset[sector] = -1;
+      } else {
+        Integer ceilingAsset = flatAssetByName.get(sectorCeilingFlat[sector]);
+        require(ceilingAsset != null, "ceiling flat missing");
+        sectorCeilingAsset[sector] = ceilingAsset;
       }
-      require(texels == 200_704, "flat texel count mismatch");
+      sectorLightBand[sector] = Math.max(0, Math.min(31, (255 - sectorLight[sector]) / 8));
     }
+    planeCeilingDistance = new double[sectorFloor.length * 200];
+    planeFloorDistance = new double[sectorFloor.length * 200];
     int spriteAssetCount;
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
@@ -389,18 +434,8 @@ public final class DoomBspKernelBench {
       }
       require(index == spriteAssetCount, "sprite asset count mismatch");
     }
-    try (Statement statement = connection.createStatement();
-         ResultSet rows = statement.executeQuery(
-             "select t.a,t.x,t.y,t.c from at t join doom_asset a on a.asset_id=t.a " +
-             "where a.asset_kind='sprite_patch' order by t.a,t.x,t.y")) {
-      int texels = 0;
-      while (rows.next()) {
-        int asset = spriteAssetById.get(rows.getInt(1));
-        int offset = rows.getInt(2) * spriteAssetHeight[asset] + rows.getInt(3);
-        spriteAssetTexels[asset][offset] = (short) rows.getInt(4); texels++;
-      }
-      require(texels == 331_474, "sprite texel count mismatch");
-    }
+    loadPackedTexels(connection, "sprite_patch", spriteAssetTexels,
+        spriteAssetWidth, spriteAssetHeight, 331_474);
     stateIndexByName = new HashMap<>();
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery("select state_id from doom_state_def order by state_id")) {
@@ -465,18 +500,8 @@ public final class DoomBspKernelBench {
       }
       require(index == uiAssetCount, "UI asset count mismatch");
     }
-    try (Statement statement = connection.createStatement();
-         ResultSet rows = statement.executeQuery(
-             "select t.a,t.x,t.y,t.c from at t join doom_asset a on a.asset_id=t.a " +
-             "where a.asset_kind='ui_patch' order by t.a,t.x,t.y")) {
-      int texels = 0;
-      while (rows.next()) {
-        int asset = uiAssetById.get(rows.getInt(1));
-        uiAssetTexels[asset][rows.getInt(2) * uiAssetHeight[asset] + rows.getInt(3)] =
-            (short) rows.getInt(4); texels++;
-      }
-      require(texels == 173_170, "UI texel count mismatch");
-    }
+    loadPackedTexels(connection, "ui_patch", uiAssetTexels,
+        uiAssetWidth, uiAssetHeight, 173_170);
     Integer statusBar = uiAssetByName.get("STBAR");
     Integer pistol = spriteAssetByName.get("PISGA0");
     require(statusBar != null, "STBAR asset missing");
@@ -546,7 +571,9 @@ public final class DoomBspKernelBench {
     portalCandidates = new byte[segTotal * WIDTH];
     projectedFirst = new int[segTotal]; projectedLast = new int[segTotal];
     nearestSolidDepth = new double[WIDTH];
-    columnCounts = new int[WIDTH]; columnSegs = new int[WIDTH * segTotal];
+    columnVisibleCount = new int[WIDTH];
+    columnVisibleSeg = new int[WIDTH * MAX_VISIBLE_PER_COLUMN];
+    columnVisibleDepth = new double[WIDTH * MAX_VISIBLE_PER_COLUMN];
     orderedSegs = new int[segTotal]; orderedDepths = new double[segTotal];
     portalClipTop = new double[WIDTH]; portalClipBottom = new double[WIDTH];
     wallFrame = new short[WIDTH * 200]; wallOwned = new byte[wallFrame.length];
@@ -616,8 +643,6 @@ public final class DoomBspKernelBench {
     candidatePairs += last - first + 1;
     projectedFirst[id] = first;
     projectedLast[id] = last;
-    for (int column = first; column <= last; column++)
-      columnSegs[column * segTotal + columnCounts[column]++] = id;
     if (retainCandidates) {
       int base = id * WIDTH;
       Arrays.fill(rawCandidates, base + first, base + last + 1, (byte) 1);
@@ -638,6 +663,7 @@ public final class DoomBspKernelBench {
 
   private static void applyPortalWalk(int px, int py, double dirX, double dirY,
       double plnX, double plnY, boolean retainCandidates) {
+    long stageStarted = System.nanoTime();
     activePortalPairs = 0;
     intervalTotal = 0;
     Arrays.fill(wallFrame, (short) -1); Arrays.fill(wallOwned, (byte) 0);
@@ -649,11 +675,10 @@ public final class DoomBspKernelBench {
       intervalOffset[column] = intervalTotal;
       portalClipTop[column] = 0.0; portalClipBottom[column] = 200.0;
       int orderedCount = 0;
-      int base = column * segTotal;
-      for (int i = 0; i < columnCounts[column]; i++) {
-        int id = columnSegs[base + i];
-        double depth = acceptedDepth(id, column, px, py, dirX, dirY, plnX, plnY);
-        if (Double.isNaN(depth)) continue;
+      int base = column * MAX_VISIBLE_PER_COLUMN;
+      for (int i = 0; i < columnVisibleCount[column]; i++) {
+        int id = columnVisibleSeg[base + i];
+        double depth = columnVisibleDepth[base + i];
         int at = orderedCount;
         while (at > 0 && (orderedDepths[at - 1] > depth ||
             (orderedDepths[at - 1] == depth &&
@@ -705,12 +730,19 @@ public final class DoomBspKernelBench {
       portalClipTop[column] = Math.max(0.0, clipTop);
       portalClipBottom[column] = Math.min(200.0, clipBottom);
     }
+    lastPortalNanos = System.nanoTime() - stageStarted;
+    stageStarted = System.nanoTime();
     drawPlanes(px, py, dirX, dirY, plnX, plnY);
+    lastPlaneNanos = System.nanoTime() - stageStarted;
+    stageStarted = System.nanoTime();
     drawSprites(px, py, dirX, dirY);
+    lastSpriteNanos = System.nanoTime() - stageStarted;
+    stageStarted = System.nanoTime();
     System.arraycopy(wallFrame, 0, presentationFrame, 0, wallFrame.length);
     for (int index = 0; index < presentationFrame.length; index++)
       if (overlayKind[index] != 0) presentationFrame[index] = overlayPalette[index];
     composeTicZeroPresentation();
+    lastPresentationNanos = System.nanoTime() - stageStarted;
   }
 
   private static void blit(short[] texels, int width, int height, int left, int top) {
@@ -761,6 +793,17 @@ public final class DoomBspKernelBench {
 
   private static void drawPlanes(int px, int py, double dirX, double dirY,
       double plnX, double plnY) {
+    int centerInterval = intervalOffset[WIDTH / 2];
+    double eyeZ = sectorFloor[intervalSector[centerInterval]] + 41.0;
+    for (int sector = 0; sector < sectorFloor.length; sector++) {
+      int base = sector * 200;
+      for (int row = 0; row < 100; row++)
+        planeCeilingDistance[base + row] =
+            (sectorCeiling[sector] - eyeZ) * projectionK / (99.5 - row);
+      for (int row = 100; row < 200; row++)
+        planeFloorDistance[base + row] =
+            (eyeZ - sectorFloor[sector]) * projectionK / (row - 99.5);
+    }
     for (int column = 0; column < WIDTH; column++) {
       double rayX = rayXProfile[activeAngle * WIDTH + column];
       double rayY = rayYProfile[activeAngle * WIDTH + column];
@@ -768,40 +811,34 @@ public final class DoomBspKernelBench {
       int endInterval = firstInterval + intervalCount[column];
       for (int interval = firstInterval; interval < endInterval; interval++) {
         int sector = intervalSector[interval];
-        double eyeZ = sectorFloor[intervalSector[firstInterval]] + 41.0;
         int firstRow = Math.max(0, (int) Math.ceil(intervalClipTop[interval] - .5));
         int endRow = Math.min(200, (int) Math.ceil(intervalClipBottom[interval] - .5));
         for (int row = firstRow; row < endRow; row++) {
           int frameOffset = column * 200 + row;
           if (wallOwned[frameOffset] != 0 || wallFrame[frameOffset] >= 0) continue;
-          double center = row + .5;
-          boolean ceiling = center < 100.0;
+          boolean ceiling = row < 100;
           if (ceiling && sectorCeiling[sector] <= eyeZ) continue;
           if (!ceiling && sectorFloor[sector] >= eyeZ) continue;
-          double distance = ceiling ?
-              (sectorCeiling[sector] - eyeZ) * projectionK / (100.0 - center) :
-              (eyeZ - sectorFloor[sector]) * projectionK / (center - 100.0);
+          int planeOffset = sector * 200 + row;
+          double distance = ceiling ? planeCeilingDistance[planeOffset] :
+              planeFloorDistance[planeOffset];
           if (distance < intervalStart[interval] || distance >= intervalEnd[interval]) continue;
           int raw;
           int light;
-          if (ceiling && "F_SKY1".equals(sectorCeilingFlat[sector])) {
-            Integer asset = wallAssetByName.get("SKY1");
-            require(asset != null, "SKY1 asset missing");
-            int x = wrap(sqlFloor(column / 2.0), wallAssetWidth[asset]);
-            int y = wrap(sqlFloor(center), wallAssetHeight[asset]);
-            raw = wallAssetTexels[asset][x * wallAssetHeight[asset] + y];
+          if (ceiling && sectorCeilingSky[sector] != 0) {
+            int x = wrap(sqlFloor(column / 2.0), wallAssetWidth[skyAsset]);
+            int y = wrap(row, wallAssetHeight[skyAsset]);
+            raw = wallAssetTexels[skyAsset][x * wallAssetHeight[skyAsset] + y];
             light = 255;
           } else {
-            String name = ceiling ? sectorCeilingFlat[sector] : sectorFloorFlat[sector];
-            Integer asset = flatAssetByName.get(name);
-            require(asset != null, "flat asset missing: " + name);
+            int asset = ceiling ? sectorCeilingAsset[sector] : sectorFloorAsset[sector];
             int x = wrap((int) Math.floor(px + rayX * distance), 64);
             int y = wrap((int) Math.floor(py + rayY * distance), 64);
             raw = flatAssetTexels[asset][x * 64 + y];
             light = sectorLight[sector];
           }
           if (raw < 0) continue;
-          int lightBand = Math.max(0, Math.min(31, (255 - light) / 8));
+          int lightBand = light == 255 ? 0 : sectorLightBand[sector];
           wallFrame[frameOffset] = colormap[lightBand * 256 + raw];
         }
       }
@@ -812,33 +849,42 @@ public final class DoomBspKernelBench {
     int centerColumn = WIDTH / 2;
     if (intervalCount[centerColumn] == 0) return;
     double eyeZ = sectorFloor[intervalSector[intervalOffset[centerColumn]]] + 41.0;
-    for (int mobj = 0; mobj < mobjCount; mobj++) {
-      double relX = mobjX[mobj] - px, relY = mobjY[mobj] - py;
-      double depth = relX * forwardX + relY * forwardY;
-      if (depth <= 1.0) continue;
-      double lateral = -relX * forwardY + relY * forwardX;
-      double bearing = Math.atan2(py - mobjY[mobj], px - mobjX[mobj]) * 180.0 / Math.PI;
-      double normalized = (bearing - mobjAngle[mobj] + 720.0) % 360.0;
-      int rotation = ((int) Math.floor((normalized + 22.5) / 45.0)) % 8 + 1;
-      int state = mobjState[mobj];
-      if (state < 0 || state >= catalogStateCount) continue;
-      int catalog = state * 9 + (catalogPresent[state * 9] != 0 ? 0 : rotation);
-      if (catalogPresent[catalog] == 0) continue;
-      int asset = catalogAsset[catalog];
-      int width = spriteAssetWidth[asset], height = spriteAssetHeight[asset];
-      double screenCenter = 160.0 + lateral * 160.0 / depth;
-      double scale = 160.0 / depth;
-      int left = (int) Math.floor(screenCenter - catalogLeft[catalog] * scale);
-      int right = (int) Math.ceil(screenCenter +
-          (width - catalogLeft[catalog]) * scale) - 1;
-      int top = (int) Math.floor(100.0 -
-          (mobjZ[mobj] + catalogTop[catalog] - eyeZ) * scale);
-      int bottom = (int) Math.ceil(100.0 -
-          (mobjZ[mobj] + catalogTop[catalog] - height - eyeZ) * scale) - 1;
-      int firstColumn = Math.max(0, left), endColumn = Math.min(WIDTH, right + 1);
-      int screenWidth = right - left + 1, screenHeight = bottom - top + 1;
-      if (firstColumn >= endColumn || screenWidth <= 0 || screenHeight <= 0) continue;
-      for (int column = firstColumn; column < endColumn; column++) {
+    for (int mobj = 0; mobj < mobjCount; mobj++)
+      projectSprite(mobj, px, py, forwardX, forwardY, eyeZ);
+  }
+
+  private static void projectSprite(int mobj, int px, int py, double forwardX,
+      double forwardY, double eyeZ) {
+    double relX = mobjX[mobj] - px, relY = mobjY[mobj] - py;
+    double depth = relX * forwardX + relY * forwardY;
+    if (depth <= 1.0) return;
+    double lateral = -relX * forwardY + relY * forwardX;
+    double bearing = Math.atan2(py - mobjY[mobj], px - mobjX[mobj]) * 180.0 / Math.PI;
+    double normalized = (bearing - mobjAngle[mobj] + 720.0) % 360.0;
+    int rotation = ((int) Math.floor((normalized + 22.5) / 45.0)) % 8 + 1;
+    int state = mobjState[mobj];
+    if (state < 0 || state >= catalogStateCount) return;
+    int catalog = state * 9 + (catalogPresent[state * 9] != 0 ? 0 : rotation);
+    if (catalogPresent[catalog] == 0) return;
+    int asset = catalogAsset[catalog];
+    int width = spriteAssetWidth[asset], height = spriteAssetHeight[asset];
+    double screenCenter = 160.0 + lateral * 160.0 / depth;
+    double scale = 160.0 / depth;
+    int left = (int) Math.floor(screenCenter - catalogLeft[catalog] * scale);
+    int right = (int) Math.ceil(screenCenter + (width - catalogLeft[catalog]) * scale) - 1;
+    int top = (int) Math.floor(100.0 - (mobjZ[mobj] + catalogTop[catalog] - eyeZ) * scale);
+    int bottom = (int) Math.ceil(100.0 -
+        (mobjZ[mobj] + catalogTop[catalog] - height - eyeZ) * scale) - 1;
+    rasterSprite(mobj, depth, catalog, asset, left, right, top, bottom);
+  }
+
+  private static void rasterSprite(int mobj, double depth, int catalog, int asset,
+      int left, int right, int top, int bottom) {
+    int width = spriteAssetWidth[asset], height = spriteAssetHeight[asset];
+    int firstColumn = Math.max(0, left), endColumn = Math.min(WIDTH, right + 1);
+    int screenWidth = right - left + 1, screenHeight = bottom - top + 1;
+    if (firstColumn >= endColumn || screenWidth <= 0 || screenHeight <= 0) return;
+    for (int column = firstColumn; column < endColumn; column++) {
         if (!(depth < nearestSolidDepth[column] - 1e-9)) continue;
         int interval = -1;
         int firstInterval = intervalOffset[column];
@@ -869,7 +915,6 @@ public final class DoomBspKernelBench {
             overlayAssetY[index] = assetY; overlayPalette[index] = (short) raw;
           }
         }
-      }
     }
   }
 
@@ -1033,6 +1078,7 @@ public final class DoomBspKernelBench {
   private static void applySolidCoverage(int px, int py, double dirX, double dirY,
       double plnX, double plnY, boolean retainCandidates) {
     Arrays.fill(nearestSolidDepth, Double.POSITIVE_INFINITY);
+    Arrays.fill(columnVisibleCount, 0);
     acceptedPairs = 0; visiblePairs = 0;
     if (retainCandidates) Arrays.fill(visibleCandidates, (byte) 0);
     for (int id = 0; id < segTotal; id++) {
@@ -1054,6 +1100,12 @@ public final class DoomBspKernelBench {
         double depth = acceptedDepth(id, column, px, py, dirX, dirY, plnX, plnY);
         if (!Double.isNaN(depth) && depth <= nearestSolidDepth[column] + 1e-9) {
           visiblePairs++;
+          int count = columnVisibleCount[column];
+          require(count < MAX_VISIBLE_PER_COLUMN, "visible seg capacity exceeded");
+          int visibleIndex = column * MAX_VISIBLE_PER_COLUMN + count;
+          columnVisibleSeg[visibleIndex] = id;
+          columnVisibleDepth[visibleIndex] = depth;
+          columnVisibleCount[column] = count + 1;
           if (retainCandidates) visibleCandidates[id * WIDTH + column] = 1;
         }
       }
@@ -1061,10 +1113,10 @@ public final class DoomBspKernelBench {
   }
 
   private static int traverseAndProject(int px, int py, int angle, boolean retainCandidates) {
+    long stageStarted = System.nanoTime();
     activeAngle = angle;
     visitedNodes = 0; visitedSubsectors = 0; projectedSegs = 0; candidatePairs = 0;
     Arrays.fill(projectedLast, -1);
-    Arrays.fill(columnCounts, 0);
     if (retainCandidates) Arrays.fill(rawCandidates, (byte) 0);
     double dirX = directionX[angle], dirY = directionY[angle];
     double plnX = planeX[angle], plnY = planeY[angle];
@@ -1092,7 +1144,10 @@ public final class DoomBspKernelBench {
         stackId[top] = childId[nearOffset]; stackLeaf[top++] = childLeaf[nearOffset];
       }
     }
+    lastBspNanos = System.nanoTime() - stageStarted;
+    stageStarted = System.nanoTime();
     applySolidCoverage(px, py, dirX, dirY, plnX, plnY, retainCandidates);
+    lastSolidNanos = System.nanoTime() - stageStarted;
     applyPortalWalk(px, py, dirX, dirY, plnX, plnY, retainCandidates);
     sink += activePortalPairs + visiblePairs + candidatePairs + visitedNodes;
     return activePortalPairs;
@@ -1506,6 +1561,41 @@ public final class DoomBspKernelBench {
     buildTicZeroJson(stateSha);
     compressJson();
   }
+
+  public static void renderTicZero(Blob payload) throws Exception {
+    require(payload != null, "caller-owned BLOB is required");
+    if (!databaseCacheLoaded) {
+      codecSha256 = MessageDigest.getInstance("SHA-256");
+      Connection internal = DriverManager.getConnection("jdbc:default:connection:");
+      load(internal);
+      databaseCacheLoaded = true;
+    }
+    long started = System.nanoTime();
+    traverseAndProject(-416, 256, 0, false);
+    lastRenderNanos = System.nanoTime() - started;
+    started = System.nanoTime();
+    encodePackedTicZeroPayload(ZERO_SHA);
+    lastCodecNanos = System.nanoTime() - started;
+    started = System.nanoTime();
+    payload.truncate(0);
+    int firstLength = Math.min(32767, codecGzipLength);
+    int written = payload.setBytes(1, codecGzip, 0, firstLength);
+    if (codecGzipLength > firstLength)
+      written += payload.setBytes(firstLength + 1, codecGzip, firstLength,
+          codecGzipLength - firstLength);
+    require(written == codecGzipLength, "short packed BLOB write");
+    lastBlobNanos = System.nanoTime() - started;
+  }
+
+  public static long lastRenderNanos() { return lastRenderNanos; }
+  public static long lastCodecNanos() { return lastCodecNanos; }
+  public static long lastBlobNanos() { return lastBlobNanos; }
+  public static long lastBspNanos() { return lastBspNanos; }
+  public static long lastSolidNanos() { return lastSolidNanos; }
+  public static long lastPortalNanos() { return lastPortalNanos; }
+  public static long lastPlaneNanos() { return lastPlaneNanos; }
+  public static long lastSpriteNanos() { return lastSpriteNanos; }
+  public static long lastPresentationNanos() { return lastPresentationNanos; }
 
   private static byte[] gunzip(byte[] bytes, int length) throws Exception {
     try (GZIPInputStream input = new GZIPInputStream(new ByteArrayInputStream(bytes, 0, length));

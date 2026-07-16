@@ -1203,6 +1203,24 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   because they have the best p95 and remain inside the internal-driver bound.
   Codec+BLOB component sum is 2.032499 ms p95; renderer+codec+BLOB component
   sum is 7.043515 ms. The real combined compiled-OJVM call is next.
+- The real combined compiled-OJVM gate passes (2026-07-15). Four deterministic
+  relational BLOB packs encode 1,256,192 wall, 200,704 flat, 331,474 sprite,
+  and 173,170 UI texels as exact unsigned big-endian `(palette_index + 1)`
+  values. External cold loading fell from 6.899 s to 1.810 s. Deep OJVM tracing
+  first isolated plane rasterization at 18.915 ms p95 of a 27.016 ms total.
+  Pre-resolved plane assets/light bands, per-frame sector-row distances, compact
+  visible seg/depth lists, removal of per-pixel map/string/division work, and
+  removal of the third determinant pass preserved every independent SQL oracle
+  result while reducing plane work to 2.697 ms p95. After a bounded 500-frame
+  native warmup, every selected hot method reports `IS_COMPILED=YES`; a clean
+  repeat of 1,500 stored-procedure frames measured 9.188/10.517/12.734 ms
+  p50/p95/p99 for exact renderer + packed-v2 codec + two-write BLOB. The full
+  SQL-call loop averaged 11.460 ms (about 87 FPS), with renderer 7.313 ms, codec
+  3.081 ms, and BLOB 0.061 ms p95.
+  This passes the <=20 ms renderer gate and leaves about 23 ms of the 33.3 ms
+  frame budget. Renderer micro-optimization is no longer the critical path;
+  implement a <=5 ms exact dynamic state snapshot and continue simulation/
+  history reduction before integrated AutoREST/browser measurement.
 - Local native-method evidence correction (2026-07-15): Oracle's foreground
   trace proves the disposable one-line `(I)I` method compiled successfully in
   59,470 ms; the client cutoff landed at completion. JIT, the descriptor, and
@@ -1235,8 +1253,9 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   composition exceeds 3 ms p95, warm snapshot plus render exceeds 17 ms p95,
   or renderer+codec+handoff exceeds 20 ms p95. Any missing SQL-winning primitive
   or unexplained pixel/RLE/payload mismatch fails immediately.
-- OJVM data architecture: load deterministic revision-keyed relational BLOB
-  packs into exact-width primitive session arrays through internal JDBC; do not
+- OJVM data architecture: load the selected deterministic revision-keyed
+  relational BLOB packs into exact-width primitive session arrays through
+  internal JDBC; do not
   fetch 3,040,239 `AT` rows per pooled session and do not embed a WAD. Cap and
   prewarm the real ORDS pool because OJVM static caches are database-session
   private. Retained immutable cache is capped at 12 MiB per pooled session and a

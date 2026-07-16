@@ -13,6 +13,7 @@ sql/schema/055_finalize_seed.sql
 sql/spatial/010_linedef_geometry.sql
 sql/bsp/010_bsp_location.sql
 sql/accel/010_blockmap_reject_graph.sql
+sql/accel/015_renderer_asset_pack.sql
 sql/render/r1/010_rays_intersections.sql
 sql/render/r1/020_pixels.sql
 sql/sim/020_movement_collision.sql

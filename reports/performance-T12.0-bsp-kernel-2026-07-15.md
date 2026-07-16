@@ -2,9 +2,9 @@
 
 Date: 2026-07-15
 
-This is the first implementation result after the relational-pixel renderer was
-rejected. It is a disposable algorithm-selection spike, not a production
-renderer and not a 30 FPS claim.
+This began as the algorithm-selection result after the relational-pixel renderer
+was rejected. It has now passed exact parity and the compiled OJVM component
+gate; integrated moving simulation/ORDS/browser playability is still pending.
 
 ## Implementation
 
@@ -147,17 +147,30 @@ Consequences:
   on the target Oracle environment; and
 - SQL remains the production renderer and exact independent oracle meanwhile.
 
+## Compiled OJVM update
+
+The deterministic asset packs and selected plane/visible-list work reduction
+were subsequently loaded into the real Oracle JVM stored-procedure path. The
+latest full SQL-oracle run again found zero missing, extra, or mismatched final
+pixels and measured 3.068 ms renderer p95 / 5.362 ms renderer+codec p95 on
+HotSpot. After 500 OJVM warm frames, every hot method was natively compiled.
+The 1,500-frame stored-procedure benchmark measured 10.262 ms p95 and 11.323 ms
+p99 for renderer + packed-v2 codec + caller-owned BLOB. A clean deployment
+repeat measured 10.517 ms p95 / 12.734 ms p99; its complete SQL-call loop
+averaged 11.460 ms. Plane work is now 2.673 ms p95, down from the traced
+18.915 ms bottleneck. See the
+[compiled OJVM report](performance-T12.0-ojvm-renderer-2026-07-15.md) for the
+stage table and reproduction commands.
+
 ## Next implementation
 
-1. Load the real renderer/codec into OJVM, compile every hot method, and measure
-   renderer+codec+the selected two-write caller-owned BLOB path in one call.
-2. Parameterize weapon/HUD values and add pause/menu/automap/intermission
+1. Parameterize the dynamic state snapshot, weapon/HUD values, and add
+   pause/menu/automap/intermission
    presentation parity.
-3. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and
-   enforce the 12 MiB/session and 5 ms warm-snapshot gates.
-4. Externally compile/load the representative methods, allow bounded cold JIT
-   warmup, and require compiled steady-state timing before integration.
-5. Coalesce plane work into horizontal spans before activating 640x400; the
+2. Enforce the 12 MiB/session cache and 5 ms warm-snapshot gates, then connect
+   the renderer to the production STEP response.
+3. Continue SQL simulation/history reduction from 70.581 ms p95 to <=10 ms p95.
+4. Coalesce plane work into horizontal spans before activating 640x400; the
    current direct indexed raster already passes 320x200 but scales per pixel.
 
 Run the current reproducible gate with:

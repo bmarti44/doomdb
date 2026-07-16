@@ -68,6 +68,19 @@ create table doom_asset_blob (
   constraint doom_asset_blob_asset_fk foreign key (asset_id) references doom_asset (asset_id)
 );
 
+create table doom_renderer_asset_pack (
+  asset_kind varchar2(20) not null,
+  format_version number(4) not null,
+  element_count number(12) not null,
+  payload_sha256 varchar2(64) not null,
+  encoded_bytes blob not null,
+  constraint doom_renderer_asset_pack_pk primary key (asset_kind),
+  constraint doom_renderer_asset_pack_version_ck check (format_version=1),
+  constraint doom_renderer_asset_pack_count_ck check (element_count>0),
+  constraint doom_renderer_asset_pack_sha_ck check
+    (regexp_like(payload_sha256,'^[0-9a-f]{64}$'))
+);
+
 create table at (
   a number(10) not null,
   x number(10) not null,
