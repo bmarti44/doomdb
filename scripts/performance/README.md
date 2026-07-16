@@ -7,6 +7,11 @@ against independent SQL intersection equations, and fails closed on a missing
 pair, greater-than-25% candidate retention, or greater-than-3 ms p95. It is an
 algorithm-selection harness, not production or final T12.1 evidence.
 
+`DoomStateCodecBench.java` and the `ojvm-state-codec-*.sql` scripts preserve the
+rejected canonical-state serializer spike.  It is byte/SHA exact, but its six
+internal-JDBC row walks measured 69.286/106.270 ms p50/p95.  The call specs are
+not part of bootstrap and the live probe objects are removed after measurement.
+
 `verify-performance-baseline.mjs` has two fail-closed modes. With one evidence
 path it verifies an already collected baseline and every referenced artifact.
 With `--collect REPLAY EVIDENCE`, it performs the real 300-frame replay and

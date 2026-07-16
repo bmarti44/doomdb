@@ -353,10 +353,12 @@ create or replace package body doom_combat as
   ) is
     l_x number;l_y number;l_spread number;l_damage number;
     l_dx number;l_dy number;l_ray_length number;l_wall number;l_target number;l_depth number;
+    l_far number;l_wall_fraction number;
     l_column number;
   begin
     select x,y into l_x,l_y from players
       where session_token=p_session and player_id=p_player;
+    select number_value into l_far from doom_config where config_key='FAR_DISTANCE';
     for pellet in 1..p_pellets loop
       l_spread:=(rng_draw(p_session)-rng_draw(p_session))*p_spread_scale;
       l_damage:=(mod(rng_draw(p_session),3)+1)*p_multiplier;
@@ -367,9 +369,15 @@ create or replace package body doom_combat as
         into l_dx,l_dy,l_ray_length
         from table(doom_r1_rays(p_session)) r where r.column_no=l_column;
       l_dx:=l_dx/l_ray_length;l_dy:=l_dy/l_ray_length;
-      select min(h.hit_t)*l_ray_length into l_wall
-      from table(doom_r1_hits(p_session)) h
-      where h.column_no=l_column and h.is_solid=1;
+      -- Combat needs one bounded collision ray, not the renderer's complete
+      -- 320-column intersection stream.  Reuse the exact line blocker used by
+      -- projectiles and splash occlusion, then convert its segment fraction to
+      -- world distance.  Keeping render expansion out of the simulation path
+      -- is essential for shotgun/multi-pellet latency.
+      l_wall_fraction:=first_blocking_depth(l_x,l_y,
+        l_x+l_dx*l_far,l_y+l_dy*l_far);
+      l_wall:=case when l_wall_fraction is null then null
+        else l_wall_fraction*l_far end;
       begin
         select mobj_id,depth into l_target,l_depth from (
           select m.mobj_id,

@@ -1292,6 +1292,22 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   mandatory bottleneck; continue reducing state serialization/hash, actor
   advancement, world machines, combat, history, command bookkeeping, and audio
   to <=10 ms p95. P12.0 remains active and P8 remains paused.
+- State/history and real-route checkpoint (2026-07-16): canonical SQL/JSON now
+  emits AL32UTF8 BLOB directly; command history writes through the persistent
+  SecureFile locator; interval snapshots wrap the state BLOB without a CLOB
+  round trip; zero-motion work is bounded; hitscan combat uses one collision
+  ray instead of expanding all 320 renderer columns; and monster perception
+  batches REJECT with BLOCKMAP-bounded exact LOS.  Modern state bytes/hashes,
+  the complete P6/P7 gates, and every 163-command opening-route checkpoint are
+  unchanged.  The best clean turn-only run is 21.260/30.856 ms p50/p95, while a
+  conservative later restart repeat is 24.162/36.939 ms with one background
+  outlier.  The moving/firing route fell from more than nine minutes before the
+  hitscan repair, to 9.5 seconds, then to 5.5 seconds after set-based LOS (about
+  29.6 simulation tics/s including setup and assertions).  The compiled
+  10.517-ms-p95 renderer remains a complete tic-zero parity kernel, not yet a
+  dynamic STEP integration.  No integrated 30 FPS claim is permitted.  The next
+  structural work is the dynamic actor/sector snapshot plus production OJVM
+  STEP integration; canonical SQL remains the differential oracle.
 - New ray, screen-axis, clip, span, and cache-key relations use an explicit
   resolution profile.  `CANONICAL_320X200` remains the only selected profile and
   keeps all reviewed hashes.  A future 640x400 profile is a required design

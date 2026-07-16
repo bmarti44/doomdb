@@ -18,7 +18,8 @@ create or replace package body doom_monsters as
     damage_base number,damage_dice number,projectile_thing_type number,
     drop_thing_type number,see_state_id varchar2(64),chase_state_id varchar2(64),
     melee_state_id varchar2(64),missile_state_id varchar2(64),
-    pain_state_id varchar2(64),death_state_id varchar2(64)
+    pain_state_id varchar2(64),death_state_id varchar2(64),rejected number,
+    visible number
   );
   type actor_snapshot is table of actor_record index by pls_integer;
 
@@ -69,7 +70,8 @@ create or replace package body doom_monsters as
 
   function exact_visible(
     p_session varchar2,p_x number,p_y number,p_z number,p_source_sector number,
-    p_target_x number,p_target_y number,p_target_z number,p_target_sector number
+    p_target_x number,p_target_y number,p_target_z number,p_target_sector number,
+    p_known_rejected number default null
   ) return number is
     l_blocker number;
   begin
@@ -78,7 +80,11 @@ create or replace package body doom_monsters as
     -- DOOM_REJECT_BYTE is a negative-only filter. An unset REJECT bit proceeds
     -- to an exact INTERSECT determinant path; DOOM_R1_RAYS uses the same
     -- LINEDEF rational NUMERATOR/DENOMINATOR/DISTANCE ordering convention.
-    if reject_pair(p_source_sector,p_target_sector)=1 then return 0;end if;
+    if p_known_rejected is not null then
+      if p_known_rejected=1 then return 0;end if;
+    elsif reject_pair(p_source_sector,p_target_sector)=1 then
+      return 0;
+    end if;
     begin
       select linedef_id into l_blocker from (
         select hit.*,
@@ -105,13 +111,23 @@ create or replace package body doom_monsters as
               coalesce(rss.floor_height,rs.floor_height) right_floor,
               coalesce(lss.ceiling_height,ls.ceiling_height) left_ceiling,
               coalesce(lss.floor_height,ls.floor_height) left_floor
-            from doom_los_segment l
+            from doom_block_cell bc
+            join doom_block_line bl on bl.cell_id=bc.cell_id
+            join doom_los_segment l on l.linedef_id=bl.linedef_id
             join doom_map_sector rs on rs.sector_id=l.right_sector_id
             left join sector_state rss on rss.session_token=p_session
               and rss.sector_id=rs.sector_id
             left join doom_map_sector ls on ls.sector_id=l.left_sector_id
             left join sector_state lss on lss.session_token=p_session
               and lss.sector_id=ls.sector_id
+            where bc.world_min_x<=greatest(p_x,p_target_x)
+              and bc.world_min_x+128>=least(p_x,p_target_x)
+              and bc.world_min_y<=greatest(p_y,p_target_y)
+              and bc.world_min_y+128>=least(p_y,p_target_y)
+              and greatest(l.vx,l.vx+l.sx)>=least(p_x,p_target_x)
+              and least(l.vx,l.vx+l.sx)<=greatest(p_x,p_target_x)
+              and greatest(l.vy,l.vy+l.sy)>=least(p_y,p_target_y)
+              and least(l.vy,l.vy+l.sy)<=greatest(p_y,p_target_y)
           ) geometry
         ) hit
         where hit.distance_denominator<>0
@@ -280,8 +296,7 @@ create or replace package body doom_monsters as
   begin
     l_distance:=sqrt(power(p_player_x-p_actor.x,2)+power(p_player_y-p_actor.y,2));
     if p_actor.attack_kind='MELEE' and l_distance>p_actor.melee_range then return;end if;
-    if exact_visible(p_session,p_actor.x,p_actor.y,p_actor.z,p_actor.sector_id,
-                     p_player_x,p_player_y,p_player_z,p_player_sector)=0 then return;end if;
+    if p_actor.visible=0 then return;end if;
     if p_actor.attack_kind='PROJECTILE' then
       spawn_projectile(p_session,p_tic,p_actor,p_player_x,p_player_y);
     elsif p_actor.attack_kind='HITSCAN' then
@@ -309,6 +324,7 @@ create or replace package body doom_monsters as
     l_px number;l_py number;l_pz number;l_player_sector number;l_player_target number;
     l_sound number;l_seen_health number;l_roll number;l_next varchar2(64);
     l_next_tics number;l_action varchar2(64);l_distance number;l_state varchar2(64);
+    l_visible number;l_wake number;
   begin
     select g.current_player_id,p.x,p.y,p.z
       into l_player,l_px,l_py,l_pz
@@ -320,6 +336,13 @@ create or replace package body doom_monsters as
       where session_token=p_session_token and mobj_id=l_player;
     l_sound:=player_made_sound(p_session_token,p_tic);
 
+    -- Repair only legacy/null derived locations before the immutable actor
+    -- snapshot.  The snapshot already used this same BSP result previously.
+    update mobjs m set sector_id=(
+      select sector_id from table(doom_bsp_locate(m.x,m.y)) where rownum=1
+    ) where m.session_token=p_session_token and m.sector_id is null
+      and exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type);
+
     -- Relational behavior and state graph are captured before any mutation.
     -- DOOM_MONSTER_DEF JOIN DOOM_STATE_DEF pins STATE_TICS/NEXT_STATE_ID.
     for row_ in (
@@ -329,9 +352,44 @@ create or replace package body doom_monsters as
         m.death_processed,d.speed,d.pain_chance,d.melee_range,d.attack_kind,
         d.damage_base,d.damage_dice,d.projectile_thing_type,d.drop_thing_type,
         d.see_state_id,d.chase_state_id,d.melee_state_id,d.missile_state_id,
-        d.pain_state_id,d.death_state_id,s.next_state_id,s.tics state_duration
+        d.pain_state_id,d.death_state_id,s.next_state_id,s.tics state_duration,
+        coalesce(r.rejected,1) rejected,
+        case when coalesce(r.rejected,1)=1 then 0
+          when exists (
+            select 1 from doom_block_cell bc
+            join doom_block_line bl on bl.cell_id=bc.cell_id
+            join doom_los_segment los on los.linedef_id=bl.linedef_id
+            join doom_map_sector rs on rs.sector_id=los.right_sector_id
+            left join sector_state rss on rss.session_token=p_session_token
+              and rss.sector_id=rs.sector_id
+            left join doom_map_sector ls on ls.sector_id=los.left_sector_id
+            left join sector_state lss on lss.session_token=p_session_token
+              and lss.sector_id=ls.sector_id
+            where bc.world_min_x<=greatest(m.x,l_px)
+              and bc.world_min_x+128>=least(m.x,l_px)
+              and bc.world_min_y<=greatest(m.y,l_py)
+              and bc.world_min_y+128>=least(m.y,l_py)
+              and greatest(los.vx,los.vx+los.sx)>=least(m.x,l_px)
+              and least(los.vx,los.vx+los.sx)<=greatest(m.x,l_px)
+              and greatest(los.vy,los.vy+los.sy)>=least(m.y,l_py)
+              and least(los.vy,los.vy+los.sy)<=greatest(m.y,l_py)
+              and ((l_px-m.x)*los.sy-(l_py-m.y)*los.sx)<>0
+              and ((los.vx-m.x)*los.sy-(los.vy-m.y)*los.sx) /
+                  ((l_px-m.x)*los.sy-(l_py-m.y)*los.sx)>0
+              and ((los.vx-m.x)*los.sy-(los.vy-m.y)*los.sx) /
+                  ((l_px-m.x)*los.sy-(l_py-m.y)*los.sx)<1
+              and ((los.vx-m.x)*(l_py-m.y)-(los.vy-m.y)*(l_px-m.x)) /
+                  ((l_px-m.x)*los.sy-(l_py-m.y)*los.sx) between 0 and 1
+              and (los.left_sector_id is null
+                or least(coalesce(rss.ceiling_height,rs.ceiling_height),
+                         coalesce(lss.ceiling_height,ls.ceiling_height))
+                   <=greatest(coalesce(rss.floor_height,rs.floor_height),
+                              coalesce(lss.floor_height,ls.floor_height)))
+          ) then 0 else 1 end visible
       from mobjs m join doom_monster_def d on d.thing_type=m.thing_type
       join doom_state_def s on s.state_id=m.state_id
+      left join doom_sector_reject r on r.source_sector_id=m.sector_id
+        and r.target_sector_id=l_player_sector
       where m.session_token=p_session_token
       order by m.mobj_id
     ) loop
@@ -354,19 +412,21 @@ create or replace package body doom_monsters as
       l_actors(l_count).see_state_id:=row_.see_state_id;l_actors(l_count).chase_state_id:=row_.chase_state_id;
       l_actors(l_count).melee_state_id:=row_.melee_state_id;l_actors(l_count).missile_state_id:=row_.missile_state_id;
       l_actors(l_count).pain_state_id:=row_.pain_state_id;l_actors(l_count).death_state_id:=row_.death_state_id;
+      l_actors(l_count).rejected:=case when row_.sector_id is null
+        then reject_pair(l_actors(l_count).sector_id,l_player_sector)
+        else row_.rejected end;
+      l_actors(l_count).visible:=row_.visible;
     end loop;
 
     -- Apply common prior-tic housekeeping with one set operation. Sector IDs
     -- are maintained by CHASE_MOVE; only initial legacy/null rows need the
     -- bounded BSP location repair.
-    update mobjs m set sector_id=(
-      select sector_id from table(doom_bsp_locate(m.x,m.y)) where rownum=1
-    ) where m.session_token=p_session_token and m.sector_id is null
-      and exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type);
     update mobjs m set monster_health_seen=m.health,
       attack_cooldown=greatest(0,m.attack_cooldown-1)
       where m.session_token=p_session_token
-        and exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type);
+        and exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type)
+        and (m.monster_health_seen is null or m.monster_health_seen<>m.health
+          or m.attack_cooldown>0);
 
     for i in 1..l_count loop
       l_seen_health:=coalesce(l_actors(i).monster_health_seen,l_actors(i).health);
@@ -414,20 +474,22 @@ create or replace package body doom_monsters as
         end if;
       end if;
 
-      if l_actors(i).awake=0 and
-         ((l_sound=1 and sound_reach(l_player_sector,l_actors(i).sector_id)=1)
-          or exact_visible(p_session_token,l_actors(i).x,l_actors(i).y,
-             l_actors(i).z,l_actors(i).sector_id,l_px,l_py,l_pz,
-             l_player_sector)=1) then
+      l_wake:=0;l_visible:=l_actors(i).visible;
+      if l_actors(i).awake=0 then
+        if l_sound=1 and sound_reach(l_player_sector,l_actors(i).sector_id)=1 then
+          l_wake:=1;
+        else
+          l_wake:=l_visible;
+        end if;
+      end if;
+      if l_actors(i).awake=0 and l_wake=1 then
         select tics into l_next_tics from doom_state_def
           where state_id=l_actors(i).see_state_id;
         update mobjs set awake=1,target_mobj_id=l_player_target,
           state_id=l_actors(i).see_state_id,state_tics=l_next_tics
           where session_token=p_session_token and mobj_id=l_actors(i).mobj_id;
         emit_event(p_session_token,p_tic,'MONSTER_WAKE',l_actors(i).mobj_id,
-          l_player_target,null,case when exact_visible(p_session_token,
-            l_actors(i).x,l_actors(i).y,l_actors(i).z,l_actors(i).sector_id,
-            l_px,l_py,l_pz,l_player_sector)=1 then 'SEEN' else 'HEARD' end);
+          l_player_target,null,case when l_visible=1 then 'SEEN' else 'HEARD' end);
         continue;
       elsif l_actors(i).awake=0 then
         continue;

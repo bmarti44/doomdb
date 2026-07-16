@@ -26,6 +26,11 @@ create or replace package body doom_tic_tx as
     return lower(rawtohex(dbms_crypto.hash(p_document, dbms_crypto.hash_sh256)));
   end;
 
+  function sha256(p_document blob) return varchar2 is
+  begin
+    return lower(rawtohex(dbms_crypto.hash(p_document, dbms_crypto.hash_sh256)));
+  end;
+
   function utf8_blob(p_document clob) return blob is
     l_blob blob;
     l_dest integer := 1;
@@ -40,8 +45,8 @@ create or replace package body doom_tic_tx as
     return l_blob;
   end;
 
-  function state_document(p_session varchar2,p_legacy number) return clob is
-    l_document clob;
+  function state_document(p_session varchar2,p_legacy number) return blob is
+    l_document blob;
   begin
     select json_object(
       'schema' value 1,
@@ -83,7 +88,7 @@ create or replace package body doom_tic_tx as
           'kill_count' value p.kill_count, 'item_count' value p.item_count,
           'secret_count' value p.secret_count, 'alive' value p.alive,
           'noclip' value p.noclip
-          returning clob)
+          returning varchar2(4000))
         from players p
         where p.session_token=s.session_token and p.player_id=s.current_player_id
       ) format json,
@@ -106,7 +111,7 @@ create or replace package body doom_tic_tx as
           'awake' value awake,
           'attack_cooldown' value attack_cooldown,
           'monster_health_seen' value monster_health_seen,
-          'death_processed' value death_processed returning clob)
+          'death_processed' value death_processed returning varchar2(4000))
           order by mobj_id returning clob)
         from mobjs where session_token=s.session_token), to_clob('[]')) format json,
       'sectors' value coalesce((
@@ -115,12 +120,12 @@ create or replace package body doom_tic_tx as
           'ceiling_height' value ceiling_height, 'light_level' value light_level,
           'light_timer' value light_timer,
           'secret_found' value secret_found, 'damage_clock' value damage_clock
-          returning clob) order by sector_id returning clob)
+          returning varchar2(4000)) order by sector_id returning clob)
         from sector_state where session_token=s.session_token), to_clob('[]')) format json,
       'lines' value coalesce((
         select json_arrayagg(json_object(
           'linedef_id' value linedef_id, 'trigger_count' value trigger_count,
-          'switch_on' value switch_on returning clob)
+          'switch_on' value switch_on returning varchar2(4000))
           order by linedef_id returning clob)
         from line_state where session_token=s.session_token), to_clob('[]')) format json,
       'movers' value coalesce((
@@ -130,17 +135,17 @@ create or replace package body doom_tic_tx as
           'target_height' value target_height, 'wait_tics' value wait_tics,
           'timer_tics' value timer_tics, 'mover_kind' value mover_kind,
           'origin_height' value origin_height,
-          'source_linedef_id' value source_linedef_id returning clob)
+          'source_linedef_id' value source_linedef_id returning varchar2(4000))
           order by mover_id returning clob)
         from active_movers where session_token=s.session_token), to_clob('[]')) format json,
       'switches' value coalesce((
         select json_arrayagg(json_object(
           'linedef_id' value linedef_id, 'timer_tics' value timer_tics,
-          'restore_texture' value restore_texture returning clob)
+          'restore_texture' value restore_texture returning varchar2(4000))
           order by linedef_id returning clob)
         from active_switches where session_token=s.session_token), to_clob('[]')) format json,
       'ordering_version' value 'APPENDIX-F-1'
-      absent on null returning clob)
+      absent on null returning blob)
       into l_document
       from game_sessions s where s.session_token=p_session;
     if p_legacy=1 then
@@ -164,7 +169,7 @@ create or replace package body doom_tic_tx as
         remove '$.mobjs[*].awake',
         remove '$.mobjs[*].attack_cooldown',
         remove '$.mobjs[*].monster_health_seen',
-        remove '$.mobjs[*].death_processed' returning clob)
+        remove '$.mobjs[*].death_processed' returning blob)
         into l_document from dual;
     end if;
     return l_document;
@@ -238,11 +243,11 @@ create or replace package body doom_tic_tx as
     l_command_sha varchar2(64);
     l_cached_sha varchar2(64);
     l_cached blob;
-    l_state_document clob;
+    l_state_document blob;
     l_state_sha varchar2(64);
     l_payload clob;
     l_payload_blob blob;
-    l_snapshot_blob blob;
+    l_command_state_blob blob;
     l_input_blob blob;
     l_event_count number;
     l_bad number;
@@ -448,7 +453,7 @@ create or replace package body doom_tic_tx as
         command_row.cheat_code,l_previous_command_sha,l_row_command_sha,
         '0000000000000000000000000000000000000000000000000000000000000000',
         '0000000000000000000000000000000000000000000000000000000000000000',
-        empty_blob());
+        empty_blob()) returning state_blob into l_command_state_blob;
       update history_heads set command_sha=l_row_command_sha
         where session_token=p_session and lineage=l_lineage;
 
@@ -468,9 +473,17 @@ create or replace package body doom_tic_tx as
                       +command_row.strafe*sin(l_angle*acos(-1)/180))*8*(command_row.run+1);
         l_delta_y := (command_row.forward_move*sin(l_angle*acos(-1)/180)
                       -command_row.strafe*cos(l_angle*acos(-1)/180))*8*(command_row.run+1);
-        select player_id,dest_x,dest_y,dest_z,view_height
-          into l_move_player,l_dest_x,l_dest_y,l_dest_z,l_dest_view
-          from table(doom_player_move(p_session,l_delta_x,l_delta_y));
+        if l_delta_x=0 and l_delta_y=0 then
+          select player_id,x,y,z,view_height
+            into l_move_player,l_dest_x,l_dest_y,l_dest_z,l_dest_view
+            from players where session_token=p_session and player_id=(
+              select current_player_id from game_sessions
+                where session_token=p_session);
+        else
+          select player_id,dest_x,dest_y,dest_z,view_height
+            into l_move_player,l_dest_x,l_dest_y,l_dest_z,l_dest_view
+            from table(doom_player_move(p_session,l_delta_x,l_delta_y));
+        end if;
         update players set x=l_dest_x,y=l_dest_y,z=l_dest_z,view_height=l_dest_view
           where session_token=p_session and player_id=l_move_player;
         doom_world_machines.advance(p_session,l_tic+command_row.ord,
@@ -485,13 +498,21 @@ create or replace package body doom_tic_tx as
         automap_state=l_automap,game_mode=l_mode where session_token=p_session;
       l_state_document:=state_document(p_session,l_legacy);
       l_state_sha:=sha256(l_state_document);
-      l_snapshot_blob:=utf8_blob(l_state_document);
-      update tic_commands set state_sha=l_state_sha,frame_sha=l_state_sha,
-        state_blob=l_snapshot_blob
+      update tic_commands set state_sha=l_state_sha,frame_sha=l_state_sha
         where session_token=p_session and lineage=l_lineage
           and command_seq=command_row.seq;
-      if l_legacy=0 or command_row.ord=l_count then
-        doom_history.capture_tic(p_session,l_tic+command_row.ord,l_state_document,
+      -- Write into the persistent SecureFile locator captured by the insert.
+      -- Assigning the temporary JSON BLOB through SQL made Oracle copy the
+      -- complete state through the row update path a second time.
+      dbms_lob.copy(l_command_state_blob,l_state_document,
+        dbms_lob.getlength(l_state_document),1,1);
+      -- Modern lineages only persist history documents at the reviewed four-tic
+      -- checkpoint cadence.  Per-command hashes/BLOBs are already complete;
+      -- avoid re-hashing the same 200+ KiB state in the history adapter on the
+      -- three non-checkpoint tics.  Legacy batches retain their terminal call.
+      if (l_legacy=0 and mod(l_tic+command_row.ord,4)=0)
+         or (l_legacy=1 and command_row.ord=l_count) then
+        doom_capture_tic_blob(p_session,l_tic+command_row.ord,l_state_document,
           l_state_sha,l_state_sha);
       end if;
     end loop;

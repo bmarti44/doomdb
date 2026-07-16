@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | The compiled database-resident renderer passes at 10.517 ms p95 end-to-end. Exact restart-safe SQL simulation is improved to 36.842/49.503 ms p50/p95 but still exceeds the integrated budget. |
+| P12.0 | Active playability gate | The complete tic-zero OJVM renderer/codec kernel passes at 10.517 ms p95. SQL simulation reached 21.260/30.856 ms in its best clean turn-only run and 24.162/36.939 ms in a conservative later restart repeat; dynamic STEP rendering and the integrated 30 FPS gate remain incomplete. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -54,7 +54,9 @@ Route evaluation exposed and fixed four production integration defects: a
 portal-free boundary transition, stale MOBJ self-references at commit, command
 reads leaking across save/load lineages, and occupied lifts refusing to rise.
 Focused regressions and the complete adjacent P6/P7 gates pass after the fixes.
-A standalone public 163-tic prefix runs in about 31 seconds. The pulled-forward
+A standalone exact 163-tic moving/firing prefix now runs in about 5.5 seconds,
+down from 9.5 seconds after the first combat repair and more than nine minutes
+before it. The pulled-forward
 T12.0 staging path now completes its best warm clean `NEW_GAME` in 6.97 seconds with
 the exact prior state hash, frame hash, and 92,658-byte payload, down from
 121.79 seconds. A second from-zero bootstrap completed all 41 files with zero
@@ -85,9 +87,11 @@ The corrected production-boundary render-free baseline for
 turn tics. Exact relational sound-graph closure removed a 95.6 ms repeated BFS
 spike; bulk actor housekeeping, one-pass light-neighbor derivation, and modern
 state-document work reduction and packed immutable LOS inputs bring the selected
-result initially to 41.4 ms p50 / 70.6 ms p95. Exact lineage-state, packed
-collision, native PL/SQL, and static-sector-runtime work now reduce it further
-to a restart-safe 36.842 ms p50 / 49.503 ms p95. A production-shaped brute OJVM analytic probe was rejected at
+result initially to 41.4 ms p50 / 70.6 ms p95. Direct BLOB state generation,
+persistent-locator history writes, BLOB-native interval snapshots, zero-motion
+guards, bounded hitscan, and set-based BLOCKMAP LOS subsequently reached
+21.260/30.856 ms in the best clean turn-only run; a conservative later restart
+repeat measured 24.162/36.939 ms with one background outlier. A production-shaped brute OJVM analytic probe was rejected at
 1,133.9/1,461.5 ms p50/p95 with a 244 KB compressed payload; it proves that the
 Java path also needs BSP/solid-column/span work reduction and smaller separately
 compiled hot methods. P12.0 therefore has two mandatory workstreams: an exact array-based
@@ -110,7 +114,7 @@ method compiled successfully in 59.47 seconds, with the cold compiler heavily
 constrained by memory and CPU throttling. Deployment compilation will be warmed
 separately; only compiled steady-state calls count toward the frame budget.
 
-That compiled steady-state gate now passes. Four deterministic relational BLOB
+The compiled tic-zero steady-state gate now passes. Four deterministic relational BLOB
 packs replace row-at-a-time wall, flat, sprite, and UI texel loading. After a
 bounded 500-frame same-session JIT warmup, 1,500 real caller-owned-BLOB calls
 measured a conservative repeat of 9.188 / 10.517 / 12.734 ms p50/p95/p99 for
@@ -118,8 +122,8 @@ renderer + packed-v2 codec + BLOB, while the complete SQL-call loop averaged
 11.460 ms. Every selected hot renderer method was natively compiled. Deep
 tracing shows 7.313 ms renderer, 3.081 ms codec, and 0.061 ms BLOB p95; the
 former plane bottleneck is down from 18.915 ms to 2.673 ms p95. This is roughly
-87 FPS by measured call mean and leaves about
-23 ms of the 33.3 ms frame budget for the rest of the request path. The full
+87 FPS by measured call mean for that kernel. It is not yet the dynamic STEP
+renderer and therefore does not prove an integrated frame budget. The full
 evidence is in
 [reports/performance-T12.0-ojvm-renderer-2026-07-15.md](reports/performance-T12.0-ojvm-renderer-2026-07-15.md).
 
@@ -156,12 +160,14 @@ BLOB handoff is 0.063 ms p95 and the full renderer+codec+BLOB total is
 
 ## Is it playable yet?
 
-The renderer itself is fast enough: its complete compiled Oracle JVM path is
-10.517 ms p95 and averages about 87 FPS in the measured SQL-call loop. The game
-is not interactively playable through the public API yet, because the selected
-render-free SQL simulation is still 36.842 ms p50 / 49.503 ms p95 before render,
-ORDS, decode, or blit. P12.0 therefore remains active until the integrated
-unique-moving-frame path sustains 30 FPS at both p50 and p95.
+The complete tic-zero renderer kernel is fast enough at 10.517 ms p95, and the
+exact moving/firing simulation route is now roughly 29.6 tics/s including setup
+and assertions. The game is still not verified as interactively playable:
+dynamic OJVM STEP rendering is not integrated, and the conservative turn-only
+simulation repeat is 24.162/36.939 ms p50/p95 before render, ORDS, decode, or
+blit. Its component p95 plus the renderer kernel is about 47.5 ms. P12.0 remains
+active until the same unique moving frames sustain 30 FPS at both p50 and p95
+through the public browser path.
 
 ## Local review
 

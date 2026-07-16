@@ -760,3 +760,73 @@ create or replace package body doom_history as
   end;
 end doom_history;
 /
+
+-- The reviewed DOOM_HISTORY API remains exactly six procedures.  The tic hot
+-- path uses this standalone BLOB adapter so non-checkpoint tics do not pay for
+-- an otherwise redundant BLOB-to-CLOB conversion.
+create or replace procedure doom_capture_tic_blob(
+  p_session in varchar2,p_tic in number,p_state_blob in blob,
+  p_state_sha in varchar2,p_frame_sha in varchar2
+) authid definer is
+  c_bad_history constant pls_integer := -20891;
+  c_zero_sha constant varchar2(64) := rpad('0',64,'0');
+  c_reviewed_interval constant pls_integer := 4;
+  l_lineage varchar2(64);l_current number;l_interval number;l_command_sha varchar2(64);
+  l_event_sha varchar2(64);l_frame_sha varchar2(64);l_frontier number;l_first number;
+  l_snapshot blob;l_snapshot_sha varchar2(64);
+begin
+  select save_lineage,current_tic into l_lineage,l_current from game_sessions
+    where session_token=p_session for update;
+  if p_tic<>l_current
+     or lower(rawtohex(dbms_crypto.hash(p_state_blob,dbms_crypto.hash_sh256)))<>p_state_sha then
+    raise_application_error(c_bad_history,'capture state mismatch');
+  end if;
+  begin
+    select command_sha,frame_sha into l_command_sha,l_frame_sha from (
+      select command_sha,frame_sha from tic_commands where session_token=p_session
+        and lineage=l_lineage and tic<=p_tic
+      order by tic desc,command_ordinal desc,command_seq desc)
+    where rownum=1;
+  exception when no_data_found then l_command_sha:=c_zero_sha;
+  end;
+  if l_command_sha=c_zero_sha then
+    raise_application_error(c_bad_history,'captured tic has no command');
+  end if;
+  select number_value into l_interval from doom_config
+    where config_key='HISTORY_SNAPSHOT_INTERVAL';
+  if not regexp_like(l_lineage,'^[0-9a-f]{64}$')
+     or mod(p_tic,c_reviewed_interval)=0 or mod(p_tic,l_interval)=0 then
+    begin
+      select event_sha into l_event_sha from (
+        select event_sha from (
+          select tic,event_ordinal,0 event_kind,event_sha from game_events
+            where session_token=p_session and lineage=l_lineage and tic<=p_tic
+          union all
+          select tic,event_ordinal,1,event_sha from audio_events
+            where session_token=p_session and lineage=l_lineage and tic<=p_tic)
+        order by tic desc,event_kind desc,event_ordinal desc)
+      where rownum=1;
+    exception when no_data_found then l_event_sha:=c_zero_sha;
+    end;
+    select last_command_seq into l_frontier from game_sessions
+      where session_token=p_session for update;
+    select coalesce(min(command_seq),l_frontier+1) into l_first from tic_commands
+      where session_token=p_session and lineage=l_lineage;
+    select json_object('schema' value 1,'lineage' value l_lineage,
+      'frontier' value l_frontier,'command_sha' value l_command_sha,
+      'event_sha' value l_event_sha,'state_sha' value p_state_sha,
+      'frame_sha' value p_frame_sha,'state' value p_state_blob format json
+      returning blob) into l_snapshot from dual;
+    l_snapshot_sha:=lower(rawtohex(dbms_crypto.hash(
+      l_snapshot,dbms_crypto.hash_sh256)));
+    begin
+      insert into state_history(session_token,lineage,tic,first_command_seq,
+        last_command_seq,state_sha,command_sha,event_sha,frame_sha,snapshot_sha,
+        snapshot_reason,snapshot_blob)
+      values(p_session,l_lineage,p_tic,l_first,l_frontier,p_state_sha,l_command_sha,
+        l_event_sha,p_frame_sha,l_snapshot_sha,'INTERVAL',l_snapshot);
+    exception when dup_val_on_index then null;
+    end;
+  end if;
+end;
+/

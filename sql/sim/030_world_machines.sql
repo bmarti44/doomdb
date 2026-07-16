@@ -417,6 +417,9 @@ create or replace package body doom_world_machines as
       end loop;
     end if;
 
+    -- A zero-length player segment cannot cross a WALK trigger.  Avoid the
+    -- full special-linedef determinant scan on stationary/turn-only tics.
+    if l_x<>p_previous_x or l_y<>p_previous_y then
     for crossed in (
       select * from (
         select ml.linedef_id,ml.special,ml.tag,d.semantics,
@@ -435,6 +438,7 @@ create or replace package body doom_world_machines as
     ) loop
       dispatch_line(p_session,p_tic,crossed.linedef_id,crossed.special,crossed.tag,crossed.semantics,l_blue);
     end loop;
+    end if;
 
     advance_movers(p_session,p_tic);
     advance_switches(p_session,p_tic);

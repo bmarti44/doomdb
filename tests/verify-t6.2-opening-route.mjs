@@ -42,6 +42,19 @@ const calls=batches.map(batch=>{
     `\n  mark_(${last});`:'';
   return `  doom_tic_tx.apply_batch(k_token,to_clob('${q({v:1,commands:batch})}'),l_payload);${mark}`;
 }).join('\n');
+const profile=process.env.DOOMDB_PROFILE_ROUTE==='1';
+const profileStart=profile?`
+  l_profiler_code:=dbms_profiler.start_profiler(
+    'T12.0 moving firing route','163 exact public route commands',l_profiler_run);
+  ok(l_profiler_code=0,'route profiler start failed');`:'';
+const profileStop=profile?`
+  l_profiler_code:=dbms_profiler.stop_profiler;
+  ok(l_profiler_code=0,'route profiler stop failed');
+  l_profiler_code:=dbms_profiler.flush_data;
+  ok(l_profiler_code=0,'route profiler flush failed');
+  delete from game_sessions where session_token=k_token;
+  commit;
+  dbms_output.put_line('ROUTE_PROFILER_RUN|'||l_profiler_run);`:'  rollback;';
 
 const sql=`
 set serveroutput on size unlimited
@@ -50,6 +63,7 @@ declare
   k_token constant varchar2(32):='7436326f70656e696e67726f75746531';
   l_payload blob;l_spawn_x number;l_spawn_y number;l_spawn_z number;
   l_spawn_angle number;l_spawn_sector number;
+  l_profiler_code binary_integer;l_profiler_run number;
   procedure ok(p_value boolean,p_message varchar2) is
   begin if not p_value then raise_application_error(-20927,p_message);end if;end;
   procedure mark_(p_seq number) is
@@ -137,8 +151,9 @@ begin
     from doom_map_thing t join doom_thing_type_def d on d.thing_type=t.thing_type
     join doom_state_def s on s.state_id=d.spawn_state_id
    where t.thing_type<>1 and d.spawn_state_id is not null;
+${profileStart}
 ${calls}
-  rollback;
+${profileStop}
 end;
 /
 `;
