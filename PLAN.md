@@ -1423,6 +1423,14 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   byte-for-byte. Preloaded lookup+NUMBER add measured 0.54–0.69 us/op and exact
   quadratic entry 9.7–15.0 us/op; runtime trig is not selected. See
   `reports/performance-P12.0-sol-max-resident-simulation-2026-07-16.md`.
+- Retained simulation catalog (2026-07-16): a SQL-built, SHA-verified 163,984
+  byte BLOB now carries all 681 BSP nodes, 682 subsector-sector owners, 1,175
+  collision lines, 182 sector baselines, and 1,152 raw Oracle `NUMBER` movement
+  pairs. The worker loads/decodes it once; relational row walking exists only in
+  the offline pack builder. The decoded catalog matches `DOOM_BSP_LOCATE` for
+  270/270 deterministic map points and preserves all 1,152 movement encodings
+  byte-for-byte. Extend this retained catalog with exact collision NUMBER bytes
+  and dynamic double-buffered sector heights before selecting movement.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

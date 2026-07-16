@@ -25,6 +25,12 @@ The same harness validates the selected exact-numeric boundary. Oracle JDBC
 quadratic collision root byte-for-byte. The selected path preloads SQL-built
 64-angle deltas; runtime trigonometry is not part of the worker hot loop.
 
+`DoomSimCatalogBench.java`, `019_simulation_kernel_pack.sql`, and the
+`ojvm-sim-catalog-*` scripts build and verify the immutable simulation catalog.
+Its relational reads occur once in the offline builder; a retained worker reads
+one SHA-checked 163,984-byte BLOB. The gate covers catalog counts, 270 BSP
+locations against `DOOM_BSP_LOCATE`, and all 1,152 raw NUMBER movement pairs.
+
 `verify-performance-baseline.mjs` has two fail-closed modes. With one evidence
 path it verifies an already collected baseline and every referenced artifact.
 With `--collect REPLAY EVIDENCE`, it performs the real 300-frame replay and

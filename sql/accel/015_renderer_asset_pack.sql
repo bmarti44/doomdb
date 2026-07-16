@@ -49,6 +49,9 @@ begin
   insert into doom_renderer_asset_pack(asset_kind,format_version,
     element_count,payload_sha256,encoded_bytes)
   values('renderer_kernel',1,1,rpad('0',64,'0'),empty_blob());
+  insert into doom_renderer_asset_pack(asset_kind,format_version,
+    element_count,payload_sha256,encoded_bytes)
+  values('simulation_kernel',1,1,rpad('0',64,'0'),empty_blob());
 end;
 /
 
