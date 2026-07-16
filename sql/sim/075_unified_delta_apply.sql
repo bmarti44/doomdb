@@ -41,22 +41,35 @@ create or replace package body doom_unified_delta_apply as
   type actor_rec is record(
     id number,health_seen number,cooldown number,state_index number,
     state_tics number,death_processed number,awake number,flags number,
-    target_id number,move_direction number,x number,y number,sector_id number);
+    target_id number,move_direction number,x number,y number,sector_id number,
+    state_id varchar2(64));
   type actor_tab is table of actor_rec index by pls_integer;
   type spawn_rec is record(
     id number,thing_type number,state_index number,state_tics number,
     x number,y number,z number,mx number,my number,mz number,
     radius number,height number,health number,flags number,target_id number,
     tracer_id number,reaction_time number,spawn_thing_id number,
-    owner_id number,exploded number,sector_id number,projectile_kind varchar2(4000));
+    owner_id number,exploded number,sector_id number,projectile_kind varchar2(4000),
+    state_id varchar2(64));
   type spawn_tab is table of spawn_rec index by pls_integer;
   type event_rec is record(
     ordinal number,type_code number,event_name varchar2(32),actor_id number,target_id number,
     number_value number,text_value varchar2(4000));
   type event_tab is table of event_rec index by pls_integer;
+  type id_set is table of boolean index by binary_integer;
+  type presence_map is table of pls_integer index by binary_integer;
+  type ordered_id_tab is table of number;
+  type state_id_map is table of varchar2(64) index by binary_integer;
+  type text_set is table of boolean index by varchar2(4000);
 
   g_delta raw(32767);
   g_length pls_integer;
+  g_catalog_signature varchar2(4000);
+  g_state_ids state_id_map;
+  g_sector_ids id_set;
+  g_thing_type_ids id_set;
+  g_spawn_thing_ids id_set;
+  g_projectile_ids text_set;
 
   procedure fail(p_message varchar2) is
   begin
@@ -126,6 +139,35 @@ create or replace package body doom_unified_delta_apply as
     return l_value;
   end;
 
+  -- Fixed-layout DTIC/DCTC regions are bounded once by their enclosing block.
+  -- These hot readers retain the exact canonical primitive checks without
+  -- rebuilding diagnostic labels and repeating a bounds branch per field.
+  function fixed_i32_at(p_position pls_integer) return number is
+  begin
+    return utl_raw.cast_to_binary_integer(
+      utl_raw.substr(g_delta,p_position,4),utl_raw.big_endian);
+  end;
+
+  function fixed_number_at(p_position pls_integer) return number is
+    l_bytes pls_integer;l_raw raw(22);l_value number;l_padding raw(22);
+  begin
+    l_bytes:=to_number(rawtohex(utl_raw.substr(g_delta,p_position,1)),'XX');
+    if l_bytes<1 or l_bytes>22 then fail('fixed NUMBER length');end if;
+    l_raw:=utl_raw.substr(g_delta,p_position+1,l_bytes);
+    if l_bytes<22 then
+      l_padding:=utl_raw.substr(g_delta,p_position+1+l_bytes,22-l_bytes);
+      if rawtohex(l_padding)<>rpad('0',(22-l_bytes)*2,'0') then
+        fail('fixed NUMBER padding');
+      end if;
+    end if;
+    begin l_value:=utl_raw.cast_to_number(l_raw);
+    exception when others then fail('fixed NUMBER bytes');end;
+    if utl_raw.compare(l_raw,utl_raw.cast_from_number(l_value))<>0 then
+      fail('fixed noncanonical NUMBER');
+    end if;
+    return l_value;
+  end;
+
   function text_at(
     p_position in out nocopy pls_integer,p_label varchar2
   ) return varchar2 is
@@ -169,6 +211,47 @@ create or replace package body doom_unified_delta_apply as
       when 7 then 'MONSTER_PROJECTILE' end;
   end;
 
+  procedure retain_catalogs is
+    l_signature varchar2(4000);
+  begin
+    select
+      (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_state_def)||'|'||
+      (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_map_sector)||'|'||
+      (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_thing_type_def)||'|'||
+      (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_map_thing)||'|'||
+      (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_projectile_def)
+      into l_signature from dual;
+    if l_signature=g_catalog_signature then return;end if;
+    g_state_ids.delete;g_sector_ids.delete;g_thing_type_ids.delete;
+    g_spawn_thing_ids.delete;g_projectile_ids.delete;
+    declare l_index binary_integer:=0;begin
+      for r in (select state_id from doom_state_def order by state_id) loop
+        g_state_ids(l_index):=r.state_id;l_index:=l_index+1;
+      end loop;
+    end;
+    for r in (select sector_id from doom_map_sector) loop g_sector_ids(r.sector_id):=true;end loop;
+    for r in (select thing_type from doom_thing_type_def) loop g_thing_type_ids(r.thing_type):=true;end loop;
+    for r in (select thing_id from doom_map_thing) loop g_spawn_thing_ids(r.thing_id):=true;end loop;
+    for r in (select thing_type,projectile_kind from doom_projectile_def) loop
+      g_projectile_ids(to_char(r.thing_type,'TM9','NLS_NUMERIC_CHARACTERS=''.,''')||':'||
+        r.projectile_kind):=true;
+    end loop;
+    g_catalog_signature:=l_signature;
+  end;
+
+  function world_id_exists(
+    p_session_token varchar2,p_id number,p_cache in out nocopy presence_map
+  ) return boolean is
+    l_count pls_integer;
+  begin
+    if not p_cache.exists(p_id) then
+      select count(*) into l_count from mobjs
+        where session_token=p_session_token and mobj_id=p_id;
+      p_cache(p_id):=case when l_count=1 then 1 else 0 end;
+    end if;
+    return p_cache(p_id)=1;
+  end;
+
   procedure apply_tic(
     p_session_token in varchar2,
     p_save_lineage in varchar2,
@@ -189,8 +272,9 @@ create or replace package body doom_unified_delta_apply as
     l_current_tic number;l_current_seq number;l_current_rng number;
     l_lineage varchar2(64);l_player_id number;l_state_count number;
     l_expected_actors number;l_initial_mobj number;l_initial_event number;
-    l_count number;l_present pls_integer;l_slot raw(23);l_value number;
+    l_present pls_integer;l_slot raw(23);l_value number;
     l_actors actor_tab;l_spawns spawn_tab;l_events event_tab;
+    l_world_presence presence_map;l_actor_ids ordered_id_tab;
   begin
     savepoint doom_unified_delta_apply_start;
     p_committed_tic:=null;p_committed_command_seq:=null;
@@ -238,15 +322,21 @@ create or replace package body doom_unified_delta_apply as
       fail('non-unit frontier');
     end if;
     if l_final_rng<>mod(l_current_rng+l_rng_draws,256) then fail('RNG draw frontier');end if;
-    select count(*) into l_state_count from doom_state_def;
+    -- Retain the immutable catalogs and fenced world ID set for this call.  All
+    -- decoded references are checked against these maps before the first DML;
+    -- this avoids issuing one validation SELECT for every actor/reference.
+    retain_catalogs;
+    l_state_count:=g_state_ids.count;
     -- DTIC actor_count is deliberately the behavior-bound monster subset
     -- (currently 53 on E1M1), not the owner's complete all-MOBJ world image
     -- (currently 280).  Non-monster rows remain unchanged; newly emitted drop
     -- and projectile records are appended below with the same defaults as the
     -- SQL oracle and the Java WorldMobjs.append path.
-    select count(*) into l_expected_actors from mobjs m
-      where m.session_token=p_session_token and
-        exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type);
+    select m.mobj_id bulk collect into l_actor_ids from mobjs m
+      where m.session_token=p_session_token
+      and exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type)
+      order by m.mobj_id;
+    l_expected_actors:=l_actor_ids.count;
     if l_actor_count<>l_expected_actors then fail('actor count');end if;
     select coalesce(max(mobj_id),0)+1 into l_initial_mobj from mobjs
       where session_token=p_session_token;
@@ -261,26 +351,28 @@ create or replace package body doom_unified_delta_apply as
     if l_next_event<>l_initial_event+l_event_count then fail('event frontier');end if;
 
     l_position:=73;
+    need(l_position,l_actor_count*c_actor_bytes,'actor block');
     for i in 1..l_actor_count loop
-      l_actors(i).id:=i32_at(l_position,'actor id');
-      l_actors(i).health_seen:=i32_at(l_position+4,'actor health seen');
-      l_actors(i).cooldown:=i32_at(l_position+8,'actor cooldown');
-      l_actors(i).state_index:=i32_at(l_position+12,'actor state');
-      l_actors(i).state_tics:=i32_at(l_position+16,'actor state tics');
-      l_actors(i).death_processed:=i32_at(l_position+20,'actor death flag');
-      l_actors(i).awake:=i32_at(l_position+24,'actor awake');
-      l_actors(i).flags:=i32_at(l_position+28,'actor flags');
-      l_actors(i).target_id:=nullable_id(i32_at(l_position+32,'actor target'),'actor target');
-      l_actors(i).move_direction:=i32_at(l_position+36,'actor direction');
-      l_actors(i).x:=number_at(l_position+40,'actor x');
-      l_actors(i).y:=number_at(l_position+63,'actor y');
-      l_actors(i).sector_id:=i32_at(l_position+86,'actor sector');
+      l_actors(i).id:=fixed_i32_at(l_position);
+      l_actors(i).health_seen:=fixed_i32_at(l_position+4);
+      l_actors(i).cooldown:=fixed_i32_at(l_position+8);
+      l_actors(i).state_index:=fixed_i32_at(l_position+12);
+      l_actors(i).state_tics:=fixed_i32_at(l_position+16);
+      l_actors(i).death_processed:=fixed_i32_at(l_position+20);
+      l_actors(i).awake:=fixed_i32_at(l_position+24);
+      l_actors(i).flags:=fixed_i32_at(l_position+28);
+      l_actors(i).target_id:=nullable_id(fixed_i32_at(l_position+32),'actor target');
+      l_actors(i).move_direction:=fixed_i32_at(l_position+36);
+      l_actors(i).x:=fixed_number_at(l_position+40);
+      l_actors(i).y:=fixed_number_at(l_position+63);
+      l_actors(i).sector_id:=fixed_i32_at(l_position+86);
       if l_actors(i).id<0 or l_actors(i).health_seen<0 or l_actors(i).cooldown<0 or
          l_actors(i).state_index<0 or l_actors(i).state_index>=l_state_count or
          l_actors(i).state_tics< -1 or l_actors(i).death_processed not in(0,1) or
          l_actors(i).awake not in(0,1) or l_actors(i).flags<0 or
          l_actors(i).move_direction< -1 or l_actors(i).move_direction>7 or
          l_actors(i).sector_id<0 then fail('actor value range');end if;
+      l_actors(i).state_id:=g_state_ids(l_actors(i).state_index);
       l_position:=l_position+c_actor_bytes;
     end loop;
 
@@ -312,6 +404,7 @@ create or replace package body doom_unified_delta_apply as
          l_spawns(i).exploded not in(0,1) or l_spawns(i).sector_id<0 then
         fail('spawn value range or ID sequence');
       end if;
+      l_spawns(i).state_id:=g_state_ids(l_spawns(i).state_index);
     end loop;
 
     for i in 1..l_event_count loop
@@ -338,98 +431,90 @@ create or replace package body doom_unified_delta_apply as
 
     -- Actor records must be a duplicate-free, exact ordered image of the
     -- current monster set.  This also rejects omission and ID substitution.
-    l_count:=0;
-    for r in (select m.mobj_id from mobjs m where m.session_token=p_session_token
-      and exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type)
-      order by m.mobj_id) loop
-      l_count:=l_count+1;
-      if l_actors(l_count).id<>r.mobj_id then fail('actor ID set');end if;
+    for i in 1..l_actor_count loop
+      if l_actors(i).id<>l_actor_ids(i) then fail('actor ID set');end if;
     end loop;
     -- Validate referenced catalog and world IDs before any write.
     for i in 1..l_actor_count loop
-      select count(*) into l_count from doom_map_sector where sector_id=l_actors(i).sector_id;
-      if l_count<>1 then fail('actor sector ID');end if;
-      if l_actors(i).target_id is not null then
-        select count(*) into l_count from mobjs where session_token=p_session_token
-          and mobj_id=l_actors(i).target_id;
-        if l_count<>1 then fail('actor target ID');end if;
+      if not g_sector_ids.exists(l_actors(i).sector_id) then fail('actor sector ID');end if;
+      if l_actors(i).target_id is not null and
+         not world_id_exists(p_session_token,l_actors(i).target_id,l_world_presence) then
+        fail('actor target ID');
       end if;
     end loop;
     for i in 1..l_spawn_count loop
-      select count(*) into l_count from doom_thing_type_def where thing_type=l_spawns(i).thing_type;
-      if l_count<>1 then fail('spawn thing ID');end if;
-      select count(*) into l_count from doom_map_sector where sector_id=l_spawns(i).sector_id;
-      if l_count<>1 then fail('spawn sector ID');end if;
-      if l_spawns(i).projectile_kind is not null then
-        select count(*) into l_count from doom_projectile_def where projectile_kind=l_spawns(i).projectile_kind
-          and thing_type=l_spawns(i).thing_type;
-        if l_count<>1 then fail('spawn projectile identity');end if;
+      if not g_thing_type_ids.exists(l_spawns(i).thing_type) then fail('spawn thing ID');end if;
+      if not g_sector_ids.exists(l_spawns(i).sector_id) then fail('spawn sector ID');end if;
+      if l_spawns(i).projectile_kind is not null and
+         not g_projectile_ids.exists(to_char(l_spawns(i).thing_type,'TM9',
+           'NLS_NUMERIC_CHARACTERS=''.,''')||':'||l_spawns(i).projectile_kind) then
+        fail('spawn projectile identity');
       end if;
-      if l_spawns(i).spawn_thing_id is not null then
-        select count(*) into l_count from doom_map_thing where thing_id=l_spawns(i).spawn_thing_id;
-        if l_count<>1 then fail('spawn source ID');end if;
+      if l_spawns(i).spawn_thing_id is not null and
+         not g_spawn_thing_ids.exists(l_spawns(i).spawn_thing_id) then
+        fail('spawn source ID');
       end if;
       for j in 1..3 loop
         l_value:=case j when 1 then l_spawns(i).target_id when 2 then l_spawns(i).tracer_id else l_spawns(i).owner_id end;
         if l_value is not null then
-          select count(*) into l_count from mobjs where session_token=p_session_token and mobj_id=l_value;
-          if l_count=0 and (l_value<l_initial_mobj or l_value>=l_next_mobj) then
+          if not world_id_exists(p_session_token,l_value,l_world_presence) and
+             (l_value<l_initial_mobj or l_value>=l_next_mobj) then
             fail('spawn referenced mobj ID');
           end if;
         end if;
       end loop;
     end loop;
     for i in 1..l_event_count loop
-      select count(*) into l_count from mobjs where session_token=p_session_token
-        and mobj_id=l_events(i).actor_id;
-      if l_count=0 and (l_events(i).actor_id<l_initial_mobj or l_events(i).actor_id>=l_next_mobj) then
+      if not world_id_exists(p_session_token,l_events(i).actor_id,l_world_presence) and
+         (l_events(i).actor_id<l_initial_mobj or l_events(i).actor_id>=l_next_mobj) then
         fail('event actor ID');
       end if;
       if l_events(i).target_id is not null then
-        select count(*) into l_count from mobjs where session_token=p_session_token
-          and mobj_id=l_events(i).target_id;
-        if l_count=0 and (l_events(i).target_id<l_initial_mobj or l_events(i).target_id>=l_next_mobj) then
+        if not world_id_exists(p_session_token,l_events(i).target_id,l_world_presence) and
+           (l_events(i).target_id<l_initial_mobj or l_events(i).target_id>=l_next_mobj) then
           fail('event target ID');
         end if;
       end if;
     end loop;
 
-    for i in 1..l_actor_count loop
-      update mobjs set
-        monster_health_seen=l_actors(i).health_seen,
-        attack_cooldown=l_actors(i).cooldown,
-        state_id=(select state_id from (select state_id,row_number() over(order by state_id)-1 state_index
-          from doom_state_def) where state_index=l_actors(i).state_index),
-        state_tics=l_actors(i).state_tics,death_processed=l_actors(i).death_processed,
-        awake=l_actors(i).awake,flags=l_actors(i).flags,target_mobj_id=l_actors(i).target_id,
-        move_direction=l_actors(i).move_direction,x=l_actors(i).x,y=l_actors(i).y,
-        sector_id=l_actors(i).sector_id
-      where session_token=p_session_token and mobj_id=l_actors(i).id;
-      if sql%rowcount<>1 then fail('actor update race');end if;
-    end loop;
-    for i in 1..l_spawn_count loop
-      insert into mobjs(session_token,mobj_id,thing_type,state_id,state_tics,x,y,z,
-        momentum_x,momentum_y,momentum_z,angle,radius,height,health,flags,
-        target_mobj_id,tracer_mobj_id,reaction_time,spawn_thing_id,owner_mobj_id,
-        projectile_kind,exploded,sector_id,move_direction,awake,attack_cooldown,
-        monster_health_seen,death_processed)
-      values(p_session_token,l_spawns(i).id,l_spawns(i).thing_type,
-        (select state_id from (select state_id,row_number() over(order by state_id)-1 state_index
-          from doom_state_def) where state_index=l_spawns(i).state_index),
-        l_spawns(i).state_tics,l_spawns(i).x,l_spawns(i).y,l_spawns(i).z,
-        l_spawns(i).mx,l_spawns(i).my,l_spawns(i).mz,0,l_spawns(i).radius,
-        l_spawns(i).height,l_spawns(i).health,l_spawns(i).flags,l_spawns(i).target_id,
-        l_spawns(i).tracer_id,l_spawns(i).reaction_time,l_spawns(i).spawn_thing_id,
-        l_spawns(i).owner_id,l_spawns(i).projectile_kind,l_spawns(i).exploded,
-        l_spawns(i).sector_id,-1,0,0,null,0);
-    end loop;
-    for i in 1..l_event_count loop
-      insert into game_events(session_token,tic,event_ordinal,event_type,
-        actor_mobj_id,target_mobj_id,number_value,text_value)
-      values(p_session_token,l_next_tic,l_events(i).ordinal,
-        l_events(i).event_name,l_events(i).actor_id,l_events(i).target_id,
-        l_events(i).number_value,l_events(i).text_value);
-    end loop;
+    if l_actor_count>0 then
+      forall i in 1..l_actor_count
+        update mobjs set
+          monster_health_seen=l_actors(i).health_seen,
+          attack_cooldown=l_actors(i).cooldown,
+          state_id=l_actors(i).state_id,
+          state_tics=l_actors(i).state_tics,death_processed=l_actors(i).death_processed,
+          awake=l_actors(i).awake,flags=l_actors(i).flags,target_mobj_id=l_actors(i).target_id,
+          move_direction=l_actors(i).move_direction,x=l_actors(i).x,y=l_actors(i).y,
+          sector_id=l_actors(i).sector_id
+        where session_token=p_session_token and mobj_id=l_actors(i).id;
+      for i in 1..l_actor_count loop
+        if sql%bulk_rowcount(i)<>1 then fail('actor update race');end if;
+      end loop;
+    end if;
+    if l_spawn_count>0 then
+      forall i in 1..l_spawn_count
+        insert into mobjs(session_token,mobj_id,thing_type,state_id,state_tics,x,y,z,
+          momentum_x,momentum_y,momentum_z,angle,radius,height,health,flags,
+          target_mobj_id,tracer_mobj_id,reaction_time,spawn_thing_id,owner_mobj_id,
+          projectile_kind,exploded,sector_id,move_direction,awake,attack_cooldown,
+          monster_health_seen,death_processed)
+        values(p_session_token,l_spawns(i).id,l_spawns(i).thing_type,l_spawns(i).state_id,
+          l_spawns(i).state_tics,l_spawns(i).x,l_spawns(i).y,l_spawns(i).z,
+          l_spawns(i).mx,l_spawns(i).my,l_spawns(i).mz,0,l_spawns(i).radius,
+          l_spawns(i).height,l_spawns(i).health,l_spawns(i).flags,l_spawns(i).target_id,
+          l_spawns(i).tracer_id,l_spawns(i).reaction_time,l_spawns(i).spawn_thing_id,
+          l_spawns(i).owner_id,l_spawns(i).projectile_kind,l_spawns(i).exploded,
+          l_spawns(i).sector_id,-1,0,0,null,0);
+    end if;
+    if l_event_count>0 then
+      forall i in 1..l_event_count
+        insert into game_events(session_token,tic,event_ordinal,event_type,
+          actor_mobj_id,target_mobj_id,number_value,text_value)
+        values(p_session_token,l_next_tic,l_events(i).ordinal,
+          l_events(i).event_name,l_events(i).actor_id,l_events(i).target_id,
+          l_events(i).number_value,l_events(i).text_value);
+    end if;
     update players set health=l_player_health,armor=l_player_armor,
       alive=l_player_alive,kill_count=l_player_kills
       where session_token=p_session_token and player_id=l_player_id;
@@ -519,17 +604,19 @@ create or replace package body doom_unified_delta_apply as
     l_outer_tic:=u64_at(29,'DCTC tic frontier');
     if l_outer_seq<>l_command_seq or l_outer_seq<>p_expected_command_seq+1 or
        l_outer_tic<>p_expected_tic+1 then fail('DCTC outer frontier');end if;
-    l_angle_index:=i32_at(37,'DCTC angle index');
+    -- The minimum exact DCTC envelope check above covers this fixed 105-byte
+    -- header, including all three canonical NUMBER slots.
+    l_angle_index:=fixed_i32_at(37);
     if l_angle_index<0 or l_angle_index>63 then fail('DCTC angle index');end if;
-    l_x:=number_at(41,'DCTC player x');l_y:=number_at(64,'DCTC player y');
-    l_z:=number_at(87,'DCTC player z');l_sector:=i32_at(110,'DCTC player sector');
+    l_x:=fixed_number_at(41);l_y:=fixed_number_at(64);
+    l_z:=fixed_number_at(87);l_sector:=fixed_i32_at(110);
     if l_sector<0 then fail('DCTC player sector');end if;
     begin
       select sector_id into l_derived_sector from table(doom_bsp_locate(l_x,l_y))
         where rownum=1;
     exception when no_data_found then fail('DCTC player sector lookup');end;
     if l_sector<>l_derived_sector then fail('DCTC player sector mismatch');end if;
-    l_nested_length:=i32_at(114,'DCTC nested length');
+    l_nested_length:=fixed_i32_at(114);
     if l_nested_length<60 or l_nested_length<>g_length-117 or
        l_child_length<>c_dctc_header+l_nested_length then
       fail('DCTC nested exact length');

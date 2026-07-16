@@ -23,6 +23,12 @@ declare
       into p50_,p95_,max_ from table(p_values);
     dbms_output.put_line(p_name||'_ms='||round(p50_,3)||'|'||round(p95_,3)||'|'||round(max_,3));
   end;
+  procedure report_warm(p_name varchar2,p_values sys.odcinumberlist) is
+    warm_ sys.odcinumberlist:=sys.odcinumberlist();
+  begin
+    for i in 2..p_values.count loop warm_.extend;warm_(warm_.count):=p_values(i);end loop;
+    report(p_name,warm_);
+  end;
   procedure cleanup is begin
     if session_ is not null then delete from game_sessions where session_token=session_;commit;end if;
   end;
@@ -85,6 +91,8 @@ begin
   dbms_output.put_line('UNIFIED_COMMAND_TRANSACTION_OK commands=300 frontier='||tic_||'|'||seq_||
     ' bytes='||utl_raw.length(delta_)||' restart='||dbms_lob.getlength(restart_));
   report('prepare',prepare_ms_);report('strict_sql_apply',apply_ms_);report('commit_log_sync',commit_ms_);
+  dbms_output.put_line('strict_sql_apply_cold_ms='||round(apply_ms_(1),3));
+  report_warm('strict_sql_apply_warm',apply_ms_);
   report('java_accept',accept_ms_);report('transaction_total',total_ms_);
   cleanup;
 exception when others then rollback;cleanup;raise;
