@@ -1598,6 +1598,28 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   frontier 320/320. The next production slice integrates the already-selected
   DMSC/v2 player command/movement into this same pending owner; component modes
   remain differential oracles and may not be composed as separate tic phases.
+- Unified command/direct-render gate (2026-07-16): one DMSC/v2 movement command
+  now advances the same pending all-MOBJ owner before its ordered actor pass.
+  The 270-command differential matches player and world state, prepare
+  invisibility, restart, and exact 270/270 tic/sequence frontiers. Cold
+  prepare+accept is 2.400/3.087 ms p50/p95 and warm is 2.300/2.969 ms. Separate
+  tracing attributes warm p95 primarily to the moving-player actor pass
+  (1.921 ms); portal/location movement is 0.104 ms and DCTC encoding is 0.016
+  ms p95, so further ordinary movement tuning is stopped.
+- The renderer now consumes an allocation-free ordered UPSERT/REMOVE diff
+  directly from the unified pending arrays, including state, x/y/z, angle, and
+  player camera/presentation fields. It remains request/generation fenced and
+  rollback-capable until the SQL commit is accepted. Direct application is
+  0.111/0.624/1.082 ms p50/p95/max; render+codec+BLOB is
+  9.982/10.872/14.269 ms. Direct, strict-DTIC, and fresh DRS2 frames match; the
+  measured 1.103 ms DTIC parse p95 is restart/parity-only, never the warm path.
+- Durable command-delta gate (2026-07-16): the 24-byte DMSC/v2 command and
+  5,745-byte DUOP/DCTC v1 result now receive strict outer/nested frontier,
+  length, reserved-byte, canonical NUMBER, and exact BSP-sector validation.
+  Atomic SQL apply matches mixed movement, player, 53 actors, drops,
+  projectiles, events, RNG, and resulting-tic semantics; malformed, stale,
+  discard, and accept gates pass. Canonical command/history/state hashing and
+  production worker cutover remain before the public 30 FPS measurement.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | Direct retained rendering is 7.135/9.505 ms p50/p95. One ordered all-MOBJ actor tic now includes death, pain, wake, CHASE, melee, hitscan, projectiles, and drops at 0.316/0.747 ms warm p50/p95; cold p95 is 4.160 ms. Durable command integration and the public 30 FPS proof remain. |
+| P12.0 | Active playability gate | A dynamic movement command plus the complete ordered actor pass is exact at 2.300/2.969 ms warm p50/p95. Direct retained world-delta application is 0.111/0.624 ms and render+codec+BLOB is 9.982/10.872 ms. Strict DCTC persistence passes; canonical history/state hashing, worker cutover, and the public 30 FPS proof remain. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -164,13 +164,12 @@ Not yet through the public route. The current SQL-rendered endpoint remains the
 correct playable reference at about 0.128 FPS, while the new production
 components are individually inside the 33.3 ms budget but are not fully coupled.
 
-The retained renderer now consumes a 145-byte ordinary frame delta without JDBC
-or table reads and measures 7.135/9.505 ms p50/p95 for render, codec, and BLOB
-handoff. It preserves 64/64 changing-angle frames, owner isolation, and exact
-sector and MOBJ update/add/remove behavior. Retained movement is 0.762 ms p95,
-warmed CHASE is 1.080 ms p95 through the unified owner, and the exact attack
-action kernel is below 0.1 ms p95. These are component measurements, not an
-end-to-end FPS claim.
+The selected warm worker no longer serializes and immediately reparses its own
+state. A request-fenced, rollback-capable world diff moves pending player and
+MOBJ state directly between retained arrays with no JDBC or table reads. Across
+300 samples that update measures 0.111/0.624 ms p50/p95; exact
+render+codec+BLOB measures 9.982/10.872 ms. The strict packed-DTIC decoder remains
+a restart/parity fallback and is not used on the production warm path.
 
 The database now has four bounded Scheduler worker slots. Arbitrary valid game
 sessions can claim a slot through the public AutoREST package; concurrent
@@ -179,19 +178,26 @@ Default-off rollout, rollback isolation, lost-response replay across restart,
 and stale-work fencing pass live. SQL remains the independent differential
 oracle and authoritative durable store.
 
-The retained actor prerequisite is complete. One frozen MOBJ-order pass now
+The retained command-tic prerequisite is complete. One frozen MOBJ-order pass now
 composes death, pain, wake, state advancement, melee, hitscan, projectile
 spawning, drops, and CHASE exactly once. A mixed differential matches 53 actors,
 two spawns, seven ordered events, five RNG draws, and the accepted 282-row world.
 The full 280-row owner checkpoint restores atomically, and arbitrary removal
-clears inbound target, tracer, and owner references. Over 300 unique accepted
-tics the kernel measures 0.316/0.747 ms p50/p95 after warmup; a separate cold
-post-load run measures 3.439/4.160 ms.
+clears inbound target, tracer, and owner references. A 270-command moving
+differential matches the SQL player and world on every tic, including restart
+and prepare invisibility. The complete movement-plus-actor boundary measures
+2.300/2.969 ms warm and 2.400/3.087 ms cold p50/p95. Trace evidence attributes
+the warm p95 to the actor pass (1.921 ms), not movement (portal/location work is
+0.104 ms p95).
 
-The remaining critical work is integrating the retained player command into
-that same pending transaction, validating and durably applying its compact
-delta, generating the canonical state hash from retained state, and coupling
-the result to the retained renderer and public AutoREST route. The fixed
+The 5,745-byte DMSC/DCTC command delta now validates and applies atomically to
+durable SQL with resulting-tic event semantics, exact BSP-derived sector checks,
+and full mixed-combat parity. The measured retained simulation + direct update +
+render path totals about 14.5 ms at p95 before persistence, commit, AQ/ORDS,
+wire, decode, and blit; the independently measured AQ p95 is 3.843 ms. This is
+budget evidence, not an additive end-to-end FPS result. The remaining critical
+work is canonical command/history/state hashing, production worker cutover, and
+the public AutoREST/browser route. The fixed
 270-frame browser measurement must keep both p50 and p95 at or below 33.3 ms.
 See the
 [ORDS/OJVM worker report](reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md).
