@@ -35,6 +35,7 @@ sql/sim/staged/t7.3_defs.sql
 sql/sim/040_history_replay.sql
 sql/sim/030_world_machines.sql
 sql/sim/050_combat_inventory.sql
+sql/sim/055_retained_projectiles.sql
 sql/sim/060_monsters.sql
 sql/sim/070_audio.sql
 sql/sim/tic/005_canonical_state_ledger.sql

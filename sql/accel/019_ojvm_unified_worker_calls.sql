@@ -23,6 +23,26 @@ create or replace function doom_unified_command_tic_prepare(
 return raw as language java name
   'DoomUnifiedActorStateBench.prepareCommandTic(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[]) return byte[]';
 /
+create or replace function doom_unified_command_projectiles_prepare(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_tic in number,p_command_seq in number,
+  p_rng in number,p_next_mobj in number,p_next_event in number,p_command in raw,
+  p_projectile_pack in raw)
+return raw as language java name
+  'DoomUnifiedActorStateBench.prepareCommandTicWithProjectiles(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[],byte[]) return byte[]';
+/
+create or replace function doom_unified_owner_projectiles_ready(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number)
+return number as language java name
+  'DoomUnifiedActorStateBench.ownerProjectilesReady(java.lang.String,java.lang.String,long) return int';
+/
+create or replace function doom_unified_command_retained_projectiles(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_tic in number,p_command_seq in number,
+  p_rng in number,p_next_mobj in number,p_next_event in number,p_command in raw)
+return raw as language java name
+  'DoomUnifiedActorStateBench.prepareCommandTicRetainedProjectiles(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[]) return byte[]';
+/
 create or replace function doom_unified_actor_accept(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,
   p_request in varchar2)
@@ -34,6 +54,11 @@ create or replace function doom_unified_actor_discard(
   p_request in varchar2)
 return varchar2 as language java name
   'DoomUnifiedActorStateBench.discard(java.lang.String,java.lang.String,long,java.lang.String) return java.lang.String';
+/
+create or replace function doom_unified_owner_sql_parity(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.ownerSqlParity(java.lang.String,java.lang.String,long) return java.lang.String';
 /
 create or replace function doom_unified_state_fill(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,

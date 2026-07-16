@@ -55,7 +55,7 @@ declare
   ) is
     state_blob_ blob;stored_delta_ blob;stored_response_ blob;
     stored_state_ varchar2(64);stored_frame_ varchar2(64);
-    bytes_ number;sha_ varchar2(64);
+    bytes_ number;sha_ varchar2(64);interval_ number;
   begin
     assert_(status_='COMMITTED','request not committed '||p_request||' '||
       status_||' '||error_);
@@ -75,8 +75,12 @@ declare
     assert_(sha_=delta_sha_,'delta SHA '||p_request);
     select state_blob,state_sha,frame_sha into state_blob_,stored_state_,stored_frame_
       from tic_commands where session_token=session_ and command_seq=p_seq;
+    select number_value into interval_ from doom_config
+      where config_key='HISTORY_SNAPSHOT_INTERVAL';
     assert_(stored_state_=state_sha_ and stored_frame_=frame_sha_ and
-      lower(rawtohex(dbms_crypto.hash(state_blob_,dbms_crypto.hash_sh256)))=state_sha_,
+      ((mod(p_tic,interval_)=0 and dbms_lob.getlength(state_blob_)>0 and
+        lower(rawtohex(dbms_crypto.hash(state_blob_,dbms_crypto.hash_sh256)))=state_sha_)
+       or (mod(p_tic,interval_)<>0 and dbms_lob.getlength(state_blob_)=0)),
       'tic ledger metadata '||p_request);
     select delta_blob,response_blob,delta_bytes into stored_delta_,stored_response_,bytes_
       from doom_worker_result where request_id=p_request;

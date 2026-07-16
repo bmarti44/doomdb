@@ -1676,6 +1676,18 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   projectiles are not yet advanced/removed in retained arrays. Implement and
   parity-lock that lifecycle before public cutover or an end-to-end claim. See
   `reports/performance-P12.0-securefile-tail-research-2026-07-16.md`.
+- Dynamic retained-worker 30 FPS gate (2026-07-16, supersedes the open
+  projectile/state blocker above): projectile lifecycle mutations now cross the
+  SQL/OJVM boundary as validated world operations; the applier writes only an
+  ordered changed-actor subset and bulk-merges world changes. Canonical JSON is
+  persisted at exact 64-tic checkpoints, while domain-separated lineage/tic/
+  command/delta hashes cover intermediate tics. A fresh active 300-frame run
+  passed at 20.065/26.008 ms p50/p95 (49.8/38.4 FPS), with five exact checkpoint
+  BLOB/SHA validations, a recomputed event chain, retained-owner/SQL parity at
+  tic 330, stable world cardinality, and strict BATCH WAIT commits. One 435 ms
+  OJVM JIT pause remains in max latency. This passes the database p95 gate only:
+  default-off public cutover, full action controls, and fixed AutoREST/browser
+  p50/p95 remain mandatory before P12.0 completes.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

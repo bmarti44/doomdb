@@ -248,13 +248,14 @@ create or replace package body doom_unified_worker as
     l_next_mobj number;l_result_tic number;l_result_seq number;
     l_ledger_sha varchar2(64);l_state_locator blob;
     l_delta_locator blob;l_response_locator blob;l_delta raw(32767);
+    l_projectile_pack raw(32767);l_retained_projectiles number;
     l_state_payload blob;l_render_payload blob;l_history_payload blob;
     l_committed_tic number;l_committed_seq number;l_delta_version number;
     l_delta_count number;l_delta_sha varchar2(64);l_state_sha varchar2(64);
     l_frame_sha varchar2(4000);l_response_sha varchar2(64);
     l_response_bytes number;l_result varchar2(4000);l_error varchar2(4000);
     l_prepared number:=0;l_committed number:=0;l_failpoint number;
-    l_history_interval number;
+    l_history_interval number;l_parity_interval number;
     l_stage timestamp with time zone;l_prepare_us number;l_apply_us number;
     l_state_us number;l_render_us number;l_finalize_us number;
     l_render_call_us number;l_render_update_us number;l_render_kernel_us number;
@@ -338,14 +339,30 @@ create or replace package body doom_unified_worker as
         c_zero_sha,0,c_zero_sha,empty_blob(),empty_blob())
       returning delta_blob,response_blob into l_delta_locator,l_response_locator;
 
-      l_delta:=doom_unified_command_tic_prepare(l_session,l_lineage,l_generation,
-        p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command);
+      -- SQL owns relational projectile collision/damage.  Cross into OJVM once
+      -- with only the resulting mutations so the retained arrays stay exact.
+      l_retained_projectiles:=doom_unified_owner_projectiles_ready(
+        l_session,l_lineage,l_generation);
+      if l_retained_projectiles=1 then
+        l_delta:=doom_unified_command_retained_projectiles(l_session,l_lineage,l_generation,
+          p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command);
+      elsif l_retained_projectiles=0 then
+        doom_retained_projectiles.advance_and_pack(
+          l_session,l_result_tic,l_projectile_pack);
+        l_delta:=doom_unified_command_projectiles_prepare(l_session,l_lineage,l_generation,
+          p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
+          l_projectile_pack);
+      else raise_application_error(c_invalid,'retained projectile readiness');end if;
       l_prepared:=1;
       l_prepare_us:=elapsed_us(l_stage);
       l_failpoint:=config_number('UNIFIED_WORKER_FAILPOINT');
       l_history_interval:=config_number('HISTORY_SNAPSHOT_INTERVAL');
+      l_parity_interval:=config_number('UNIFIED_WORKER_PARITY_INTERVAL');
       if l_history_interval<>trunc(l_history_interval) or l_history_interval<1 then
         raise_application_error(c_invalid,'invalid history checkpoint interval');
+      end if;
+      if l_parity_interval<>trunc(l_parity_interval) or l_parity_interval<0 then
+        raise_application_error(c_invalid,'invalid worker parity interval');
       end if;
       if l_failpoint in(1,4) then
         raise_application_error(c_invalid,'injected pre-apply worker failure');
@@ -366,29 +383,40 @@ create or replace package body doom_unified_worker as
       dbms_application_info.set_action('DOOM_STATE_COPY');
       dbms_lob.trim(l_delta_locator,0);
       dbms_lob.writeappend(l_delta_locator,utl_raw.length(l_delta),l_delta);
-      -- The retained owner already has every canonical field in primitive
-      -- arrays. Reuse byte-exact JSON fragments for unchanged actors, write
-      -- into a temporary locator, then perform one bounded SecureFile copy.
-      -- This avoids both relational row walking and persistent JDBC writes.
-      dbms_lob.createtemporary(l_state_payload,true,dbms_lob.call);
-      l_state_sha:=doom_unified_state_fill(l_session,l_lineage,l_generation,
-        p_request,l_state_payload);
-      if not regexp_like(l_state_sha,'^[0-9a-f]{64}$') then
-        raise_application_error(c_invalid,'retained state codec: '||
-          substr(l_state_sha,1,3000));
-      end if;
       dbms_lob.trim(l_state_locator,0);
-      dbms_lob.copy(l_state_locator,l_state_payload,
-        dbms_lob.getlength(l_state_payload),1,1);
-      free_temp(l_state_payload);
+      if mod(l_result_tic,l_history_interval)=0 then
+        -- Exact canonical JSON remains the checkpoint/replay oracle.  Between
+        -- checkpoints the durable delta and command chain are authoritative;
+        -- serializing the same 211 KB document only to discard it is excluded
+        -- from the warm path.
+        dbms_lob.createtemporary(l_state_payload,true,dbms_lob.call);
+        l_state_sha:=doom_unified_state_fill(l_session,l_lineage,l_generation,
+          p_request,l_state_payload);
+        if not regexp_like(l_state_sha,'^[0-9a-f]{64}$') then
+          raise_application_error(c_invalid,'retained state codec: '||
+            substr(l_state_sha,1,3000));
+        end if;
+        dbms_lob.copy(l_state_locator,l_state_payload,
+          dbms_lob.getlength(l_state_payload),1,1);
+        free_temp(l_state_payload);
+        l_state_encode_us:=round(doom_unified_state_encode_ns/1000);
+        l_state_blob_us:=round(doom_unified_state_blob_ns/1000);
+        l_state_compare_us:=round(doom_unified_state_compare_ns/1000);
+        l_state_object_encode_us:=round(doom_unified_state_object_encode_ns/1000);
+        l_state_changed:=doom_unified_state_changed;
+        l_state_reused:=doom_unified_state_reused;
+        l_state_removed:=doom_unified_state_removed;
+      else
+        l_state_sha:=lower(rawtohex(dbms_crypto.hash(
+          utl_i18n.string_to_raw('DOOM_STATE_CHAIN_V1|'||l_lineage||'|'||
+            to_char(l_result_tic,'TM9','NLS_NUMERIC_CHARACTERS=''.,''')||'|'||
+            l_ledger_sha||'|'||l_delta_sha,'AL32UTF8'),
+          dbms_crypto.hash_sh256)));
+        l_state_encode_us:=0;l_state_blob_us:=0;l_state_compare_us:=0;
+        l_state_object_encode_us:=0;l_state_changed:=0;l_state_reused:=0;
+        l_state_removed:=0;
+      end if;
       l_state_us:=elapsed_us(l_stage);
-      l_state_encode_us:=round(doom_unified_state_encode_ns/1000);
-      l_state_blob_us:=round(doom_unified_state_blob_ns/1000);
-      l_state_compare_us:=round(doom_unified_state_compare_ns/1000);
-      l_state_object_encode_us:=round(doom_unified_state_object_encode_ns/1000);
-      l_state_changed:=doom_unified_state_changed;
-      l_state_reused:=doom_unified_state_reused;
-      l_state_removed:=doom_unified_state_removed;
       l_stage:=systimestamp;
       dbms_application_info.set_action('DOOM_RENDER');
       dbms_lob.createtemporary(l_render_payload,true,dbms_lob.call);
@@ -526,6 +554,15 @@ create or replace package body doom_unified_worker as
       if l_result is null or l_result<>'OK' then
         raise_application_error(c_invalid,'post-commit accept: '||
           substr(l_result,1,3000));
+      end if;
+      if l_parity_interval>0 and mod(l_committed_tic,l_parity_interval)=0 then
+        l_result:=doom_unified_owner_sql_parity(
+          l_session,l_lineage,l_generation);
+        if l_result is null or l_result not like 'OK|%' then
+          raise_application_error(c_invalid,'resident owner parity: '||
+            substr(l_result,1,3000));
+        end if;
+        audit_event(p_request,p_slot,l_generation,'PARITY_OK',l_result);
       end if;
       -- DOOM_WORKER_RESULT and DOOM_WORKER_REQUEST already form the durable
       -- success ledger. Avoid a second autonomous commit/audit row on every

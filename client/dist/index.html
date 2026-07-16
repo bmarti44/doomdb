@@ -56,8 +56,8 @@
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">30 FPS playability gate<br><span>stationary DB gate 36.4 / 31.0 FPS p50/p95</span></p>
-      <p class="muted">Strict-durable stationary work passes the 300-frame database gate at 27.465 / 32.287 ms. The current dynamic path is 28.875 / 35.271 ms (34.6 / 28.4 FPS); retained projectile lifecycle and end-to-end AutoREST/browser timing remain open.</p>
+      <p class="big">30 FPS database gate<br><span>active play 49.8 / 38.4 FPS p50/p95</span></p>
+      <p class="muted">The strict-durable 300-frame worker passes at 20.065 / 26.008 ms with exact checkpoint, event-chain, and tic-330 SQL parity. Public AutoREST cutover, full controls, and browser timing remain open.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -71,7 +71,7 @@
     <h2>Live implementation status · July 16, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate; public <code>DOOM_TIC_TX.APPLY_BATCH</code> only; lift 1 completed and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived AQ/Scheduler workers. SecureFile tracing removed synchronous direct-path writes: hot LOBs use full CACHE, response copy is 1.584 ms p95, commits use strict BATCH WAIT durability, and exact checkpoints occur every 32 tics. The stationary 300-frame database gate passes at 32.287 ms p95; dynamic p95 is 35.271 ms because the retained worker still lacks complete projectile movement/removal and grows state during play. The worker remains default-off and the public SQL route remains about 0.128 FPS until dynamic parity and the AutoREST/browser gate pass.</p>
+    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived AQ/Scheduler workers. Packed projectile mutations, changed-actor deltas, bulk world DML, cached SecureFiles, strict BATCH WAIT commits, and 64-tic exact checkpoints bring active database work to 26.008 ms p95. The worker remains default-off; the public SQL route remains about 0.128 FPS until AutoREST cutover, full controls, and the ORDS/browser gate pass. One isolated 435 ms JIT pause remains recorded in the maximum.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">
@@ -161,7 +161,7 @@
     <article class="panel phase done"><b>P5.4</b><span>Presentation</span><p class="muted">HUD, weapons, menu, pause, automap, intermission</p></article>
     <article class="panel phase done"><b>P6</b><span>Simulation</span><p class="muted">tic, movement, machines, history, replay</p></article>
     <article class="panel phase done"><b>P7</b><span>Gameplay</span><p class="muted">weapons, monsters, pickups, audio</p></article>
-    <article class="panel phase active"><b>P12.0</b><span>30 FPS gate</span><p class="muted">stationary 27.465 / 32.287 ms; dynamic 28.875 / 35.271 ms</p></article>
+    <article class="panel phase active"><b>P12.0</b><span>Integration</span><p class="muted">database gate PASS · 20.065 / 26.008 ms active p50/p95</p></article>
     <article class="panel phase"><b>P8.1</b><span>Completion route</span><p class="muted">preserved at tic 1430 · resumes after gate</p></article>
   </section>
   <footer>Build-review surface only · no credentials or evaluator data are exposed to the browser.</footer>

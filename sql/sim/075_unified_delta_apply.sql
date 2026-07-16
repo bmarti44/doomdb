@@ -3,6 +3,7 @@
 -- relational frontiers before the first mutation, and rolls its own work back
 -- on every exception so a malformed worker result cannot partially land.
 create or replace package doom_unified_delta_apply authid definer as
+  function trusted_event_insert return number;
   procedure apply_tic(
     p_session_token in varchar2,
     p_save_lineage in varchar2,
@@ -35,6 +36,7 @@ create or replace package body doom_unified_delta_apply as
   c_duop_header constant pls_integer:=12;
   c_dtic_header constant pls_integer:=60;
   c_actor_bytes constant pls_integer:=90;
+  c_world_op_bytes constant pls_integer:=62;
   c_spawn_bytes constant pls_integer:=238;
   c_event_bytes constant pls_integer:=42;
 
@@ -52,9 +54,13 @@ create or replace package body doom_unified_delta_apply as
     owner_id number,exploded number,sector_id number,projectile_kind varchar2(4000),
     state_id varchar2(64));
   type spawn_tab is table of spawn_rec index by pls_integer;
+  type world_op_rec is record(
+    operation number,field_mask number,id number,x number,y number,
+    health number,exploded number);
+  type world_op_tab is table of world_op_rec index by pls_integer;
   type event_rec is record(
     ordinal number,type_code number,event_name varchar2(32),actor_id number,target_id number,
-    number_value number,text_value varchar2(4000));
+    number_value number,text_value varchar2(4000),previous_sha varchar2(64),event_sha varchar2(64));
   type event_tab is table of event_rec index by pls_integer;
   type id_set is table of boolean index by binary_integer;
   type presence_map is table of pls_integer index by binary_integer;
@@ -70,6 +76,10 @@ create or replace package body doom_unified_delta_apply as
   g_thing_type_ids id_set;
   g_spawn_thing_ids id_set;
   g_projectile_ids text_set;
+  g_trusted_event_insert boolean:=false;
+
+  function trusted_event_insert return number is
+  begin return case when g_trusted_event_insert then 1 else 0 end;end;
 
   procedure fail(p_message varchar2) is
   begin
@@ -208,7 +218,9 @@ create or replace package body doom_unified_delta_apply as
       when 1 then 'MONSTER_HIT' when 2 then 'MONSTER_MISS'
       when 3 then 'MONSTER_PAIN' when 4 then 'MONSTER_DEATH'
       when 5 then 'MONSTER_DROP' when 6 then 'MONSTER_WAKE'
-      when 7 then 'MONSTER_PROJECTILE' end;
+      when 7 then 'MONSTER_PROJECTILE' when 8 then 'DAMAGE'
+      when 9 then 'BARREL_EXPLODE' when 10 then 'PROJECTILE_IMPACT'
+      when 11 then 'PLAYER_DAMAGE' end;
   end;
 
   procedure retain_catalogs is
@@ -266,15 +278,18 @@ create or replace package body doom_unified_delta_apply as
   ) is
     l_position pls_integer;l_child_length number;
     l_actor_count pls_integer;l_spawn_count pls_integer;l_event_count pls_integer;
+    l_world_op_count pls_integer;
     l_rng_draws pls_integer;l_final_rng number;l_player_health number;
     l_player_armor number;l_player_alive number;l_player_kills number;
     l_next_mobj number;l_next_event number;l_next_tic number;l_next_seq number;
     l_current_tic number;l_current_seq number;l_current_rng number;
     l_lineage varchar2(64);l_player_id number;l_state_count number;
-    l_expected_actors number;l_initial_mobj number;l_initial_event number;
+    l_expected_actors number;l_initial_mobj number;l_spawn_base number;l_initial_event number;
     l_present pls_integer;l_slot raw(23);l_value number;
-    l_actors actor_tab;l_spawns spawn_tab;l_events event_tab;
-    l_world_presence presence_map;l_actor_ids ordered_id_tab;
+    l_event_head varchar2(64);l_event_document clob;
+    l_actors actor_tab;l_spawns spawn_tab;l_events event_tab;l_world_ops world_op_tab;
+    l_removed id_set;
+    l_world_presence presence_map;l_actor_ids ordered_id_tab;l_actor_presence id_set;
   begin
     savepoint doom_unified_delta_apply_start;
     p_committed_tic:=null;p_committed_command_seq:=null;
@@ -299,7 +314,7 @@ create or replace package body doom_unified_delta_apply as
     if byte_at(17,'DTIC version')<>1 or byte_at(18,'DTIC status')<>0 then fail('DTIC header');end if;
     l_actor_count:=u16_at(19,'actor count');l_spawn_count:=u16_at(21,'spawn count');
     l_event_count:=u16_at(23,'event count');l_rng_draws:=u16_at(25,'RNG draws');
-    if u16_at(27,'DTIC reserved')<>0 then fail('DTIC reserved');end if;
+    l_world_op_count:=u16_at(27,'world operation count');
     l_final_rng:=i32_at(29,'RNG frontier');
     l_player_health:=i32_at(33,'player health');
     l_player_armor:=i32_at(37,'player armor');l_player_alive:=i32_at(41,'player alive');
@@ -337,10 +352,10 @@ create or replace package body doom_unified_delta_apply as
       and exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type)
       order by m.mobj_id;
     l_expected_actors:=l_actor_ids.count;
-    if l_actor_count<>l_expected_actors then fail('actor count');end if;
+    for i in 1..l_expected_actors loop l_actor_presence(l_actor_ids(i)):=true;end loop;
+    if l_actor_count>l_expected_actors then fail('actor count');end if;
     select coalesce(max(mobj_id),0)+1 into l_initial_mobj from mobjs
       where session_token=p_session_token;
-    if l_next_mobj<>l_initial_mobj+l_spawn_count then fail('mobj frontier');end if;
     -- A prepared tic advances EXPECTED_TIC to NEXT_TIC.  Its events belong to
     -- that resulting logical tic, matching DOOM_TIC_TX.APPLY_BATCH(l_tic+ord).
     -- The retained owner starts NEXT_EVENT at zero for each new tic; deriving
@@ -376,6 +391,44 @@ create or replace package body doom_unified_delta_apply as
       l_position:=l_position+c_actor_bytes;
     end loop;
 
+    need(l_position,l_world_op_count*c_world_op_bytes,'world operation block');
+    for i in 1..l_world_op_count loop
+      l_world_ops(i).operation:=byte_at(l_position,'world operation');
+      l_world_ops(i).field_mask:=byte_at(l_position+1,'world operation mask');
+      if u16_at(l_position+2,'world operation reserved')<>0 then fail('world operation reserved');end if;
+      l_world_ops(i).id:=fixed_i32_at(l_position+4);
+      if i>1 and l_world_ops(i).id<=l_world_ops(i-1).id then fail('world operation order');end if;
+      if l_world_ops(i).operation=1 then
+        if l_world_ops(i).field_mask<1 or l_world_ops(i).field_mask>15 then fail('world update mask');end if;
+        if bitand(l_world_ops(i).field_mask,1)=1 then l_world_ops(i).x:=fixed_number_at(l_position+8);
+        elsif rawtohex(utl_raw.substr(g_delta,l_position+8,23))<>rpad('0',46,'0') then fail('world x padding');end if;
+        if bitand(l_world_ops(i).field_mask,2)=2 then l_world_ops(i).y:=fixed_number_at(l_position+31);
+        elsif rawtohex(utl_raw.substr(g_delta,l_position+31,23))<>rpad('0',46,'0') then fail('world y padding');end if;
+        l_world_ops(i).health:=fixed_i32_at(l_position+54);
+        l_world_ops(i).exploded:=fixed_i32_at(l_position+58);
+        if l_world_ops(i).health<0 or l_world_ops(i).exploded not in(0,1) then fail('world update value');end if;
+      elsif l_world_ops(i).operation=2 then
+        if l_world_ops(i).field_mask<>0 or
+           rawtohex(utl_raw.substr(g_delta,l_position+8,46))<>rpad('0',92,'0') or
+           fixed_i32_at(l_position+54)<>0 or fixed_i32_at(l_position+58)<>0 then
+          fail('world removal payload');
+        end if;
+        l_removed(l_world_ops(i).id):=true;
+      else fail('world operation code');end if;
+      if l_world_ops(i).id<0 or
+         not world_id_exists(p_session_token,l_world_ops(i).id,l_world_presence) then
+        fail('world operation ID');
+      end if;
+      l_position:=l_position+c_world_op_bytes;
+    end loop;
+    l_spawn_base:=l_initial_mobj;
+    while l_spawn_base>0 loop
+      if l_removed.exists(l_spawn_base-1) then l_spawn_base:=l_spawn_base-1;
+      elsif world_id_exists(p_session_token,l_spawn_base-1,l_world_presence) then exit;
+      else l_spawn_base:=l_spawn_base-1;end if;
+    end loop;
+    if l_next_mobj<>l_spawn_base+l_spawn_count then fail('mobj frontier');end if;
+
     for i in 1..l_spawn_count loop
       l_spawns(i).id:=i32_at(l_position,'spawn id');
       l_spawns(i).thing_type:=i32_at(l_position+4,'spawn thing');
@@ -397,7 +450,7 @@ create or replace package body doom_unified_delta_apply as
       l_spawns(i).sector_id:=i32_at(l_position+232,'spawn sector');
       l_position:=l_position+236;
       l_spawns(i).projectile_kind:=text_at(l_position,'spawn projectile kind');
-      if l_spawns(i).id<>l_initial_mobj+i-1 or l_spawns(i).thing_type<0 or
+      if l_spawns(i).id<>l_spawn_base+i-1 or l_spawns(i).thing_type<0 or
          l_spawns(i).state_index<0 or l_spawns(i).state_index>=l_state_count or
          l_spawns(i).state_tics< -1 or l_spawns(i).radius<0 or l_spawns(i).height<0 or
          l_spawns(i).health<0 or l_spawns(i).flags<0 or l_spawns(i).reaction_time<0 or
@@ -423,16 +476,18 @@ create or replace package body doom_unified_delta_apply as
       l_position:=l_position+40;
       l_events(i).text_value:=text_at(l_position,'event text');
       if l_events(i).ordinal<>l_initial_event+i-1 or
-         l_events(i).type_code<1 or l_events(i).type_code>7 or
+         l_events(i).type_code<1 or l_events(i).type_code>11 or
          l_events(i).actor_id is null then fail('event value or ordinal');end if;
       l_events(i).event_name:=event_type(l_events(i).type_code);
     end loop;
     if l_position<>g_length+1 then fail('trailing bytes');end if;
 
-    -- Actor records must be a duplicate-free, exact ordered image of the
-    -- current monster set.  This also rejects omission and ID substitution.
+    -- Actor records are an ordered changed subset.  The full resident owner is
+    -- independently parity-checked; every transmitted ID must still be a
+    -- current behavior-bound monster and duplicates are rejected by ordering.
     for i in 1..l_actor_count loop
-      if l_actors(i).id<>l_actor_ids(i) then fail('actor ID set');end if;
+      if not l_actor_presence.exists(l_actors(i).id) or
+         (i>1 and l_actors(i).id<=l_actors(i-1).id) then fail('actor ID set');end if;
     end loop;
     -- Validate referenced catalog and world IDs before any write.
     for i in 1..l_actor_count loop
@@ -458,7 +513,7 @@ create or replace package body doom_unified_delta_apply as
         l_value:=case j when 1 then l_spawns(i).target_id when 2 then l_spawns(i).tracer_id else l_spawns(i).owner_id end;
         if l_value is not null then
           if not world_id_exists(p_session_token,l_value,l_world_presence) and
-             (l_value<l_initial_mobj or l_value>=l_next_mobj) then
+             (l_value<l_spawn_base or l_value>=l_next_mobj) then
             fail('spawn referenced mobj ID');
           end if;
         end if;
@@ -466,31 +521,56 @@ create or replace package body doom_unified_delta_apply as
     end loop;
     for i in 1..l_event_count loop
       if not world_id_exists(p_session_token,l_events(i).actor_id,l_world_presence) and
-         (l_events(i).actor_id<l_initial_mobj or l_events(i).actor_id>=l_next_mobj) then
+         (l_events(i).actor_id<l_spawn_base or l_events(i).actor_id>=l_next_mobj) then
         fail('event actor ID');
       end if;
       if l_events(i).target_id is not null then
         if not world_id_exists(p_session_token,l_events(i).target_id,l_world_presence) and
-           (l_events(i).target_id<l_initial_mobj or l_events(i).target_id>=l_next_mobj) then
+           (l_events(i).target_id<l_spawn_base or l_events(i).target_id>=l_next_mobj) then
           fail('event target ID');
         end if;
       end if;
     end loop;
 
+    if l_world_op_count>0 then
+      forall i in 1..l_world_op_count
+        merge into mobjs target using (
+          select l_world_ops(i).operation operation,l_world_ops(i).field_mask field_mask,
+            l_world_ops(i).id id,l_world_ops(i).x x,l_world_ops(i).y y,
+            l_world_ops(i).health health,l_world_ops(i).exploded exploded from dual
+        ) change on(target.session_token=p_session_token and target.mobj_id=change.id)
+        when matched then update set
+          target.x=case when bitand(change.field_mask,1)=1 then change.x else target.x end,
+          target.y=case when bitand(change.field_mask,2)=2 then change.y else target.y end,
+          target.health=case when bitand(change.field_mask,4)=4 then change.health else target.health end,
+          target.exploded=case when bitand(change.field_mask,8)=8 then change.exploded else target.exploded end
+        delete where change.operation=2;
+      for i in 1..l_world_op_count loop
+        if sql%bulk_rowcount(i)<>1 then fail('world operation race');end if;
+      end loop;
+    end if;
     if l_actor_count>0 then
       forall i in 1..l_actor_count
         update mobjs set
           monster_health_seen=l_actors(i).health_seen,
+          health=l_actors(i).health_seen,
           attack_cooldown=l_actors(i).cooldown,
           state_id=l_actors(i).state_id,
           state_tics=l_actors(i).state_tics,death_processed=l_actors(i).death_processed,
           awake=l_actors(i).awake,flags=l_actors(i).flags,target_mobj_id=l_actors(i).target_id,
           move_direction=l_actors(i).move_direction,x=l_actors(i).x,y=l_actors(i).y,
           sector_id=l_actors(i).sector_id
-        where session_token=p_session_token and mobj_id=l_actors(i).id;
-      for i in 1..l_actor_count loop
-        if sql%bulk_rowcount(i)<>1 then fail('actor update race');end if;
-      end loop;
+        where session_token=p_session_token and mobj_id=l_actors(i).id and (
+          coalesce(monster_health_seen,-1)<>l_actors(i).health_seen or
+          health<>l_actors(i).health_seen or
+          attack_cooldown<>l_actors(i).cooldown or state_id<>l_actors(i).state_id or
+          state_tics<>l_actors(i).state_tics or death_processed<>l_actors(i).death_processed or
+          awake<>l_actors(i).awake or flags<>l_actors(i).flags or
+          coalesce(target_mobj_id,-1)<>coalesce(l_actors(i).target_id,-1) or
+          move_direction<>l_actors(i).move_direction or x<>l_actors(i).x or
+          y<>l_actors(i).y or sector_id<>l_actors(i).sector_id);
+      -- The ordered actor-ID image was locked and validated above; zero-row
+      -- bulk entries here are intentionally unchanged actors, not omissions.
     end if;
     if l_spawn_count>0 then
       forall i in 1..l_spawn_count
@@ -508,12 +588,39 @@ create or replace package body doom_unified_delta_apply as
           l_spawns(i).sector_id,-1,0,0,null,0);
     end if;
     if l_event_count>0 then
+      begin
+        select event_sha into l_event_head from history_heads
+          where session_token=p_session_token and lineage=p_save_lineage for update;
+      exception when no_data_found then
+        l_event_head:=rpad('0',64,'0');
+        insert into history_heads(session_token,lineage,command_sha,event_sha)
+        values(p_session_token,p_save_lineage,rpad('0',64,'0'),l_event_head);
+      end;
+      for i in 1..l_event_count loop
+        l_events(i).previous_sha:=l_event_head;
+        select json_object('lineage' value p_save_lineage,'tic' value l_next_tic,
+          'ordinal' value l_events(i).ordinal,'type' value l_events(i).event_name,
+          'actor' value l_events(i).actor_id,'target' value l_events(i).target_id,
+          'number' value l_events(i).number_value,'text' value l_events(i).text_value,
+          'previous_event_sha' value l_events(i).previous_sha returning clob)
+          into l_event_document from dual;
+        l_events(i).event_sha:=lower(rawtohex(
+          dbms_crypto.hash(l_event_document,dbms_crypto.hash_sh256)));
+        l_event_head:=l_events(i).event_sha;
+      end loop;
+      g_trusted_event_insert:=true;
       forall i in 1..l_event_count
-        insert into game_events(session_token,tic,event_ordinal,event_type,
-          actor_mobj_id,target_mobj_id,number_value,text_value)
-        values(p_session_token,l_next_tic,l_events(i).ordinal,
+        insert into game_events(session_token,lineage,tic,event_ordinal,event_type,
+          actor_mobj_id,target_mobj_id,number_value,text_value,
+          previous_event_sha,event_sha)
+        values(p_session_token,p_save_lineage,l_next_tic,l_events(i).ordinal,
           l_events(i).event_name,l_events(i).actor_id,l_events(i).target_id,
-          l_events(i).number_value,l_events(i).text_value);
+          l_events(i).number_value,l_events(i).text_value,
+          l_events(i).previous_sha,l_events(i).event_sha);
+      g_trusted_event_insert:=false;
+      update history_heads set event_sha=l_event_head
+        where session_token=p_session_token and lineage=p_save_lineage;
+      if sql%rowcount<>1 then fail('event history head');end if;
     end if;
     update players set health=l_player_health,armor=l_player_armor,
       alive=l_player_alive,kill_count=l_player_kills
@@ -528,9 +635,11 @@ create or replace package body doom_unified_delta_apply as
     p_delta_sha:=lower(rawtohex(dbms_crypto.hash(g_delta,dbms_crypto.hash_sh256)));
   exception
     when no_data_found then
+      g_trusted_event_insert:=false;
       rollback to doom_unified_delta_apply_start;
       raise_application_error(-20841,'DTIC v1: missing fenced relational row');
     when others then
+      g_trusted_event_insert:=false;
       rollback to doom_unified_delta_apply_start;
       raise;
   end;

@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | The strict-durable AQ/Scheduler worker now commits dynamic movement, canonical state/history, exact retained rendering, and correlated responses. A stationary 300-frame database run passes at 27.465/32.287 ms p50/p95 (36.4/31.0 FPS); the current dynamic 300-frame run is 28.875/35.271 ms (34.6/28.4 FPS). Projectile lifecycle, public cutover, and end-to-end timing remain open. |
+| P12.0 | Database gate passed; integration active | The strict-durable AQ/Scheduler worker sustains active early-game movement at 20.065/26.008 ms p50/p95 (49.8/38.4 FPS). Projectile cardinality is stable, exact checkpoints/event chains pass, and the retained owner matches SQL at tic 330. Public AutoREST cutover, full controls, and browser end-to-end timing remain open. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -46,30 +46,37 @@ As of July 2026:
 
 ### Current performance
 
-The public `DOOM_API.STEP` route still uses the complete SQL renderer and is
-about 0.128 FPS. The faster worker is implemented and tested but remains
-default-off while it is optimized and integrated behind that same AutoREST
-procedure.
+The database-resident worker has passed the 30 FPS gate. Its latest active
+early-game 300-frame run is 20.065/26.008 ms p50/p95, equivalent to 49.8/38.4
+FPS. This includes retained simulation, strict relational delta persistence,
+rendering, compression, response storage, commit, and AQ correlation. One
+isolated 435 ms OJVM JIT pause remains visible in the maximum and is not hidden
+by the p95 claim.
+
+The public `DOOM_API.STEP` route still uses the complete SQL renderer at about
+0.128 FPS. The faster worker remains default-off until it is cut over behind the
+same AutoREST contract and measured through ORDS, wire transfer, browser decode,
+and blit. Full fire/use/weapon controls also remain to be connected, so the
+public game is not yet generally playable despite the database gate passing.
 
 The worker passes live commit, idempotent replay, rollback/discard, post-commit
 reconstruction, restart fencing, and two-session isolation. SecureFile tracing
 identified synchronous direct-path writes in the response, per-tic state, and
 history LOBs. Full `CACHE LOGGING RETENTION NONE`, explicit temporary-LOB
-cleanup, presized local data/redo files, and `COMMIT WRITE BATCH WAIT` now make
-durability explicit and reduce response copy to 1.584 ms p95 on the dynamic
-300-frame run. Checkpoints now occur every 32 tics, with exact bytes and at most
-32 delta applications during recovery.
+cleanup, presized local data/redo files, and `COMMIT WRITE BATCH WAIT` make
+durability explicit. Exact canonical state/history checkpoints occur every 64
+tics; between them, domain-separated command/delta hashes remain durable and
+explicit state reads can build canonical JSON from relational state. The
+300-frame gate verified five checkpoint BLOB/SHA pairs, every intermediate
+chain hash, the complete event hash chain, and retained-owner/SQL parity.
 
-The clean stationary 300-frame result is 27.465/32.287 ms p50/p95
-(36.4/31.0 FPS), while 1,000 stationary frames measure 27.821/34.005 ms. The
-current dynamic 300-frame result is 28.875/35.271 ms (34.6/28.4 FPS). Its p95
-stages include render 11.912 ms, apply 7.641 ms, state 4.597 ms, durable commit
-3.171 ms, and prepare 2.553 ms. The dynamic worker still spawns projectiles
-without completing their retained movement/removal lifecycle, so object count
-and state size grow during long runs; that correctness and performance defect
-is the next blocker. Stage percentiles are independently ranked and are not
-additive. Public AutoREST cutover and ORDS/wire/decode/browser measurement
-follow complete dynamic parity. No end-to-end 30 FPS claim is made yet.
+The main reductions were packed retained projectile mutations, ordered
+changed-actor deltas instead of rewriting all 53 monsters, one bulk world-op
+MERGE, and checkpoint-cadence state serialization. In the passing run, p95
+stages were render 11.125 ms, apply 6.059 ms, state 0.347 ms, prepare 2.380 ms,
+and commit 2.230 ms. Stage percentiles are independently ranked and are not
+additive. Full evidence is in
+[the dynamic 30 FPS report](reports/performance-P12.0-dynamic-30fps-2026-07-16.md).
 
 The current public route checkpoint is alive at tic 1430 with 46 health, 9
 kills, and 15 shotgun shells. It has legitimately opened the corridor doors,
@@ -187,9 +194,12 @@ BLOB handoff is 0.063 ms p95 and the full renderer+codec+BLOB total is
 
 ## Is it playable yet?
 
-Not yet through the public route. The current SQL-rendered endpoint remains the
-correct playable reference at about 0.128 FPS, while the new production
-components are individually inside the 33.3 ms budget but are not fully coupled.
+The database worker is now fast enough at p95, but the public game is not yet
+generally playable. AutoREST still points at the slow SQL reference path, and
+the retained command envelope currently exposes movement rather than the full
+fire/use/weapon input surface. The next integration slice is public cutover plus
+the fixed ORDS/browser 300-frame measurement; SQL remains independently
+executable as the differential oracle.
 
 The selected warm worker no longer serializes and immediately reparses its own
 state. A request-fenced, rollback-capable world diff moves pending player and
@@ -217,17 +227,12 @@ and prepare invisibility. The complete movement-plus-actor boundary measures
 the warm p95 to the actor pass (1.921 ms), not movement (portal/location work is
 0.104 ms p95).
 
-The 5,745-byte DMSC/DCTC command delta now validates and applies atomically to
-durable SQL with resulting-tic event semantics, exact BSP-derived sector checks,
-and full mixed-combat parity. The measured retained simulation + direct update +
-render path totals about 14.5 ms at p95 before persistence, commit, AQ/ORDS,
-wire, decode, and blit; the independently measured AQ p95 is 3.843 ms. This is
-budget evidence, not an additive end-to-end FPS result. The remaining critical
-work is canonical command/history/state hashing, production worker cutover, and
-the public AutoREST/browser route. The fixed
-270-frame browser measurement must keep both p50 and p95 at or below 33.3 ms.
-See the
-[ORDS/OJVM worker report](reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md).
+The complete SQL simulation and renderer remain executable as differential
+oracles. The worker is dynamic: arbitrary valid sessions can submit commands;
+no fixed route or prerecorded input stream is built into it. The fixed
+ORDS/browser run must still keep p50 and p95 at or below 33.3 ms. See the
+[worker architecture report](reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md)
+and [latest 30 FPS evidence](reports/performance-P12.0-dynamic-30fps-2026-07-16.md).
 
 ## Local review
 

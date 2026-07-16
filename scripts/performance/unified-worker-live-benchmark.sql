@@ -13,7 +13,7 @@ declare
   committed_seq_ number;delta_version_ number;delta_count_ number;
   delta_sha_ varchar2(64);state_sha_ varchar2(64);frame_sha_ varchar2(64);
   response_bytes_ number;response_sha_ varchar2(64);delta_ blob;payload_ blob;
-  tic_ number;seq_ number;old_wait_ number;old_capacity_ number;count_ number;
+  tic_ number;seq_ number;old_wait_ number;old_capacity_ number;old_parity_ number;count_ number;
   history_interval_ number;
   started_ timestamp with time zone;samples_ sys.odcinumberlist:=sys.odcinumberlist();
   checkpoint_samples_ sys.odcinumberlist:=sys.odcinumberlist();
@@ -60,6 +60,8 @@ declare
       where config_key='UNIFIED_WORKER_WAIT_SECONDS';end if;
     if old_capacity_ is not null then update doom_config set number_value=old_capacity_
       where config_key='MAX_ACTIVE_SESSIONS';end if;
+    if old_parity_ is not null then update doom_config set number_value=old_parity_
+      where config_key='UNIFIED_WORKER_PARITY_INTERVAL';end if;
     commit;
   end;
 begin
@@ -67,6 +69,8 @@ begin
     where config_key='UNIFIED_WORKER_WAIT_SECONDS';
   select number_value into old_capacity_ from doom_config
     where config_key='MAX_ACTIVE_SESSIONS';
+  select number_value into old_parity_ from doom_config
+    where config_key='UNIFIED_WORKER_PARITY_INTERVAL';
   select number_value into history_interval_ from doom_config
     where config_key='HISTORY_SNAPSHOT_INTERVAL';
   update doom_config set number_value=30 where config_key='UNIFIED_WORKER_WAIT_SECONDS';
@@ -74,6 +78,8 @@ begin
     where config_key='MAX_ACTIVE_SESSIONS';
   update doom_config set number_value=1 where config_key='UNIFIED_WORKER_ENABLED';
   update doom_config set number_value=0 where config_key='UNIFIED_WORKER_FAILPOINT';
+  update doom_config set number_value=c_warm+c_samples
+    where config_key='UNIFIED_WORKER_PARITY_INTERVAL';
   commit;
 
   doom_api.new_game(3,session_,initial_);
@@ -110,6 +116,53 @@ begin
         regular_samples_(regular_samples_.count):=samples_(samples_.count);end if;
     end if;
   end loop;
+  select count(*) into count_ from tic_commands c
+    where c.session_token=session_ and c.lineage=lineage_
+      and c.command_seq between 1 and tic_
+      and ((mod(c.tic,history_interval_)=0 and
+            (dbms_lob.getlength(c.state_blob)=0 or c.state_sha<>
+              lower(rawtohex(dbms_crypto.hash(c.state_blob,dbms_crypto.hash_sh256)))))
+        or (mod(c.tic,history_interval_)<>0 and
+            (dbms_lob.getlength(c.state_blob)<>0 or c.state_sha<>
+              (select lower(rawtohex(dbms_crypto.hash(utl_i18n.string_to_raw(
+                'DOOM_STATE_CHAIN_V1|'||lineage_||'|'||
+                to_char(c.tic,'TM9','NLS_NUMERIC_CHARACTERS=''.,''')||'|'||
+                c.command_sha||'|'||x.delta_sha,'AL32UTF8'),dbms_crypto.hash_sh256)))
+               from doom_worker_request r join doom_worker_result x
+                 on x.request_id=r.request_id
+               where r.session_token=session_ and x.committed_command_seq=c.command_seq))));
+  if count_<>0 then raise_application_error(-20000,'checkpoint state contract mismatches='||count_);end if;
+  select count(*) into count_ from tic_commands
+    where session_token=session_ and lineage=lineage_
+      and mod(tic,history_interval_)=0 and command_seq between 1 and tic_;
+  if count_<>floor(tic_/history_interval_) then
+    raise_application_error(-20000,'checkpoint state count='||count_);
+  end if;
+  dbms_output.put_line('unified_worker_checkpoint_state_contract=OK|'||count_||'|'||history_interval_);
+  select count(*) into count_ from (
+    select e.*,lag(event_sha,1,rpad('0',64,'0')) over(
+      order by tic,event_ordinal) expected_previous
+    from game_events e where session_token=session_ and lineage=lineage_
+  ) where previous_event_sha<>expected_previous or event_sha<>
+    lower(rawtohex(dbms_crypto.hash(json_object(
+      'lineage' value lineage,'tic' value tic,'ordinal' value event_ordinal,
+      'type' value event_type,'actor' value actor_mobj_id,'target' value target_mobj_id,
+      'number' value number_value,'text' value text_value,
+      'previous_event_sha' value previous_event_sha returning clob),
+      dbms_crypto.hash_sh256)));
+  if count_<>0 then raise_application_error(-20000,'event chain mismatches='||count_);end if;
+  select count(*) into count_ from history_heads h where h.session_token=session_
+    and h.lineage=lineage_ and h.event_sha<>coalesce((select event_sha from game_events
+      where session_token=session_ and lineage=lineage_
+      order by tic desc,event_ordinal desc fetch first 1 row only),rpad('0',64,'0'));
+  if count_<>0 then raise_application_error(-20000,'event head mismatch');end if;
+  dbms_output.put_line('unified_worker_event_chain_contract=OK');
+  select detail into error_ from doom_worker_audit
+    where request_id=(select r.request_id from doom_worker_request r
+      join doom_worker_result x on x.request_id=r.request_id
+      where r.session_token=session_ and x.committed_tic=tic_)
+      and audit_event='PARITY_OK';
+  dbms_output.put_line('unified_worker_owner_sql_parity='||error_);
   select percentile_cont(.5) within group(order by column_value),
     percentile_cont(.95) within group(order by column_value),max(column_value)
     into p50_,p95_,max_ from table(samples_);
@@ -141,40 +194,40 @@ begin
         on x.request_id=r.request_id
       where r.session_token=session_ and r.request_status='COMMITTED'
     ), values_ as (
-      select 'prepare' stage,prepare_us/1000 value from measured where sample_no>30
-      union all select 'apply',apply_us/1000 from measured where sample_no>30
-      union all select 'state',state_us/1000 from measured where sample_no>30
-      union all select 'state_encode',state_encode_us/1000 from measured where sample_no>30
-      union all select 'state_blob',state_blob_us/1000 from measured where sample_no>30
-      union all select 'state_compare',state_compare_us/1000 from measured where sample_no>30
-      union all select 'state_object_encode',state_object_encode_us/1000 from measured where sample_no>30
-      union all select 'state_changed',state_changed from measured where sample_no>30
-      union all select 'state_reused',state_reused from measured where sample_no>30
-      union all select 'state_removed',state_removed from measured where sample_no>30
-      union all select 'render',render_us/1000 from measured where sample_no>30
-      union all select 'render_call',render_call_us/1000 from measured where sample_no>30
-      union all select 'render_update',render_update_us/1000 from measured where sample_no>30
+      select 'prepare' stage,prepare_us/1000 value from measured where sample_no>c_warm
+      union all select 'apply',apply_us/1000 from measured where sample_no>c_warm
+      union all select 'state',state_us/1000 from measured where sample_no>c_warm
+      union all select 'state_encode',state_encode_us/1000 from measured where sample_no>c_warm
+      union all select 'state_blob',state_blob_us/1000 from measured where sample_no>c_warm
+      union all select 'state_compare',state_compare_us/1000 from measured where sample_no>c_warm
+      union all select 'state_object_encode',state_object_encode_us/1000 from measured where sample_no>c_warm
+      union all select 'state_changed',state_changed from measured where sample_no>c_warm
+      union all select 'state_reused',state_reused from measured where sample_no>c_warm
+      union all select 'state_removed',state_removed from measured where sample_no>c_warm
+      union all select 'render',render_us/1000 from measured where sample_no>c_warm
+      union all select 'render_call',render_call_us/1000 from measured where sample_no>c_warm
+      union all select 'render_update',render_update_us/1000 from measured where sample_no>c_warm
       union all select 'render_other',greatest(render_us-render_kernel_us-
-        codec_us-blob_us,0)/1000 from measured where sample_no>30
-      union all select 'render_kernel',render_kernel_us/1000 from measured where sample_no>30
-      union all select 'codec',codec_us/1000 from measured where sample_no>30
-      union all select 'blob',blob_us/1000 from measured where sample_no>30
-      union all select 'response_copy',response_copy_us/1000 from measured where sample_no>30
-      union all select 'response_hash',response_hash_us/1000 from measured where sample_no>30
+        codec_us-blob_us,0)/1000 from measured where sample_no>c_warm
+      union all select 'render_kernel',render_kernel_us/1000 from measured where sample_no>c_warm
+      union all select 'codec',codec_us/1000 from measured where sample_no>c_warm
+      union all select 'blob',blob_us/1000 from measured where sample_no>c_warm
+      union all select 'response_copy',response_copy_us/1000 from measured where sample_no>c_warm
+      union all select 'response_hash',response_hash_us/1000 from measured where sample_no>c_warm
       union all select 'history',history_us/1000 from measured
-        where sample_no>30 and history_us is not null
+        where sample_no>c_warm and history_us is not null
       union all select 'history_encode',history_encode_us/1000 from measured
-        where sample_no>30 and history_encode_us is not null
+        where sample_no>c_warm and history_encode_us is not null
       union all select 'history_blob',history_blob_us/1000 from measured
-        where sample_no>30 and history_blob_us is not null
+        where sample_no>c_warm and history_blob_us is not null
       union all select 'history_persist',history_persist_us/1000 from measured
-        where sample_no>30 and history_persist_us is not null
-      union all select 'finalize',finalize_us/1000 from measured where sample_no>30
+        where sample_no>c_warm and history_persist_us is not null
+      union all select 'finalize',finalize_us/1000 from measured where sample_no>c_warm
       union all select 'finalize_checkpoint',finalize_us/1000 from measured
-        where sample_no>30 and history_us is not null
+        where sample_no>c_warm and history_us is not null
       union all select 'finalize_regular',finalize_us/1000 from measured
-        where sample_no>30 and history_us is null
-      union all select 'commit',commit_us/1000 from measured where sample_no>30
+        where sample_no>c_warm and history_us is null
+      union all select 'commit',commit_us/1000 from measured where sample_no>c_warm
     )
     select stage,percentile_cont(.5) within group(order by value) p50,
       percentile_cont(.95) within group(order by value) p95,max(value) maximum

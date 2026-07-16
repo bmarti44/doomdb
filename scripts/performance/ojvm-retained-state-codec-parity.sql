@@ -111,8 +111,13 @@ begin
         rng_,next_mobj_,0,command_);command_tics_:=command_tics_+1;
       if rawtohex(utl_raw.substr(delta_,1,8))<>'44554F5001000500' then
         raise_application_error(-20000,'retained command TIC prepare '||sample_||' '||doom_unified_actor_last_error);end if;
-      doom_unified_delta_apply.apply_command_tic(session_,lineage_,tic_,seq_,command_,delta_,
-        committed_tic_,committed_seq_,version_,count_,delta_sha_);
+      begin
+        doom_unified_delta_apply.apply_command_tic(session_,lineage_,tic_,seq_,command_,delta_,
+          committed_tic_,committed_seq_,version_,count_,delta_sha_);
+      exception when others then
+        raise_application_error(-20000,'retained command apply sample='||sample_||
+          ' frontier='||tic_||'|'||seq_||' cause='||sqlerrm);
+      end;
     end if;
 
     doom_canonical_state.build_into_locator(session_,0,oracle_,oracle_sha_);

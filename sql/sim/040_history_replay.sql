@@ -1,7 +1,7 @@
 -- T6.4 deterministic persistence.  Durable history is append-only; restore
 -- operations branch by lineage and only replace the live authoritative rows.
 merge into doom_config d
-using (select 'HISTORY_SNAPSHOT_INTERVAL' config_key,32 number_value from dual) s
+using (select 'HISTORY_SNAPSHOT_INTERVAL' config_key,64 number_value from dual) s
 on (d.config_key=s.config_key)
 when matched then update set d.number_value=s.number_value,d.text_value=null
 when not matched then insert(config_key,number_value,text_value)
@@ -122,17 +122,28 @@ before insert on game_events for each row
 declare
   l_document clob;
 begin
-  select save_lineage into :new.lineage from game_sessions
-    where session_token=:new.session_token;
-  merge into history_heads d using(select :new.session_token session_token,
-    :new.lineage lineage from dual) s
-  on(d.session_token=s.session_token and d.lineage=s.lineage)
-  when not matched then insert(session_token,lineage,command_sha,event_sha)
-    values(s.session_token,s.lineage,
+  if doom_unified_delta_apply.trusted_event_insert=1 then
+    if not regexp_like(:new.lineage,'^[0-9a-f]{64}$') or
+       not regexp_like(:new.previous_event_sha,'^[0-9a-f]{64}$') or
+       not regexp_like(:new.event_sha,'^[0-9a-f]{64}$') then
+      raise_application_error(-20842,'trusted event hash envelope');
+    end if;
+  else
+  if :new.lineage is null then
+    select save_lineage into :new.lineage from game_sessions
+      where session_token=:new.session_token;
+  end if;
+  begin
+    select event_sha into :new.previous_event_sha from history_heads
+      where session_token=:new.session_token and lineage=:new.lineage for update;
+  exception when no_data_found then
+    insert into history_heads(session_token,lineage,command_sha,event_sha)
+    values(:new.session_token,:new.lineage,
       '0000000000000000000000000000000000000000000000000000000000000000',
       '0000000000000000000000000000000000000000000000000000000000000000');
-  select event_sha into :new.previous_event_sha from history_heads
-    where session_token=:new.session_token and lineage=:new.lineage for update;
+    :new.previous_event_sha:=
+      '0000000000000000000000000000000000000000000000000000000000000000';
+  end;
   select json_object('lineage' value :new.lineage,'tic' value :new.tic,
     'ordinal' value :new.event_ordinal,'type' value :new.event_type,
     'actor' value :new.actor_mobj_id,'target' value :new.target_mobj_id,
@@ -142,6 +153,7 @@ begin
   :new.event_sha:=lower(rawtohex(dbms_crypto.hash(l_document,dbms_crypto.hash_sh256)));
   update history_heads set event_sha=:new.event_sha
     where session_token=:new.session_token and lineage=:new.lineage;
+  end if;
 end;
 /
 
