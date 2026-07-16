@@ -1,6 +1,3 @@
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-
 /**
  * First differential slice of the retained OJVM simulation.
  *
@@ -26,6 +23,19 @@ public final class DoomResidentSimulationBench {
   private static double playerY;
   private static double playerZ;
   private static double playerAngle;
+  private static String lineage;
+  private static long workerGeneration;
+  private static boolean pending;
+  private static String pendingRequest;
+  private static long pendingTic;
+  private static long pendingCommandSeq;
+  private static double pendingX;
+  private static double pendingY;
+  private static double pendingZ;
+  private static double pendingAngle;
+  private static final long[] scratchSequence = new long[4];
+  private static final double[] scratchAngle = new double[4];
+  private static final byte[] deltaBuffer = new byte[DELTA_HEADER_BYTES + 4 * DELTA_BYTES];
   private static String lastError = "";
 
   private DoomResidentSimulationBench() {}
@@ -34,9 +44,11 @@ public final class DoomResidentSimulationBench {
     if (!condition) throw new IllegalArgumentException(message);
   }
 
-  private static void requireSession(String session) {
+  private static void requireFence(String session, String expectedLineage, long generation) {
     require(loaded, "state is not loaded");
     require(session != null && session.equals(sessionToken), "worker session mismatch");
+    require(expectedLineage != null && expectedLineage.equals(lineage), "worker lineage mismatch");
+    require(generation == workerGeneration, "worker generation mismatch");
   }
 
   private static double advanceAngle(double angle, int turn) {
@@ -53,36 +65,49 @@ public final class DoomResidentSimulationBench {
   }
 
   /** Catch-all worker load boundary. */
-  public static String loadPlayer(String session, long tic, long commandSeq,
+  public static String loadPlayer(String session, String loadedLineage, long generation,
+      long tic, long commandSeq,
       double x, double y, double z, double angle) {
     try {
       require(session != null && session.matches("[0-9a-f]{32}"), "invalid session token");
+      require(loadedLineage != null && loadedLineage.matches("[0-9a-f]{64}"),
+          "invalid lineage");
+      require(generation > 0, "invalid worker generation");
       require(tic >= 0 && commandSeq >= 0, "negative frontier");
       require(Double.isFinite(x) && Double.isFinite(y) && Double.isFinite(z),
           "non-finite position");
       require(Double.isFinite(angle) && angle >= 0.0d && angle < 360.0d,
           "invalid angle");
       sessionToken = session;
+      lineage = loadedLineage;
+      workerGeneration = generation;
       currentTic = tic;
       lastCommandSeq = commandSeq;
       playerX = x;
       playerY = y;
       playerZ = z;
       playerAngle = angle;
+      pending = false;
+      pendingRequest = null;
       loaded = true;
       lastError = "";
       return "OK";
     } catch (Throwable error) {
       loaded = false;
       sessionToken = null;
+      lineage = null;
+      pending = false;
+      pendingRequest = null;
       return failure(error);
     }
   }
 
   /** Scalar differential-test boundary; production uses stepTurnBatch. */
-  public static String stepTurn(String session, long commandSeq, int turn) {
+  public static String stepTurn(String session, String expectedLineage, long generation,
+      long commandSeq, int turn) {
     try {
-      requireSession(session);
+      requireFence(session, expectedLineage, generation);
+      require(!pending, "prepared batch is awaiting resolution");
       require(commandSeq == lastCommandSeq + 1, "command sequence gap");
       require(turn >= -1 && turn <= 1, "turn outside domain");
       playerAngle = advanceAngle(playerAngle, turn);
@@ -101,65 +126,122 @@ public final class DoomResidentSimulationBench {
    * reserved:7). Output is DMSD/v1 plus 24-byte records
    * (seq:int64, tic:int64, angle:binary64).
    */
-  public static byte[] stepTurnBatch(String session, byte[] packedCommands) {
+  private static int readInt(byte[] bytes, int offset) {
+    return ((bytes[offset] & 255) << 24) | ((bytes[offset + 1] & 255) << 16) |
+        ((bytes[offset + 2] & 255) << 8) | (bytes[offset + 3] & 255);
+  }
+
+  private static long readLong(byte[] bytes, int offset) {
+    return ((long) readInt(bytes, offset) << 32) | (readInt(bytes, offset + 4) & 0xffffffffL);
+  }
+
+  private static void putInt(byte[] bytes, int offset, int value) {
+    bytes[offset] = (byte) (value >>> 24); bytes[offset + 1] = (byte) (value >>> 16);
+    bytes[offset + 2] = (byte) (value >>> 8); bytes[offset + 3] = (byte) value;
+  }
+
+  private static void putLong(byte[] bytes, int offset, long value) {
+    putInt(bytes, offset, (int) (value >>> 32)); putInt(bytes, offset + 4, (int) value);
+  }
+
+  private static void writeDeltaHeader(int status, int count) {
+    for (int index = 0; index < deltaBuffer.length; index++) deltaBuffer[index] = 0;
+    putInt(deltaBuffer, 0, DELTA_MAGIC);
+    deltaBuffer[4] = VERSION; deltaBuffer[5] = (byte) status;
+    deltaBuffer[6] = (byte) count;
+  }
+
+  public static byte[] prepareTurnBatch(String session, String expectedLineage,
+      long generation, String request, byte[] packedCommands) {
     try {
-      requireSession(session);
+      requireFence(session, expectedLineage, generation);
+      require(!pending, "prepared batch is awaiting resolution");
+      require(request != null && request.matches("[0-9a-f]{32}"), "invalid request id");
       require(packedCommands != null && packedCommands.length >= COMMAND_HEADER_BYTES,
           "missing command pack");
-      ByteBuffer input = ByteBuffer.wrap(packedCommands).order(ByteOrder.BIG_ENDIAN);
-      require(input.getInt() == COMMAND_MAGIC, "command magic");
-      require(input.get() == VERSION, "command version");
-      int count = input.get() & 255;
+      require(readInt(packedCommands, 0) == COMMAND_MAGIC, "command magic");
+      require(packedCommands[4] == VERSION, "command version");
+      int count = packedCommands[5] & 255;
       require(count >= 1 && count <= 4, "batch size");
-      require(input.getShort() == 0, "command flags");
+      require(packedCommands[6] == 0 && packedCommands[7] == 0, "command flags");
       require(packedCommands.length == COMMAND_HEADER_BYTES + count * COMMAND_BYTES,
           "command pack length");
 
       long nextSeq = lastCommandSeq;
       long nextTic = currentTic;
       double nextAngle = playerAngle;
-      long[] sequences = new long[count];
-      double[] angles = new double[count];
       for (int index = 0; index < count; index++) {
-        long sequence = input.getLong();
-        int turn = input.get();
+        int offset = COMMAND_HEADER_BYTES + index * COMMAND_BYTES;
+        long sequence = readLong(packedCommands, offset);
+        int turn = packedCommands[offset + 8];
         require(sequence == nextSeq + 1, "command sequence gap");
         require(turn >= -1 && turn <= 1, "turn outside domain");
         for (int reserved = 0; reserved < 7; reserved++) {
-          require(input.get() == 0, "command reserved bytes");
+          require(packedCommands[offset + 9 + reserved] == 0, "command reserved bytes");
         }
         nextSeq = sequence;
         nextTic++;
         nextAngle = advanceAngle(nextAngle, turn);
-        sequences[index] = sequence;
-        angles[index] = nextAngle;
+        scratchSequence[index] = sequence;
+        scratchAngle[index] = nextAngle;
       }
 
-      ByteBuffer output = ByteBuffer.allocate(DELTA_HEADER_BYTES + count * DELTA_BYTES)
-          .order(ByteOrder.BIG_ENDIAN);
-      output.putInt(DELTA_MAGIC).put(VERSION).put((byte) 0).put((byte) count).put((byte) 0);
+      writeDeltaHeader(0, count);
       long tic = currentTic;
       for (int index = 0; index < count; index++) {
-        output.putLong(sequences[index]).putLong(++tic).putDouble(angles[index]);
+        int offset = DELTA_HEADER_BYTES + index * DELTA_BYTES;
+        putLong(deltaBuffer, offset, scratchSequence[index]);
+        putLong(deltaBuffer, offset + 8, ++tic);
+        putLong(deltaBuffer, offset + 16, Double.doubleToRawLongBits(scratchAngle[index]));
       }
-      lastCommandSeq = nextSeq;
-      currentTic = nextTic;
-      playerAngle = nextAngle;
+      pendingCommandSeq = nextSeq;
+      pendingTic = nextTic;
+      pendingX = playerX; pendingY = playerY; pendingZ = playerZ;
+      pendingAngle = nextAngle;
+      pendingRequest = request;
+      pending = true;
       lastError = "";
-      return output.array();
+      return deltaBuffer;
     } catch (Throwable error) {
       failure(error);
-      ByteBuffer output = ByteBuffer.allocate(DELTA_HEADER_BYTES)
-          .order(ByteOrder.BIG_ENDIAN);
-      output.putInt(DELTA_MAGIC).put(VERSION).put((byte) 1).put((byte) 0).put((byte) 0);
-      return output.array();
+      writeDeltaHeader(1, 0);
+      return deltaBuffer;
+    }
+  }
+
+  public static String accept(String session, String expectedLineage, long generation,
+      String request) {
+    try {
+      requireFence(session, expectedLineage, generation);
+      require(pending, "no prepared batch");
+      require(request != null && request.equals(pendingRequest), "prepared request mismatch");
+      lastCommandSeq = pendingCommandSeq; currentTic = pendingTic;
+      playerX = pendingX; playerY = pendingY; playerZ = pendingZ; playerAngle = pendingAngle;
+      pending = false; pendingRequest = null; lastError = "";
+      return "OK";
+    } catch (Throwable error) {
+      return failure(error);
+    }
+  }
+
+  public static String discard(String session, String expectedLineage, long generation,
+      String request) {
+    try {
+      requireFence(session, expectedLineage, generation);
+      require(pending, "no prepared batch");
+      require(request != null && request.equals(pendingRequest), "prepared request mismatch");
+      pending = false; pendingRequest = null; lastError = "";
+      return "OK";
+    } catch (Throwable error) {
+      return failure(error);
     }
   }
 
   /** No-state-change compute benchmark for the primitive-array turn kernel. */
-  public static String benchmarkTurn(String session, int iterations) {
+  public static String benchmarkTurn(String session, String expectedLineage, long generation,
+      int iterations) {
     try {
-      requireSession(session);
+      requireFence(session, expectedLineage, generation);
       require(iterations >= 1 && iterations <= 100_000_000, "benchmark iterations");
       double angle = playerAngle;
       long started = System.nanoTime();
@@ -177,12 +259,26 @@ public final class DoomResidentSimulationBench {
     }
   }
 
-  public static String state(String session) {
+  public static String state(String session, String expectedLineage, long generation) {
     try {
-      requireSession(session);
+      requireFence(session, expectedLineage, generation);
       return "OK|" + lastCommandSeq + "|" + currentTic + "|" +
           Double.toString(playerX) + "|" + Double.toString(playerY) + "|" +
           Double.toString(playerZ) + "|" + Double.toString(playerAngle);
+    } catch (Throwable error) {
+      return failure(error);
+    }
+  }
+
+  public static String pendingState(String session, String expectedLineage, long generation,
+      String request) {
+    try {
+      requireFence(session, expectedLineage, generation);
+      require(pending, "no prepared batch");
+      require(request != null && request.equals(pendingRequest), "prepared request mismatch");
+      return "OK|" + pendingCommandSeq + "|" + pendingTic + "|" +
+          Double.toString(pendingX) + "|" + Double.toString(pendingY) + "|" +
+          Double.toString(pendingZ) + "|" + Double.toString(pendingAngle);
     } catch (Throwable error) {
       return failure(error);
     }

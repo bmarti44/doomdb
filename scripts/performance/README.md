@@ -20,6 +20,11 @@ compact binary delta for SQL persistence. The probe requires exact parity for
 batch. Its internal ten-million-turn sample is a kernel-only diagnostic and is
 never an end-to-end FPS claim.
 
+The same harness validates the selected exact-numeric boundary. Oracle JDBC
+`NUMBER` matches all 1,152 SQL movement delta encodings and a representative
+quadratic collision root byte-for-byte. The selected path preloads SQL-built
+64-angle deltas; runtime trigonometry is not part of the worker hot loop.
+
 `verify-performance-baseline.mjs` has two fail-closed modes. With one evidence
 path it verifies an already collected baseline and every referenced artifact.
 With `--collect REPLAY EVIDENCE`, it performs the real 300-frame replay and

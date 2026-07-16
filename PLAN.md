@@ -1411,6 +1411,18 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   arithmetic kernel and does not count persistence, rendering, AQ, ORDS, or
   browser work. Extend this same boundary with array-resident collision and
   player movement next; do not introduce per-tic JDBC or JSON reconstruction.
+- Sol Max retained-state correction (2026-07-16): production state is
+  double-buffered and transaction-fenced: `prepare` builds pending state and
+  dirty deltas, SQL persists and commits, then `accept` publishes; a pre-commit
+  failure calls `discard`, while commit-success/accept-failure kills and reloads
+  the worker. The live slice now passes prepare invisibility, discard, accept,
+  atomic invalid-batch rejection, and session/lineage/generation fencing. Its
+  packed path uses retained scalar scratch/output buffers with no per-request
+  `ByteBuffer` or temporary arrays. Exact `oracle.sql.NUMBER` feasibility also
+  passes 1,152/1,152 SQL movement values and the representative quadratic root
+  byte-for-byte. Preloaded lookup+NUMBER add measured 0.54–0.69 us/op and exact
+  quadratic entry 9.7–15.0 us/op; runtime trig is not selected. See
+  `reports/performance-P12.0-sol-max-resident-simulation-2026-07-16.md`.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

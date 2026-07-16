@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Active playability gate | A retained in-database AQ/Scheduler renderer worker passes at 15.671/17.590 ms p50/p95 request-through-commit. The first no-JDBC retained simulation slice now passes 270/270 turn-oracle cases, a four-command packed batch, and atomic rejection; collision, actors, persistence, and public-path integration remain. |
+| P12.0 | Active playability gate | The retained renderer worker passes at 15.671/17.590 ms p50/p95. Simulation slice 1 passes turn, packed-batch, transaction/fence gates, plus 1,152/1,152 exact Oracle NUMBER movement cases; full collision, actors, persistence, and public integration remain. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -169,7 +169,10 @@ implementing one array-resident simulation/render worker with relational
 deltas, checkpoints, and exact SQL differential oracles. Its first retained
 player/frontier slice crosses no JDBC/JSON boundary and matches 270/270 SQL
 turn results plus a four-command packed batch; that is a component parity gate,
-not a playable game result. Playability requires
+not a playable game result. Its pending state stays invisible until explicit
+post-commit acceptance, and session/lineage/generation fences pass. Oracle
+`NUMBER` also matches all 1,152 movement deltas and the first quadratic contact
+root byte-for-byte, establishing an exact numeric route for collision. Playability requires
 270+ unique moving frames to sustain 30 FPS at both p50 and p95 through the
 public browser path. See the
 [ORDS/OJVM worker report](reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md).

@@ -198,6 +198,20 @@ primitive computation is negligible compared with the rejected 10.874 ms
 snapshot rebuild and 24.162/36.939 ms SQL simulation. The next differential
 slice extends this same packed boundary with player movement and collision.
 
+The transaction hardening follow-up replaced immediate mutation with committed
+and pending state. `prepare` emits deltas while committed state remains visible;
+`discard` abandons it, and `accept` publishes only after the caller's relational
+commit. Session, lineage, generation, and request IDs fence every transition.
+The retained batch path no longer allocates `ByteBuffer` or scratch arrays.
+
+An exact-number feasibility matrix then matched all 1,152 canonical-angle
+movement delta `NUMBER` encodings and one quadratic endpoint-contact root
+byte-for-byte against SQL. Preloaded lookup plus exact addition measured
+0.54–0.69 microseconds/op; the exact quadratic calculation measured 9.7–15.0
+microseconds/op. Runtime trig is rejected from the hot loop; movement tables are
+prebuilt by SQL and only narrow exact collision/final-coordinate operations use
+`oracle.sql.NUMBER`.
+
 Large frames remain in relational SecureFile rows. AQ carries only a small,
 unguessable request identifier and command metadata. The worker commits the
 authoritative state and response before signaling completion. AutoREST enforces
