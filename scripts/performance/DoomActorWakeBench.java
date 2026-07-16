@@ -10,6 +10,7 @@ public final class DoomActorWakeBench {
   private static int[] id, health, seen, cooldown, awake, stateTics, sector;
   private static int[] stateIndex, target, seeStateIndex, seeStateTics;
   private static int[] painChance, painStateIndex, painStateTics;
+  private static int[] deathProcessed;
   private static NUMBER[] x, y;
   private static int[] nextSeen, nextCooldown, nextAwake, nextStateIndex, nextStateTics, nextTarget;
   private static int[] dirtyIndex, wakeIndex;
@@ -73,35 +74,35 @@ public final class DoomActorWakeBench {
       if (!parser.take(']')) {
         do {
           parser.expect('[');
-          for (int field = 0; field < 16; field++) {
+          for (int field = 0; field < 17; field++) {
             if (field == 7 || field == 8) parser.numberToken();
             else parser.integer(field == 2 || field == 10);
-            if (field < 15) parser.expect(',');
+            if (field < 16) parser.expect(',');
           }
           parser.expect(']'); rows++;
         } while (parser.take(',')); parser.expect(']');
       }
       require(rows <= 255, "wake actor count");
-      int[][] values = new int[14][rows]; NUMBER[] newX = new NUMBER[rows], newY = new NUMBER[rows];
+      int[][] values = new int[15][rows]; NUMBER[] newX = new NUMBER[rows], newY = new NUMBER[rows];
       parser = new Parser(json); parser.expect('['); int row = 0;
       if (!parser.take(']')) {
         do {
           parser.expect('[');
-          for (int field = 0, integerField = 0; field < 16; field++) {
+          for (int field = 0, integerField = 0; field < 17; field++) {
             if (field == 7) newX[row] = new NUMBER(parser.numberToken());
             else if (field == 8) newY[row] = new NUMBER(parser.numberToken());
             else values[integerField++][row] = parser.integer(field == 2 || field == 10);
-            if (field < 15) parser.expect(',');
+            if (field < 16) parser.expect(',');
           }
           parser.expect(']');
           require(values[0][row] >= 0 && (row == 0 || values[0][row] > values[0][row - 1]),
               "wake actor order");
-          require(values[1][row] > 0 && (values[2][row] == -1 || values[2][row] >= 0) &&
+          require(values[1][row] >= 0 && (values[2][row] == -1 || values[2][row] >= 0) &&
               values[3][row] >= 0 && (values[4][row] == 0 || values[4][row] == 1) &&
               values[5][row] >= -1 && values[6][row] >= 0 && values[7][row] >= 0 &&
               values[8][row] >= -1 && values[9][row] >= 0 && values[10][row] >= -1 &&
               values[11][row] >= 0 && values[11][row] <= 255 && values[12][row] >= 0 &&
-              values[13][row] >= -1 &&
+              values[13][row] >= -1 && (values[14][row] == 0 || values[14][row] == 1) &&
               newX[row] != null && newY[row] != null,
               "wake actor value");
           row++;
@@ -112,6 +113,7 @@ public final class DoomActorWakeBench {
       awake = values[4]; stateTics = values[5]; sector = values[6]; stateIndex = values[7];
       target = values[8]; seeStateIndex = values[9]; seeStateTics = values[10];
       painChance = values[11]; painStateIndex = values[12]; painStateTics = values[13];
+      deathProcessed = values[14];
       x = newX; y = newY;
       nextSeen = new int[rows]; nextCooldown = new int[rows]; nextAwake = new int[rows];
       nextStateIndex = new int[rows]; nextStateTics = new int[rows]; nextTarget = new int[rows];
@@ -143,6 +145,25 @@ public final class DoomActorWakeBench {
       require(playerSector >= 0, "wake player sector");
       int dirty = 0, wakes = 0, draws = 0, cursor = rngCursor;
       for (int index = 0; index < count; index++) {
+        if (health[index] == 0) {
+          require(deathProcessed[index] == 1, "unprocessed death mobj=" + id[index]);
+          int corpseState = stateIndex[index], corpseTics = stateTics[index];
+          if (stateTics[index] > 1) corpseTics--;
+          else if (stateTics[index] == 1) {
+            corpseState = DoomSimCatalogBench.stateNext(stateIndex[index]);
+            require(corpseState >= 0, "missing corpse next state mobj=" + id[index]);
+            corpseTics = DoomSimCatalogBench.stateTics(corpseState);
+            require(DoomSimCatalogBench.stateAction(corpseState) == 0,
+                "unsupported corpse action mobj=" + id[index]);
+          }
+          nextSeen[index] = health[index]; nextCooldown[index] = Math.max(0, cooldown[index] - 1);
+          nextAwake[index] = awake[index]; nextStateIndex[index] = corpseState;
+          nextStateTics[index] = corpseTics; nextTarget[index] = target[index];
+          if (nextSeen[index] != seen[index] || nextCooldown[index] != cooldown[index] ||
+              nextStateIndex[index] != stateIndex[index] || nextStateTics[index] != stateTics[index])
+            dirtyIndex[dirty++] = index;
+          continue;
+        }
         int rejected = DoomSimCatalogBench.rejected(sector[index], playerSector);
         int reaches = DoomSimCatalogBench.soundReach(playerSector, sector[index]);
         require(health[index] > 0 && seen[index] >= -1,

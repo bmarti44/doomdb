@@ -1491,6 +1491,11 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   remain explicitly fail-closed until their differential slices land. The
   SHA-verified catalog is 202,515 bytes with payload SHA-256
   `21719458f28e3e91efe4691081e02ef54959a75186a93566191b4cdf8e3e191d`.
+- Retained processed-corpse transition (2026-07-16): dead actors whose initial
+  death bookkeeping is already durable now advance through the same retained
+  state graph with 53/53 SQL parity, zero events, and unchanged RNG. Unprocessed
+  deaths still fail closed; kill credit, first-death events, flags/target
+  cleanup, and drop creation remain one atomic differential slice.
 - OJVM deployment-memory guard (2026-07-16): repeated iterative
   `loadjava -force` cycles eventually drove the 2 GiB local instance's MMAN to
   fatal `ORA-00822`; the alert trace identifies MMAN, not an uncaught game

@@ -51,7 +51,7 @@ begin
   select json_arrayagg(json_array(m.mobj_id,m.health,m.monster_health_seen,
            m.attack_cooldown,m.awake,m.state_tics,m.sector_id,m.x,m.y,cur.state_index,
            m.target_mobj_id,see.state_index,see.tics,d.pain_chance,
-           pain.state_index,pain.tics null on null returning varchar2)
+           pain.state_index,pain.tics,m.death_processed null on null returning varchar2)
            order by m.mobj_id returning clob)
     into snapshot_
     from mobjs m join doom_monster_def d on d.thing_type=m.thing_type
@@ -155,7 +155,7 @@ begin
   select json_arrayagg(json_array(m.mobj_id,m.health,m.monster_health_seen,
            m.attack_cooldown,m.awake,m.state_tics,m.sector_id,m.x,m.y,cur.state_index,
            m.target_mobj_id,see.state_index,see.tics,d.pain_chance,
-           pain.state_index,pain.tics null on null returning varchar2)
+           pain.state_index,pain.tics,m.death_processed null on null returning varchar2)
            order by m.mobj_id returning clob)
     into snapshot_
     from mobjs m join doom_monster_def d on d.thing_type=m.thing_type

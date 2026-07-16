@@ -57,7 +57,7 @@
     <article class="panel">
       <h2>Current milestone</h2>
       <p class="big">30 FPS playability gate<br><span>renderer · movement · wakes · pain · state transitions pass</span></p>
-      <p class="muted">The retained renderer passes at 15.671 / 17.590 ms p50/p95. Movement and exact LOS pass; quiet, HEARD, SEEN, pain, countdown, and ordinary next-state transitions each match all 53 actors. The complete 151-state graph matches SQL. Death, action dispatch, persistence, and the browser path remain.</p>
+      <p class="muted">The retained renderer passes at 15.671 / 17.590 ms p50/p95. Movement and exact LOS pass; quiet, HEARD, SEEN, pain, countdown, ordinary next-state, and processed-corpse transitions each match all 53 actors. The complete 151-state graph matches SQL. Fresh death/drop, action dispatch, persistence, and the browser path remain.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -71,7 +71,7 @@
     <h2>Live implementation status · July 16, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate; public <code>DOOM_TIC_TX.APPLY_BATCH</code> only; lift 1 completed and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> ORDS cleanup resets OJVM statics, so the selected architecture is a long-lived AQ/Scheduler database worker. Its exact renderer + codec + committed BLOB path measures 15.671 / 17.590 ms p50/p95. The 202,515-byte retained catalog includes BSP, collision, BLOCKMAP, movement, REJECT/sound, RNG, and all 151 actor states. Movement passes 270/270 SQL tics; LOS passes 270/270 rays at 0.074 / 0.240 ms p50/p95 per 53 actors; quiet, HEARD, SEEN, pain, countdown, and no-action transitions each pass 53/53, with 36/36 pain events. Death, CHASE/attack dispatch, drop, persistence, and the public 30 FPS gate remain. The incomplete path projects near 25–32 FPS, not yet measured gameplay.</p>
+    <p><strong>Performance:</strong> ORDS cleanup resets OJVM statics, so the selected architecture is a long-lived AQ/Scheduler database worker. Its exact renderer + codec + committed BLOB path measures 15.671 / 17.590 ms p50/p95. The 202,515-byte retained catalog includes BSP, collision, BLOCKMAP, movement, REJECT/sound, RNG, and all 151 actor states. Movement passes 270/270 SQL tics; LOS passes 270/270 rays at 0.074 / 0.240 ms p50/p95 per 53 actors; quiet, HEARD, SEEN, pain, countdown, no-action, and processed-corpse transitions each pass 53/53, with 36/36 pain events. Fresh death/drop, CHASE/attack dispatch, persistence, and the public 30 FPS gate remain. The incomplete path projects near 25–32 FPS, not yet measured gameplay.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">
