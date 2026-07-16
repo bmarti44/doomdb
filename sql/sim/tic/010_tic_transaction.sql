@@ -26,11 +26,6 @@ create or replace package body doom_tic_tx as
     return lower(rawtohex(dbms_crypto.hash(p_document, dbms_crypto.hash_sh256)));
   end;
 
-  function sha256(p_document blob) return varchar2 is
-  begin
-    return lower(rawtohex(dbms_crypto.hash(p_document, dbms_crypto.hash_sh256)));
-  end;
-
   function utf8_blob(p_document clob) return blob is
     l_blob blob;
     l_dest integer := 1;
@@ -43,136 +38,6 @@ create or replace package body doom_tic_tx as
       l_dest, l_src, nls_charset_id('AL32UTF8'), l_context, l_warning);
     if l_warning <> 0 then fail(c_malformed, 'command document encoding'); end if;
     return l_blob;
-  end;
-
-  function state_document(p_session varchar2,p_legacy number) return blob is
-    l_document blob;
-  begin
-    select json_object(
-      'schema' value 1,
-      'skill' value s.skill,
-      'current_player_id' value s.current_player_id,
-      'tic' value s.current_tic,
-      'rng_cursor' value s.rng_cursor,
-      'game_mode' value s.game_mode,
-      'map_status' value s.map_status,
-      'paused' value s.paused,
-      'menu_state' value s.menu_state,
-      'automap_state' value s.automap_state,
-      'last_command_seq' value case when p_legacy=0 then null else s.last_command_seq end,
-      'save_lineage' value case when p_legacy=0 then null else s.save_lineage end,
-      'player' value (
-        select json_object(
-          'player_id' value p.player_id, 'x' value p.x, 'y' value p.y,
-          'z' value p.z, 'momentum_x' value p.momentum_x,
-          'momentum_y' value p.momentum_y, 'momentum_z' value p.momentum_z,
-          'angle' value p.angle, 'view_height' value p.view_height,
-          'view_bob' value p.view_bob, 'health' value p.health,
-          'armor' value p.armor, 'armor_type' value p.armor_type,
-          'blue_key' value p.blue_key, 'yellow_key' value p.yellow_key,
-          'red_key' value p.red_key, 'ammo_bullets' value p.ammo_bullets,
-          'ammo_shells' value p.ammo_shells, 'ammo_rockets' value p.ammo_rockets,
-          'ammo_cells' value p.ammo_cells, 'weapon_mask' value p.weapon_mask,
-          'selected_weapon' value p.selected_weapon,
-          'pending_weapon' value p.pending_weapon,
-          'weapon_state' value p.weapon_state,
-          'weapon_state_tics' value p.weapon_state_tics,
-          'flash_state' value p.flash_state,
-          'flash_state_tics' value p.flash_state_tics,
-          'refire' value p.refire, 'backpack' value p.backpack,
-          'power_berserk' value p.power_berserk,
-          'power_invulnerability' value p.power_invulnerability,
-          'power_invisibility' value p.power_invisibility,
-          'power_ironfeet' value p.power_ironfeet,
-          'power_lightamp' value p.power_lightamp,
-          'kill_count' value p.kill_count, 'item_count' value p.item_count,
-          'secret_count' value p.secret_count, 'alive' value p.alive,
-          'noclip' value p.noclip
-          returning varchar2(4000))
-        from players p
-        where p.session_token=s.session_token and p.player_id=s.current_player_id
-      ) format json,
-      'mobjs' value coalesce((
-        select json_arrayagg(json_object(
-          'mobj_id' value mobj_id, 'thing_type' value thing_type,
-          'state_id' value state_id, 'state_tics' value state_tics,
-          'x' value x, 'y' value y, 'z' value z,
-          'momentum_x' value momentum_x, 'momentum_y' value momentum_y,
-          'momentum_z' value momentum_z, 'angle' value angle,
-          'radius' value radius, 'height' value height, 'health' value health,
-          'flags' value flags, 'target_mobj_id' value target_mobj_id,
-          'tracer_mobj_id' value tracer_mobj_id, 'reaction_time' value reaction_time,
-          'spawn_thing_id' value spawn_thing_id,
-          'owner_mobj_id' value owner_mobj_id,
-          'projectile_kind' value projectile_kind,
-          'exploded' value exploded,
-          'sector_id' value sector_id,
-          'move_direction' value move_direction,
-          'awake' value awake,
-          'attack_cooldown' value attack_cooldown,
-          'monster_health_seen' value monster_health_seen,
-          'death_processed' value death_processed returning varchar2(4000))
-          order by mobj_id returning clob)
-        from mobjs where session_token=s.session_token), to_clob('[]')) format json,
-      'sectors' value coalesce((
-        select json_arrayagg(json_object(
-          'sector_id' value sector_id, 'floor_height' value floor_height,
-          'ceiling_height' value ceiling_height, 'light_level' value light_level,
-          'light_timer' value light_timer,
-          'secret_found' value secret_found, 'damage_clock' value damage_clock
-          returning varchar2(4000)) order by sector_id returning clob)
-        from sector_state where session_token=s.session_token), to_clob('[]')) format json,
-      'lines' value coalesce((
-        select json_arrayagg(json_object(
-          'linedef_id' value linedef_id, 'trigger_count' value trigger_count,
-          'switch_on' value switch_on returning varchar2(4000))
-          order by linedef_id returning clob)
-        from line_state where session_token=s.session_token), to_clob('[]')) format json,
-      'movers' value coalesce((
-        select json_arrayagg(json_object(
-          'mover_id' value mover_id, 'sector_id' value sector_id,
-          'plane' value plane, 'direction' value direction, 'speed' value speed,
-          'target_height' value target_height, 'wait_tics' value wait_tics,
-          'timer_tics' value timer_tics, 'mover_kind' value mover_kind,
-          'origin_height' value origin_height,
-          'source_linedef_id' value source_linedef_id returning varchar2(4000))
-          order by mover_id returning clob)
-        from active_movers where session_token=s.session_token), to_clob('[]')) format json,
-      'switches' value coalesce((
-        select json_arrayagg(json_object(
-          'linedef_id' value linedef_id, 'timer_tics' value timer_tics,
-          'restore_texture' value restore_texture returning varchar2(4000))
-          order by linedef_id returning clob)
-        from active_switches where session_token=s.session_token), to_clob('[]')) format json,
-      'ordering_version' value 'APPENDIX-F-1'
-      absent on null returning blob)
-      into l_document
-      from game_sessions s where s.session_token=p_session;
-    if p_legacy=1 then
-      -- Preserve the reviewed pre-history transport digest for legacy short
-      -- lineages.  SHA-256 lineages retain the complete combat state closure.
-      select json_transform(l_document,
-        remove '$.player.noclip',
-        remove '$.player.pending_weapon',
-        remove '$.player.weapon_state',
-        remove '$.player.weapon_state_tics',
-        remove '$.player.flash_state',
-        remove '$.player.flash_state_tics',
-        remove '$.player.refire',
-        remove '$.player.backpack',
-        remove '$.player.power_berserk',
-        remove '$.mobjs[*].owner_mobj_id',
-        remove '$.mobjs[*].projectile_kind',
-        remove '$.mobjs[*].exploded',
-        remove '$.mobjs[*].sector_id',
-        remove '$.mobjs[*].move_direction',
-        remove '$.mobjs[*].awake',
-        remove '$.mobjs[*].attack_cooldown',
-        remove '$.mobjs[*].monster_health_seen',
-        remove '$.mobjs[*].death_processed' returning blob)
-        into l_document from dual;
-    end if;
-    return l_document;
   end;
 
   procedure apply_controls(
@@ -243,7 +108,6 @@ create or replace package body doom_tic_tx as
     l_command_sha varchar2(64);
     l_cached_sha varchar2(64);
     l_cached blob;
-    l_state_document blob;
     l_state_sha varchar2(64);
     l_payload clob;
     l_payload_blob blob;
@@ -264,7 +128,6 @@ create or replace package body doom_tic_tx as
     l_world_ready number;
     l_lineage varchar2(64);
     l_legacy number;
-    l_previous_command_sha varchar2(64);
     l_row_command_sha varchar2(64);
     l_expected_keys constant varchar2(200) :=
       ',seq,turn,forward,strafe,run,fire,use,weapon,pause,automap,menu,cheat,';
@@ -423,39 +286,12 @@ create or replace package body doom_tic_tx as
       -- The validated command becomes visible before any gameplay subsystem
       -- advances this tic.  State/frame fields are finalized after simulation;
       -- every write remains inside the caller-owned locked transaction.
-      merge into history_heads d using(select p_session session_token,l_lineage lineage from dual) s
-      on(d.session_token=s.session_token and d.lineage=s.lineage)
-      when not matched then insert(session_token,lineage,command_sha,event_sha)
-      values(s.session_token,s.lineage,
-        '0000000000000000000000000000000000000000000000000000000000000000',
-        '0000000000000000000000000000000000000000000000000000000000000000');
-      select command_sha into l_previous_command_sha from history_heads
-        where session_token=p_session and lineage=l_lineage for update;
-      select lower(rawtohex(dbms_crypto.hash(json_object(
-        'seq' value command_row.seq,'lineage' value l_lineage,
-        'tic' value l_tic+command_row.ord,'ordinal' value 0,
-        'turn' value command_row.turn,'forward' value command_row.forward_move,
-        'strafe' value command_row.strafe,'run' value command_row.run,
-        'fire' value command_row.fire,'use' value command_row.use_action,
-        'weapon' value command_row.weapon,'pause' value command_row.pause_toggle,
-        'automap' value command_row.automap_toggle,'menu' value command_row.menu_action,
-        'cheat' value coalesce(command_row.cheat_code,''),
-        'previous_command_sha' value l_previous_command_sha returning clob),
-        dbms_crypto.hash_sh256))) into l_row_command_sha from dual;
-      insert into tic_commands(session_token,lineage,command_seq,tic,command_ordinal,
-        turn,forward_move,strafe,run,fire,use_action,weapon_slot,pause_toggle,
-        automap_toggle,menu_action,cheat_code,previous_command_sha,command_sha,
-        state_sha,frame_sha,state_blob)
-      values(p_session,l_lineage,command_row.seq,l_tic+command_row.ord,0,
-        command_row.turn,command_row.forward_move,command_row.strafe,command_row.run,
-        command_row.fire,command_row.use_action,command_row.weapon,
-        command_row.pause_toggle,command_row.automap_toggle,command_row.menu_action,
-        command_row.cheat_code,l_previous_command_sha,l_row_command_sha,
-        '0000000000000000000000000000000000000000000000000000000000000000',
-        '0000000000000000000000000000000000000000000000000000000000000000',
-        empty_blob()) returning state_blob into l_command_state_blob;
-      update history_heads set command_sha=l_row_command_sha
-        where session_token=p_session and lineage=l_lineage;
+      doom_command_ledger.begin_command(p_session,l_lineage,command_row.seq,
+        l_tic+command_row.ord,command_row.turn,command_row.forward_move,
+        command_row.strafe,command_row.run,command_row.fire,
+        command_row.use_action,command_row.weapon,command_row.pause_toggle,
+        command_row.automap_toggle,command_row.menu_action,command_row.cheat_code,
+        l_row_command_sha,l_command_state_blob);
 
       apply_controls(p_session,l_tic+command_row.ord,command_row.pause_toggle,
         command_row.menu_action,command_row.automap_toggle,command_row.cheat_code,
@@ -496,23 +332,17 @@ create or replace package body doom_tic_tx as
       update game_sessions set current_tic=l_tic+command_row.ord,
         last_command_seq=command_row.seq,paused=l_paused,menu_state=l_menu,
         automap_state=l_automap,game_mode=l_mode where session_token=p_session;
-      l_state_document:=state_document(p_session,l_legacy);
-      l_state_sha:=sha256(l_state_document);
-      update tic_commands set state_sha=l_state_sha,frame_sha=l_state_sha
-        where session_token=p_session and lineage=l_lineage
-          and command_seq=command_row.seq;
-      -- Write into the persistent SecureFile locator captured by the insert.
-      -- Assigning the temporary JSON BLOB through SQL made Oracle copy the
-      -- complete state through the row update path a second time.
-      dbms_lob.copy(l_command_state_blob,l_state_document,
-        dbms_lob.getlength(l_state_document),1,1);
+      doom_canonical_state.build_into_locator(p_session,l_legacy,
+        l_command_state_blob,l_state_sha);
+      doom_command_ledger.finalize_command(p_session,l_lineage,command_row.seq,
+        l_state_sha,l_state_sha);
       -- Modern lineages only persist history documents at the reviewed four-tic
       -- checkpoint cadence.  Per-command hashes/BLOBs are already complete;
       -- avoid re-hashing the same 200+ KiB state in the history adapter on the
       -- three non-checkpoint tics.  Legacy batches retain their terminal call.
       if (l_legacy=0 and mod(l_tic+command_row.ord,4)=0)
          or (l_legacy=1 and command_row.ord=l_count) then
-        doom_capture_tic_blob(p_session,l_tic+command_row.ord,l_state_document,
+        doom_capture_tic_blob(p_session,l_tic+command_row.ord,l_command_state_blob,
           l_state_sha,l_state_sha);
       end if;
     end loop;

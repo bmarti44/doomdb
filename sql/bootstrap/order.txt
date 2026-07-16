@@ -32,6 +32,7 @@ sql/sim/030_world_machines.sql
 sql/sim/050_combat_inventory.sql
 sql/sim/060_monsters.sql
 sql/sim/070_audio.sql
+sql/sim/tic/005_canonical_state_ledger.sql
 sql/sim/tic/010_tic_transaction.sql
 sql/sim/075_unified_delta_apply.sql
 sql/sim/080_unified_worker.sql

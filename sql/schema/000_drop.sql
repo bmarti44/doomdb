@@ -52,6 +52,8 @@ begin
   drop_object('drop package doom_monsters', -4043);
   drop_object('drop package doom_audio', -4043);
   drop_object('drop package doom_tic_tx', -4043);
+  drop_object('drop package doom_command_ledger', -4043);
+  drop_object('drop package doom_canonical_state', -4043);
   drop_object('drop package doom_history', -4043);
   drop_object('drop view doom_r2_masked_candidate_rows', -942);
   drop_object('drop view doom_api_presentation_rows', -942);
