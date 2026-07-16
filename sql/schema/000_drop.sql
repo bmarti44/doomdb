@@ -23,6 +23,7 @@ begin
   drop_object('drop property graph doom_sector_graph', -42421);
   drop_object('drop package doom_worker_api', -4043);
   drop_object('drop package doom_unified_worker', -4043);
+  drop_object('drop package doom_unified_delta_apply', -4043);
   drop_object('drop package doom_api', -4043);
   drop_object('drop function doom_r2_staged_masked_pixels', -4043);
   drop_object('drop function doom_r2_staged_masked_candidates', -4043);

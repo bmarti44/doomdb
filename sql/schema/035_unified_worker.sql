@@ -74,6 +74,10 @@ create table doom_worker_result (
   delta_count number(3) not null,
   delta_bytes number(8) not null,
   delta_sha varchar2(64) not null,
+  state_sha varchar2(64) not null,
+  frame_sha varchar2(64) not null,
+  response_bytes number(8) not null,
+  response_sha varchar2(64) not null,
   delta_blob blob not null,
   response_blob blob not null,
   constraint doom_worker_result_pk primary key(request_id),
@@ -83,9 +87,12 @@ create table doom_worker_result (
     committed_tic>=0 and committed_command_seq>=0),
   constraint doom_worker_result_delta_ck check(
     delta_version between 1 and 255 and delta_count between 0 and 255 and
-    delta_bytes>=0),
+    delta_bytes>=0 and response_bytes>=0),
   constraint doom_worker_result_sha_ck check(
-    regexp_like(delta_sha,'^[0-9a-f]{64}$'))
+    regexp_like(delta_sha,'^[0-9a-f]{64}$') and
+    regexp_like(state_sha,'^[0-9a-f]{64}$') and
+    regexp_like(frame_sha,'^[0-9a-f]{64}$') and
+    regexp_like(response_sha,'^[0-9a-f]{64}$'))
 ) lob(delta_blob) store as securefile(cache)
   lob(response_blob) store as securefile(cache);
 
