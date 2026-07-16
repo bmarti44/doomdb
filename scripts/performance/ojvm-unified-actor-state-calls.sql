@@ -5,6 +5,37 @@ create or replace function doom_unified_actor_load(
 return varchar2 as language java name
   'DoomUnifiedActorStateBench.load(java.lang.String,java.lang.String,long,java.lang.String) return java.lang.String';
 /
+-- The three partial recovery functions below are diagnostic primitives. The
+-- production worker must call DOOM_UNIFIED_RECOVER_SQL_RENDERER or
+-- DOOM_UNIFIED_RECOVER_CHECKPOINT_RENDERER so neither retained half stays stale.
+create or replace function doom_unified_actor_force_load(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_state_map_sha in varchar2)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.forceLoad(java.lang.String,java.lang.String,long,java.lang.String) return java.lang.String';
+/
+create or replace function doom_unified_actor_force_restore(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_state_map_sha in varchar2,
+  p_checkpoint in blob)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.forceRestore(java.lang.String,java.lang.String,long,java.lang.String,java.sql.Blob) return java.lang.String';
+/
+create or replace function doom_unified_actor_recovery_status(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.recoveryStatus(java.lang.String,java.lang.String,long) return java.lang.String';
+/
+create or replace function doom_unified_recover_sql_renderer(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_state_map_sha in varchar2,
+  p_renderer_snapshot in blob)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.recoverSqlAndRenderer(java.lang.String,java.lang.String,long,java.lang.String,java.sql.Blob) return java.lang.String';
+/
+create or replace function doom_unified_recover_checkpoint_renderer(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_state_map_sha in varchar2,
+  p_checkpoint in blob,p_renderer_snapshot in blob)
+return varchar2 as language java name
+  'DoomUnifiedActorStateBench.recoverCheckpointAndRenderer(java.lang.String,java.lang.String,long,java.lang.String,java.sql.Blob,java.sql.Blob) return java.lang.String';
+/
 create or replace function doom_unified_actor_prepare(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2,
   p_mode in varchar2,p_tic in number,p_command_seq in number,p_rng in number,

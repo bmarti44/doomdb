@@ -116,6 +116,19 @@ create or replace function doom_retained_render_load_fenced(
 language java name 'DoomRetainedRenderSceneBench.loadFenced(
   java.lang.String,long,java.lang.String,java.sql.Blob) return java.lang.String';
 /
+-- Diagnostic primitive only; production recovery uses the combined unified
+-- coordinator to prevent half-reconstructed owner/renderer state.
+create or replace function doom_retained_render_force_load(
+  p_session in varchar2,p_generation in number,p_state_map_sha in varchar2,
+  p_tic in number,p_command_seq in number,p_snapshot in blob) return varchar2 as
+language java name 'DoomRetainedRenderSceneBench.forceLoadFenced(
+  java.lang.String,long,java.lang.String,long,long,java.sql.Blob) return java.lang.String';
+/
+create or replace function doom_retained_render_recovery_status(
+  p_session in varchar2,p_generation in number) return varchar2 as
+language java name 'DoomRetainedRenderSceneBench.recoveryStatus(
+  java.lang.String,long) return java.lang.String';
+/
 
 create or replace function doom_retained_render_update(
   p_session in varchar2,p_generation in number,p_delta in blob,

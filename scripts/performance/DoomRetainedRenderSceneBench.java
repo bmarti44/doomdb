@@ -30,6 +30,30 @@ public final class DoomRetainedRenderSceneBench {
     }catch(Throwable failure){loaded=false;stateMapFenced=false;lastError=failure.getClass().getName()+":"+
         failure.getMessage();return "ERR|"+lastError;}
   }
+  public static String forceLoadFenced(String owner,long ownerGeneration,String stateMapSha,
+      long expectedTic,long expectedSeq,Blob snapshot){
+    long priorGeneration=loaded?generation:0;
+    invalidateForRecovery();
+    try{require(hex(owner,32)&&ownerGeneration>priorGeneration&&hex(stateMapSha,64)&&snapshot!=null,
+        "retained recovery load");DoomBspKernelBench.forceLoadRetainedScene(owner,stateMapSha,
+          expectedTic,expectedSeq,snapshot);session=owner;generation=ownerGeneration;
+      loaded=true;stateMapFenced=true;lastError="";
+      return "OK|"+expectedTic+"|"+expectedSeq+"|"+ownerGeneration;
+    }catch(Throwable failure){loaded=false;stateMapFenced=false;session=null;generation=0;
+      lastError=failure.getClass().getName()+":"+failure.getMessage();return "ERR|"+lastError;}
+  }
+  static void invalidateForRecovery(){
+    DoomBspKernelBench.invalidateRetainedForRecovery();loaded=false;stateMapFenced=false;
+    session=null;generation=0;
+  }
+  public static String recoveryStatus(String owner,long ownerGeneration){
+    try{require(loaded&&stateMapFenced&&session.equals(owner)&&generation==ownerGeneration&&
+          !DoomBspKernelBench.retainedOwnerPending(),"retained recovery status");
+      return "OK|"+DoomBspKernelBench.retainedLiveTic()+"|"+
+          DoomBspKernelBench.retainedSequence()+"|"+generation;
+    }catch(Throwable failure){lastError=failure.getClass().getName()+":"+failure.getMessage();
+      return "ERR|"+lastError;}
+  }
   public static String updateRender(String owner,long ownerGeneration,Blob delta,
       String stateSha,Blob payload){
     try{require(loaded&&!DoomBspKernelBench.retainedOwnerPending()&&session.equals(owner)&&generation==ownerGeneration,

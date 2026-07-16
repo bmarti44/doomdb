@@ -82,6 +82,11 @@ public final class DoomFreshDeathTickBench {
     return "ERR|" + lastError;
   }
 
+  /** Coordinator-only hard fence used before reconstructing a new worker generation. */
+  static void invalidateForRecovery() {
+    pending=false;pendingRequest=null;loaded=false;session=null;lineage=null;generation=0;
+  }
+
   /**
    * Rows contain 21 integers:
    * id,health,seen,cooldown,awake,stateTics,deathProcessed,flags,target,moveDirection,

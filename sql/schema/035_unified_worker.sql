@@ -5,6 +5,7 @@ create table doom_worker_control (
   worker_slot number(2) not null,
   target_session varchar2(32),
   target_lineage varchar2(64),
+  state_map_sha varchar2(64),
   generation number(12) default 0 not null,
   ready number(1) default 0 not null,
   stop_requested number(1) default 0 not null,
@@ -18,9 +19,10 @@ create table doom_worker_control (
     ready in(0,1) and stop_requested in(0,1)),
   constraint doom_worker_control_gen_ck check(generation>=0),
   constraint doom_worker_control_target_ck check(
-    (target_session is null and target_lineage is null) or
+    (target_session is null and target_lineage is null and state_map_sha is null) or
     (regexp_like(target_session,'^[0-9a-f]{32}$') and
-     regexp_like(target_lineage,'^[0-9a-f]{64}$')))
+     regexp_like(target_lineage,'^[0-9a-f]{64}$') and
+     regexp_like(state_map_sha,'^[0-9a-f]{64}$')))
 );
 
 insert into doom_worker_control(worker_slot) select level from dual connect by level<=4;

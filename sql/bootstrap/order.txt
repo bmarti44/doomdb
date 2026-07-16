@@ -6,6 +6,8 @@ sql/schema/020_engine.sql
 sql/schema/030_dynamic.sql
 sql/schema/035_unified_worker.sql
 sql/schema/036_unified_worker_result_metadata.sql
+sql/schema/037_unified_worker_control_state_map.sql
+sql/schema/038_unified_worker_config.sql
 sql/schema/040_constraints.sql
 sql/schema/050_config.sql
 sql/engine/005_render_axes.sql
@@ -18,6 +20,8 @@ sql/accel/010_blockmap_reject_graph.sql
 sql/accel/012_collision_segments.sql
 sql/accel/013_sector_runtime_static.sql
 sql/accel/015_renderer_asset_pack.sql
+sql/accel/017_renderer_dynamic_snapshot.sql
+sql/accel/019_ojvm_unified_worker_calls.sql
 sql/render/r1/010_rays_intersections.sql
 sql/render/r1/020_pixels.sql
 sql/sim/020_movement_collision.sql

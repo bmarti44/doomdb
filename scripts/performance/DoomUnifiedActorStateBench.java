@@ -400,6 +400,68 @@ public final class DoomUnifiedActorStateBench {
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
   }
 
+  private static void invalidateForRecovery(){
+    pending=null;pendingRequest=null;pendingChild=null;pendingMode=0;committed=null;spare=null;
+    lastRenderUpserts=lastRenderRemoves=0;DoomFreshDeathTickBench.invalidateForRecovery();
+  }
+  public static String forceLoad(String session,String lineage,long generation,String stateMapSha){
+    long priorGeneration=committed==null?0:committed.generation;
+    try{invalidateForRecovery();require(generation>priorGeneration,"owner recovery generation");
+      String result=load(session,lineage,generation,stateMapSha);
+      if(!result.startsWith("OK|")){invalidateForRecovery();return result;}
+      lastError="";return result;
+    }catch(Throwable e){invalidateForRecovery();lastError=e.getClass().getName()+":"+e.getMessage();
+      return "ERR|"+lastError;}
+  }
+  public static String forceRestore(String session,String lineage,long generation,String stateMapSha,
+      Blob checkpoint){
+    long priorGeneration=committed==null?0:committed.generation;
+    invalidateForRecovery();
+    try{require(generation>priorGeneration&&checkpoint!=null&&checkpoint.length()<=1048576,
+          "owner recovery checkpoint");
+      String loaded=load(session,lineage,generation,stateMapSha);
+      require(loaded.startsWith("OK|"),"owner recovery SQL "+loaded);
+      byte[] packed=checkpoint.getBytes(1,(int)checkpoint.length());
+      Owner restored=ownerBytes(committed,packed,true);
+      committed=restored;spare=restored.copy();String parity=ownerSqlParity(session,lineage,generation);
+      require(parity.startsWith("OK|"),"owner recovery checkpoint/SQL mismatch "+parity);
+      String chase=DoomMonsterChaseBench.acceptWorld(session,lineage,generation,
+          "00000000000000000000000000000000",chasePack(restored));
+      require("OK".equals(chase),"owner recovery checkpoint chase "+chase);lastError="";
+      return "OK|"+restored.count+"|"+restored.tic+"|"+restored.seq+"|"+generation;
+    }catch(Throwable e){invalidateForRecovery();lastError=e.getClass().getName()+":"+e.getMessage();
+      return "ERR|"+lastError;}
+  }
+  public static String recoveryStatus(String session,String lineage,long generation){
+    try{require(committed!=null&&pending==null&&committed.session.equals(session)&&
+          committed.lineage.equals(lineage)&&committed.generation==generation,
+          "owner recovery status");return "OK|"+committed.tic+"|"+committed.seq+"|"+
+          committed.generation+"|"+committed.stateMapSha;
+    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
+  }
+  public static String recoverSqlAndRenderer(String session,String lineage,long generation,
+      String stateMapSha,Blob rendererSnapshot){
+    try{String owner=forceLoad(session,lineage,generation,stateMapSha);
+      require(owner.startsWith("OK|"),"recovery owner SQL "+owner);
+      String renderer=DoomRetainedRenderSceneBench.forceLoadFenced(session,generation,stateMapSha,
+          committed.tic,committed.seq,rendererSnapshot);
+      require(renderer.startsWith("OK|"),"recovery renderer "+renderer);
+      lastError="";return "OK|"+committed.tic+"|"+committed.seq+"|"+generation;
+    }catch(Throwable e){DoomRetainedRenderSceneBench.invalidateForRecovery();invalidateForRecovery();
+      lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
+  }
+  public static String recoverCheckpointAndRenderer(String session,String lineage,long generation,
+      String stateMapSha,Blob checkpoint,Blob rendererSnapshot){
+    try{String owner=forceRestore(session,lineage,generation,stateMapSha,checkpoint);
+      require(owner.startsWith("OK|"),"recovery owner checkpoint "+owner);
+      String renderer=DoomRetainedRenderSceneBench.forceLoadFenced(session,generation,stateMapSha,
+          committed.tic,committed.seq,rendererSnapshot);
+      require(renderer.startsWith("OK|"),"recovery renderer "+renderer);
+      lastError="";return "OK|"+committed.tic+"|"+committed.seq+"|"+generation;
+    }catch(Throwable e){DoomRetainedRenderSceneBench.invalidateForRecovery();invalidateForRecovery();
+      lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
+  }
+
   private static void fence(String s,String l,long g,long tic,long seq,int rng,int nm,int ne){
     require(committed!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
         committed.generation==g,"unified fence");require(committed.tic==tic&&committed.seq==seq&&
@@ -759,10 +821,15 @@ public final class DoomUnifiedActorStateBench {
     out.writeInt(world.length);out.write(world);out.flush();return bytes.toByteArray();
   }
   private static Owner ownerBytes(Owner base,byte[] packed)throws Exception{
+    return ownerBytes(base,packed,false);
+  }
+  private static Owner ownerBytes(Owner base,byte[] packed,boolean recovery)throws Exception{
     DataInputStream in=new DataInputStream(new ByteArrayInputStream(packed));
     require(in.readInt()==0x44574350&&in.readInt()==3,"owner restore header");Owner o=base.copy();
     require(o.session.equals(in.readUTF())&&o.lineage.equals(in.readUTF())&&o.stateMapSha.equals(in.readUTF()),
-        "owner restore identity");require(o.generation==in.readLong(),"owner restore generation");
+        "owner restore identity");long packedGeneration=in.readLong();
+    require(recovery?packedGeneration>0&&packedGeneration<o.generation:o.generation==packedGeneration,
+        "owner restore generation");
     o.tic=in.readLong();o.seq=in.readLong();o.rng=in.readInt();o.nextMobj=in.readInt();o.nextEvent=in.readInt();
     require(o.nextEvent==0,"owner restore event frontier");
     o.playerId=in.readInt();o.playerTarget=in.readInt();o.killCount=in.readInt();o.playerHealth=in.readInt();

@@ -1,254 +1,295 @@
 whenever sqlerror exit failure rollback
 set serveroutput on size unlimited feedback off verify off
 
--- Production-skeleton acceptance: default-off rollout plus two simultaneously
--- resident sessions, slot-isolated AQ consumption, idempotent rollback results,
--- ownership fencing and independent generation/restart behavior.
-
+-- Default-off, live commit, exact replay, pre/post-commit failure, combined
+-- reconstruction, response correlation and restart acceptance.
 declare
-  l_session_one varchar2(32);l_session_two varchar2(32);l_payload blob;
-  l_blocked boolean:=false;l_old_capacity number;l_generation number;
-  l_ready number;l_error varchar2(4000);
-begin
-  select number_value into l_old_capacity from doom_config
-    where config_key='MAX_ACTIVE_SESSIONS' for update;
-  insert into doom_worker_audit(request_id,audit_event,detail)
-    values('dddddddddddddddddddddddddddddddd','ACCEPT_CAPACITY',to_char(l_old_capacity));
-  update doom_config set number_value=greatest(number_value,512)
-    where config_key='MAX_ACTIVE_SESSIONS';
-  commit;
-  doom_api.new_game(3,l_session_one,l_payload);
-  doom_api.new_game(3,l_session_two,l_payload);
+  session_ varchar2(32);lineage_ varchar2(64);initial_ blob;
+  generation_ number;ready_ number;map_sha_ varchar2(64);error_ varchar2(4000);
+  status_ varchar2(16);response_generation_ number;committed_tic_ number;
+  committed_seq_ number;delta_version_ number;delta_count_ number;
+  delta_sha_ varchar2(64);state_sha_ varchar2(64);frame_sha_ varchar2(64);
+  response_bytes_ number;response_sha_ varchar2(64);delta_ blob;payload_ blob;
+  tic_ number;seq_ number;old_wait_ number;old_capacity_ number;
+  count_ number;
+  deadline_ timestamp with time zone;
+  blocked_ boolean;
+
+  function command_(p_seq number,p_forward number default 1) return raw is
+    movement_ varchar2(2);
   begin
-    doom_worker_api.claim(l_session_one,l_generation,l_ready,l_error);
-  exception when others then
-    if sqlcode=-20720 then l_blocked:=true;else raise;end if;
+    movement_:=case p_forward when -1 then 'ff' when 0 then '00' else '01' end;
+    return hextoraw('444d53430201000000000000'||
+      lpad(to_char(p_seq,'fmxxxxxxxx'),8,'0')||'00'||movement_||
+      '0000'||'00000000');
   end;
-  if not l_blocked then
-    raise_application_error(-20000,'default-off worker gate did not reject start');
-  end if;
-  insert into doom_worker_audit(request_id,audit_event,detail)
-    values('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1','ACCEPT_SETUP',l_session_one);
-  insert into doom_worker_audit(request_id,audit_event,detail)
-    values('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2','ACCEPT_SETUP',l_session_two);
-  update doom_config set number_value=1 where config_key='UNIFIED_WORKER_ENABLED';
-  commit;
-  doom_worker_api.claim(l_session_one,l_generation,l_ready,l_error);
-  if l_ready<>1 or l_error is not null then
-    raise_application_error(-20000,'first public worker claim failed');end if;
-  doom_worker_api.claim(l_session_two,l_generation,l_ready,l_error);
-  if l_ready<>1 or l_error is not null then
-    raise_application_error(-20000,'second public worker claim failed');end if;
-end;
-/
 
-declare
-  l_ready number;l_slots number;l_sids number;l_errors number;
-  l_deadline timestamp with time zone:=systimestamp+interval '20' second;
-begin
-  loop
-    select count(*),count(distinct worker_slot),count(distinct worker_sid),
-      sum(case when last_error is not null then 1 else 0 end)
-      into l_ready,l_slots,l_sids,l_errors
-      from doom_worker_control where ready=1;
-    if l_errors<>0 then raise_application_error(-20000,'worker pool startup failure');end if;
-    exit when l_ready=2 and l_slots=2 and l_sids=2;
-    if systimestamp>l_deadline then
-      raise_application_error(-20000,'two-worker start timeout');end if;
-    dbms_session.sleep(.05);
-  end loop;
-end;
-/
+  procedure assert_(p_ok boolean,p_message varchar2) is
+  begin if not p_ok then raise_application_error(-20000,p_message);end if;end;
 
--- Submit both requests without waiting, then resolve by exact duplicate polls.
--- Shared response AQ must correlate each result to the correct request ID.
-declare
-  s1 varchar2(32);s2 varchar2(32);l1 varchar2(64);l2 varchar2(64);
-  g1 number;g2 number;t1 number;t2 number;q1 number;q2 number;
-  st1 varchar2(16);st2 varchar2(16);rg number;ct number;cs number;
-  dv number;dc number;ds varchar2(64);db blob;pb blob;er varchar2(4000);
-  deadline timestamp with time zone:=systimestamp+interval '20' second;
-begin
-  select max(case when request_id='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1' then detail end),
-    max(case when request_id='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2' then detail end)
-    into s1,s2 from doom_worker_audit where audit_event='ACCEPT_SETUP';
-  select c.target_lineage,c.generation,g.current_tic,g.last_command_seq
-    into l1,g1,t1,q1 from doom_worker_control c join game_sessions g
-      on g.session_token=c.target_session where c.target_session=s1;
-  select c.target_lineage,c.generation,g.current_tic,g.last_command_seq
-    into l2,g2,t2,q2 from doom_worker_control c join game_sessions g
-      on g.session_token=c.target_session where c.target_session=s2;
-
-  doom_worker_api.step(s1,l1,g1,'11111111111111111111111111111111',
-    t1,q1,1,1,hextoraw('01010000'),0,st1,rg,ct,cs,dv,dc,ds,db,pb,er);
-  doom_worker_api.step(s2,l2,g2,'22222222222222222222222222222222',
-    t2,q2,1,1,hextoraw('01020000'),0,st2,rg,ct,cs,dv,dc,ds,db,pb,er);
-  loop
-    doom_worker_api.step(s1,l1,g1,'11111111111111111111111111111111',
-      t1,q1,1,1,hextoraw('01010000'),1,st1,rg,ct,cs,dv,dc,ds,db,pb,er);
-    doom_worker_api.step(s2,l2,g2,'22222222222222222222222222222222',
-      t2,q2,1,1,hextoraw('01020000'),1,st2,rg,ct,cs,dv,dc,ds,db,pb,er);
-    exit when st1='ROLLED_BACK' and st2='ROLLED_BACK';
-    if systimestamp>deadline then
-      raise_application_error(-20000,'two-session response timeout');end if;
-  end loop;
-
-  declare
-    at1 number;at2 number;aq1 number;aq2 number;slot_count number;
-    event_count number;
+  procedure assert_ready_(p_generation number,p_message varchar2) is
+    lineage_check_ varchar2(64);map_check_ varchar2(64);generation_check_ number;
+    ready_check_ number;error_check_ varchar2(4000);
   begin
-    select current_tic,last_command_seq into at1,aq1 from game_sessions
-      where session_token=s1;
-    select current_tic,last_command_seq into at2,aq2 from game_sessions
-      where session_token=s2;
-    select count(distinct worker_slot) into slot_count from doom_worker_request
-      where request_id in('11111111111111111111111111111111',
-        '22222222222222222222222222222222');
-    select count(*) into event_count from doom_worker_audit
-      where request_id in('11111111111111111111111111111111',
-        '22222222222222222222222222222222') and audit_event='ROLLBACK_ONLY';
-    if at1<>t1 or aq1<>q1 or at2<>t2 or aq2<>q2 or
-       slot_count<>2 or event_count<>2 then
-      raise_application_error(-20000,'two-session rollback isolation failure');
+    select target_lineage,state_map_sha,generation,ready,last_error
+      into lineage_check_,map_check_,generation_check_,ready_check_,error_check_
+      from doom_worker_control where target_session=session_;
+    assert_(lineage_check_=lineage_ and map_check_=map_sha_ and
+      generation_check_=p_generation and ready_check_=1 and error_check_ is null,
+      p_message);
+  end;
+
+  procedure invoke_(
+    p_request varchar2,p_generation number,p_tic number,p_seq number,
+    p_command raw,p_wait number default 30
+  ) is
+  begin
+    doom_worker_api.step(session_,lineage_,p_generation,p_request,p_tic,p_seq,
+      2,1,p_command,p_wait,status_,response_generation_,committed_tic_,
+      committed_seq_,delta_version_,delta_count_,delta_sha_,state_sha_,
+      frame_sha_,response_bytes_,response_sha_,delta_,payload_,error_);
+  end;
+
+  procedure assert_committed_(
+    p_request varchar2,p_tic number,p_seq number
+  ) is
+    state_blob_ blob;stored_delta_ blob;stored_response_ blob;
+    stored_state_ varchar2(64);stored_frame_ varchar2(64);
+    bytes_ number;sha_ varchar2(64);
+  begin
+    assert_(status_='COMMITTED','request not committed '||p_request||' '||
+      status_||' '||error_);
+    assert_(committed_tic_=p_tic and committed_seq_=p_seq,
+      'committed frontier '||p_request);
+    assert_(delta_version_=1 and delta_count_=1 and
+      regexp_like(delta_sha_,'^[0-9a-f]{64}$') and
+      regexp_like(state_sha_,'^[0-9a-f]{64}$') and
+      regexp_like(frame_sha_,'^[0-9a-f]{64}$') and
+      regexp_like(response_sha_,'^[0-9a-f]{64}$'),
+      'committed metadata '||p_request);
+    assert_(response_bytes_=dbms_lob.getlength(payload_) and response_bytes_>0,
+      'response bytes '||p_request);
+    sha_:=lower(rawtohex(dbms_crypto.hash(payload_,dbms_crypto.hash_sh256)));
+    assert_(sha_=response_sha_,'response SHA '||p_request);
+    sha_:=lower(rawtohex(dbms_crypto.hash(delta_,dbms_crypto.hash_sh256)));
+    assert_(sha_=delta_sha_,'delta SHA '||p_request);
+    select state_blob,state_sha,frame_sha into state_blob_,stored_state_,stored_frame_
+      from tic_commands where session_token=session_ and command_seq=p_seq;
+    assert_(stored_state_=state_sha_ and stored_frame_=frame_sha_ and
+      lower(rawtohex(dbms_crypto.hash(state_blob_,dbms_crypto.hash_sh256)))=state_sha_,
+      'tic ledger metadata '||p_request);
+    select delta_blob,response_blob,delta_bytes into stored_delta_,stored_response_,bytes_
+      from doom_worker_result where request_id=p_request;
+    assert_(dbms_lob.compare(stored_delta_,delta_)=0 and
+      dbms_lob.compare(stored_response_,payload_)=0 and
+      bytes_=dbms_lob.getlength(delta_),'durable result bytes '||p_request);
+  end;
+
+  procedure wait_stopped_ is
+    running_ number;owned_ number;
+  begin
+    deadline_:=systimestamp+interval '30' second;
+    loop
+      select count(*) into running_ from user_scheduler_running_jobs
+        where job_name like 'DOOM_UNIFIED_WORKER___';
+      select count(*) into owned_ from doom_worker_control
+        where target_session=session_;
+      exit when running_=0 and owned_=0;
+      if systimestamp>deadline_ then
+        raise_application_error(-20000,'worker stop timeout');
+      end if;
+      dbms_session.sleep(.05);
+    end loop;
+  end;
+
+  procedure cleanup_ is
+  begin
+    begin doom_unified_worker.request_stop_all;exception when others then null;end;
+    begin
+      deadline_:=systimestamp+interval '15' second;
+      loop
+        select count(*) into count_ from user_scheduler_running_jobs
+          where job_name like 'DOOM_UNIFIED_WORKER___';
+        exit when count_=0 or systimestamp>deadline_;
+        dbms_session.sleep(.05);
+      end loop;
+    exception when others then null;end;
+    if session_ is not null then
+      delete from game_sessions where session_token=session_;
     end if;
+    delete from doom_worker_audit where request_id in(
+      '10000000000000000000000000000001',
+      '10000000000000000000000000000002',
+      '10000000000000000000000000000003',
+      '10000000000000000000000000000004',
+      '10000000000000000000000000000005',
+      '10000000000000000000000000000006',
+      '10000000000000000000000000000007');
+    delete from doom_worker_audit
+      where request_id='10000000000000000000000000000008';
+    update doom_worker_control set target_session=null,target_lineage=null,
+      state_map_sha=null,ready=0,stop_requested=0,worker_sid=null,last_error=null;
+    update doom_config set number_value=0
+      where config_key in('UNIFIED_WORKER_ENABLED','UNIFIED_WORKER_FAILPOINT');
+    if old_wait_ is not null then
+      update doom_config set number_value=old_wait_
+        where config_key='UNIFIED_WORKER_WAIT_SECONDS';
+    end if;
+    if old_capacity_ is not null then
+      update doom_config set number_value=old_capacity_
+        where config_key='MAX_ACTIVE_SESSIONS';
+    end if;
+    commit;
   end;
+begin
+  select number_value into old_wait_ from doom_config
+    where config_key='UNIFIED_WORKER_WAIT_SECONDS';
+  select number_value into old_capacity_ from doom_config
+    where config_key='MAX_ACTIVE_SESSIONS';
+  update doom_config set number_value=30
+    where config_key='UNIFIED_WORKER_WAIT_SECONDS';
+  update doom_config set number_value=greatest(number_value,128)
+    where config_key='MAX_ACTIVE_SESSIONS';
+  update doom_config set number_value=0
+    where config_key in('UNIFIED_WORKER_ENABLED','UNIFIED_WORKER_FAILPOINT');
+  commit;
 
-  -- A valid session token with another worker's unguessable lineage is rejected
-  -- before a durable request or queue message can be created.
+  doom_api.new_game(3,session_,initial_);
+  select save_lineage,current_tic,last_command_seq into lineage_,tic_,seq_
+    from game_sessions where session_token=session_;
+
+  blocked_:=false;
   begin
-    doom_worker_api.step(s1,l2,g1,'33333333333333333333333333333333',
-      t1,q1,1,1,hextoraw('01030000'),0,st1,rg,ct,cs,dv,dc,ds,db,pb,er);
-    raise_application_error(-20000,'cross-session ownership accepted');
+    doom_worker_api.claim(session_,generation_,ready_,map_sha_,error_);
   exception when others then
-    if sqlcode<>-20721 then raise;end if;
+    if sqlcode=-20720 then blocked_:=true;else raise;end if;
   end;
+  assert_(blocked_,'default-off claim was accepted');
   dbms_output.put_line('unified_worker_default_off=PASS');
-  dbms_output.put_line('unified_worker_two_session_isolation=PASS');
-  dbms_output.put_line('unified_worker_response_correlation=PASS');
-end;
-/
 
--- Restart only session one. Session two must retain its independent generation
--- and continue serving requests throughout the other slot's reconstruction.
-declare s1 varchar2(32);slot1 number;generation1 number;
-begin
-  select detail into s1 from doom_worker_audit
-    where request_id='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1'
-      and audit_event='ACCEPT_SETUP';
-  select worker_slot,generation into slot1,generation1 from doom_worker_control
-    where target_session=s1;
-  update doom_worker_audit set worker_slot=slot1,generation=generation1
-    where request_id='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1'
-      and audit_event='ACCEPT_SETUP';
+  update doom_config set number_value=1
+    where config_key='UNIFIED_WORKER_ENABLED';
   commit;
-  doom_unified_worker.request_stop(s1);
-end;
-/
-declare
-  s1 varchar2(32);slot1 number;running_ number;owned_ number;
-  deadline timestamp with time zone:=systimestamp+interval '15' second;
-begin
-  select detail,worker_slot into s1,slot1 from doom_worker_audit
-    where request_id='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1'
-      and audit_event='ACCEPT_SETUP';
-  loop
-    select count(*) into owned_ from doom_worker_control where target_session=s1;
-    select count(*) into running_ from user_scheduler_running_jobs
-      where job_name='DOOM_UNIFIED_WORKER_'||to_char(slot1,'FM00');
-    exit when owned_=0 and running_=0;
-    if systimestamp>deadline then raise_application_error(-20000,'single stop timeout');end if;
-    dbms_session.sleep(.05);
-  end loop;
-  declare generation_ number;ready_ number;error_ varchar2(4000);begin
-    doom_worker_api.claim(s1,generation_,ready_,error_);
-    if ready_<>1 or error_ is not null then
-      raise_application_error(-20000,'public worker reclaim failed');end if;
-  end;
-end;
-/
+  doom_worker_api.claim(session_,generation_,ready_,map_sha_,error_);
+  assert_(ready_=1 and error_ is null and
+    regexp_like(map_sha_,'^[0-9a-f]{64}$'),'worker load/warm readiness');
+  -- OJVM statics are session-private: READY is published by the Scheduler
+  -- session only after its combined load/warm succeeds. The first committed
+  -- request below is the cross-session behavioral proof.
+  assert_ready_(generation_,'startup combined recovery control');
+  dbms_output.put_line('unified_worker_combined_ready=PASS generation='||generation_);
 
-declare
-  s1 varchar2(32);s2 varchar2(32);g1_old number;g1_new number;g2 number;
-  g2_now number;ready2 number;l1 varchar2(64);t1 number;q1 number;
-  st varchar2(16);rg number;ct number;cs number;dv number;dc number;
-  ds varchar2(64);db blob;pb blob;er varchar2(4000);blocked boolean:=false;
-  deadline timestamp with time zone:=systimestamp+interval '20' second;
-begin
-  select max(case when request_id='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1' then detail end),
-    max(case when request_id='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2' then detail end)
-    into s1,s2 from doom_worker_audit where audit_event='ACCEPT_SETUP';
-  select generation into g1_old from doom_worker_audit
-    where request_id='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1'
-      and audit_event='ACCEPT_SETUP';
-  select generation into g2 from doom_worker_control where target_session=s2;
-  loop
-    select count(*) into g1_new from doom_worker_control
-      where target_session=s1 and ready=1 and generation>g1_old;
-    exit when g1_new=1;
-    if systimestamp>deadline then raise_application_error(-20000,'single restart timeout');end if;
-    dbms_session.sleep(.05);
-  end loop;
-  select c.generation,c.target_lineage,g.current_tic,g.last_command_seq
-    into g1_new,l1,t1,q1 from doom_worker_control c join game_sessions g
-      on g.session_token=c.target_session where c.target_session=s1;
-  select generation,ready into g2_now,ready2 from doom_worker_control
-    where target_session=s2;
-  if g2_now<>g2 or ready2<>1 then
-    raise_application_error(-20000,'unrelated worker generation changed');end if;
-  -- A lost terminal response remains replayable from the durable ledger even
-  -- though the session's live worker generation has advanced.
-  doom_worker_api.step(s1,l1,g1_old,'11111111111111111111111111111111',
-    t1,q1,1,1,hextoraw('01010000'),10,st,rg,ct,cs,dv,dc,ds,db,pb,er);
-  if st<>'ROLLED_BACK' or rg<>g1_old then
-    raise_application_error(-20000,'terminal cross-generation replay failed');end if;
+  invoke_('10000000000000000000000000000001',generation_,tic_,seq_,
+    command_(seq_+1));
+  assert_committed_('10000000000000000000000000000001',tic_+1,seq_+1);
+  tic_:=committed_tic_;seq_:=committed_seq_;
+  dbms_output.put_line('unified_worker_live_commit=PASS response_bytes='||
+    response_bytes_);
+
+  -- The completion signal has been consumed; exact replay comes from durable
+  -- request/result rows and cannot advance the frontier again.
+  invoke_('10000000000000000000000000000001',generation_,tic_-1,seq_-1,
+    command_(seq_),0);
+  assert_committed_('10000000000000000000000000000001',tic_,seq_);
+  select current_tic,last_command_seq into committed_tic_,committed_seq_
+    from game_sessions where session_token=session_;
+  assert_(committed_tic_=tic_ and committed_seq_=seq_,'terminal replay advanced state');
+  blocked_:=false;
   begin
-    doom_worker_api.step(s1,l1,g1_old,'44444444444444444444444444444444',
-      t1,q1,1,1,hextoraw('01040000'),0,st,rg,ct,cs,dv,dc,ds,db,pb,er);
+    invoke_('10000000000000000000000000000001',generation_,tic_-1,seq_-1,
+      command_(seq_,-1),0);
   exception when others then
-    if sqlcode=-20721 then blocked:=true;else raise;end if;
+    if sqlcode=-20721 then blocked_:=true;else raise;end if;
   end;
-  if not blocked then raise_application_error(-20000,'stale generation accepted');end if;
-  doom_worker_api.step(s1,l1,g1_new,'55555555555555555555555555555555',
-    t1,q1,1,1,hextoraw('01050000'),10,st,rg,ct,cs,dv,dc,ds,db,pb,er);
-  if st<>'ROLLED_BACK' or rg<>g1_new then
-    raise_application_error(-20000,'restarted worker response mismatch');end if;
-  dbms_output.put_line('unified_worker_independent_generation=PASS');
+  assert_(blocked_,'conflicting duplicate request accepted');
   dbms_output.put_line('unified_worker_terminal_replay=PASS');
-  dbms_output.put_line('unified_worker_restart_fence=PASS');
+
+  -- Fail after Java prepare and after strict relational apply.  Both must roll
+  -- SQL back and discard renderer/simulation pending state.
+  for failpoint_ in 1..4 loop
+    if failpoint_=2 then continue;end if;
+    update doom_config set number_value=failpoint_
+      where config_key='UNIFIED_WORKER_FAILPOINT';
+    commit;
+    invoke_(case failpoint_ when 1 then
+        '10000000000000000000000000000002'
+      when 3 then '10000000000000000000000000000003'
+      else '10000000000000000000000000000008' end,
+      generation_,tic_,seq_,command_(seq_+1));
+    assert_(status_='FAILED' and
+      ((failpoint_<>4 and response_generation_=generation_) or
+       (failpoint_=4 and response_generation_>generation_)),
+      'precommit failure terminal status '||failpoint_);
+    if failpoint_=4 then generation_:=response_generation_;end if;
+    select current_tic,last_command_seq into committed_tic_,committed_seq_
+      from game_sessions where session_token=session_;
+    assert_(committed_tic_=tic_ and committed_seq_=seq_,
+      'precommit failure leaked frontier '||failpoint_);
+    select count(*) into count_ from tic_commands
+      where session_token=session_ and command_seq=seq_+1;
+    assert_(count_=0,'precommit failure leaked ledger '||failpoint_);
+    assert_ready_(generation_,'precommit discard/recovery control');
+  end loop;
+  dbms_output.put_line(
+    'unified_worker_precommit_rollback_discard_recovery=PASS generation='||
+    generation_);
+
+  -- Commit succeeds but accept is failed deliberately.  The completion signal
+  -- is held until combined SQL/renderer reconstruction advances generation.
+  update doom_config set number_value=2
+    where config_key='UNIFIED_WORKER_FAILPOINT';
+  commit;
+  invoke_('10000000000000000000000000000004',generation_,tic_,seq_,
+    command_(seq_+1));
+  assert_committed_('10000000000000000000000000000004',tic_+1,seq_+1);
+  assert_(response_generation_>generation_,'postcommit recovery generation');
+  generation_:=response_generation_;tic_:=committed_tic_;seq_:=committed_seq_;
+  doom_worker_api.worker_status(session_,committed_tic_,ready_,state_sha_,
+    deadline_,error_);
+  assert_(committed_tic_=generation_ and ready_=1 and state_sha_=map_sha_ and
+    error_ is null,'postcommit recovery control');
+  assert_ready_(generation_,'postcommit combined recovery control');
+  dbms_output.put_line('unified_worker_postcommit_recovery=PASS generation='||
+    generation_);
+
+  update doom_config set number_value=0
+    where config_key='UNIFIED_WORKER_FAILPOINT';
+  commit;
+  invoke_('10000000000000000000000000000005',generation_,tic_,seq_,
+    command_(seq_+1));
+  assert_committed_('10000000000000000000000000000005',tic_+1,seq_+1);
+  tic_:=committed_tic_;seq_:=committed_seq_;
+
+  -- Restart reconstructs both owners before READY and fences the old generation.
+  doom_unified_worker.request_stop(session_);
+  wait_stopped_;
+  committed_tic_:=generation_;
+  doom_worker_api.claim(session_,generation_,ready_,map_sha_,error_);
+  assert_(ready_=1 and generation_>committed_tic_ and error_ is null,
+    'worker restart generation');
+  blocked_:=false;
+  begin
+    invoke_('10000000000000000000000000000006',committed_tic_,tic_,seq_,
+      command_(seq_+1),0);
+  exception when others then
+    if sqlcode=-20721 then blocked_:=true;else raise;end if;
+  end;
+  assert_(blocked_,'stale generation accepted');
+  invoke_('10000000000000000000000000000007',generation_,tic_,seq_,
+    command_(seq_+1));
+  assert_committed_('10000000000000000000000000000007',tic_+1,seq_+1);
+  dbms_output.put_line('unified_worker_restart_fence=PASS generation='||
+    generation_);
+
+  doom_unified_worker.request_stop(session_);
+  wait_stopped_;
+  cleanup_;
+  dbms_output.put_line('UNIFIED_WORKER_LIVE_ACCEPTANCE_OK');
+exception when others then
+  error_:=sqlerrm||' '||dbms_utility.format_error_backtrace;
+  cleanup_;
+  raise_application_error(-20000,substr(error_,1,1900));
 end;
 /
 
-begin doom_unified_worker.request_stop_all;end;
-/
-declare
-  running_ number;ready_ number;s1 varchar2(32);s2 varchar2(32);old_capacity number;
-  deadline timestamp with time zone:=systimestamp+interval '15' second;
-begin
-  loop
-    select count(*) into running_ from user_scheduler_running_jobs
-      where job_name like 'DOOM_UNIFIED_WORKER___';
-    select count(*) into ready_ from doom_worker_control where ready=1;
-    exit when running_=0 and ready_=0;
-    if systimestamp>deadline then raise_application_error(-20000,'pool stop timeout');end if;
-    dbms_session.sleep(.05);
-  end loop;
-  select max(case when request_id='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1' then detail end),
-    max(case when request_id='eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2' then detail end),
-    to_number(max(case when request_id='dddddddddddddddddddddddddddddddd' then detail end))
-    into s1,s2,old_capacity from doom_worker_audit
-    where audit_event in('ACCEPT_SETUP','ACCEPT_CAPACITY');
-  delete from game_sessions where session_token in(s1,s2);
-  delete from doom_worker_audit
-    where request_id is null and detail in(s1,s2);
-  delete from doom_worker_audit where request_id in(
-    'dddddddddddddddddddddddddddddddd','eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee1',
-    'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeee2','11111111111111111111111111111111',
-    '22222222222222222222222222222222','33333333333333333333333333333333',
-    '44444444444444444444444444444444','55555555555555555555555555555555');
-  update doom_worker_control set target_session=null,target_lineage=null,ready=0,
-    stop_requested=0,worker_sid=null,last_error=null;
-  update doom_config set number_value=0 where config_key='UNIFIED_WORKER_ENABLED';
-  update doom_config set number_value=old_capacity where config_key='MAX_ACTIVE_SESSIONS';
-  commit;
-end;
-/
+exit

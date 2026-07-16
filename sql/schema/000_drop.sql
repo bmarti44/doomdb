@@ -24,6 +24,16 @@ begin
   drop_object('drop package doom_worker_api', -4043);
   drop_object('drop package doom_unified_worker', -4043);
   drop_object('drop package doom_unified_delta_apply', -4043);
+  drop_object('drop function doom_unified_recover_sql_renderer', -4043);
+  drop_object('drop function doom_unified_actor_prepare', -4043);
+  drop_object('drop function doom_unified_command_tic_prepare', -4043);
+  drop_object('drop function doom_unified_actor_accept', -4043);
+  drop_object('drop function doom_unified_actor_discard', -4043);
+  drop_object('drop function doom_unified_render_pending', -4043);
+  drop_object('drop function doom_unified_actor_recovery_status', -4043);
+  drop_object('drop function doom_unified_actor_last_error', -4043);
+  drop_object('drop function doom_retained_render_recovery_status', -4043);
+  drop_object('drop procedure doom_renderer_snapshot_fill', -4043);
   drop_object('drop package doom_api', -4043);
   drop_object('drop function doom_r2_staged_masked_pixels', -4043);
   drop_object('drop function doom_r2_staged_masked_candidates', -4043);

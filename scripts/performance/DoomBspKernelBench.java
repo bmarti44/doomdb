@@ -780,6 +780,14 @@ public final class DoomBspKernelBench {
   static void discardRetainedOwner(String request){require(directApplied&&request!=null&&request.equals(directRequest),
       "direct retained discard fence");rollbackDirectOwner();}
   static boolean retainedOwnerPending(){return directApplied;}
+  static long retainedLiveTic(){return liveTic;}
+  static long retainedSequence(){return retainedDticSeq;}
+
+  static void invalidateRetainedForRecovery(){
+    if(directApplied)rollbackDirectOwner();
+    if(dticApplied)rollbackRetainedDtic();
+    directApplied=false;directRequest=null;dticApplied=false;retainedDticSeq=-1;
+  }
 
   private static void verifyRendererStateMap(Connection connection,String expected)throws Exception{
     require(expected!=null&&expected.matches("[0-9a-f]{64}"),"renderer state-map SHA invalid");
@@ -812,6 +820,16 @@ public final class DoomBspKernelBench {
     Connection internal=DriverManager.getConnection("jdbc:default:connection:");
     if(!databaseCacheLoaded){loadKernelPack(internal);databaseCacheLoaded=true;}
     verifyRendererStateMap(internal,stateMapSha);decodeDynamicSnapshot(snapshot,session);retainedDticSeq=-1;
+  }
+
+  static void forceLoadRetainedScene(String session,String stateMapSha,long expectedTic,
+      long expectedSeq,Blob snapshot)throws Exception{
+    invalidateRetainedForRecovery();
+    require(expectedTic>=0&&expectedTic<=Integer.MAX_VALUE&&expectedSeq>=0,
+        "renderer recovery frontier");
+    loadRetainedScene(session,stateMapSha,snapshot);
+    require(liveTic==(int)expectedTic,"renderer recovery tic mismatch");
+    retainedDticSeq=expectedSeq;
   }
 
   static String updateRetainedSceneAndRender(String session,Blob delta,String stateSha,
