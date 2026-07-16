@@ -1138,6 +1138,16 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   traversal/projection/solid/portal-clip kernel measures
   0.167218/0.728709/0.859567 ms p50/p95/p99 over 20,000 samples. Exact opaque
   wall columns are the next slice.
+- Exact opaque wall columns now sample the real 1,256,192 relational wall
+  texels and 8,192 colormap entries into one reusable indexed buffer. At spawn
+  east, all 26,165 production SQL wall pixels match with 0 missing, 0 extra,
+  and 0 palette mismatches. A fail-closed integer-boundary snap reconciles SQL
+  exact-number flooring with binary-double values immediately below an integer.
+  The complete traversal-through-wall path measures
+  1.060739/1.435519/1.651697 ms p50/p95/p99 over 20,000 samples, inside the
+  <=8 ms opaque-world gate before planes. Row-by-row immutable loading is 4.369
+  seconds and must be replaced by revision-keyed primitive BLOB packs. Exact
+  floor/ceiling boundary arrays and horizontal spans are next.
 - Local native-method evidence correction (2026-07-15): Oracle's foreground
   trace proves the disposable one-line `(I)I` method compiled successfully in
   59,470 ms; the client cutoff landed at completion. JIT, the descriptor, and

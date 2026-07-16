@@ -10,6 +10,8 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Disposable clean-room BSP/projection spike. This is deliberately outside the
@@ -31,8 +33,18 @@ public final class DoomBspKernelBench {
   private static int[] segStartX, segStartY, segEndX, segEndY;
   private static int[] segLineId, lineStartX, lineStartY, lineEndX, lineEndY;
   private static int[] rightSector, leftSector;
+  private static int[] lineFlags, segOffset, rightXOffset, rightYOffset;
+  private static int[] leftXOffset, leftYOffset;
+  private static String[] rightUpper, rightLower, rightMiddle;
+  private static String[] leftUpper, leftLower, leftMiddle;
   private static byte[] segSolid;
   private static int[] sectorFloor, sectorCeiling;
+  private static int[] sectorLight;
+  private static String[] sectorCeilingFlat;
+  private static Map<String, Integer> wallAssetByName;
+  private static int[] wallAssetWidth, wallAssetHeight;
+  private static short[][] wallAssetTexels;
+  private static short[] colormap;
   private static double[] camX;
   private static final int ANGLES = 64;
   private static double[] angleDegrees = new double[ANGLES];
@@ -50,6 +62,8 @@ public final class DoomBspKernelBench {
   private static double[] orderedDepths;
   private static byte[] portalCandidates;
   private static double[] portalClipTop, portalClipBottom;
+  private static short[] wallFrame;
+  private static byte[] wallOwned;
 
   private static int visitedNodes;
   private static int visitedSubsectors;
@@ -133,12 +147,21 @@ public final class DoomBspKernelBench {
     lineStartX = new int[segTotal]; lineStartY = new int[segTotal];
     lineEndX = new int[segTotal]; lineEndY = new int[segTotal];
     rightSector = new int[segTotal]; leftSector = new int[segTotal];
+    lineFlags = new int[segTotal]; segOffset = new int[segTotal];
+    rightXOffset = new int[segTotal]; rightYOffset = new int[segTotal];
+    leftXOffset = new int[segTotal]; leftYOffset = new int[segTotal];
+    rightUpper = new String[segTotal]; rightLower = new String[segTotal];
+    rightMiddle = new String[segTotal]; leftUpper = new String[segTotal];
+    leftLower = new String[segTotal]; leftMiddle = new String[segTotal];
     segSolid = new byte[segTotal];
     Arrays.fill(leftSector, -1);
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
              "select s.seg_id,a.x,a.y,b.x,b.y,l.linedef_id,la.x,la.y,lb.x,lb.y," +
-             "rs.sector_id,ls.sector_id from doom_map_seg s " +
+             "rs.sector_id,ls.sector_id,l.flags,s.offset," +
+             "r.x_offset,r.y_offset,r.upper_texture,r.lower_texture,r.middle_texture," +
+             "q.x_offset,q.y_offset,q.upper_texture,q.lower_texture,q.middle_texture " +
+             "from doom_map_seg s " +
              "join doom_map_linedef l on l.linedef_id=s.linedef_id " +
              "join doom_map_vertex a on a.vertex_id=s.start_vertex_id " +
              "join doom_map_vertex b on b.vertex_id=s.end_vertex_id " +
@@ -160,6 +183,13 @@ public final class DoomBspKernelBench {
         rightSector[id] = rows.getInt(11);
         int left = rows.getInt(12);
         if (!rows.wasNull()) leftSector[id] = left;
+        lineFlags[id] = rows.getInt(13); segOffset[id] = rows.getInt(14);
+        rightXOffset[id] = rows.getInt(15); rightYOffset[id] = rows.getInt(16);
+        rightUpper[id] = rows.getString(17); rightLower[id] = rows.getString(18);
+        rightMiddle[id] = rows.getString(19);
+        leftXOffset[id] = rows.getInt(20); leftYOffset[id] = rows.getInt(21);
+        leftUpper[id] = rows.getString(22); leftLower[id] = rows.getString(23);
+        leftMiddle[id] = rows.getString(24);
       }
     }
     int sectorCount;
@@ -170,14 +200,17 @@ public final class DoomBspKernelBench {
       require(sectorCount == rows.getInt(2) + 1, "sector ids are not dense");
     }
     sectorFloor = new int[sectorCount]; sectorCeiling = new int[sectorCount];
+    sectorLight = new int[sectorCount]; sectorCeilingFlat = new String[sectorCount];
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
-             "select sector_id,floor_height,ceiling_height from doom_map_sector order by sector_id")) {
+             "select sector_id,floor_height,ceiling_height,light_level,ceiling_flat " +
+             "from doom_map_sector order by sector_id")) {
       int expected = 0;
       while (rows.next()) {
         int id = rows.getInt(1);
         require(id == expected++, "sector order mismatch");
         sectorFloor[id] = rows.getInt(2); sectorCeiling[id] = rows.getInt(3);
+        sectorLight[id] = rows.getInt(4); sectorCeilingFlat[id] = rows.getString(5);
       }
     }
     try (Statement statement = connection.createStatement();
@@ -197,6 +230,54 @@ public final class DoomBspKernelBench {
         segSolid[id] = (byte) rows.getInt(2);
       }
       require(expected == segTotal, "seg solidity count mismatch");
+    }
+    int wallAssetCount;
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select count(*) from doom_asset where asset_kind='wall_texture'")) {
+      rows.next(); wallAssetCount = rows.getInt(1);
+    }
+    wallAssetByName = new HashMap<>();
+    wallAssetWidth = new int[wallAssetCount]; wallAssetHeight = new int[wallAssetCount];
+    wallAssetTexels = new short[wallAssetCount][];
+    Map<Integer, Integer> wallAssetById = new HashMap<>();
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select asset_id,asset_name,width,height from doom_asset " +
+             "where asset_kind='wall_texture' order by asset_id")) {
+      int index = 0;
+      while (rows.next()) {
+        wallAssetById.put(rows.getInt(1), index);
+        wallAssetByName.put(rows.getString(2), index);
+        wallAssetWidth[index] = rows.getInt(3); wallAssetHeight[index] = rows.getInt(4);
+        wallAssetTexels[index] = new short[wallAssetWidth[index] * wallAssetHeight[index]];
+        index++;
+      }
+      require(index == wallAssetCount, "wall asset count mismatch");
+    }
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select t.a,t.x,t.y,t.c from at t join doom_asset a on a.asset_id=t.a " +
+             "where a.asset_kind='wall_texture' order by t.a,t.x,t.y")) {
+      int texels = 0;
+      while (rows.next()) {
+        int asset = wallAssetById.get(rows.getInt(1));
+        int offset = rows.getInt(2) * wallAssetHeight[asset] + rows.getInt(3);
+        wallAssetTexels[asset][offset] = (short) rows.getInt(4); texels++;
+      }
+      require(texels == 1_256_192, "wall texel count mismatch");
+    }
+    colormap = new short[32 * 256];
+    try (Statement statement = connection.createStatement();
+         ResultSet rows = statement.executeQuery(
+             "select map_index,palette_index,mapped_index from doom_colormap_texel " +
+             "order by map_index,palette_index")) {
+      int count = 0;
+      while (rows.next()) {
+        colormap[rows.getInt(1) * 256 + rows.getInt(2)] = (short) rows.getInt(3);
+        count++;
+      }
+      require(count == colormap.length, "colormap count mismatch");
     }
 
     camX = new double[WIDTH];
@@ -235,6 +316,7 @@ public final class DoomBspKernelBench {
     columnCounts = new int[WIDTH]; columnSegs = new int[WIDTH * segTotal];
     orderedSegs = new int[segTotal]; orderedDepths = new double[segTotal];
     portalClipTop = new double[WIDTH]; portalClipBottom = new double[WIDTH];
+    wallFrame = new short[WIDTH * 200]; wallOwned = new byte[wallFrame.length];
   }
 
   private static int side(int px, int py, int id) {
@@ -314,6 +396,7 @@ public final class DoomBspKernelBench {
   private static void applyPortalWalk(int px, int py, double dirX, double dirY,
       double plnX, double plnY, boolean retainCandidates) {
     activePortalPairs = 0;
+    Arrays.fill(wallFrame, (short) -1); Arrays.fill(wallOwned, (byte) 0);
     if (retainCandidates) Arrays.fill(portalCandidates, (byte) 0);
     for (int column = 0; column < WIDTH; column++) {
       portalClipTop[column] = 0.0; portalClipBottom[column] = 200.0;
@@ -347,6 +430,8 @@ public final class DoomBspKernelBench {
         activePortalPairs++;
         if (retainCandidates) portalCandidates[id * WIDTH + column] = 1;
         int to = oppositeSector(id, px, py);
+        drawActiveWall(id, column, px, py, orderedDepths[i], dirX, dirY, plnX,
+            plnY, from, to, clipTop, clipBottom, eyeZ);
         if (to < 0) {
           terminated = true;
         } else {
@@ -378,6 +463,99 @@ public final class DoomBspKernelBench {
     if (hitT <= NEAR) return Double.NaN;
     double hitU = (relX * rayY - relY * rayX) / determinant;
     return hitU >= 0.0 && hitU <= 1.0 ? hitT : Double.NaN;
+  }
+
+  private static double acceptedU(int id, int column, int px, int py,
+      double dirX, double dirY, double plnX, double plnY) {
+    double rayX = dirX + camX[column] * plnX;
+    double rayY = dirY + camX[column] * plnY;
+    double segX = segEndX[id] - segStartX[id];
+    double segY = segEndY[id] - segStartY[id];
+    double determinant = rayX * segY - rayY * segX;
+    double relX = segStartX[id] - px, relY = segStartY[id] - py;
+    return (relX * rayY - relY * rayX) / determinant;
+  }
+
+  private static int wrap(int value, int modulus) {
+    int result = value % modulus;
+    return result < 0 ? result + modulus : result;
+  }
+
+  private static int sqlFloor(double value) {
+    double nearest = Math.rint(value);
+    if (Math.abs(value - nearest) <= 1e-12) value = nearest;
+    return (int) Math.floor(value);
+  }
+
+  private static void drawWallPiece(int id, int column, double depth, double hitU,
+      double clipTop, double clipBottom, double worldTop, double worldBottom,
+      String texture, double anchor, int xOffset, int yOffset, int light,
+      double eyeZ) {
+    double screenTop = 100.0 - (worldTop - eyeZ) * 160.0 / depth;
+    double screenBottom = 100.0 - (worldBottom - eyeZ) * 160.0 / depth;
+    int first = Math.max(0, (int) Math.ceil(Math.max(clipTop, screenTop) - .5));
+    int end = Math.min(200, (int) Math.ceil(Math.min(clipBottom, screenBottom) - .5));
+    if (first >= end) return;
+    Integer asset = wallAssetByName.get(texture);
+    double deltaX = segEndX[id] - segStartX[id];
+    double deltaY = segEndY[id] - segStartY[id];
+    double length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    double sampleX = segOffset[id] + xOffset + hitU * length;
+    int base = column * 200;
+    for (int row = first; row < end; row++) {
+      int frameOffset = base + row;
+      if (wallOwned[frameOffset] != 0) continue;
+      wallOwned[frameOffset] = 1;
+      if (asset == null) continue;
+      int sampleColumn = wrap(sqlFloor(sampleX), wallAssetWidth[asset]);
+      double sampleY = anchor - (eyeZ + (100.0 - (row + .5)) * depth / 160.0) + yOffset;
+      int sampleRow = wrap(sqlFloor(sampleY), wallAssetHeight[asset]);
+      int raw = wallAssetTexels[asset][sampleColumn * wallAssetHeight[asset] + sampleRow];
+      if (raw < 0) continue;
+      int lightBand = Math.max(0, Math.min(31, (255 - light) / 8));
+      wallFrame[frameOffset] = colormap[lightBand * 256 + raw];
+    }
+  }
+
+  private static void drawActiveWall(int id, int column, int px, int py,
+      double depth, double dirX, double dirY, double plnX, double plnY,
+      int from, int to, double clipTop, double clipBottom, double eyeZ) {
+    long cross = (long) (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
+        - (long) (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
+    boolean right = cross > 0;
+    String upper = right ? rightUpper[id] : leftUpper[id];
+    String lower = right ? rightLower[id] : leftLower[id];
+    String middle = right ? rightMiddle[id] : leftMiddle[id];
+    int xOffset = right ? rightXOffset[id] : leftXOffset[id];
+    int yOffset = right ? rightYOffset[id] : leftYOffset[id];
+    double hitU = acceptedU(id, column, px, py, dirX, dirY, plnX, plnY);
+    boolean termination = to < 0 || Math.min(sectorCeiling[from], sectorCeiling[to]) <=
+        Math.max(sectorFloor[from], sectorFloor[to]);
+    if (termination) {
+      String texture = !"-".equals(middle) ? middle :
+          (!"-".equals(upper) ? upper : lower);
+      double anchor = (lineFlags[id] & 16) != 0 ? sectorFloor[from] + 128.0 :
+          sectorCeiling[from];
+      drawWallPiece(id, column, depth, hitU, clipTop, clipBottom,
+          sectorCeiling[from], sectorFloor[from], texture, anchor,
+          xOffset, yOffset, sectorLight[from], eyeZ);
+      return;
+    }
+    if (sectorFloor[to] > sectorFloor[from] && !"-".equals(lower)) {
+      double anchor = (lineFlags[id] & 16) != 0 ? sectorCeiling[from] : sectorFloor[to];
+      drawWallPiece(id, column, depth, hitU, clipTop, clipBottom,
+          sectorFloor[to], sectorFloor[from], lower, anchor,
+          xOffset, yOffset, sectorLight[from], eyeZ);
+    }
+    if (sectorCeiling[to] < sectorCeiling[from] && !"-".equals(upper) &&
+        !("F_SKY1".equals(sectorCeilingFlat[from]) &&
+          "F_SKY1".equals(sectorCeilingFlat[to]))) {
+      double anchor = (lineFlags[id] & 8) != 0 ? sectorCeiling[to] + 128.0 :
+          sectorCeiling[from];
+      drawWallPiece(id, column, depth, hitU, clipTop, clipBottom,
+          sectorCeiling[from], sectorCeiling[to], upper, anchor,
+          xOffset, yOffset, sectorLight[from], eyeZ);
+    }
   }
 
   private static void applySolidCoverage(int px, int py, double dirX, double dirY,
@@ -498,6 +676,8 @@ public final class DoomBspKernelBench {
     String session = null;
     byte[] oracleActive = new byte[segTotal * WIDTH];
     int sqlActive = 0, missing = 0, extra = 0, clipMismatch = 0;
+    int sqlWallPixels = 0, wallMissing = 0, wallColorMismatch = 0, wallExtra = 0;
+    byte[] oracleWall = new byte[wallFrame.length];
     try {
       try (CallableStatement call = connection.prepareCall("{call doom_api.new_game(?,?,?)}")) {
         call.setInt(1, 3);
@@ -522,7 +702,10 @@ public final class DoomBspKernelBench {
                "(p.z+p.view_height+p.view_bob))*160/h.hit_t),200)) " +
                "from doom_r2_staged_portal_hit_rows h join players p " +
                "on p.session_token=h.session_token and p.player_id=0 " +
-               "where h.session_token=? and h.is_active=1 group by h.column_no")) {
+               "where h.session_token=? and h.is_active=1 group by h.column_no");
+           PreparedStatement wallOracle = connection.prepareStatement(
+               "select column_no,row_no,palette_index from doom_r2_staged_pixel_rows " +
+               "where session_token=? and layer_ordinal in (10,11,12)")) {
         for (int pose = 0; pose < 12; pose++) {
           int angle = pose * 5;
           update.setDouble(1, angleDegrees[angle]); update.setString(2, session);
@@ -533,6 +716,12 @@ public final class DoomBspKernelBench {
           staging.executeUpdate("delete from frame_r1_hit");
           staging.executeUpdate("insert into frame_r1_hit select * " +
               "from doom_r1_staged_hit_rows where session_token='" + session + "'");
+          staging.executeUpdate("delete from frame_portal_hit");
+          staging.executeUpdate("insert into frame_portal_hit select * " +
+              "from doom_r2_staged_portal_hit_rows where session_token='" + session + "'");
+          staging.executeUpdate("delete from frame_sector_interval");
+          staging.executeUpdate("insert into frame_sector_interval select * " +
+              "from doom_r2_staged_sector_interval_rows where session_token='" + session + "'");
           traverseAndProject(px, py, angle, true);
           Arrays.fill(oracleActive, (byte) 0);
           oracle.setString(1, session);
@@ -557,6 +746,26 @@ public final class DoomBspKernelBench {
                 clipMismatch++;
             }
           }
+          if (pose == 0) {
+            Arrays.fill(oracleWall, (byte) 0);
+            wallOracle.setString(1, session);
+            try (ResultSet rows = wallOracle.executeQuery()) {
+              while (rows.next()) {
+                sqlWallPixels++;
+                int index = rows.getInt(1) * 200 + rows.getInt(2);
+                oracleWall[index] = 1;
+                if (wallFrame[index] < 0) wallMissing++;
+                else if (wallFrame[index] != rows.getInt(3)) {
+                  wallColorMismatch++;
+                  if (wallColorMismatch <= 10)
+                    System.err.printf("WALL_COLOR_MISMATCH column=%d row=%d java=%d sql=%d%n",
+                        rows.getInt(1), rows.getInt(2), (int) wallFrame[index], rows.getInt(3));
+                }
+              }
+            }
+            for (int index = 0; index < wallFrame.length; index++)
+              if (wallFrame[index] >= 0 && oracleWall[index] == 0) wallExtra++;
+          }
         }
       }
       connection.rollback();
@@ -570,7 +779,8 @@ public final class DoomBspKernelBench {
         }
       }
     }
-    return new int[] {sqlActive, missing, extra, clipMismatch};
+    return new int[] {sqlActive, missing, extra, clipMismatch, sqlWallPixels,
+        wallMissing, wallColorMismatch, wallExtra};
   }
 
   private static double percentile(long[] sorted, double quantile) {
@@ -606,9 +816,12 @@ public final class DoomBspKernelBench {
       require(auditVisibleMissing == 0,
           "solid coverage omitted SQL-visible pairs: " + auditVisibleMissing);
       int[] portalOracle = productionPortalOracle(connection, px, py);
-      require(portalOracle[1] == 0 && portalOracle[2] == 0 && portalOracle[3] == 0,
+      require(portalOracle[1] == 0 && portalOracle[2] == 0 && portalOracle[3] == 0 &&
+          portalOracle[5] == 0 && portalOracle[6] == 0 && portalOracle[7] == 0,
           "portal walk differs from production SQL: missing=" + portalOracle[1] +
-          " extra=" + portalOracle[2] + " clip_mismatch=" + portalOracle[3]);
+          " extra=" + portalOracle[2] + " clip_mismatch=" + portalOracle[3] +
+          " wall_missing=" + portalOracle[5] + " wall_color=" + portalOracle[6] +
+          " wall_extra=" + portalOracle[7]);
 
       for (int i = 0; i < 5000; i++)
         traverseAndProject(px + (i % 7) - 3, py + (i % 11) - 5, i % ANGLES, false);
@@ -630,10 +843,12 @@ public final class DoomBspKernelBench {
           "audit_poses=12 sql_accepted=%d missing=%d candidate_retention=%.6f " +
           "sql_visible=%d visible_missing=%d visible_retention=%.6f " +
           "sql_portal_active=%d portal_missing=%d portal_extra=%d clip_mismatch=%d " +
+          "sql_wall_pixels=%d wall_missing=%d wall_color=%d wall_extra=%d " +
           "max_nodes=%d max_ssectors=%d sink=%d%n",
           loadMs, percentile(samples, .50), p95, percentile(samples, .99),
           auditAccepted, auditMissing, retention, auditVisible, auditVisibleMissing,
           visibleRetention, portalOracle[0], portalOracle[1], portalOracle[2], portalOracle[3],
+          portalOracle[4], portalOracle[5], portalOracle[6], portalOracle[7],
           maxNodes, maxSubsectors, sink);
     }
   }

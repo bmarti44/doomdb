@@ -22,8 +22,10 @@ traversal, conservative child-box field-of-view rejection, exact near-plane seg
 clipping, bounded column projection, exact determinant/t/u acceptance, and a
 two-pass nearest-solid-depth clip, an exact ordered sector portal walk, and
 per-column upper/lower portal clips. The two-pass design avoids assuming that
-seg storage order inside a subsector is strict ray-depth order. It does not yet
-implement wall drawing, plane spans, masked fragments, or the production codec.
+seg storage order inside a subsector is strict ray-depth order. Exact wall
+regions are drawn front-to-back into one reusable indexed buffer, sampling the
+real relational textures and colormap. It does not yet implement plane spans,
+masked fragments, or the production codec.
 
 The runner compiles with the pinned database image's Java 11 HotSpot VM and uses
 the image's `ojdbc11.jar`. The password is read only from the Compose secret
@@ -48,6 +50,8 @@ pair. The selected run found:
 | Production SQL active portal hits | 12,487 |
 | Java portal missing / extra | 0 / 0 |
 | Final upper/lower clip mismatches | 0 |
+| Production SQL opaque wall pixels at spawn east | 26,165 |
+| Java wall missing / extra / palette mismatch | 0 / 0 / 0 |
 | Maximum nodes visited | 614 / 681 |
 | Maximum subsectors visited | 588 / 682 |
 
@@ -55,7 +59,11 @@ Both zero-miss results pass the correctness gate. Projection retains 0.7218% of
 brute pairs, and exact solid-depth coverage reduces that to 0.2706%; both pass
 the no-more-than-25% gate by a wide margin. Node/subsector visitation remains
 high. The portal stream and final clip arrays now match the production SQL
-`MATCH_RECOGNIZE` oracle exactly across the same 12 directions.
+`MATCH_RECOGNIZE` oracle exactly across the same 12 directions. At spawn east,
+all 26,165 wall coordinates and palette values match the production SQL world
+oracle. A narrowly bounded integer snap reconciles SQL exact-number flooring
+with binary-double values such as `22.999999999999986`; the fail-closed byte
+oracle guards that compatibility rule.
 
 ## HotSpot timing
 
@@ -64,14 +72,16 @@ After 5,000 warmups, 20,000 unique angle/nearby-position samples measured with a
 
 | Metric | Result |
 | --- | ---: |
-| Immutable relational load | 2,357.122 ms |
-| Traversal + projection + solid/portal clips p50 | 0.167218 ms |
-| Traversal + projection + solid/portal clips p95 | 0.728709 ms |
-| Traversal + projection + solid/portal clips p99 | 0.859567 ms |
+| Immutable relational load including 1,256,192 wall texels | 4,368.997 ms |
+| Traversal through exact wall draw p50 | 1.060739 ms |
+| Traversal through exact wall draw p95 | 1.435519 ms |
+| Traversal through exact wall draw p99 | 1.651697 ms |
 
-This passes the <=3 ms component gate on HotSpot. The 2.36-second cold load is
-not in the frame path, but it is not an acceptable pooled-session prewarm path;
-the planned revision-keyed relational BLOB packs remain necessary.
+The geometry/clip portion previously passed its <=3 ms component gate, and the
+combined exact wall path remains well inside the <=8 ms opaque-world gate on
+HotSpot. The 4.37-second row-by-row cold load is not in the frame path, but it is
+not an acceptable pooled-session prewarm path; the planned revision-keyed
+relational BLOB packs remain necessary.
 
 ## OJVM JIT cold-bootstrap result
 
@@ -101,8 +111,8 @@ Consequences:
 
 ## Next implementation
 
-1. Draw exact opaque wall columns into one reusable 320x200 palette buffer and
-   compare world bytes against the SQL oracle.
+1. Add exact floor/ceiling boundary arrays and horizontal plane spans into the
+   same indexed buffer, then compare all 64,000 world bytes.
 2. Replace row-by-row cold loading with revision-keyed primitive BLOB packs and
    enforce the 12 MiB/session and 5 ms warm-snapshot gates.
 3. Externally compile/load the representative methods, allow bounded cold JIT
