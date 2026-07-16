@@ -31,4 +31,9 @@ left join neighbors edge on edge.source_sector_id = source.sector_id
 left join doom_map_sector target on target.sector_id = edge.target_sector_id
 group by source.sector_id, source.light_level;
 
+begin
+  dbms_stats.gather_table_stats(user, 'DOOM_SECTOR_RUNTIME_STATIC', cascade => true);
+end;
+/
+
 commit;

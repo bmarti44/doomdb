@@ -77,7 +77,7 @@ The payload is 44,112 GZIP bytes. The conservative 10.517 ms p95 passes both the
 renderer gate and the 33.3 ms 30-FPS frame budget with 23.0 ms of headroom.
 This proves the database-resident rendering component is fast enough; it does
 not yet prove interactive playability because the subsequently optimized
-render-free SQL simulation remains 35.894 ms p50 / 47.714 ms p95.
+render-free SQL simulation remains 36.842 ms p50 / 49.503 ms p95.
 
 ## Reproduction
 

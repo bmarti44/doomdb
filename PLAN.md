@@ -1282,10 +1282,13 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   p95. A fresh line trace then isolated canonical state JSON, swept collision,
   full state-BLOB history, and a redundant state-document lineage parse. The
   selected exact lineage flag, 1,175-row immutable collision geometry with a
-  conservative swept-circle AABB, native compilation of seven hot PL/SQL
-  bodies, and 182-row immutable sector-light facts all pass adjacent P6/P7
-  gates. The current 270-tic result is 35.894 ms p50, 47.714 ms p95,
-  60.802 ms p99, and 68.946 ms maximum. Simulation/history remains a
+  conservative swept-circle AABB and 182-row immutable sector-light facts all
+  pass adjacent P6/P7 gates. Native PL/SQL is rejected at only 1.789 ms p95
+  improvement after a restart-safe comparison, below its 3 ms gate. A
+  correlated zero-motion SQL-macro fast path is rejected after an Oracle
+  `ORA-07445` restart failure. The current restart-safe 270-tic result is
+  36.842 ms p50, 49.503 ms p95, 58.123 ms p99, and 76.197 ms maximum.
+  Simulation/history remains a
   mandatory bottleneck; continue reducing state serialization/hash, actor
   advancement, world machines, combat, history, command bookkeeping, and audio
   to <=10 ms p95. P12.0 remains active and P8 remains paused.

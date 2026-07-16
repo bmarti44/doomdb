@@ -17,8 +17,8 @@ transaction boundary. The reproducible driver is
 | Packed REJECT and LOS geometry selected | 41.410 ms | 70.581 ms | 84.806 ms | 93.566 ms |
 | Lineage fast path | 40.273 ms | 67.708 ms | 85.847 ms | 91.823 ms |
 | Exact swept-AABB collision segments | 38.705 ms | 56.227 ms | 73.994 ms | 91.117 ms |
-| Native hot PL/SQL | 37.804 ms | 49.319 ms | 55.048 ms | 56.983 ms |
-| Static sector runtime facts selected | 35.894 ms | 47.714 ms | 60.802 ms | 68.946 ms |
+| Native hot PL/SQL (rejected) | 37.804 ms | 49.319 ms | 55.048 ms | 56.983 ms |
+| Restart-safe static runtime facts selected | 36.842 ms | 49.503 ms | 58.123 ms | 76.197 ms |
 
 An earlier rollback-only result of 555.921 ms p50 / 1,488.766 ms p95 is
 rejected: it kept all 300 calls in one transaction and measured accumulating
@@ -42,10 +42,12 @@ lineage flag removes that parse without changing legacy hashes. A packed
 circle AABB removes the repeated map/sidedef/vertex join and passes all T6.2
 collision, tangency, thin-door, and route-prefix gates.
 
-Native compilation of the seven hot PL/SQL bodies passes its predeclared 3 ms
-p95 A/B gate, saving 6.908 ms p95. The selected 182-row immutable sector runtime
-relation also replaces the per-tic two-direction neighbor aggregation used by
-special lighting. The complete T6.1-T6.4 and T7.1-T7.3 evaluator, mutation,
+Native compilation of the seven hot PL/SQL bodies is rejected. After the static
+runtime relation and optimizer statistics were made restart-safe, native versus
+interpreted p95 was 47.714 versus 49.503 ms: a 1.789 ms gain, below the
+predeclared 3 ms selection threshold. The selected 182-row immutable sector
+runtime relation replaces the per-tic two-direction neighbor aggregation used
+by special lighting. The complete T6.1-T6.4 and T7.1-T7.3 evaluator, mutation,
 concurrency, history, lifecycle, integrity, branch-isolation, and Chromium gates
 pass after these changes.
 
@@ -53,4 +55,6 @@ The remaining ordinary-tic profile is led by state JSON/hash/history, actor
 advancement, and interval snapshot writes. Simulation still fails its preferred
 10 ms p95 slice and the integrated 33.3 ms response gate. The next structural
 slice is an exact streaming canonical state/history writer, followed by
-set-based actor/world advancement. No playability claim is made.
+set-based actor/world advancement. A correlated zero-motion SQL-macro fast path
+is also rejected after reproducing `ORA-07445 [kkqvmrsla()+283]` following a
+restart; it was removed without selection. No playability claim is made.

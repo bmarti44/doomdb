@@ -65,4 +65,9 @@ join doom_map_vertex ev on ev.vertex_id = ml.end_vertex_id
 join doom_map_sidedef rs on rs.sidedef_id = ml.right_sidedef_id
 left join doom_map_sidedef ls on ls.sidedef_id = ml.left_sidedef_id;
 
+begin
+  dbms_stats.gather_table_stats(user, 'DOOM_COLLISION_SEGMENT', cascade => true);
+end;
+/
+
 commit;

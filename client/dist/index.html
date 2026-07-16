@@ -71,7 +71,7 @@
     <h2>Live implementation status · July 15, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate; public <code>DOOM_TIC_TX.APPLY_BATCH</code> only; lift 1 completed and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> the exact renderer + packed-v2 codec + caller-owned BLOB runs inside Oracle JVM at 9.188 / 10.517 / 12.734 ms p50/p95/p99. The full SQL-call loop averages 11.460 ms, about 87 FPS. Exact lineage-state, packed swept-AABB collision, native PL/SQL, and static sector facts reduce render-free simulation from 41.410 / 70.581 ms to 35.894 / 47.714 ms p50/p95, with every adjacent P6/P7 gate passing. Simulation still exceeds the integrated budget, so the public game is not yet interactively playable.</p>
+    <p><strong>Performance:</strong> the exact renderer + packed-v2 codec + caller-owned BLOB runs inside Oracle JVM at 9.188 / 10.517 / 12.734 ms p50/p95/p99. The full SQL-call loop averages 11.460 ms, about 87 FPS. Exact lineage-state, packed swept-AABB collision, static sector facts, and local optimizer statistics reduce restart-safe render-free simulation from 41.410 / 70.581 ms to 36.842 / 49.503 ms p50/p95, with every adjacent P6/P7 gate passing. Simulation still exceeds the integrated budget, so the public game is not yet interactively playable.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">
@@ -131,7 +131,7 @@
     <div class="metric"><strong>1,019</strong><span class="muted">public route tics</span></div>
     <div class="metric"><strong>20 HP</strong><span class="muted">current checkpoint</span></div>
     <div class="metric"><strong>7 / 10</strong><span class="muted">kills / items</span></div>
-    <div class="metric"><strong>47.714 ms</strong><span class="muted">render-free simulation p95</span></div>
+    <div class="metric"><strong>49.503 ms</strong><span class="muted">restart-safe simulation p95</span></div>
     <div class="metric"><strong>10.517 ms</strong><span class="muted">compiled OJVM total p95</span></div>
   </section>
 
