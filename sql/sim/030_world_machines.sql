@@ -96,19 +96,18 @@ create or replace package body doom_world_machines as
     return case when l_count>0 then 1 else 0 end;
   end;
 
-  function occupant_in_sector(p_session varchar2,x_sector number) return boolean is
+  function occupant_in_sector(
+    p_session varchar2,x_sector number,p_player number,p_player_sector number
+  ) return boolean is
     l_count number;
   begin
-    select count(*) into l_count
-    from (
-      select p.x,p.y from game_sessions g join players p
-        on p.session_token=g.session_token and p.player_id=g.current_player_id
-       where g.session_token=p_session and p.alive=1
-      union all
-      select m.x,m.y from mobjs m where m.session_token=p_session and m.health>0
-    ) o
-    where exists(select 1 from table(doom_bsp_locate(o.x,o.y)) b
-                  where b.sector_id=x_sector);
+    select
+      (select count(*) from players p where p.session_token=p_session
+        and p.player_id=p_player and p.alive=1 and p_player_sector=x_sector)+
+      (select count(*) from mobjs m where m.session_token=p_session and m.health>0
+        and (m.sector_id=x_sector or m.sector_id is null and exists(
+          select 1 from table(doom_bsp_locate(m.x,m.y)) b where b.sector_id=x_sector)))
+      into l_count from dual;
     return l_count>0;
   end;
 
@@ -235,7 +234,9 @@ create or replace package body doom_world_machines as
     end if;
   end;
 
-  procedure advance_movers(p_session varchar2,p_tic number) is
+  procedure advance_movers(
+    p_session varchar2,p_tic number,p_player number,p_player_sector number
+  ) is
     l_height number;l_next number;l_ceiling number;l_player_height number;
     l_blocked number;l_reached boolean;
   begin
@@ -251,7 +252,8 @@ create or replace package body doom_world_machines as
         end if;
         continue;
       end if;
-      if m.mover_kind='DOOR_RAISE' and m.direction=-1 and occupant_in_sector(p_session,m.sector_id) then
+      if m.mover_kind='DOOR_RAISE' and m.direction=-1 and
+         occupant_in_sector(p_session,m.sector_id,p_player,p_player_sector) then
         select ceiling_height into l_height from sector_state
           where session_token=p_session and sector_id=m.sector_id;
         l_next:=door_top(m.sector_id,l_height);
@@ -281,19 +283,20 @@ create or replace package body doom_world_machines as
         l_player_height:=config_number('PLAYER_HEIGHT');
         select count(*) into l_blocked
         from (
-          select p.x,p.y,p.z,l_player_height actor_height
+          select p.z,l_player_height actor_height
           from players p
-          where p.session_token=p_session and p.z<=l_height
+          where p.session_token=p_session and p.player_id=p_player
+            and p_player_sector=m.sector_id and p.z<=l_height
           union all
-          select o.x,o.y,o.z,o.height
+          select o.z,o.height
           from mobjs o
           where o.session_token=p_session and o.z<=l_height and o.height>0
+            and (o.sector_id=m.sector_id or o.sector_id is null and exists(
+              select 1 from table(doom_bsp_locate(o.x,o.y)) located
+              where located.sector_id=m.sector_id))
         ) actor
         where l_next+actor.actor_height>l_ceiling
-          and exists (
-            select 1 from table(doom_bsp_locate(actor.x,actor.y)) located
-            where located.sector_id=m.sector_id
-          );
+        ;
         if l_blocked>0 then
           emit_event(p_session,p_tic,'LIFT_BLOCKED',m.sector_id);
           continue;
@@ -308,17 +311,14 @@ create or replace package body doom_world_machines as
           where session_token=p_session and sector_id=m.sector_id;
         if m.direction=1 then
           update players p set z=l_next
-          where p.session_token=p_session and p.z<=l_height
-            and exists (
-              select 1 from table(doom_bsp_locate(p.x,p.y)) located
-              where located.sector_id=m.sector_id
-            );
+          where p.session_token=p_session and p.player_id=p_player
+            and p_player_sector=m.sector_id and p.z<=l_height;
           update mobjs o set z=l_next
           where o.session_token=p_session and o.z<=l_height
-            and exists (
+            and (o.sector_id=m.sector_id or o.sector_id is null and exists (
               select 1 from table(doom_bsp_locate(o.x,o.y)) located
               where located.sector_id=m.sector_id
-            );
+            ));
         end if;
       end if;
       if l_reached then
@@ -486,7 +486,7 @@ create or replace package body doom_world_machines as
     end loop;
     end if;
 
-    advance_movers(p_session,p_tic);
+    advance_movers(p_session,p_tic,l_player,l_sector);
     advance_switches(p_session,p_tic);
     sector_effects(p_session,p_tic,l_player,l_sector);
   end;

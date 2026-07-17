@@ -1942,6 +1942,20 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   Move mover timers/heights/directions and switch timers into the retained owner,
   emit strict ordered SQL deltas, and keep the current SQL machine as the
   differential oracle and recovery authority.
+- World-machine spatial reuse result (2026-07-17): the SQL mover oracle was
+  repeatedly invoking `DOOM_BSP_LOCATE` for every player/MOBJ during door
+  occupancy, lift blocking, and lift carry despite already having the exact
+  post-movement player sector and durable MOBJ sector IDs. Reusing those
+  frontiers, with a locate fallback only for intentionally null-sector
+  projectiles, preserves the complete lifecycle, rollback/restart suite,
+  330-tic owner/SQL parity, and exact frame chain. World-machine advance fell
+  from 1.763/40.945 to 1.878/3.623 ms p50/p95; the same quiescent database route
+  improved caller p95 from 96.945 to 91.526 ms. This removes the active-mover
+  tail and defers a larger retained-mover protocol unless a future route makes
+  it dominant again. It does not solve corrected combat: the current public
+  FIRE route has no active world machine and measured 19.59 FPS, with retained
+  render kernel 15.341/31.089 ms and delta apply 8.551/24.808 ms. Optimize those
+  two independent slices next; do not attribute the public gate to movers.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior
