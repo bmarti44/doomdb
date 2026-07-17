@@ -122,8 +122,9 @@ in direct conflict with the required 33.3 ms end-to-end gate.
 
 A clean-room, array-resident Java 11 simulation loop may run only inside a
 long-lived `DBMS_SCHEDULER` worker session in Oracle Database. ORDS AutoREST
-enqueues authenticated commands through AQ and waits for a correlated committed
-response. Oracle relational tables remain authoritative durable state: every
+records authenticated commands in the durable worker ledger and returns only
+committed correlated results; AQ remains the synchronous compatibility path.
+Oracle relational tables remain authoritative durable state: every
 tic writes deterministic changed-row deltas, command/state/frame hashes, events,
 history/checkpoints, and the response BLOB before completion is signaled. The
 accepted SQL simulation and SQL renderer remain independently executable
@@ -1770,6 +1771,25 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   F1 is parity-proven but not generally selected. Integrate retained world
   machines first, then remove the guard; barrel recursion and player rocket/
   plasma lifecycle remain F2 and continue through the complete SQL fallback.
+- Split AutoREST 30 FPS gate (2026-07-17): a combined `STEP` request was proven
+  to serialize ORDS response work with the next tic on the two-core stack. The
+  public package now exposes idempotent `SUBMIT_STEP` and immutable
+  `POLL_FRAME` AutoREST procedures while retaining `STEP` compatibility. The
+  first pipeline harness had an artificial ~29 FPS ceiling because 0--4 ms
+  pump lateness was accumulated into every subsequent deadline; absolute
+  32 ms deadlines remove that drift. The selected shape is depth-four command
+  submission, exactly one result waiter, ordered decode, and a ten-frame
+  startup buffer. Two fresh 300-frame moving runs passed at 31.064 and 30.924
+  displayed FPS with 32.154/33.040 and 32.274/33.110 ms paint-gap p50/p95.
+  A third run with an abandoned worker present passed at 30.333 FPS and
+  33.262 ms p95. The selected post-index 31.8 ms presentation-clock run passed
+  at 31.083 FPS with 31.214/32.357 ms paint-gap p50/p95 and the same exact
+  330-frame chain. Correlated response AQ is rejected at 23.775 FPS and a 30 ms
+  table-poll cadence is rejected at 27.838 FPS; do not retry either without new
+  evidence. Idle workers now back off and self-release after 60 seconds. The
+  live browser uses the selected dynamic protocol; the ten-frame buffer is a
+  measured throughput solution, not the final latency target, so shrinking it
+  through further renderer/submit-tail reduction remains active P12.0 work.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

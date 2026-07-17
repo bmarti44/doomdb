@@ -65,6 +65,54 @@ create or replace function doom_unified_command_actions_retained(
 return raw as language java name
   'DoomUnifiedActorStateBench.prepareCommandTicActionsRetainedProjectiles(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[]) return byte[]';
 /
+create or replace function doom_unified_command_world_prepare(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_tic in number,p_command_seq in number,
+  p_rng in number,p_next_mobj in number,p_next_event in number,p_command in raw,
+  p_world_pack in raw)
+return raw as language java name
+  'DoomUnifiedActorStateBench.prepareCommandTicWorld(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[],byte[]) return byte[]';
+/
+create or replace function doom_unified_command_world_projectiles(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_tic in number,p_command_seq in number,
+  p_rng in number,p_next_mobj in number,p_next_event in number,p_command in raw,
+  p_projectile_pack in raw,p_world_pack in raw)
+return raw as language java name
+  'DoomUnifiedActorStateBench.prepareCommandTicWorldProjectiles(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[],byte[],byte[]) return byte[]';
+/
+create or replace function doom_unified_command_world_retained(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_tic in number,p_command_seq in number,
+  p_rng in number,p_next_mobj in number,p_next_event in number,p_command in raw,
+  p_world_pack in raw)
+return raw as language java name
+  'DoomUnifiedActorStateBench.prepareCommandTicWorldRetained(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[],byte[]) return byte[]';
+/
+create or replace function doom_unified_command_actions_world(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_tic in number,p_command_seq in number,
+  p_rng in number,p_next_mobj in number,p_next_event in number,p_command in raw,
+  p_world_pack in raw)
+return raw as language java name
+  'DoomUnifiedActorStateBench.prepareCommandTicActionsWorld(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[],byte[]) return byte[]';
+/
+create or replace function doom_unified_command_actions_world_projectiles(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_tic in number,p_command_seq in number,
+  p_rng in number,p_next_mobj in number,p_next_event in number,p_command in raw,
+  p_projectile_pack in raw,p_world_pack in raw)
+return raw as language java name
+  'DoomUnifiedActorStateBench.prepareCommandTicActionsWorldProjectiles(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[],byte[],byte[]) return byte[]';
+/
+create or replace function doom_unified_command_actions_world_retained(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_tic in number,p_command_seq in number,
+  p_rng in number,p_next_mobj in number,p_next_event in number,p_command in raw,
+  p_world_pack in raw)
+return raw as language java name
+  'DoomUnifiedActorStateBench.prepareCommandTicActionsWorldRetained(java.lang.String,java.lang.String,long,java.lang.String,long,long,int,int,int,byte[],byte[]) return byte[]';
+/
 create or replace function doom_unified_actor_accept(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,
   p_request in varchar2)

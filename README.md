@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Database and moving-frame gates passed; retained controls in progress | The hot retained worker measures 20.883/28.527 ms p50/p95 with DMSC/v3. The depth-three AutoREST client displays 300/300 unique moving frames at 31.07 FPS with 32.18/32.98 ms paint-gap p50/p95. Weapon selection is public; retained hitscan/melee now matches SQL in its isolated gate, but world-machine RNG, barrels/projectiles, and use still keep general firing/use on the SQL fallback. |
+| P12.0 | Database and moving-frame gates passed; retained controls in progress | The selected split AutoREST run displays 300/300 unique moving frames at 31.08 FPS with 31.21/32.36 ms paint-gap p50/p95. Fresh repeats and a second-session run also pass 30 FPS. Movement, weapon selection, and retained hitscan/melee are dynamic; use, barrels, and player projectiles still use the SQL fallback. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -47,21 +47,20 @@ As of July 2026:
 ### Current performance
 
 The database-resident worker and public AutoREST client have passed the 30 FPS
-gate. Adjacent hot 300-frame measurements put DMSC/v3 at 20.883/28.527 ms
-p50/p95 and DMSC/v2 at 20.332/28.284 ms. This includes retained simulation,
-strict relational delta persistence, rendering, compression, response storage,
-commit, and AQ correlation. Production readiness now warms the real movement,
-weapon-action, renderer, and codec call graph before advertising a worker.
+throughput gate. `SUBMIT_STEP` records dynamic commands and `POLL_FRAME` fetches
+their immutable committed frames; both are generated AutoREST procedures. Two
+selected 300-frame run reached 31.08 displayed FPS with 300 unique frames and
+31.21/32.36 ms paint-gap p50/p95. Fresh repeats and a run with an abandoned
+second worker also pass 30 FPS. Idle workers back off and release their slot after 60
+seconds, so closed tabs no longer consume a database CPU indefinitely.
 
-The public `DOOM_API.STEP` contract selects the worker for movement and weapon
-selection; batches and fire/use/UI actions still fall back to the complete SQL
-oracle. DMSC/v3 advances LOWER/RAISE states and then returns automatically to
-lean DMSC/v2 at the exact quiescent READY state. A bounded depth-three client
-passes a weapon-switching 300-frame route with 300 unique frames, 31.07
-displayed FPS, and 32.18/32.98 ms paint-gap p50/p95. Request-to-decode latency
-is 49.30/81.13 ms p50/p95 and is reported separately. Version selection occurs
-after pipelined predecessors commit, while retries correlate by immutable
-sequence and action bytes.
+`DOOM_API.STEP` remains backward compatible. The playable client uses a
+depth-four submit window, one result waiter, ordered decode, a 32 ms command
+clock, a 31.8 ms presentation clock, and a ten-frame
+startup buffer. This buffer makes cadence reliable but adds roughly 320 ms of
+presentation latency, so reducing it is the next performance target. Version
+selection occurs after pipelined predecessors commit, while retries correlate
+by immutable sequence and action bytes.
 
 The worker passes live commit, idempotent replay, rollback/discard, post-commit
 reconstruction, restart fencing, and two-session isolation. SecureFile tracing
@@ -81,6 +80,8 @@ stages were render 11.125 ms, apply 6.059 ms, state 0.347 ms, prepare 2.380 ms,
 and commit 2.230 ms. Stage percentiles are independently ranked and are not
 additive. Full evidence is in
 [the dynamic 30 FPS report](reports/performance-P12.0-dynamic-30fps-2026-07-16.md).
+The selected split-endpoint browser evidence and rejected transport variants are
+recorded in [the AutoREST 30 FPS gate report](reports/performance-P12.0-autorest-split-gate-2026-07-17.md).
 
 The current public route checkpoint is alive at tic 1430 with 46 health, 9
 kills, and 15 shotgun shells. It has legitimately opened the corridor doors,
@@ -198,14 +199,14 @@ BLOB handoff is 0.063 ms p95 and the full renderer+codec+BLOB total is
 
 ## Is it playable yet?
 
-Movement is now dynamically playable through the public AutoREST endpoint at
-the 30 FPS target; the acceptance route produced 300 distinct frames rather
-than replaying a hard-coded recording. The browser continuously derives each
-tic command from live keyboard or touch state. Input-to-frame latency is about
-120/148 ms p50/p95, so responsiveness still has room to improve, and
-fire/use/weapon actions remain on the slower SQL fallback until their retained
-parity work lands. SQL remains independently executable as the differential
-oracle.
+Movement is dynamically playable through generated AutoREST endpoints at the
+30 FPS target; the acceptance routes produced 300 distinct frames rather than
+replaying a hard-coded recording. The browser derives every command from live
+keyboard or touch state. The selected ten-frame buffer currently trades about
+320 ms of presentation latency for stable cadence. Weapon selection and common
+hitscan/melee fire are retained; use, barrels, and player projectiles can pause
+on the complete SQL fallback until their retained parity work lands. SQL remains
+independently executable as the differential oracle.
 
 The selected warm worker no longer serializes and immediately reparses its own
 state. A request-fenced, rollback-capable world diff moves pending player and

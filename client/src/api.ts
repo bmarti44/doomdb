@@ -16,7 +16,7 @@ export type Command = {
 type RestDocument = Record<string, unknown>;
 
 const ROOT = '/ords/doom/doom_api/';
-let uppercaseProcedures = false;
+let uppercaseProcedures = true;
 
 async function post(path: string, body: RestDocument): Promise<RestDocument> {
   const request = () => fetch(`${ROOT}${uppercaseProcedures ? path.toUpperCase() : path}`, {
@@ -25,10 +25,10 @@ async function post(path: string, body: RestDocument): Promise<RestDocument> {
     body: JSON.stringify(body)
   });
   let response = await request();
-  // ORDS 26.2's generated package endpoints retain the catalog procedure
-  // case even though older/local test doubles accept lowercase routes.
-  if (response.status === 404 && !uppercaseProcedures) {
-    uppercaseProcedures = true;
+  // ORDS 26.2's generated package endpoints retain catalog case. Keep a
+  // one-request fallback for older/local test doubles that expose lowercase.
+  if (response.status === 404) {
+    uppercaseProcedures = !uppercaseProcedures;
     response = await request();
   }
   if (!response.ok) throw new Error(`${path} request failed: ${response.status}`);
@@ -53,6 +53,19 @@ async function postStep(body: RestDocument): Promise<RestDocument> {
     }
   }
   throw lastFailure ?? new Error('step request failed');
+}
+
+async function postAsync(path: string, body: RestDocument): Promise<RestDocument> {
+  let lastFailure: Error | undefined;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try { return await post(path, body); }
+    catch (cause) {
+      lastFailure = cause instanceof Error ? cause : new Error(`${path} request failed`);
+      if (attempt === 3) break;
+      await delay(25 * (attempt + 1));
+    }
+  }
+  throw lastFailure ?? new Error(`${path} request failed`);
 }
 
 function stringField(document: RestDocument, name: string): string {
@@ -81,6 +94,26 @@ export async function step(session: string, command: Command): Promise<string> {
     p_commands: JSON.stringify({v: 1, commands: [command]})
   });
   return stringField(document, 'p_payload');
+}
+
+export async function submitStep(session: string, command: Command): Promise<string> {
+  const document = await postAsync('submit_step', {
+    p_session: session,
+    p_commands: JSON.stringify({v: 1, commands: [command]})
+  });
+  const request = stringField(document, 'p_request');
+  if (!/^[0-9a-f]{32}$/.test(request)) throw new TypeError('request response is invalid');
+  return request;
+}
+
+export async function pollFrame(session: string, sequence: number,
+                                waitMilliseconds = 1000): Promise<string | null> {
+  const document = await postAsync('poll_frame', {
+    p_session: session, p_seq: sequence, p_wait_ms: waitMilliseconds
+  });
+  const ready = document.p_ready;
+  if (ready !== 0 && ready !== 1) throw new TypeError('p_ready response field is invalid');
+  return ready === 1 ? stringField(document, 'p_payload') : null;
 }
 
 export async function getAsset(name: string): Promise<AssetResult> {

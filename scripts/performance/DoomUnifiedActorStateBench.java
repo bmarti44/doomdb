@@ -38,6 +38,7 @@ public final class DoomUnifiedActorStateBench {
   private static int ticOutputLength;
   private static int[] priorHealthScratch=new int[0],moveMaskScratch=new int[0];
   private static int[] renderOp=new int[0],renderId=new int[0],renderState=new int[0];
+  private static int[] renderSectorId=new int[0],renderSectorLight=new int[0];
   private static NUMBER[] renderX=new NUMBER[0],renderY=new NUMBER[0],renderZ=new NUMBER[0],renderAngle=new NUMBER[0];
   private static int lastRenderUpserts,lastRenderRemoves;
   private static byte[] stateOutput=new byte[262144];
@@ -64,6 +65,7 @@ public final class DoomUnifiedActorStateBench {
     int playerSound,ammoBullets,ammoShells,ammoRockets,ammoCells,weaponMask;
     int selectedWeapon,pendingWeapon,weaponState,weaponStateTics,flashState,flashStateTics,refire;
     NUMBER playerX,playerY,playerZ,playerEyeZ;
+    int[] sectorLight,sectorLightTimer;
     int[] id,thingType,stateIndex,stateTics,health,flags,target,sector,direction,awake,cooldown;
     int[] healthSeen,deathProcessed,behaviorIndex;
     int[] visibilityCache;
@@ -91,6 +93,7 @@ public final class DoomUnifiedActorStateBench {
       o.playerX=playerX;o.playerY=playerY;o.playerZ=playerZ;o.playerEyeZ=playerEyeZ;o.playerHealth=playerHealth;
       o.playerArmor=playerArmor;o.playerArmorType=playerArmorType;o.playerAlive=playerAlive;
       o.playerSector=playerSector;o.playerAngleIndex=playerAngleIndex;
+      o.sectorLight=sectorLight.clone();o.sectorLightTimer=sectorLightTimer.clone();
       o.playerSound=playerSound;o.ammoBullets=ammoBullets;o.ammoShells=ammoShells;
       o.ammoRockets=ammoRockets;o.ammoCells=ammoCells;o.weaponMask=weaponMask;
       o.selectedWeapon=selectedWeapon;o.pendingWeapon=pendingWeapon;o.weaponState=weaponState;
@@ -133,6 +136,8 @@ public final class DoomUnifiedActorStateBench {
       weaponState=s.weaponState;weaponStateTics=s.weaponStateTics;flashState=s.flashState;
       flashStateTics=s.flashStateTics;refire=s.refire;
       playerX=s.playerX;playerY=s.playerY;playerZ=s.playerZ;playerEyeZ=s.playerEyeZ;
+      System.arraycopy(s.sectorLight,0,sectorLight,0,sectorLight.length);
+      System.arraycopy(s.sectorLightTimer,0,sectorLightTimer,0,sectorLightTimer.length);
       stateFragments=s.stateFragments;
       stateMobjFragments=s.stateMobjFragments==null?null:s.stateMobjFragments.clone();
       System.arraycopy(s.stateIndex,0,stateIndex,0,count);System.arraycopy(s.stateTics,0,stateTics,0,count);
@@ -552,6 +557,15 @@ public final class DoomUnifiedActorStateBench {
         (flashStateId==null||flashState!=null),"unified player weapon state");
     o.selectedWeapon=selected.intValue();o.pendingWeapon=pending==null?-1:pending.intValue();
     o.weaponState=weaponState.intValue();o.flashState=flashState==null?-1:flashState.intValue();
+    try(Statement s=c.createStatement();ResultSet r=s.executeQuery("select count(*) from doom_map_sector")){
+      r.next();int sectors=r.getInt(1);o.sectorLight=new int[sectors];o.sectorLightTimer=new int[sectors];
+      Arrays.fill(o.sectorLightTimer,-1);}
+    try(PreparedStatement s=c.prepareStatement("select sector_id,light_level,coalesce(light_timer,-1) "+
+        "from sector_state where session_token=? order by sector_id")){s.setString(1,session);
+      try(ResultSet r=s.executeQuery()){int count=0;while(r.next()){int id=r.getInt(1);
+        require(id==count&&id<o.sectorLight.length,"unified sector runtime order");
+        o.sectorLight[id]=r.getInt(2);o.sectorLightTimer[id]=r.getInt(3);count++;}
+        require(count==o.sectorLight.length,"unified sector runtime rows");}}
     o.world=loadWorld(c,session,stateIndex);
     HashMap<Integer,Integer> behavior=new HashMap<Integer,Integer>();
     try(Statement s=c.createStatement();ResultSet r=s.executeQuery("select count(*) from doom_monster_def")){r.next();int n=r.getInt(1);
@@ -671,6 +685,8 @@ public final class DoomUnifiedActorStateBench {
       renderOp=new int[renderCapacity];renderId=new int[renderCapacity];renderState=new int[renderCapacity];
       renderX=new NUMBER[renderCapacity];renderY=new NUMBER[renderCapacity];renderZ=new NUMBER[renderCapacity];
       renderAngle=new NUMBER[renderCapacity];
+      renderSectorId=new int[candidate.sectorLight.length];
+      renderSectorLight=new int[candidate.sectorLight.length];
       lastError="";return "OK|"+candidate.count+"|"+candidate.tic+"|"+
           candidate.seq+"|"+candidate.rng+"|"+candidate.nextMobj+"|"+candidate.nextEvent;
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
@@ -1183,35 +1199,66 @@ public final class DoomUnifiedActorStateBench {
     return pack[5]==1;
   }
 
+  private static int applyPassiveWorldPack(Owner o,byte[] pack)throws Exception{
+    require(pack!=null&&pack.length>=12&&int_(pack,0)==0x444d5750&&pack[4]==1&&pack[5]==0,
+        "passive world pack header");
+    int count=ushort(pack,6),start=ushort(pack,8),draws=ushort(pack,10);
+    require(start==o.rng&&pack.length==12+count*12&&draws<=256,
+        "passive world pack frontier/length");
+    int prior=-1,p=12;
+    for(int i=0;i<count;i++,p+=12){int sector=int_(pack,p),light=int_(pack,p+4),timer=int_(pack,p+8);
+      require(sector>prior&&sector>=0&&sector<o.sectorLight.length&&light>=0&&light<=255&&timer>=-1,
+          "passive world pack sector");prior=sector;o.sectorLight[sector]=light;o.sectorLightTimer[sector]=timer;}
+    o.rng=(o.rng+draws)&255;return draws;
+  }
+
   /** One parity-locked DMSC/v2 movement command plus one ordered actor TIC. */
   public static byte[] prepareCommandTic(String s,String l,long g,String request,long tic,long seq,
       int rng,int nextMobj,int nextEvent,byte[] command){
-    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,false,false);
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,null,false,false);
   }
   /** Production entry point with a compact authoritative projectile mutation pack. */
   public static byte[] prepareCommandTicWithProjectiles(String s,String l,long g,String request,long tic,long seq,
       int rng,int nextMobj,int nextEvent,byte[] command,byte[] projectilePack){
-    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,projectilePack,false,false);
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,projectilePack,null,false,false);
   }
   public static byte[] prepareCommandTicRetainedProjectiles(String s,String l,long g,String request,long tic,long seq,
       int rng,int nextMobj,int nextEvent,byte[] command){
-    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,true,false);
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,null,true,false);
   }
   /** One DMSC/v3 movement/weapon command. Fire and use remain explicit rejection gates. */
   public static byte[] prepareCommandTicActions(String s,String l,long g,String request,long tic,long seq,
       int rng,int nextMobj,int nextEvent,byte[] command){
-    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,false,true);
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,null,false,true);
   }
   public static byte[] prepareCommandTicActionsWithProjectiles(String s,String l,long g,String request,long tic,
       long seq,int rng,int nextMobj,int nextEvent,byte[] command,byte[] projectilePack){
-    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,projectilePack,false,true);
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,projectilePack,null,false,true);
   }
   public static byte[] prepareCommandTicActionsRetainedProjectiles(String s,String l,long g,String request,
       long tic,long seq,int rng,int nextMobj,int nextEvent,byte[] command){
-    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,true,true);
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,null,true,true);
   }
+  public static byte[] prepareCommandTicWorld(String s,String l,long g,String request,long tic,long seq,
+      int rng,int nextMobj,int nextEvent,byte[] command,byte[] worldPack){
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,worldPack,false,false);}
+  public static byte[] prepareCommandTicWorldProjectiles(String s,String l,long g,String request,long tic,long seq,
+      int rng,int nextMobj,int nextEvent,byte[] command,byte[] projectilePack,byte[] worldPack){
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,projectilePack,worldPack,false,false);}
+  public static byte[] prepareCommandTicWorldRetained(String s,String l,long g,String request,long tic,long seq,
+      int rng,int nextMobj,int nextEvent,byte[] command,byte[] worldPack){
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,worldPack,true,false);}
+  public static byte[] prepareCommandTicActionsWorld(String s,String l,long g,String request,long tic,long seq,
+      int rng,int nextMobj,int nextEvent,byte[] command,byte[] worldPack){
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,worldPack,false,true);}
+  public static byte[] prepareCommandTicActionsWorldProjectiles(String s,String l,long g,String request,long tic,
+      long seq,int rng,int nextMobj,int nextEvent,byte[] command,byte[] projectilePack,byte[] worldPack){
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,projectilePack,worldPack,false,true);}
+  public static byte[] prepareCommandTicActionsWorldRetained(String s,String l,long g,String request,long tic,
+      long seq,int rng,int nextMobj,int nextEvent,byte[] command,byte[] worldPack){
+    return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,worldPack,true,true);}
   private static byte[] prepareCommandTicInternal(String s,String l,long g,String request,long tic,long seq,
-      int rng,int nextMobj,int nextEvent,byte[] command,byte[] projectilePack,boolean retainedProjectiles,
+      int rng,int nextMobj,int nextEvent,byte[] command,byte[] projectilePack,byte[] worldPack,boolean retainedProjectiles,
       boolean weaponActions){
     try{
       fence(s,l,g,tic,seq,rng,nextMobj,nextEvent);require(pending==null&&request!=null&&
@@ -1243,9 +1290,9 @@ public final class DoomUnifiedActorStateBench {
       if(oldX.compareTo(candidate.playerX)!=0||oldY.compareTo(candidate.playerY)!=0)
         Arrays.fill(candidate.visibilityCache,-1);
       ArrayList<AttackEvent> commandEvents=null;
-      int commandDraws=0;
+      int commandDraws=worldPack==null?0:applyPassiveWorldPack(candidate,worldPack);
       if(weaponActions){commandEvents=new ArrayList<AttackEvent>();advanceWeapon(candidate,weapon,commandEvents);
-        int[] draws=new int[]{0};fireWeapon(candidate,fire,draws,commandEvents);commandDraws=draws[0];}
+        int[] draws=new int[]{commandDraws};fireWeapon(candidate,fire,draws,commandEvents);commandDraws=draws[0];}
       long actorStarted=DoomPlayerMovementBench.traceEnabled?System.nanoTime():0;
       byte[] nested=ticDelta(candidate,s,l,g,request,advanceProjectiles,commandEvents,weaponActions,commandDraws);
       if(DoomPlayerMovementBench.traceEnabled)lastActorTicNs=System.nanoTime()-actorStarted;
@@ -1332,7 +1379,7 @@ public final class DoomUnifiedActorStateBench {
   }
   private static byte[] ownerBytes(Owner o)throws Exception{
     byte[] world=worldBytes(o.world);ByteArrayOutputStream bytes=new ByteArrayOutputStream(world.length+256);
-    DataOutputStream out=new DataOutputStream(bytes);out.writeInt(0x44574350);out.writeInt(4);
+    DataOutputStream out=new DataOutputStream(bytes);out.writeInt(0x44574350);out.writeInt(5);
     out.writeUTF(o.session);out.writeUTF(o.lineage);out.writeUTF(o.stateMapSha);out.writeLong(o.generation);
     out.writeLong(o.tic);out.writeLong(o.seq);out.writeInt(o.rng);out.writeInt(o.nextMobj);out.writeInt(o.nextEvent);
     out.writeInt(o.playerId);out.writeInt(o.playerTarget);out.writeInt(o.killCount);out.writeInt(o.playerHealth);
@@ -1342,6 +1389,8 @@ public final class DoomUnifiedActorStateBench {
     out.writeInt(o.ammoRockets);out.writeInt(o.ammoCells);out.writeInt(o.weaponMask);
     out.writeInt(o.selectedWeapon);out.writeInt(o.pendingWeapon);out.writeInt(o.weaponState);
     out.writeInt(o.weaponStateTics);out.writeInt(o.flashState);out.writeInt(o.flashStateTics);out.writeInt(o.refire);
+    out.writeInt(o.sectorLight.length);for(int i=0;i<o.sectorLight.length;i++){
+      out.writeInt(o.sectorLight[i]);out.writeInt(o.sectorLightTimer[i]);}
     checkpointNumber(out,o.playerX);checkpointNumber(out,o.playerY);
     checkpointNumber(out,o.playerZ);checkpointNumber(out,o.playerEyeZ);
     out.writeInt(world.length);out.write(world);out.flush();return bytes.toByteArray();
@@ -1386,7 +1435,8 @@ public final class DoomUnifiedActorStateBench {
   }
   private static Owner ownerBytes(Owner base,byte[] packed,boolean recovery)throws Exception{
     DataInputStream in=new DataInputStream(new ByteArrayInputStream(packed));
-    require(in.readInt()==0x44574350&&in.readInt()==4,"owner restore header");Owner o=base.copy();
+    require(in.readInt()==0x44574350,"owner restore magic");int version=in.readInt();
+    require(version==4||version==5,"owner restore version");Owner o=base.copy();
     require(o.session.equals(in.readUTF())&&o.lineage.equals(in.readUTF())&&o.stateMapSha.equals(in.readUTF()),
         "owner restore identity");long packedGeneration=in.readLong();
     require(recovery?packedGeneration>0&&packedGeneration<o.generation:o.generation==packedGeneration,
@@ -1405,6 +1455,10 @@ public final class DoomUnifiedActorStateBench {
         o.pendingWeapon<o.weaponId.length&&o.weaponState>=0&&o.weaponState<o.stateId.length&&
         o.weaponStateTics>=0&&o.flashState>=-1&&o.flashState<o.stateId.length&&o.flashStateTics>=0&&o.refire>=0,
         "owner restore weapon state");
+    if(version>=5){int sectors=in.readInt();require(sectors==o.sectorLight.length,"owner restore sectors");
+      for(int i=0;i<sectors;i++){o.sectorLight[i]=in.readInt();o.sectorLightTimer[i]=in.readInt();
+        require(o.sectorLight[i]>=0&&o.sectorLight[i]<=255&&o.sectorLightTimer[i]>=-1,
+          "owner restore sector runtime");}}
     o.playerX=checkpointNumber(in);o.playerY=checkpointNumber(in);o.playerZ=checkpointNumber(in);
     o.playerEyeZ=checkpointNumber(in);
     int length=in.readInt();require(length>=12&&length<=1048576,"owner world length");byte[] world=new byte[length];
@@ -1467,6 +1521,12 @@ public final class DoomUnifiedActorStateBench {
         states.put(committed.stateId[i],Integer.valueOf(i));WorldMobjs sql=loadWorld(c,s,states);
       require(Arrays.equals(worldBytes(committed.world),worldBytes(sql)),
           "owner SQL world "+worldDifference(committed.world,sql));
+      try(PreparedStatement p=c.prepareStatement("select sector_id,light_level,coalesce(light_timer,-1) "+
+          "from sector_state where session_token=? order by sector_id")){p.setString(1,s);
+        try(ResultSet r=p.executeQuery()){int sector=0;while(r.next()){
+          require(r.getInt(1)==sector&&committed.sectorLight[sector]==r.getInt(2)&&
+              committed.sectorLightTimer[sector]==r.getInt(3),"owner SQL sector runtime "+sector);sector++;}
+          require(sector==committed.sectorLight.length,"owner SQL sector count");}}
       try(PreparedStatement p=c.prepareStatement("select coalesce(max(mobj_id),0)+1 from mobjs where session_token=?")){
         p.setString(1,s);try(ResultSet r=p.executeQuery()){require(r.next()&&r.getInt(1)==committed.nextMobj,"owner SQL mobj frontier");}}
       return "OK|"+committed.tic+"|"+committed.seq+"|"+sql.count;
@@ -1632,11 +1692,14 @@ public final class DoomUnifiedActorStateBench {
           require(dirty<renderId.length,"unified render diff capacity");renderOp[dirty]=1;renderId[dirty]=nextId;
           renderState[dirty]=after.state[next];renderX[dirty]=after.x[next];renderY[dirty]=after.y[next];
           renderZ[dirty]=after.z[next];renderAngle[dirty]=after.angle[next];dirty++;lastRenderUpserts++;}old++;next++;}
+      int dirtySectors=0;for(int sector=0;sector<pending.sectorLight.length;sector++)
+        if(committed.sectorLight[sector]!=pending.sectorLight[sector]){
+          renderSectorId[dirtySectors]=sector;renderSectorLight[dirtySectors]=pending.sectorLight[sector];dirtySectors++;}
       String result=DoomRetainedRenderSceneBench.stageOwnerTic(s,g,request,pending.tic,pending.seq,
         pending.playerX,pending.playerY,pending.playerEyeZ,pending.playerAngleIndex,pending.playerHealth,
         pending.playerArmor,pending.playerAlive,pending.weaponId[pending.selectedWeapon],
         weaponAmmo(pending,pending.weaponAmmo[pending.selectedWeapon]),dirty,renderOp,renderId,renderState,renderX,renderY,
-        renderZ,renderAngle,stateSha,payload);
+        renderZ,renderAngle,dirtySectors,renderSectorId,renderSectorLight,stateSha,payload);
       require(result!=null&&!result.startsWith("ERROR:")&&!result.startsWith("ERR|"),
           "unified renderer stage "+DoomRetainedRenderSceneBench.lastError());lastError="";return result;
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();

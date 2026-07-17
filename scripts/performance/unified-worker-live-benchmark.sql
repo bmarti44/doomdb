@@ -13,12 +13,14 @@ declare
   committed_seq_ number;delta_version_ number;delta_count_ number;
   delta_sha_ varchar2(64);state_sha_ varchar2(64);frame_sha_ varchar2(64);
   response_bytes_ number;response_sha_ varchar2(64);delta_ blob;payload_ blob;
-  tic_ number;seq_ number;old_wait_ number;old_capacity_ number;old_parity_ number;count_ number;
+  tic_ number;seq_ number;old_enabled_ number;old_wait_ number;old_capacity_ number;
+  old_parity_ number;count_ number;
   history_interval_ number;
   started_ timestamp with time zone;samples_ sys.odcinumberlist:=sys.odcinumberlist();
   checkpoint_samples_ sys.odcinumberlist:=sys.odcinumberlist();
   regular_samples_ sys.odcinumberlist:=sys.odcinumberlist();
   p50_ number;p95_ number;max_ number;min_bytes_ number:=null;max_bytes_ number:=0;
+  frame_chain_ varchar2(64);
   deadline_ timestamp with time zone;
 
   function elapsed_ms_(p_started timestamp with time zone) return number is
@@ -54,8 +56,9 @@ declare
     if session_ is not null then delete from game_sessions where session_token=session_;end if;
     update doom_worker_control set target_session=null,target_lineage=null,
       state_map_sha=null,ready=0,stop_requested=0,worker_sid=null,last_error=null;
-    update doom_config set number_value=0
-      where config_key in('UNIFIED_WORKER_ENABLED','UNIFIED_WORKER_FAILPOINT');
+    update doom_config set number_value=0 where config_key='UNIFIED_WORKER_FAILPOINT';
+    if old_enabled_ is not null then update doom_config set number_value=old_enabled_
+      where config_key='UNIFIED_WORKER_ENABLED';end if;
     if old_wait_ is not null then update doom_config set number_value=old_wait_
       where config_key='UNIFIED_WORKER_WAIT_SECONDS';end if;
     if old_capacity_ is not null then update doom_config set number_value=old_capacity_
@@ -65,6 +68,8 @@ declare
     commit;
   end;
 begin
+  select number_value into old_enabled_ from doom_config
+    where config_key='UNIFIED_WORKER_ENABLED';
   select number_value into old_wait_ from doom_config
     where config_key='UNIFIED_WORKER_WAIT_SECONDS';
   select number_value into old_capacity_ from doom_config
@@ -181,12 +186,19 @@ begin
     into p50_,p95_,max_ from table(regular_samples_);
   dbms_output.put_line('unified_worker_caller_regular_ms='||round(p50_,3)||'|'||
     round(p95_,3)||'|'||round(max_,3));
+  select lower(rawtohex(dbms_crypto.hash(json_arrayagg(r.frame_sha
+      order by r.committed_tic returning clob),dbms_crypto.hash_sh256))) into frame_chain_
+    from doom_worker_request q join doom_worker_result r on r.request_id=q.request_id
+    where q.session_token=session_ and q.request_status='COMMITTED';
+  dbms_output.put_line('unified_worker_frame_chain='||frame_chain_);
   for stage_ in (
     with measured as (
-      select x.committed_tic,x.prepare_us,x.apply_us,x.state_us,x.state_encode_us,
+      select x.committed_tic,x.prepare_us,x.ledger_us,x.world_pack_us,x.java_prepare_us,
+        x.apply_us,x.world_apply_us,x.delta_apply_us,x.state_us,x.state_encode_us,
         x.state_blob_us,x.state_compare_us,x.state_object_encode_us,x.state_changed,
         x.state_reused,x.state_removed,x.render_us,x.render_call_us,x.render_update_us,
-        x.render_kernel_us,x.codec_us,x.blob_us,x.response_copy_us,x.response_hash_us,
+        x.render_kernel_us,x.bsp_us,x.solid_us,x.portal_us,x.plane_us,x.sprite_us,
+        x.presentation_us,x.codec_us,x.blob_us,x.response_copy_us,x.response_hash_us,
         x.history_us,x.history_encode_us,x.history_blob_us,x.history_persist_us,x.finalize_us,
         x.commit_us,
         row_number() over(order by r.created_at,r.request_id) sample_no
@@ -195,7 +207,12 @@ begin
       where r.session_token=session_ and r.request_status='COMMITTED'
     ), values_ as (
       select 'prepare' stage,prepare_us/1000 value from measured where sample_no>c_warm
+      union all select 'ledger',ledger_us/1000 from measured where sample_no>c_warm
+      union all select 'world_pack',world_pack_us/1000 from measured where sample_no>c_warm
+      union all select 'java_prepare',java_prepare_us/1000 from measured where sample_no>c_warm
       union all select 'apply',apply_us/1000 from measured where sample_no>c_warm
+      union all select 'world_apply',world_apply_us/1000 from measured where sample_no>c_warm
+      union all select 'delta_apply',delta_apply_us/1000 from measured where sample_no>c_warm
       union all select 'state',state_us/1000 from measured where sample_no>c_warm
       union all select 'state_encode',state_encode_us/1000 from measured where sample_no>c_warm
       union all select 'state_blob',state_blob_us/1000 from measured where sample_no>c_warm
@@ -210,6 +227,12 @@ begin
       union all select 'render_other',greatest(render_us-render_kernel_us-
         codec_us-blob_us,0)/1000 from measured where sample_no>c_warm
       union all select 'render_kernel',render_kernel_us/1000 from measured where sample_no>c_warm
+      union all select 'bsp',bsp_us/1000 from measured where sample_no>c_warm
+      union all select 'solid',solid_us/1000 from measured where sample_no>c_warm
+      union all select 'portal',portal_us/1000 from measured where sample_no>c_warm
+      union all select 'plane',plane_us/1000 from measured where sample_no>c_warm
+      union all select 'sprite',sprite_us/1000 from measured where sample_no>c_warm
+      union all select 'presentation',presentation_us/1000 from measured where sample_no>c_warm
       union all select 'codec',codec_us/1000 from measured where sample_no>c_warm
       union all select 'blob',blob_us/1000 from measured where sample_no>c_warm
       union all select 'response_copy',response_copy_us/1000 from measured where sample_no>c_warm

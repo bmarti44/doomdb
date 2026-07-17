@@ -1,4 +1,4 @@
-import {newGame, step, type Command} from './api.js';
+import {newGame, pollFrame, step, submitStep, type Command} from './api.js';
 import {AudioPresenter} from './audio.js';
 import {createDoomCanvas, blit} from './canvas.js';
 import {decodeBytes, decodePayload} from './codec.js';
@@ -78,7 +78,7 @@ async function boot(): Promise<void> {
   state.loading = false;
   state.setMode(frame.mode);
   await audio.consume(frame.audio);
-  status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\nFire/use may pause while their retained paths are completed.';
+  status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\n30 FPS database pipeline warming up…';
   window.setTimeout(() => { status.style.opacity = '0.35'; }, 6000);
 
   let latest: Command = {
@@ -87,10 +87,19 @@ async function boot(): Promise<void> {
   };
   let nextSequence = 0;
   let nextPresentation = 1;
-  let inFlight = 0;
+  let submitInFlight = 0;
+  let fetchInFlight = false;
+  let syncInFlight = false;
+  let pipelineError = false;
+  let nextFetch = 1;
   let presenting = false;
   let presentationTimer = 0;
-  const framePeriodMs = 32;
+  const commandPeriodMs = 32;
+  const presentationPeriodMs = 31.8;
+  const submitDepth = 4;
+  const presentationBuffer = 10;
+  const submitted = new Set<number>();
+  const retryFetch: number[] = [];
   const completed = new Map<number, typeof frame>();
   const present = async (): Promise<void> => {
     if (presenting) return;
@@ -107,17 +116,52 @@ async function boot(): Promise<void> {
     } finally { presenting = false; }
   };
   const startPresentation = (): void => {
-    if (presentationTimer !== 0 || completed.size < 6) return;
-    presentationTimer = window.setInterval(() => { void present(); }, framePeriodMs);
+    if (presentationTimer !== 0 || completed.size < presentationBuffer) return;
+    status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\n30 FPS database pipeline active';
+    presentationTimer = window.setInterval(() => { void present(); }, presentationPeriodMs);
   };
-  const tick = (): void => {
+  const retainedCommand = (command: Command): boolean => command.use === 0 &&
+    command.pause === 0 && command.automap === 0 && command.menu === 'NONE' &&
+    command.cheat.length === 0;
+  const submitTick = (): void => {
     const sequence = ++nextSequence;
     const outgoing = {...latest, seq: sequence};
-    inFlight += 1;
-    void step(game.session, outgoing)
-      .then(decodePayload)
-      .then(decoded => { completed.set(sequence, decoded); startPresentation(); })
-      .finally(() => { inFlight -= 1; });
+    submitInFlight += 1;
+    void submitStep(game.session, outgoing)
+      .then(() => { submitted.add(sequence); })
+      .catch(cause => {
+        const error = cause instanceof Error ? cause : new Error('submit failed');
+        pipelineError = true;
+        status.style.opacity = '1';status.textContent = `Game pipeline stopped: ${error.message}`;
+      })
+      .finally(() => { submitInFlight -= 1; });
+  };
+  const fetchTick = (sequence: number): void => {
+    fetchInFlight = true;
+    void pollFrame(game.session, sequence)
+      .then(payload => payload === null ? null : decodePayload(payload))
+      .then(decoded => {
+        if (decoded === null) retryFetch.push(sequence);
+        else { completed.set(sequence, decoded);startPresentation(); }
+      })
+      .catch(cause => {
+        pipelineError = true;const error = cause instanceof Error ? cause : new Error('fetch failed');
+        status.style.opacity = '1';status.textContent = `Game pipeline stopped: ${error.message}`;
+      })
+      .finally(() => { fetchInFlight = false; });
+  };
+  const syncTick = (): void => {
+    const sequence = ++nextSequence;
+    const outgoing = {...latest, seq: sequence};
+    syncInFlight = true;
+    status.style.opacity = '1';status.textContent = 'Applying database control action…';
+    void step(game.session, outgoing).then(decodePayload).then(decoded => {
+      completed.set(sequence, decoded);startPresentation();nextFetch = sequence + 1;
+      window.setTimeout(() => {status.style.opacity = '0.35';}, 1500);
+    }).catch(cause => {
+      pipelineError = true;const error = cause instanceof Error ? cause : new Error('control action failed');
+      status.style.opacity = '1';status.textContent = `Game pipeline stopped: ${error.message}`;
+    }).finally(() => { syncInFlight = false; });
   };
   const send = (command: Command): void => {
     latest = command;
@@ -134,16 +178,37 @@ async function boot(): Promise<void> {
   document.addEventListener('visibilitychange', () => {
     state.visible = document.visibilityState === 'visible';
   });
-  let nextDispatch = performance.now() + framePeriodMs;
+  let nextDispatch = performance.now() + commandPeriodMs;
   window.setInterval(() => {
     const now = performance.now();
+    if (pipelineError) return;
     if (!state.visible || !state.focused) {
-      nextDispatch = now + framePeriodMs;
+      nextDispatch = now + commandPeriodMs;
       return;
     }
-    if (now < nextDispatch || inFlight >= 3) return;
-    tick();
-    nextDispatch += framePeriodMs;
+    if (!fetchInFlight) {
+      if (retryFetch.length > 0) fetchTick(retryFetch.shift()!);
+      else if (nextFetch <= nextSequence && submitted.has(nextFetch)) fetchTick(nextFetch++);
+    }
+    if (!retainedCommand(latest)) {
+      if (!syncInFlight && submitInFlight === 0 && !fetchInFlight &&
+          nextFetch > nextSequence) syncTick();
+      return;
+    }
+    const prefill = nextSequence < submitDepth;
+    // The first request owns worker claim/warmup. Sending all four prefill
+    // requests before that claim completes creates a harmless but noisy ORDS
+    // capacity race and forces the idempotent retry path.
+    if (nextSequence > 0 && prefill && !submitted.has(1)) return;
+    if (syncInFlight || submitInFlight >= submitDepth ||
+        nextSequence + 1 > nextPresentation + 16 ||
+        (!prefill && now < nextDispatch)) return;
+    submitTick();
+    if (prefill) {
+      if (nextSequence === submitDepth) nextDispatch = now + commandPeriodMs;
+    } else {
+      nextDispatch += commandPeriodMs;
+    }
   }, 4);
 }
 

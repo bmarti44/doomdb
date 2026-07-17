@@ -62,10 +62,15 @@ public final class DoomBspKernelBench {
   private static BigDecimal preparedCameraX,preparedCameraY;
   private static int[] segLineId, lineStartX, lineStartY, lineEndX, lineEndY;
   private static int[] rightSector, leftSector;
+  private static int[] facingSectorCache,oppositeSectorCache;
+  private static byte[] rightFacingCache;
   private static int[] lineFlags, segOffset, rightXOffset, rightYOffset;
   private static int[] leftXOffset, leftYOffset;
   private static String[] rightUpper, rightLower, rightMiddle;
   private static String[] leftUpper, leftLower, leftMiddle;
+  private static int[] rightUpperAsset,rightLowerAsset,rightMiddleAsset;
+  private static int[] leftUpperAsset,leftLowerAsset,leftMiddleAsset;
+  private static double[] segLength;
   private static byte[] segSolid;
   private static double[] sectorFloor, sectorCeiling;
   private static int[] sectorLight;
@@ -74,6 +79,7 @@ public final class DoomBspKernelBench {
   private static int[] activeSectorCeilingAsset, activeSectorFloorAsset;
   private static byte[] sectorCeilingSky;
   private static double[] planeCeilingDistance, planeFloorDistance;
+  private static boolean[] visiblePlaneSector;
   private static int skyAsset;
   private static Map<String, Integer> wallAssetByName;
   private static int[] wallAssetWidth, wallAssetHeight;
@@ -82,6 +88,8 @@ public final class DoomBspKernelBench {
   private static short[][] flatAssetTexels;
   private static Map<String, int[]> animationByAsset;
   private static Map<String, int[]> animationByGroup;
+  private static int[][] wallAnimationByAsset;
+  private static int[] activeWallAsset;
   private static short[] colormap;
   private static double[] camX;
   private static final int ANGLES = 64;
@@ -98,10 +106,13 @@ public final class DoomBspKernelBench {
   private static byte[] rawCandidates;
   private static byte[] visibleCandidates;
   private static int[] projectedFirst, projectedLast;
+  private static double[] acceptedDepthCache,acceptedUCache;
   private static double[] nearestSolidDepth;
   private static final int MAX_VISIBLE_PER_COLUMN = 128;
   private static int[] columnVisibleCount, columnVisibleSeg, orderedSegs;
   private static double[] columnVisibleDepth, orderedDepths;
+  private static int[] orderedSegScratch;
+  private static double[] orderedDepthScratch;
   private static byte[] portalCandidates;
   private static double[] portalClipTop, portalClipBottom;
   private static short[] wallFrame;
@@ -166,6 +177,9 @@ public final class DoomBspKernelBench {
   private static int dticAppliedActors,dticPriorMobjCount,dticPriorLiveTic;
   private static long dticPriorSeq;private static boolean dticApplied;
   private static boolean directApplied;private static String directRequest;
+  private static int[] directSectorId=new int[0],directOldSectorLight=new int[0];
+  private static int[] directOldSectorLightBand=new int[0];
+  private static int directSectorChangeCount;
   private static double directOldCameraX,directOldCameraY,directOldEyeZ;
   private static BigDecimal directOldExactX,directOldExactY;
   private static int directOldAngle,directOldHealth,directOldArmor,directOldAmmo,directOldWeaponAsset;
@@ -190,6 +204,7 @@ public final class DoomBspKernelBench {
   private static int acceptedPairs;
   private static int visiblePairs;
   private static int activePortalPairs;
+  private static int largeSortColumns,orderedHitTotal,wallRowAttempts,planeRowAttempts;
   private static volatile long sink;
 
   private DoomBspKernelBench() {}
@@ -237,6 +252,11 @@ public final class DoomBspKernelBench {
       segRelativeStartY[id]=exactRelativeY[segStartYIndex[id]];
       segRelativeEndX[id]=exactRelativeX[segEndXIndex[id]];
       segRelativeEndY[id]=exactRelativeY[segEndYIndex[id]];
+      double cross=(cameraX-lineStartX[id])*(lineEndY[id]-lineStartY[id])-
+          (cameraY-lineStartY[id])*(lineEndX[id]-lineStartX[id]);
+      boolean right=cross>0;rightFacingCache[id]=(byte)(right?1:0);
+      facingSectorCache[id]=right?rightSector[id]:leftSector[id];
+      oppositeSectorCache[id]=right?leftSector[id]:rightSector[id];
     }
     if(exactGeometryEpoch==Integer.MAX_VALUE){Arrays.fill(segExactEpoch,0);
       Arrays.fill(exactDirectionEpoch,0);exactGeometryEpoch=1;}
@@ -752,6 +772,10 @@ public final class DoomBspKernelBench {
     liveExactCameraX=directOldExactX;liveExactCameraY=directOldExactY;liveAngle=directOldAngle;
     liveHealth=directOldHealth;liveArmor=directOldArmor;liveAmmo=directOldAmmo;
     weaponAsset=directOldWeaponAsset;liveMode=directOldMode;
+    for(int change=0;change<directSectorChangeCount;change++){int sector=directSectorId[change];
+      sectorLight[sector]=directOldSectorLight[change];
+      sectorLightBand[sector]=directOldSectorLightBand[change];}
+    directSectorChangeCount=0;
     prepareExactSegmentRelatives();directApplied=false;directRequest=null;
   }
 
@@ -760,6 +784,7 @@ public final class DoomBspKernelBench {
       int playerArmor,int playerAlive,String selectedWeapon,int selectedAmmo,
       int changeCount,int[] changeOp,int[] worldId,int[] worldState,
       NUMBER[] worldX,NUMBER[] worldY,NUMBER[] worldZ,NUMBER[] worldAngle,
+      int sectorChangeCount,int[] sectorIds,int[] sectorLights,
       String stateSha,Blob payload)throws Exception{
     require(!directApplied&&!dticApplied&&request!=null&&request.matches("[0-9a-f]{32}")&&
         nextTic==((long)liveTic)+1&&nextTic<=Integer.MAX_VALUE&&nextSeq>=0&&
@@ -771,6 +796,8 @@ public final class DoomBspKernelBench {
         changeOp.length>=changeCount&&worldId.length>=changeCount&&worldState.length>=changeCount&&
         worldX.length>=changeCount&&worldY.length>=changeCount&&worldZ.length>=changeCount&&
         worldAngle!=null&&worldAngle.length>=changeCount&&
+        sectorChangeCount>=0&&sectorChangeCount<=sectorFloor.length&&sectorIds!=null&&
+        sectorLights!=null&&sectorIds.length>=sectorChangeCount&&sectorLights.length>=sectorChangeCount&&
         stateSha!=null&&stateSha.matches("[0-9a-f]{64}")&&payload!=null,
         "direct retained owner input");
     long updateStarted=System.nanoTime();
@@ -780,7 +807,14 @@ public final class DoomBspKernelBench {
       if(changeOp[change]==1)require(worldState[change]>=0&&worldState[change]<catalogStateCount&&
           worldX[change]!=null&&worldY[change]!=null&&worldZ[change]!=null&&worldAngle[change]!=null,
           "direct retained world invalid");}
+    int priorSector=-1;
+    for(int change=0;change<sectorChangeCount;change++){
+      require(sectorIds[change]>priorSector&&sectorIds[change]<sectorFloor.length&&
+          sectorLights[change]>=0&&sectorLights[change]<=255,"direct retained sector order/range");
+      priorSector=sectorIds[change];}
     ensureMobjCapacity(mobjCount+changeCount);
+    if(directSectorId.length<sectorChangeCount){directSectorId=new int[sectorChangeCount];
+      directOldSectorLight=new int[sectorChangeCount];directOldSectorLightBand=new int[sectorChangeCount];}
     dticPriorMobjCount=mobjCount;dticPriorLiveTic=liveTic;dticPriorSeq=retainedDticSeq;
     directOldCameraX=liveCameraX;directOldCameraY=liveCameraY;directOldEyeZ=cameraEyeZ;
     directOldExactX=liveExactCameraX;directOldExactY=liveExactCameraY;directOldAngle=liveAngle;
@@ -789,6 +823,10 @@ public final class DoomBspKernelBench {
     for(int mobj=0;mobj<mobjCount;mobj++){dticActorId[mobj]=mobjId[mobj];dticOldState[mobj]=mobjState[mobj];
       dticOldX[mobj]=mobjX[mobj];dticOldY[mobj]=mobjY[mobj];directOldZ[mobj]=mobjZ[mobj];
       dticActorX[mobj]=mobjAngle[mobj];}
+    directSectorChangeCount=sectorChangeCount;
+    for(int change=0;change<sectorChangeCount;change++){int sector=sectorIds[change];
+      directSectorId[change]=sector;directOldSectorLight[change]=sectorLight[sector];
+      directOldSectorLightBand[change]=sectorLightBand[sector];}
     directApplied=true;directRequest=request;
     try{liveExactCameraX=playerX.bigDecimalValue();liveExactCameraY=playerY.bigDecimalValue();
       liveCameraX=playerX.doubleValue();liveCameraY=playerY.doubleValue();cameraEyeZ=playerEyeZ.doubleValue();
@@ -803,6 +841,9 @@ public final class DoomBspKernelBench {
           mobjState[index]=worldState[change];mobjX[index]=worldX[change].doubleValue();
           mobjY[index]=worldY[change].doubleValue();mobjZ[index]=worldZ[change].doubleValue();
           mobjAngle[index]=worldAngle[change].doubleValue();}}
+      for(int change=0;change<sectorChangeCount;change++){int sector=sectorIds[change];
+        sectorLight[sector]=sectorLights[change];
+        sectorLightBand[sector]=Math.max(0,Math.min(31,(255-sectorLights[change])/8));}
       lastRetainedUpdateNanos=System.nanoTime()-updateStarted;
       long started=System.nanoTime();traverseAndProject(liveCameraX,liveCameraY,liveAngle,false);
       lastRenderNanos=System.nanoTime()-started;started=System.nanoTime();encodePackedTicZeroPayload(stateSha);
@@ -816,7 +857,7 @@ public final class DoomBspKernelBench {
   }
 
   static void acceptRetainedOwner(String request){require(directApplied&&request!=null&&request.equals(directRequest),
-      "direct retained accept fence");directApplied=false;directRequest=null;}
+      "direct retained accept fence");directSectorChangeCount=0;directApplied=false;directRequest=null;}
   static void discardRetainedOwner(String request){require(directApplied&&request!=null&&request.equals(directRequest),
       "direct retained discard fence");rollbackDirectOwner();}
   static boolean retainedOwnerPending(){return directApplied;}
@@ -1171,18 +1212,25 @@ public final class DoomBspKernelBench {
     segRelativeStartX = new double[segTotal]; segRelativeStartY = new double[segTotal];
     segRelativeEndX = new double[segTotal]; segRelativeEndY = new double[segTotal];
     segExactTNumerator = new double[segTotal]; segExactEpoch = new int[segTotal];
+    facingSectorCache=new int[segTotal];oppositeSectorCache=new int[segTotal];
+    rightFacingCache=new byte[segTotal];
     planeCeilingDistance = new double[sectorFloor.length * 200];
     planeFloorDistance = new double[sectorFloor.length * 200];
+    visiblePlaneSector = new boolean[sectorFloor.length];
     activeSectorCeilingAsset=new int[sectorFloor.length];
     activeSectorFloorAsset=new int[sectorFloor.length];
     stackId = new int[nodeCount * 2 + 4]; stackLeaf = new byte[stackId.length];
     rawCandidates = new byte[segTotal * WIDTH]; visibleCandidates = new byte[segTotal * WIDTH];
+    acceptedDepthCache = new double[segTotal * WIDTH];
+    acceptedUCache = new double[segTotal * WIDTH];
     portalCandidates = new byte[segTotal * WIDTH]; projectedFirst = new int[segTotal];
     projectedLast = new int[segTotal]; nearestSolidDepth = new double[WIDTH];
     columnVisibleCount = new int[WIDTH];
     columnVisibleSeg = new int[WIDTH * MAX_VISIBLE_PER_COLUMN];
     columnVisibleDepth = new double[WIDTH * MAX_VISIBLE_PER_COLUMN];
     orderedSegs = new int[segTotal]; orderedDepths = new double[segTotal];
+    orderedSegScratch=new int[MAX_VISIBLE_PER_COLUMN];
+    orderedDepthScratch=new double[MAX_VISIBLE_PER_COLUMN];
     portalClipTop = new double[WIDTH]; portalClipBottom = new double[WIDTH];
     wallFrame = new short[WIDTH * 200]; wallOwned = new byte[wallFrame.length];
     wallColored = new byte[wallFrame.length]; intervalOffset = new int[WIDTH];
@@ -1261,7 +1309,7 @@ public final class DoomBspKernelBench {
     spriteAssetTexels=readShortMatrix(in);uiAssetTexels=readShortMatrix(in);
     wallAssetByName=readStringIntMap(in);flatAssetByName=readStringIntMap(in);
     spriteAssetByName=readStringIntMap(in);stateIndexByName=readStringIntMap(in);
-    animationByAsset=readStringIntArrayMap(in);
+    animationByAsset=readStringIntArrayMap(in);buildWallHotCaches();
     require(in.exhausted(),"renderer kernel pack trailing bytes");
     allocateWorkBuffers(); prepareExactSegmentRelatives();
   }
@@ -1565,6 +1613,7 @@ public final class DoomBspKernelBench {
       base[group.length] = animationOrdinal.get(entry.getKey());
       entry.setValue(base);
     }
+    buildWallHotCaches();
     Integer sky = wallAssetByName.get("SKY1");
     require(sky != null, "SKY1 asset missing");
     skyAsset = sky;
@@ -1588,6 +1637,7 @@ public final class DoomBspKernelBench {
     }
     planeCeilingDistance = new double[sectorFloor.length * 200];
     planeFloorDistance = new double[sectorFloor.length * 200];
+    visiblePlaneSector = new boolean[sectorFloor.length];
     int spriteAssetCount;
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
@@ -1814,21 +1864,51 @@ public final class DoomBspKernelBench {
   }
 
   private static int facingSector(int id, double px, double py) {
-    double cross = (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
-        - (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
-    return cross > 0 ? rightSector[id] : leftSector[id];
+    return facingSectorCache[id];
   }
 
   private static int oppositeSector(int id, double px, double py) {
-    double cross = (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
-        - (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
-    return cross > 0 ? leftSector[id] : rightSector[id];
+    return oppositeSectorCache[id];
+  }
+
+  private static boolean hitBefore(double leftDepth,int leftSeg,double rightDepth,int rightSeg){
+    return leftDepth<rightDepth||(leftDepth==rightDepth&&
+      (segLineId[leftSeg]<segLineId[rightSeg]||
+       (segLineId[leftSeg]==segLineId[rightSeg]&&leftSeg<rightSeg)));
+  }
+
+  private static void sortVisibleHits(int count){
+    orderedHitTotal+=count;if(count>12)largeSortColumns++;
+    if(count<=12){
+      for(int i=1;i<count;i++){int seg=orderedSegs[i];double depth=orderedDepths[i];int at=i;
+        while(at>0&&hitBefore(depth,seg,orderedDepths[at-1],orderedSegs[at-1])){
+          orderedDepths[at]=orderedDepths[at-1];orderedSegs[at]=orderedSegs[at-1];at--;}
+        orderedDepths[at]=depth;orderedSegs[at]=seg;}
+      return;
+    }
+    int[] sourceSeg=orderedSegs,targetSeg=orderedSegScratch;
+    double[] sourceDepth=orderedDepths,targetDepth=orderedDepthScratch;
+    for(int width=1;width<count;width<<=1){
+      for(int left=0;left<count;left+=width<<1){int middle=Math.min(left+width,count);
+        int end=Math.min(left+(width<<1),count),a=left,b=middle,out=left;
+        while(a<middle&&b<end){boolean takeLeft=!hitBefore(sourceDepth[b],sourceSeg[b],
+            sourceDepth[a],sourceSeg[a]);int from=takeLeft?a++:b++;
+          targetDepth[out]=sourceDepth[from];targetSeg[out++]=sourceSeg[from];}
+        while(a<middle){targetDepth[out]=sourceDepth[a];targetSeg[out++]=sourceSeg[a++];}
+        while(b<end){targetDepth[out]=sourceDepth[b];targetSeg[out++]=sourceSeg[b++];}
+      }
+      int[] swapSeg=sourceSeg;sourceSeg=targetSeg;targetSeg=swapSeg;
+      double[] swapDepth=sourceDepth;sourceDepth=targetDepth;targetDepth=swapDepth;
+    }
+    if(sourceSeg!=orderedSegs){System.arraycopy(sourceSeg,0,orderedSegs,0,count);
+      System.arraycopy(sourceDepth,0,orderedDepths,0,count);}
   }
 
   private static void applyPortalWalk(double px, double py, double dirX, double dirY,
       double plnX, double plnY, boolean retainCandidates) {
     long stageStarted = System.nanoTime();
-    activePortalPairs = 0;
+    resolveActiveWallAssets();
+    activePortalPairs=0;largeSortColumns=orderedHitTotal=wallRowAttempts=planeRowAttempts=0;
     intervalTotal = 0;
     Arrays.fill(wallFrame, (short) -1); Arrays.fill(wallOwned, (byte) 0);
     Arrays.fill(wallColored, (byte) 0); Arrays.fill(intervalCount, 0);
@@ -1843,18 +1923,9 @@ public final class DoomBspKernelBench {
       for (int i = 0; i < columnVisibleCount[column]; i++) {
         int id = columnVisibleSeg[base + i];
         double depth = columnVisibleDepth[base + i];
-        int at = orderedCount;
-        while (at > 0 && (orderedDepths[at - 1] > depth ||
-            (orderedDepths[at - 1] == depth &&
-             (segLineId[orderedSegs[at - 1]] > segLineId[id] ||
-              (segLineId[orderedSegs[at - 1]] == segLineId[id] &&
-               orderedSegs[at - 1] > id))))) {
-          orderedDepths[at] = orderedDepths[at - 1];
-          orderedSegs[at] = orderedSegs[at - 1];
-          at--;
-        }
-        orderedDepths[at] = depth; orderedSegs[at] = id; orderedCount++;
+        orderedDepths[orderedCount]=depth;orderedSegs[orderedCount++]=id;
       }
+      sortVisibleHits(orderedCount);
       if (orderedCount == 0) continue;
       int currentSector = facingSector(orderedSegs[0], px, py);
       // SQL retains back-facing one-sided hits as solid diagnostics, but their
@@ -1964,11 +2035,47 @@ public final class DoomBspKernelBench {
     intervalTotal++; intervalCount[column]++;
   }
 
-  private static void drawPlanes(double px, double py, double dirX, double dirY,
-      double plnX, double plnY) {
-    int centerInterval = intervalOffset[WIDTH / 2];
-    double eyeZ = cameraEyeZ;
+  private static int firstAtLeast(double[] values,int base,int first,int end,double target){
+    int low=first,high=end;while(low<high){int middle=(low+high)>>>1;
+      if(values[base+middle]>=target)high=middle;else low=middle+1;}return low;
+  }
+
+  private static int firstLess(double[] values,int base,int first,int end,double target){
+    int low=first,high=end;while(low<high){int middle=(low+high)>>>1;
+      if(values[base+middle]<target)high=middle;else low=middle+1;}return low;
+  }
+
+  private static void rasterPlaneRange(int column,int sector,int firstRow,int endRow,
+      boolean ceiling,double px,double py,double rayX,double rayY,int interval){
+    int planeBase=sector*200;
+    planeRowAttempts+=endRow-firstRow;
+    if(ceiling&&sectorCeiling[sector]<=cameraEyeZ)return;
+    if(!ceiling&&sectorFloor[sector]>=cameraEyeZ)return;
+    boolean sky=ceiling&&sectorCeilingSky[sector]!=0;
+    int asset=sky?skyAsset:(ceiling?activeSectorCeilingAsset[sector]:activeSectorFloorAsset[sector]);
+    short[] texels=sky?wallAssetTexels[asset]:flatAssetTexels[asset];
+    int colormapBase=sky?0:sectorLightBand[sector]*256;
+    int skyHeight=sky?wallAssetHeight[asset]:0;
+    int skyBase=sky?wrap(sqlFloor(column/2.0),wallAssetWidth[asset])*skyHeight:0;
+    for(int row=firstRow;row<endRow;row++){
+      int frameOffset=column*200+row;
+      if(wallOwned[frameOffset]!=0||wallFrame[frameOffset]>=0)continue;
+      double distance=ceiling?planeCeilingDistance[planeBase+row]:planeFloorDistance[planeBase+row];
+      if(distance<intervalStart[interval]||distance>=intervalEnd[interval])continue;
+      int raw;if(sky)raw=texels[skyBase+wrap(row,skyHeight)];
+      else{int x=fastFloor(px+rayX*distance)&63;
+        int y=fastFloor(py+rayY*distance)&63;raw=texels[x*64+y];}
+      if(raw<0)continue;
+      wallFrame[frameOffset]=colormap[colormapBase+raw];
+    }
+  }
+
+  private static void prepareVisiblePlanes(double eyeZ){
+    Arrays.fill(visiblePlaneSector,false);
+    for(int interval=0;interval<intervalTotal;interval++)
+      visiblePlaneSector[intervalSector[interval]]=true;
     for (int sector = 0; sector < sectorFloor.length; sector++) {
+      if(!visiblePlaneSector[sector])continue;
       activeSectorCeilingAsset[sector]=sectorCeilingSky[sector]!=0 ? -1 :
           animatedAsset("flat",sectorCeilingFlat[sector],sectorCeilingAsset[sector]);
       activeSectorFloorAsset[sector]=
@@ -1981,6 +2088,9 @@ public final class DoomBspKernelBench {
         planeFloorDistance[base + row] =
             (eyeZ - sectorFloor[sector]) * projectionK / (row - 99.5);
     }
+  }
+
+  private static void rasterVisiblePlanes(double px,double py){
     for (int column = 0; column < WIDTH; column++) {
       double rayX = rayXProfile[activeAngle * WIDTH + column];
       double rayY = rayYProfile[activeAngle * WIDTH + column];
@@ -1990,36 +2100,30 @@ public final class DoomBspKernelBench {
         int sector = intervalSector[interval];
         int firstRow = Math.max(0, (int) Math.ceil(intervalClipTop[interval] - .5));
         int endRow = Math.min(200, (int) Math.ceil(intervalClipBottom[interval] - .5));
-        for (int row = firstRow; row < endRow; row++) {
-          int frameOffset = column * 200 + row;
-          if (wallOwned[frameOffset] != 0 || wallFrame[frameOffset] >= 0) continue;
-          boolean ceiling = row < 100;
-          if (ceiling && sectorCeiling[sector] <= eyeZ) continue;
-          if (!ceiling && sectorFloor[sector] >= eyeZ) continue;
-          int planeOffset = sector * 200 + row;
-          double distance = ceiling ? planeCeilingDistance[planeOffset] :
-              planeFloorDistance[planeOffset];
-          if (distance < intervalStart[interval] || distance >= intervalEnd[interval]) continue;
-          int raw;
-          int light;
-          if (ceiling && sectorCeilingSky[sector] != 0) {
-            int x = wrap(sqlFloor(column / 2.0), wallAssetWidth[skyAsset]);
-            int y = wrap(row, wallAssetHeight[skyAsset]);
-            raw = wallAssetTexels[skyAsset][x * wallAssetHeight[skyAsset] + y];
-            light = 255;
-          } else {
-            int asset=ceiling ? activeSectorCeilingAsset[sector] : activeSectorFloorAsset[sector];
-            int x = wrap((int) Math.floor(px + rayX * distance), 64);
-            int y = wrap((int) Math.floor(py + rayY * distance), 64);
-            raw = flatAssetTexels[asset][x * 64 + y];
-            light = sectorLight[sector];
-          }
-          if (raw < 0) continue;
-          int lightBand = light == 255 ? 0 : sectorLightBand[sector];
-          wallFrame[frameOffset] = colormap[lightBand * 256 + raw];
+        int planeBase=sector*200;
+        int ceilingFirst=Math.min(100,firstRow),ceilingEnd=Math.min(100,endRow);
+        if(ceilingFirst<ceilingEnd){
+          ceilingFirst=firstAtLeast(planeCeilingDistance,planeBase,ceilingFirst,ceilingEnd,
+            intervalStart[interval]);
+          ceilingEnd=firstAtLeast(planeCeilingDistance,planeBase,ceilingFirst,ceilingEnd,
+            intervalEnd[interval]);
+          rasterPlaneRange(column,sector,ceilingFirst,ceilingEnd,true,px,py,rayX,rayY,interval);
+        }
+        int floorFirst=Math.max(100,firstRow),floorEnd=Math.max(100,endRow);
+        if(floorFirst<floorEnd){
+          floorFirst=firstLess(planeFloorDistance,planeBase,floorFirst,floorEnd,
+            intervalEnd[interval]);
+          floorEnd=firstLess(planeFloorDistance,planeBase,floorFirst,floorEnd,
+            intervalStart[interval]);
+          rasterPlaneRange(column,sector,floorFirst,floorEnd,false,px,py,rayX,rayY,interval);
         }
       }
     }
+  }
+
+  private static void drawPlanes(double px, double py, double dirX, double dirY,
+      double plnX, double plnY) {
+    prepareVisiblePlanes(cameraEyeZ);rasterVisiblePlanes(px,py);
   }
 
   private static void drawSprites(double px, double py, double forwardX, double forwardY) {
@@ -2107,6 +2211,7 @@ public final class DoomBspKernelBench {
     double hitT = exactTNumerator(id) / determinant;
     if (hitT <= NEAR) return Double.NaN;
     double hitU = (relX * rayY - relY * rayX) / determinant;
+    acceptedUCache[id*WIDTH+column]=hitU;
     return hitU >= 0.0 && hitU <= 1.0 ? hitT : Double.NaN;
   }
 
@@ -2134,74 +2239,117 @@ public final class DoomBspKernelBench {
     return animation[2 + ordinal];
   }
 
+  private static int wallAsset(String name){
+    if(name==null||"-".equals(name))return -1;
+    Integer asset=wallAssetByName.get(name);return asset==null?-1:asset.intValue();
+  }
+
+  private static void buildWallHotCaches(){
+    rightUpperAsset=new int[segTotal];rightLowerAsset=new int[segTotal];
+    rightMiddleAsset=new int[segTotal];leftUpperAsset=new int[segTotal];
+    leftLowerAsset=new int[segTotal];leftMiddleAsset=new int[segTotal];
+    segLength=new double[segTotal];
+    for(int id=0;id<segTotal;id++){
+      rightUpperAsset[id]=wallAsset(rightUpper[id]);rightLowerAsset[id]=wallAsset(rightLower[id]);
+      rightMiddleAsset[id]=wallAsset(rightMiddle[id]);leftUpperAsset[id]=wallAsset(leftUpper[id]);
+      leftLowerAsset[id]=wallAsset(leftLower[id]);leftMiddleAsset[id]=wallAsset(leftMiddle[id]);
+      double dx=segEndX[id]-segStartX[id],dy=segEndY[id]-segStartY[id];
+      segLength[id]=Math.sqrt(dx*dx+dy*dy);
+    }
+    wallAnimationByAsset=new int[wallAssetWidth.length][];
+    for(Map.Entry<String,int[]> entry:animationByAsset.entrySet()){
+      String key=entry.getKey();if(!key.startsWith("wall_texture:"))continue;
+      Integer asset=wallAssetByName.get(key.substring(13));
+      if(asset!=null)wallAnimationByAsset[asset.intValue()]=entry.getValue();
+    }
+    activeWallAsset=new int[wallAssetWidth.length];
+  }
+
+  private static void resolveActiveWallAssets(){
+    for(int asset=0;asset<activeWallAsset.length;asset++){
+      int[] animation=wallAnimationByAsset[asset];
+      if(animation==null){activeWallAsset[asset]=asset;continue;}
+      int count=animation[1];
+      int ordinal=(animation[animation.length-1]+liveTic/animation[0])%count;
+      activeWallAsset[asset]=animation[2+ordinal];
+    }
+  }
+
   private static int sqlFloor(double value) {
-    double nearest = Math.rint(value);
-    if (Math.abs(value - nearest) <= 1e-12) value = nearest;
-    return (int) Math.floor(value);
+    if (!Double.isFinite(value) || value <= Integer.MIN_VALUE + 1.0 ||
+        value >= Integer.MAX_VALUE - 1.0) return (int) Math.floor(value);
+    int floor = fastFloor(value);
+    if (value - floor <= 1e-12) return floor;
+    return floor + 1.0 - value <= 1e-12 ? floor + 1 : floor;
+  }
+
+  private static int fastFloor(double value) {
+    int truncated = (int) value;
+    return value < truncated ? truncated - 1 : truncated;
   }
 
   private static void drawWallPiece(int id, int column, double depth, double hitU,
       double clipTop, double clipBottom, double worldTop, double worldBottom,
-      String texture, double anchor, int xOffset, int yOffset, int light,
+      int baseAsset, double anchor, int xOffset, int yOffset, int light,
       double eyeZ) {
     double screenTop = 100.0 - (worldTop - eyeZ) * projectionK / depth;
     double screenBottom = 100.0 - (worldBottom - eyeZ) * projectionK / depth;
     int first = Math.max(0, (int) Math.ceil(Math.max(clipTop, screenTop) - .5));
     int end = Math.min(200, (int) Math.ceil(Math.min(clipBottom, screenBottom) - .5));
     if (first >= end) return;
-    Integer baseAsset = wallAssetByName.get(texture);
     // SQL's asset join emits no candidate pixels for null/"-" termination
     // textures while the hit still terminates the portal walk.
-    if (baseAsset == null) return;
-    int asset = animatedAsset("wall_texture", texture, baseAsset);
-    double deltaX = segEndX[id] - segStartX[id];
-    double deltaY = segEndY[id] - segStartY[id];
-    double length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    double sampleX = segOffset[id] + xOffset + hitU * length;
+    if (baseAsset < 0) return;
+    int asset=activeWallAsset[baseAsset];
+    double sampleX=segOffset[id]+xOffset+hitU*segLength[id];
+    int assetHeight=wallAssetHeight[asset];
+    int sampleColumn=wrap(sqlFloor(sampleX),wallAssetWidth[asset]);
+    int texelBase=sampleColumn*assetHeight;
+    int colormapBase=Math.max(0,Math.min(31,(255-light)/8))*256;
     int base = column * 200;
+    wallRowAttempts+=end-first;
+    double sampleStep=depth/projectionK;
+    double sampleY=anchor-(eyeZ+(100.0-(first+.5))*depth/projectionK)+yOffset;
     for (int row = first; row < end; row++) {
       int frameOffset = base + row;
-      if (wallOwned[frameOffset] != 0) continue;
+      if (wallOwned[frameOffset] != 0){sampleY+=sampleStep;continue;}
       wallOwned[frameOffset] = 1;
-      int sampleColumn = wrap(sqlFloor(sampleX), wallAssetWidth[asset]);
-      double sampleY = anchor - (eyeZ + (100.0 - (row + .5)) * depth / projectionK) + yOffset;
-      int sampleRow = wrap(sqlFloor(sampleY), wallAssetHeight[asset]);
-      int raw = wallAssetTexels[asset][sampleColumn * wallAssetHeight[asset] + sampleRow];
-      if (raw < 0) continue;
-      int lightBand = Math.max(0, Math.min(31, (255 - light) / 8));
-      wallFrame[frameOffset] = colormap[lightBand * 256 + raw];
-      wallColored[frameOffset] = 1;
+      int sampleRow=wrap(sqlFloor(sampleY),assetHeight);
+      int raw=wallAssetTexels[asset][texelBase+sampleRow];
+      if(raw>=0){wallFrame[frameOffset]=colormap[colormapBase+raw];
+        wallColored[frameOffset]=1;}
+      sampleY+=sampleStep;
     }
   }
 
   private static void drawActiveWall(int id, int column, double px, double py,
       double depth, double dirX, double dirY, double plnX, double plnY,
       int from, int to, double clipTop, double clipBottom, double eyeZ) {
-    double cross = (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
-        - (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
-    boolean right = cross > 0;
+    boolean right=rightFacingCache[id]!=0;
     String upper = right ? rightUpper[id] : leftUpper[id];
     String lower = right ? rightLower[id] : leftLower[id];
     String middle = right ? rightMiddle[id] : leftMiddle[id];
+    int upperAsset=right?rightUpperAsset[id]:leftUpperAsset[id];
+    int lowerAsset=right?rightLowerAsset[id]:leftLowerAsset[id];
+    int middleAsset=right?rightMiddleAsset[id]:leftMiddleAsset[id];
     int xOffset = right ? rightXOffset[id] : leftXOffset[id];
     int yOffset = right ? rightYOffset[id] : leftYOffset[id];
-    double hitU = acceptedU(id, column, px, py, dirX, dirY, plnX, plnY);
+    double hitU=acceptedUCache[id*WIDTH+column];
     boolean termination = to < 0 || Math.min(sectorCeiling[from], sectorCeiling[to]) <=
         Math.max(sectorFloor[from], sectorFloor[to]);
     if (termination) {
-      String texture = !"-".equals(middle) ? middle :
-          (!"-".equals(upper) ? upper : lower);
+      int asset=!"-".equals(middle)?middleAsset:(!"-".equals(upper)?upperAsset:lowerAsset);
       double anchor = (lineFlags[id] & 16) != 0 ? sectorFloor[from] + 128.0 :
           sectorCeiling[from];
       drawWallPiece(id, column, depth, hitU, clipTop, clipBottom,
-          sectorCeiling[from], sectorFloor[from], texture, anchor,
+          sectorCeiling[from], sectorFloor[from], asset, anchor,
           xOffset, yOffset, sectorLight[from], eyeZ);
       return;
     }
     if (sectorFloor[to] > sectorFloor[from] && !"-".equals(lower)) {
       double anchor = (lineFlags[id] & 16) != 0 ? sectorCeiling[from] : sectorFloor[to];
       drawWallPiece(id, column, depth, hitU, clipTop, clipBottom,
-          sectorFloor[to], sectorFloor[from], lower, anchor,
+          sectorFloor[to], sectorFloor[from], lowerAsset, anchor,
           xOffset, yOffset, sectorLight[from], eyeZ);
     }
     if (sectorCeiling[to] < sectorCeiling[from] && !"-".equals(upper) &&
@@ -2210,7 +2358,7 @@ public final class DoomBspKernelBench {
       double anchor = (lineFlags[id] & 8) != 0 ? sectorCeiling[to] + 128.0 :
           sectorCeiling[from];
       drawWallPiece(id, column, depth, hitU, clipTop, clipBottom,
-          sectorCeiling[from], sectorCeiling[to], upper, anchor,
+          sectorCeiling[from], sectorCeiling[to], upperAsset, anchor,
           xOffset, yOffset, sectorLight[from], eyeZ);
     }
   }
@@ -2230,36 +2378,29 @@ public final class DoomBspKernelBench {
   private static void drawMaskedWall(int id, int column, double px, double py,
       double depth, double dirX, double dirY, double plnX, double plnY,
       int from, double clipTop, double clipBottom, double eyeZ) {
-    double cross = (px - lineStartX[id]) * (lineEndY[id] - lineStartY[id])
-        - (py - lineStartY[id]) * (lineEndX[id] - lineStartX[id]);
-    boolean right = cross > 0;
-    String texture = right ? rightMiddle[id] : leftMiddle[id];
-    if (texture == null || "-".equals(texture)) return;
-    Integer asset = wallAssetByName.get(texture);
-    if (asset == null) return;
+    boolean right=rightFacingCache[id]!=0;
+    int asset=right?rightMiddleAsset[id]:leftMiddleAsset[id];
+    if(asset<0)return;
     int xOffset = right ? rightXOffset[id] : leftXOffset[id];
     int yOffset = right ? rightYOffset[id] : leftYOffset[id];
-    double hitU = acceptedU(id, column, px, py, dirX, dirY, plnX, plnY);
-    double deltaX = segEndX[id] - segStartX[id];
-    double deltaY = segEndY[id] - segStartY[id];
-    double length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    int assetX = wrap(sqlFloor(segOffset[id] + xOffset + hitU * length),
+    double hitU=acceptedUCache[id*WIDTH+column];
+    int assetX = wrap(sqlFloor(segOffset[id] + xOffset + hitU * segLength[id]),
         wallAssetWidth[asset]);
     int first = Math.max(0, (int) Math.ceil(Math.max(0.0, clipTop) - .5));
     int end = Math.min(200, (int) Math.ceil(Math.min(200.0, clipBottom) - .5));
+    wallRowAttempts+=end-first;
+    double sampleStep=depth/160.0;
+    double sampleY=sectorCeiling[from]-(eyeZ+(100.0-(first+.5))*depth/160.0)+yOffset;
     for (int row = first; row < end; row++) {
-      double center = row + .5;
-      double sampleY = sectorCeiling[from] -
-          (eyeZ + (100.0 - center) * depth / 160.0) + yOffset;
       int assetY = wrap(sqlFloor(sampleY), wallAssetHeight[asset]);
       int raw = wallAssetTexels[asset][assetX * wallAssetHeight[asset] + assetY];
-      if (raw < 0) continue;
-      int index = column * 200 + row;
-      if (overlayWins(index, depth, (byte) 1, segLineId[id], assetY, assetX)) {
+      int index=column*200+row;
+      if(raw>=0&&overlayWins(index,depth,(byte)1,segLineId[id],assetY,assetX)){
         overlayDepth[index] = depth; overlayKind[index] = 1;
         overlaySource[index] = segLineId[id]; overlayAssetX[index] = assetX;
         overlayAssetY[index] = assetY; overlayPalette[index] = (short) raw;
       }
+      sampleY+=sampleStep;
     }
   }
 
@@ -2274,6 +2415,7 @@ public final class DoomBspKernelBench {
       if (last < 0) continue;
       for (int column = projectedFirst[id]; column <= last; column++) {
         double depth = acceptedDepth(id, column, px, py, dirX, dirY, plnX, plnY);
+        acceptedDepthCache[id*WIDTH+column]=depth;
         if (!Double.isNaN(depth)) {
           acceptedPairs++;
           if (segSolid[id] != 0 && depth < nearestSolidDepth[column])
@@ -2281,11 +2423,10 @@ public final class DoomBspKernelBench {
         }
       }
     }
-    for (int id = 0; id < segTotal; id++) {
-      int last = projectedLast[id];
-      if (last < 0) continue;
-      for (int column = projectedFirst[id]; column <= last; column++) {
-        double depth = acceptedDepth(id, column, px, py, dirX, dirY, plnX, plnY);
+    for(int id=0;id<segTotal;id++){
+      int last=projectedLast[id];if(last<0)continue;
+      for(int column=projectedFirst[id];column<=last;column++){
+        double depth=acceptedDepthCache[id*WIDTH+column];
         if (!Double.isNaN(depth) && depth <= nearestSolidDepth[column] + 1e-9) {
           visiblePairs++;
           int count = columnVisibleCount[column];
@@ -3050,6 +3191,9 @@ public final class DoomBspKernelBench {
   public static long lastPlaneNanos() { return lastPlaneNanos; }
   public static long lastSpriteNanos() { return lastSpriteNanos; }
   public static long lastPresentationNanos() { return lastPresentationNanos; }
+  public static String lastCardinality(){return projectedSegs+"|"+candidatePairs+"|"+
+    acceptedPairs+"|"+visiblePairs+"|"+activePortalPairs+"|"+intervalTotal+"|"+
+    orderedHitTotal+"|"+largeSortColumns+"|"+wallRowAttempts+"|"+planeRowAttempts;}
   public static long lastKernelLoadNanos() { return lastKernelLoadNanos; }
   public static long lastSnapshotNanos() { return lastSnapshotNanos; }
   static long retainedUpdateNanos() { return lastRetainedUpdateNanos; }

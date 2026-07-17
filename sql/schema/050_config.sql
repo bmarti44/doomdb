@@ -10,6 +10,7 @@ using (
   select 'MAX_COMMANDS_PER_STEP', 4, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_ENABLED', 0, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_WAIT_SECONDS', 10, cast(null as varchar2(4000)) from dual union all
+  select 'UNIFIED_WORKER_IDLE_SECONDS', 60, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_MAX_PACK_BYTES', 2000, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_POOL_SIZE', 4, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_FAILPOINT', 0, cast(null as varchar2(4000)) from dual union all

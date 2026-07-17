@@ -78,12 +78,14 @@ public final class DoomRetainedRenderSceneBench {
       int playerHealth,int playerArmor,int playerAlive,String selectedWeapon,int selectedAmmo,
       int changeCount,int[] changeOp,int[] worldId,
       int[] worldState,NUMBER[] worldX,NUMBER[] worldY,NUMBER[] worldZ,NUMBER[] worldAngle,
+      int sectorChangeCount,int[] sectorIds,int[] sectorLights,
       String stateSha,Blob payload){
     try{require(loaded&&stateMapFenced&&session.equals(owner)&&generation==ownerGeneration,
         "direct retained scene fence");String result=DoomBspKernelBench.stageRetainedOwnerAndRender(request,
           nextTic,nextSeq,playerX,playerY,playerEyeZ,playerAngleIndex,playerHealth,playerArmor,playerAlive,
           selectedWeapon,selectedAmmo,
-          changeCount,changeOp,worldId,worldState,worldX,worldY,worldZ,worldAngle,stateSha,payload);
+          changeCount,changeOp,worldId,worldState,worldX,worldY,worldZ,worldAngle,
+          sectorChangeCount,sectorIds,sectorLights,stateSha,payload);
       lastError="";return result;
     }catch(Throwable failure){lastError=failure.getClass().getName()+":"+failure.getMessage();
       try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}

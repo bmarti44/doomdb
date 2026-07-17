@@ -40,6 +40,7 @@ create table doom_worker_request (
   command_bytes number(4) not null,
   command_sha varchar2(64) not null,
   command_pack raw(2000) not null,
+  async_mode number(1) default 0 not null,
   request_status varchar2(16) not null,
   response_generation number(12),
   error_text varchar2(4000),
@@ -59,6 +60,7 @@ create table doom_worker_request (
   constraint doom_worker_request_pack_ck check(
     command_version between 1 and 255 and command_count between 1 and 255 and
     command_bytes between 1 and 2000),
+  constraint doom_worker_request_async_ck check(async_mode in(0,1)),
   constraint doom_worker_request_sha_ck check(
     regexp_like(command_sha,'^[0-9a-f]{64}$')),
   constraint doom_worker_request_status_ck check(
@@ -67,6 +69,12 @@ create table doom_worker_request (
 
 create index doom_worker_request_status_ix
   on doom_worker_request(request_status,created_at);
+
+create unique index doom_worker_request_frontier_uq on doom_worker_request(
+  case when request_status in('QUEUED','PROCESSING','COMMITTED') then session_token end,
+  case when request_status in('QUEUED','PROCESSING','COMMITTED') then save_lineage end,
+  case when request_status in('QUEUED','PROCESSING','COMMITTED') then generation end,
+  case when request_status in('QUEUED','PROCESSING','COMMITTED') then expected_command_seq end);
 
 create table doom_worker_result (
   request_id varchar2(32) not null,
@@ -81,10 +89,21 @@ create table doom_worker_result (
   response_bytes number(8) not null,
   response_sha varchar2(64) not null,
   prepare_us number,
+  ledger_us number,
+  world_pack_us number,
+  java_prepare_us number,
   apply_us number,
+  world_apply_us number,
+  delta_apply_us number,
   state_us number,
   render_us number,
   render_kernel_us number,
+  bsp_us number,
+  solid_us number,
+  portal_us number,
+  plane_us number,
+  sprite_us number,
+  presentation_us number,
   codec_us number,
   blob_us number,
   finalize_us number,

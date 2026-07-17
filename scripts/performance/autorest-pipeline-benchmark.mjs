@@ -98,9 +98,12 @@ const launch=()=>{
 };
 pump=setInterval(()=>{
   if(aborted||launched>=frames)return;
-  const now=performance.now();if(now<nextDispatch)return;
+  const now=performance.now(),prefill=launched<maxInFlight;
+  if(!prefill&&now<nextDispatch)return;
   if(inFlight>=maxInFlight){blockedPolls++;return;}
-  launch();nextDispatch+=period;
+  launch();
+  if(prefill){if(launched===maxInFlight)nextDispatch=now+period;}
+  else nextDispatch+=period;
 },4);
 
 await done;

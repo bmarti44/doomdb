@@ -91,6 +91,9 @@ language java name 'DoomBspKernelBench.lastSpriteNanos() return long';
 create or replace function doom_bsp_last_presentation_ns return number as
 language java name 'DoomBspKernelBench.lastPresentationNanos() return long';
 /
+create or replace function doom_bsp_last_cardinality return varchar2 as
+language java name 'DoomBspKernelBench.lastCardinality() return java.lang.String';
+/
 
 create or replace function doom_bsp_last_kernel_load_ns return number as
 language java name 'DoomBspKernelBench.lastKernelLoadNanos() return long';

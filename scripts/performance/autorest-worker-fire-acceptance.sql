@@ -22,10 +22,8 @@ declare
   procedure fixture_(p_session varchar2,p_target out number) is
     x_ number;y_ number;angle_ number;sector_ number;
   begin
-    -- Isolate the combat kernel from the still-open retained world-machine
-    -- slice: no special-1 light timer may consume RNG before FIRE on this tic.
-    update sector_state ss set light_timer=100 where ss.session_token=p_session and exists(
-      select 1 from doom_map_sector ms where ms.sector_id=ss.sector_id and ms.special=1);
+    -- Keep the map's live light timers: retained passive world machines must
+    -- consume the same ordered RNG prefix before FIRE as the SQL oracle.
     select p.x,p.y,p.angle into x_,y_,angle_ from players p join game_sessions s
       on s.session_token=p.session_token and s.current_player_id=p.player_id
       where p.session_token=p_session;

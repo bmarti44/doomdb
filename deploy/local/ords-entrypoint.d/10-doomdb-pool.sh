@@ -7,7 +7,7 @@ set -Eeuo pipefail
 # after every request.
 ords config --db-pool default set jdbc.InitialLimit 4 >/dev/null
 ords config --db-pool default set jdbc.MinLimit 4 >/dev/null
-ords config --db-pool default set jdbc.MaxLimit 4 >/dev/null
+ords config --db-pool default set jdbc.MaxLimit 8 >/dev/null
 ords config --db-pool default set jdbc.MaxConnectionReuseCount 100000000 >/dev/null
 ords config --db-pool default set jdbc.InactivityTimeout 86400 >/dev/null
 ords config --db-pool default set jdbc.MaxStatementsLimit 50 >/dev/null

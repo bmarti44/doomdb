@@ -20,6 +20,18 @@ create or replace package doom_api authid definer as
     p_commands    in  clob,
     p_payload     out blob);
 
+  procedure submit_step(
+    p_session     in  varchar2,
+    p_commands    in  clob,
+    p_request     out varchar2);
+
+  procedure poll_frame(
+    p_session     in  varchar2,
+    p_seq         in  number,
+    p_wait_ms     in  number,
+    p_ready       out number,
+    p_payload     out blob);
+
   procedure save_game(
     p_session     in  varchar2,
     p_slot        in  number,
@@ -159,7 +171,8 @@ create or replace package body doom_api as
   -- Select the retained worker for movement and deterministic weapon-state tics.
   -- Fire/use and administrative controls deliberately fall through to SQL.
   procedure worker_step(
-    p_session in varchar2,p_commands in clob,p_used out number,p_payload out blob
+    p_session in varchar2,p_commands in clob,p_async in number,p_used out number,
+    p_request_out out varchar2,p_payload out blob
   ) is
     l_count number;l_seq number;l_turn number;l_forward number;l_strafe number;
     l_run number;l_fire number;l_use number;l_weapon number;l_pause number;
@@ -167,15 +180,20 @@ create or replace package body doom_api as
     l_lineage varchar2(64);l_tic number;l_expected_seq number;l_fire_supported number;
     l_action_version number;
     l_deadline timestamp with time zone;
+    l_heartbeat timestamp with time zone;
     l_generation number;l_ready number;l_map_sha varchar2(64);l_error varchar2(4000);
     l_request varchar2(32);l_command raw(24);l_status varchar2(16);
     l_response_generation number;l_committed_tic number;l_committed_seq number;
     l_delta_version number;l_delta_count number;l_delta_sha varchar2(64);
     l_state_sha varchar2(64);l_frame_sha varchar2(64);l_response_bytes number;
     l_response_sha varchar2(64);l_delta blob;l_worker_payload blob;
+    l_pipeline_ahead number:=0;
   begin
-    p_used:=0;p_payload:=null;
-    if config_number('UNIFIED_WORKER_ENABLED',0)<>1 then return;end if;
+    p_used:=0;p_request_out:=null;p_payload:=null;
+    if config_number('UNIFIED_WORKER_ENABLED',0)<>1 then
+      if p_async=1 then fail(c_capacity,'retained worker is disabled');end if;
+      return;
+    end if;
     begin
       select count(*),min(seq),min(turn),min(forward_move),min(strafe),min(run),
         min(fire),min(use_action),min(weapon),min(pause_toggle),min(automap_toggle),
@@ -195,7 +213,9 @@ create or replace package body doom_api as
           automap_toggle number path '$.automap' error on error,
           menu_action varchar2(32) path '$.menu' error on error,
           cheat_json varchar2(4000) path '$.cheat' error on error));
-    exception when others then return;
+    exception when others then
+      if p_async=1 then fail(c_bad_request,'invalid retained command JSON');end if;
+      return;
     end;
     if l_count<>1 or l_seq is null or l_turn is null or l_forward is null or
        l_strafe is null or l_run is null or
@@ -204,7 +224,10 @@ create or replace package body doom_api as
        coalesce(l_fire,0) not in(0,1) or coalesce(l_use,0)<>0 or
        coalesce(l_weapon,0) not between 0 and 9 or
        coalesce(l_pause,0)<>0 or coalesce(l_automap,0)<>0 or
-       coalesce(l_menu,'NONE')<>'NONE' or l_cheat is not null then return;end if;
+       coalesce(l_menu,'NONE')<>'NONE' or l_cheat is not null then
+      if p_async=1 then fail(c_bad_request,'command is outside retained submit controls');end if;
+      return;
+    end if;
 
     select save_lineage,current_tic,last_command_seq
       into l_lineage,l_tic,l_expected_seq from game_sessions
@@ -219,7 +242,7 @@ create or replace package body doom_api as
     -- A network retry can arrive after the durable frontier advanced. Return
     -- the immutable committed response without needing the old worker generation.
     begin
-      select r.response_blob into l_worker_payload
+      select q.request_id,r.response_blob into l_request,l_worker_payload
         from doom_worker_request q join doom_worker_result r
           on r.request_id=q.request_id
         where q.session_token=p_session and q.save_lineage=l_lineage
@@ -227,16 +250,25 @@ create or replace package body doom_api as
           and utl_raw.compare(utl_raw.substr(q.command_pack,17,7),
             utl_raw.substr(l_command,17,7))=0
           and q.request_status='COMMITTED';
-      copy_blob(l_worker_payload,p_payload);p_used:=1;return;
+      p_request_out:=l_request;p_used:=1;
+      if p_async=0 then copy_blob(l_worker_payload,p_payload);end if;
+      return;
     exception when no_data_found then null;end;
-    if l_seq between l_expected_seq+2 and l_expected_seq+3 then
-      -- The browser permits three ordered HTTP calls in flight. Earlier
-      -- database tics normally commit while ORDS is still serializing their
-      -- responses; wait only for those bounded predecessors.
-      -- AQ dequeue occasionally crosses a one-second empty-poll boundary even
-      -- though the native tic itself remains below budget.  Use the same
-      -- bounded worker deadline here so a later correlated HTTP request cannot
-      -- fail just before its predecessor commits.
+    if l_seq between l_expected_seq+2 and l_expected_seq+32 and
+       coalesce(l_fire,0)=0 and coalesce(l_use,0)=0 and
+       coalesce(l_weapon,0)=0 then
+      -- Neutral ticcmds are response-independent keyboard state. Queue them
+      -- against their deterministic future frontier immediately so ORDS can
+      -- serialize the preceding response in parallel with the retained tic.
+      -- DMSC v3 is valid for both ready and transitional weapon states, which
+      -- avoids reading predecessor-dependent player state on this path.
+      l_pipeline_ahead:=l_seq-l_expected_seq-1;
+      l_tic:=l_tic+l_pipeline_ahead;
+      l_expected_seq:=l_seq-1;
+      l_action_version:=3;
+    elsif l_seq between l_expected_seq+2 and l_expected_seq+32 then
+      -- Response-dependent fire/weapon commands retain the conservative
+      -- predecessor fence until their exact action state can be inspected.
       l_deadline:=systimestamp+numtodsinterval(
         config_number('UNIFIED_WORKER_WAIT_SECONDS',10),'SECOND');
       loop
@@ -249,7 +281,11 @@ create or replace package body doom_api as
         dbms_session.sleep(.005);
       end loop;
     end if;
-    if l_seq<>l_expected_seq+1 then return;end if;
+    if l_seq<>l_expected_seq+1 then
+      if p_async=1 then fail(c_capacity,'async frontier seq='||l_seq||
+        ' expected='||(l_expected_seq+1));end if;
+      return;
+    end if;
 
     -- F1 retains every catalog-defined hitscan/melee weapon. Until the exact
     -- recursive barrel/splash kernel lands, any live barrel keeps FIRE on the
@@ -263,19 +299,24 @@ create or replace package body doom_api as
         from players p join doom_weapon_def w on w.weapon_id=p.selected_weapon
         join game_sessions s on s.session_token=p.session_token and s.current_player_id=p.player_id
         where p.session_token=p_session;
-      if l_fire_supported<>1 then return;end if;
+      if l_fire_supported<>1 then
+        if p_async=1 then fail(c_bad_request,'fire is outside retained submit controls');end if;
+        return;
+      end if;
     end if;
 
-    select s.current_tic,s.last_command_seq,
-      case when coalesce(l_fire,0)<>0 or coalesce(l_weapon,0)<>0 or p.pending_weapon is not null or
-        p.weapon_state not like 'WEAPON_%_READY' or p.weapon_state_tics not in(0,1)
-        then 3 else 2 end
-      into l_tic,l_expected_seq,l_action_version
-      from game_sessions s join players p
-        on p.session_token=s.session_token and p.player_id=s.current_player_id
-      where s.session_token=p_session;
-    if l_seq<>l_expected_seq+1 then
-      raise_application_error(c_capacity,'pipelined action-version frontier race');
+    if l_pipeline_ahead=0 then
+      select s.current_tic,s.last_command_seq,
+        case when coalesce(l_fire,0)<>0 or coalesce(l_weapon,0)<>0 or
+          p.pending_weapon is not null or p.weapon_state not like 'WEAPON_%_READY' or
+          p.weapon_state_tics not in(0,1) then 3 else 2 end
+        into l_tic,l_expected_seq,l_action_version
+        from game_sessions s join players p
+          on p.session_token=s.session_token and p.player_id=s.current_player_id
+        where s.session_token=p_session;
+      if l_seq<>l_expected_seq+1 then
+        raise_application_error(c_capacity,'pipelined action-version frontier race');
+      end if;
     end if;
     l_command:=hextoraw('444D5343'||case l_action_version when 3 then '03' else '02' end||
       '010000'||u64_hex(l_seq)||byte_hex(l_turn)||
@@ -284,7 +325,20 @@ create or replace package body doom_api as
       case coalesce(l_fire,0) when 0 then '00' else '01' end||'00'||
       lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||'00');
 
-    doom_worker_api.claim(p_session,l_generation,l_ready,l_map_sha,l_error);
+    if p_async=1 then
+      begin
+        doom_worker_api.worker_status(p_session,l_generation,l_ready,l_map_sha,
+          l_heartbeat,l_error);
+        if l_ready<>1 then
+          doom_worker_api.claim(p_session,l_generation,l_ready,l_map_sha,l_error);
+        end if;
+      exception when others then
+        if sqlcode<>-20721 then raise;end if;
+        doom_worker_api.claim(p_session,l_generation,l_ready,l_map_sha,l_error);
+      end;
+    else
+      doom_worker_api.claim(p_session,l_generation,l_ready,l_map_sha,l_error);
+    end if;
     if l_ready<>1 or l_error is not null then
       raise_application_error(c_capacity,coalesce(l_error,'worker is not ready'));
     end if;
@@ -292,15 +346,23 @@ create or replace package body doom_api as
       utl_i18n.string_to_raw(p_session||'|'||l_lineage||'|'||
         to_char(l_generation,'TM9')||'|'||rawtohex(l_command),'AL32UTF8'),
         dbms_crypto.hash_sh256)),1,32));
-    for l_attempt in 1..3 loop
+    for l_attempt in 1..case when p_async=1 then 1 else 3 end loop
       doom_worker_api.step(p_session,l_lineage,l_generation,l_request,l_tic,
         l_expected_seq,l_action_version,1,l_command,
-        config_number('UNIFIED_WORKER_WAIT_SECONDS',10),l_status,
+        case when p_async=1 then 0 else
+          config_number('UNIFIED_WORKER_WAIT_SECONDS',10) end,l_status,
         l_response_generation,l_committed_tic,l_committed_seq,l_delta_version,
         l_delta_count,l_delta_sha,l_state_sha,l_frame_sha,l_response_bytes,
         l_response_sha,l_delta,l_worker_payload,l_error);
       exit when l_status in('COMMITTED','ROLLED_BACK','FAILED');
     end loop;
+    if p_async=1 then
+      if l_status not in('QUEUED','PROCESSING','COMMITTED') or l_error is not null then
+        raise_application_error(c_bad_request,'worker submit failed: '||
+          coalesce(l_error,l_status));
+      end if;
+      p_request_out:=l_request;p_used:=1;return;
+    end if;
     if l_status<>'COMMITTED' or l_error is not null or
        l_response_generation<>l_generation or l_committed_tic<>l_tic+1 or
        l_committed_seq<>l_seq or l_worker_payload is null then
@@ -666,10 +728,10 @@ create or replace package body doom_api as
     l_first number;l_last number;l_sha varchar2(64);l_cached blob;
     l_canonical clob;
     l_internal blob;l_state_sha varchar2(64);
-    l_response_text clob;l_worker_used number;
+    l_response_text clob;l_worker_used number;l_request varchar2(32);
   begin
     p_payload:=null;require_session(p_session);
-    worker_step(p_session,p_commands,l_worker_used,p_payload);
+    worker_step(p_session,p_commands,0,l_worker_used,l_request,p_payload);
     if l_worker_used=1 then return;end if;
     -- SQL may accept controls that are not yet retained. Stop the current owner
     -- first so the next eligible command reconstructs from the new SQL frontier.
@@ -723,6 +785,63 @@ create or replace package body doom_api as
     rollback;p_payload:=null;
     if sqlcode between -20999 and -20000 then raise;end if;
     raise_application_error(c_bad_request,'step failed');
+  end;
+
+  procedure submit_step(
+    p_session in varchar2,p_commands in clob,p_request out varchar2
+  ) is
+    l_used number;l_payload blob;
+  begin
+    p_request:=null;require_session(p_session);
+    worker_step(p_session,p_commands,1,l_used,p_request,l_payload);
+    if l_used<>1 or p_request is null then
+      fail(c_bad_request,'command is not supported by the retained submit path');
+    end if;
+    commit;
+  exception when others then
+    rollback;p_request:=null;
+    if sqlcode between -20999 and -20000 then raise;end if;
+    raise_application_error(c_bad_request,'submit step failed');
+  end;
+
+  procedure poll_frame(
+    p_session in varchar2,p_seq in number,p_wait_ms in number,
+    p_ready out number,p_payload out blob
+  ) is
+    l_lineage varchar2(64);l_source blob;l_request varchar2(32);
+    l_deadline timestamp with time zone;
+  begin
+    p_ready:=0;p_payload:=null;require_session(p_session);
+    if p_seq is null or p_seq<>trunc(p_seq) or p_seq not between 1 and 999999999999 or
+       p_wait_ms is null or p_wait_ms<>trunc(p_wait_ms) or
+       p_wait_ms not between 0 and 1000 then
+      fail(c_bad_request,'invalid frame poll');
+    end if;
+    select save_lineage into l_lineage from game_sessions
+      where session_token=p_session;
+    begin
+      select request_id into l_request from doom_worker_request
+        where session_token=p_session and save_lineage=l_lineage
+          and expected_command_seq=p_seq-1
+          and request_status in('QUEUED','PROCESSING','COMMITTED');
+    exception when no_data_found then commit;return;end;
+    l_deadline:=systimestamp+numtodsinterval(p_wait_ms/1000,'SECOND');
+    loop
+      begin
+        select x.response_blob into l_source
+          from doom_worker_request q join doom_worker_result x
+            on x.request_id=q.request_id
+          where q.request_id=l_request and q.request_status='COMMITTED';
+        copy_blob(l_source,p_payload);p_ready:=1;commit;return;
+      exception when no_data_found then null;end;
+      exit when systimestamp>=l_deadline;
+      dbms_session.sleep(.05);
+    end loop;
+    commit;
+  exception when others then
+    rollback;p_ready:=0;p_payload:=null;
+    if sqlcode between -20999 and -20000 then raise;end if;
+    raise_application_error(c_bad_request,'poll frame failed');
   end;
 
   procedure save_game(

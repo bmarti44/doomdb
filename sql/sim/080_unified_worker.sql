@@ -118,6 +118,7 @@ create or replace package body doom_unified_worker as
     p_session varchar2,p_lineage varchar2,p_generation number,p_map_sha varchar2
   ) is
     l_snapshot blob;l_payload blob;l_delta raw(32767);l_command raw(24);
+    l_world_pack raw(32767);
     l_result varchar2(4000);l_frame_sha varchar2(4000);
     l_request varchar2(32);l_tic number;l_seq number;l_rng number;
     l_next_mobj number;
@@ -133,6 +134,7 @@ create or replace package body doom_unified_worker as
     select coalesce(max(mobj_id),0)+1 into l_next_mobj from mobjs
       where session_token=p_session;
     dbms_lob.createtemporary(l_payload,true,dbms_lob.call);
+    doom_retained_world_pack.build(p_session,l_tic+1,l_world_pack);
     -- READY means the actual movement/action/renderer call graph is hot, not
     -- merely that a generic actor tick ran once. Repeated prepare/render/
     -- discard cycles compile both stable DMSC/v2 and action DMSC/v3 without
@@ -144,11 +146,11 @@ create or replace package body doom_unified_worker as
         lpad(to_char(mod(l_seq+1,4294967296),'fmxxxxxxxx'),8,'0')||
         case when i<=4 then '0001000000000000' else '0001000000000100' end);
       if i<=4 then
-        l_delta:=doom_unified_command_tic_prepare(p_session,p_lineage,p_generation,
-          l_request,l_tic,l_seq,l_rng,l_next_mobj,0,l_command);
+        l_delta:=doom_unified_command_world_prepare(p_session,p_lineage,p_generation,
+          l_request,l_tic,l_seq,l_rng,l_next_mobj,0,l_command,l_world_pack);
       else
-        l_delta:=doom_unified_command_actions_prepare(p_session,p_lineage,p_generation,
-          l_request,l_tic,l_seq,l_rng,l_next_mobj,0,l_command);
+        l_delta:=doom_unified_command_actions_world(p_session,p_lineage,p_generation,
+          l_request,l_tic,l_seq,l_rng,l_next_mobj,0,l_command,l_world_pack);
       end if;
       if l_delta is null or utl_raw.length(l_delta)<12 or
          rawtohex(utl_raw.substr(l_delta,1,6))<>'44554F500100' then
@@ -255,6 +257,7 @@ create or replace package body doom_unified_worker as
     p_worker_generation in out number
   ) is
     l_request_slot number;l_session varchar2(32);l_lineage varchar2(64);
+    l_async_mode number;
     l_generation number;l_expected_tic number;l_expected_seq number;
     l_command_version number;l_command_count number;l_command_bytes number;
     l_command_sha varchar2(64);l_command raw(2000);l_status varchar2(16);
@@ -264,7 +267,8 @@ create or replace package body doom_unified_worker as
     l_next_mobj number;l_result_tic number;l_result_seq number;
     l_ledger_sha varchar2(64);l_state_locator blob;
     l_delta_locator blob;l_response_locator blob;l_delta raw(32767);
-    l_projectile_pack raw(32767);l_retained_projectiles number;
+    l_projectile_pack raw(32767);l_world_pack raw(32767);
+    l_retained_projectiles number;l_world_draws number;
     l_state_payload blob;l_render_payload blob;l_history_payload blob;
     l_committed_tic number;l_committed_seq number;l_delta_version number;
     l_delta_count number;l_delta_sha varchar2(64);l_state_sha varchar2(64);
@@ -272,9 +276,14 @@ create or replace package body doom_unified_worker as
     l_response_bytes number;l_result varchar2(4000);l_error varchar2(4000);
     l_prepared number:=0;l_committed number:=0;l_failpoint number;
     l_history_interval number;l_parity_interval number;
-    l_stage timestamp with time zone;l_prepare_us number;l_apply_us number;
+    l_stage timestamp with time zone;l_prepare_stage timestamp with time zone;
+    l_prepare_us number;l_ledger_us number;l_world_pack_us number;l_java_prepare_us number;
+    l_apply_us number;l_world_apply_us number;l_delta_apply_us number;
+    l_apply_stage timestamp with time zone;
     l_state_us number;l_render_us number;l_finalize_us number;
     l_render_call_us number;l_render_update_us number;l_render_kernel_us number;
+    l_bsp_us number;l_solid_us number;l_portal_us number;l_plane_us number;
+    l_sprite_us number;l_presentation_us number;
     l_codec_us number;l_blob_us number;l_response_copy_us number;
     l_response_hash_us number;l_state_encode_us number;l_state_blob_us number;
     l_state_compare_us number;l_state_object_encode_us number;
@@ -296,17 +305,17 @@ create or replace package body doom_unified_worker as
     begin
       select worker_slot,session_token,save_lineage,generation,expected_tic,
         expected_command_seq,command_version,command_count,command_bytes,
-        command_sha,command_pack,request_status
+        command_sha,command_pack,async_mode,request_status
         into l_request_slot,l_session,l_lineage,l_generation,l_expected_tic,
           l_expected_seq,l_command_version,l_command_count,l_command_bytes,
-          l_command_sha,l_command,l_status
+          l_command_sha,l_command,l_async_mode,l_status
         from doom_worker_request where request_id=p_request for update;
 
       if l_request_slot<>p_slot then
         raise_application_error(c_invalid,'worker slot fence');
       end if;
       if l_status in('COMMITTED','ROLLED_BACK','FAILED') then
-        respond(p_request);
+        if l_async_mode=0 then respond(p_request);end if;
         update doom_worker_control set heartbeat=systimestamp
           where worker_slot=p_slot;
         commit;
@@ -344,7 +353,7 @@ create or replace package body doom_unified_worker as
       select coalesce(max(mobj_id),0)+1 into l_next_mobj from mobjs
         where session_token=l_session;
 
-      l_stage:=systimestamp;
+      l_prepare_stage:=systimestamp;l_stage:=l_prepare_stage;
       if l_command_version=2 then
         doom_command_ledger.begin_dmsc_v2(l_session,l_lineage,l_expected_tic,
           l_expected_seq,l_command,l_result_tic,l_result_seq,l_ledger_sha,
@@ -360,6 +369,15 @@ create or replace package body doom_unified_worker as
       values(p_request,l_result_tic,l_result_seq,l_command_version-1,1,0,c_zero_sha,c_zero_sha,
         c_zero_sha,0,c_zero_sha,empty_blob(),empty_blob())
       returning delta_blob,response_blob into l_delta_locator,l_response_locator;
+      l_ledger_us:=elapsed_us(l_stage);l_stage:=systimestamp;
+
+      -- SQL evaluates passive world machines without mutating their rows. The
+      -- compact pack lets the retained owner consume the same ordered RNG
+      -- prefix before weapons/actors, while the durable apply remains inside
+      -- this transaction and ahead of the unified frontier update.
+      doom_retained_world_pack.build(l_session,l_result_tic,l_world_pack);
+      l_world_draws:=to_number(rawtohex(utl_raw.substr(l_world_pack,11,2)),'XXXX');
+      l_world_pack_us:=elapsed_us(l_stage);l_stage:=systimestamp;
 
       -- SQL owns relational projectile collision/damage.  Cross into OJVM once
       -- with only the resulting mutations so the retained arrays stay exact.
@@ -367,27 +385,30 @@ create or replace package body doom_unified_worker as
         l_session,l_lineage,l_generation);
       if l_retained_projectiles=1 then
         if l_command_version=2 then
-          l_delta:=doom_unified_command_retained_projectiles(l_session,l_lineage,l_generation,
-            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command);
+          l_delta:=doom_unified_command_world_retained(l_session,l_lineage,l_generation,
+            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
+            l_world_pack);
         else
-          l_delta:=doom_unified_command_actions_retained(l_session,l_lineage,l_generation,
-            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command);
+          l_delta:=doom_unified_command_actions_world_retained(l_session,l_lineage,l_generation,
+            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
+            l_world_pack);
         end if;
       elsif l_retained_projectiles=0 then
         doom_retained_projectiles.advance_and_pack(
           l_session,l_result_tic,l_projectile_pack);
         if l_command_version=2 then
-          l_delta:=doom_unified_command_projectiles_prepare(l_session,l_lineage,l_generation,
+          l_delta:=doom_unified_command_world_projectiles(l_session,l_lineage,l_generation,
             p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
-            l_projectile_pack);
+            l_projectile_pack,l_world_pack);
         else
-          l_delta:=doom_unified_command_actions_projectiles(l_session,l_lineage,l_generation,
+          l_delta:=doom_unified_command_actions_world_projectiles(l_session,l_lineage,l_generation,
             p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
-            l_projectile_pack);
+            l_projectile_pack,l_world_pack);
         end if;
       else raise_application_error(c_invalid,'retained projectile readiness');end if;
+      l_java_prepare_us:=elapsed_us(l_stage);
       l_prepared:=1;
-      l_prepare_us:=elapsed_us(l_stage);
+      l_prepare_us:=elapsed_us(l_prepare_stage);
       l_failpoint:=config_number('UNIFIED_WORKER_FAILPOINT');
       l_history_interval:=config_number('HISTORY_SNAPSHOT_INTERVAL');
       l_parity_interval:=config_number('UNIFIED_WORKER_PARITY_INTERVAL');
@@ -400,14 +421,17 @@ create or replace package body doom_unified_worker as
       if l_failpoint in(1,4) then
         raise_application_error(c_invalid,'injected pre-apply worker failure');
       end if;
-      l_stage:=systimestamp;
+      l_apply_stage:=systimestamp;l_stage:=l_apply_stage;
+      doom_retained_world_pack.apply(l_session,l_result_tic,l_world_pack,
+        l_rng,l_world_draws);
+      l_world_apply_us:=elapsed_us(l_stage);l_stage:=systimestamp;
       doom_unified_delta_apply.apply_command_tic(l_session,l_lineage,
         l_expected_tic,l_expected_seq,l_command,l_delta,l_committed_tic,
         l_committed_seq,l_delta_version,l_delta_count,l_delta_sha);
       if l_committed_tic<>l_result_tic or l_committed_seq<>l_result_seq then
         raise_application_error(c_invalid,'ledger/apply frontier mismatch');
       end if;
-      l_apply_us:=elapsed_us(l_stage);
+      l_delta_apply_us:=elapsed_us(l_stage);l_apply_us:=elapsed_us(l_apply_stage);
       if l_failpoint=3 then
         raise_application_error(c_invalid,'injected post-apply worker failure');
       end if;
@@ -481,6 +505,12 @@ create or replace package body doom_unified_worker as
       l_render_us:=l_render_call_us+l_response_copy_us+l_response_hash_us;
       l_render_update_us:=round(doom_retained_render_last_update_ns/1000);
       l_render_kernel_us:=round(doom_bsp_last_render_ns/1000);
+      l_bsp_us:=round(doom_bsp_last_bsp_ns/1000);
+      l_solid_us:=round(doom_bsp_last_solid_ns/1000);
+      l_portal_us:=round(doom_bsp_last_portal_ns/1000);
+      l_plane_us:=round(doom_bsp_last_plane_ns/1000);
+      l_sprite_us:=round(doom_bsp_last_sprite_ns/1000);
+      l_presentation_us:=round(doom_bsp_last_presentation_ns/1000);
       l_codec_us:=round(doom_bsp_last_codec_ns/1000);
       l_blob_us:=round(doom_bsp_last_blob_ns/1000);
 
@@ -516,7 +546,9 @@ create or replace package body doom_unified_worker as
         delta_count=l_delta_count,delta_bytes=utl_raw.length(l_delta),
         delta_sha=l_delta_sha,state_sha=l_state_sha,frame_sha=l_frame_sha,
         response_bytes=l_response_bytes,response_sha=l_response_sha,
-        prepare_us=l_prepare_us,apply_us=l_apply_us,state_us=l_state_us,
+        prepare_us=l_prepare_us,ledger_us=l_ledger_us,world_pack_us=l_world_pack_us,
+        java_prepare_us=l_java_prepare_us,apply_us=l_apply_us,
+        world_apply_us=l_world_apply_us,delta_apply_us=l_delta_apply_us,state_us=l_state_us,
         state_encode_us=l_state_encode_us,state_blob_us=l_state_blob_us,
         state_compare_us=l_state_compare_us,
         state_object_encode_us=l_state_object_encode_us,
@@ -524,6 +556,9 @@ create or replace package body doom_unified_worker as
         state_removed=l_state_removed,render_us=l_render_us,
         render_call_us=l_render_call_us,render_update_us=l_render_update_us,
         render_kernel_us=l_render_kernel_us,codec_us=l_codec_us,
+        bsp_us=l_bsp_us,solid_us=l_solid_us,portal_us=l_portal_us,
+        plane_us=l_plane_us,sprite_us=l_sprite_us,
+        presentation_us=l_presentation_us,
         blob_us=l_blob_us,response_copy_us=l_response_copy_us,
         response_hash_us=l_response_hash_us,history_us=l_history_us,
         history_encode_us=l_history_encode_us,history_blob_us=l_history_blob_us,
@@ -612,7 +647,7 @@ create or replace package body doom_unified_worker as
       where request_id=p_request;
     -- The SQL/AQ dequeue transaction is already durable.  Correlate only after
     -- Java accept or combined reconstruction establishes the live generation.
-    respond(p_request);
+    if l_async_mode=0 then respond(p_request);end if;
     commit;
     dbms_application_info.set_action(null);
   end;
@@ -620,13 +655,23 @@ create or replace package body doom_unified_worker as
   procedure run_slot(p_worker_slot in number) is
     l_dequeue dbms_aq.dequeue_options_t;
     l_properties dbms_aq.message_properties_t;
+    l_requeue_options dbms_aq.enqueue_options_t;
+    l_requeue_properties dbms_aq.message_properties_t;
     l_payload raw(32767);l_message_id raw(16);l_request varchar2(32);
+    l_requeue_id raw(16);l_request_seq number;l_frontier_seq number;
     l_generation number;l_stop number:=0;l_target varchar2(32);
     l_lineage varchar2(64);l_control_map varchar2(64);l_map_sha varchar2(64);
-    l_failure varchar2(4000);l_limit pls_integer;
+    l_failure varchar2(4000);l_limit pls_integer;l_idle_polls pls_integer:=0;
+    l_processed pls_integer:=0;l_idle_seconds number;
+    l_idle_started timestamp with time zone:=systimestamp;
+    l_dequeued pls_integer;
     no_messages exception;pragma exception_init(no_messages,-25228);
   begin
     require_enabled;l_limit:=pool_size;
+    l_idle_seconds:=config_number('UNIFIED_WORKER_IDLE_SECONDS');
+    if l_idle_seconds<10 or l_idle_seconds>3600 then
+      raise_application_error(c_invalid,'invalid unified worker idle timeout');
+    end if;
     if p_worker_slot<1 or p_worker_slot>l_limit then
       raise_application_error(c_invalid,'worker slot is outside configured pool');
     end if;
@@ -658,25 +703,72 @@ create or replace package body doom_unified_worker as
     audit_event(null,p_worker_slot,l_generation,'WORKER_READY',
       l_target||'|'||l_map_sha);
 
-    l_dequeue.wait:=1;l_dequeue.visibility:=dbms_aq.on_commit;
+    -- Blocking AQ dequeue has exhibited rare missed notifications with a
+    -- one-to-two-second frame hole. Poll rapidly while a pipeline is starting,
+    -- then back off so abandoned browser tabs do not consume a database CPU.
+    l_dequeue.wait:=0;l_dequeue.visibility:=dbms_aq.on_commit;
     l_dequeue.navigation:=dbms_aq.first_message;
     l_dequeue.correlation:='SLOT_'||to_char(p_worker_slot,'FM00');
     loop
+      l_dequeued:=0;
       begin
-        dbms_aq.dequeue('DOOM_UNIFIED_REQUEST_Q',l_dequeue,l_properties,
-          l_payload,l_message_id);
-        l_request:=utl_raw.cast_to_varchar2(l_payload);
+        -- Async AutoREST submission already commits the durable request row.
+        -- Drain the exact frontier directly and reserve AQ request messages for
+        -- synchronous wakeup compatibility; this removes one AQ transaction
+        -- from every steady-state async tic.
+        select q.request_id into l_request
+          from doom_worker_request q join game_sessions s
+            on s.session_token=q.session_token
+          where q.worker_slot=p_worker_slot and q.session_token=l_target
+            and q.generation=l_generation and q.request_status='QUEUED'
+            and q.expected_command_seq=s.last_command_seq
+          order by q.created_at fetch first 1 row only;
+        l_dequeued:=1;l_idle_polls:=0;l_idle_started:=systimestamp;
         process_request(p_worker_slot,l_request,l_map_sha,l_generation);
-        l_dequeue.navigation:=dbms_aq.first_message;
-      exception when no_messages then
-        rollback;
-        update doom_worker_control set heartbeat=systimestamp
-          where worker_slot=p_worker_slot and generation=l_generation;
-        commit;
-        l_dequeue.navigation:=dbms_aq.first_message;
+      exception when no_data_found then
+        begin
+          dbms_aq.dequeue('DOOM_UNIFIED_REQUEST_Q',l_dequeue,l_properties,
+            l_payload,l_message_id);
+          l_dequeued:=1;l_idle_polls:=0;l_idle_started:=systimestamp;
+          l_request:=utl_raw.cast_to_varchar2(l_payload);
+          select expected_command_seq into l_request_seq from doom_worker_request
+            where request_id=l_request;
+          select last_command_seq into l_frontier_seq from game_sessions
+            where session_token=l_target;
+          if l_request_seq>l_frontier_seq then
+            l_requeue_options.visibility:=dbms_aq.on_commit;
+            l_requeue_properties.correlation:='SLOT_'||to_char(p_worker_slot,'FM00');
+            l_requeue_properties.priority:=l_request_seq;
+            dbms_aq.enqueue('DOOM_UNIFIED_REQUEST_Q',l_requeue_options,
+              l_requeue_properties,l_payload,l_requeue_id);
+            commit;dbms_session.sleep(.001);l_dequeued:=0;
+          else
+            process_request(p_worker_slot,l_request,l_map_sha,l_generation);
+          end if;
+          l_dequeue.navigation:=dbms_aq.first_message;
+        exception when no_messages then
+          rollback;l_idle_polls:=l_idle_polls+1;
+          if mod(l_idle_polls,20)=0 then
+            update doom_worker_control set heartbeat=systimestamp
+              where worker_slot=p_worker_slot and generation=l_generation;
+            commit;
+          end if;
+          l_dequeue.navigation:=dbms_aq.first_message;
+          if systimestamp-l_idle_started>=
+             numtodsinterval(l_idle_seconds,'SECOND') then
+            l_stop:=1;
+          else
+            dbms_session.sleep(case when l_idle_polls<8 then .005
+              when l_idle_polls<40 then .025 else .1 end);
+          end if;
+        end;
       end;
-      select stop_requested into l_stop from doom_worker_control
-        where worker_slot=p_worker_slot;
+      if l_dequeued=1 then l_processed:=l_processed+1;end if;
+      if (l_dequeued=1 and mod(l_processed,32)=0) or
+         (l_dequeued=0 and mod(l_idle_polls,20)=0) then
+        select greatest(l_stop,stop_requested) into l_stop from doom_worker_control
+          where worker_slot=p_worker_slot;
+      end if;
       exit when l_stop=1;
     end loop;
     update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
@@ -828,7 +920,7 @@ create or replace package body doom_worker_api as
   procedure submit_request(
     p_session varchar2,p_lineage varchar2,p_generation number,p_request varchar2,
     p_expected_tic number,p_expected_seq number,p_command_version number,
-    p_command_count number,p_command raw,p_status out varchar2
+    p_command_count number,p_command raw,p_signal number,p_status out varchar2
   ) is
     pragma autonomous_transaction;
     l_options dbms_aq.enqueue_options_t;
@@ -836,7 +928,8 @@ create or replace package body doom_worker_api as
     l_message_id raw(16);l_payload raw(32767);l_sha varchar2(64);
     l_slot number;l_session varchar2(32);l_lineage varchar2(64);
     l_generation number;l_tic number;l_seq number;l_version number;
-    l_count number;l_command raw(2000);
+    l_count number;l_command raw(2000);l_frontier number;l_predecessor number;
+    l_deadline timestamp with time zone;
   begin
     require_enabled;
     if p_session is null or not regexp_like(p_session,'^[0-9a-f]{32}$') or
@@ -876,26 +969,58 @@ create or replace package body doom_worker_api as
     exception when no_data_found then
       raise_application_error(c_invalid,'worker ownership fence');
     end;
+    -- Parallel AutoREST calls can arrive at the database out of order. Do not
+    -- publish a future-frontier AQ message until its immediate predecessor is
+    -- durably visible. This waits only for the predecessor enqueue (normally a
+    -- few milliseconds), never for the predecessor tic or HTTP response.
+    select last_command_seq into l_frontier from game_sessions
+      where session_token=p_session;
+    if p_expected_seq>l_frontier then
+      l_deadline:=systimestamp+numtodsinterval(
+        config_number('UNIFIED_WORKER_WAIT_SECONDS'),'SECOND');
+      loop
+        select count(*) into l_predecessor from doom_worker_request
+          where session_token=p_session and save_lineage=p_lineage
+            and generation=p_generation
+            and expected_command_seq=p_expected_seq-1
+            and request_status in('QUEUED','PROCESSING','COMMITTED');
+        exit when l_predecessor>0;
+        if systimestamp>=l_deadline then
+          raise_application_error(c_invalid,'worker predecessor enqueue timeout');
+        end if;
+        dbms_session.sleep(.001);
+      end loop;
+    end if;
     select lower(rawtohex(standard_hash(p_command,'SHA256'))) into l_sha from dual;
     begin
       insert into doom_worker_request(request_id,worker_slot,session_token,
         save_lineage,generation,expected_tic,expected_command_seq,command_version,
-        command_count,command_bytes,command_sha,command_pack,request_status,created_at)
+        command_count,command_bytes,command_sha,command_pack,async_mode,
+        request_status,created_at)
       values(p_request,l_slot,p_session,p_lineage,p_generation,p_expected_tic,
         p_expected_seq,p_command_version,p_command_count,utl_raw.length(p_command),
-        l_sha,p_command,'QUEUED',systimestamp);
-      l_options.visibility:=dbms_aq.on_commit;
-      l_properties.correlation:='SLOT_'||to_char(l_slot,'FM00');
-      l_payload:=utl_raw.cast_to_raw(p_request);
-      dbms_aq.enqueue('DOOM_UNIFIED_REQUEST_Q',l_options,l_properties,
-        l_payload,l_message_id);
+        l_sha,p_command,case when p_signal=0 then 1 else 0 end,'QUEUED',systimestamp);
+      if p_signal=1 then
+        l_options.visibility:=dbms_aq.on_commit;
+        l_properties.correlation:='SLOT_'||to_char(l_slot,'FM00');
+        l_properties.priority:=p_expected_seq;
+        l_payload:=utl_raw.cast_to_raw(p_request);
+        dbms_aq.enqueue('DOOM_UNIFIED_REQUEST_Q',l_options,l_properties,
+          l_payload,l_message_id);
+      elsif p_signal<>0 then
+        raise_application_error(c_invalid,'invalid worker signal mode');
+      end if;
       p_status:='QUEUED';commit;
     exception when dup_val_on_index then
-      select worker_slot,session_token,save_lineage,generation,expected_tic,
-        expected_command_seq,command_version,command_count,command_pack,request_status
-        into l_slot,l_session,l_lineage,l_generation,l_tic,l_seq,l_version,
-          l_count,l_command,p_status
-        from doom_worker_request where request_id=p_request;
+      begin
+        select worker_slot,session_token,save_lineage,generation,expected_tic,
+          expected_command_seq,command_version,command_count,command_pack,request_status
+          into l_slot,l_session,l_lineage,l_generation,l_tic,l_seq,l_version,
+            l_count,l_command,p_status
+          from doom_worker_request where request_id=p_request;
+      exception when no_data_found then
+        raise_application_error(c_invalid,'conflicting frontier request');
+      end;
       if l_session<>p_session or l_lineage<>p_lineage or
          l_generation<>p_generation or l_tic<>p_expected_tic or
          l_seq<>p_expected_seq or l_version<>p_command_version or
@@ -976,7 +1101,8 @@ create or replace package body doom_worker_api as
       raise_application_error(c_invalid,'invalid worker wait');
     end if;
     submit_request(p_session,p_lineage,p_generation,p_request,p_expected_tic,
-      p_expected_seq,p_command_version,p_command_count,p_command,l_status);
+      p_expected_seq,p_command_version,p_command_count,p_command,
+      case when p_wait_seconds=0 then 0 else 1 end,l_status);
     l_dequeue.wait:=case when l_status in('COMMITTED','ROLLED_BACK','FAILED')
       then 0 else trunc(p_wait_seconds) end;
     l_dequeue.visibility:=dbms_aq.immediate;
