@@ -10,6 +10,8 @@ declare
   l_head_existed number;l_before_cs number;l_oracle_cs number;l_extracted_cs number;
   l_command raw(24):=hextoraw('444D53430201000000000000000000010101FF0100000000');
   l_bad_command raw(24):=hextoraw('444D53430201000000000000000000010101FF0100000001');
+  l_action_command raw(24):=hextoraw('444D53430301000000000000000000010101FF0100000200');
+  l_bad_action raw(24):=hextoraw('444D53430301000000000000000000010101FF0100000201');
   l_command_doc clob:=to_clob(
     '{"v":1,"commands":[{"turn":1,"forward":1,"strafe":-1,"run":1,'||
     '"fire":0,"use":0,"weapon":0,"pause":0,"automap":0,"menu":"NONE",'||
@@ -211,6 +213,25 @@ begin
       and command_sha=l_previous_sha;
   assert_(l_count=l_head_existed,'ledger rollback restored history head');
 
+  -- DMSC/v3 preserves the fixed 24-byte envelope while assigning the three
+  -- formerly reserved action slots. Its command-chain document is still the
+  -- canonical public command JSON, not a hash of the packed transport.
+  savepoint action_ledger_start;
+  doom_command_ledger.begin_dmsc_v3(l_session,l_lineage,l_tic,l_seq,
+    l_action_command,l_result_tic,l_result_seq,l_command_sha,l_locator);
+  select lower(rawtohex(dbms_crypto.hash(json_object(
+      'seq' value l_result_seq,'lineage' value l_lineage,'tic' value l_result_tic,
+      'ordinal' value 0,'turn' value 1,'forward' value 1,'strafe' value -1,
+      'run' value 1,'fire' value 0,'use' value 0,'weapon' value 2,
+      'pause' value 0,'automap' value 0,'menu' value 'NONE','cheat' value '',
+      'previous_command_sha' value l_previous_sha returning clob),
+      dbms_crypto.hash_sh256))) into l_expected_sha from dual;
+  assert_(l_command_sha=l_expected_sha,'DMSC/v3 command-chain SHA');
+  select count(*) into l_count from tic_commands where session_token=l_session
+    and command_seq=l_result_seq and weapon_slot=2 and fire=0 and use_action=0;
+  assert_(l_count=1,'DMSC/v3 action fields');
+  rollback to action_ledger_start;
+
   -- Malformed packs and invalid frontiers must reject before any ledger write.
   begin
     doom_command_ledger.begin_dmsc_v2(l_session,l_lineage,l_tic,l_seq,l_bad_command,
@@ -223,6 +244,13 @@ begin
     doom_command_ledger.begin_dmsc_v2(l_session,l_lineage,l_tic+0.5,l_seq,l_command,
       l_result_tic,l_result_seq,l_command_sha,l_locator);
     raise_application_error(-20000,'DMSC fractional frontier accepted');
+  exception when others then
+    if sqlcode<>-20867 then raise;end if;
+  end;
+  begin
+    doom_command_ledger.begin_dmsc_v3(l_session,l_lineage,l_tic,l_seq,l_bad_action,
+      l_result_tic,l_result_seq,l_command_sha,l_locator);
+    raise_application_error(-20000,'DMSC/v3 reserved byte accepted');
   exception when others then
     if sqlcode<>-20867 then raise;end if;
   end;
@@ -251,4 +279,3 @@ end;
 /
 
 exit
-

@@ -156,8 +156,8 @@ create or replace package body doom_api as
       lpad(to_char(mod(p_value,4294967296),'fmxxxxxxxx'),8,'0');
   end;
 
-  -- Select the retained worker only for the DMSC/v2 surface it currently owns.
-  -- Unsupported controls deliberately fall through to the complete SQL oracle.
+  -- Select the retained worker for movement and deterministic weapon-state tics.
+  -- Fire/use and administrative controls deliberately fall through to SQL.
   procedure worker_step(
     p_session in varchar2,p_commands in clob,p_used out number,p_payload out blob
   ) is
@@ -165,6 +165,7 @@ create or replace package body doom_api as
     l_run number;l_fire number;l_use number;l_weapon number;l_pause number;
     l_automap number;l_menu varchar2(32);l_cheat varchar2(4000);
     l_lineage varchar2(64);l_tic number;l_expected_seq number;
+    l_action_version number;
     l_deadline timestamp with time zone;
     l_generation number;l_ready number;l_map_sha varchar2(64);l_error varchar2(4000);
     l_request varchar2(32);l_command raw(24);l_status varchar2(16);
@@ -200,16 +201,20 @@ create or replace package body doom_api as
        l_strafe is null or l_run is null or
        l_turn not in(-1,0,1) or l_forward not in(-1,0,1) or
        l_strafe not in(-1,0,1) or l_run not in(0,1) or
-       coalesce(l_fire,0)<>0 or coalesce(l_use,0)<>0 or coalesce(l_weapon,0)<>0 or
+       coalesce(l_fire,0)<>0 or coalesce(l_use,0)<>0 or
+       coalesce(l_weapon,0) not between 0 and 9 or
        coalesce(l_pause,0)<>0 or coalesce(l_automap,0)<>0 or
        coalesce(l_menu,'NONE')<>'NONE' or l_cheat is not null then return;end if;
 
     select save_lineage,current_tic,last_command_seq
       into l_lineage,l_tic,l_expected_seq from game_sessions
       where session_token=p_session;
+    -- The provisional version byte is ignored by retry matching below; the
+    -- final version must be selected only after pipelined predecessors commit.
     l_command:=hextoraw('444D534302010000'||u64_hex(l_seq)||byte_hex(l_turn)||
       byte_hex(l_forward)||byte_hex(l_strafe)||
-      case l_run when 0 then '00' else '01' end||'00000000');
+      case l_run when 0 then '00' else '01' end||'0000'||
+      lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||'00');
     -- A network retry can arrive after the durable frontier advanced. Return
     -- the immutable committed response without needing the old worker generation.
     begin
@@ -217,12 +222,14 @@ create or replace package body doom_api as
         from doom_worker_request q join doom_worker_result r
           on r.request_id=q.request_id
         where q.session_token=p_session and q.save_lineage=l_lineage
-          and q.command_pack=l_command
+          and q.expected_command_seq=l_seq-1
+          and utl_raw.compare(utl_raw.substr(q.command_pack,17,7),
+            utl_raw.substr(l_command,17,7))=0
           and q.request_status='COMMITTED';
       copy_blob(l_worker_payload,p_payload);p_used:=1;return;
     exception when no_data_found then null;end;
-    if l_seq between l_expected_seq+2 and l_expected_seq+5 then
-      -- The browser permits four ordered HTTP calls in flight. Earlier
+    if l_seq between l_expected_seq+2 and l_expected_seq+3 then
+      -- The browser permits three ordered HTTP calls in flight. Earlier
       -- database tics normally commit while ORDS is still serializing their
       -- responses; wait only for those bounded predecessors.
       -- AQ dequeue occasionally crosses a one-second empty-poll boundary even
@@ -243,6 +250,23 @@ create or replace package body doom_api as
     end if;
     if l_seq<>l_expected_seq+1 then return;end if;
 
+    select s.current_tic,s.last_command_seq,
+      case when coalesce(l_weapon,0)<>0 or p.pending_weapon is not null or
+        p.weapon_state not like 'WEAPON_%_READY' or p.weapon_state_tics not in(0,1)
+        then 3 else 2 end
+      into l_tic,l_expected_seq,l_action_version
+      from game_sessions s join players p
+        on p.session_token=s.session_token and p.player_id=s.current_player_id
+      where s.session_token=p_session;
+    if l_seq<>l_expected_seq+1 then
+      raise_application_error(c_capacity,'pipelined action-version frontier race');
+    end if;
+    l_command:=hextoraw('444D5343'||case l_action_version when 3 then '03' else '02' end||
+      '010000'||u64_hex(l_seq)||byte_hex(l_turn)||
+      byte_hex(l_forward)||byte_hex(l_strafe)||
+      case l_run when 0 then '00' else '01' end||'0000'||
+      lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||'00');
+
     doom_worker_api.claim(p_session,l_generation,l_ready,l_map_sha,l_error);
     if l_ready<>1 or l_error is not null then
       raise_application_error(c_capacity,coalesce(l_error,'worker is not ready'));
@@ -253,7 +277,7 @@ create or replace package body doom_api as
         dbms_crypto.hash_sh256)),1,32));
     for l_attempt in 1..3 loop
       doom_worker_api.step(p_session,l_lineage,l_generation,l_request,l_tic,
-        l_expected_seq,2,1,l_command,
+        l_expected_seq,l_action_version,1,l_command,
         config_number('UNIFIED_WORKER_WAIT_SECONDS',10),l_status,
         l_response_generation,l_committed_tic,l_committed_seq,l_delta_version,
         l_delta_count,l_delta_sha,l_state_sha,l_frame_sha,l_response_bytes,

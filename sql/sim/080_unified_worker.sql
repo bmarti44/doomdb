@@ -117,7 +117,7 @@ create or replace package body doom_unified_worker as
   procedure load_and_warm(
     p_session varchar2,p_lineage varchar2,p_generation number,p_map_sha varchar2
   ) is
-    l_snapshot blob;l_payload blob;l_delta raw(32767);
+    l_snapshot blob;l_payload blob;l_delta raw(32767);l_command raw(24);
     l_result varchar2(4000);l_frame_sha varchar2(4000);
     l_request varchar2(32);l_tic number;l_seq number;l_rng number;
     l_next_mobj number;
@@ -132,23 +132,39 @@ create or replace package body doom_unified_worker as
       from game_sessions where session_token=p_session;
     select coalesce(max(mobj_id),0)+1 into l_next_mobj from mobjs
       where session_token=p_session;
-    l_request:=lower(rawtohex(sys_guid()));
-    l_delta:=doom_unified_actor_prepare(p_session,p_lineage,p_generation,l_request,
-      'TIC',l_tic,l_seq,l_rng,l_next_mobj,0);
-    if l_delta is null or utl_raw.length(l_delta)<12 or
-       rawtohex(utl_raw.substr(l_delta,1,6))<>'44554F500100' then
-      raise_application_error(c_invalid,'unified warm prepare');
-    end if;
     dbms_lob.createtemporary(l_payload,true,dbms_lob.call);
-    l_frame_sha:=doom_unified_render_pending(p_session,p_lineage,p_generation,
-      l_request,c_zero_sha,l_payload);
-    if not regexp_like(l_frame_sha,'^[0-9a-f]{64}$') then
-      raise_application_error(c_invalid,'unified warm render: '||
-        substr(l_frame_sha,1,3000));
-    end if;
-    l_result:=doom_unified_actor_discard(
-      p_session,p_lineage,p_generation,l_request);
-    require_ok(l_result,'unified warm discard');
+    -- READY means the actual movement/action/renderer call graph is hot, not
+    -- merely that a generic actor tick ran once. Repeated prepare/render/
+    -- discard cycles compile both stable DMSC/v2 and action DMSC/v3 without
+    -- advancing the durable frontier.
+    for i in 1..8 loop
+      l_request:=lower(rawtohex(sys_guid()));
+      l_command:=hextoraw('444D5343'||case when i<=4 then '02' else '03' end||
+        '010000'||lpad(to_char(floor((l_seq+1)/4294967296),'fmxxxxxxxx'),8,'0')||
+        lpad(to_char(mod(l_seq+1,4294967296),'fmxxxxxxxx'),8,'0')||
+        case when i<=4 then '0001000000000000' else '0001000000000100' end);
+      if i<=4 then
+        l_delta:=doom_unified_command_tic_prepare(p_session,p_lineage,p_generation,
+          l_request,l_tic,l_seq,l_rng,l_next_mobj,0,l_command);
+      else
+        l_delta:=doom_unified_command_actions_prepare(p_session,p_lineage,p_generation,
+          l_request,l_tic,l_seq,l_rng,l_next_mobj,0,l_command);
+      end if;
+      if l_delta is null or utl_raw.length(l_delta)<12 or
+         rawtohex(utl_raw.substr(l_delta,1,6))<>'44554F500100' then
+        raise_application_error(c_invalid,'unified production warm prepare');
+      end if;
+      l_frame_sha:=doom_unified_render_pending(p_session,p_lineage,p_generation,
+        l_request,c_zero_sha,l_payload);
+      if not regexp_like(l_frame_sha,'^[0-9a-f]{64}$') then
+        raise_application_error(c_invalid,'unified production warm render: '||
+          substr(l_frame_sha,1,3000));
+      end if;
+      l_result:=doom_unified_actor_discard(
+        p_session,p_lineage,p_generation,l_request);
+      require_ok(l_result,'unified production warm discard');
+      l_request:=null;
+    end loop;
   exception when others then
     begin
       if l_request is not null then
@@ -297,7 +313,7 @@ create or replace package body doom_unified_worker as
         audit_event(p_request,p_slot,l_generation,'TERMINAL_REPLAY',l_status);
         return;
       end if;
-      if l_command_version<>2 or l_command_count<>1 or l_command_bytes<>24 or
+      if l_command_version not in(2,3) or l_command_count<>1 or l_command_bytes<>24 or
          utl_raw.length(l_command)<>24 or
          lower(rawtohex(dbms_crypto.hash(l_command,dbms_crypto.hash_sh256)))<>
            l_command_sha then
@@ -329,13 +345,19 @@ create or replace package body doom_unified_worker as
         where session_token=l_session;
 
       l_stage:=systimestamp;
-      doom_command_ledger.begin_dmsc_v2(l_session,l_lineage,l_expected_tic,
-        l_expected_seq,l_command,l_result_tic,l_result_seq,l_ledger_sha,
-        l_state_locator);
+      if l_command_version=2 then
+        doom_command_ledger.begin_dmsc_v2(l_session,l_lineage,l_expected_tic,
+          l_expected_seq,l_command,l_result_tic,l_result_seq,l_ledger_sha,
+          l_state_locator);
+      else
+        doom_command_ledger.begin_dmsc_v3(l_session,l_lineage,l_expected_tic,
+          l_expected_seq,l_command,l_result_tic,l_result_seq,l_ledger_sha,
+          l_state_locator);
+      end if;
       insert into doom_worker_result(request_id,committed_tic,
         committed_command_seq,delta_version,delta_count,delta_bytes,delta_sha,
         state_sha,frame_sha,response_bytes,response_sha,delta_blob,response_blob)
-      values(p_request,l_result_tic,l_result_seq,1,1,0,c_zero_sha,c_zero_sha,
+      values(p_request,l_result_tic,l_result_seq,l_command_version-1,1,0,c_zero_sha,c_zero_sha,
         c_zero_sha,0,c_zero_sha,empty_blob(),empty_blob())
       returning delta_blob,response_blob into l_delta_locator,l_response_locator;
 
@@ -344,14 +366,25 @@ create or replace package body doom_unified_worker as
       l_retained_projectiles:=doom_unified_owner_projectiles_ready(
         l_session,l_lineage,l_generation);
       if l_retained_projectiles=1 then
-        l_delta:=doom_unified_command_retained_projectiles(l_session,l_lineage,l_generation,
-          p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command);
+        if l_command_version=2 then
+          l_delta:=doom_unified_command_retained_projectiles(l_session,l_lineage,l_generation,
+            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command);
+        else
+          l_delta:=doom_unified_command_actions_retained(l_session,l_lineage,l_generation,
+            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command);
+        end if;
       elsif l_retained_projectiles=0 then
         doom_retained_projectiles.advance_and_pack(
           l_session,l_result_tic,l_projectile_pack);
-        l_delta:=doom_unified_command_projectiles_prepare(l_session,l_lineage,l_generation,
-          p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
-          l_projectile_pack);
+        if l_command_version=2 then
+          l_delta:=doom_unified_command_projectiles_prepare(l_session,l_lineage,l_generation,
+            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
+            l_projectile_pack);
+        else
+          l_delta:=doom_unified_command_actions_projectiles(l_session,l_lineage,l_generation,
+            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
+            l_projectile_pack);
+        end if;
       else raise_application_error(c_invalid,'retained projectile readiness');end if;
       l_prepared:=1;
       l_prepare_us:=elapsed_us(l_stage);
@@ -814,7 +847,7 @@ create or replace package body doom_worker_api as
        p_expected_tic not between 0 and 999999999998 or
        p_expected_seq is null or p_expected_seq<>trunc(p_expected_seq) or
        p_expected_seq not between 0 and 999999999998 or
-       p_command_version<>2 or p_command_count<>1 or p_command is null or
+       p_command_version not in(2,3) or p_command_count<>1 or p_command is null or
        utl_raw.length(p_command)<>24 or
        utl_raw.length(p_command)>least(2000,
          config_number('UNIFIED_WORKER_MAX_PACK_BYTES')) then

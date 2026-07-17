@@ -6,8 +6,9 @@ import {applyPalette} from '../../client/staging/palette.js';
 const root=(process.env.DOOM_ORDS_URL??'http://localhost:8080/ords/doom').replace(/\/$/,'');
 const frames=Number(process.env.DOOM_PIPELINE_FRAMES??300);
 const warm=Number(process.env.DOOM_PIPELINE_WARM??30);
-const period=32,maxInFlight=4,bufferFrames=6;
-if(frames!==300||!Number.isInteger(warm)||warm<1)
+const period=32,maxInFlight=Number(process.env.DOOM_PIPELINE_DEPTH??3),bufferFrames=6;
+if(frames!==300||!Number.isInteger(warm)||warm<1||!Number.isInteger(maxInFlight)||
+    maxInFlight<2||maxInFlight>8)
   throw new Error('invalid pipeline sample configuration');
 
 async function post(procedure,body){
@@ -20,7 +21,7 @@ async function post(procedure,body){
 }
 const command=(seq,intent={})=>({seq,turn:intent.turn??0,forward:intent.forward??0,
   strafe:0,run:0,
-  fire:0,use:0,weapon:0,pause:0,automap:0,menu:'NONE',cheat:''});
+  fire:0,use:0,weapon:intent.weapon??0,pause:0,automap:0,menu:'NONE',cheat:''});
 const sleep=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds));
 const step=async(session,seq,intent)=>{
   const body={p_session:session,
@@ -41,6 +42,7 @@ forward(8);turn(16);forward(12);turn(16);forward(12);turn(16);forward(24);
 turn(16);forward(16);turn(16);forward(28);turn(16);forward(20);turn(16);
 forward(32);turn(16);forward(20);
 if(route.length!==frames)throw new Error('pipeline route length');
+route[0].weapon=1;
 
 const created=await post('NEW_GAME',{p_skill:3});
 if(typeof created.p_session!=='string'||!/^[0-9a-f]{32}$/.test(created.p_session))

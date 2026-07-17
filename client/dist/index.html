@@ -57,7 +57,7 @@
     <article class="panel">
       <h2>Current milestone</h2>
       <p class="big">30 FPS public gate<br><span>300 / 300 unique moving frames</span></p>
-      <p class="muted">The AutoREST pipeline passes at 30.80 displayed FPS with 32.21 / 33.14 ms paint-gap p50/p95. Retained fire, use, and weapon parity remains open.</p>
+      <p class="muted">The weapon-switching AutoREST route passes at 31.07 displayed FPS with 32.18 / 32.98 ms paint-gap p50/p95. Retained fire and use remain open.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -71,7 +71,7 @@
     <h2>Live implementation status · July 16, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate; eligible movement can use the retained worker while unsupported actions retain the SQL fallback. Lift 1 is complete and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived AQ/Scheduler workers. Four warm connections, a depth-four command window, ordered decode, and a six-frame presentation buffer sustain 300 distinct moving frames at 30.80 FPS. Paint gaps are 32.21 / 33.14 ms p50/p95; input/decode latency is 120.49 / 148.26 ms. Idempotent retries cover lost or delayed HTTP responses. Full retained action controls remain.</p>
+    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived AQ/Scheduler workers. A depth-three command window, ordered decode, and six-frame presentation buffer sustain 300 distinct moving frames at 31.07 FPS. Paint gaps are 32.18 / 32.98 ms p50/p95; request/decode latency is 49.30 / 81.13 ms. Dynamic weapon LOWER/RAISE transitions pass strict SQL parity and return to the lean steady path. Retained fire and use remain.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">
@@ -161,7 +161,7 @@
     <article class="panel phase done"><b>P5.4</b><span>Presentation</span><p class="muted">HUD, weapons, menu, pause, automap, intermission</p></article>
     <article class="panel phase done"><b>P6</b><span>Simulation</span><p class="muted">tic, movement, machines, history, replay</p></article>
     <article class="panel phase done"><b>P7</b><span>Gameplay</span><p class="muted">weapons, monsters, pickups, audio</p></article>
-    <article class="panel phase active"><b>P12.0</b><span>Integration</span><p class="muted">database gate PASS · 20.065 / 26.008 ms active p50/p95</p></article>
+    <article class="panel phase active"><b>P12.0</b><span>Integration</span><p class="muted">public gate PASS · 31.07 FPS · weapon selection active</p></article>
     <article class="panel phase"><b>P8.1</b><span>Completion route</span><p class="muted">preserved at tic 1430 · resumes after gate</p></article>
   </section>
   <footer>Build-review surface only · no credentials or evaluator data are exposed to the browser.</footer>

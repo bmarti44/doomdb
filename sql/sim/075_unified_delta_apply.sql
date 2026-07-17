@@ -35,6 +35,7 @@ end doom_unified_delta_apply;
 create or replace package body doom_unified_delta_apply as
   c_duop_header constant pls_integer:=12;
   c_dtic_header constant pls_integer:=60;
+  c_dtic_v2_header constant pls_integer:=108;
   c_actor_bytes constant pls_integer:=90;
   c_world_op_bytes constant pls_integer:=62;
   c_spawn_bytes constant pls_integer:=238;
@@ -66,12 +67,17 @@ create or replace package body doom_unified_delta_apply as
   type presence_map is table of pls_integer index by binary_integer;
   type ordered_id_tab is table of number;
   type state_id_map is table of varchar2(64) index by binary_integer;
+  type weapon_id_map is table of varchar2(32) index by binary_integer;
+  type integer_map is table of pls_integer index by binary_integer;
   type text_set is table of boolean index by varchar2(4000);
 
   g_delta raw(32767);
   g_length pls_integer;
   g_catalog_signature varchar2(4000);
   g_state_ids state_id_map;
+  g_weapon_ids weapon_id_map;
+  g_weapon_bits integer_map;
+  g_weapon_mask_all pls_integer:=0;
   g_sector_ids id_set;
   g_thing_type_ids id_set;
   g_spawn_thing_ids id_set;
@@ -220,7 +226,8 @@ create or replace package body doom_unified_delta_apply as
       when 5 then 'MONSTER_DROP' when 6 then 'MONSTER_WAKE'
       when 7 then 'MONSTER_PROJECTILE' when 8 then 'DAMAGE'
       when 9 then 'BARREL_EXPLODE' when 10 then 'PROJECTILE_IMPACT'
-      when 11 then 'PLAYER_DAMAGE' end;
+      when 11 then 'PLAYER_DAMAGE' when 12 then 'WEAPON_LOWER'
+      when 13 then 'WEAPON_RAISE' end;
   end;
 
   procedure retain_catalogs is
@@ -231,14 +238,24 @@ create or replace package body doom_unified_delta_apply as
       (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_map_sector)||'|'||
       (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_thing_type_def)||'|'||
       (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_map_thing)||'|'||
-      (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_projectile_def)
+      (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_projectile_def)||'|'||
+      (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_weapon_def)
       into l_signature from dual;
     if l_signature=g_catalog_signature then return;end if;
-    g_state_ids.delete;g_sector_ids.delete;g_thing_type_ids.delete;
+    g_state_ids.delete;g_weapon_ids.delete;g_weapon_bits.delete;
+    g_weapon_mask_all:=0;g_sector_ids.delete;g_thing_type_ids.delete;
     g_spawn_thing_ids.delete;g_projectile_ids.delete;
     declare l_index binary_integer:=0;begin
       for r in (select state_id from doom_state_def order by state_id) loop
         g_state_ids(l_index):=r.state_id;l_index:=l_index+1;
+      end loop;
+    end;
+    declare l_index binary_integer:=0;begin
+      for r in (select weapon_id,slot_number from doom_weapon_def order by slot_number) loop
+        g_weapon_ids(l_index):=r.weapon_id;
+        g_weapon_bits(l_index):=power(2,r.slot_number-1);
+        g_weapon_mask_all:=g_weapon_mask_all+g_weapon_bits(l_index);
+        l_index:=l_index+1;
       end loop;
     end;
     for r in (select sector_id from doom_map_sector) loop g_sector_ids(r.sector_id):=true;end loop;
@@ -278,9 +295,16 @@ create or replace package body doom_unified_delta_apply as
   ) is
     l_position pls_integer;l_child_length number;
     l_actor_count pls_integer;l_spawn_count pls_integer;l_event_count pls_integer;
+    l_dtic_version pls_integer;l_dtic_header pls_integer;
     l_world_op_count pls_integer;
     l_rng_draws pls_integer;l_final_rng number;l_player_health number;
     l_player_armor number;l_player_alive number;l_player_kills number;
+    l_ammo_bullets number;l_ammo_shells number;l_ammo_rockets number;l_ammo_cells number;
+    l_weapon_mask number;l_selected_weapon_index number;l_pending_weapon_index number;
+    l_weapon_state_index number;l_weapon_state_tics number;l_flash_state_index number;
+    l_flash_state_tics number;l_refire number;
+    l_selected_weapon varchar2(32);l_pending_weapon varchar2(32);
+    l_weapon_state varchar2(64);l_flash_state varchar2(64);
     l_next_mobj number;l_next_event number;l_next_tic number;l_next_seq number;
     l_current_tic number;l_current_seq number;l_current_rng number;
     l_lineage varchar2(64);l_player_id number;l_state_count number;
@@ -311,7 +335,10 @@ create or replace package body doom_unified_delta_apply as
     l_child_length:=u32_at(9,'DUOP child length');
     if l_child_length<>g_length-c_duop_header then fail('DUOP exact length');end if;
     if rawtohex(utl_raw.substr(g_delta,13,4))<>'44544943' then fail('DTIC magic');end if;
-    if byte_at(17,'DTIC version')<>1 or byte_at(18,'DTIC status')<>0 then fail('DTIC header');end if;
+    l_dtic_version:=byte_at(17,'DTIC version');
+    if l_dtic_version not in(1,2) or byte_at(18,'DTIC status')<>0 then fail('DTIC header');end if;
+    l_dtic_header:=case l_dtic_version when 1 then c_dtic_header else c_dtic_v2_header end;
+    if g_length<c_duop_header+l_dtic_header then fail('short DTIC versioned header');end if;
     l_actor_count:=u16_at(19,'actor count');l_spawn_count:=u16_at(21,'spawn count');
     l_event_count:=u16_at(23,'event count');l_rng_draws:=u16_at(25,'RNG draws');
     l_world_op_count:=u16_at(27,'world operation count');
@@ -342,6 +369,42 @@ create or replace package body doom_unified_delta_apply as
     -- this avoids issuing one validation SELECT for every actor/reference.
     retain_catalogs;
     l_state_count:=g_state_ids.count;
+    if l_dtic_version=2 then
+      l_ammo_bullets:=i32_at(73,'ammo bullets');
+      l_ammo_shells:=i32_at(77,'ammo shells');
+      l_ammo_rockets:=i32_at(81,'ammo rockets');
+      l_ammo_cells:=i32_at(85,'ammo cells');
+      l_weapon_mask:=i32_at(89,'weapon mask');
+      l_selected_weapon_index:=i32_at(93,'selected weapon');
+      l_pending_weapon_index:=i32_at(97,'pending weapon');
+      l_weapon_state_index:=i32_at(101,'weapon state');
+      l_weapon_state_tics:=i32_at(105,'weapon state tics');
+      l_flash_state_index:=i32_at(109,'flash state');
+      l_flash_state_tics:=i32_at(113,'flash state tics');
+      l_refire:=i32_at(117,'refire');
+      if l_ammo_bullets<0 or l_ammo_shells<0 or l_ammo_rockets<0 or
+         l_ammo_cells<0 or l_weapon_mask<0 or
+         bitand(l_weapon_mask,g_weapon_mask_all)<>l_weapon_mask or
+         l_selected_weapon_index<0 or l_selected_weapon_index>=g_weapon_ids.count or
+         l_pending_weapon_index< -1 or l_pending_weapon_index>=g_weapon_ids.count or
+         l_weapon_state_index<0 or l_weapon_state_index>=l_state_count or
+         l_weapon_state_tics<0 or
+         l_flash_state_index< -1 or l_flash_state_index>=l_state_count or
+         l_flash_state_tics<0 or l_refire<0 then
+        fail('weapon block value range');
+      end if;
+      if bitand(l_weapon_mask,g_weapon_bits(l_selected_weapon_index))=0 or
+         (l_pending_weapon_index>=0 and
+           bitand(l_weapon_mask,g_weapon_bits(l_pending_weapon_index))=0) then
+        fail('weapon block ownership');
+      end if;
+      l_selected_weapon:=g_weapon_ids(l_selected_weapon_index);
+      l_pending_weapon:=case when l_pending_weapon_index=-1 then null
+        else g_weapon_ids(l_pending_weapon_index) end;
+      l_weapon_state:=g_state_ids(l_weapon_state_index);
+      l_flash_state:=case when l_flash_state_index=-1 then null
+        else g_state_ids(l_flash_state_index) end;
+    end if;
     -- DTIC actor_count is deliberately the behavior-bound monster subset
     -- (currently 53 on E1M1), not the owner's complete all-MOBJ world image
     -- (currently 280).  Non-monster rows remain unchanged; newly emitted drop
@@ -365,7 +428,7 @@ create or replace package body doom_unified_delta_apply as
       where session_token=p_session_token and tic=l_next_tic;
     if l_next_event<>l_initial_event+l_event_count then fail('event frontier');end if;
 
-    l_position:=73;
+    l_position:=case l_dtic_version when 1 then 73 else 121 end;
     need(l_position,l_actor_count*c_actor_bytes,'actor block');
     for i in 1..l_actor_count loop
       l_actors(i).id:=fixed_i32_at(l_position);
@@ -476,8 +539,13 @@ create or replace package body doom_unified_delta_apply as
       l_position:=l_position+40;
       l_events(i).text_value:=text_at(l_position,'event text');
       if l_events(i).ordinal<>l_initial_event+i-1 or
-         l_events(i).type_code<1 or l_events(i).type_code>11 or
-         l_events(i).actor_id is null then fail('event value or ordinal');end if;
+         l_events(i).type_code<1 or l_events(i).type_code>13 or
+         (l_dtic_version=1 and l_events(i).type_code>11) or
+         (l_events(i).type_code<=11 and l_events(i).actor_id is null) or
+         (l_events(i).type_code>=12 and
+           (l_events(i).actor_id is not null or l_events(i).target_id is not null)) then
+        fail('event value or ordinal');
+      end if;
       l_events(i).event_name:=event_type(l_events(i).type_code);
     end loop;
     if l_position<>g_length+1 then fail('trailing bytes');end if;
@@ -520,9 +588,11 @@ create or replace package body doom_unified_delta_apply as
       end loop;
     end loop;
     for i in 1..l_event_count loop
-      if not world_id_exists(p_session_token,l_events(i).actor_id,l_world_presence) and
-         (l_events(i).actor_id<l_spawn_base or l_events(i).actor_id>=l_next_mobj) then
-        fail('event actor ID');
+      if l_events(i).actor_id is not null then
+        if not world_id_exists(p_session_token,l_events(i).actor_id,l_world_presence) and
+           (l_events(i).actor_id<l_spawn_base or l_events(i).actor_id>=l_next_mobj) then
+          fail('event actor ID');
+        end if;
       end if;
       if l_events(i).target_id is not null then
         if not world_id_exists(p_session_token,l_events(i).target_id,l_world_presence) and
@@ -622,16 +692,28 @@ create or replace package body doom_unified_delta_apply as
         where session_token=p_session_token and lineage=p_save_lineage;
       if sql%rowcount<>1 then fail('event history head');end if;
     end if;
-    update players set health=l_player_health,armor=l_player_armor,
-      alive=l_player_alive,kill_count=l_player_kills
-      where session_token=p_session_token and player_id=l_player_id;
+    if l_dtic_version=1 then
+      update players set health=l_player_health,armor=l_player_armor,
+        alive=l_player_alive,kill_count=l_player_kills
+        where session_token=p_session_token and player_id=l_player_id;
+    else
+      update players set health=l_player_health,armor=l_player_armor,
+        alive=l_player_alive,kill_count=l_player_kills,
+        ammo_bullets=l_ammo_bullets,ammo_shells=l_ammo_shells,
+        ammo_rockets=l_ammo_rockets,ammo_cells=l_ammo_cells,
+        weapon_mask=l_weapon_mask,selected_weapon=l_selected_weapon,
+        pending_weapon=l_pending_weapon,weapon_state=l_weapon_state,
+        weapon_state_tics=l_weapon_state_tics,flash_state=l_flash_state,
+        flash_state_tics=l_flash_state_tics,refire=l_refire
+        where session_token=p_session_token and player_id=l_player_id;
+    end if;
     if sql%rowcount<>1 then fail('current player row');end if;
     update game_sessions set current_tic=l_next_tic,last_command_seq=l_next_seq,
       rng_cursor=l_final_rng where session_token=p_session_token;
     if sql%rowcount<>1 then fail('session update race');end if;
 
     p_committed_tic:=l_next_tic;p_committed_command_seq:=l_next_seq;
-    p_delta_version:=1;p_delta_count:=1;
+    p_delta_version:=l_dtic_version;p_delta_count:=1;
     p_delta_sha:=lower(rawtohex(dbms_crypto.hash(g_delta,dbms_crypto.hash_sh256)));
   exception
     when no_data_found then
@@ -659,8 +741,11 @@ create or replace package body doom_unified_delta_apply as
   ) is
     c_command_bytes constant pls_integer:=24;
     c_dctc_header constant pls_integer:=105;
+    l_command_version pls_integer;l_expected_dtic_version pls_integer;
+    l_expected_dtic_header pls_integer;
     l_command_seq number;l_outer_seq number;l_outer_tic number;
     l_turn pls_integer;l_forward pls_integer;l_strafe pls_integer;l_run pls_integer;
+    l_fire pls_integer;l_use pls_integer;l_weapon pls_integer;l_reserved pls_integer;
     l_child_length number;l_angle_index number;l_x number;l_y number;l_z number;
     l_sector number;l_derived_sector number;l_nested_length number;
     l_nested raw(32767);l_wrapped raw(32767);l_inner_tic number;l_inner_seq number;
@@ -674,11 +759,15 @@ create or replace package body doom_unified_delta_apply as
       fail('DMSC/v2 exact length');
     end if;
     g_delta:=p_command;g_length:=c_command_bytes;
+    l_command_version:=byte_at(5,'DMSC version');
     if rawtohex(utl_raw.substr(g_delta,1,4))<>'444D5343' or
-       byte_at(5,'DMSC version')<>2 or byte_at(6,'DMSC count')<>1 or
+       l_command_version not in(2,3) or byte_at(6,'DMSC count')<>1 or
        byte_at(7,'DMSC reserved')<>0 or byte_at(8,'DMSC reserved')<>0 then
-      fail('DMSC/v2 header');
+      fail('DMSC header');
     end if;
+    l_expected_dtic_version:=l_command_version-1;
+    l_expected_dtic_header:=case l_expected_dtic_version
+      when 1 then c_dtic_header else c_dtic_v2_header end;
     l_command_seq:=u64_at(9,'DMSC sequence');
     if l_command_seq<>p_expected_command_seq+1 then fail('DMSC sequence gap');end if;
     l_turn:=signed_byte_at(17,'DMSC turn');
@@ -688,11 +777,15 @@ create or replace package body doom_unified_delta_apply as
        l_strafe not between -1 and 1 or l_run not in(0,1) then
       fail('DMSC movement domain');
     end if;
-    for i in 21..24 loop
-      if byte_at(i,'DMSC unsupported action/reserved')<>0 then
-        fail('DMSC unsupported action/reserved');
+    l_fire:=byte_at(21,'DMSC fire');l_use:=byte_at(22,'DMSC use');
+    l_weapon:=byte_at(23,'DMSC weapon');l_reserved:=byte_at(24,'DMSC reserved');
+    if l_command_version=2 then
+      if l_fire<>0 or l_use<>0 or l_weapon<>0 or l_reserved<>0 then
+        fail('DMSC/v2 unsupported action/reserved');
       end if;
-    end loop;
+    elsif l_fire<>0 or l_use<>0 or l_weapon<0 or l_weapon>9 or l_reserved<>0 then
+      fail('DMSC/v3 unsupported fire/use/action domain');
+    end if;
 
     if p_delta is null then fail('null DCTC delta');end if;
     g_delta:=p_delta;g_length:=utl_raw.length(g_delta);
@@ -726,7 +819,7 @@ create or replace package body doom_unified_delta_apply as
     exception when no_data_found then fail('DCTC player sector lookup');end;
     if l_sector<>l_derived_sector then fail('DCTC player sector mismatch');end if;
     l_nested_length:=fixed_i32_at(114);
-    if l_nested_length<60 or l_nested_length<>g_length-117 or
+    if l_nested_length<l_expected_dtic_header or l_nested_length<>g_length-117 or
        l_child_length<>c_dctc_header+l_nested_length then
       fail('DCTC nested exact length');
     end if;
@@ -736,7 +829,9 @@ create or replace package body doom_unified_delta_apply as
     -- Cross-lock the two independently versioned frontiers before either the
     -- nested relational apply or the outer player movement can mutate state.
     g_delta:=l_wrapped;g_length:=utl_raw.length(l_wrapped);
-    if rawtohex(utl_raw.substr(g_delta,13,6))<>'445449430100' or
+    if rawtohex(utl_raw.substr(g_delta,13,4))<>'44544943' or
+       byte_at(17,'nested DTIC version')<>l_expected_dtic_version or
+       byte_at(18,'nested DTIC status')<>0 or
        u64_at(57,'nested DTIC tic frontier')<>l_outer_tic or
        u64_at(65,'nested DTIC command frontier')<>l_outer_seq then
       fail('DCTC nested DTIC frontier/header');
@@ -746,14 +841,16 @@ create or replace package body doom_unified_delta_apply as
       p_expected_tic,p_expected_command_seq,l_wrapped,l_inner_tic,l_inner_seq,
       l_inner_version,l_inner_count,l_inner_sha);
     if l_inner_tic<>l_outer_tic or l_inner_seq<>l_outer_seq or
-       l_inner_version<>1 or l_inner_count<>1 then fail('DCTC nested apply metadata');end if;
+       l_inner_version<>l_expected_dtic_version or l_inner_count<>1 then
+      fail('DCTC nested apply metadata');
+    end if;
     update players set x=l_x,y=l_y,z=l_z,angle=l_angle_index*5625/1000
       where session_token=p_session_token and player_id=(
         select current_player_id from game_sessions where session_token=p_session_token);
     if sql%rowcount<>1 then fail('DCTC current player row');end if;
 
     p_committed_tic:=l_outer_tic;p_committed_command_seq:=l_outer_seq;
-    p_delta_version:=1;p_delta_count:=1;
+    p_delta_version:=l_inner_version;p_delta_count:=1;
     p_delta_sha:=lower(rawtohex(dbms_crypto.hash(p_delta,dbms_crypto.hash_sh256)));
   exception
     when others then

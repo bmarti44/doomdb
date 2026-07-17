@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Database and moving-frame gates passed; controls active | The strict-durable AQ/Scheduler worker sustains active movement at 20.065/26.008 ms p50/p95. The public AutoREST pipeline displays 300/300 unique moving frames at 30.80 FPS with 32.21/33.14 ms paint-gap p50/p95. Fire/use/weapon retained parity remains open. |
+| P12.0 | Database and moving-frame gates passed; retained controls in progress | The hot retained worker measures 20.883/28.527 ms p50/p95 with DMSC/v3. The depth-three AutoREST client displays 300/300 unique moving frames at 31.07 FPS with 32.18/32.98 ms paint-gap p50/p95. Dynamic weapon selection now passes; retained fire and use remain open. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -46,20 +46,22 @@ As of July 2026:
 
 ### Current performance
 
-The database-resident worker has passed the 30 FPS gate. Its latest active
-early-game 300-frame run is 20.065/26.008 ms p50/p95, equivalent to 49.8/38.4
-FPS. This includes retained simulation, strict relational delta persistence,
-rendering, compression, response storage, commit, and AQ correlation. One
-isolated 435 ms OJVM JIT pause remains visible in the maximum and is not hidden
-by the p95 claim.
+The database-resident worker and public AutoREST client have passed the 30 FPS
+gate. Adjacent hot 300-frame measurements put DMSC/v3 at 20.883/28.527 ms
+p50/p95 and DMSC/v2 at 20.332/28.284 ms. This includes retained simulation,
+strict relational delta persistence, rendering, compression, response storage,
+commit, and AQ correlation. Production readiness now warms the real movement,
+weapon-action, renderer, and codec call graph before advertising a worker.
 
-The public `DOOM_API.STEP` contract selects the worker for eligible movement;
-batches and fire/use/weapon/UI actions still fall back to the complete SQL
-oracle. A bounded depth-four client pipeline now passes the public moving-frame
-gate: 300/300 unique frames, 30.80 displayed FPS, and 32.21/33.14 ms paint-gap
-p50/p95. Input-to-decode latency is 120.49/148.26 ms p50/p95 and is reported
-separately. One AQ empty-poll tail caused a 96.19 ms maximum paint gap; extended
-frontier waiting and idempotent client retry prevent it from terminating play.
+The public `DOOM_API.STEP` contract selects the worker for movement and weapon
+selection; batches and fire/use/UI actions still fall back to the complete SQL
+oracle. DMSC/v3 advances LOWER/RAISE states and then returns automatically to
+lean DMSC/v2 at the exact quiescent READY state. A bounded depth-three client
+passes a weapon-switching 300-frame route with 300 unique frames, 31.07
+displayed FPS, and 32.18/32.98 ms paint-gap p50/p95. Request-to-decode latency
+is 49.30/81.13 ms p50/p95 and is reported separately. Version selection occurs
+after pipelined predecessors commit, while retries correlate by immutable
+sequence and action bytes.
 
 The worker passes live commit, idempotent replay, rollback/discard, post-commit
 reconstruction, restart fencing, and two-session isolation. SecureFile tracing

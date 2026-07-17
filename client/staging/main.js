@@ -135,7 +135,7 @@ async function boot() {
             nextDispatch = now + framePeriodMs;
             return;
         }
-        if (now < nextDispatch || inFlight >= 4)
+        if (now < nextDispatch || inFlight >= 3)
             return;
         tick();
         nextDispatch += framePeriodMs;

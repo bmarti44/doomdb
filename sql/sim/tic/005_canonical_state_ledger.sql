@@ -160,6 +160,10 @@ create or replace package doom_command_ledger authid definer as
     p_session in varchar2,p_lineage in varchar2,p_expected_tic in number,
     p_expected_seq in number,p_command in raw,p_result_tic out number,
     p_result_seq out number,p_command_sha out varchar2,p_state_blob out blob);
+  procedure begin_dmsc_v3(
+    p_session in varchar2,p_lineage in varchar2,p_expected_tic in number,
+    p_expected_seq in number,p_command in raw,p_result_tic out number,
+    p_result_seq out number,p_command_sha out varchar2,p_state_blob out blob);
   procedure finalize_command(
     p_session in varchar2,p_lineage in varchar2,p_seq in number,
     p_state_sha in varchar2,p_frame_sha in varchar2);
@@ -263,6 +267,43 @@ create or replace package body doom_command_ledger as
       raise_application_error(-20867,'DMSC/v2 unsupported action');end if;end loop;
     begin_command(p_session,p_lineage,p_result_seq,p_result_tic,l_turn,l_forward,
       l_strafe,l_run,0,0,0,0,0,'NONE',null,p_command_sha,p_state_blob);
+  end;
+
+  procedure begin_dmsc_v3(
+    p_session in varchar2,p_lineage in varchar2,p_expected_tic in number,
+    p_expected_seq in number,p_command in raw,p_result_tic out number,
+    p_result_seq out number,p_command_sha out varchar2,p_state_blob out blob
+  ) is
+    l_turn number;l_forward number;l_strafe number;l_run number;
+    l_fire number;l_use number;l_weapon number;
+  begin
+    p_result_tic:=null;p_result_seq:=null;p_command_sha:=null;p_state_blob:=null;
+    if p_expected_tic is null or p_expected_tic<>trunc(p_expected_tic) or
+       p_expected_tic not between 0 and 999999999998 or
+       p_expected_seq is null or p_expected_seq<>trunc(p_expected_seq) or
+       p_expected_seq not between 0 and 999999999998 then
+      raise_application_error(-20867,'invalid DMSC/v3 frontier');
+    end if;
+    if p_command is null or utl_raw.length(p_command)<>24 or
+       rawtohex(utl_raw.substr(p_command,1,4))<>'444D5343' or
+       byte_at(p_command,5)<>3 or byte_at(p_command,6)<>1 or
+       byte_at(p_command,7)<>0 or byte_at(p_command,8)<>0 or
+       byte_at(p_command,24)<>0 then
+      raise_application_error(-20867,'invalid DMSC/v3 header');
+    end if;
+    p_result_seq:=u64(p_command,9);p_result_tic:=p_expected_tic+1;
+    if p_result_seq<>p_expected_seq+1 then raise_application_error(-20867,'DMSC/v3 sequence');end if;
+    l_turn:=signed_byte(p_command,17);l_forward:=signed_byte(p_command,18);
+    l_strafe:=signed_byte(p_command,19);l_run:=byte_at(p_command,20);
+    l_fire:=byte_at(p_command,21);l_use:=byte_at(p_command,22);
+    l_weapon:=byte_at(p_command,23);
+    if l_turn not between -1 and 1 or l_forward not between -1 and 1 or
+       l_strafe not between -1 and 1 or l_run not in(0,1) or
+       l_fire not in(0,1) or l_use not in(0,1) or l_weapon not between 0 and 9 then
+      raise_application_error(-20867,'DMSC/v3 command domain');end if;
+    begin_command(p_session,p_lineage,p_result_seq,p_result_tic,l_turn,l_forward,
+      l_strafe,l_run,l_fire,l_use,l_weapon,0,0,'NONE',null,
+      p_command_sha,p_state_blob);
   end;
 
   procedure finalize_command(

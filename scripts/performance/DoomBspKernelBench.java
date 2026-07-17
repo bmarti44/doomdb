@@ -168,7 +168,7 @@ public final class DoomBspKernelBench {
   private static boolean directApplied;private static String directRequest;
   private static double directOldCameraX,directOldCameraY,directOldEyeZ;
   private static BigDecimal directOldExactX,directOldExactY;
-  private static int directOldAngle,directOldHealth,directOldArmor;
+  private static int directOldAngle,directOldHealth,directOldArmor,directOldAmmo,directOldWeaponAsset;
   private static String directOldMode;
   private static String lastDynamicFailure="";
   private static long lastRenderNanos, lastCodecNanos, lastBlobNanos;
@@ -750,20 +750,23 @@ public final class DoomBspKernelBench {
     mobjCount=dticPriorMobjCount;liveTic=dticPriorLiveTic;retainedDticSeq=dticPriorSeq;
     liveCameraX=directOldCameraX;liveCameraY=directOldCameraY;cameraEyeZ=directOldEyeZ;
     liveExactCameraX=directOldExactX;liveExactCameraY=directOldExactY;liveAngle=directOldAngle;
-    liveHealth=directOldHealth;liveArmor=directOldArmor;liveMode=directOldMode;
+    liveHealth=directOldHealth;liveArmor=directOldArmor;liveAmmo=directOldAmmo;
+    weaponAsset=directOldWeaponAsset;liveMode=directOldMode;
     prepareExactSegmentRelatives();directApplied=false;directRequest=null;
   }
 
   static String stageRetainedOwnerAndRender(String request,long nextTic,long nextSeq,
       NUMBER playerX,NUMBER playerY,NUMBER playerEyeZ,int playerAngleIndex,int playerHealth,
-      int playerArmor,int playerAlive,int changeCount,int[] changeOp,int[] worldId,int[] worldState,
+      int playerArmor,int playerAlive,String selectedWeapon,int selectedAmmo,
+      int changeCount,int[] changeOp,int[] worldId,int[] worldState,
       NUMBER[] worldX,NUMBER[] worldY,NUMBER[] worldZ,NUMBER[] worldAngle,
       String stateSha,Blob payload)throws Exception{
     require(!directApplied&&!dticApplied&&request!=null&&request.matches("[0-9a-f]{32}")&&
         nextTic==((long)liveTic)+1&&nextTic<=Integer.MAX_VALUE&&nextSeq>=0&&
         (retainedDticSeq<0||nextSeq==retainedDticSeq+1)&&playerX!=null&&playerY!=null&&
         playerEyeZ!=null&&playerAngleIndex>=0&&playerAngleIndex<64&&playerHealth>=0&&
-        playerArmor>=0&&(playerAlive==0||playerAlive==1)&&changeCount>=0&&changeCount<=4096&&
+        playerArmor>=0&&(playerAlive==0||playerAlive==1)&&selectedWeapon!=null&&selectedAmmo>=0&&
+        spriteAssetByName.containsKey(weaponPatch(selectedWeapon))&&changeCount>=0&&changeCount<=4096&&
         changeOp!=null&&worldId!=null&&worldState!=null&&worldX!=null&&worldY!=null&&worldZ!=null&&
         changeOp.length>=changeCount&&worldId.length>=changeCount&&worldState.length>=changeCount&&
         worldX.length>=changeCount&&worldY.length>=changeCount&&worldZ.length>=changeCount&&
@@ -781,7 +784,8 @@ public final class DoomBspKernelBench {
     dticPriorMobjCount=mobjCount;dticPriorLiveTic=liveTic;dticPriorSeq=retainedDticSeq;
     directOldCameraX=liveCameraX;directOldCameraY=liveCameraY;directOldEyeZ=cameraEyeZ;
     directOldExactX=liveExactCameraX;directOldExactY=liveExactCameraY;directOldAngle=liveAngle;
-    directOldHealth=liveHealth;directOldArmor=liveArmor;directOldMode=liveMode;dticAppliedActors=mobjCount;
+    directOldHealth=liveHealth;directOldArmor=liveArmor;directOldAmmo=liveAmmo;
+    directOldWeaponAsset=weaponAsset;directOldMode=liveMode;dticAppliedActors=mobjCount;
     for(int mobj=0;mobj<mobjCount;mobj++){dticActorId[mobj]=mobjId[mobj];dticOldState[mobj]=mobjState[mobj];
       dticOldX[mobj]=mobjX[mobj];dticOldY[mobj]=mobjY[mobj];directOldZ[mobj]=mobjZ[mobj];
       dticActorX[mobj]=mobjAngle[mobj];}
@@ -789,6 +793,7 @@ public final class DoomBspKernelBench {
     try{liveExactCameraX=playerX.bigDecimalValue();liveExactCameraY=playerY.bigDecimalValue();
       liveCameraX=playerX.doubleValue();liveCameraY=playerY.doubleValue();cameraEyeZ=playerEyeZ.doubleValue();
       liveAngle=playerAngleIndex;liveHealth=playerHealth;liveArmor=playerArmor;liveMode=playerAlive==0?"dead":"game";
+      liveAmmo=selectedAmmo;weaponAsset=spriteAssetByName.get(weaponPatch(selectedWeapon));
       liveTic=(int)nextTic;retainedDticSeq=nextSeq;prepareExactSegmentRelatives();
       for(int change=0;change<changeCount;change++){int index=retainedMobjIndex(worldId[change]);
         if(changeOp[change]==0){require(index>=0,"direct retained remove missing");int last=--mobjCount;

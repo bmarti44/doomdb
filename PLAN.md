@@ -1735,6 +1735,29 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   sequence after transient ORDS failures, preserving exactly-once state. This
   closes the public movement cadence gate. Retained fire/use/weapon parity and
   the complete T5--T7 regression remain before P12.0 completion.
+- Retained-control execution order (2026-07-16): measured SQL fallbacks are
+  8,173 ms fire, 8,418 ms use, and 8,010 ms weapon selection; the next retained
+  movement then spends 491--615 ms reconstructing. Implement weapon selection
+  first, fire second, and use/world machines last. Preserve DMSC/v2 exactly and
+  use the fixed-length DMSC/v3 action envelope plus independently versioned
+  DCTC/DTIC results. Public v3 routing remains off until strict delta, canonical
+  state, renderer rollback, restart, differential, and repeated 300-frame gates
+  pass. See `reports/performance-P12.0-retained-controls-design-2026-07-16.md`.
+- Retained weapon and warm-public cutover (2026-07-16): DMSC/v3, DTIC/v2,
+  canonical state, durable SQL apply, renderer/HUD rollback, checkpoint v4,
+  restart state, and LOWER/RAISE events are integrated. A nine-tic acceptance
+  proves eight exact v3 transition tics, automatic quiescent return to DTIC/v1,
+  nine in-worker SQL parity checks, and distinct weapon frames. Version
+  selection is recomputed only after pipelined predecessors commit. Matched hot
+  300-frame results are 20.883/28.527 ms for v3 versus 20.332/28.284 ms for v2;
+  the apparent cold regression was incomplete OJVM warmup, so READY now warms
+  the production movement/action/render call graph. The smallest reliable
+  public window is depth three: a weapon-switching route produced 300/300
+  unique frames at 31.065 FPS, 32.181/32.977 ms paint gaps, and
+  49.303/81.127 ms request-to-decode latency. Depth two was borderline and
+  missed one repeat at 29.462 FPS. Retained fire is next, then use/world
+  machines; both continue to use the complete SQL fallback until their own
+  strict parity gates pass.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior
