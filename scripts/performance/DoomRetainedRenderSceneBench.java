@@ -91,6 +91,23 @@ public final class DoomRetainedRenderSceneBench {
       try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}
       return "ERROR:"+failure.getClass().getName();}
   }
+  public static String stageOwnerTicWorld(String owner,long ownerGeneration,String request,long nextTic,
+      long nextSeq,NUMBER playerX,NUMBER playerY,NUMBER playerEyeZ,int playerAngleIndex,
+      int playerHealth,int playerArmor,int playerAlive,String selectedWeapon,int selectedAmmo,
+      int changeCount,int[] changeOp,int[] worldId,
+      int[] worldState,NUMBER[] worldX,NUMBER[] worldY,NUMBER[] worldZ,NUMBER[] worldAngle,
+      int sectorChangeCount,int[] sectorIds,int[] sectorLights,byte[] geometryPack,
+      String stateSha,Blob payload){
+    try{require(loaded&&stateMapFenced&&session.equals(owner)&&generation==ownerGeneration,
+        "direct retained world scene fence");String result=DoomBspKernelBench.stageRetainedOwnerAndRender(request,
+          nextTic,nextSeq,playerX,playerY,playerEyeZ,playerAngleIndex,playerHealth,playerArmor,playerAlive,
+          selectedWeapon,selectedAmmo,changeCount,changeOp,worldId,worldState,worldX,worldY,worldZ,worldAngle,
+          sectorChangeCount,sectorIds,sectorLights,geometryPack,stateSha,payload);
+      lastError="";return result;
+    }catch(Throwable failure){lastError=failure.getClass().getName()+":"+failure.getMessage();
+      try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}
+      return "ERROR:"+failure.getClass().getName();}
+  }
   public static String acceptOwnerTic(String owner,long ownerGeneration,String request){
     try{require(loaded&&stateMapFenced&&session.equals(owner)&&generation==ownerGeneration,
         "direct retained accept scene fence");DoomBspKernelBench.acceptRetainedOwner(request);

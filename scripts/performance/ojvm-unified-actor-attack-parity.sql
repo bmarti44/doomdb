@@ -34,9 +34,10 @@ begin
     doom_api.new_game(3,session_,payload_);
     select save_lineage,current_tic,last_command_seq,rng_cursor into lineage_,tic_,seq_,rng_
       from game_sessions where session_token=session_;
+    -- The unified owner models the next resulting tic, whose event ordinal
+    -- frontier is always zero.  Keep the standalone SQL oracle on that same
+    -- empty resulting-tic frontier instead of seeding a prior-tic sentinel.
     delete from game_events where session_token=session_;
-    insert into game_events(session_token,tic,event_ordinal,event_type)
-      values(session_,tic_,4,'ATTACK_FIXTURE_BASE');
     update mobjs m set awake=0,attack_cooldown=0,health=0,monster_health_seen=0,
       death_processed=1,state_tics=0,sector_id=coalesce(sector_id,(select sector_id from
       table(doom_bsp_locate(m.x,m.y)) where rownum=1)) where session_token=session_ and exists(
@@ -133,8 +134,7 @@ begin
     select count(*) into actors_ from mobjs m join doom_monster_def d on d.thing_type=m.thing_type
       where m.session_token=session_;
     select coalesce(max(mobj_id),0)+1 into next_mobj_ from mobjs where session_token=session_;
-    select coalesce(max(event_ordinal)+1,0) into next_event_ from game_events
-      where session_token=session_ and tic=tic_;
+    next_event_:=0;
     request_:=lower(rawtohex(sys_guid()));
     result_:=doom_unified_actor_load(session_,lineage_,1,map_sha_);
     if substr(result_,1,3)<>'OK|' then raise_application_error(-20000,'attack load '||result_);end if;
@@ -210,9 +210,35 @@ begin
     ' count='||case_count_||' PASS');
 end;
 /
-begin doom_perf_unified_attack_cases(1,7);end;
+-- Keep each fixture in its own PL/SQL call.  doom_api.new_game returns a BLOB
+-- locator, and retaining seven locators in one activation can terminate the
+-- OJVM-backed session under the Free container's memory ceiling before the
+-- Java catch-all can report a useful error.
+begin doom_perf_unified_attack_cases(1,1);end;
 /
-begin doom_perf_unified_attack_cases(8,13);end;
+begin doom_perf_unified_attack_cases(2,2);end;
+/
+begin doom_perf_unified_attack_cases(3,3);end;
+/
+begin doom_perf_unified_attack_cases(4,4);end;
+/
+begin doom_perf_unified_attack_cases(5,5);end;
+/
+begin doom_perf_unified_attack_cases(6,6);end;
+/
+begin doom_perf_unified_attack_cases(7,7);end;
+/
+begin doom_perf_unified_attack_cases(8,8);end;
+/
+begin doom_perf_unified_attack_cases(9,9);end;
+/
+begin doom_perf_unified_attack_cases(10,10);end;
+/
+begin doom_perf_unified_attack_cases(11,11);end;
+/
+begin doom_perf_unified_attack_cases(12,12);end;
+/
+begin doom_perf_unified_attack_cases(13,13);end;
 /
 begin
   dbms_output.put_line('UNIFIED_ACTOR_ATTACK_PARITY_OK cases=13 armor=3 melee_range=1'||

@@ -70,6 +70,14 @@ public final class DoomBspKernelBench {
   private static String[] leftUpper, leftLower, leftMiddle;
   private static int[] rightUpperAsset,rightLowerAsset,rightMiddleAsset;
   private static int[] leftUpperAsset,leftLowerAsset,leftMiddleAsset;
+  // Dynamic switch presentation is indexed by immutable map linedef id.  The
+  // staged image comes from SQL's LINE_STATE/ACTIVE_SWITCHES oracle; no route
+  // or map-specific linedef ids are embedded in the renderer.
+  private static byte[] lineSwitchOn;
+  private static int[] lineSwitchTimer;
+  private static int[] switchOnWallAsset;
+  private static int mapLineCount;
+  private static boolean anySwitchOn;
   private static double[] segLength;
   private static byte[] segSolid;
   private static double[] sectorFloor, sectorCeiling;
@@ -180,13 +188,21 @@ public final class DoomBspKernelBench {
   private static int[] directSectorId=new int[0],directOldSectorLight=new int[0];
   private static int[] directOldSectorLightBand=new int[0];
   private static int directSectorChangeCount;
+  private static int[] directGeometryId=new int[0];
+  private static double[] directOldSectorFloor=new double[0],directOldSectorCeiling=new double[0];
+  private static int directGeometryChangeCount;
+  private static int[] directSwitchId=new int[0],directOldSwitchTimer=new int[0];
+  private static byte[] directOldSwitchOn=new byte[0];
+  private static int directSwitchChangeCount;
+  private static boolean directOldAnySwitchOn;
   private static double directOldCameraX,directOldCameraY,directOldEyeZ;
   private static BigDecimal directOldExactX,directOldExactY;
-  private static int directOldAngle,directOldHealth,directOldArmor,directOldAmmo,directOldWeaponAsset;
+  private static int directOldAngle,directOldHealth,directOldArmor,directOldAmmo,directOldWeaponAsset,directOldComplete;
   private static String directOldMode;
   private static String lastDynamicFailure="";
   private static long lastRenderNanos, lastCodecNanos, lastBlobNanos;
   private static long lastBspNanos, lastSolidNanos, lastPortalNanos;
+  private static long lastPortalResetNanos,lastPortalSortNanos,lastPortalWalkNanos;
   private static long lastPlaneNanos, lastSpriteNanos, lastPresentationNanos;
   private static double cameraEyeZ = 41.0;
   private static double liveCameraX = -416.0, liveCameraY = 256.0;
@@ -205,6 +221,7 @@ public final class DoomBspKernelBench {
   private static int visiblePairs;
   private static int activePortalPairs;
   private static int largeSortColumns,orderedHitTotal,wallRowAttempts,planeRowAttempts;
+  private static int occludedBboxes;
   private static volatile long sink;
 
   private DoomBspKernelBench() {}
@@ -506,6 +523,11 @@ public final class DoomBspKernelBench {
   }
 
   private static void decodeDynamicSnapshot(Blob snapshot,String expectedSession) throws Exception {
+    // A snapshot starts a new retained/recovery image. Switch state is then
+    // supplied by the first complete DMSV trailer; never inherit it from a
+    // prior worker generation while waiting for that staged image.
+    if(lineSwitchOn!=null){Arrays.fill(lineSwitchOn,(byte)0);Arrays.fill(lineSwitchTimer,-1);}
+    anySwitchOn=false;
     byte[] encoded=snapshotBytes(snapshot);
     if(encoded.length>0&&encoded[0]=='{'){
       require(expectedSession==null,"session-fenced renderer requires binary snapshot");
@@ -571,11 +593,14 @@ public final class DoomBspKernelBench {
     return -1;
   }
 
-  private static void refreshLiveGeometry() {
-    prepareExactSegmentRelatives();
+  private static void recomputeSegSolidity(){
     for(int id=0;id<segTotal;id++){int left=leftSector[id],right=rightSector[id];
       segSolid[id]=(byte)(left<0||right<0||Math.min(sectorCeiling[left],sectorCeiling[right])<=
         Math.max(sectorFloor[left],sectorFloor[right])?1:0);}
+  }
+
+  private static void refreshLiveGeometry() {
+    prepareExactSegmentRelatives();recomputeSegSolidity();
   }
 
   private static void decodeRetainedDelta(Blob delta,String expectedSession) throws Exception {
@@ -771,11 +796,17 @@ public final class DoomBspKernelBench {
     liveCameraX=directOldCameraX;liveCameraY=directOldCameraY;cameraEyeZ=directOldEyeZ;
     liveExactCameraX=directOldExactX;liveExactCameraY=directOldExactY;liveAngle=directOldAngle;
     liveHealth=directOldHealth;liveArmor=directOldArmor;liveAmmo=directOldAmmo;
-    weaponAsset=directOldWeaponAsset;liveMode=directOldMode;
+    weaponAsset=directOldWeaponAsset;liveComplete=directOldComplete;liveMode=directOldMode;
     for(int change=0;change<directSectorChangeCount;change++){int sector=directSectorId[change];
       sectorLight[sector]=directOldSectorLight[change];
       sectorLightBand[sector]=directOldSectorLightBand[change];}
-    directSectorChangeCount=0;
+    for(int change=0;change<directGeometryChangeCount;change++){int sector=directGeometryId[change];
+      sectorFloor[sector]=directOldSectorFloor[change];sectorCeiling[sector]=directOldSectorCeiling[change];}
+    for(int change=0;change<directSwitchChangeCount;change++){int line=directSwitchId[change];
+      lineSwitchOn[line]=directOldSwitchOn[change];lineSwitchTimer[line]=directOldSwitchTimer[change];}
+    anySwitchOn=directOldAnySwitchOn;
+    if(directGeometryChangeCount>0)recomputeSegSolidity();
+    directSectorChangeCount=0;directGeometryChangeCount=0;directSwitchChangeCount=0;
     prepareExactSegmentRelatives();directApplied=false;directRequest=null;
   }
 
@@ -785,6 +816,19 @@ public final class DoomBspKernelBench {
       int changeCount,int[] changeOp,int[] worldId,int[] worldState,
       NUMBER[] worldX,NUMBER[] worldY,NUMBER[] worldZ,NUMBER[] worldAngle,
       int sectorChangeCount,int[] sectorIds,int[] sectorLights,
+      String stateSha,Blob payload)throws Exception{
+    return stageRetainedOwnerAndRender(request,nextTic,nextSeq,playerX,playerY,playerEyeZ,
+        playerAngleIndex,playerHealth,playerArmor,playerAlive,selectedWeapon,selectedAmmo,
+        changeCount,changeOp,worldId,worldState,worldX,worldY,worldZ,worldAngle,
+        sectorChangeCount,sectorIds,sectorLights,null,stateSha,payload);
+  }
+
+  static String stageRetainedOwnerAndRender(String request,long nextTic,long nextSeq,
+      NUMBER playerX,NUMBER playerY,NUMBER playerEyeZ,int playerAngleIndex,int playerHealth,
+      int playerArmor,int playerAlive,String selectedWeapon,int selectedAmmo,
+      int changeCount,int[] changeOp,int[] worldId,int[] worldState,
+      NUMBER[] worldX,NUMBER[] worldY,NUMBER[] worldZ,NUMBER[] worldAngle,
+      int sectorChangeCount,int[] sectorIds,int[] sectorLights,byte[] geometryPack,
       String stateSha,Blob payload)throws Exception{
     require(!directApplied&&!dticApplied&&request!=null&&request.matches("[0-9a-f]{32}")&&
         nextTic==((long)liveTic)+1&&nextTic<=Integer.MAX_VALUE&&nextSeq>=0&&
@@ -812,6 +856,51 @@ public final class DoomBspKernelBench {
       require(sectorIds[change]>priorSector&&sectorIds[change]<sectorFloor.length&&
           sectorLights[change]>=0&&sectorLights[change]<=255,"direct retained sector order/range");
       priorSector=sectorIds[change];}
+    int geometryCount=0,geometryComplete=-1;int[] geometryIds=null;int[] geometryFloors=null,geometryCeilings=null;
+    int switchCount=0;int[] switchIds=null,switchTimers=null;byte[] switchValues=null;
+    if(geometryPack!=null){KernelInput geometry=new KernelInput(geometryPack);
+      require(geometry.readInt()==0x444d5747&&geometry.readUnsignedByte()==3&&
+          geometry.readUnsignedByte()==0,"direct retained geometry header");
+      geometryCount=geometry.readUnsignedShort();int geometryMobjs=geometry.readUnsignedShort();
+      geometryComplete=geometry.readUnsignedByte();require(geometry.readUnsignedByte()==0&&
+          (geometryComplete==0||geometryComplete==1)&&geometryCount<=sectorFloor.length,
+          "direct retained geometry count/status");
+      int playerZLength=geometry.readUnsignedByte();require(playerZLength>=1&&playerZLength<=22,
+          "direct retained geometry player Z");for(int byteIndex=0;byteIndex<22;byteIndex++)geometry.readUnsignedByte();
+      geometry.readInt();geometry.readInt();geometry.readInt();geometry.readInt();geometry.readInt();
+      geometryIds=new int[geometryCount];geometryFloors=new int[geometryCount];geometryCeilings=new int[geometryCount];
+      int prior=-1;for(int change=0;change<geometryCount;change++){int sector=geometry.readInt();
+        int floor=geometry.readInt(),ceiling=geometry.readInt();geometry.readInt();geometry.readInt();
+        require(sector>prior&&sector<sectorFloor.length&&
+            ceiling>=floor,"direct retained geometry row");prior=sector;geometryIds[change]=sector;
+        geometryFloors[change]=floor;geometryCeilings[change]=ceiling;}
+      int priorMobj=-1;for(int change=0;change<geometryMobjs;change++){int id=geometry.readInt();
+        int zLength=geometry.readUnsignedByte();require(zLength>=1&&zLength<=22,
+          "direct retained geometry mobj Z");for(int byteIndex=0;byteIndex<22;byteIndex++)geometry.readUnsignedByte();
+        require(id>priorMobj,"direct retained geometry mobj order");priorMobj=id;}
+      // Optional DMSV/v1 complete switch image.  Keeping this as a strict
+      // trailer preserves DMWG/v3 compatibility while the SQL owner rolls the
+      // producer out.  Each row is line i32, on u8, timer i32, restore-name
+      // u8+UTF-8.  The name is checked against immutable sidedef metadata so a
+      // corrupt/mismatched SQL image cannot select an arbitrary asset.
+      if(!geometry.exhausted()){
+        require(geometry.readInt()==0x444d5356&&geometry.readUnsignedByte()==1&&
+            geometry.readUnsignedByte()==1,"direct retained switch header");
+        switchCount=geometry.readUnsignedShort();require(switchCount==mapLineCount,
+            "direct retained switch completeness");
+        switchIds=new int[switchCount];switchValues=new byte[switchCount];switchTimers=new int[switchCount];
+        int priorLine=-1;for(int change=0;change<switchCount;change++){
+          int line=geometry.readInt(),on=geometry.readUnsignedByte(),timer=geometry.readInt();
+          int nameLength=geometry.readUnsignedByte();require(nameLength<=32,
+              "direct retained switch texture length");
+          String restore=new String(geometry.readBytes(nameLength),StandardCharsets.UTF_8);
+          require(line>priorLine&&line>=0&&line<lineSwitchOn.length&&(on==0||on==1)&&
+              ((on==1&&timer>=0)||(on==0&&timer==-1))&&switchRestoreMatches(line,restore),
+              "direct retained switch row");
+          priorLine=line;switchIds[change]=line;switchValues[change]=(byte)on;switchTimers[change]=timer;
+        }
+      }
+      require(geometry.exhausted(),"direct retained geometry trailing bytes");}
     ensureMobjCapacity(mobjCount+changeCount);
     if(directSectorId.length<sectorChangeCount){directSectorId=new int[sectorChangeCount];
       directOldSectorLight=new int[sectorChangeCount];directOldSectorLightBand=new int[sectorChangeCount];}
@@ -819,7 +908,7 @@ public final class DoomBspKernelBench {
     directOldCameraX=liveCameraX;directOldCameraY=liveCameraY;directOldEyeZ=cameraEyeZ;
     directOldExactX=liveExactCameraX;directOldExactY=liveExactCameraY;directOldAngle=liveAngle;
     directOldHealth=liveHealth;directOldArmor=liveArmor;directOldAmmo=liveAmmo;
-    directOldWeaponAsset=weaponAsset;directOldMode=liveMode;dticAppliedActors=mobjCount;
+    directOldWeaponAsset=weaponAsset;directOldComplete=liveComplete;directOldMode=liveMode;dticAppliedActors=mobjCount;
     for(int mobj=0;mobj<mobjCount;mobj++){dticActorId[mobj]=mobjId[mobj];dticOldState[mobj]=mobjState[mobj];
       dticOldX[mobj]=mobjX[mobj];dticOldY[mobj]=mobjY[mobj];directOldZ[mobj]=mobjZ[mobj];
       dticActorX[mobj]=mobjAngle[mobj];}
@@ -827,11 +916,23 @@ public final class DoomBspKernelBench {
     for(int change=0;change<sectorChangeCount;change++){int sector=sectorIds[change];
       directSectorId[change]=sector;directOldSectorLight[change]=sectorLight[sector];
       directOldSectorLightBand[change]=sectorLightBand[sector];}
+    if(directGeometryId.length<geometryCount){directGeometryId=new int[geometryCount];
+      directOldSectorFloor=new double[geometryCount];directOldSectorCeiling=new double[geometryCount];}
+    directGeometryChangeCount=geometryCount;
+    for(int change=0;change<geometryCount;change++){int sector=geometryIds[change];directGeometryId[change]=sector;
+      directOldSectorFloor[change]=sectorFloor[sector];directOldSectorCeiling[change]=sectorCeiling[sector];}
+    if(directSwitchId.length<switchCount){directSwitchId=new int[switchCount];
+      directOldSwitchOn=new byte[switchCount];directOldSwitchTimer=new int[switchCount];}
+    directSwitchChangeCount=switchCount;
+    directOldAnySwitchOn=anySwitchOn;
+    for(int change=0;change<switchCount;change++){int line=switchIds[change];directSwitchId[change]=line;
+      directOldSwitchOn[change]=lineSwitchOn[line];directOldSwitchTimer[change]=lineSwitchTimer[line];}
     directApplied=true;directRequest=request;
     try{liveExactCameraX=playerX.bigDecimalValue();liveExactCameraY=playerY.bigDecimalValue();
       liveCameraX=playerX.doubleValue();liveCameraY=playerY.doubleValue();cameraEyeZ=playerEyeZ.doubleValue();
       liveAngle=playerAngleIndex;liveHealth=playerHealth;liveArmor=playerArmor;liveMode=playerAlive==0?"dead":"game";
       liveAmmo=selectedAmmo;weaponAsset=spriteAssetByName.get(weaponPatch(selectedWeapon));
+      if(geometryComplete>=0)liveComplete=geometryComplete;
       liveTic=(int)nextTic;retainedDticSeq=nextSeq;prepareExactSegmentRelatives();
       for(int change=0;change<changeCount;change++){int index=retainedMobjIndex(worldId[change]);
         if(changeOp[change]==0){require(index>=0,"direct retained remove missing");int last=--mobjCount;
@@ -844,6 +945,14 @@ public final class DoomBspKernelBench {
       for(int change=0;change<sectorChangeCount;change++){int sector=sectorIds[change];
         sectorLight[sector]=sectorLights[change];
         sectorLightBand[sector]=Math.max(0,Math.min(31,(255-sectorLights[change])/8));}
+      for(int change=0;change<geometryCount;change++){int sector=geometryIds[change];
+        sectorFloor[sector]=geometryFloors[change];sectorCeiling[sector]=geometryCeilings[change];}
+      if(geometryCount>0)recomputeSegSolidity();
+      boolean nextAnySwitchOn=false;
+      for(int change=0;change<switchCount;change++){int line=switchIds[change];
+        lineSwitchOn[line]=switchValues[change];lineSwitchTimer[line]=switchTimers[change];
+        nextAnySwitchOn|=switchValues[change]!=0;}
+      if(switchCount>0)anySwitchOn=nextAnySwitchOn;
       lastRetainedUpdateNanos=System.nanoTime()-updateStarted;
       long started=System.nanoTime();traverseAndProject(liveCameraX,liveCameraY,liveAngle,false);
       lastRenderNanos=System.nanoTime()-started;started=System.nanoTime();encodePackedTicZeroPayload(stateSha);
@@ -857,7 +966,9 @@ public final class DoomBspKernelBench {
   }
 
   static void acceptRetainedOwner(String request){require(directApplied&&request!=null&&request.equals(directRequest),
-      "direct retained accept fence");directSectorChangeCount=0;directApplied=false;directRequest=null;}
+      "direct retained accept fence");directSectorChangeCount=0;directGeometryChangeCount=0;
+      directSwitchChangeCount=0;
+      directApplied=false;directRequest=null;}
   static void discardRetainedOwner(String request){require(directApplied&&request!=null&&request.equals(directRequest),
       "direct retained discard fence");rollbackDirectOwner();}
   static boolean retainedOwnerPending(){return directApplied;}
@@ -1333,7 +1444,7 @@ public final class DoomBspKernelBench {
     lastKernelLoadNanos=System.nanoTime()-started;
   }
 
-  public static void buildKernelPack() throws Exception {
+  private static void buildKernelPackUnsafe() throws Exception {
     Connection connection=DriverManager.getConnection("jdbc:default:connection:");
     codecSha256=MessageDigest.getInstance("SHA-256"); load(connection);
     byte[] bytes=encodeKernelPack(); byte[] digest=codecSha256.digest(bytes);
@@ -1352,6 +1463,19 @@ public final class DoomBspKernelBench {
       require(statement.executeUpdate()==1,"renderer kernel metadata update failed");
     }
     databaseCacheLoaded=true;
+  }
+
+  /** Catch-all OJVM entry point: no Java Throwable may escape into the session. */
+  public static String buildKernelPack() {
+    try {
+      buildKernelPackUnsafe();
+      lastDynamicFailure="";
+      return "OK";
+    } catch(Throwable failure) {
+      databaseCacheLoaded=false;
+      lastDynamicFailure=failure.getClass().getName()+":"+failure.getMessage();
+      return "ERROR:"+failure.getClass().getName();
+    }
   }
 
   public static String warmKernelPack(int iterations) {
@@ -1563,7 +1687,7 @@ public final class DoomBspKernelBench {
       require(index == wallAssetCount, "wall asset count mismatch");
     }
     loadPackedTexels(connection, "wall_texture", wallAssetTexels,
-        wallAssetWidth, wallAssetHeight, 1_256_192);
+        wallAssetWidth, wallAssetHeight, 1_272_576);
     int flatAssetCount;
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
@@ -1833,6 +1957,34 @@ public final class DoomBspKernelBench {
     return max >= camX[0] - PAD && min <= camX[WIDTH - 1] + PAD;
   }
 
+  /**
+   * Conservative front-to-back rejection.  A child is skipped only when every
+   * screen column touched by its complete AABB already has a strictly nearer
+   * dynamically-solid hit.  Near-plane crossings always fail open.
+   */
+  private static boolean bboxOccluded(int offset,double px,double py,double dirX,double dirY,
+      double plnX,double plnY,double planeSquared){
+    int left=bboxLeft[offset],right=bboxRight[offset],bottom=bboxBottom[offset],top=bboxTop[offset];
+    double minProjection=Double.POSITIVE_INFINITY,maxProjection=Double.NEGATIVE_INFINITY;
+    double minDepth=Double.POSITIVE_INFINITY;
+    for(int i=0;i<4;i++){
+      double relX=((i==0||i==3)?left:right)-px,relY=(i<2?bottom:top)-py;
+      double depth=relX*dirX+relY*dirY;if(depth<=NEAR)return false;
+      minDepth=Math.min(minDepth,depth);
+      double projected=(relX*plnX+relY*plnY)/(depth*planeSquared);
+      minProjection=Math.min(minProjection,projected);maxProjection=Math.max(maxProjection,projected);
+    }
+    int first=Arrays.binarySearch(camX,minProjection-PAD);
+    first=first>=0?first:-first-1;
+    int last=Arrays.binarySearch(camX,maxProjection+PAD);
+    last=last>=0?last:-last-2;
+    if(first<0)first=0;if(last>=WIDTH)last=WIDTH-1;if(first>last)return false;
+    double strictLimit=minDepth-1e-9;
+    for(int column=first;column<=last;column++)
+      if(nearestSolidDepth[column]>strictLimit)return false;
+    return true;
+  }
+
   private static void projectSeg(int id, double px, double py, double dirX, double dirY,
       double plnX, double plnY, double planeSquared, boolean retainCandidates) {
     double ax = segRelativeStartX[id], ay = segRelativeStartY[id];
@@ -1915,6 +2067,8 @@ public final class DoomBspKernelBench {
     Arrays.fill(overlayDepth, Double.POSITIVE_INFINITY);
     Arrays.fill(overlayKind, (byte) 0);
     if (retainCandidates) Arrays.fill(portalCandidates, (byte) 0);
+    lastPortalResetNanos=System.nanoTime()-stageStarted;
+    lastPortalSortNanos=lastPortalWalkNanos=0;
     for (int column = 0; column < WIDTH; column++) {
       intervalOffset[column] = intervalTotal;
       portalClipTop[column] = 0.0; portalClipBottom[column] = 200.0;
@@ -2244,6 +2398,27 @@ public final class DoomBspKernelBench {
     Integer asset=wallAssetByName.get(name);return asset==null?-1:asset.intValue();
   }
 
+  private static String rightRestoreTexture(int id){
+    if(!"-".equals(rightMiddle[id]))return rightMiddle[id];
+    if(!"-".equals(rightUpper[id]))return rightUpper[id];
+    if(!"-".equals(rightLower[id]))return rightLower[id];
+    return "NONE";
+  }
+
+  private static boolean switchRestoreMatches(int line,String restore){
+    boolean found=false;String expected=null;
+    for(int id=0;id<segTotal;id++)if(segLineId[id]==line){String candidate=rightRestoreTexture(id);
+      if(!found){expected=candidate;found=true;}else require(expected.equals(candidate),
+          "linedef sidedef restore mismatch");}
+    return found&&expected.startsWith("SW1")&&expected.equals(restore);
+  }
+
+  private static int presentedWallAsset(int seg,int asset){
+    if(asset<0||!anySwitchOn)return asset;
+    int line=segLineId[seg];return line>=0&&line<lineSwitchOn.length&&lineSwitchOn[line]!=0?
+        switchOnWallAsset[asset]:asset;
+  }
+
   private static void buildWallHotCaches(){
     rightUpperAsset=new int[segTotal];rightLowerAsset=new int[segTotal];
     rightMiddleAsset=new int[segTotal];leftUpperAsset=new int[segTotal];
@@ -2255,6 +2430,18 @@ public final class DoomBspKernelBench {
       leftLowerAsset[id]=wallAsset(leftLower[id]);leftMiddleAsset[id]=wallAsset(leftMiddle[id]);
       double dx=segEndX[id]-segStartX[id],dy=segEndY[id]-segStartY[id];
       segLength[id]=Math.sqrt(dx*dx+dy*dy);
+    }
+    int maxLine=-1;for(int id=0;id<segTotal;id++)maxLine=Math.max(maxLine,segLineId[id]);
+    lineSwitchOn=new byte[maxLine+1];lineSwitchTimer=new int[maxLine+1];
+    Arrays.fill(lineSwitchTimer,-1);boolean[] seenLine=new boolean[maxLine+1];mapLineCount=0;
+    for(int id=0;id<segTotal;id++)if(rightRestoreTexture(id).startsWith("SW1")&&
+        !seenLine[segLineId[id]]){seenLine[segLineId[id]]=true;mapLineCount++;}
+    switchOnWallAsset=new int[wallAssetWidth.length];
+    for(Map.Entry<String,Integer> entry:wallAssetByName.entrySet()){
+      int base=entry.getValue();String name=entry.getKey();int selected=base;
+      if(name.startsWith("SW1")){Integer alternate=wallAssetByName.get("SW2"+name.substring(3));
+        require(alternate!=null,"switch wall mate missing "+name);selected=alternate.intValue();}
+      switchOnWallAsset[base]=selected;
     }
     wallAnimationByAsset=new int[wallAssetWidth.length][];
     for(Map.Entry<String,int[]> entry:animationByAsset.entrySet()){
@@ -2300,7 +2487,7 @@ public final class DoomBspKernelBench {
     // SQL's asset join emits no candidate pixels for null/"-" termination
     // textures while the hit still terminates the portal walk.
     if (baseAsset < 0) return;
-    int asset=activeWallAsset[baseAsset];
+    int asset=activeWallAsset[presentedWallAsset(id,baseAsset)];
     double sampleX=segOffset[id]+xOffset+hitU*segLength[id];
     int assetHeight=wallAssetHeight[asset];
     int sampleColumn=wrap(sqlFloor(sampleX),wallAssetWidth[asset]);
@@ -2406,23 +2593,7 @@ public final class DoomBspKernelBench {
 
   private static void applySolidCoverage(double px, double py, double dirX, double dirY,
       double plnX, double plnY, boolean retainCandidates) {
-    Arrays.fill(nearestSolidDepth, Double.POSITIVE_INFINITY);
-    Arrays.fill(columnVisibleCount, 0);
-    acceptedPairs = 0; visiblePairs = 0;
-    if (retainCandidates) Arrays.fill(visibleCandidates, (byte) 0);
-    for (int id = 0; id < segTotal; id++) {
-      int last = projectedLast[id];
-      if (last < 0) continue;
-      for (int column = projectedFirst[id]; column <= last; column++) {
-        double depth = acceptedDepth(id, column, px, py, dirX, dirY, plnX, plnY);
-        acceptedDepthCache[id*WIDTH+column]=depth;
-        if (!Double.isNaN(depth)) {
-          acceptedPairs++;
-          if (segSolid[id] != 0 && depth < nearestSolidDepth[column])
-            nearestSolidDepth[column] = depth;
-        }
-      }
-    }
+    visiblePairs = 0;
     for(int id=0;id<segTotal;id++){
       int last=projectedLast[id];if(last<0)continue;
       for(int column=projectedFirst[id];column<=last;column++){
@@ -2441,6 +2612,39 @@ public final class DoomBspKernelBench {
     }
   }
 
+  private static void projectLeafSeg(int id,double px,double py,double dirX,double dirY,
+      double plnX,double plnY,double planeSquared,boolean retainCandidates){
+    projectSeg(id,px,py,dirX,dirY,plnX,plnY,planeSquared,retainCandidates);
+    int last=projectedLast[id];if(last<0)return;
+    for(int column=projectedFirst[id];column<=last;column++){
+      double depth=acceptedDepth(id,column,px,py,dirX,dirY,plnX,plnY);
+      acceptedDepthCache[id*WIDTH+column]=depth;
+      if(!Double.isNaN(depth)){acceptedPairs++;
+        if(segSolid[id]!=0&&depth<nearestSolidDepth[column])nearestSolidDepth[column]=depth;}
+    }
+  }
+
+  private static void traverseBsp(int id,boolean leaf,double px,double py,double dirX,double dirY,
+      double plnX,double plnY,double planeSquared,boolean retainCandidates){
+    if(leaf){visitedSubsectors++;int end=firstSeg[id]+segCount[id];
+      for(int seg=firstSeg[id];seg<end;seg++)
+        projectLeafSeg(seg,px,py,dirX,dirY,plnX,plnY,planeSquared,retainCandidates);
+      return;
+    }
+    visitedNodes++;int near=side(px,py,id),far=near^1;
+    int nearOffset=id*2+near;
+    if(bboxVisible(nearOffset,px,py,dirX,dirY,plnX,plnY,planeSquared))
+      traverseBsp(childId[nearOffset],childLeaf[nearOffset]!=0,px,py,dirX,dirY,
+          plnX,plnY,planeSquared,retainCandidates);
+    int farOffset=id*2+far;
+    if(bboxVisible(farOffset,px,py,dirX,dirY,plnX,plnY,planeSquared)){
+      if(!retainCandidates&&bboxOccluded(farOffset,px,py,dirX,dirY,plnX,plnY,planeSquared))
+        occludedBboxes++;
+      else traverseBsp(childId[farOffset],childLeaf[farOffset]!=0,px,py,dirX,dirY,
+          plnX,plnY,planeSquared,retainCandidates);
+    }
+  }
+
   private static int traverseAndProject(double px, double py, int angle, boolean retainCandidates) {
     if (Double.doubleToLongBits(px) != Double.doubleToLongBits(liveCameraX) ||
         Double.doubleToLongBits(py) != Double.doubleToLongBits(liveCameraY)) {
@@ -2451,34 +2655,16 @@ public final class DoomBspKernelBench {
     long stageStarted = System.nanoTime();
     activeAngle = angle;
     visitedNodes = 0; visitedSubsectors = 0; projectedSegs = 0; candidatePairs = 0;
+    acceptedPairs=0;occludedBboxes=0;
     Arrays.fill(projectedLast, -1);
+    Arrays.fill(nearestSolidDepth,Double.POSITIVE_INFINITY);
+    Arrays.fill(columnVisibleCount,0);
     if (retainCandidates) Arrays.fill(rawCandidates, (byte) 0);
+    if (retainCandidates) Arrays.fill(visibleCandidates, (byte) 0);
     double dirX = directionX[angle], dirY = directionY[angle];
     double plnX = planeX[angle], plnY = planeY[angle];
     double planeSquared = plnX * plnX + plnY * plnY;
-    int top = 0;
-    stackId[top] = nodeCount - 1; stackLeaf[top++] = 0;
-    while (top != 0) {
-      --top;
-      int id = stackId[top];
-      if (stackLeaf[top] != 0) {
-        visitedSubsectors++;
-        int end = firstSeg[id] + segCount[id];
-        for (int seg = firstSeg[id]; seg < end; seg++)
-          projectSeg(seg, px, py, dirX, dirY, plnX, plnY, planeSquared, retainCandidates);
-        continue;
-      }
-      visitedNodes++;
-      int near = side(px, py, id), far = near ^ 1;
-      int farOffset = id * 2 + far;
-      if (bboxVisible(farOffset, px, py, dirX, dirY, plnX, plnY, planeSquared)) {
-        stackId[top] = childId[farOffset]; stackLeaf[top++] = childLeaf[farOffset];
-      }
-      int nearOffset = id * 2 + near;
-      if (bboxVisible(nearOffset, px, py, dirX, dirY, plnX, plnY, planeSquared)) {
-        stackId[top] = childId[nearOffset]; stackLeaf[top++] = childLeaf[nearOffset];
-      }
-    }
+    traverseBsp(nodeCount-1,false,px,py,dirX,dirY,plnX,plnY,planeSquared,retainCandidates);
     lastBspNanos = System.nanoTime() - stageStarted;
     stageStarted = System.nanoTime();
     applySolidCoverage(px, py, dirX, dirY, plnX, plnY, retainCandidates);
@@ -3188,12 +3374,16 @@ public final class DoomBspKernelBench {
   public static long lastBspNanos() { return lastBspNanos; }
   public static long lastSolidNanos() { return lastSolidNanos; }
   public static long lastPortalNanos() { return lastPortalNanos; }
+  public static long lastPortalResetNanos(){return lastPortalResetNanos;}
+  public static long lastPortalSortNanos(){return lastPortalSortNanos;}
+  public static long lastPortalWalkNanos(){return lastPortalWalkNanos;}
   public static long lastPlaneNanos() { return lastPlaneNanos; }
   public static long lastSpriteNanos() { return lastSpriteNanos; }
   public static long lastPresentationNanos() { return lastPresentationNanos; }
   public static String lastCardinality(){return projectedSegs+"|"+candidatePairs+"|"+
     acceptedPairs+"|"+visiblePairs+"|"+activePortalPairs+"|"+intervalTotal+"|"+
-    orderedHitTotal+"|"+largeSortColumns+"|"+wallRowAttempts+"|"+planeRowAttempts;}
+    orderedHitTotal+"|"+largeSortColumns+"|"+wallRowAttempts+"|"+planeRowAttempts+"|"+
+    occludedBboxes;}
   public static long lastKernelLoadNanos() { return lastKernelLoadNanos; }
   public static long lastSnapshotNanos() { return lastSnapshotNanos; }
   static long retainedUpdateNanos() { return lastRetainedUpdateNanos; }

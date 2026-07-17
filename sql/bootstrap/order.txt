@@ -21,7 +21,6 @@ sql/accel/010_blockmap_reject_graph.sql
 sql/accel/012_collision_segments.sql
 sql/accel/013_sector_runtime_static.sql
 sql/accel/015_renderer_asset_pack.sql
-sql/accel/017_renderer_dynamic_snapshot.sql
 sql/accel/019_ojvm_unified_worker_calls.sql
 sql/render/r1/010_rays_intersections.sql
 sql/render/r1/020_pixels.sql
@@ -32,6 +31,7 @@ sql/sim/staged/t7.2_schema.sql
 sql/sim/staged/t7.2_defs.sql
 sql/sim/staged/t7.3_schema.sql
 sql/sim/staged/t7.3_defs.sql
+sql/accel/017_renderer_dynamic_snapshot.sql
 sql/sim/040_history_replay.sql
 sql/sim/030_world_machines.sql
 sql/sim/050_combat_inventory.sql
@@ -41,8 +41,10 @@ sql/sim/070_audio.sql
 sql/sim/tic/005_canonical_state_ledger.sql
 sql/sim/tic/007_retained_history_snapshot.sql
 sql/sim/tic/010_tic_transaction.sql
+sql/schema/058_hot_lob_storage.sql
 sql/sim/075_unified_delta_apply.sql
 sql/sim/076_retained_world_pack.sql
+sql/sim/077_retained_switch_presentation.sql
 sql/sim/080_unified_worker.sql
 sql/render/r1/012_staged_rays_intersections.sql
 sql/render/r1/014_staged_bounded_hits.sql
@@ -55,4 +57,5 @@ sql/render/r2/035_staged_masked.sql
 sql/render/r2/040_presentation.sql
 sql/render/r2/050_api_presentation_rows.sql
 sql/rest/010_doom_api.sql
+sql/schema/059_finalize_runtime.sql
 sql/schema/060_grants.sql

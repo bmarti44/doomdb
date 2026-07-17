@@ -20,6 +20,12 @@ when not matched then insert(config_key,number_value,text_value)
 values(s.config_key,s.number_value,null);
 
 create or replace package doom_world_machines authid definer as
+  function requires_advance(
+    p_session in varchar2,
+    p_previous_x in number,p_previous_y in number,
+    p_current_x in number,p_current_y in number,p_current_sector in number,
+    p_use_action in number
+  ) return number;
   procedure advance(
     p_session in varchar2,
     p_tic in number,
@@ -38,7 +44,9 @@ create or replace package body doom_world_machines as
     l_ordinal number;
   begin
     select coalesce(max(event_ordinal)+1,0) into l_ordinal
-      from game_events where session_token=p_session and tic=p_tic;
+      from game_events where session_token=p_session and
+        lineage=(select save_lineage from game_sessions where session_token=p_session)
+        and tic=p_tic;
     insert into game_events(session_token,tic,event_ordinal,event_type,number_value,text_value)
       values(p_session,p_tic,l_ordinal,p_type,p_number,p_text);
   end;
@@ -48,6 +56,44 @@ create or replace package body doom_world_machines as
   begin
     select number_value into l_value from doom_config where config_key=p_key;
     return l_value;
+  end;
+
+  function requires_advance(
+    p_session in varchar2,
+    p_previous_x in number,p_previous_y in number,
+    p_current_x in number,p_current_y in number,p_current_sector in number,
+    p_use_action in number
+  ) return number is
+    l_count number;
+  begin
+    if p_use_action=1 then return 1;end if;
+    select count(*) into l_count from (
+      select 1 from active_movers where session_token=p_session
+      union all select 1 from active_switches where session_token=p_session);
+    if l_count>0 then return 1;end if;
+    select count(*) into l_count from doom_map_sector
+      where sector_id=p_current_sector and special in(7,9);
+    if l_count>0 then return 1;end if;
+    if p_current_x=p_previous_x and p_current_y=p_previous_y then return 0;end if;
+    select count(*) into l_count from (
+      select 1 from (
+        select
+          ((v2.x-v1.x)*(p_previous_y-v1.y)-(v2.y-v1.y)*(p_previous_x-v1.x)) prior_side,
+          ((v2.x-v1.x)*(p_current_y-v1.y)-(v2.y-v1.y)*(p_current_x-v1.x)) current_side,
+          ((v1.x-p_previous_x)*(p_current_y-p_previous_y)-
+            (v1.y-p_previous_y)*(p_current_x-p_previous_x)) /
+            nullif((p_current_x-p_previous_x)*(v2.y-v1.y)-
+              (p_current_y-p_previous_y)*(v2.x-v1.x),0) segment_t,
+          ((v1.x-p_previous_x)*(v2.y-v1.y)-(v1.y-p_previous_y)*(v2.x-v1.x)) /
+            nullif((p_current_x-p_previous_x)*(v2.y-v1.y)-
+              (p_current_y-p_previous_y)*(v2.x-v1.x),0) cross_t
+        from doom_map_linedef ml join doom_map_vertex v1 on v1.vertex_id=ml.start_vertex_id
+          join doom_map_vertex v2 on v2.vertex_id=ml.end_vertex_id
+          join doom_linedef_special_def d on d.special_id=ml.special
+        where instr(d.semantics,'WALK|')=1
+      ) where prior_side<0 and current_side>0 and cross_t>0 and cross_t<1
+          and segment_t>0 and segment_t<1 and rownum=1);
+    return case when l_count>0 then 1 else 0 end;
   end;
 
   function occupant_in_sector(p_session varchar2,x_sector number) return boolean is

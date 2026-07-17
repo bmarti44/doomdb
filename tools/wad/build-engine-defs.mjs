@@ -103,6 +103,15 @@ const textureByName=new Map(parsed.textures.map((row)=>[row.name,row]));
 const wallRoots=new Set();
 for(const side of parsed.mapData.sidedefs) for(const name of [side.upper,side.lower,side.middle]) if(name!=='-') wallRoots.add(name);
 for(const group of animationGroups.filter(g=>g.kind==='wall_texture')) for(const name of group.frames) wallRoots.add(name);
+// A pressed Doom switch changes the sidedef's SW1* texture to its SW2* mate.
+// Pull that mate into the immutable asset closure even though the map only
+// names the unpressed texture.  This is naming/texture metadata, not a list of
+// route-specific linedefs, and therefore works for every switch in the WAD.
+for(const name of [...wallRoots]) if(name.startsWith('SW1')){
+  const alternate=`SW2${name.slice(3)}`;
+  if(!textureByName.has(alternate)) throw new Error(`switch wall mate ${alternate} for ${name} is absent`);
+  wallRoots.add(alternate);
+}
 for(const name of [...wallRoots].sort()){
   const texture=textureByName.get(name); if(!texture) throw new Error(`wall texture ${name} is absent`);
   const patches=texture.patches.map(row=>parsed.pnames[row.patch]);

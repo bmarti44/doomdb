@@ -161,6 +161,9 @@ begin
   move_:=doom_player_move_payload(session_,cos(angle_*acos(-1)/180)*8,sin(angle_*acos(-1)/180)*8);
   expected_x_:=json_value(move_,'$.dest_x' returning number);expected_y_:=json_value(move_,'$.dest_y' returning number);
   expected_z_:=json_value(move_,'$.dest_z' returning number);
+  if expected_x_ is null or expected_y_ is null or expected_z_ is null then
+    raise_application_error(-20000,'mixed command SQL movement payload '||dbms_lob.substr(move_,500,1));
+  end if;
   command_:=hextoraw('444d53430201000000000000000000020001000000000000');request_:=lower(rawtohex(sys_guid()));
   delta_:=doom_unified_command_tic_prepare(session_,lineage_,1,request_,tic_+1,seq_+1,rng_,next_mobj_,0,command_);
   if rawtohex(utl_raw.substr(delta_,1,8))<>'44554F5001000500' then

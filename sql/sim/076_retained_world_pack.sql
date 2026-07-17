@@ -14,6 +14,10 @@ create or replace package doom_retained_world_pack authid definer as
     p_expected_start_rng in number,
     p_expected_draws in number
   );
+  procedure build_geometry(
+    p_session_token in varchar2,
+    p_pack out raw
+  );
 end doom_retained_world_pack;
 /
 
@@ -49,6 +53,15 @@ create or replace package body doom_retained_world_pack as
     end if;
     append_raw(p_pack,utl_raw.substr(
       utl_raw.cast_from_binary_integer(p_value,utl_raw.big_endian),3,2));
+  end;
+
+  procedure append_number(p_pack in out nocopy raw,p_value number) is
+    l_raw raw(22):=utl_raw.cast_from_number(p_value);l_length pls_integer:=utl_raw.length(l_raw);
+  begin
+    if l_length<1 or l_length>22 then fail('NUMBER length');end if;
+    append_raw(p_pack,utl_raw.substr(utl_raw.cast_from_binary_integer(l_length,
+      utl_raw.big_endian),4,1));append_raw(p_pack,l_raw);
+    if l_length<22 then append_raw(p_pack,hextoraw(rpad('00',2*(22-l_length),'00')));end if;
   end;
 
   function byte_at(p_pack raw,p_position pls_integer,p_label varchar2)
@@ -262,5 +275,69 @@ create or replace package body doom_retained_world_pack as
       rollback to doom_retained_world_pack_start;
       raise;
   end apply;
+
+  procedure build_geometry(
+    p_session_token in varchar2,
+    p_pack out raw
+  ) is
+    l_count pls_integer:=0;l_mobj_count pls_integer:=0;l_complete pls_integer;
+    l_player_z number;l_health number;l_alive number;l_secrets number;
+    l_rng number;l_next_event number;l_lineage varchar2(64);l_tic number;
+    l_sector_ids number_tab;l_floors number_tab;l_ceilings number_tab;
+    l_lights number_tab;l_light_timers number_tab;
+    l_mobj_ids number_tab;l_mobj_z number_tab;
+    l_chunk raw(32767);l_row raw(32767);
+  begin
+    -- DMWG/v3 is the compact post-machine retained-state image. Heights and
+    -- carried Z values are integral in the supported Doom machine subset.
+    p_pack:=hextoraw('444D57470300');
+    -- Fetch each complete image once, assemble bounded chunks, and append each
+    -- chunk to the growing pack once. This preserves DMWG/v3 byte order while
+    -- avoiding quadratic concatenation over the full image.
+    select sector_id,floor_height,ceiling_height,light_level,coalesce(light_timer,-1)
+      bulk collect into l_sector_ids,l_floors,l_ceilings,l_lights,l_light_timers
+      from sector_state where session_token=p_session_token order by sector_id;
+    l_count:=l_sector_ids.count;
+    if l_count>c_max_rows then fail('geometry pack exceeds RAW limit');end if;
+    select mobj_id,z bulk collect into l_mobj_ids,l_mobj_z from mobjs
+      where session_token=p_session_token order by mobj_id;
+    l_mobj_count:=l_mobj_ids.count;
+    if l_mobj_count>65535 or 55+20*l_count+27*l_mobj_count>32767 then
+      fail('geometry pack exceeds RAW capacity');end if;
+    select case when map_status='COMPLETED' then 1 else 0 end,
+      save_lineage,current_tic+1 into l_complete,l_lineage,l_tic
+      from game_sessions where session_token=p_session_token;
+    select p.z,p.health,p.alive,p.secret_count
+      into l_player_z,l_health,l_alive,l_secrets
+      from players p join game_sessions g on g.session_token=p.session_token
+       and g.current_player_id=p.player_id where g.session_token=p_session_token;
+    select rng_cursor into l_rng from game_sessions where session_token=p_session_token;
+    select coalesce(max(event_ordinal)+1,0) into l_next_event from game_events
+      where session_token=p_session_token and lineage=l_lineage and tic=l_tic;
+    append_u16(p_pack,l_count);append_u16(p_pack,l_mobj_count);
+    append_raw(p_pack,hextoraw(case when l_complete=1 then '01' else '00' end||'00'));
+    append_number(p_pack,l_player_z);append_i32(p_pack,l_health);
+    append_i32(p_pack,l_alive);append_i32(p_pack,l_secrets);
+    append_i32(p_pack,l_rng);append_i32(p_pack,l_next_event);
+    l_chunk:=null;
+    for i in 1..l_count loop
+      l_row:=null;append_i32(l_row,l_sector_ids(i));append_i32(l_row,l_floors(i));
+      append_i32(l_row,l_ceilings(i));append_i32(l_row,l_lights(i));
+      append_i32(l_row,l_light_timers(i));append_raw(l_chunk,l_row);
+      if mod(i,64)=0 then append_raw(p_pack,l_chunk);l_chunk:=null;end if;
+    end loop;
+    append_raw(p_pack,l_chunk);l_chunk:=null;
+    for i in 1..l_mobj_count loop
+      l_row:=null;append_i32(l_row,l_mobj_ids(i));append_number(l_row,l_mobj_z(i));
+      append_raw(l_chunk,l_row);
+      if mod(i,64)=0 then append_raw(p_pack,l_chunk);l_chunk:=null;end if;
+    end loop;
+    append_raw(p_pack,l_chunk);
+    if utl_raw.length(p_pack)<>c_header_bytes+43+20*l_count+27*l_mobj_count or
+       utl_raw.length(p_pack)>32767 then
+      fail('geometry pack length');
+    end if;
+  exception when no_data_found then fail('missing geometry row');
+  end build_geometry;
 end doom_retained_world_pack;
 /

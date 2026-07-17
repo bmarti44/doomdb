@@ -32,6 +32,7 @@ public final class DoomUnifiedActorStateBench {
   private static boolean pendingStateEncoded;
   private static String pendingStateSha;
   private static byte[] pendingChild;
+  private static byte[] pendingCommand;
   private static long ticChaseNs,ticLoopNs,ticEncodeNs;
   private static long lastActorTicNs,lastCommandEncodeNs;
   private static final byte[] ticOutput=new byte[32767];
@@ -665,8 +666,10 @@ public final class DoomUnifiedActorStateBench {
           "from mobjs m join doom_monster_def d on d.thing_type=m.thing_type where m.session_token=?",session);
       String chase=DoomMonsterChaseBench.load(session,lineage,generation,sectors,chaseActors);
       String los=DoomRetainedLosBench.load(sectors);
+      String movement=DoomPlayerMovementBench.loadDynamicSectors(sectors);
       sectors.free();chaseActors.free();require(chase.startsWith("OK|"),"unified chase load "+chase);
       require(los.startsWith("OK|"),"unified LOS load "+los);
+      require(movement.startsWith("OK|"),"unified movement load "+movement);
       Clob deaths=queryClob(c,"with state_index as (select state_id,row_number() over(order by state_id)-1 idx " +
           "from doom_state_def) select json_arrayagg(json_array(m.mobj_id,m.health,m.monster_health_seen,"+
           "m.attack_cooldown,m.awake,m.state_tics,m.death_processed,m.flags,m.target_mobj_id,"+
@@ -1212,6 +1215,80 @@ public final class DoomUnifiedActorStateBench {
     o.rng=(o.rng+draws)&255;return draws;
   }
 
+  /** Canonical split phase 1: validate DMSC and apply only player movement. */
+  public static byte[] prepareCommandPreWorld(String s,String l,long g,String request,long tic,long seq,
+      int rng,int nextMobj,int nextEvent,byte[] command){
+    try{fence(s,l,g,tic,seq,rng,nextMobj,nextEvent);require(pending==null&&request!=null&&
+        request.matches("[0-9a-f]{32}")&&command!=null&&command.length==COMMAND_BYTES&&
+        int_(command,0)==0x444d5343&&(command[4]==2||command[4]==3)&&(command[5]&255)==1&&
+        command[6]==0&&command[7]==0&&long_(command,8)==seq+1,"pre-world command fence/header");
+      int turn=command[16],forward=command[17],strafe=command[18],run=command[19]&255;
+      int fire=command[20]&255,use=command[21]&255,weapon=command[22]&255,reserved=command[23]&255;
+      require(turn>=-1&&turn<=1&&forward>=-1&&forward<=1&&strafe>=-1&&strafe<=1&&run<=1&&reserved==0&&
+          (command[4]==2?(fire==0&&use==0&&weapon==0):(fire<=1&&use<=1&&weapon<=9)),
+          "pre-world command domain");Owner candidate=spare;candidate.copyFrom(committed);
+      candidate.playerAngleIndex=(candidate.playerAngleIndex+turn+64)&63;NUMBER oldZ=candidate.playerZ;
+      String movement=DoomPlayerMovementBench.moveRetained(candidate.playerX,candidate.playerY,candidate.playerZ,
+          candidate.playerAngleIndex,forward,strafe,run);require("OK".equals(movement),"pre-world movement "+
+          DoomPlayerMovementBench.lastError());candidate.playerX=DoomPlayerMovementBench.resultX;
+      candidate.playerY=DoomPlayerMovementBench.resultY;candidate.playerZ=DoomPlayerMovementBench.resultZ;
+      candidate.playerEyeZ=candidate.playerEyeZ.add(candidate.playerZ.sub(oldZ));
+      candidate.playerSector=DoomPlayerMovementBench.resultSector;
+      if(committed.playerX.compareTo(candidate.playerX)!=0||committed.playerY.compareTo(candidate.playerY)!=0)
+        Arrays.fill(candidate.visibilityCache,-1);
+      pending=candidate;pendingRequest=request;pendingMode=MODE_COMMAND_TIC;pendingCommand=command.clone();
+      pendingStateEncoded=false;pendingStateSha=null;pendingChild=null;
+      byte[] out=new byte[101];putInt(out,0,0x4450574d);out[4]=1;putLong(out,8,seq+1);
+      putLong(out,16,tic+1);putInt(out,24,candidate.playerAngleIndex);putNumberFixed(out,28,candidate.playerX);
+      putNumberFixed(out,51,candidate.playerY);putNumberFixed(out,74,candidate.playerZ);
+      putInt(out,97,candidate.playerSector);lastError="";return out;
+    }catch(Throwable e){pending=null;pendingRequest=null;pendingCommand=null;return failure(e);}
+  }
+
+  public static int preWorldRequiresAdvance(String s,String l,long g,String request){
+    try{require(committed!=null&&pending!=null&&pendingCommand!=null&&committed.session.equals(s)&&
+        committed.lineage.equals(l)&&committed.generation==g&&request!=null&&request.equals(pendingRequest),
+        "pre-world decision fence");lastError="";
+      return DoomPlayerMovementBench.requiresWorldAdvance()?1:0;
+    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return -1;}
+  }
+
+  /** Canonical split phase 2: world state is already synchronized; now run combat/actors. */
+  public static byte[] finishCommandPostWorld(String s,String l,long g,String request,
+      byte[] projectilePack,int retainedProjectiles){
+    return finishCommandPostWorldInternal(s,l,g,request,projectilePack,null,retainedProjectiles);
+  }
+  /** Fast split completion when retained movement crossed no active/special world boundary. */
+  public static byte[] finishCommandPostWorldPassive(String s,String l,long g,String request,
+      byte[] projectilePack,byte[] worldPack,int retainedProjectiles){
+    return finishCommandPostWorldInternal(s,l,g,request,projectilePack,worldPack,retainedProjectiles);
+  }
+  private static byte[] finishCommandPostWorldInternal(String s,String l,long g,String request,
+      byte[] projectilePack,byte[] worldPack,int retainedProjectiles){
+    try{require(committed!=null&&pending!=null&&pendingCommand!=null&&committed.session.equals(s)&&
+        committed.lineage.equals(l)&&committed.generation==g&&request.equals(pendingRequest)&&
+        (retainedProjectiles==0||retainedProjectiles==1),"post-world command fence");Owner candidate=pending;
+      int commandDraws=worldPack==null?0:applyPassiveWorldPack(candidate,worldPack);
+      boolean advanceProjectiles=retainedProjectiles==1||
+        (projectilePack!=null&&applyProjectilePack(candidate,projectilePack));
+      if(retainedProjectiles==1)require(ownerProjectilesEligible(candidate),"retained projectile eligibility");
+      boolean actions=pendingCommand[4]==3;ArrayList<AttackEvent> events=null;
+      if(actions){events=new ArrayList<AttackEvent>();advanceWeapon(candidate,pendingCommand[22]&255,events);
+        int[] draws=new int[]{commandDraws};fireWeapon(candidate,pendingCommand[20]&255,draws,events);
+        require(draws[0]>=0,"post-world weapon draws");commandDraws=draws[0];}
+      byte[] nested=ticDelta(candidate,s,l,g,request,advanceProjectiles,events,actions,commandDraws);
+      int nestedLength=ticOutputLength;require(candidate.seq==committed.seq+1&&candidate.tic==committed.tic+1,
+          "post-world resulting frontier");byte[] child=new byte[COMMAND_CHILD_HEADER+nestedLength];
+      putInt(child,0,0x44435443);child[4]=1;child[5]=0;child[6]=0;child[7]=(byte)COMMAND_BYTES;
+      putLong(child,8,candidate.seq);putLong(child,16,candidate.tic);putInt(child,24,candidate.playerAngleIndex);
+      putNumberFixed(child,28,candidate.playerX);putNumberFixed(child,51,candidate.playerY);
+      putNumberFixed(child,74,candidate.playerZ);putInt(child,97,candidate.playerSector);
+      putInt(child,101,nestedLength);System.arraycopy(nested,0,child,COMMAND_CHILD_HEADER,nestedLength);
+      byte[] result=wrap(MODE_COMMAND_TIC,child,child.length);pendingStateEncoded=false;pendingStateSha=null;
+      pendingChild=null;lastError="";return result;
+    }catch(Throwable e){return failure(e);}
+  }
+
   /** One parity-locked DMSC/v2 movement command plus one ordered actor TIC. */
   public static byte[] prepareCommandTic(String s,String l,long g,String request,long tic,long seq,
       int rng,int nextMobj,int nextEvent,byte[] command){
@@ -1226,7 +1303,7 @@ public final class DoomUnifiedActorStateBench {
       int rng,int nextMobj,int nextEvent,byte[] command){
     return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,null,true,false);
   }
-  /** One DMSC/v3 movement/weapon command. Fire and use remain explicit rejection gates. */
+  /** One DMSC/v3 movement/weapon command. USE remains rejected until split-phase selection. */
   public static byte[] prepareCommandTicActions(String s,String l,long g,String request,long tic,long seq,
       int rng,int nextMobj,int nextEvent,byte[] command){
     return prepareCommandTicInternal(s,l,g,request,tic,seq,rng,nextMobj,nextEvent,command,null,null,false,true);
@@ -1605,12 +1682,16 @@ public final class DoomUnifiedActorStateBench {
       require("OK".equals(child)||child.startsWith("OK|"),"unified child accept "+child);
       if(DoomRetainedRenderSceneBench.ownerTicPending())require("OK".equals(
           DoomRetainedRenderSceneBench.acceptOwnerTic(s,g,request)),"unified renderer accept");
+      DoomPlayerMovementBench.acceptWorldGeometry();
+      DoomMonsterChaseBench.acceptWorldGeometry();DoomRetainedLosBench.acceptWorldGeometry();
       if(!pendingStateEncoded)pending.stateMobjFragments=null;
       Owner previous=committed;committed=pending;spare=previous;pending=null;pendingRequest=null;
       pendingStateEncoded=false;pendingStateSha=null;
-      pendingChild=null;lastError="";return "OK";
+      pendingChild=null;pendingCommand=null;lastError="";return "OK";
     }catch(Throwable e){try{if(DoomRetainedRenderSceneBench.ownerTicPending())
         DoomRetainedRenderSceneBench.discardOwnerTic(s,g,request);}catch(Throwable ignored){}
+      DoomPlayerMovementBench.discardWorldGeometry();
+      DoomMonsterChaseBench.discardWorldGeometry();DoomRetainedLosBench.discardWorldGeometry();
       lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}}
 
   public static String discard(String s,String l,long g,String request){
@@ -1620,8 +1701,10 @@ public final class DoomUnifiedActorStateBench {
         require("OK".equals(child),"unified child discard "+child);}
       if(DoomRetainedRenderSceneBench.ownerTicPending())require("OK".equals(
           DoomRetainedRenderSceneBench.discardOwnerTic(s,g,request)),"unified renderer discard");
+      DoomPlayerMovementBench.discardWorldGeometry();
+      DoomMonsterChaseBench.discardWorldGeometry();DoomRetainedLosBench.discardWorldGeometry();
       spare=pending;pending=null;pendingRequest=null;pendingStateEncoded=false;pendingStateSha=null;
-      pendingChild=null;lastError="";return "OK";
+      pendingChild=null;pendingCommand=null;lastError="";return "OK";
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}}
   public static String fillPendingState(String s,String l,long g,String request,Blob payload){
     long totalStarted=System.nanoTime();
@@ -1673,6 +1756,57 @@ public final class DoomUnifiedActorStateBench {
   public static long lastHistoryBlobNanos(){return lastHistoryBlobNs;}
   public static long lastHistoryTotalNanos(){return lastHistoryTotalNs;}
   public static String renderPending(String s,String l,long g,String request,String stateSha,Blob payload){
+    return renderPendingInternal(s,l,g,request,null,stateSha,payload);
+  }
+  public static String syncPendingWorld(String s,String l,long g,String request,byte[] pack){
+    try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
+        committed.generation==g&&request!=null&&request.equals(pendingRequest)&&pack!=null&&pack.length>=55&&
+        int_(pack,0)==0x444d5747&&(pack[4]&255)==3&&pack[5]==0,"world sync fence/header");
+      int sectors=ushort(pack,6),mobjs=ushort(pack,8),complete=pack[10]&255;
+      int baseLength=55+20*sectors+27*mobjs;
+      require(pack[11]==0&&complete<=1&&sectors==pending.sectorLight.length&&
+          pack.length>=baseLength,"world sync length/status");
+      NUMBER oldZ=pending.playerZ;pending.playerZ=number(pack,12);
+      pending.playerEyeZ=pending.playerEyeZ.add(pending.playerZ.sub(oldZ));
+      pending.playerHealth=int_(pack,35);pending.playerAlive=int_(pack,39);
+      int secrets=int_(pack,43);require(pending.playerHealth>=0&&(pending.playerAlive==0||pending.playerAlive==1)&&
+          secrets>=0,"world sync player values");
+      pending.rng=int_(pack,47);pending.nextEvent=int_(pack,51);require(pending.rng>=0&&pending.rng<=255&&
+          pending.nextEvent>=0,"world sync frontier values");
+      int p=55,prior=-1;for(int i=0;i<sectors;i++,p+=20){int id=int_(pack,p),floor=int_(pack,p+4),ceiling=int_(pack,p+8);
+        int light=int_(pack,p+12),timer=int_(pack,p+16);require(id==i&&id>prior&&ceiling>=floor&&
+          light>=0&&light<=255&&timer>=-1,"world sync sector image");prior=id;
+        pending.sectorLight[id]=light;pending.sectorLightTimer[id]=timer;}
+      prior=-1;for(int i=0;i<mobjs;i++,p+=27){int id=int_(pack,p),slot=pending.world.slot(id);
+        require(id>prior&&slot>=0,"world sync mobj image");prior=id;pending.world.z[slot]=number(pack,p+4);}
+      if(p<pack.length){require(pack.length-p>=8&&int_(pack,p)==0x444d5356&&pack[p+4]==1&&
+          pack[p+5]==1,"world sync switch header");int switches=ushort(pack,p+6);p+=8;prior=-1;
+        for(int i=0;i<switches;i++){require(pack.length-p>=10,"world sync switch row");int line=int_(pack,p);
+          int on=pack[p+4]&255,timer=int_(pack,p+5),name=pack[p+9]&255;p+=10;
+          require(line>prior&&(on==0||on==1)&&((on==1&&timer>=0)||(on==0&&timer==-1))&&
+              name<=32&&pack.length-p>=name,"world sync switch values");prior=line;p+=name;}
+        require(p==pack.length,"world sync switch trailing");}
+      for(int i=0;i<pending.count;i++){int slot=pending.world.slot(pending.id[i]);
+        require(slot>=0,"world sync actor slot");pending.worldSlot[i]=slot;pending.z[i]=pending.world.z[slot];}
+      DoomPlayerMovementBench.stageWorldGeometry(pack);
+      DoomMonsterChaseBench.stageWorldGeometry(pack);DoomRetainedLosBench.stageWorldGeometry(pack);
+      lastError="";return "OK|"+sectors+"|"+mobjs+"|"+complete+"|"+secrets;
+    }catch(Throwable e){DoomPlayerMovementBench.discardWorldGeometry();
+      DoomMonsterChaseBench.discardWorldGeometry();DoomRetainedLosBench.discardWorldGeometry();
+      lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
+  }
+
+  public static String refreshPendingStateTemplate(String s,String l,long g,String request){
+    try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
+        committed.generation==g&&request!=null&&request.equals(pendingRequest),"state refresh fence");
+      Connection c=DriverManager.getConnection("jdbc:default:connection:");loadStateTemplate(c,s,pending);
+      lastError="";return "OK";
+    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return "ERR|"+lastError;}
+  }
+  public static String renderPendingWorld(String s,String l,long g,String request,byte[] geometryPack,
+      String stateSha,Blob payload){return renderPendingInternal(s,l,g,request,geometryPack,stateSha,payload);}
+  private static String renderPendingInternal(String s,String l,long g,String request,byte[] geometryPack,
+      String stateSha,Blob payload){
     try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
         committed.generation==g&&request!=null&&request.equals(pendingRequest)&&
         (pendingMode==MODE_TIC||pendingMode==MODE_COMMAND_TIC),"unified render pending fence");
@@ -1695,11 +1829,16 @@ public final class DoomUnifiedActorStateBench {
       int dirtySectors=0;for(int sector=0;sector<pending.sectorLight.length;sector++)
         if(committed.sectorLight[sector]!=pending.sectorLight[sector]){
           renderSectorId[dirtySectors]=sector;renderSectorLight[dirtySectors]=pending.sectorLight[sector];dirtySectors++;}
-      String result=DoomRetainedRenderSceneBench.stageOwnerTic(s,g,request,pending.tic,pending.seq,
+      String result=geometryPack==null?DoomRetainedRenderSceneBench.stageOwnerTic(s,g,request,pending.tic,pending.seq,
         pending.playerX,pending.playerY,pending.playerEyeZ,pending.playerAngleIndex,pending.playerHealth,
         pending.playerArmor,pending.playerAlive,pending.weaponId[pending.selectedWeapon],
         weaponAmmo(pending,pending.weaponAmmo[pending.selectedWeapon]),dirty,renderOp,renderId,renderState,renderX,renderY,
-        renderZ,renderAngle,dirtySectors,renderSectorId,renderSectorLight,stateSha,payload);
+        renderZ,renderAngle,dirtySectors,renderSectorId,renderSectorLight,stateSha,payload):
+        DoomRetainedRenderSceneBench.stageOwnerTicWorld(s,g,request,pending.tic,pending.seq,
+        pending.playerX,pending.playerY,pending.playerEyeZ,pending.playerAngleIndex,pending.playerHealth,
+        pending.playerArmor,pending.playerAlive,pending.weaponId[pending.selectedWeapon],
+        weaponAmmo(pending,pending.weaponAmmo[pending.selectedWeapon]),dirty,renderOp,renderId,renderState,renderX,renderY,
+        renderZ,renderAngle,dirtySectors,renderSectorId,renderSectorLight,geometryPack,stateSha,payload);
       require(result!=null&&!result.startsWith("ERROR:")&&!result.startsWith("ERR|"),
           "unified renderer stage "+DoomRetainedRenderSceneBench.lastError());lastError="";return result;
     }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();

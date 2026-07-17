@@ -8,7 +8,7 @@ declare
   payload_ blob;ga_ number;gb_ number;ready_ number;map_ varchar2(64);
   error_ varchar2(4000);ta_ number;tb_ number;sa_ number;sb_ number;
   slot_a_ number;slot_b_ number;sid_a_ number;sid_b_ number;old_ga_ number;
-  old_wait_ number;old_capacity_ number;status_ varchar2(16);rg_ number;
+  old_enabled_ number;old_wait_ number;old_capacity_ number;status_ varchar2(16);rg_ number;
   ct_ number;cs_ number;dv_ number;dc_ number;ds_ varchar2(64);
   ss_ varchar2(64);fs_ varchar2(64);rb_ number;rs_ varchar2(64);
   delta_ blob;response_ blob;deadline_ timestamp with time zone;count_ number;
@@ -50,8 +50,9 @@ declare
       '20000000000000000000000000000003');
     update doom_worker_control set target_session=null,target_lineage=null,
       state_map_sha=null,ready=0,stop_requested=0,worker_sid=null,last_error=null;
-    update doom_config set number_value=0
-      where config_key in('UNIFIED_WORKER_ENABLED','UNIFIED_WORKER_FAILPOINT');
+    update doom_config set number_value=0 where config_key='UNIFIED_WORKER_FAILPOINT';
+    if old_enabled_ is not null then update doom_config set number_value=old_enabled_
+      where config_key='UNIFIED_WORKER_ENABLED';end if;
     if old_wait_ is not null then update doom_config set number_value=old_wait_
       where config_key='UNIFIED_WORKER_WAIT_SECONDS';end if;
     if old_capacity_ is not null then update doom_config set number_value=old_capacity_
@@ -59,6 +60,8 @@ declare
     commit;
   end;
 begin
+  select number_value into old_enabled_ from doom_config
+    where config_key='UNIFIED_WORKER_ENABLED';
   select number_value into old_wait_ from doom_config
     where config_key='UNIFIED_WORKER_WAIT_SECONDS';
   select number_value into old_capacity_ from doom_config
@@ -147,4 +150,3 @@ end;
 /
 
 exit
-

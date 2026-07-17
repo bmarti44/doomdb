@@ -1,16 +1,17 @@
 # DoomDB
 
-DoomDB renders and simulates Doom inside Oracle Database. Oracle owns the map,
-game state, collision, combat, world machines, history, and frame construction;
-the browser is a thin canvas/audio client.
+DoomDB runs Doom simulation and rendering inside Oracle Database. The browser is
+a thin static canvas/audio client: it submits live keyboard or touch commands to
+generated ORDS AutoREST procedures and displays the indexed frame returned by
+Oracle. There is no separate game server and no prerecorded route in the play
+path.
 
-The project is under active implementation against the contracts in
-[PLAN.md](PLAN.md). The local review dashboard is currently served at
-<http://localhost:8080/> when the Compose stack is running.
+Open the local dashboard at <http://localhost:8080/> and the playable client at
+<http://localhost:8080/play/> while the Compose stack is running.
 
-## Current database output
+## Database-rendered output
 
-These are reviewed 320×200 frames produced from database output and frozen as
+These reviewed 320×200 frames are produced from Oracle output and frozen as
 visible goldens.
 
 | Gameplay | Automap |
@@ -21,230 +22,69 @@ visible goldens.
 | --- | --- |
 | ![Database-rendered menu](goldens/t5.4/menu-selection-2.png) | ![Database-rendered intermission](goldens/t5.4/intermission.png) |
 
-Additional reviewed views include the
-[shotgun HUD](goldens/t5.4/game-shotgun.png),
+More reviewed views include the [shotgun HUD](goldens/t5.4/game-shotgun.png),
 [paused game](goldens/t5.4/game-paused.png),
-[normal automap](goldens/t5.4/automap-normal.png), and the
-[R2 masked/sprite diagnostics](goldens/t5.3/).
+[normal automap](goldens/t5.4/automap-normal.png), and
+[masked/sprite diagnostics](goldens/t5.3/).
 
-## Status
+## Current status
 
-As of July 2026:
+P0–P7 are complete. P12.0 was pulled ahead of the full E1M1 route to make the
+dynamic game playable before continuing P8.
 
-| Phase | State | Result |
-| --- | --- | --- |
-| P0–P3 | Complete | Contracts, reproducible stack, WAD ingestion, schema, geometry, BSP, BLOCKMAP, REJECT, and graph gates pass. |
-| P4 | Complete | First-light renderer and three human-reviewed database frames. |
-| P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
-| P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
-| P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Database and moving-frame gates passed; retained controls in progress | The selected split AutoREST run displays 300/300 unique moving frames at 31.08 FPS with 31.21/32.36 ms paint-gap p50/p95. Fresh repeats and a second-session run also pass 30 FPS. Movement, weapon selection, and retained hitscan/melee are dynamic; use, barrels, and player projectiles still use the SQL fallback. |
-| P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
-| P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
-| P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
-| P12.1–P12.2 | Pending | The final fixed 300-frame local/cloud profiling and stopping-rule evidence follows completed cloud acceptance. |
+The selected retained worker now supports arbitrary live movement, collision,
+weapon selection, common hitscan/melee fire, `USE`/`WALK` triggers, doors,
+lifts, switches, carry, blocking, monsters, pickups, and world presentation.
+Barrel-chain recursion and the complete player rocket/plasma lifecycle remain
+the main retained-gameplay gaps; unsupported actions preserve the complete SQL
+fallback and SQL remains an independently executable differential oracle.
 
-### Current performance
+Two fresh 300-frame moving runs after front-to-back solid-column BSP rejection
+passed at **31.04 FPS** and **32.06 FPS**. Both produced 300 distinct frames and
+the exact 330-frame chain
+`4d9a7a22dd8c3d02c37d40523e6f5d9fcec18665a374eccd7a9b63427d49b6fd`.
+The second run had zero stalls and 31.16/32.05 ms paint-gap p50/p95. The
+independent 12-pose SQL oracle matched 57,012 accepted intersections, 21,050
+visible hits, 12,487 active portal hits, and all 64,000 final pixels with no
+differences. Dynamic special, lifecycle, rollback, restart, and worker-fencing
+gates also pass.
 
-The database-resident worker and public AutoREST client have passed the 30 FPS
-throughput gate. `SUBMIT_STEP` records dynamic commands and `POLL_FRAME` fetches
-their immutable committed frames; both are generated AutoREST procedures. Two
-selected 300-frame run reached 31.08 displayed FPS with 300 unique frames and
-31.21/32.36 ms paint-gap p50/p95. Fresh repeats and a run with an abandoned
-second worker also pass 30 FPS. Idle workers back off and release their slot after 60
-seconds, so closed tabs no longer consume a database CPU indefinitely.
+The client uses a depth-four command window, ordered decode, a 32 ms command
+clock, a 31.8 ms display clock, and a ten-frame startup buffer. That buffer
+currently adds about 320 ms of input-to-display latency; reducing it without
+losing sustained cadence is still active work. The design is resolution-aware:
+visibility and simulation are independent of the 320×200 buffer, and horizontal
+plane spans remain planned before enabling the future 640×400 profile.
 
-`DOOM_API.STEP` remains backward compatible. The playable client uses a
-depth-four submit window, one result waiter, ordered decode, a 32 ms command
-clock, a 31.8 ms presentation clock, and a ten-frame
-startup buffer. This buffer makes cadence reliable but adds roughly 320 ms of
-presentation latency, so reducing it is the next performance target. Version
-selection occurs after pipelined predecessors commit, while retries correlate
-by immutable sequence and action bytes.
+Full measurements and rejected alternatives are recorded in the
+[AutoREST 30 FPS report](reports/performance-P12.0-autorest-split-gate-2026-07-17.md),
+with the complete execution contract in [PLAN.md](PLAN.md).
 
-The worker passes live commit, idempotent replay, rollback/discard, post-commit
-reconstruction, restart fencing, and two-session isolation. SecureFile tracing
-identified synchronous direct-path writes in the response, per-tic state, and
-history LOBs. Full `CACHE LOGGING RETENTION NONE`, explicit temporary-LOB
-cleanup, presized local data/redo files, and `COMMIT WRITE BATCH WAIT` make
-durability explicit. Exact canonical state/history checkpoints occur every 64
-tics; between them, domain-separated command/delta hashes remain durable and
-explicit state reads can build canonical JSON from relational state. The
-300-frame gate verified five checkpoint BLOB/SHA pairs, every intermediate
-chain hash, the complete event hash chain, and retained-owner/SQL parity.
+## Architecture
 
-The main reductions were packed retained projectile mutations, ordered
-changed-actor deltas instead of rewriting all 53 monsters, one bulk world-op
-MERGE, and checkpoint-cadence state serialization. In the passing run, p95
-stages were render 11.125 ms, apply 6.059 ms, state 0.347 ms, prepare 2.380 ms,
-and commit 2.230 ms. Stage percentiles are independently ranked and are not
-additive. Full evidence is in
-[the dynamic 30 FPS report](reports/performance-P12.0-dynamic-30fps-2026-07-16.md).
-The selected split-endpoint browser evidence and rejected transport variants are
-recorded in [the AutoREST 30 FPS gate report](reports/performance-P12.0-autorest-split-gate-2026-07-17.md).
+```text
+static browser client
+        │ generated AutoREST: NEW_GAME / SUBMIT_STEP / POLL_FRAME
+        ▼
+ORDS connection pool
+        ▼
+Oracle Database
+  durable command ledger + authoritative relational state
+        ▼
+  bounded resident Scheduler worker (PL/SQL + OJVM retained arrays)
+        ▼
+  deterministic simulation → exact renderer → codec → SecureFile response
+```
 
-The current public route checkpoint is alive at tic 1430 with 46 health, 9
-kills, and 15 shotgun shells. It has legitimately opened the corridor doors,
-operated and ridden lift 1, reached the lift-2 approach, and cleared a stronger
-combat line without losing health. No noclip, teleport, or direct state mutation
-is used.
+ORDS resets request-session package and Java state after every request, so a
+bounded long-lived database Scheduler session owns each warm worker. Tables,
+hash chains, checkpoints, and response BLOBs remain authoritative and durable;
+the browser never simulates or renders the world itself.
 
-Route evaluation exposed and fixed four production integration defects: a
-portal-free boundary transition, stale MOBJ self-references at commit, command
-reads leaking across save/load lineages, and occupied lifts refusing to rise.
-Focused regressions and the complete adjacent P6/P7 gates pass after the fixes.
-A standalone exact 163-tic moving/firing prefix now runs in about 5.5 seconds,
-down from 9.5 seconds after the first combat repair and more than nine minutes
-before it. The pulled-forward
-T12.0 staging path now completes its best warm clean `NEW_GAME` in 6.97 seconds with
-the exact prior state hash, frame hash, and 92,658-byte payload, down from
-121.79 seconds. A second from-zero bootstrap completed all 41 files with zero
-invalid objects and its first call measured 8.89 seconds. The exact moving-frame
-probes now measure 7.10–7.84 seconds for one turn and 7.73–8.30 seconds for four
-forward tics. The conservative one-turn figure is about 0.128 FPS. The canonical
-reviewed renderer remains unchanged as the independent parity oracle.
-An independent Sol/xhigh evaluation rejected MLE JavaScript and `UTL_TCP` for
-the production path: neither reduces the dominant relational renderer work,
-and `UTL_TCP` cannot replace the required inbound ORDS/AutoREST transport. The
-confirmed improvements came from precomputed rays, bounded rasterization,
-static opacity metadata, shared portal/interval staging, sparse composition, and
-chunked frame hashing. JavaBox and pinned Mocha Doom commit `c0af1322` informed
-the architecture experiments—BSP front-to-back rejection, solid column
-occlusion, indexed buffers, fixed-point lookup tables, preallocated draw
-instructions, visplane spans, persistent state, and publish-on-new-frame
-sequencing. Mocha Doom is GPLv3 and DoomDB is MIT, so no GPL code, tables,
-control flow, or data is copied. Final T12
-will still measure the fixed 300-frame replay and every post-render stage locally
-and in the cloud.
+## Run locally
 
-The deeper Sol/max review established a narrow, approved OJVM path as the only
-measured architecture in the right performance class. After correcting Docker's
-JIT shared-memory mount, an isolated coherent 320x200 generation + GZIP + RAW
-return averaged 6.8 ms; that is a feasibility probe, not a game-frame result.
-The corrected production-boundary render-free baseline for
-`DOOM_TIC_TX.APPLY_BATCH` was 68.1 ms p50 / 168.9 ms p95 over 270 warmed unique
-turn tics. Exact relational sound-graph closure removed a 95.6 ms repeated BFS
-spike; bulk actor housekeeping, one-pass light-neighbor derivation, and modern
-state-document work reduction and packed immutable LOS inputs bring the selected
-result initially to 41.4 ms p50 / 70.6 ms p95. Direct BLOB state generation,
-persistent-locator history writes, BLOB-native interval snapshots, zero-motion
-guards, bounded hitscan, and set-based BLOCKMAP LOS subsequently reached
-21.260/30.856 ms in the best clean turn-only run; a conservative later restart
-repeat measured 24.162/36.939 ms with one background outlier. A production-shaped brute OJVM analytic probe was rejected at
-1,133.9/1,461.5 ms p50/p95 with a 244 KB compressed payload; it proves that the
-Java path also needs BSP/solid-column/span work reduction and smaller separately
-compiled hot methods. P12.0 therefore has two mandatory workstreams: an exact array-based
-OJVM renderer and profile-guided SQL simulation/history reduction. Neither may
-claim playability until local AutoREST/browser p50 and p95 are both at most
-33.3 ms.
-
-The first real-map clean-room implementation now loads all 681 BSP nodes, 682
-subsectors, and 2,057 segs into primitive Java arrays. Its allocation-free
-front-to-back traversal, conservative projection, exact intersections, and
-two-pass solid-depth coverage and exact portal clipping measured 0.167 ms p50 /
-0.729 ms p95 over 20,000
-HotSpot samples. Across 12 spawn directions it omitted none of 57,012 accepted
-SQL intersections, then retained all 21,050 SQL-visible hits through the first
-solid wall while reducing brute-pair retention to 0.2706%. Its ordered portal
-walk then matched all 12,487 production SQL active hits with zero missing/extra
-and zero final clip mismatches. This validates clipping, not a complete
-renderer. Oracle's trace corrected the initial JIT interpretation: the one-line
-method compiled successfully in 59.47 seconds, with the cold compiler heavily
-constrained by memory and CPU throttling. Deployment compilation will be warmed
-separately; only compiled steady-state calls count toward the frame budget.
-
-The compiled tic-zero steady-state gate now passes. Four deterministic relational BLOB
-packs replace row-at-a-time wall, flat, sprite, and UI texel loading. After a
-bounded 500-frame same-session JIT warmup, 1,500 real caller-owned-BLOB calls
-measured a conservative repeat of 9.188 / 10.517 / 12.734 ms p50/p95/p99 for
-renderer + packed-v2 codec + BLOB, while the complete SQL-call loop averaged
-11.460 ms. Every selected hot renderer method was natively compiled. Deep
-tracing shows 7.313 ms renderer, 3.081 ms codec, and 0.061 ms BLOB p95; the
-former plane bottleneck is down from 18.915 ms to 2.673 ms p95. This is roughly
-87 FPS by measured call mean for that kernel. It is not yet the dynamic STEP
-renderer and therefore does not prove an integrated frame budget. The full
-evidence is in
-[reports/performance-T12.0-ojvm-renderer-2026-07-15.md](reports/performance-T12.0-ojvm-renderer-2026-07-15.md).
-
-The next implementation slice now draws the real wall textures through the
-production colormap into one reusable indexed buffer. At spawn east, all 26,165
-wall pixels match SQL with zero missing, extra, or palette differences. The
-combined traversal-through-wall path measures 1.061 ms p50 / 1.436 ms p95 over
-20,000 samples. This passes the opaque-wall component gate; the frame is still
-incomplete until exact plane spans, masked fragments, presentation, and codec
-are integrated.
-
-Floors, ceilings, and sky now fill that same buffer using exact sector
-intervals, stored rays, and the database projection constant. All 64,000 world
-pixels match production SQL with zero missing, extra, or palette differences.
-The complete world path measures 2.730 ms p50 / 4.794 ms p95 / 5.348 ms p99
-over 20,000 samples, passing the 8 ms opaque-world gate. The next parity slice
-is masked walls and sprites.
-
-Masked middle walls and tic-zero sprites now use the real state/rotation catalog
-and sprite texels. All 4,702 selected masked-wall pixels and 2,404 sprite pixels
-match SQL exactly. Complete world+masked rendering measures 3.060 ms p50 /
-5.390 ms p95 / 5.942 ms p99; masked work adds only about 0.60 ms p95, passing
-its 3 ms stage gate. The real pistol, status bar, and tic-zero ammo/health/armor
-digits now compose the final GAME frame. All 64,000 presentation pixels match
-SQL exactly at 2.884 ms p50 / 5.133 ms p95 / 5.737 ms p99. The selected
-packed-v2 codec preserves the legacy SQL document as a parity oracle while
-replacing its pathological 45,317 nested RLE runs on the hot path. It measures
-1.430 ms p50 / 1.800 ms p95 and emits 42,140 GZIP bytes; renderer+codec measures
-4.476 ms p50 / 6.812 ms p95. The browser now decodes both v1 RLE and v2 packed
-frames. The caller-owned BLOB matrix also passes: the selected two bounded
-locator writes preserve the exact payload. In the compiled combined OJVM call,
-BLOB handoff is 0.063 ms p95 and the full renderer+codec+BLOB total is
-10.517 ms p95. Dynamic presentation states and a fast per-tic snapshot are next.
-
-## Is it playable yet?
-
-Movement is dynamically playable through generated AutoREST endpoints at the
-30 FPS target; the acceptance routes produced 300 distinct frames rather than
-replaying a hard-coded recording. The browser derives every command from live
-keyboard or touch state. The selected ten-frame buffer currently trades about
-320 ms of presentation latency for stable cadence. Weapon selection and common
-hitscan/melee fire are retained; use, barrels, and player projectiles can pause
-on the complete SQL fallback until their retained parity work lands. SQL remains
-independently executable as the differential oracle.
-
-The selected warm worker no longer serializes and immediately reparses its own
-state. A request-fenced, rollback-capable world diff moves pending player and
-MOBJ state directly between retained arrays with no JDBC or table reads. Across
-300 samples that update measures 0.111/0.624 ms p50/p95; exact
-render+codec+BLOB measures 9.982/10.872 ms. The strict packed-DTIC decoder remains
-a restart/parity fallback and is not used on the production warm path.
-
-The database now has four bounded Scheduler worker slots. Arbitrary valid game
-sessions can claim a slot through the public AutoREST package; concurrent
-sessions retain separate state, generations, queue messages, and responses.
-Default-off rollout, rollback isolation, lost-response replay across restart,
-and stale-work fencing pass live. SQL remains the independent differential
-oracle and authoritative durable store.
-
-The retained command-tic prerequisite is complete. One frozen MOBJ-order pass now
-composes death, pain, wake, state advancement, melee, hitscan, projectile
-spawning, drops, and CHASE exactly once. A mixed differential matches 53 actors,
-two spawns, seven ordered events, five RNG draws, and the accepted 282-row world.
-The full 280-row owner checkpoint restores atomically, and arbitrary removal
-clears inbound target, tracer, and owner references. A 270-command moving
-differential matches the SQL player and world on every tic, including restart
-and prepare invisibility. The complete movement-plus-actor boundary measures
-2.300/2.969 ms warm and 2.400/3.087 ms cold p50/p95. Trace evidence attributes
-the warm p95 to the actor pass (1.921 ms), not movement (portal/location work is
-0.104 ms p95).
-
-The complete SQL simulation and renderer remain executable as differential
-oracles. The worker is dynamic: arbitrary valid sessions can submit commands;
-no fixed route or prerecorded input stream is built into it. The fixed
-ORDS/browser run must still keep p50 and p95 at or below 33.3 ms. See the
-[worker architecture report](reports/performance-P12.0-ords-ojvm-worker-2026-07-16.md)
-and [latest 30 FPS evidence](reports/performance-P12.0-dynamic-30fps-2026-07-16.md).
-
-## Local review
-
-The repository pins Node, npm, Oracle Free, and ORDS versions. Local credentials
-must be created from the deliberately fake examples and remain outside Git:
+Create local-only secrets from the fake templates, install the pinned Node
+dependencies, and start the stack:
 
 ```sh
 cp secrets/oracle_password.txt.example secrets/oracle_password.txt
@@ -253,28 +93,30 @@ npm ci
 docker compose up -d
 ```
 
-Then open <http://localhost:8080/>. The database can take several minutes to
-become healthy on its first boot.
+On a brand-new database volume, wait for Oracle to become healthy and run the
+schema/data bootstrap once:
 
-Run the environment and secret checks with:
+```sh
+docker compose wait db
+./scripts/bootstrap.sh
+docker compose restart ords
+```
+
+Then visit <http://localhost:8080/play/>. Controls are W/S to move, A/D to turn,
+Ctrl to fire, Space to use, and number keys to select weapons. Touch controls
+are shown on mobile.
+
+Real credentials, wallets, private keys, environment files, and Terraform
+variable files are ignored by [.gitignore](.gitignore); only explicit fake
+`*.example` templates are committed.
+
+## Verify
 
 ```sh
 ./verify.sh env
 ./verify.sh secrets
-```
-
-Real credentials, wallets, private keys, environment files, and Terraform
-variable files are ignored by [.gitignore](.gitignore). Only explicit fake
-`*.example` templates are intended to be committed.
-
-## Verification
-
-Task gates use the repository's evaluator contract:
-
-```sh
 ./verify.sh task T7.3
 ./verify.sh evaluator-self-test
 ```
 
-See [PLAN.md](PLAN.md) for the complete acceptance matrix and
-[reports/](reports/) for implementation and review evidence.
+See [reports/](reports/) for implementation, performance, and review evidence.

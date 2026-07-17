@@ -1771,6 +1771,20 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   F1 is parity-proven but not generally selected. Integrate retained world
   machines first, then remove the guard; barrel recursion and player rocket/
   plasma lifecycle remain F2 and continue through the complete SQL fallback.
+- Retained USE split-phase correction (2026-07-17): the first post-tic SQL
+  world-machine bridge was rejected before deployment. The retained Java path
+  had already run weapons/monsters, so applying USE/WALK/movers afterward would
+  change canonical event ordinals, RNG, LOS, collision and hashes; synchronizing
+  the final rows cannot repair the wrong same-tic order. Production therefore
+  continues to reject retained `use != 0` and routes it through the complete SQL
+  oracle. The selected implementation order is now movement-only Java staging,
+  a no-frontier SQL movement apply, SQL world machines, transactional geometry/
+  player/actor synchronization, then Java weapons/combat/monsters and the final
+  delta/render/commit. Selection requires generic (no fixed linedef) coverage of
+  specials 1/11/26/62/88/117, key denial/allow, WALK, full door/lift/switch
+  timelines, carry/blocking, world-before-combat event/hash order, switch pixel
+  changes, rollback and mid-mover restart. See
+  `reports/performance-P12.0-retained-use-split-draft-2026-07-17.md`.
 - Split AutoREST 30 FPS gate (2026-07-17): a combined `STEP` request was proven
   to serialize ORDS response work with the next tic on the two-core stack. The
   public package now exposes idempotent `SUBMIT_STEP` and immutable
@@ -1790,6 +1804,33 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   live browser uses the selected dynamic protocol; the ten-frame buffer is a
   measured throughput solution, not the final latency target, so shrinking it
   through further renderer/submit-tail reduction remains active P12.0 work.
+  A six-frame follow-up failed at 22.908 FPS/119 stalls. Eight frames passed one
+  exact-chain run at 31.596 FPS and 31.222/32.191 ms paint-gap p50/p95, but the
+  client stays at ten until that result repeats after retained world machines.
+  A separate restart defect is fixed: committed orphan AQ wakeups whose request
+  row was cascade-deleted are consumed rather than terminating the Scheduler
+  worker on `NO_DATA_FOUND`; a focused next-request regression covers it.
+- Dynamic USE plus renderer-headroom selection (2026-07-17): generic retained
+  specials 1/11/26/62/88/117, key denial/allow, WALK, door/lift/switch
+  timelines, carry/blocking, rollback, restart, and SQL parity now pass with
+  `UNIFIED_WORKER_SPLIT_USE_ENABLED=1`. Ordinary movement uses its retained
+  BLOCKMAP decision and avoids a complete relational geometry rebuild; genuine
+  triggers and active movers retain the exact split SQL-world path. Detailed
+  moving-route tracing isolated 7.650 of 8.126 ms average portal time in ACTIVE
+  portal/wall sampling, not sorting or buffer reset. The selected clean-room
+  renderer now traverses the near BSP child first and rejects a far child only
+  when every column touched by its complete bounding box already has a strictly
+  nearer dynamically-solid hit. Near-plane crossings fail open, exhaustive
+  audit mode remains unchanged, and moving sector heights recompute solidity
+  before render and rollback. Matched exact routes reduced average kernel time
+  from 16.506 to 12.617 ms. Two fresh 300-frame runs passed at 31.036 and
+  32.064 displayed FPS with 300 unique frames and the unchanged 330-frame chain;
+  the second had zero stalls and 31.159/32.048 ms paint-gap p50/p95. The
+  independent 12-pose SQL oracle retained all 57,012 accepted and 21,050
+  visible intersections, matched 12,487 active portal hits, and matched all
+  64,000 final pixels. This selects the optimization without reducing
+  resolution; horizontal plane spans remain the next renderer architecture
+  slice before the future 640x400 profile.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

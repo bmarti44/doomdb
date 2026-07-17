@@ -1443,6 +1443,32 @@
     },
     {
       "kind": "wall_texture",
+      "name": "SW2BRN1",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "STEP07",
+        "STEP07",
+        "WALL02_2",
+        "WALL02_2",
+        "SW3S1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
+      "name": "SW2GRAY",
+      "reasons": [
+        "E1M1 wall or required animation frame"
+      ],
+      "sourceLumps": [
+        "W31_1",
+        "W31_1",
+        "SW2S1"
+      ]
+    },
+    {
+      "kind": "wall_texture",
       "name": "WFALL1",
       "reasons": [
         "E1M1 wall or required animation frame"
@@ -3201,7 +3227,8 @@
       "kind": "patch",
       "name": "STEP07",
       "reasons": [
-        "wall texture STEP6"
+        "wall texture STEP6",
+        "wall texture SW2BRN1"
       ],
       "sourceLumps": [
         "STEP07"
@@ -3299,12 +3326,32 @@
     },
     {
       "kind": "patch",
+      "name": "SW2S1",
+      "reasons": [
+        "wall texture SW2GRAY"
+      ],
+      "sourceLumps": [
+        "SW2S1"
+      ]
+    },
+    {
+      "kind": "patch",
       "name": "SW3S0",
       "reasons": [
         "wall texture SW1BRN1"
       ],
       "sourceLumps": [
         "SW3S0"
+      ]
+    },
+    {
+      "kind": "patch",
+      "name": "SW3S1",
+      "reasons": [
+        "wall texture SW2BRN1"
+      ],
+      "sourceLumps": [
+        "SW3S1"
       ]
     },
     {
@@ -3441,7 +3488,8 @@
       "kind": "patch",
       "name": "W31_1",
       "reasons": [
-        "wall texture SW1GRAY"
+        "wall texture SW1GRAY",
+        "wall texture SW2GRAY"
       ],
       "sourceLumps": [
         "W31_1"
@@ -3492,7 +3540,8 @@
       "name": "WALL02_2",
       "reasons": [
         "wall texture BROWN1",
-        "wall texture SW1BRN1"
+        "wall texture SW1BRN1",
+        "wall texture SW2BRN1"
       ],
       "sourceLumps": [
         "WALL02_2"

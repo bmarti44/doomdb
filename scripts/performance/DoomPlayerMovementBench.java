@@ -1,5 +1,7 @@
 import oracle.sql.NUMBER;
 import java.util.Arrays;
+import java.sql.Clob;
+import java.math.BigDecimal;
 
 /** First exact retained-array implementation of DOOM_PLAYER_MOVE_PAYLOAD. */
 public final class DoomPlayerMovementBench {
@@ -20,6 +22,7 @@ public final class DoomPlayerMovementBench {
   static NUMBER resultY;
   static NUMBER resultZ;
   static int resultSector;
+  static boolean resultRequiresWorld;
   static boolean traceEnabled;
   static long traceCandidateNs,traceSideNs,traceInteriorNs,traceEndpointNs,tracePortalNs;
   static int traceCandidates,traceSideTests,traceInteriorTests,traceEndpointTests;
@@ -30,6 +33,8 @@ public final class DoomPlayerMovementBench {
   private static int candidateGeneration;
   private static int candidateCount;
   private static String lastError = "";
+  private static double[] liveFloor,liveCeiling,priorFloor,priorCeiling;
+  private static boolean geometryPending;
 
   private DoomPlayerMovementBench() {}
 
@@ -40,15 +45,34 @@ public final class DoomPlayerMovementBench {
   private static NUMBER integerCoordinate(double value) {
     return new NUMBER((long) value);
   }
+  private static void ensureGeometry(){if(liveFloor==null){liveFloor=DoomSimCatalogBench.baseFloor.clone();
+    liveCeiling=DoomSimCatalogBench.baseCeiling.clone();}}
+  static String loadDynamicSectors(Clob snapshot){try{String text=snapshot.getSubString(1,(int)snapshot.length());
+    String body=text.substring(1,text.length()-1).trim();String[] rows=body.length()==0?new String[0]:
+      body.split("\\]\\s*,\\s*\\[");require(rows.length==DoomSimCatalogBench.baseFloor.length,"movement sector count");
+    liveFloor=new double[rows.length];liveCeiling=new double[rows.length];for(int i=0;i<rows.length;i++){
+      String[] f=rows[i].replace("[","").replace("]","").split(",");require(f.length==3&&
+        Integer.parseInt(f[0])==i,"movement sector order");liveFloor[i]=Double.parseDouble(f[1]);
+      liveCeiling[i]=Double.parseDouble(f[2]);require(liveCeiling[i]>=liveFloor[i],"movement sector height");}
+    geometryPending=false;return "OK|"+rows.length;}catch(Throwable e){return "ERR|"+e.getMessage();}}
+  static void stageWorldGeometry(byte[] pack){ensureGeometry();require(!geometryPending&&pack!=null&&
+      pack.length>=55&&((pack[6]&255)<<8|(pack[7]&255))==liveFloor.length,"movement geometry pack");
+    priorFloor=liveFloor.clone();priorCeiling=liveCeiling.clone();int p=55;
+    for(int i=0;i<liveFloor.length;i++,p+=20){require((((pack[p]&255)<<24)|((pack[p+1]&255)<<16)|
+      ((pack[p+2]&255)<<8)|(pack[p+3]&255))==i,"movement geometry order");
+      liveFloor[i]=((pack[p+4]&255)<<24)|((pack[p+5]&255)<<16)|((pack[p+6]&255)<<8)|(pack[p+7]&255);
+      liveCeiling[i]=((pack[p+8]&255)<<24)|((pack[p+9]&255)<<16)|((pack[p+10]&255)<<8)|(pack[p+11]&255);}
+    geometryPending=true;}
+  static void acceptWorldGeometry(){if(geometryPending)geometryPending=false;}
+  static void discardWorldGeometry(){if(geometryPending){liveFloor=priorFloor;liveCeiling=priorCeiling;geometryPending=false;}}
 
   private static boolean blocking(int line, double z) {
+    ensureGeometry();
     int left = DoomSimCatalogBench.lineLeftSector[line];
     if (left < 0 || (DoomSimCatalogBench.lineFlags[line] & 1) != 0) return true;
     int right = DoomSimCatalogBench.lineRightSector[line];
-    double bottom = Math.max(DoomSimCatalogBench.baseFloor[right],
-        DoomSimCatalogBench.baseFloor[left]);
-    double top = Math.min(DoomSimCatalogBench.baseCeiling[right],
-        DoomSimCatalogBench.baseCeiling[left]);
+    double bottom = Math.max(liveFloor[right],liveFloor[left]);
+    double top = Math.min(liveCeiling[right],liveCeiling[left]);
     return bottom - z > STEP || top - bottom < HEIGHT || top - Math.max(z, bottom) < HEIGHT;
   }
 
@@ -193,10 +217,8 @@ public final class DoomPlayerMovementBench {
         int left = DoomSimCatalogBench.lineLeftSector[line];
         if (left < 0 || (DoomSimCatalogBench.lineFlags[line] & 1) != 0) continue;
         int right = DoomSimCatalogBench.lineRightSector[line];
-        double bottom = Math.max(DoomSimCatalogBench.baseFloor[right],
-            DoomSimCatalogBench.baseFloor[left]);
-        double top = Math.min(DoomSimCatalogBench.baseCeiling[right],
-            DoomSimCatalogBench.baseCeiling[left]);
+        ensureGeometry();double bottom = Math.max(liveFloor[right],liveFloor[left]);
+        double top = Math.min(liveCeiling[right],liveCeiling[left]);
         if (bottom - z > STEP || top - Math.max(z, bottom) < HEIGHT) continue;
         if (!segmentCrosses(startX, startY, endX, endY,
             DoomSimCatalogBench.lineX1[line], DoomSimCatalogBench.lineY1[line],
@@ -258,8 +280,21 @@ public final class DoomPlayerMovementBench {
       int sector=DoomSimCatalogBench.locateSector(x,y);
       require(sector>=0,DoomSimCatalogBench.lastError());
       if(traceEnabled)tracePortalNs+=System.nanoTime()-portal;
-      NUMBER z = new NUMBER((long) DoomSimCatalogBench.baseFloor[sector]);
+      ensureGeometry();NUMBER z = new NUMBER(BigDecimal.valueOf(liveFloor[sector]));
       resultX = x; resultY = y; resultZ = z; resultSector = sector;
+      resultRequiresWorld=DoomSimCatalogBench.sectorWorldEffect[sector]!=0;
+      if(!resultRequiresWorld&&(startX.compareTo(x)!=0||startY.compareTo(y)!=0)){
+        collectCandidates(startX.doubleValue(),startY.doubleValue(),x.doubleValue(),y.doubleValue(),0.0);
+        for(int candidate=0;candidate<candidateCount;candidate++){
+          int line=candidateLines[candidate];
+          if(DoomSimCatalogBench.lineWalkSpecial[line]!=0&&segmentCrosses(
+              startX.doubleValue(),startY.doubleValue(),x.doubleValue(),y.doubleValue(),
+              DoomSimCatalogBench.lineX1[line],DoomSimCatalogBench.lineY1[line],
+              DoomSimCatalogBench.lineX2[line],DoomSimCatalogBench.lineY2[line])){
+            resultRequiresWorld=true;break;
+          }
+        }
+      }
       lastError = "";if (!report) return "OK";
       return "{\"dest_x\":" + x.stringValue() + ",\"dest_y\":" + y.stringValue() +
           ",\"dest_z\":" + z.stringValue() + ",\"destination_sector_id\":" + sector +
@@ -284,6 +319,8 @@ public final class DoomPlayerMovementBench {
       int forward, int strafe, int run) {
     return moveInternal(startX,startY,startZ,angleIndex,forward,strafe,run,false);
   }
+
+  static boolean requiresWorldAdvance(){return resultRequiresWorld;}
 
   public static String benchmark(int iterations) {
     try {

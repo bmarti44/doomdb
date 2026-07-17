@@ -129,7 +129,12 @@ begin
       raise_application_error(-20842,'trusted event hash envelope');
     end if;
   else
-  if :new.lineage is null then
+  -- The column's zero-SHA default exists only to migrate pre-lineage rows.
+  -- New legacy SQL producers omit LINEAGE, so Oracle supplies that sentinel
+  -- before this trigger runs; treat it exactly like NULL and bind the event to
+  -- the session's current save lineage.
+  if :new.lineage is null or :new.lineage=
+     '0000000000000000000000000000000000000000000000000000000000000000' then
     select save_lineage into :new.lineage from game_sessions
       where session_token=:new.session_token;
   end if;

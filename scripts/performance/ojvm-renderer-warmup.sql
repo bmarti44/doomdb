@@ -26,18 +26,26 @@ end;
 declare
   missing_methods number;
 begin
-  select count(*)
-  into missing_methods
-  from user_java_methods
-  where name = 'DoomBspKernelBench'
-    and method_name in (
-      'traverseAndProject', 'projectSeg', 'applySolidCoverage',
-      'applyPortalWalk', 'drawActiveWall', 'drawWallPiece', 'drawPlanes',
-      'drawMaskedWall', 'drawSprites', 'projectSprite', 'rasterSprite',
-      'composeLivePresentation', 'prepareFrameSha',
-      'buildPackedLiveJson', 'compressJson', 'renderTicZero'
-    )
-    and is_compiled <> 'YES';
+  -- JIT compilation is persisted asynchronously by the single MMON worker.
+  -- A hot call returning does not mean USER_JAVA_METHODS has been published
+  -- yet, especially after a database restart. Poll a bounded deployment-only
+  -- window instead of falsely failing while the last methods are in flight.
+  for attempt in 1 .. 120 loop
+    select count(*)
+    into missing_methods
+    from user_java_methods
+    where name = 'DoomBspKernelBench'
+      and method_name in (
+        'traverseAndProject', 'projectSeg', 'applySolidCoverage',
+        'applyPortalWalk', 'drawActiveWall', 'drawWallPiece', 'drawPlanes',
+        'drawMaskedWall', 'drawSprites', 'projectSprite', 'rasterSprite',
+        'composeLivePresentation', 'prepareFrameSha',
+        'buildPackedLiveJson', 'compressJson', 'renderTicZero'
+      )
+      and is_compiled <> 'YES';
+    exit when missing_methods = 0;
+    dbms_session.sleep(.5);
+  end loop;
   if missing_methods <> 0 then
     raise_application_error(-20000,
       missing_methods || ' hot OJVM renderer methods are not compiled');

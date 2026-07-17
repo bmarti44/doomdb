@@ -14,14 +14,14 @@ import oracle.sql.NUMBER;
 /** Immutable SQL-built simulation catalog retained by one database worker. */
 public final class DoomSimCatalogBench {
   private static final int MAGIC = 0x44534350; // DSCP
-  private static final int VERSION = 6;
+  private static final int VERSION = 7;
   private static final NUMBER ZERO=NUMBER.zero();
   private static boolean loaded;
   private static int[] nodeX, nodeY, nodeDx, nodeDy, child0, child1;
   private static NUMBER[] nodeXExact,nodeYExact,nodeDxExact,nodeDyExact;
   private static byte[] child0Leaf, child1Leaf;
   private static int[] subsectorSector;
-  static int[] lineId, lineFlags, lineLeftSector, lineRightSector;
+  static int[] lineId, lineFlags, lineLeftSector, lineRightSector, lineWalkSpecial;
   static int[] lineStartVertex, lineEndVertex;
   static double[] lineX1, lineY1, lineX2, lineY2, lineLength, lineDirectionX,
       lineDirectionY;
@@ -30,6 +30,7 @@ public final class DoomSimCatalogBench {
   static int blockOriginX, blockOriginY, blockWidth, blockHeight;
   static int[] blockOffset, blockLines;
   static double[] baseFloor, baseCeiling;
+  static int[] sectorWorldEffect;
   static byte[] rejectBits, soundReachBits;
   static int[] rngValue;
   static NUMBER[] hitscanSin;
@@ -120,15 +121,18 @@ public final class DoomSimCatalogBench {
     }
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
-             "select linedef_id,flags,coalesce(left_sector_id,-1),right_sector_id," +
-             "start_vertex_id,end_vertex_id,x1,y1,x2,y2,segment_length,direction_x,direction_y," +
+             "select cs.linedef_id,cs.flags,coalesce(cs.left_sector_id,-1),cs.right_sector_id," +
+             "cs.start_vertex_id,cs.end_vertex_id,case when exists(select 1 from doom_linedef_special_def d " +
+             "where d.special_id=ml.special and instr(d.semantics,'WALK|')=1) then 1 else 0 end," +
+             "cs.x1,cs.y1,cs.x2,cs.y2,cs.segment_length,cs.direction_x,cs.direction_y," +
              "utl_raw.cast_from_number(segment_length),utl_raw.cast_from_number(direction_x)," +
              "utl_raw.cast_from_number(direction_y) " +
-             "from doom_collision_segment order by linedef_id")) {
+             "from doom_collision_segment cs join doom_map_linedef ml on ml.linedef_id=cs.linedef_id " +
+             "order by cs.linedef_id")) {
       while (rows.next()) {
-        for (int column = 1; column <= 6; column++) out.writeInt(rows.getInt(column));
-        for (int column = 7; column <= 13; column++) out.writeDouble(rows.getDouble(column));
-        for (int column = 14; column <= 16; column++) writeNumber(out, rows.getBytes(column));
+        for (int column = 1; column <= 7; column++) out.writeInt(rows.getInt(column));
+        for (int column = 8; column <= 14; column++) out.writeDouble(rows.getDouble(column));
+        for (int column = 15; column <= 17; column++) writeNumber(out, rows.getBytes(column));
       }
     }
 
@@ -170,11 +174,12 @@ public final class DoomSimCatalogBench {
     }
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery(
-             "select sector_id,floor_height,ceiling_height from doom_map_sector order by sector_id")) {
+             "select sector_id,floor_height,ceiling_height," +
+             "case when special in(7,9) then 1 else 0 end from doom_map_sector order by sector_id")) {
       int expected = 0;
       while (rows.next()) {
         require(rows.getInt(1) == expected++, "sector order");
-        out.writeDouble(rows.getDouble(2)); out.writeDouble(rows.getDouble(3));
+        out.writeDouble(rows.getDouble(2)); out.writeDouble(rows.getDouble(3));out.writeInt(rows.getInt(4));
       }
     }
 
@@ -333,6 +338,7 @@ public final class DoomSimCatalogBench {
     for (int id = 0; id < count; id++) subsectorSector[id] = in.readInt();
     count = in.readInt();
     lineId = new int[count]; lineFlags = new int[count]; lineLeftSector = new int[count];
+    lineWalkSpecial = new int[count];
     lineRightSector = new int[count]; lineStartVertex = new int[count]; lineEndVertex = new int[count];
     lineX1 = new double[count]; lineY1 = new double[count]; lineX2 = new double[count];
     lineY2 = new double[count]; lineLength = new double[count];
@@ -345,6 +351,7 @@ public final class DoomSimCatalogBench {
       lineId[id] = in.readInt(); lineFlags[id] = in.readInt();
       lineLeftSector[id] = in.readInt(); lineRightSector[id] = in.readInt();
       lineStartVertex[id] = in.readInt(); lineEndVertex[id] = in.readInt();
+      lineWalkSpecial[id] = in.readInt();
       lineX1[id] = in.readDouble(); lineY1[id] = in.readDouble();
       lineX2[id] = in.readDouble(); lineY2[id] = in.readDouble();
       lineLength[id] = in.readDouble(); lineDirectionX[id] = in.readDouble();
@@ -363,8 +370,9 @@ public final class DoomSimCatalogBench {
     for (int index = 0; index < blockOffset.length; index++) blockOffset[index] = in.readInt();
     for (int index = 0; index < blockLines.length; index++) blockLines[index] = in.readInt();
     count = in.readInt(); baseFloor = new double[count]; baseCeiling = new double[count];
+    sectorWorldEffect=new int[count];
     for (int id = 0; id < count; id++) {
-      baseFloor[id] = in.readDouble(); baseCeiling[id] = in.readDouble();
+      baseFloor[id] = in.readDouble(); baseCeiling[id] = in.readDouble();sectorWorldEffect[id]=in.readInt();
     }
     int matrixSectors = in.readInt(), bitBytes = in.readInt();
     require(matrixSectors == count && bitBytes == (count * count + 7) / 8,

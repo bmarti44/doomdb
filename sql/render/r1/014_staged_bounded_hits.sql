@@ -105,18 +105,26 @@ with intersection_terms as (
   select accepted.*,
     case when accepted.sidedef_id is null or accepted.opposite_sidedef_id is null
       then 1
-      when least(facing_sector.ceiling_height,opposite_sector.ceiling_height)-
-        greatest(facing_sector.floor_height,opposite_sector.floor_height)<=0
+      when least(coalesce(facing_state.ceiling_height,facing_sector.ceiling_height),
+        coalesce(opposite_state.ceiling_height,opposite_sector.ceiling_height))-
+        greatest(coalesce(facing_state.floor_height,facing_sector.floor_height),
+        coalesce(opposite_state.floor_height,opposite_sector.floor_height))<=0
       then 1 else 0 end is_solid
   from accepted
   left join doom_map_sidedef facing_sidedef
     on facing_sidedef.sidedef_id=accepted.sidedef_id
   left join doom_map_sector facing_sector
     on facing_sector.sector_id=facing_sidedef.sector_id
+  left join sector_state facing_state
+    on facing_state.session_token=accepted.session_token
+   and facing_state.sector_id=facing_sidedef.sector_id
   left join doom_map_sidedef opposite_sidedef
     on opposite_sidedef.sidedef_id=accepted.opposite_sidedef_id
   left join doom_map_sector opposite_sector
     on opposite_sector.sector_id=opposite_sidedef.sector_id
+  left join sector_state opposite_state
+    on opposite_state.session_token=accepted.session_token
+   and opposite_state.sector_id=opposite_sidedef.sector_id
 )
 select classified.*,
   row_number() over(partition by session_token,column_no

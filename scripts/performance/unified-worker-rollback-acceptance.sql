@@ -10,10 +10,14 @@ declare
   committed_seq_ number;delta_version_ number;delta_count_ number;
   delta_sha_ varchar2(64);state_sha_ varchar2(64);frame_sha_ varchar2(64);
   response_bytes_ number;response_sha_ varchar2(64);delta_ blob;payload_ blob;
-  tic_ number;seq_ number;old_wait_ number;old_capacity_ number;
+  tic_ number;seq_ number;old_enabled_ number;old_wait_ number;old_capacity_ number;
   count_ number;
   deadline_ timestamp with time zone;
   blocked_ boolean;
+  request_prefix_ varchar2(24):=substr(lower(rawtohex(sys_guid())),1,24);
+
+  function request_(p_suffix number) return varchar2 is
+  begin return request_prefix_||lpad(to_char(p_suffix,'fmxxxxxxxx'),8,'0');end;
 
   function command_(p_seq number,p_forward number default 1) return raw is
     movement_ varchar2(2);
@@ -121,20 +125,14 @@ declare
     if session_ is not null then
       delete from game_sessions where session_token=session_;
     end if;
-    delete from doom_worker_audit where request_id in(
-      '10000000000000000000000000000001',
-      '10000000000000000000000000000002',
-      '10000000000000000000000000000003',
-      '10000000000000000000000000000004',
-      '10000000000000000000000000000005',
-      '10000000000000000000000000000006',
-      '10000000000000000000000000000007');
-    delete from doom_worker_audit
-      where request_id='10000000000000000000000000000008';
+    delete from doom_worker_audit where substr(request_id,1,24)=request_prefix_;
     update doom_worker_control set target_session=null,target_lineage=null,
       state_map_sha=null,ready=0,stop_requested=0,worker_sid=null,last_error=null;
-    update doom_config set number_value=0
-      where config_key in('UNIFIED_WORKER_ENABLED','UNIFIED_WORKER_FAILPOINT');
+    update doom_config set number_value=0 where config_key='UNIFIED_WORKER_FAILPOINT';
+    if old_enabled_ is not null then
+      update doom_config set number_value=old_enabled_
+        where config_key='UNIFIED_WORKER_ENABLED';
+    end if;
     if old_wait_ is not null then
       update doom_config set number_value=old_wait_
         where config_key='UNIFIED_WORKER_WAIT_SECONDS';
@@ -146,6 +144,8 @@ declare
     commit;
   end;
 begin
+  select number_value into old_enabled_ from doom_config
+    where config_key='UNIFIED_WORKER_ENABLED';
   select number_value into old_wait_ from doom_config
     where config_key='UNIFIED_WORKER_WAIT_SECONDS';
   select number_value into old_capacity_ from doom_config
@@ -183,24 +183,24 @@ begin
   assert_ready_(generation_,'startup combined recovery control');
   dbms_output.put_line('unified_worker_combined_ready=PASS generation='||generation_);
 
-  invoke_('10000000000000000000000000000001',generation_,tic_,seq_,
+  invoke_(request_(1),generation_,tic_,seq_,
     command_(seq_+1));
-  assert_committed_('10000000000000000000000000000001',tic_+1,seq_+1);
+  assert_committed_(request_(1),tic_+1,seq_+1);
   tic_:=committed_tic_;seq_:=committed_seq_;
   dbms_output.put_line('unified_worker_live_commit=PASS response_bytes='||
     response_bytes_);
 
   -- The completion signal has been consumed; exact replay comes from durable
   -- request/result rows and cannot advance the frontier again.
-  invoke_('10000000000000000000000000000001',generation_,tic_-1,seq_-1,
+  invoke_(request_(1),generation_,tic_-1,seq_-1,
     command_(seq_),0);
-  assert_committed_('10000000000000000000000000000001',tic_,seq_);
+  assert_committed_(request_(1),tic_,seq_);
   select current_tic,last_command_seq into committed_tic_,committed_seq_
     from game_sessions where session_token=session_;
   assert_(committed_tic_=tic_ and committed_seq_=seq_,'terminal replay advanced state');
   blocked_:=false;
   begin
-    invoke_('10000000000000000000000000000001',generation_,tic_-1,seq_-1,
+    invoke_(request_(1),generation_,tic_-1,seq_-1,
       command_(seq_,-1),0);
   exception when others then
     if sqlcode=-20721 then blocked_:=true;else raise;end if;
@@ -215,10 +215,8 @@ begin
     update doom_config set number_value=failpoint_
       where config_key='UNIFIED_WORKER_FAILPOINT';
     commit;
-    invoke_(case failpoint_ when 1 then
-        '10000000000000000000000000000002'
-      when 3 then '10000000000000000000000000000003'
-      else '10000000000000000000000000000008' end,
+    invoke_(case failpoint_ when 1 then request_(2)
+      when 3 then request_(3) else request_(8) end,
       generation_,tic_,seq_,command_(seq_+1));
     assert_(status_='FAILED' and
       ((failpoint_<>4 and response_generation_=generation_) or
@@ -243,9 +241,9 @@ begin
   update doom_config set number_value=2
     where config_key='UNIFIED_WORKER_FAILPOINT';
   commit;
-  invoke_('10000000000000000000000000000004',generation_,tic_,seq_,
+  invoke_(request_(4),generation_,tic_,seq_,
     command_(seq_+1));
-  assert_committed_('10000000000000000000000000000004',tic_+1,seq_+1);
+  assert_committed_(request_(4),tic_+1,seq_+1);
   assert_(response_generation_>generation_,'postcommit recovery generation');
   generation_:=response_generation_;tic_:=committed_tic_;seq_:=committed_seq_;
   doom_worker_api.worker_status(session_,committed_tic_,ready_,state_sha_,
@@ -259,9 +257,9 @@ begin
   update doom_config set number_value=0
     where config_key='UNIFIED_WORKER_FAILPOINT';
   commit;
-  invoke_('10000000000000000000000000000005',generation_,tic_,seq_,
+  invoke_(request_(5),generation_,tic_,seq_,
     command_(seq_+1));
-  assert_committed_('10000000000000000000000000000005',tic_+1,seq_+1);
+  assert_committed_(request_(5),tic_+1,seq_+1);
   tic_:=committed_tic_;seq_:=committed_seq_;
 
   -- Restart reconstructs both owners before READY and fences the old generation.
@@ -273,15 +271,15 @@ begin
     'worker restart generation');
   blocked_:=false;
   begin
-    invoke_('10000000000000000000000000000006',committed_tic_,tic_,seq_,
+    invoke_(request_(6),committed_tic_,tic_,seq_,
       command_(seq_+1),0);
   exception when others then
     if sqlcode=-20721 then blocked_:=true;else raise;end if;
   end;
   assert_(blocked_,'stale generation accepted');
-  invoke_('10000000000000000000000000000007',generation_,tic_,seq_,
+  invoke_(request_(7),generation_,tic_,seq_,
     command_(seq_+1));
-  assert_committed_('10000000000000000000000000000007',tic_+1,seq_+1);
+  assert_committed_(request_(7),tic_+1,seq_+1);
   dbms_output.put_line('unified_worker_restart_fence=PASS generation='||
     generation_);
 

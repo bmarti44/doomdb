@@ -13,6 +13,17 @@ begin
   add_column('PREPARE_US');
   add_column('LEDGER_US');
   add_column('WORLD_PACK_US');
+  add_column('WORLD_SPLIT');
+  add_column('WORLD_ACTIVE');
+  add_column('WORLD_ENABLED');
+  add_column('WORLD_REQUIRED');
+  add_column('WORLD_HYBRID');
+  add_column('PRE_MOVEMENT_APPLY_US');
+  add_column('WORLD_ADVANCE_US');
+  add_column('GEOMETRY_PACK_US');
+  add_column('WORLD_SYNC_US');
+  add_column('PROJECTILE_PACK_US');
+  add_column('POST_WORLD_US');
   add_column('JAVA_PREPARE_US');
   add_column('APPLY_US');
   add_column('WORLD_APPLY_US');
@@ -25,6 +36,9 @@ begin
   add_column('BSP_US');
   add_column('SOLID_US');
   add_column('PORTAL_US');
+  add_column('PORTAL_RESET_US');
+  add_column('PORTAL_SORT_US');
+  add_column('PORTAL_WALK_US');
   add_column('PLANE_US');
   add_column('SPRITE_US');
   add_column('PRESENTATION_US');
@@ -79,8 +93,4 @@ end;
 -- authoritative payloads remain redo-logged, while RETENTION NONE avoids old
 -- SecureFile versions for immutable insert-once rows.
 alter table doom_worker_result modify lob(response_blob)
-  (cache logging retention none);
-alter table tic_commands modify lob(state_blob)
-  (cache logging retention none);
-alter table state_history modify lob(snapshot_blob)
   (cache logging retention none);

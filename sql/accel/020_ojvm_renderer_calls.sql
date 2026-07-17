@@ -1,7 +1,17 @@
 whenever sqlerror exit failure rollback
 
-create or replace procedure doom_bsp_build_kernel_pack as
-language java name 'DoomBspKernelBench.buildKernelPack()';
+create or replace function doom_bsp_build_kernel_pack_java return varchar2 as
+language java name 'DoomBspKernelBench.buildKernelPack() return java.lang.String';
+/
+
+create or replace procedure doom_bsp_build_kernel_pack authid definer as
+  l_result varchar2(4000);
+begin
+  l_result:=doom_bsp_build_kernel_pack_java;
+  if l_result<>'OK' then
+    raise_application_error(-20000,'renderer kernel pack build '||l_result);
+  end if;
+end;
 /
 
 create or replace function doom_bsp_warm_kernel_pack(p_iterations in number)
@@ -78,6 +88,18 @@ language java name 'DoomBspKernelBench.lastSolidNanos() return long';
 
 create or replace function doom_bsp_last_portal_ns return number as
 language java name 'DoomBspKernelBench.lastPortalNanos() return long';
+/
+
+create or replace function doom_bsp_last_portal_reset_ns return number as
+language java name 'DoomBspKernelBench.lastPortalResetNanos() return long';
+/
+
+create or replace function doom_bsp_last_portal_sort_ns return number as
+language java name 'DoomBspKernelBench.lastPortalSortNanos() return long';
+/
+
+create or replace function doom_bsp_last_portal_walk_ns return number as
+language java name 'DoomBspKernelBench.lastPortalWalkNanos() return long';
 /
 
 create or replace function doom_bsp_last_plane_ns return number as

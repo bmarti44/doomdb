@@ -7,6 +7,8 @@ public final class DoomRetainedLosBench {
   private static final NUMBER ZERO = NUMBER.zero();
   private static final NUMBER ONE = new NUMBER(1);
   private static double[] floor, ceiling;
+  private static double[] priorFloor,priorCeiling;
+  private static boolean geometryPending;
   private static int[] candidates, seen;
   private static int generation, candidateCount;
   private static boolean loaded;
@@ -16,6 +18,15 @@ public final class DoomRetainedLosBench {
   private static void require(boolean value, String message) {
     if (!value) throw new IllegalStateException(message);
   }
+  static void stageWorldGeometry(byte[] pack){require(!geometryPending&&floor!=null&&pack!=null&&pack.length>=55&&
+      (((pack[6]&255)<<8)|(pack[7]&255))==floor.length,"LOS geometry pack");priorFloor=floor.clone();
+    priorCeiling=ceiling.clone();int p=55;for(int i=0;i<floor.length;i++,p+=20){int id=
+      ((pack[p]&255)<<24)|((pack[p+1]&255)<<16)|((pack[p+2]&255)<<8)|(pack[p+3]&255);
+      int f=((pack[p+4]&255)<<24)|((pack[p+5]&255)<<16)|((pack[p+6]&255)<<8)|(pack[p+7]&255);
+      int c=((pack[p+8]&255)<<24)|((pack[p+9]&255)<<16)|((pack[p+10]&255)<<8)|(pack[p+11]&255);
+      require(id==i&&c>=f,"LOS geometry row");floor[i]=f;ceiling[i]=c;}geometryPending=true;}
+  static void acceptWorldGeometry(){if(geometryPending)geometryPending=false;}
+  static void discardWorldGeometry(){if(geometryPending){floor=priorFloor;ceiling=priorCeiling;geometryPending=false;}}
 
   public static String load(Clob snapshot) {
     try {

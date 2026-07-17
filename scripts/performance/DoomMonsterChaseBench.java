@@ -1,4 +1,5 @@
 import java.sql.Clob;
+import java.util.Arrays;
 import oracle.sql.NUMBER;
 
 /** Retained, exact-coordinate kernel for the movement-only MONSTER CHASE phase. */
@@ -26,6 +27,10 @@ public final class DoomMonsterChaseBench {
   private static double[] xd, yd, zd, radiusDouble, heightDouble, speedDouble;
   private static NUMBER[] floor, ceiling;
   private static double[] floorDouble, ceilingDouble;
+  private static NUMBER[] priorFloor,priorCeiling;
+  private static double[] priorFloorDouble,priorCeilingDouble;
+  private static NUMBER[] priorZ;
+  private static boolean geometryPending;
   private static NUMBER[] lineX1Exact, lineY1Exact, lineX2Exact, lineY2Exact;
   private static NUMBER[] lineNormalXExact, lineNormalYExact;
   private static int[] candidates, seen;
@@ -36,6 +41,26 @@ public final class DoomMonsterChaseBench {
   private static void require(boolean value, String message) {
     if (!value) throw new IllegalStateException(message);
   }
+  static void stageWorldGeometry(byte[] pack){require(!geometryPending&&floor!=null&&pack!=null&&pack.length>=55&&
+      (((pack[6]&255)<<8)|(pack[7]&255))==floor.length,"chase geometry pack");
+    priorFloor=floor.clone();priorCeiling=ceiling.clone();priorFloorDouble=floorDouble.clone();
+    priorCeilingDouble=ceilingDouble.clone();int p=55;for(int i=0;i<floor.length;i++,p+=20){int id=
+      ((pack[p]&255)<<24)|((pack[p+1]&255)<<16)|((pack[p+2]&255)<<8)|(pack[p+3]&255);
+      int f=((pack[p+4]&255)<<24)|((pack[p+5]&255)<<16)|((pack[p+6]&255)<<8)|(pack[p+7]&255);
+      int c=((pack[p+8]&255)<<24)|((pack[p+9]&255)<<16)|((pack[p+10]&255)<<8)|(pack[p+11]&255);
+      require(id==i&&c>=f,"chase geometry row");floor[i]=new NUMBER(f);ceiling[i]=new NUMBER(c);
+      floorDouble[i]=f;ceilingDouble[i]=c;}
+    int mobjs=((pack[8]&255)<<8)|(pack[9]&255);require(pack.length>=55+20*floor.length+27*mobjs,
+      "chase geometry base length");priorZ=z.clone();int actor=0;
+    for(int i=0;i<mobjs;i++,p+=27){int mobj=((pack[p]&255)<<24)|((pack[p+1]&255)<<16)|
+        ((pack[p+2]&255)<<8)|(pack[p+3]&255);int bytes=pack[p+4]&255;
+      require(bytes>=1&&bytes<=22,"chase geometry mobj NUMBER");
+      while(actor<id.length&&id[actor]<mobj)actor++;
+      if(actor<id.length&&id[actor]==mobj){z[actor]=new NUMBER(Arrays.copyOfRange(pack,p+5,p+5+bytes));actor++;}}
+    require(actor==id.length,"chase geometry actor image");geometryPending=true;}
+  static void acceptWorldGeometry(){if(geometryPending)geometryPending=false;}
+  static void discardWorldGeometry(){if(geometryPending){floor=priorFloor;ceiling=priorCeiling;
+    floorDouble=priorFloorDouble;ceilingDouble=priorCeilingDouble;z=priorZ;geometryPending=false;}}
 
   private static boolean hex(String value, int length) {
     if (value == null || value.length() != length) return false;

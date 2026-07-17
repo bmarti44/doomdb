@@ -29,6 +29,8 @@ begin
   drop_object('drop function doom_unified_command_tic_prepare', -4043);
   drop_object('drop function doom_unified_command_projectiles_prepare', -4043);
   drop_object('drop function doom_unified_command_retained_projectiles', -4043);
+  drop_object('drop function doom_unified_command_post_world_passive', -4043);
+  drop_object('drop function doom_unified_pre_world_requires_advance', -4043);
   drop_object('drop function doom_unified_owner_projectiles_ready', -4043);
   drop_object('drop function doom_unified_actor_accept', -4043);
   drop_object('drop function doom_unified_actor_discard', -4043);
@@ -69,6 +71,8 @@ begin
   drop_object('drop package doom_canonical_state', -4043);
   drop_object('drop package doom_history', -4043);
   drop_object('drop package doom_retained_projectiles', -4043);
+  drop_object('drop procedure doom_bsp_build_kernel_pack', -4043);
+  drop_object('drop function doom_bsp_build_kernel_pack_java', -4043);
   drop_object('drop view doom_r2_masked_candidate_rows', -942);
   drop_object('drop view doom_api_presentation_rows', -942);
   drop_object('drop view doom_r2_staged_masked_candidate_rows', -942);

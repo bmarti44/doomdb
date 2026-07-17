@@ -267,8 +267,13 @@ create or replace package body doom_unified_worker as
     l_next_mobj number;l_result_tic number;l_result_seq number;
     l_ledger_sha varchar2(64);l_state_locator blob;
     l_delta_locator blob;l_response_locator blob;l_delta raw(32767);
-    l_projectile_pack raw(32767);l_world_pack raw(32767);
-    l_retained_projectiles number;l_world_draws number;
+    l_projectile_pack raw(32767);l_world_pack raw(32767);l_switch_pack raw(32767);
+    l_pre_movement raw(32767);
+    l_retained_projectiles number;l_world_draws number;l_split_use number:=0;
+    l_use_action number;l_world_active number:=0;l_world_enabled number;l_world_required number:=0;
+    l_player_sector number;l_player_x number;l_player_y number;l_previous_x number;l_previous_y number;
+    l_current_x number;l_current_y number;l_current_sector number;l_full_world number:=0;
+    l_world_hybrid number:=0;
     l_state_payload blob;l_render_payload blob;l_history_payload blob;
     l_committed_tic number;l_committed_seq number;l_delta_version number;
     l_delta_count number;l_delta_sha varchar2(64);l_state_sha varchar2(64);
@@ -278,11 +283,15 @@ create or replace package body doom_unified_worker as
     l_history_interval number;l_parity_interval number;
     l_stage timestamp with time zone;l_prepare_stage timestamp with time zone;
     l_prepare_us number;l_ledger_us number;l_world_pack_us number;l_java_prepare_us number;
+    l_pre_movement_apply_us number:=0;l_world_advance_us number:=0;
+    l_geometry_pack_us number:=0;l_world_sync_us number:=0;
+    l_projectile_pack_us number:=0;l_post_world_us number:=0;
     l_apply_us number;l_world_apply_us number;l_delta_apply_us number;
     l_apply_stage timestamp with time zone;
     l_state_us number;l_render_us number;l_finalize_us number;
     l_render_call_us number;l_render_update_us number;l_render_kernel_us number;
     l_bsp_us number;l_solid_us number;l_portal_us number;l_plane_us number;
+    l_portal_reset_us number;l_portal_sort_us number;l_portal_walk_us number;
     l_sprite_us number;l_presentation_us number;
     l_codec_us number;l_blob_us number;l_response_copy_us number;
     l_response_hash_us number;l_state_encode_us number;l_state_blob_us number;
@@ -371,42 +380,114 @@ create or replace package body doom_unified_worker as
       returning delta_blob,response_blob into l_delta_locator,l_response_locator;
       l_ledger_us:=elapsed_us(l_stage);l_stage:=systimestamp;
 
-      -- SQL evaluates passive world machines without mutating their rows. The
-      -- compact pack lets the retained owner consume the same ordered RNG
-      -- prefix before weapons/actors, while the durable apply remains inside
-      -- this transaction and ahead of the unified frontier update.
-      doom_retained_world_pack.build(l_session,l_result_tic,l_world_pack);
-      l_world_draws:=to_number(rawtohex(utl_raw.substr(l_world_pack,11,2)),'XXXX');
-      l_world_pack_us:=elapsed_us(l_stage);l_stage:=systimestamp;
-
-      -- SQL owns relational projectile collision/damage.  Cross into OJVM once
-      -- with only the resulting mutations so the retained arrays stay exact.
       l_retained_projectiles:=doom_unified_owner_projectiles_ready(
         l_session,l_lineage,l_generation);
-      if l_retained_projectiles=1 then
-        if l_command_version=2 then
-          l_delta:=doom_unified_command_world_retained(l_session,l_lineage,l_generation,
-            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
-            l_world_pack);
+      if l_retained_projectiles not in(0,1) then
+        raise_application_error(c_invalid,'retained projectile readiness');end if;
+      l_use_action:=to_number(rawtohex(utl_raw.substr(l_command,22,1)),'XX');
+      l_world_enabled:=config_number('UNIFIED_WORKER_SPLIT_USE_ENABLED');
+      select count(*) into l_world_active from (
+        select 1 from active_movers where session_token=l_session
+        union all select 1 from active_switches where session_token=l_session);
+      if l_world_active=0 then
+        select p.x,p.y into l_player_x,l_player_y from players p join game_sessions g
+          on g.session_token=p.session_token and g.current_player_id=p.player_id
+          where p.session_token=l_session;
+        select sector_id into l_player_sector
+          from table(doom_bsp_locate(l_player_x,l_player_y)) where rownum=1;
+        select count(*) into l_world_active from doom_map_sector
+          where sector_id=l_player_sector and special in(7,9);
+      end if;
+      if l_world_enabled=1 and
+         (l_use_action=1 or rawtohex(utl_raw.substr(l_command,18,1))<>'00' or
+          rawtohex(utl_raw.substr(l_command,19,1))<>'00' or l_world_active>0) then
+        -- This branch is an acceptance-only draft.  The clean/live defaults
+        -- remain zero, preserving the production rejection until its full
+        -- parity/rollback/restart matrix is green.
+        l_split_use:=1;l_world_draws:=0;l_java_prepare_us:=0;l_world_pack_us:=0;
+        l_stage:=systimestamp;
+        l_pre_movement:=doom_unified_command_pre_world(l_session,l_lineage,l_generation,
+          p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command);
+        if l_pre_movement is null or utl_raw.length(l_pre_movement)<>101 or
+           rawtohex(utl_raw.substr(l_pre_movement,1,6))<>'4450574D0100' then
+          raise_application_error(c_invalid,'retained pre-world movement: '||
+            substr(doom_unified_actor_last_error,1,3000));end if;
+        l_java_prepare_us:=l_java_prepare_us+elapsed_us(l_stage);l_stage:=systimestamp;
+        l_prepared:=1;
+        if l_use_action=1 or l_world_active>0 then l_world_required:=1;
+        else l_world_required:=doom_unified_pre_world_requires_advance(
+          l_session,l_lineage,l_generation,p_request);end if;
+        if l_world_required not in(0,1) then
+          raise_application_error(c_invalid,'retained pre-world decision: '||
+            substr(doom_unified_actor_last_error,1,3000));end if;
+        if l_world_required=1 then
+          l_full_world:=1;
+          doom_unified_delta_apply.apply_pre_world_movement(l_session,l_lineage,
+            l_expected_tic,l_expected_seq,l_command,l_pre_movement,l_previous_x,l_previous_y,
+            l_current_x,l_current_y,l_current_sector);
+          l_pre_movement_apply_us:=elapsed_us(l_stage);l_stage:=systimestamp;
+          doom_world_machines.advance(l_session,l_result_tic,l_previous_x,l_previous_y,l_use_action);
+          l_world_advance_us:=elapsed_us(l_stage);l_stage:=systimestamp;
+          doom_retained_world_pack.build_geometry(l_session,l_world_pack);
+          doom_retained_switch_presentation.build(l_session,l_switch_pack);
+          if utl_raw.length(l_world_pack)+utl_raw.length(l_switch_pack)>32767 then
+            raise_application_error(c_invalid,'combined retained world pack exceeds RAW capacity');end if;
+          l_world_pack:=utl_raw.concat(l_world_pack,l_switch_pack);
+          l_geometry_pack_us:=elapsed_us(l_stage);
+          l_world_pack_us:=l_pre_movement_apply_us+l_world_advance_us+l_geometry_pack_us;
+          l_stage:=systimestamp;
+          require_ok(doom_unified_sync_pending_world(l_session,l_lineage,l_generation,
+            p_request,l_world_pack),'retained post-world synchronization');
+          l_world_sync_us:=elapsed_us(l_stage);
+          l_java_prepare_us:=l_java_prepare_us+l_world_sync_us;l_stage:=systimestamp;
         else
-          l_delta:=doom_unified_command_actions_world_retained(l_session,l_lineage,l_generation,
-            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
-            l_world_pack);
+          l_split_use:=0;l_world_hybrid:=1;
+          doom_retained_world_pack.build(l_session,l_result_tic,l_world_pack);
+          l_world_draws:=to_number(rawtohex(utl_raw.substr(l_world_pack,11,2)),'XXXX');
+          l_world_pack_us:=elapsed_us(l_stage);l_stage:=systimestamp;
         end if;
-      elsif l_retained_projectiles=0 then
-        doom_retained_projectiles.advance_and_pack(
-          l_session,l_result_tic,l_projectile_pack);
-        if l_command_version=2 then
-          l_delta:=doom_unified_command_world_projectiles(l_session,l_lineage,l_generation,
-            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
-            l_projectile_pack,l_world_pack);
+        if l_retained_projectiles=0 then
+          doom_retained_projectiles.advance_and_pack(l_session,l_result_tic,l_projectile_pack);
+        end if;
+        l_projectile_pack_us:=elapsed_us(l_stage);
+        l_world_pack_us:=l_world_pack_us+l_projectile_pack_us;l_stage:=systimestamp;
+        if l_full_world=1 then
+          l_delta:=doom_unified_command_post_world(l_session,l_lineage,l_generation,
+            p_request,l_projectile_pack,l_retained_projectiles);
         else
-          l_delta:=doom_unified_command_actions_world_projectiles(l_session,l_lineage,l_generation,
-            p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
-            l_projectile_pack,l_world_pack);
+          l_delta:=doom_unified_command_post_world_passive(l_session,l_lineage,l_generation,
+            p_request,l_projectile_pack,l_world_pack,l_retained_projectiles);
         end if;
-      else raise_application_error(c_invalid,'retained projectile readiness');end if;
-      l_java_prepare_us:=elapsed_us(l_stage);
+        l_post_world_us:=elapsed_us(l_stage);
+        l_java_prepare_us:=l_java_prepare_us+l_post_world_us;
+      else
+        -- Proven no-USE path: SQL evaluates passive machines into a compact
+        -- pack and Java consumes the ordered RNG prefix before actors.
+        doom_retained_world_pack.build(l_session,l_result_tic,l_world_pack);
+        l_world_draws:=to_number(rawtohex(utl_raw.substr(l_world_pack,11,2)),'XXXX');
+        l_world_pack_us:=elapsed_us(l_stage);l_stage:=systimestamp;
+        if l_retained_projectiles=1 then
+          if l_command_version=2 then
+            l_delta:=doom_unified_command_world_retained(l_session,l_lineage,l_generation,
+              p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,l_world_pack);
+          else
+            l_delta:=doom_unified_command_actions_world_retained(l_session,l_lineage,l_generation,
+              p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,l_world_pack);
+          end if;
+        else
+          doom_retained_projectiles.advance_and_pack(l_session,l_result_tic,l_projectile_pack);
+          if l_command_version=2 then
+            l_delta:=doom_unified_command_world_projectiles(l_session,l_lineage,l_generation,
+              p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
+              l_projectile_pack,l_world_pack);
+          else
+            l_delta:=doom_unified_command_actions_world_projectiles(l_session,l_lineage,l_generation,
+              p_request,l_expected_tic,l_expected_seq,l_rng,l_next_mobj,0,l_command,
+            l_projectile_pack,l_world_pack);
+          end if;
+        end if;
+        l_java_prepare_us:=elapsed_us(l_stage);
+      end if;
       l_prepared:=1;
       l_prepare_us:=elapsed_us(l_prepare_stage);
       l_failpoint:=config_number('UNIFIED_WORKER_FAILPOINT');
@@ -422,8 +503,10 @@ create or replace package body doom_unified_worker as
         raise_application_error(c_invalid,'injected pre-apply worker failure');
       end if;
       l_apply_stage:=systimestamp;l_stage:=l_apply_stage;
-      doom_retained_world_pack.apply(l_session,l_result_tic,l_world_pack,
-        l_rng,l_world_draws);
+      if l_full_world=0 then
+        doom_retained_world_pack.apply(l_session,l_result_tic,l_world_pack,
+          l_rng,l_world_draws);
+      end if;
       l_world_apply_us:=elapsed_us(l_stage);l_stage:=systimestamp;
       doom_unified_delta_apply.apply_command_tic(l_session,l_lineage,
         l_expected_tic,l_expected_seq,l_command,l_delta,l_committed_tic,
@@ -446,6 +529,10 @@ create or replace package body doom_unified_worker as
         -- checkpoints the durable delta and command chain are authoritative;
         -- serializing the same 211 KB document only to discard it is excluded
         -- from the warm path.
+        if l_split_use=1 then
+          require_ok(doom_unified_refresh_pending_state(l_session,l_lineage,l_generation,
+            p_request),'retained checkpoint template refresh');
+        end if;
         dbms_lob.createtemporary(l_state_payload,true,dbms_lob.call);
         l_state_sha:=doom_unified_state_fill(l_session,l_lineage,l_generation,
           p_request,l_state_payload);
@@ -477,8 +564,13 @@ create or replace package body doom_unified_worker as
       l_stage:=systimestamp;
       dbms_application_info.set_action('DOOM_RENDER');
       dbms_lob.createtemporary(l_render_payload,true,dbms_lob.call);
-      l_frame_sha:=doom_unified_render_pending(l_session,l_lineage,l_generation,
-        p_request,l_state_sha,l_render_payload);
+      if l_full_world=1 then
+        l_frame_sha:=doom_unified_render_pending_world(l_session,l_lineage,l_generation,
+          p_request,l_world_pack,l_state_sha,l_render_payload);
+      else
+        l_frame_sha:=doom_unified_render_pending(l_session,l_lineage,l_generation,
+          p_request,l_state_sha,l_render_payload);
+      end if;
       l_render_call_us:=elapsed_us(l_stage);
       if not regexp_like(l_frame_sha,'^[0-9a-f]{64}$') then
         raise_application_error(c_invalid,'direct pending renderer: '||
@@ -508,6 +600,9 @@ create or replace package body doom_unified_worker as
       l_bsp_us:=round(doom_bsp_last_bsp_ns/1000);
       l_solid_us:=round(doom_bsp_last_solid_ns/1000);
       l_portal_us:=round(doom_bsp_last_portal_ns/1000);
+      l_portal_reset_us:=round(doom_bsp_last_portal_reset_ns/1000);
+      l_portal_sort_us:=round(doom_bsp_last_portal_sort_ns/1000);
+      l_portal_walk_us:=round(doom_bsp_last_portal_walk_ns/1000);
       l_plane_us:=round(doom_bsp_last_plane_ns/1000);
       l_sprite_us:=round(doom_bsp_last_sprite_ns/1000);
       l_presentation_us:=round(doom_bsp_last_presentation_ns/1000);
@@ -547,6 +642,17 @@ create or replace package body doom_unified_worker as
         delta_sha=l_delta_sha,state_sha=l_state_sha,frame_sha=l_frame_sha,
         response_bytes=l_response_bytes,response_sha=l_response_sha,
         prepare_us=l_prepare_us,ledger_us=l_ledger_us,world_pack_us=l_world_pack_us,
+        world_split=l_split_use,
+        world_active=l_world_active,
+        world_enabled=l_world_enabled,
+        world_required=l_world_required,
+        world_hybrid=l_world_hybrid,
+        pre_movement_apply_us=l_pre_movement_apply_us,
+        world_advance_us=l_world_advance_us,
+        geometry_pack_us=l_geometry_pack_us,
+        world_sync_us=l_world_sync_us,
+        projectile_pack_us=l_projectile_pack_us,
+        post_world_us=l_post_world_us,
         java_prepare_us=l_java_prepare_us,apply_us=l_apply_us,
         world_apply_us=l_world_apply_us,delta_apply_us=l_delta_apply_us,state_us=l_state_us,
         state_encode_us=l_state_encode_us,state_blob_us=l_state_blob_us,
@@ -557,6 +663,8 @@ create or replace package body doom_unified_worker as
         render_call_us=l_render_call_us,render_update_us=l_render_update_us,
         render_kernel_us=l_render_kernel_us,codec_us=l_codec_us,
         bsp_us=l_bsp_us,solid_us=l_solid_us,portal_us=l_portal_us,
+        portal_reset_us=l_portal_reset_us,portal_sort_us=l_portal_sort_us,
+        portal_walk_us=l_portal_walk_us,
         plane_us=l_plane_us,sprite_us=l_sprite_us,
         presentation_us=l_presentation_us,
         blob_us=l_blob_us,response_copy_us=l_response_copy_us,
@@ -746,8 +854,15 @@ create or replace package body doom_unified_worker as
             process_request(p_worker_slot,l_request,l_map_sha,l_generation);
           end if;
           l_dequeue.navigation:=dbms_aq.first_message;
-        exception when no_messages then
-          rollback;l_idle_polls:=l_idle_polls+1;
+        exception
+          when no_data_found then
+            -- Request rows are cascade-deleted with their game session, while
+            -- an already-committed AQ wakeup can remain. Consume that orphan
+            -- instead of terminating the resident worker during the lookup.
+            commit;l_dequeued:=0;
+            l_dequeue.navigation:=dbms_aq.first_message;
+          when no_messages then
+            rollback;l_idle_polls:=l_idle_polls+1;
           if mod(l_idle_polls,20)=0 then
             update doom_worker_control set heartbeat=systimestamp
               where worker_slot=p_worker_slot and generation=l_generation;

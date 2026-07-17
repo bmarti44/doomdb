@@ -79,6 +79,21 @@ This proves the database-resident rendering component is fast enough; it does
 not yet prove interactive playability because the subsequently optimized
 render-free SQL simulation remains 36.842 ms p50 / 49.503 ms p95.
 
+### Rejected wall-wrap/light-band micro-optimization (2026-07-17)
+
+Replacing power-of-two texture wrapping with precomputed masks, removing hot
+texture-name checks, and reusing precomputed sector light bands preserved the
+canonical 330-frame chain but regressed the production moving-route render
+kernel from the accepted 12.932/15.267 ms p50/p95 after restoration to
+20.653/28.971 ms. Portal and plane p95 rose to 9.067 and 16.523 ms. The change
+was reverted. Do not retry this combined code shape without method-level native
+compilation evidence that explains the regression.
+
+The redeploy also exposed an audit race: Oracle publishes persistent JIT method
+status asynchronously after hot calls return. The deployment gate now polls a
+bounded 60-second window for the last selected methods instead of failing while
+MMON is still compiling them.
+
 ## Reproduction
 
 Deploy and warm the stored class:

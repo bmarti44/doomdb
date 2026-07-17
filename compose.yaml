@@ -24,7 +24,11 @@ services:
     tmpfs:
       - /dev/shm:rw,exec,suid,size=256m,mode=1777
     cpus: 2.0
-    mem_limit: 2g
+    # The retained OJVM renderer keeps immutable map/asset packs plus JIT code
+    # beside Oracle's 1 GiB SGA.  A 2 GiB cgroup ceiling OOM-kills shadow
+    # processes during the 300-frame parity gate; 4 GiB leaves deterministic
+    # headroom without changing the database memory targets.
+    mem_limit: 4g
     healthcheck:
       test: ["CMD", "/opt/oracle/healthcheck.sh", "FREEPDB1"]
       interval: 10s

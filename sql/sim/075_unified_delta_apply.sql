@@ -29,6 +29,19 @@ create or replace package doom_unified_delta_apply authid definer as
     p_delta_count out number,
     p_delta_sha out varchar2
   );
+  procedure apply_pre_world_movement(
+    p_session_token in varchar2,
+    p_save_lineage in varchar2,
+    p_expected_tic in number,
+    p_expected_command_seq in number,
+    p_command in raw,
+    p_movement in raw,
+    p_previous_x out number,
+    p_previous_y out number,
+    p_current_x out number,
+    p_current_y out number,
+    p_current_sector out number
+  );
 end doom_unified_delta_apply;
 /
 
@@ -83,6 +96,21 @@ create or replace package body doom_unified_delta_apply as
   g_spawn_thing_ids id_set;
   g_projectile_ids text_set;
   g_trusted_event_insert boolean:=false;
+  -- The split USE path is deliberately session-local and transaction-scoped.
+  -- A final DCTC containing USE is accepted only after this package applied
+  -- the exact matching pre-world movement in the same resident DB session.
+  g_split_prepared boolean:=false;
+  g_split_session varchar2(32);
+  g_split_lineage varchar2(64);
+  g_split_tic number;
+  g_split_seq number;
+  g_split_command_sha varchar2(64);
+
+  procedure clear_split is
+  begin
+    g_split_prepared:=false;g_split_session:=null;g_split_lineage:=null;
+    g_split_tic:=null;g_split_seq:=null;g_split_command_sha:=null;
+  end;
 
   function trusted_event_insert return number is
   begin return case when g_trusted_event_insert then 1 else 0 end;end;
@@ -427,7 +455,7 @@ create or replace package body doom_unified_delta_apply as
     -- the relational frontier here also preserves exact append semantics when
     -- a prior subsystem has already emitted an event for the resulting tic.
     select coalesce(max(event_ordinal)+1,0) into l_initial_event from game_events
-      where session_token=p_session_token and tic=l_next_tic;
+      where session_token=p_session_token and lineage=p_save_lineage and tic=l_next_tic;
     if l_next_event<>l_initial_event+l_event_count then fail('event frontier');end if;
 
     l_position:=case l_dtic_version when 1 then 73 else 121 end;
@@ -787,8 +815,14 @@ create or replace package body doom_unified_delta_apply as
       if l_fire<>0 or l_use<>0 or l_weapon<>0 or l_reserved<>0 then
         fail('DMSC/v2 unsupported action/reserved');
       end if;
-    elsif l_fire not in(0,1) or l_use<>0 or l_weapon<0 or l_weapon>9 or l_reserved<>0 then
+    elsif l_fire not in(0,1) or l_use not in(0,1) or l_weapon<0 or l_weapon>9 or l_reserved<>0 then
       fail('DMSC/v3 unsupported use/action domain');
+    end if;
+    if l_use=1 and (not g_split_prepared or g_split_session<>p_session_token or
+       g_split_lineage<>p_save_lineage or g_split_tic<>p_expected_tic or
+       g_split_seq<>p_expected_command_seq or
+       g_split_command_sha<>lower(rawtohex(dbms_crypto.hash(p_command,dbms_crypto.hash_sh256)))) then
+      fail('DMSC/v3 USE missing pre-world movement fence');
     end if;
 
     if p_delta is null then fail('null DCTC delta');end if;
@@ -856,10 +890,92 @@ create or replace package body doom_unified_delta_apply as
     p_committed_tic:=l_outer_tic;p_committed_command_seq:=l_outer_seq;
     p_delta_version:=l_inner_version;p_delta_count:=1;
     p_delta_sha:=lower(rawtohex(dbms_crypto.hash(p_delta,dbms_crypto.hash_sh256)));
+    clear_split;
   exception
     when others then
+      clear_split;
       rollback to doom_unified_command_apply_start;
       raise;
+  end;
+
+  procedure apply_pre_world_movement(
+    p_session_token in varchar2,
+    p_save_lineage in varchar2,
+    p_expected_tic in number,
+    p_expected_command_seq in number,
+    p_command in raw,
+    p_movement in raw,
+    p_previous_x out number,
+    p_previous_y out number,
+    p_current_x out number,
+    p_current_y out number,
+    p_current_sector out number
+  ) is
+    c_command_bytes constant pls_integer:=24;
+    c_movement_bytes constant pls_integer:=101;
+    l_command_seq number;l_turn number;l_forward number;l_strafe number;l_run number;
+    l_fire number;l_use number;l_weapon number;l_reserved number;
+    l_result_seq number;l_result_tic number;l_angle_index number;
+    l_x number;l_y number;l_z number;l_sector number;l_derived_sector number;
+    l_current_tic number;l_current_seq number;l_lineage varchar2(64);l_player number;
+  begin
+    savepoint doom_unified_pre_world_start;
+    clear_split;p_previous_x:=null;p_previous_y:=null;
+    p_current_x:=null;p_current_y:=null;p_current_sector:=null;
+    if not regexp_like(p_session_token,'^[0-9a-f]{32}$') or
+       not regexp_like(p_save_lineage,'^[0-9a-f]{64}$') then fail('pre-world identity');end if;
+    if p_command is null or utl_raw.length(p_command)<>c_command_bytes then
+      fail('pre-world DMSC exact length');end if;
+    g_delta:=p_command;g_length:=c_command_bytes;
+    if rawtohex(utl_raw.substr(g_delta,1,4))<>'444D5343' or
+       byte_at(5,'pre-world DMSC version') not in(2,3) or byte_at(6,'pre-world DMSC count')<>1 or
+       byte_at(7,'pre-world DMSC reserved')<>0 or byte_at(8,'pre-world DMSC reserved')<>0 then
+      fail('pre-world DMSC header');end if;
+    l_command_seq:=u64_at(9,'pre-world DMSC sequence');
+    l_turn:=signed_byte_at(17,'pre-world turn');l_forward:=signed_byte_at(18,'pre-world forward');
+    l_strafe:=signed_byte_at(19,'pre-world strafe');l_run:=byte_at(20,'pre-world run');
+    l_fire:=byte_at(21,'pre-world fire');l_use:=byte_at(22,'pre-world use');
+    l_weapon:=byte_at(23,'pre-world weapon');l_reserved:=byte_at(24,'pre-world reserved');
+    if l_command_seq<>p_expected_command_seq+1 or l_turn not between -1 and 1 or
+       l_forward not between -1 and 1 or l_strafe not between -1 and 1 or l_run not in(0,1) or
+       l_fire not in(0,1) or l_use not in(0,1) or l_weapon not between 0 and 9 or l_reserved<>0 or
+       (byte_at(5,'pre-world DMSC version')=2 and (l_fire<>0 or l_use<>0 or l_weapon<>0)) then
+      fail('pre-world DMSC domain/frontier');end if;
+
+    if p_movement is null or utl_raw.length(p_movement)<>c_movement_bytes then
+      fail('pre-world movement exact length');end if;
+    g_delta:=p_movement;g_length:=c_movement_bytes;
+    if rawtohex(utl_raw.substr(g_delta,1,4))<>'4450574D' or
+       byte_at(5,'pre-world movement version')<>1 or byte_at(6,'pre-world movement status')<>0 or
+       byte_at(7,'pre-world movement reserved')<>0 or byte_at(8,'pre-world movement reserved')<>0 then
+      fail('pre-world movement header');end if;
+    l_result_seq:=u64_at(9,'pre-world movement sequence');
+    l_result_tic:=u64_at(17,'pre-world movement tic');
+    l_angle_index:=i32_at(25,'pre-world movement angle');
+    l_x:=number_at(29,'pre-world movement x');l_y:=number_at(52,'pre-world movement y');
+    l_z:=number_at(75,'pre-world movement z');l_sector:=i32_at(98,'pre-world movement sector');
+    if l_result_seq<>p_expected_command_seq+1 or l_result_tic<>p_expected_tic+1 or
+       l_angle_index not between 0 and 63 or l_sector<0 then fail('pre-world movement frontier');end if;
+    begin select sector_id into l_derived_sector from table(doom_bsp_locate(l_x,l_y)) where rownum=1;
+    exception when no_data_found then fail('pre-world movement sector lookup');end;
+    if l_sector<>l_derived_sector then fail('pre-world movement sector mismatch');end if;
+
+    select current_tic,last_command_seq,save_lineage,current_player_id
+      into l_current_tic,l_current_seq,l_lineage,l_player
+      from game_sessions where session_token=p_session_token for update;
+    if l_lineage<>p_save_lineage or l_current_tic<>p_expected_tic or
+       l_current_seq<>p_expected_command_seq then fail('pre-world database frontier');end if;
+    select x,y into p_previous_x,p_previous_y from players
+      where session_token=p_session_token and player_id=l_player for update;
+    update players set x=l_x,y=l_y,z=l_z,angle=l_angle_index*5625/1000
+      where session_token=p_session_token and player_id=l_player;
+    if sql%rowcount<>1 then fail('pre-world current player row');end if;
+    p_current_x:=l_x;p_current_y:=l_y;p_current_sector:=l_sector;
+    g_split_prepared:=true;g_split_session:=p_session_token;g_split_lineage:=p_save_lineage;
+    g_split_tic:=p_expected_tic;g_split_seq:=p_expected_command_seq;
+    g_split_command_sha:=lower(rawtohex(dbms_crypto.hash(p_command,dbms_crypto.hash_sh256)));
+  exception when others then
+    clear_split;rollback to doom_unified_pre_world_start;raise;
   end;
 end doom_unified_delta_apply;
 /

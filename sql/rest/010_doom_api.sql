@@ -169,7 +169,8 @@ create or replace package body doom_api as
   end;
 
   -- Select the retained worker for movement and deterministic weapon-state tics.
-  -- Fire/use and administrative controls deliberately fall through to SQL.
+  -- USE is admitted only by the separately default-off split-phase gate;
+  -- administrative controls deliberately fall through to SQL.
   procedure worker_step(
     p_session in varchar2,p_commands in clob,p_async in number,p_used out number,
     p_request_out out varchar2,p_payload out blob
@@ -221,7 +222,8 @@ create or replace package body doom_api as
        l_strafe is null or l_run is null or
        l_turn not in(-1,0,1) or l_forward not in(-1,0,1) or
        l_strafe not in(-1,0,1) or l_run not in(0,1) or
-       coalesce(l_fire,0) not in(0,1) or coalesce(l_use,0)<>0 or
+       coalesce(l_fire,0) not in(0,1) or coalesce(l_use,0) not in(0,1) or
+       (coalesce(l_use,0)=1 and config_number('UNIFIED_WORKER_SPLIT_USE_ENABLED',0)<>1) or
        coalesce(l_weapon,0) not between 0 and 9 or
        coalesce(l_pause,0)<>0 or coalesce(l_automap,0)<>0 or
        coalesce(l_menu,'NONE')<>'NONE' or l_cheat is not null then
@@ -237,7 +239,8 @@ create or replace package body doom_api as
     l_command:=hextoraw('444D534302010000'||u64_hex(l_seq)||byte_hex(l_turn)||
       byte_hex(l_forward)||byte_hex(l_strafe)||
       case l_run when 0 then '00' else '01' end||
-      case coalesce(l_fire,0) when 0 then '00' else '01' end||'00'||
+      case coalesce(l_fire,0) when 0 then '00' else '01' end||
+      case coalesce(l_use,0) when 0 then '00' else '01' end||
       lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||'00');
     -- A network retry can arrive after the durable frontier advanced. Return
     -- the immutable committed response without needing the old worker generation.
@@ -307,7 +310,7 @@ create or replace package body doom_api as
 
     if l_pipeline_ahead=0 then
       select s.current_tic,s.last_command_seq,
-        case when coalesce(l_fire,0)<>0 or coalesce(l_weapon,0)<>0 or
+        case when coalesce(l_fire,0)<>0 or coalesce(l_use,0)<>0 or coalesce(l_weapon,0)<>0 or
           p.pending_weapon is not null or p.weapon_state not like 'WEAPON_%_READY' or
           p.weapon_state_tics not in(0,1) then 3 else 2 end
         into l_tic,l_expected_seq,l_action_version
@@ -322,7 +325,8 @@ create or replace package body doom_api as
       '010000'||u64_hex(l_seq)||byte_hex(l_turn)||
       byte_hex(l_forward)||byte_hex(l_strafe)||
       case l_run when 0 then '00' else '01' end||
-      case coalesce(l_fire,0) when 0 then '00' else '01' end||'00'||
+      case coalesce(l_fire,0) when 0 then '00' else '01' end||
+      case coalesce(l_use,0) when 0 then '00' else '01' end||
       lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||'00');
 
     if p_async=1 then
