@@ -29,9 +29,11 @@ More reviewed views include the [shotgun HUD](goldens/t5.4/game-shotgun.png),
 
 ## Current status
 
-P0–P7 are complete. P8's completion route is preserved while T8.3 closes four
-defects found during live `/play/` testing: actor blinking, absent weapon
-animation, delayed input, and unexplained-looking health loss.
+P0–P7 and the T8.3 live-play defect closure are complete. P8's deterministic
+E1M1 route has resumed in an isolated route lab. Its latest committed checkpoint
+is tic 3,158: alive with 43 HP, 33 kills, 28 items, one secret, the blue key,
+and 14 shells. The remaining route work is the southern combat/exit push,
+repeatability, and reviewed milestone frames.
 
 The selected retained worker now supports arbitrary live movement, collision,
 weapon selection, common hitscan/melee fire, `USE`/`WALK` triggers, doors,
@@ -61,6 +63,10 @@ result does not depend on prebuffering. A compact DMF3 frame envelope reduced
 the typical response from about 44 KB to 25.75 KB, explicit synchronous OJVM
 compilation removed cold-session compiler contention, and durable commits now
 use `IMMEDIATE WAIT`. Rollback/restart fencing and projectile parity still pass.
+Post-correction T5.1–T5.3 and T6.1–T7.3 are green. T5.4 source, mutation, and all
+nine reviewed golden checks are green; its final live SQL-oracle replay is
+reserved for an isolated database because the intentionally brute-force parity
+renderer can starve an interactive two-core stack.
 
 The benchmark harness can exercise a deeper throughput window, while the live
 client remains latency-oriented at depth two with at most one queued successor.

@@ -2048,6 +2048,15 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
 - User reviews the route and milestone screenshots before approval.
 - Accept: state and frame hashes at every milestone, final completion flags,
   kills/items/secrets, and replay repeatability match approved goldens.
+- Route checkpoint (2026-07-17): the isolated route lab now commits slot 99 at
+  tic 3,158 with state SHA
+  `02bcd424e9785f9a6e2d884e0280513b3de5081fec373b9de3014d092b22b6c6`.
+  The player is alive at `(480.01582430798503, 2208)`, angle 90, with 43 HP,
+  33 kills, 28 items, one secret, the blue key, and 14 shells. This supersedes
+  the doomed tic-2,941 branch: the accepted sequence restores tic 2,880,
+  retreats through sector 78 for the medkit, then reopens the alcove and sector
+  80 for the stimpack without waking the south room. Next drive the southern
+  combat/exit push, freeze milestone frames, and prove replay repeatability.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 
