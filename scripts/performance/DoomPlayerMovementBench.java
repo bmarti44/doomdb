@@ -56,12 +56,17 @@ public final class DoomPlayerMovementBench {
       liveCeiling[i]=Double.parseDouble(f[2]);require(liveCeiling[i]>=liveFloor[i],"movement sector height");}
     geometryPending=false;return "OK|"+rows.length;}catch(Throwable e){return "ERR|"+e.getMessage();}}
   static void stageWorldGeometry(byte[] pack){ensureGeometry();require(!geometryPending&&pack!=null&&
-      pack.length>=55&&((pack[6]&255)<<8|(pack[7]&255))==liveFloor.length,"movement geometry pack");
-    priorFloor=liveFloor.clone();priorCeiling=liveCeiling.clone();int p=55;
-    for(int i=0;i<liveFloor.length;i++,p+=20){require((((pack[p]&255)<<24)|((pack[p+1]&255)<<16)|
-      ((pack[p+2]&255)<<8)|(pack[p+3]&255))==i,"movement geometry order");
-      liveFloor[i]=((pack[p+4]&255)<<24)|((pack[p+5]&255)<<16)|((pack[p+6]&255)<<8)|(pack[p+7]&255);
-      liveCeiling[i]=((pack[p+8]&255)<<24)|((pack[p+9]&255)<<16)|((pack[p+10]&255)<<8)|(pack[p+11]&255);}
+      pack.length>=55&&pack[0]==0x44&&pack[1]==0x4d&&pack[2]==0x57&&pack[3]==0x47&&
+      (pack[4]&255)==4&&(pack[5]&255)==1,"movement geometry pack");
+    int sectors=((pack[6]&255)<<8)|(pack[7]&255);require(sectors<=liveFloor.length&&
+      pack.length>=55+20*sectors,"movement geometry length");
+    priorFloor=liveFloor.clone();priorCeiling=liveCeiling.clone();int p=55,prior=-1;
+    for(int i=0;i<sectors;i++,p+=20){int id=((pack[p]&255)<<24)|((pack[p+1]&255)<<16)|
+      ((pack[p+2]&255)<<8)|(pack[p+3]&255);require(id>prior&&id<liveFloor.length,
+      "movement geometry order");prior=id;
+      liveFloor[id]=((pack[p+4]&255)<<24)|((pack[p+5]&255)<<16)|((pack[p+6]&255)<<8)|(pack[p+7]&255);
+      liveCeiling[id]=((pack[p+8]&255)<<24)|((pack[p+9]&255)<<16)|((pack[p+10]&255)<<8)|(pack[p+11]&255);
+      require(liveCeiling[id]>=liveFloor[id],"movement geometry height");}
     geometryPending=true;}
   static void acceptWorldGeometry(){if(geometryPending)geometryPending=false;}
   static void discardWorldGeometry(){if(geometryPending){liveFloor=priorFloor;liveCeiling=priorCeiling;geometryPending=false;}}

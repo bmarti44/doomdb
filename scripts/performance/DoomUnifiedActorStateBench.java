@@ -2023,10 +2023,10 @@ public final class DoomUnifiedActorStateBench {
   public static String syncPendingWorld(String s,String l,long g,String request,byte[] pack){
     try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
         committed.generation==g&&request!=null&&request.equals(pendingRequest)&&pack!=null&&pack.length>=55&&
-        int_(pack,0)==0x444d5747&&(pack[4]&255)==3&&pack[5]==0,"world sync fence/header");
+        int_(pack,0)==0x444d5747&&(pack[4]&255)==4&&pack[5]==1,"world sync fence/header");
       int sectors=ushort(pack,6),mobjs=ushort(pack,8),complete=pack[10]&255;
       int baseLength=55+20*sectors+27*mobjs;
-      require(pack[11]==0&&complete<=1&&sectors==pending.sectorLight.length&&
+      require(pack[11]==0&&complete<=1&&sectors<=pending.sectorLight.length&&
           pack.length>=baseLength,"world sync length/status");
       NUMBER oldZ=pending.playerZ;pending.playerZ=number(pack,12);
       pending.playerEyeZ=pending.playerEyeZ.add(pending.playerZ.sub(oldZ));
@@ -2036,7 +2036,7 @@ public final class DoomUnifiedActorStateBench {
       pending.rng=int_(pack,47);pending.nextEvent=int_(pack,51);require(pending.rng>=0&&pending.rng<=255&&
           pending.nextEvent>=0,"world sync frontier values");
       int p=55,prior=-1;for(int i=0;i<sectors;i++,p+=20){int id=int_(pack,p),floor=int_(pack,p+4),ceiling=int_(pack,p+8);
-        int light=int_(pack,p+12),timer=int_(pack,p+16);require(id==i&&id>prior&&ceiling>=floor&&
+        int light=int_(pack,p+12),timer=int_(pack,p+16);require(id>prior&&id<pending.sectorLight.length&&ceiling>=floor&&
           light>=0&&light<=255&&timer>=-1,"world sync sector image");prior=id;
         pending.sectorLight[id]=light;pending.sectorLightTimer[id]=timer;}
       prior=-1;for(int i=0;i<mobjs;i++,p+=27){int id=int_(pack,p),slot=pending.world.slot(id);

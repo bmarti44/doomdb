@@ -870,8 +870,8 @@ public final class DoomBspKernelBench {
     int geometryCount=0,geometryComplete=-1;int[] geometryIds=null;int[] geometryFloors=null,geometryCeilings=null;
     int switchCount=0;int[] switchIds=null,switchTimers=null;byte[] switchValues=null;
     if(geometryPack!=null){KernelInput geometry=new KernelInput(geometryPack);
-      require(geometry.readInt()==0x444d5747&&geometry.readUnsignedByte()==3&&
-          geometry.readUnsignedByte()==0,"direct retained geometry header");
+      require(geometry.readInt()==0x444d5747&&geometry.readUnsignedByte()==4&&
+          geometry.readUnsignedByte()==1,"direct retained geometry header");
       geometryCount=geometry.readUnsignedShort();int geometryMobjs=geometry.readUnsignedShort();
       geometryComplete=geometry.readUnsignedByte();require(geometry.readUnsignedByte()==0&&
           (geometryComplete==0||geometryComplete==1)&&geometryCount<=sectorFloor.length,
@@ -890,7 +890,7 @@ public final class DoomBspKernelBench {
           "direct retained geometry mobj Z");for(int byteIndex=0;byteIndex<22;byteIndex++)geometry.readUnsignedByte();
         require(id>priorMobj,"direct retained geometry mobj order");priorMobj=id;}
       // Optional DMSV/v1 complete switch image.  Keeping this as a strict
-      // trailer preserves DMWG/v3 compatibility while the SQL owner rolls the
+      // trailer preserves the DMWG layout while the SQL owner rolls the
       // producer out.  Each row is line i32, on u8, timer i32, restore-name
       // u8+UTF-8.  The name is checked against immutable sidedef metadata so a
       // corrupt/mismatched SQL image cannot select an arbitrary asset.

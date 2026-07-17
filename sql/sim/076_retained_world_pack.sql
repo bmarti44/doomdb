@@ -288,15 +288,23 @@ create or replace package body doom_retained_world_pack as
     l_mobj_ids number_tab;l_mobj_z number_tab;
     l_chunk raw(32767);l_row raw(32767);
   begin
-    -- DMWG/v3 is the compact post-machine retained-state image. Heights and
-    -- carried Z values are integral in the supported Doom machine subset.
-    p_pack:=hextoraw('444D57470300');
-    -- Fetch each complete image once, assemble bounded chunks, and append each
-    -- chunk to the growing pack once. This preserves DMWG/v3 byte order while
-    -- avoiding quadratic concatenation over the full image.
+    -- DMWG/v4 carries an ordered sector delta plus a complete MOBJ-Z image.
+    -- Active/reached mover sectors and passive lighting-special sectors are
+    -- the only sector rows that can change in this transaction. Complete Z
+    -- remains conservative for lift carry and blocking.
+    p_pack:=hextoraw('444D57470401');
     select sector_id,floor_height,ceiling_height,light_level,coalesce(light_timer,-1)
       bulk collect into l_sector_ids,l_floors,l_ceilings,l_lights,l_light_timers
-      from sector_state where session_token=p_session_token order by sector_id;
+      from sector_state ss where ss.session_token=p_session_token and (
+        exists(select 1 from doom_map_sector ms where ms.sector_id=ss.sector_id
+          and ms.special in(1,12)) or
+        exists(select 1 from active_movers am where am.session_token=ss.session_token
+          and am.sector_id=ss.sector_id) or
+        exists(select 1 from game_events e join game_sessions g
+          on g.session_token=e.session_token and g.save_lineage=e.lineage
+          where e.session_token=ss.session_token and e.tic=g.current_tic+1
+            and e.event_type in('MOVER_REACHED','MOVER_RESUME','DOOR_REOPEN','LIFT_BLOCKED')
+            and e.number_value=ss.sector_id)) order by ss.sector_id;
     l_count:=l_sector_ids.count;
     if l_count>c_max_rows then fail('geometry pack exceeds RAW limit');end if;
     select mobj_id,z bulk collect into l_mobj_ids,l_mobj_z from mobjs

@@ -1927,6 +1927,21 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   durable apply 5.371/8.737 ms. Next move active mover/switch state into the
   retained owner and emit only ordered dirty sector/line deltas. Keep the SQL
   world-machine path as the differential oracle and durable delta applier.
+- Sparse retained-geometry result (2026-07-17): DMWG/v4 replaces the complete
+  sector image with an ordered delta containing passive-light sectors, active
+  mover sectors, and just-reached/reopened/blocked mover sectors; the complete
+  MOBJ-Z image remains conservative for lift carry and blocking. Movement, LOS,
+  monster chase, the unified owner, and the renderer stage the same fenced pack
+  and retain exact discard snapshots. The use lifecycle, pre/post-commit
+  rollback/restart, passive-world byte parity, 330-tic owner/SQL parity, and
+  exact frame chain all pass. With every selected hot method native and the DB
+  quiescent, caller latency improved from 64.911/105.244 to 60.932/96.945 ms
+  p50/p95; geometry packing fell from 13.830/15.127 to 9.177/10.315 ms and
+  world synchronization measured 0.214/0.378 ms. The remaining active-mover
+  world-machine advance is 1.763/40.945 ms and is now the dominant p95 target.
+  Move mover timers/heights/directions and switch timers into the retained owner,
+  emit strict ordered SQL deltas, and keep the current SQL machine as the
+  differential oracle and recovery authority.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

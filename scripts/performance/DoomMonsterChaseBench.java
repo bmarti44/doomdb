@@ -42,15 +42,18 @@ public final class DoomMonsterChaseBench {
     if (!value) throw new IllegalStateException(message);
   }
   static void stageWorldGeometry(byte[] pack){require(!geometryPending&&floor!=null&&pack!=null&&pack.length>=55&&
-      (((pack[6]&255)<<8)|(pack[7]&255))==floor.length,"chase geometry pack");
+      pack[0]==0x44&&pack[1]==0x4d&&pack[2]==0x57&&pack[3]==0x47&&
+      (pack[4]&255)==4&&(pack[5]&255)==1,"chase geometry pack");int sectors=
+      ((pack[6]&255)<<8)|(pack[7]&255);require(sectors<=floor.length&&pack.length>=55+20*sectors,
+      "chase geometry length");
     priorFloor=floor.clone();priorCeiling=ceiling.clone();priorFloorDouble=floorDouble.clone();
-    priorCeilingDouble=ceilingDouble.clone();int p=55;for(int i=0;i<floor.length;i++,p+=20){int id=
+    priorCeilingDouble=ceilingDouble.clone();int p=55,prior=-1;for(int i=0;i<sectors;i++,p+=20){int id=
       ((pack[p]&255)<<24)|((pack[p+1]&255)<<16)|((pack[p+2]&255)<<8)|(pack[p+3]&255);
       int f=((pack[p+4]&255)<<24)|((pack[p+5]&255)<<16)|((pack[p+6]&255)<<8)|(pack[p+7]&255);
       int c=((pack[p+8]&255)<<24)|((pack[p+9]&255)<<16)|((pack[p+10]&255)<<8)|(pack[p+11]&255);
-      require(id==i&&c>=f,"chase geometry row");floor[i]=new NUMBER(f);ceiling[i]=new NUMBER(c);
-      floorDouble[i]=f;ceilingDouble[i]=c;}
-    int mobjs=((pack[8]&255)<<8)|(pack[9]&255);require(pack.length>=55+20*floor.length+27*mobjs,
+      require(id>prior&&id<floor.length&&c>=f,"chase geometry row");prior=id;
+      floor[id]=new NUMBER(f);ceiling[id]=new NUMBER(c);floorDouble[id]=f;ceilingDouble[id]=c;}
+    int mobjs=((pack[8]&255)<<8)|(pack[9]&255);require(pack.length>=55+20*sectors+27*mobjs,
       "chase geometry base length");priorZ=z.clone();int actor=0;
     for(int i=0;i<mobjs;i++,p+=27){int mobj=((pack[p]&255)<<24)|((pack[p+1]&255)<<16)|
         ((pack[p+2]&255)<<8)|(pack[p+3]&255);int bytes=pack[p+4]&255;
