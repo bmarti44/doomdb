@@ -21,6 +21,22 @@ async function post(path, body) {
     }
     return value;
 }
+const delay = (milliseconds) => new Promise(resolve => window.setTimeout(resolve, milliseconds));
+async function postStep(body) {
+    let lastFailure;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+        try {
+            return await post('step', body);
+        }
+        catch (cause) {
+            lastFailure = cause instanceof Error ? cause : new Error('step request failed');
+            if (attempt === 3)
+                break;
+            await delay(25 * (attempt + 1));
+        }
+    }
+    throw lastFailure ?? new Error('step request failed');
+}
 function stringField(document, name) {
     const value = document[name];
     if (typeof value !== 'string' || value.length === 0) {
@@ -36,7 +52,9 @@ export async function newGame(skill = 3) {
     return { session, payload: stringField(document, 'p_payload') };
 }
 export async function step(session, command) {
-    const document = await post('step', {
+    // The command sequence is the idempotency key. A retry after an ORDS/AQ
+    // timeout returns the immutable committed response instead of applying twice.
+    const document = await postStep({
         p_session: session,
         p_commands: JSON.stringify({ v: 1, commands: [command] })
     });

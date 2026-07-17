@@ -1725,6 +1725,16 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   movement location now uses the exact NUMBER BSP cross product after the
   established portal traversal; the failing command commits and all 270 SQL/
   Java movement parity cases pass.
+- Public unique-moving-frame gate (2026-07-16): after the deployment-grade OJVM
+  warmup and exact boundary fix, the depth-four AutoREST client completed a
+  bounded dynamic spawn-room route with 300/300 unique frame hashes at 30.799
+  displayed FPS. Paint gaps are 32.209/33.138 ms p50/p95; corresponding
+  input-to-decode latency is 120.487/148.256 ms and remains a separate metric.
+  One AQ empty-poll boundary produced a 96.191 ms maximum gap. The frontier now
+  uses the bounded worker deadline and clients retry the same deterministic
+  sequence after transient ORDS failures, preserving exactly-once state. This
+  closes the public movement cadence gate. Retained fire/use/weapon parity and
+  the complete T5--T7 regression remain before P12.0 completion.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

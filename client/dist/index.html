@@ -56,8 +56,8 @@
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">30 FPS database gate<br><span>active play 49.8 / 38.4 FPS p50/p95</span></p>
-      <p class="muted">The strict-durable worker passes at 20.065 / 26.008 ms. A bounded AutoREST prototype reaches 30.35 displayed FPS at 32.135 / 33.083 ms paint-gap p50/p95; the unique-moving-frame gate and full controls remain open.</p>
+      <p class="big">30 FPS public gate<br><span>300 / 300 unique moving frames</span></p>
+      <p class="muted">The AutoREST pipeline passes at 30.80 displayed FPS with 32.21 / 33.14 ms paint-gap p50/p95. Retained fire, use, and weapon parity remains open.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -71,7 +71,7 @@
     <h2>Live implementation status · July 16, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate; eligible movement can use the retained worker while unsupported actions retain the SQL fallback. Lift 1 is complete and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived AQ/Scheduler workers. Four warm ORDS connections, a hard depth-four command window, 32 ms deadline scheduling, ordered decode, and a six-frame presentation buffer reach 30.35 cadence-only FPS. Input/decode latency is 70.417 / 169.555 ms p50/p95, and the fresh route produced only 112 unique frames, so this is not yet the final playability claim. Full controls and a 270-unique-frame run remain.</p>
+    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived AQ/Scheduler workers. Four warm connections, a depth-four command window, ordered decode, and a six-frame presentation buffer sustain 300 distinct moving frames at 30.80 FPS. Paint gaps are 32.21 / 33.14 ms p50/p95; input/decode latency is 120.49 / 148.26 ms. Idempotent retries cover lost or delayed HTTP responses. Full retained action controls remain.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">

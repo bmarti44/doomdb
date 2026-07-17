@@ -45,6 +45,9 @@ begin
     where session_token=session_;
   select count(*) into requests_ from doom_worker_request
     where session_token=session_ and request_status='COMMITTED';
+  dbms_output.put_line('FIRST_DIAGNOSTIC tic='||tic_||' seq='||seq_||
+    ' worker_requests='||requests_||' bytes='||
+    case when payload_ is null then -1 else dbms_lob.getlength(payload_) end);
   if tic_<>1 or seq_<>1 or requests_<>1 or payload_ is null or
      dbms_lob.getlength(payload_)=0 then
     raise_application_error(-20000,'public worker STEP contract failed');end if;
@@ -63,6 +66,9 @@ begin
     where session_token=session_;
   select count(*) into requests_ from doom_worker_request
     where session_token=session_ and request_status='COMMITTED';
+  dbms_output.put_line('FALLBACK_DIAGNOSTIC tic='||tic_||' seq='||seq_||
+    ' worker_requests='||requests_||' bytes='||
+    case when payload_ is null then -1 else dbms_lob.getlength(payload_) end);
   if tic_<>3 or seq_<>3 or requests_<>2 or payload_ is null or
      dbms_lob.getlength(payload_)=0 then
     raise_application_error(-20000,'worker/SQL/worker fallback contract failed');end if;
@@ -70,7 +76,11 @@ begin
     ' worker_requests='||requests_||' bytes='||dbms_lob.getlength(payload_)||
     ' first_package_ms='||round(elapsed_ms_,3));
   cleanup_;
-exception when others then cleanup_;raise;
+exception when others then
+  declare code_ number:=sqlcode;message_ varchar2(2048):=sqlerrm;begin
+    cleanup_;
+    raise_application_error(-20000,'acceptance failed ['||code_||'] '||message_);
+  end;
 end;
 /
 

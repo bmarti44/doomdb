@@ -14,8 +14,11 @@ HYPOTHESIS (must be benchmarked).
 > persistent Node `fetch` connection, not per-request `curl`. Pool 4 later
 > settled at 12.912/18.462 ms. Measured depth two and three reached only 22.666
 > and 28.099 FPS; depth four plus a six-frame presentation buffer produced the
-> first cadence-only pass. Fresh runs still lack 270 unique frames. A local
-> active-frame extraction also found naive XOR deltas larger than independent
+> first cadence-only pass. After the exact movement fix and native warmup, the
+> bounded route passed with 300/300 unique frames at 30.799 FPS and
+> 32.209/33.138 ms paint-gap p50/p95. Input/decode remained a separate
+> 120.487/148.256 ms metric. A local active-frame extraction also found naive
+> XOR deltas larger than independent
 > compressed frames, so that codec is rejected unless a different transform is
 > proposed and measured. These results supersede the hypotheses below without
 > changing the report's latency-versus-throughput distinction.

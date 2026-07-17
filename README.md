@@ -38,7 +38,7 @@ As of July 2026:
 | P5 | Complete | R2 portals, clipping, floors/ceilings, sky, masked textures, sprites, weapon/HUD/menu/pause/automap/intermission; reviewed goldens frozen. |
 | P6 | Complete | Deterministic tic transaction, movement/collision, world machines, history, save/load, rewind, and replay gates pass. |
 | P7 | Complete | Inventory, weapons, pickups, monsters, projectiles, combat, audio, concurrency, lifecycle, mutation, and Chromium gates pass. |
-| P12.0 | Database gate passed; integration active | The strict-durable AQ/Scheduler worker sustains active early-game movement at 20.065/26.008 ms p50/p95 (49.8/38.4 FPS). Projectile cardinality is stable, exact checkpoints/event chains pass, and the retained owner matches SQL at tic 330. Public AutoREST cutover, full controls, and browser end-to-end timing remain open. |
+| P12.0 | Database and moving-frame gates passed; controls active | The strict-durable AQ/Scheduler worker sustains active movement at 20.065/26.008 ms p50/p95. The public AutoREST pipeline displays 300/300 unique moving frames at 30.80 FPS with 32.21/33.14 ms paint-gap p50/p95. Fire/use/weapon retained parity remains open. |
 | P8 | Paused behind P12.0 | The legitimate E1M1 route is preserved at tic 1430 with 46 health and 9 kills, approaching lift 2; it resumes only after the pulled-forward performance gate. |
 | P9–P10 | Source ready | MODEL-fire, production AutoREST API, thin TypeScript client, and local E2E harness are authored; live acceptance follows P8. |
 | P11 | External target pending | Autonomous Database and S3 scripts are ready; real cloud acceptance requires the deployment credentials and targets. |
@@ -53,13 +53,13 @@ rendering, compression, response storage, commit, and AQ correlation. One
 isolated 435 ms OJVM JIT pause remains visible in the maximum and is not hidden
 by the p95 claim.
 
-The public `DOOM_API.STEP` contract now selects the worker for eligible
-single-command movement when its rollout flag is enabled; batches and
-fire/use/weapon/UI actions still fall back to the complete SQL oracle. A reused
-HTTP connection currently measures 47.919/52.925 ms p50/p95 for active frames,
-versus 20.323/25.109 ms inside the database. Full controls and the fixed
-ORDS/browser gate remain open, so the public game is not yet generally playable
-despite the database gate passing.
+The public `DOOM_API.STEP` contract selects the worker for eligible movement;
+batches and fire/use/weapon/UI actions still fall back to the complete SQL
+oracle. A bounded depth-four client pipeline now passes the public moving-frame
+gate: 300/300 unique frames, 30.80 displayed FPS, and 32.21/33.14 ms paint-gap
+p50/p95. Input-to-decode latency is 120.49/148.26 ms p50/p95 and is reported
+separately. One AQ empty-poll tail caused a 96.19 ms maximum paint gap; extended
+frontier waiting and idempotent client retry prevent it from terminating play.
 
 The worker passes live commit, idempotent replay, rollback/discard, post-commit
 reconstruction, restart fencing, and two-session isolation. SecureFile tracing
@@ -196,14 +196,14 @@ BLOB handoff is 0.063 ms p95 and the full renderer+codec+BLOB total is
 
 ## Is it playable yet?
 
-The database worker is now fast enough at p95, but the public game is not yet
-generally playable. Eligible movement now uses the retained worker through the
-same AutoREST endpoint, with bounded ordered client pipelining. The best
-cadence-only 300-frame prototype reaches 30.35 FPS with 32.135/33.083 ms
-paint-gap p50/p95, but corresponding input/decode latency is
-70.417/169.555 ms and the fresh route has not yet produced 270 unique moving
-frames. Fire/use/weapon actions still use the slow SQL fallback. SQL remains
-independently executable as the differential oracle.
+Movement is now dynamically playable through the public AutoREST endpoint at
+the 30 FPS target; the acceptance route produced 300 distinct frames rather
+than replaying a hard-coded recording. The browser continuously derives each
+tic command from live keyboard or touch state. Input-to-frame latency is about
+120/148 ms p50/p95, so responsiveness still has room to improve, and
+fire/use/weapon actions remain on the slower SQL fallback until their retained
+parity work lands. SQL remains independently executable as the differential
+oracle.
 
 The selected warm worker no longer serializes and immediately reparses its own
 state. A request-fenced, rollback-capable world diff moves pending player and

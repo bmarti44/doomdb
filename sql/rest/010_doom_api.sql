@@ -225,7 +225,12 @@ create or replace package body doom_api as
       -- The browser permits four ordered HTTP calls in flight. Earlier
       -- database tics normally commit while ORDS is still serializing their
       -- responses; wait only for those bounded predecessors.
-      l_deadline:=systimestamp+numtodsinterval(1,'SECOND');
+      -- AQ dequeue occasionally crosses a one-second empty-poll boundary even
+      -- though the native tic itself remains below budget.  Use the same
+      -- bounded worker deadline here so a later correlated HTTP request cannot
+      -- fail just before its predecessor commits.
+      l_deadline:=systimestamp+numtodsinterval(
+        config_number('UNIFIED_WORKER_WAIT_SECONDS',10),'SECOND');
       loop
         select current_tic,last_command_seq into l_tic,l_expected_seq
           from game_sessions where session_token=p_session;

@@ -51,8 +51,16 @@ The best 300-frame cadence-only run measured 30.350 displayed FPS with
 70.417/169.555 ms and is reported separately. A fresh-session repeat reached
 31.039 FPS and 32.197/33.103 ms gaps but only 112 unique frame hashes. A more
 active fresh input pattern produced 113 unique hashes and missed cadence at
-28.921 FPS. The final public gate therefore remains open until one run has at
-least 270 unique moving frames and the selected paint cadence.
+28.921 FPS. Those original patterns did not satisfy the final gate. After the
+exact movement boundary correction, a bounded spawn-room route and the
+deployment-grade OJVM warmup produced **300/300 unique moving frames** at
+**30.799 displayed FPS**. Paint gaps were **32.209/33.138 ms p50/p95**;
+input-to-decode latency was **120.487/148.256 ms p50/p95** and is intentionally
+reported separately. One AQ empty-poll boundary caused a 96.191 ms maximum gap.
+The API now waits for a bounded predecessor using the worker deadline, and the
+client retries the same sequence/idempotency key after a transient ORDS
+failure. The unique-moving-frame public cadence gate therefore passes;
+retained fire/use/weapon parity remains.
 
 Longer execution also found an exact boundary at `x=-192`: double BSP lookup
 returned sector 141 while Oracle NUMBER lookup returned 99. The transaction
