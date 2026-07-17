@@ -44,6 +44,11 @@ insert all
     values('PLASMA',9002,25,13,8,20,0,0,'PROJECTILE_PLASMA_FLY')
 select 1 from dual;
 
+-- The generated engine catalog predates interactive collision dimensions for
+-- barrels.  Preserve the reviewed Doom actor dimensions in upgraded databases
+-- as well as fresh installs; radius zero makes barrels impossible to shoot.
+update doom_thing_type_def set radius=10,height=42 where thing_type=2035;
+
 update doom_weapon_def set ammo_cost=0,attack_kind='MELEE',pellet_count=1,
   damage_multiplier=3,spread_scale=0,projectile_kind=null where weapon_id='FIST';
 update doom_weapon_def set ammo_cost=1,attack_kind='HITSCAN',pellet_count=1,

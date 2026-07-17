@@ -120,7 +120,11 @@ async function boot(): Promise<void> {
     status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\n30 FPS database pipeline active';
     presentationTimer = window.setInterval(() => { void present(); }, presentationPeriodMs);
   };
-  const retainedCommand = (command: Command): boolean => command.use === 0 &&
+  // USE is now covered by the retained split-world gate. FIRE still has two
+  // catalog cases (barrel recursion and player splash projectiles) that must
+  // drain the pipeline and use the complete SQL oracle instead of stopping the
+  // async client with a rejected SUBMIT_STEP.
+  const retainedCommand = (command: Command): boolean => command.fire === 0 &&
     command.pause === 0 && command.automap === 0 && command.menu === 'NONE' &&
     command.cheat.length === 0;
   const submitTick = (): void => {

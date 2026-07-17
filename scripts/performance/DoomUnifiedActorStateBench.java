@@ -205,25 +205,33 @@ public final class DoomUnifiedActorStateBench {
       angle[i]=NUMBER.zero();radius[i]=canonicalNumber(p.radius);height[i]=canonicalNumber(p.height);
       projectileKind[i]=p.kind;
       require(slot.put(Integer.valueOf(p.id),Integer.valueOf(i))==null,"world append duplicate");count=n;}
-    void remove(int expected){int at=slot(expected);require(at>=0,"world remove id");
-      for(int i=0;i<count;i++){if(target[i]==expected)target[i]=-1;if(tracer[i]==expected)tracer[i]=-1;
-        if(owner[i]==expected)owner[i]=-1;}slot.remove(Integer.valueOf(expected));int n=--count;
-      id=removed(id,at,n);thing=removed(thing,at,n);state=removed(state,at,n);tics=removed(tics,at,n);
-      health=removed(health,at,n);flags=removed(flags,at,n);target=removed(target,at,n);tracer=removed(tracer,at,n);
-      reaction=removed(reaction,at,n);spawnThing=removed(spawnThing,at,n);owner=removed(owner,at,n);
-      exploded=removed(exploded,at,n);sector=removed(sector,at,n);direction=removed(direction,at,n);
-      awake=removed(awake,at,n);cooldown=removed(cooldown,at,n);healthSeen=removed(healthSeen,at,n);
-      deathProcessed=removed(deathProcessed,at,n);x=removed(x,at,n);y=removed(y,at,n);z=removed(z,at,n);
-      mx=removed(mx,at,n);my=removed(my,at,n);mz=removed(mz,at,n);angle=removed(angle,at,n);
-      radius=removed(radius,at,n);height=removed(height,at,n);projectileKind=removed(projectileKind,at,n);
-      slot.clear();for(int i=0;i<n;i++)slot.put(Integer.valueOf(id[i]),Integer.valueOf(i));}
+    private void copySlot(int from,int to){if(from==to)return;
+      id[to]=id[from];thing[to]=thing[from];state[to]=state[from];tics[to]=tics[from];
+      health[to]=health[from];flags[to]=flags[from];target[to]=target[from];tracer[to]=tracer[from];
+      reaction[to]=reaction[from];spawnThing[to]=spawnThing[from];owner[to]=owner[from];
+      exploded[to]=exploded[from];sector[to]=sector[from];direction[to]=direction[from];
+      awake[to]=awake[from];cooldown[to]=cooldown[from];healthSeen[to]=healthSeen[from];
+      deathProcessed[to]=deathProcessed[from];x[to]=x[from];y[to]=y[from];z[to]=z[from];
+      mx[to]=mx[from];my[to]=my[from];mz[to]=mz[from];angle[to]=angle[from];
+      radius[to]=radius[from];height[to]=height[from];projectileKind[to]=projectileKind[from];}
+    /** Detach and compact an ordered removal set once, retaining array capacity. */
+    void removeMany(int[] removals,int removalCount){
+      require(removalCount>=0&&removalCount<=count,"world removal count");
+      for(int i=0;i<removalCount;i++)require((i==0||removals[i]>removals[i-1])&&slot(removals[i])>=0,
+          "world removal id/order");
+      for(int i=0;i<count;i++){if(Arrays.binarySearch(removals,0,removalCount,target[i])>=0)target[i]=-1;
+        if(Arrays.binarySearch(removals,0,removalCount,tracer[i])>=0)tracer[i]=-1;
+        if(Arrays.binarySearch(removals,0,removalCount,owner[i])>=0)owner[i]=-1;}
+      int write=0,remove=0;
+      for(int read=0;read<count;read++){
+        if(remove<removalCount&&id[read]==removals[remove]){remove++;continue;}
+        copySlot(read,write++);
+      }
+      require(remove==removalCount,"world removal coverage");count=write;slot.clear();
+      for(int i=0;i<count;i++)slot.put(Integer.valueOf(id[i]),Integer.valueOf(i));
+    }
+    void remove(int expected){removeMany(new int[]{expected},1);}
   }
-  private static int[] removed(int[] values,int at,int length){if(at<length)System.arraycopy(values,at+1,values,at,length-at);
-    return Arrays.copyOf(values,length);}
-  private static NUMBER[] removed(NUMBER[] values,int at,int length){if(at<length)System.arraycopy(values,at+1,values,at,length-at);
-    return Arrays.copyOf(values,length);}
-  private static String[] removed(String[] values,int at,int length){if(at<length)System.arraycopy(values,at+1,values,at,length-at);
-    return Arrays.copyOf(values,length);}
 
   private static void require(boolean value,String message){if(!value)throw new IllegalStateException(message);}
   private static int int_(byte[] b,int o){return ((b[o]&255)<<24)|((b[o+1]&255)<<16)|((b[o+2]&255)<<8)|(b[o+3]&255);}
@@ -877,14 +885,17 @@ public final class DoomUnifiedActorStateBench {
           !owners.add(Integer.valueOf(owner)))return false;
       ids.add(Integer.valueOf(o.world.id[i]));
     }
+    int[] removals=new int[ids.size()];int removalCount=0;
     for(Integer boxed:ids){int projectileId=boxed.intValue(),slot=o.world.slot(projectileId);
       require(slot>=0,"retained projectile slot");int owner=o.world.owner[slot],actor=find(o.id,owner);
       int def=find(o.projectileKind,o.world.projectileKind[slot]),damage=o.projectileDamage[def];
       int ownerSlot=o.world.slot(owner);require(ownerSlot>=0&&actor>=0,"retained projectile owner");
       o.world.health[ownerSlot]=Math.max(0,o.world.health[ownerSlot]-damage);o.health[actor]=o.world.health[ownerSlot];
-      String kind=o.world.projectileKind[slot];o.world.remove(projectileId);ops.add(new WorldOp(2,0,projectileId));
+      String kind=o.world.projectileKind[slot];removals[removalCount++]=projectileId;
+      ops.add(new WorldOp(2,0,projectileId));
       events.add(new AttackEvent(o.nextEvent++,10,projectileId,owner,new NUMBER(damage),kind));
     }
+    if(removalCount>0)o.world.removeMany(removals,removalCount);
     Collections.sort(ops,new Comparator<WorldOp>(){public int compare(WorldOp a,WorldOp b){
       return a.id<b.id?-1:a.id==b.id?0:1;}});
     for(int i=1;i<ops.size();i++)require(ops.get(i-1).id<ops.get(i).id,"retained projectile op order");
@@ -998,21 +1009,54 @@ public final class DoomUnifiedActorStateBench {
     return text;
   }
   private static double firstCombatBlock(double x0,double y0,double x1,double y1){
-    double dx=x1-x0,dy=y1-y0,best=Double.POSITIVE_INFINITY;
-    for(int line=0;line<DoomSimCatalogBench.lineId.length;line++){
-      int left=DoomSimCatalogBench.lineLeftSector[line],right=DoomSimCatalogBench.lineRightSector[line];
-      boolean blocking=left<0||Math.min(DoomSimCatalogBench.baseCeiling[right],
-          DoomSimCatalogBench.baseCeiling[left])<=Math.max(DoomSimCatalogBench.baseFloor[right],
-          DoomSimCatalogBench.baseFloor[left]);
-      if(!blocking)continue;
-      double sx=DoomSimCatalogBench.lineX2[line]-DoomSimCatalogBench.lineX1[line];
-      double sy=DoomSimCatalogBench.lineY2[line]-DoomSimCatalogBench.lineY1[line];
-      double determinant=dx*sy-dy*sx;if(determinant==0.0)continue;
-      double rx=DoomSimCatalogBench.lineX1[line]-x0,ry=DoomSimCatalogBench.lineY1[line]-y0;
-      double u=(rx*dy-ry*dx)/determinant,t=(rx*sy-ry*sx)/determinant;
-      if(t>0.0&&t<1.0&&u>=0.0&&u<=1.0&&t<best)best=t;
+    return DoomPlayerMovementBench.firstBlockingFraction(x0,y0,x1,y1);
+  }
+
+  private static void damagePlayer(Owner o,int damage,int source,ArrayList<AttackEvent> events)throws Exception{
+    int absorb=Math.min(o.playerArmor,(int)Math.floor(damage*(o.playerArmorType==2?.5:
+        o.playerArmorType==1?.333:0.0)));
+    int healthDamage=damage-absorb;o.playerArmor-=absorb;
+    o.playerHealth=Math.max(0,o.playerHealth-healthDamage);if(o.playerHealth==0)o.playerAlive=0;
+    events.add(new AttackEvent(o.nextEvent++,11,source,-1,new NUMBER(damage),null));
+  }
+
+  private static boolean splashVisible(NUMBER x,NUMBER y,NUMBER targetX,NUMBER targetY){
+    return Double.isInfinite(firstCombatBlock(x.doubleValue(),y.doubleValue(),
+        targetX.doubleValue(),targetY.doubleValue()));
+  }
+
+  private static void splashDamage(Owner o,NUMBER x,NUMBER y,int radius,int damage,int source,
+      ArrayList<AttackEvent> events)throws Exception{
+    int[] victims=new int[o.world.count];int victimCount=0;NUMBER radiusNumber=new NUMBER(radius);
+    for(int i=0;i<o.world.count;i++)if(o.world.id[i]!=source&&o.world.health[i]>0){
+      NUMBER dx=o.world.x[i].sub(x),dy=o.world.y[i].sub(y);
+      if(dx.mul(dx).add(dy.mul(dy)).sqroot().compareTo(radiusNumber)<=0)victims[victimCount++]=o.world.id[i];
     }
-    return best;
+    for(int i=0;i<victimCount;i++){int slot=o.world.slot(victims[i]);if(slot<0||o.world.health[slot]<=0)continue;
+      NUMBER dx=o.world.x[slot].sub(x),dy=o.world.y[slot].sub(y);
+      NUMBER distance=dx.mul(dx).add(dy.mul(dy)).sqroot();
+      int amount=Math.max(0,damage-distance.floor().intValue());
+      if(amount>0&&splashVisible(x,y,o.world.x[slot],o.world.y[slot]))
+        damageMobj(o,slot,amount,source,true,events);
+    }
+    if(o.playerAlive!=0){NUMBER dx=o.playerX.sub(x),dy=o.playerY.sub(y);
+      NUMBER distance=dx.mul(dx).add(dy.mul(dy)).sqroot();
+      int amount=Math.max(0,damage-distance.floor().intValue());
+      if(distance.compareTo(radiusNumber)<=0&&amount>0&&splashVisible(x,y,o.playerX,o.playerY))
+        damagePlayer(o,amount,source,events);
+    }
+  }
+
+  private static void damageMobj(Owner o,int slot,int damage,int source,boolean emitDamage,
+      ArrayList<AttackEvent> events)throws Exception{
+    if(slot<0||o.world.health[slot]<=0)return;
+    o.world.health[slot]=Math.max(0,o.world.health[slot]-damage);int id=o.world.id[slot];
+    int actor=find(o.id,id);if(actor>=0)o.health[actor]=o.world.health[slot];
+    if(emitDamage)events.add(new AttackEvent(o.nextEvent++,8,source,id,new NUMBER(damage),null));
+    if(o.world.thing[slot]==2035&&o.world.health[slot]==0&&o.world.exploded[slot]==0){
+      o.world.exploded[slot]=1;events.add(new AttackEvent(o.nextEvent++,9,source,id,new NUMBER(128),null));
+      splashDamage(o,o.world.x[slot],o.world.y[slot],128,128,id,events);
+    }
   }
   private static void fireWeapon(Owner o,int fire,int[] draws,ArrayList<AttackEvent> events)throws Exception{
     if(fire==0){o.refire=0;return;}
@@ -1049,14 +1093,26 @@ public final class DoomUnifiedActorStateBench {
       String spreadText=oracleDefaultNumberText(spread);
       if(targetSlot<0)events.add(new AttackEvent(o.nextEvent++,15,-1,-1,null,spreadText));
       else{
-        require("monster".equals(o.spawnCategory[find(o.spawnThing,o.world.thing[targetSlot])]),
-            "retained fire barrel fallback");
-        o.world.health[targetSlot]=Math.max(0,o.world.health[targetSlot]-damage);
-        int actor=find(o.id,target);require(actor>=0,"retained fire monster actor");o.health[actor]=o.world.health[targetSlot];
-        events.add(new AttackEvent(o.nextEvent++,8,-1,target,new NUMBER(damage),null));
+        damageMobj(o,targetSlot,damage,-1,true,events);
         events.add(new AttackEvent(o.nextEvent++,14,-1,target,new NUMBER(damage),spreadText));o.playerSound=1;
       }
     }
+  }
+
+  /** Final non-behavior world diff; events keep execution order, DML is ID ordered. */
+  private static void rebuildWorldOps(Owner o,ArrayList<WorldOp> ops)throws Exception{
+    ops.clear();WorldMobjs before=committed.world,after=o.world;
+    for(int old=0;old<before.count;old++){int id=before.id[old],next=after.slot(id);
+      if(next<0){ops.add(new WorldOp(2,0,id));continue;}
+      if(find(o.id,id)>=0)continue;
+      int mask=0;if(before.x[old].compareTo(after.x[next])!=0)mask|=1;
+      if(before.y[old].compareTo(after.y[next])!=0)mask|=2;
+      if(before.health[old]!=after.health[next])mask|=4;
+      if(before.exploded[old]!=after.exploded[next])mask|=8;
+      if(mask!=0){WorldOp op=new WorldOp(1,mask,id);op.x=after.x[next];op.y=after.y[next];
+        op.health=after.health[next];op.exploded=after.exploded[next];ops.add(op);}
+    }
+    for(int i=1;i<ops.size();i++)require(ops.get(i-1).id<ops.get(i).id,"retained world op order");
   }
   private static byte[] ticDelta(Owner o,String s,String l,long g,String request)throws Exception{
     return ticDelta(o,s,l,g,request,false,null,false);
@@ -1137,6 +1193,7 @@ public final class DoomUnifiedActorStateBench {
       o.world.cooldown[w]=o.cooldown[i];o.world.healthSeen[w]=o.healthSeen[i];
       o.world.deathProcessed[w]=o.deathProcessed[i];}
     for(TicSpawn spawn:spawns)o.world.append(spawn);
+    rebuildWorldOps(o,worldOps);
     ticLoopNs+=System.nanoTime()-phase;phase=System.nanoTime();
     int changedActors=0;for(int i=0;i<o.count;i++)if(!sameActorDelta(o,committed,i))changedActors++;
     int p=0;p=fastInt(p,0x44544943);ticOutput[p++]=(byte)(weaponBlock?2:1);ticOutput[p++]=0;p=fastShort(p,changedActors);
@@ -1189,8 +1246,10 @@ public final class DoomUnifiedActorStateBench {
     for(int i=0;i<projectiles;i++,p+=50){int id=int_(pack,p);require(id>prior,"projectile order");prior=id;
       surviving[i]=id;xs[i]=number(pack,p+4);ys[i]=number(pack,p+27);
     }
-    for(int i=o.world.count-1;i>=0;i--)if(o.world.projectileKind[i]!=null&&
-        Arrays.binarySearch(surviving,o.world.id[i])<0)o.world.remove(o.world.id[i]);
+    int[] removedProjectiles=new int[o.world.count];int removedCount=0;
+    for(int i=0;i<o.world.count;i++)if(o.world.projectileKind[i]!=null&&
+        Arrays.binarySearch(surviving,o.world.id[i])<0)removedProjectiles[removedCount++]=o.world.id[i];
+    if(removedCount>0)o.world.removeMany(removedProjectiles,removedCount);
     for(int i=0;i<projectiles;i++){int slot=o.world.slot(surviving[i]);
       require(slot>=0&&o.world.projectileKind[slot]!=null,"projectile retained id");
       o.world.x[slot]=xs[i];o.world.y[slot]=ys[i];

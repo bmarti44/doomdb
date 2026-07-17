@@ -635,6 +635,18 @@ create or replace package body doom_unified_delta_apply as
     end loop;
 
     if l_world_op_count>0 then
+      -- Actor references are weak pointers.  Match DOOM_COMBAT.REMOVE_MOBJ by
+      -- detaching every inbound reference before a retained removal reaches
+      -- the deferred relational foreign keys.  Doing this once as bulk DML
+      -- also avoids the per-projectile row-walking removal path.
+      forall i in 1..l_world_op_count
+        update mobjs set
+          target_mobj_id=case when target_mobj_id=l_world_ops(i).id then null else target_mobj_id end,
+          tracer_mobj_id=case when tracer_mobj_id=l_world_ops(i).id then null else tracer_mobj_id end,
+          owner_mobj_id=case when owner_mobj_id=l_world_ops(i).id then null else owner_mobj_id end
+        where session_token=p_session_token and l_world_ops(i).operation=2 and
+          (target_mobj_id=l_world_ops(i).id or tracer_mobj_id=l_world_ops(i).id or
+           owner_mobj_id=l_world_ops(i).id);
       forall i in 1..l_world_op_count
         merge into mobjs target using (
           select l_world_ops(i).operation operation,l_world_ops(i).field_mask field_mask,

@@ -1831,6 +1831,20 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   64,000 final pixels. This selects the optimization without reducing
   resolution; horizontal plane spans remain the next renderer architecture
   slice before the future 640x400 profile.
+- Retained fire F2 barrel checkpoint (2026-07-17): catalog-driven hitscan now
+  applies exact depth-first barrel recursion in retained arrays, including
+  stable ID-ordered victims, splash occlusion/falloff, player armor/death,
+  same-tic monster pain/death, final ID-ordered world operations, and rollback.
+  The differential chain fixture matches the independent SQL path byte-for-byte
+  across 11 ordered events and final player/world state, and in-worker SQL
+  parity passes. The fixture also exposed and fixed a pre-existing engine-data
+  defect: type 2035 had null dimensions and therefore instantiated at radius
+  zero; fresh and upgraded databases now use radius 10/height 42. Retained
+  removals detach weak target/tracer/owner references in bulk on both sides and
+  compact Java arrays once per removal set. Player rocket/plasma spawn, swept
+  advance, impact, splash, and transient same-tic ID reuse remain the final F2
+  protocol slice. Until it passes, the browser drains the pipeline for FIRE and
+  preserves the synchronous SQL fallback.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

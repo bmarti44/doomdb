@@ -290,14 +290,11 @@ create or replace package body doom_api as
       return;
     end if;
 
-    -- F1 retains every catalog-defined hitscan/melee weapon. Until the exact
-    -- recursive barrel/splash kernel lands, any live barrel keeps FIRE on the
-    -- complete SQL oracle; neutral/weapon tics remain retained.
+    -- F2 retains catalog-defined hitscan/melee combat, including deterministic
+    -- recursive barrel splash.  Projectile weapons remain on the complete SQL
+    -- oracle until the versioned transient-projectile delta lands.
     if coalesce(l_fire,0)=1 then
-      select case when w.attack_kind in('HITSCAN','MELEE') and not exists(
-          select 1 from mobjs m join doom_thing_type_def td on td.thing_type=m.thing_type
-          where m.session_token=p_session and m.health>0 and td.category='barrel')
-        then 1 else 0 end
+      select case when w.attack_kind in('HITSCAN','MELEE') then 1 else 0 end
         into l_fire_supported
         from players p join doom_weapon_def w on w.weapon_id=p.selected_weapon
         join game_sessions s on s.session_token=p.session_token and s.current_player_id=p.player_id

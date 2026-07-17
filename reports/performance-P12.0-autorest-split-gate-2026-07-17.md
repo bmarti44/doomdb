@@ -30,6 +30,16 @@ Selected protocol:
 | Occlusion repeat A | 300 | 300 | 31.036 | 31.198/32.157 ms | dynamic USE selected; exact chain |
 | Occlusion repeat B | 300 | 300 | 32.064 | 31.159/32.048 ms | zero stalls; exact chain |
 
+The subsequent F2 barrel slice is correctness-neutral to these cadence results.
+It adds retained hitscan barrel damage and exact recursive splash. An independent
+retained-versus-SQL fixture matched 11 ordered events and final player/world
+state, including two barrel explosions, recursive monster damage, player
+armor/death, and same-tic monster death. Type 2035's previously null dimensions
+were corrected to radius 10/height 42 so the test and live game can actually
+select barrels. Player rocket/plasma lifecycle remains on the SQL fallback; the
+browser therefore drains its async window for FIRE until that protocol is
+complete.
+
 The final 330-frame chain (30 warm frames plus 300 moving frames) is
 `4d9a7a22dd8c3d02c37d40523e6f5d9fcec18665a374eccd7a9b63427d49b6fd`.
 The client-side ordered hash and the independently aggregated Oracle result-row

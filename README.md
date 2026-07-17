@@ -35,9 +35,11 @@ dynamic game playable before continuing P8.
 The selected retained worker now supports arbitrary live movement, collision,
 weapon selection, common hitscan/melee fire, `USE`/`WALK` triggers, doors,
 lifts, switches, carry, blocking, monsters, pickups, and world presentation.
-Barrel-chain recursion and the complete player rocket/plasma lifecycle remain
-the main retained-gameplay gaps; unsupported actions preserve the complete SQL
-fallback and SQL remains an independently executable differential oracle.
+Hitscan barrel damage, ordered recursive splash, player armor/death, and
+same-tic monster death now also run in the retained worker with exact SQL
+parity. The complete player rocket/plasma lifecycle is the remaining retained
+gameplay gap; unsupported actions preserve the complete SQL fallback and SQL
+remains an independently executable differential oracle.
 
 Two fresh 300-frame moving runs after front-to-back solid-column BSP rejection
 passed at **31.04 FPS** and **32.06 FPS**. Both produced 300 distinct frames and
@@ -52,7 +54,9 @@ gates also pass.
 The client uses a depth-four command window, ordered decode, a 32 ms command
 clock, a 31.8 ms display clock, and a ten-frame startup buffer. That buffer
 currently adds about 320 ms of input-to-display latency; reducing it without
-losing sustained cadence is still active work. The design is resolution-aware:
+losing sustained cadence is still active work. FIRE currently drains that
+window and uses the synchronous correctness path until rocket/plasma deltas are
+complete; movement, USE, and weapon selection remain pipelined. The design is resolution-aware:
 visibility and simulation are independent of the 320×200 buffer, and horizontal
 plane spans remain planned before enabling the future 640×400 profile.
 

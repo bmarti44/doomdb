@@ -120,7 +120,9 @@ async function boot() {
         status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\n30 FPS database pipeline active';
         presentationTimer = window.setInterval(() => { void present(); }, presentationPeriodMs);
     };
-    const retainedCommand = (command) => command.use === 0 &&
+    // USE is retained; FIRE drains to the complete SQL oracle until the two F2
+    // splash/barrel cases are selected in the async worker.
+    const retainedCommand = (command) => command.fire === 0 &&
         command.pause === 0 && command.automap === 0 && command.menu === 'NONE' &&
         command.cheat.length === 0;
     const submitTick = () => {

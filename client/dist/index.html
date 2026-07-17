@@ -57,7 +57,7 @@
     <article class="panel">
       <h2>Current milestone</h2>
       <p class="big">30 FPS public gate<br><span>300 / 300 unique moving frames</span></p>
-      <p class="muted">Fresh exact-chain runs pass at 31.04 and 32.06 displayed FPS with 300/300 unique frames. The second run had zero stalls and 31.16/32.05 ms paint-gap p50/p95. Dynamic USE, doors, lifts, switches, carry, blocking, rollback, and restart now pass; barrel chains and the complete player rocket/plasma lifecycle remain open.</p>
+      <p class="muted">Fresh exact-chain runs pass at 31.04 and 32.06 displayed FPS with 300/300 unique frames. The second run had zero stalls and 31.16/32.05 ms paint-gap p50/p95. Dynamic USE, doors, lifts, switches, carry, blocking, rollback, restart, and recursive barrel splash now pass; the complete player rocket/plasma lifecycle remains open.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -69,7 +69,7 @@
 
   <section class="panel" aria-label="current route status">
     <h2>Live implementation status · July 17, 2026</h2>
-    <p><strong>Route:</strong> preserved behind the playability gate. Arbitrary live movement, weapon selection, common fire, USE/WALK triggers, doors, lifts, switches, carry, and blocking use the retained database worker; unsupported actions retain the complete SQL fallback. Lift 1 is complete and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
+    <p><strong>Route:</strong> preserved behind the playability gate. Arbitrary live movement, weapon selection, common hitscan/melee fire including barrel chains, USE/WALK triggers, doors, lifts, switches, carry, and blocking are supported by the retained database worker; unsupported actions retain the complete SQL fallback. The browser temporarily drains its pipeline for FIRE until rocket/plasma deltas land. Lift 1 is complete and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
     <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived Scheduler workers. Conservative front-to-back solid-column BSP rejection cut the exact moving renderer kernel from 16.5 to about 12.6 ms average. Generated <code>SUBMIT_STEP</code> and <code>POLL_FRAME</code> endpoints, a depth-four command window, one result waiter, ordered decode, and a ten-frame startup buffer now repeat above 30 FPS. The buffer adds about 320 ms of presentation latency and remains the next optimization target.</p>
   </section>

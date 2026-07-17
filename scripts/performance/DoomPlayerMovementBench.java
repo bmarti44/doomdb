@@ -76,6 +76,25 @@ public final class DoomPlayerMovementBench {
     return bottom - z > STEP || top - bottom < HEIGHT || top - Math.max(z, bottom) < HEIGHT;
   }
 
+  /** SQL combat/splash blocker: one-sided or dynamically closed geometry only. */
+  static double firstBlockingFraction(double x0,double y0,double x1,double y1){
+    ensureGeometry();collectCandidates(x0,y0,x1,y1,128.0);
+    double dx=x1-x0,dy=y1-y0,best=Double.POSITIVE_INFINITY;
+    for(int candidate=0;candidate<candidateCount;candidate++){
+      int line=candidateLines[candidate],left=DoomSimCatalogBench.lineLeftSector[line];
+      int right=DoomSimCatalogBench.lineRightSector[line];
+      if(left>=0&&right>=0&&Math.min(liveCeiling[left],liveCeiling[right])>
+          Math.max(liveFloor[left],liveFloor[right]))continue;
+      double sx=DoomSimCatalogBench.lineX2[line]-DoomSimCatalogBench.lineX1[line];
+      double sy=DoomSimCatalogBench.lineY2[line]-DoomSimCatalogBench.lineY1[line];
+      double determinant=dx*sy-dy*sx;if(determinant==0.0)continue;
+      double rx=DoomSimCatalogBench.lineX1[line]-x0,ry=DoomSimCatalogBench.lineY1[line]-y0;
+      double u=(rx*dy-ry*dx)/determinant,t=(rx*sy-ry*sx)/determinant;
+      if(t>0.0&&t<1.0&&u>=0.0&&u<=1.0&&t<best)best=t;
+    }
+    return best;
+  }
+
   private static int clamp(int value, int minimum, int maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }
