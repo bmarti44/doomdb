@@ -28,7 +28,7 @@ begin
         player.angle,player.health,player.armor,
         player.blue_key,player.yellow_key,player.red_key,
         player.ammo_bullets,player.ammo_shells,player.ammo_rockets,
-        player.ammo_cells,player.selected_weapon,
+        player.ammo_cells,player.selected_weapon,player.weapon_state,
         player.kill_count,player.item_count,player.secret_count
       from game_sessions session_row
       join players player
@@ -86,6 +86,9 @@ begin
     ),
     weapon_choice as (
       select state.*,
+        coalesce((select d.sprite_prefix||d.sprite_frame||'0'
+          from doom_state_def d where d.state_id=state.weapon_state
+            and d.sprite_prefix is not null and d.sprite_frame is not null),
         case state.selected_weapon
           when 'FIST' then 'PUNGA0'
           when 'PISTOL' then 'PISGA0'
@@ -95,7 +98,7 @@ begin
           when 'PLASMA_RIFLE' then 'PLSGA0'
           when 'CHAINSAW' then 'SAWGA0'
           else 'PISGA0'
-        end asset_name
+        end) asset_name
       from session_state state
       where state.game_mode in ('GAME','DEAD')
     ),

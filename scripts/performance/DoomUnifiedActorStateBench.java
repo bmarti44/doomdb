@@ -882,43 +882,58 @@ public final class DoomUnifiedActorStateBench {
     int projectileCount=0;for(int i=0;i<o.world.count;i++)if(o.world.projectileKind[i]!=null)projectileCount++;
     int[] projectileIds=new int[projectileCount],removals=new int[projectileCount];int at=0,removalCount=0;
     for(int i=0;i<o.world.count;i++)if(o.world.projectileKind[i]!=null)projectileIds[at++]=o.world.id[i];
-    NUMBER zero=NUMBER.zero(),one=new NUMBER(1);
+    int[] targetSlots=new int[o.world.count];int targetCount=0;
+    for(int i=0;i<o.world.count;i++)if(o.world.health[i]>0&&o.world.projectileKind[i]==null){
+      int type=find(o.spawnThing,o.world.thing[i]);String category=type<0?null:o.spawnCategory[type];
+      if("monster".equals(category)||"barrel".equals(category))targetSlots[targetCount++]=i;
+    }
     for(int projectileId:projectileIds){int slot=o.world.slot(projectileId);
       require(slot>=0,"retained projectile slot");String kind=o.world.projectileKind[slot];
       int def=find(o.projectileKind,kind);require(def>=0,"retained projectile def");
       NUMBER nx=o.world.x[slot].add(o.world.mx[slot]),ny=o.world.y[slot].add(o.world.my[slot]);
-      NUMBER wall=DoomPlayerMovementBench.firstBlockingFraction(o.world.x[slot],o.world.y[slot],nx,ny);
-      int target=-1,targetSlot=-1;NUMBER targetDepth=null;
-      int ownerSlot=o.world.slot(o.world.owner[slot]);
-      if(ownerSlot>=0&&o.world.health[ownerSlot]>0&&o.world.projectileKind[ownerSlot]==null){
-        int type=find(o.spawnThing,o.world.thing[ownerSlot]);String category=type<0?null:o.spawnCategory[type];
-        if("monster".equals(category)||"barrel".equals(category)){
-          target=o.world.id[ownerSlot];targetSlot=ownerSlot;targetDepth=zero;
-        }
-      }
-      if(targetSlot<0){NUMBER mx=o.world.mx[slot],my=o.world.my[slot];
-        NUMBER denominator=mx.mul(mx).add(my.mul(my));require(!denominator.isZero(),"projectile momentum");
-        NUMBER length=denominator.sqroot();
-        for(int candidate=0;candidate<o.world.count;candidate++)if(candidate!=slot&&
-            o.world.health[candidate]>0&&o.world.projectileKind[candidate]==null){
-          int type=find(o.spawnThing,o.world.thing[candidate]);String category=type<0?null:o.spawnCategory[type];
-          if(!"monster".equals(category)&&!"barrel".equals(category))continue;
-          NUMBER dx=o.world.x[candidate].sub(o.world.x[slot]),dy=o.world.y[candidate].sub(o.world.y[slot]);
-          NUMBER depth=dx.mul(mx).add(dy.mul(my)).div(denominator);
-          NUMBER miss=dx.mul(my).sub(dy.mul(mx));if(miss.compareTo(zero)<0)miss=miss.negate();
-          miss=miss.div(length);
-          if(depth.compareTo(zero)>=0&&depth.compareTo(one)<=0&&
-              miss.compareTo(o.world.radius[candidate].add(o.projectileRadius[def]))<=0&&
-              (targetDepth==null||depth.compareTo(targetDepth)<0||
-               (depth.compareTo(targetDepth)==0&&o.world.id[candidate]<target))){
+      int target=-1,targetSlot=-1;double targetDepth=Double.POSITIVE_INFINITY;
+      boolean playerHit=false;
+      double x0=o.world.x[slot].doubleValue(),y0=o.world.y[slot].doubleValue();
+      double x1=nx.doubleValue(),y1=ny.doubleValue();
+      double wall=DoomPlayerMovementBench.firstBlockingFraction(x0,y0,x1,y1);
+      double mx=o.world.mx[slot].doubleValue(),my=o.world.my[slot].doubleValue();
+      double denominator=mx*mx+my*my;require(denominator>0.0,"projectile momentum");
+      double length=Math.sqrt(denominator);
+      for(int targetIndex=0;targetIndex<targetCount;targetIndex++){
+          int candidate=targetSlots[targetIndex];
+          if(candidate==slot||o.world.id[candidate]==o.world.owner[slot]||
+              o.world.health[candidate]<=0)continue;
+          // BLOCKMAP-style broad phase; the bounded sweep and stable ID tie
+          // break match the SQL oracle without per-candidate NUMBER objects.
+          double margin=o.world.radius[candidate].doubleValue()+o.projectileRadius[def].doubleValue();
+          double cx=o.world.x[candidate].doubleValue(),cy=o.world.y[candidate].doubleValue();
+          if(cx<Math.min(x0,x1)-margin||cx>Math.max(x0,x1)+margin||
+              cy<Math.min(y0,y1)-margin||cy>Math.max(y0,y1)+margin)continue;
+          double dx=cx-x0,dy=cy-y0,depth=(dx*mx+dy*my)/denominator;
+          double miss=Math.abs(dx*my-dy*mx)/length;
+          if(depth>=0.0&&depth<=1.0&&miss<=margin&&
+              (depth<targetDepth||(depth==targetDepth&&o.world.id[candidate]<target))){
             target=o.world.id[candidate];targetSlot=candidate;targetDepth=depth;
           }
+      }
+      // A monster missile may strike the player, who is intentionally not a
+      // row in the retained world arrays. Player-fired missiles have no owner
+      // mobj and must not collide with their own origin.
+      if(o.world.owner[slot]>=0&&o.playerAlive!=0){
+        double dx=o.playerX.doubleValue()-x0,dy=o.playerY.doubleValue()-y0;
+        double depth=(dx*mx+dy*my)/denominator;
+        double miss=Math.abs(dx*my-dy*mx)/length;
+        if(depth>=0.0&&depth<=1.0&&miss<=16.0+o.projectileRadius[def].doubleValue()&&
+            depth<targetDepth){
+          target=-1;targetSlot=-1;targetDepth=depth;playerHit=true;
         }
       }
-      boolean impact=wall!=null||targetSlot>=0;
-      if(impact){if(targetSlot>=0&&(wall==null||targetDepth.compareTo(wall)<0))
+      boolean impact=!Double.isInfinite(wall)||!Double.isInfinite(targetDepth);
+      if(impact){if(targetDepth<wall){
+        if(playerHit)damagePlayer(o,o.projectileDamage[def],projectileId,events);
+        else
           damageMobj(o,targetSlot,o.projectileDamage[def],projectileId,false,events);
-        else{target=-1;targetSlot=-1;}
+        }else{target=-1;targetSlot=-1;playerHit=false;}
         o.world.health[slot]=0;removals[removalCount++]=projectileId;
         events.add(new AttackEvent(o.nextEvent++,10,projectileId,target,
             new NUMBER(o.projectileDamage[def]),kind));
@@ -927,12 +942,13 @@ public final class DoomUnifiedActorStateBench {
       }else{o.world.x[slot]=nx;o.world.y[slot]=ny;
         for(TicSpawn spawn:spawns)if(spawn.id==projectileId){spawn.x=nx;spawn.y=ny;break;}}
     }
-    if(removalCount>0){o.world.removeMany(removals,removalCount);
+    if(removalCount>0){Arrays.sort(removals,0,removalCount);o.world.removeMany(removals,removalCount);
       for(int i=spawns.size()-1;i>=0;i--)
-        if(Arrays.binarySearch(removals,0,removalCount,spawns.get(i).id)>=0){
+        if(o.world.slot(spawns.get(i).id)<0){
           transientIds.add(Integer.valueOf(spawns.get(i).id));spawns.remove(i);}
     }
-    o.nextMobj=o.world.count==0?1:o.world.id[o.world.count-1]+1;return true;
+    int maxId=0;for(int i=0;i<o.world.count;i++)maxId=Math.max(maxId,o.world.id[i]);
+    o.nextMobj=maxId+1;return true;
   }
   private static boolean ownerProjectilesEligible(Owner o)throws Exception{
     for(int i=0;i<o.world.count;i++)if(o.world.projectileKind[i]!=null&&
@@ -1146,9 +1162,12 @@ public final class DoomUnifiedActorStateBench {
   }
 
   /** Final non-behavior world diff; events keep execution order, DML is ID ordered. */
-  private static void rebuildWorldOps(Owner o,ArrayList<WorldOp> ops)throws Exception{
+  private static void rebuildWorldOps(Owner o,ArrayList<WorldOp> ops,
+      ArrayList<TicSpawn> spawns)throws Exception{
     ops.clear();WorldMobjs before=committed.world,after=o.world;
     for(int old=0;old<before.count;old++){int id=before.id[old],next=after.slot(id);
+      boolean replaced=false;for(TicSpawn spawn:spawns)if(spawn.id==id){replaced=true;break;}
+      if(replaced){ops.add(new WorldOp(2,0,id));continue;}
       if(next<0){ops.add(new WorldOp(2,0,id));continue;}
       if(find(o.id,id)>=0)continue;
       int mask=0;if(before.x[old].compareTo(after.x[next])!=0)mask|=1;
@@ -1185,7 +1204,6 @@ public final class DoomUnifiedActorStateBench {
         "retained projectile fallback");
     require(outputVersion==1||outputVersion==2||outputVersion==3,"retained DTIC version");
     require(outputVersion==3||transientIds.isEmpty(),"transient projectile requires DTIC v3");
-    int prefixSpawnCount=spawns.size();
     if(priorHealthScratch.length!=o.count){priorHealthScratch=new int[o.count];moveMaskScratch=new int[o.count];}
     System.arraycopy(o.health,0,priorHealthScratch,0,o.count);Arrays.fill(moveMaskScratch,0);
     int[] priorHealth=priorHealthScratch,moveMask=moveMaskScratch;
@@ -1245,8 +1263,10 @@ public final class DoomUnifiedActorStateBench {
       o.world.sector[w]=o.sector[i];o.world.direction[w]=o.direction[i];o.world.awake[w]=o.awake[i];
       o.world.cooldown[w]=o.cooldown[i];o.world.healthSeen[w]=o.healthSeen[i];
       o.world.deathProcessed[w]=o.deathProcessed[i];}
-    for(int i=prefixSpawnCount;i<spawns.size();i++)o.world.append(spawns.get(i));
-    rebuildWorldOps(o,worldOps);
+    for(TicSpawn spawn:spawns)if(o.world.slot(spawn.id)<0)o.world.append(spawn);
+    int finalMaxId=0;for(int i=0;i<o.world.count;i++)finalMaxId=Math.max(finalMaxId,o.world.id[i]);
+    for(TicSpawn spawn:spawns)finalMaxId=Math.max(finalMaxId,spawn.id);
+    o.nextMobj=finalMaxId+1;rebuildWorldOps(o,worldOps,spawns);
     ticLoopNs+=System.nanoTime()-phase;phase=System.nanoTime();
     int changedActors=0;for(int i=0;i<o.count;i++)if(!sameActorDelta(o,committed,i))changedActors++;
     int p=0;p=fastInt(p,0x44544943);ticOutput[p++]=(byte)outputVersion;ticOutput[p++]=0;p=fastShort(p,changedActors);
@@ -1963,11 +1983,13 @@ public final class DoomUnifiedActorStateBench {
       String result=geometryPack==null?DoomRetainedRenderSceneBench.stageOwnerTic(s,g,request,pending.tic,pending.seq,
         pending.playerX,pending.playerY,pending.playerEyeZ,pending.playerAngleIndex,pending.playerHealth,
         pending.playerArmor,pending.playerAlive,pending.weaponId[pending.selectedWeapon],
+        pending.stateId[pending.weaponState],
         weaponAmmo(pending,pending.weaponAmmo[pending.selectedWeapon]),dirty,renderOp,renderId,renderState,renderX,renderY,
         renderZ,renderAngle,dirtySectors,renderSectorId,renderSectorLight,stateSha,payload):
         DoomRetainedRenderSceneBench.stageOwnerTicWorld(s,g,request,pending.tic,pending.seq,
         pending.playerX,pending.playerY,pending.playerEyeZ,pending.playerAngleIndex,pending.playerHealth,
         pending.playerArmor,pending.playerAlive,pending.weaponId[pending.selectedWeapon],
+        pending.stateId[pending.weaponState],
         weaponAmmo(pending,pending.weaponAmmo[pending.selectedWeapon]),dirty,renderOp,renderId,renderState,renderX,renderY,
         renderZ,renderAngle,dirtySectors,renderSectorId,renderSectorLight,geometryPack,stateSha,payload);
       require(result!=null&&!result.startsWith("ERROR:")&&!result.startsWith("ERR|"),

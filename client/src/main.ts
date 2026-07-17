@@ -68,6 +68,12 @@ shell.append(canvas, touch.element, status);
 document.head.append(stylesheet());
 document.body.replaceChildren(shell);
 
+const trace = (name: string, detail: object): void => {
+  window.dispatchEvent(new CustomEvent(`doom:${name}`, {
+    detail: {at: performance.now(), ...detail}
+  }));
+};
+
 async function boot(): Promise<void> {
   const audio = new AudioPresenter();
   const game = await newGame();
@@ -98,28 +104,30 @@ async function boot(): Promise<void> {
   const presentationPeriodMs = 31.8;
   const submitDepth = 4;
   const fetchDepth = 2;
-  const presentationBuffer = 10;
+  const presentationBuffer = 2;
   const submitted = new Set<number>();
   const retryFetch: number[] = [];
   const completed = new Map<number, typeof frame>();
-  const present = async (): Promise<void> => {
+  const present = (): void => {
     if (presenting) return;
     const next = completed.get(nextPresentation);
     if (next === undefined) return;
     presenting = true;
-    completed.delete(nextPresentation);
+    const sequence = nextPresentation;
+    completed.delete(sequence);
     nextPresentation += 1;
     try {
       frame = next;
       blit(canvas, applyPalette(frame.indices, palette));
       state.setMode(frame.mode);
-      await audio.consume(frame.audio);
+      audio.enqueue(frame.audio, cause => console.error('audio presentation failed', cause));
+      trace('present', {sequence, frameSha: frame.frameSha});
     } finally { presenting = false; }
   };
   const startPresentation = (): void => {
     if (presentationTimer !== 0 || completed.size < presentationBuffer) return;
     status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\n30 FPS database pipeline active';
-    presentationTimer = window.setInterval(() => { void present(); }, presentationPeriodMs);
+    presentationTimer = window.setInterval(present, presentationPeriodMs);
   };
   // Live movement, USE, weapon selection, and every catalog fire mode now use
   // the correlated retained worker. Presentation-only controls remain on the
@@ -130,6 +138,7 @@ async function boot(): Promise<void> {
   const submitTick = (): void => {
     const sequence = ++nextSequence;
     const outgoing = {...latest, seq: sequence};
+    trace('submit', {sequence, command: outgoing});
     submitInFlight += 1;
     void submitStep(game.session, outgoing)
       .then(() => { submitted.add(sequence); })
@@ -146,7 +155,9 @@ async function boot(): Promise<void> {
       .then(payload => payload === null ? null : decodePayload(payload))
       .then(decoded => {
         if (decoded === null) retryFetch.push(sequence);
-        else { completed.set(sequence, decoded);startPresentation(); }
+        else {
+          completed.set(sequence, decoded);trace('decoded', {sequence});startPresentation();
+        }
       })
       .catch(cause => {
         pipelineError = true;const error = cause instanceof Error ? cause : new Error('fetch failed');
@@ -169,6 +180,7 @@ async function boot(): Promise<void> {
   };
   const send = (command: Command): void => {
     latest = command;
+    trace('input', {command});
   };
   const gesture = (): void => {
     void audio.enable();
@@ -206,7 +218,7 @@ async function boot(): Promise<void> {
     // capacity race and forces the idempotent retry path.
     if (nextSequence > 0 && prefill && !submitted.has(1)) return;
     if (syncInFlight || submitInFlight >= submitDepth ||
-        nextSequence + 1 > nextPresentation + 16 ||
+        nextSequence + 1 > nextPresentation + 3 ||
         (!prefill && now < nextDispatch)) return;
     submitTick();
     if (prefill) {

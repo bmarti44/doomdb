@@ -56,8 +56,8 @@
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">30 FPS public gate<br><span>300 / 300 unique moving frames</span></p>
-      <p class="muted">Isolated moving baselines pass at 30.88 and 32.06 displayed FPS. Three FIRE-every-8 runs pass at 32.00, 30.82, and 32.00 FPS with 300/300 unique frames and an identical exact chain. The full T5.1–T7.3 regression is green.</p>
+      <p class="big">Live defect closure<br><span>30 FPS combat gate reopened</span></p>
+      <p class="muted">Actor and weapon presentation, nonblocking audio, projectile ownership, and health-event causality are fixed. The corrected 300-frame combat soak renders 300/300 distinct frames at 12.34 FPS; retained projectile and delta-apply costs are now the active blockers.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -70,8 +70,8 @@
   <section class="panel" aria-label="current route status">
     <h2>Live implementation status · July 17, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate. Arbitrary live movement, weapon selection, every catalog attack, rocket/plasma projectiles, barrel chains, USE/WALK triggers, doors, lifts, switches, carry, and blocking are supported by the retained database worker. SQL remains the exact differential oracle. Lift 1 is complete and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
-    <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived Scheduler workers. Conservative front-to-back solid-column BSP rejection cut the exact moving renderer kernel from 16.5 to about 12.6 ms average. Generated <code>SUBMIT_STEP</code> and <code>POLL_FRAME</code> endpoints, a depth-four command window, two correlated result waiters, ordered decode, and a ten-frame startup buffer pass above 30 FPS during live FIRE. The buffer adds about 320 ms of presentation latency and remains the next optimization target.</p>
+    <p class="muted"><strong>T8.3 correctness:</strong> all monster states resolve continuously; <code>BAL1A0</code> is seeded; SQL/OJVM render the database weapon state; audio fetch/decode is off the paint path; owner-safe projectiles cause player health changes only with correlated damage events.</p>
+    <p><strong>Performance:</strong> the two-frame buffer and three-frame command-ahead limit measure 184.1 ms key-to-correlated-paint in the latest focused browser test. Correct projectiles exposed that the former 30+ FPS evidence depended on immediate owner self-collision. The corrected combat soak is 12.34 FPS (prepare 31.12 ms, apply 17.65 ms, render 21.13 ms averages after tic 100), so the 30 FPS gate is active again.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">
@@ -131,8 +131,8 @@
     <div class="metric"><strong>1,430</strong><span class="muted">public route tics</span></div>
     <div class="metric"><strong>46 HP</strong><span class="muted">current checkpoint</span></div>
     <div class="metric"><strong>9 kills</strong><span class="muted">current checkpoint</span></div>
-    <div class="metric"><strong>14.505 ms</strong><span class="muted">worker render p95</span></div>
-    <div class="metric"><strong>2.969 ms</strong><span class="muted">moving command tic p95</span></div>
+    <div class="metric"><strong>184.1 ms</strong><span class="muted">focused key-to-paint</span></div>
+    <div class="metric"><strong>12.34 FPS</strong><span class="muted">corrected combat soak</span></div>
   </section>
 
   <section class="panel review-grid" aria-label="database ray diagnostic">
@@ -161,8 +161,8 @@
     <article class="panel phase done"><b>P5.4</b><span>Presentation</span><p class="muted">HUD, weapons, menu, pause, automap, intermission</p></article>
     <article class="panel phase done"><b>P6</b><span>Simulation</span><p class="muted">tic, movement, machines, history, replay</p></article>
     <article class="panel phase done"><b>P7</b><span>Gameplay</span><p class="muted">weapons, monsters, pickups, audio</p></article>
-    <article class="panel phase done"><b>P12.0</b><span>Integration</span><p class="muted">30 FPS gate complete · live FIRE pipeline · full regression green</p></article>
-    <article class="panel phase active"><b>P8.1</b><span>Completion route</span><p class="muted">preserved at tic 1430 · lift 2 and blue key next</p></article>
+    <article class="panel phase active"><b>P12.0</b><span>Integration</span><p class="muted">correct projectile path · 30 FPS combat optimization active</p></article>
+    <article class="panel phase active"><b>T8.3</b><span>Playtest defects</span><p class="muted">correctness green · sustained cadence pending</p></article>
   </section>
   <footer><a href="/play/">Open the live playable client</a> · build-review surface · no credentials or evaluator data are exposed to the browser.</footer>
 </main>

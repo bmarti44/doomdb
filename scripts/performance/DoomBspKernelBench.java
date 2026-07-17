@@ -248,6 +248,15 @@ public final class DoomBspKernelBench {
     return "PISGA0";
   }
 
+  private static int weaponStateAsset(String weapon,String weaponState) {
+    if(weaponState!=null){Integer state=stateIndexByName.get(weaponState);
+      if(state!=null){int catalog=state*9;
+        if(catalog>=0&&catalog<catalogPresent.length&&catalogPresent[catalog]!=0)
+          return catalogAsset[catalog];}}
+    Integer ready=spriteAssetByName.get(weaponPatch(weapon));
+    require(ready!=null,"selected weapon patch missing");return ready.intValue();
+  }
+
   private static void ensureMobjCapacity(int capacity) {
     if (mobjId.length >= capacity) return;
     int next = Math.max(capacity, Math.max(32, mobjId.length * 2));
@@ -812,20 +821,21 @@ public final class DoomBspKernelBench {
 
   static String stageRetainedOwnerAndRender(String request,long nextTic,long nextSeq,
       NUMBER playerX,NUMBER playerY,NUMBER playerEyeZ,int playerAngleIndex,int playerHealth,
-      int playerArmor,int playerAlive,String selectedWeapon,int selectedAmmo,
+      int playerArmor,int playerAlive,String selectedWeapon,String weaponState,int selectedAmmo,
       int changeCount,int[] changeOp,int[] worldId,int[] worldState,
       NUMBER[] worldX,NUMBER[] worldY,NUMBER[] worldZ,NUMBER[] worldAngle,
       int sectorChangeCount,int[] sectorIds,int[] sectorLights,
       String stateSha,Blob payload)throws Exception{
     return stageRetainedOwnerAndRender(request,nextTic,nextSeq,playerX,playerY,playerEyeZ,
-        playerAngleIndex,playerHealth,playerArmor,playerAlive,selectedWeapon,selectedAmmo,
+        playerAngleIndex,playerHealth,playerArmor,playerAlive,selectedWeapon,weaponState,
+        selectedAmmo,
         changeCount,changeOp,worldId,worldState,worldX,worldY,worldZ,worldAngle,
         sectorChangeCount,sectorIds,sectorLights,null,stateSha,payload);
   }
 
   static String stageRetainedOwnerAndRender(String request,long nextTic,long nextSeq,
       NUMBER playerX,NUMBER playerY,NUMBER playerEyeZ,int playerAngleIndex,int playerHealth,
-      int playerArmor,int playerAlive,String selectedWeapon,int selectedAmmo,
+      int playerArmor,int playerAlive,String selectedWeapon,String weaponState,int selectedAmmo,
       int changeCount,int[] changeOp,int[] worldId,int[] worldState,
       NUMBER[] worldX,NUMBER[] worldY,NUMBER[] worldZ,NUMBER[] worldAngle,
       int sectorChangeCount,int[] sectorIds,int[] sectorLights,byte[] geometryPack,
@@ -834,7 +844,7 @@ public final class DoomBspKernelBench {
         nextTic==((long)liveTic)+1&&nextTic<=Integer.MAX_VALUE&&nextSeq>=0&&
         (retainedDticSeq<0||nextSeq==retainedDticSeq+1)&&playerX!=null&&playerY!=null&&
         playerEyeZ!=null&&playerAngleIndex>=0&&playerAngleIndex<64&&playerHealth>=0&&
-        playerArmor>=0&&(playerAlive==0||playerAlive==1)&&selectedWeapon!=null&&selectedAmmo>=0&&
+        playerArmor>=0&&(playerAlive==0||playerAlive==1)&&selectedWeapon!=null&&weaponState!=null&&selectedAmmo>=0&&
         spriteAssetByName.containsKey(weaponPatch(selectedWeapon))&&changeCount>=0&&changeCount<=4096&&
         changeOp!=null&&worldId!=null&&worldState!=null&&worldX!=null&&worldY!=null&&worldZ!=null&&
         changeOp.length>=changeCount&&worldId.length>=changeCount&&worldState.length>=changeCount&&
@@ -931,7 +941,7 @@ public final class DoomBspKernelBench {
     try{liveExactCameraX=playerX.bigDecimalValue();liveExactCameraY=playerY.bigDecimalValue();
       liveCameraX=playerX.doubleValue();liveCameraY=playerY.doubleValue();cameraEyeZ=playerEyeZ.doubleValue();
       liveAngle=playerAngleIndex;liveHealth=playerHealth;liveArmor=playerArmor;liveMode=playerAlive==0?"dead":"game";
-      liveAmmo=selectedAmmo;weaponAsset=spriteAssetByName.get(weaponPatch(selectedWeapon));
+      liveAmmo=selectedAmmo;weaponAsset=weaponStateAsset(selectedWeapon,weaponState);
       if(geometryComplete>=0)liveComplete=geometryComplete;
       liveTic=(int)nextTic;retainedDticSeq=nextSeq;prepareExactSegmentRelatives();
       for(int change=0;change<changeCount;change++){int index=retainedMobjIndex(worldId[change]);
@@ -1786,7 +1796,7 @@ public final class DoomBspKernelBench {
       require(index == spriteAssetCount, "sprite asset count mismatch");
     }
     loadPackedTexels(connection, "sprite_patch", spriteAssetTexels,
-        spriteAssetWidth, spriteAssetHeight, 331_474);
+        spriteAssetWidth, spriteAssetHeight, 331_699);
     stateIndexByName = new HashMap<>();
     try (Statement statement = connection.createStatement();
          ResultSet rows = statement.executeQuery("select state_id from doom_state_def order by state_id")) {

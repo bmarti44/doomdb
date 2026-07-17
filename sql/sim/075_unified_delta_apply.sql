@@ -531,7 +531,10 @@ create or replace package body doom_unified_delta_apply as
       elsif world_id_exists(p_session_token,l_spawn_base-1,l_world_presence) then exit;
       else l_spawn_base:=l_spawn_base-1;end if;
     end loop;
-    if l_dtic_version<3 and l_next_mobj<>l_spawn_base+l_spawn_count then fail('mobj frontier');end if;
+    if l_dtic_version<3 and l_next_mobj<>l_spawn_base+l_spawn_count then
+      fail('mobj frontier '||to_char(l_next_mobj)||'/'||
+        to_char(l_spawn_base+l_spawn_count)||' base='||to_char(l_spawn_base)||
+        ' spawns='||to_char(l_spawn_count)||' initial='||to_char(l_initial_mobj));end if;
 
     for i in 1..l_spawn_count loop
       l_spawns(i).id:=i32_at(l_position,'spawn id');
@@ -589,7 +592,8 @@ create or replace package body doom_unified_delta_apply as
              not l_removed.exists(l_spawns(i).id) then fail('spawn overwrites survivor');end if;
           l_final_max:=greatest(l_final_max,l_spawns(i).id);
         end loop;
-        if l_next_mobj<>l_final_max+1 then fail('v3 mobj frontier');end if;
+        if l_next_mobj<>l_final_max+1 then fail('v3 mobj frontier '||
+          to_char(l_next_mobj)||'/'||to_char(l_final_max+1));end if;
       end;
     end if;
 

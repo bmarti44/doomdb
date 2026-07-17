@@ -472,67 +472,11 @@ create or replace package body doom_combat as
 
   procedure advance_projectiles(p_session varchar2,p_tic number) is
     l_nx number;l_ny number;l_target number;l_depth number;l_wall number;
-    l_total number;l_fast number;l_ordinal number;
+    l_player number;l_player_depth number;l_player_miss number;l_player_hit number;
     d doom_projectile_def%rowtype;
   begin
     -- PROJECTILE MOMENTUM advances over a bounded SWEEP; exact INTERSECTION and
     -- actor COLLISION choose the nearest stable impact before mutation.
-    select count(*) into l_total from mobjs
-      where session_token=p_session and projectile_kind is not null;
-    if l_total>0 then
-      select count(*) into l_fast
-      from mobjs p join doom_projectile_def d on d.projectile_kind=p.projectile_kind
-      join mobjs owner on owner.session_token=p.session_token
-        and owner.mobj_id=p.owner_mobj_id and owner.health>0
-      join doom_thing_type_def td on td.thing_type=owner.thing_type
-      where p.session_token=p_session and p.projectile_kind is not null
-        and td.category='monster' and d.splash_radius=0
-        and 1=(select count(*) from mobjs sibling
-          where sibling.session_token=p.session_token
-            and sibling.projectile_kind is not null
-            and sibling.owner_mobj_id=p.owner_mobj_id);
-    else l_fast:=0;end if;
-    if l_fast=l_total and l_total>0 then
-      -- Common retained-worker shape: one zero-splash IMP fireball per live
-      -- monster owner.  The owner is the exact depth-zero winner, so perform
-      -- the identical mutations in four set operations instead of a PL/SQL
-      -- statement loop.
-      merge into mobjs target using (
-        select p.owner_mobj_id,sum(d.damage) damage
-        from mobjs p join doom_projectile_def d
-          on d.projectile_kind=p.projectile_kind
-        where p.session_token=p_session and p.projectile_kind is not null
-        group by p.owner_mobj_id
-      ) hit on(target.session_token=p_session and target.mobj_id=hit.owner_mobj_id)
-      when matched then update set target.health=greatest(0,target.health-hit.damage);
-      select coalesce(max(event_ordinal)+1,0) into l_ordinal
-        from game_events where session_token=p_session and tic=p_tic;
-      insert into game_events(session_token,tic,event_ordinal,event_type,
-        actor_mobj_id,target_mobj_id,number_value,text_value)
-      select p_session,p_tic,l_ordinal+row_number() over(order by p.mobj_id)-1,
-        'PROJECTILE_IMPACT',p.mobj_id,p.owner_mobj_id,d.damage,d.projectile_kind
-      from mobjs p join doom_projectile_def d on d.projectile_kind=p.projectile_kind
-      where p.session_token=p_session and p.projectile_kind is not null;
-      update mobjs m set
-        target_mobj_id=case when exists(select 1 from mobjs p
-          where p.session_token=p_session and p.projectile_kind is not null
-            and p.mobj_id=m.target_mobj_id) then null else target_mobj_id end,
-        tracer_mobj_id=case when exists(select 1 from mobjs p
-          where p.session_token=p_session and p.projectile_kind is not null
-            and p.mobj_id=m.tracer_mobj_id) then null else tracer_mobj_id end,
-        owner_mobj_id=case when exists(select 1 from mobjs p
-          where p.session_token=p_session and p.projectile_kind is not null
-            and p.mobj_id=m.owner_mobj_id) then null else owner_mobj_id end
-      where m.session_token=p_session and m.projectile_kind is null and
-        (exists(select 1 from mobjs p where p.session_token=p_session
-          and p.projectile_kind is not null and p.mobj_id=m.target_mobj_id)
-         or exists(select 1 from mobjs p where p.session_token=p_session
-          and p.projectile_kind is not null and p.mobj_id=m.tracer_mobj_id)
-         or exists(select 1 from mobjs p where p.session_token=p_session
-          and p.projectile_kind is not null and p.mobj_id=m.owner_mobj_id));
-      delete from mobjs where session_token=p_session and projectile_kind is not null;
-      return;
-    end if;
     for projectile in (
       select * from mobjs where session_token=p_session and projectile_kind is not null
       order by mobj_id
@@ -540,21 +484,10 @@ create or replace package body doom_combat as
       select * into d from doom_projectile_def where projectile_kind=projectile.projectile_kind;
       l_nx:=projectile.x+projectile.momentum_x;
       l_ny:=projectile.y+projectile.momentum_y;
+      l_target:=null;l_depth:=null;l_player_hit:=0;
+      l_wall:=first_blocking_depth(projectile.x,projectile.y,l_nx,l_ny);
       begin
-        -- The authoritative collision contract does not exclude the owner.  A
-        -- live monster/barrel owner is therefore the unique depth-zero hit and
-        -- wins before every wall (wall depths are strictly inside 0..1).
-        select m.mobj_id into l_target
-        from mobjs m join doom_thing_type_def td on td.thing_type=m.thing_type
-        where m.session_token=p_session and m.mobj_id=projectile.owner_mobj_id
-          and m.health>0 and m.projectile_kind is null
-          and td.category in('monster','barrel');
-        l_depth:=0;l_wall:=null;
-      exception when no_data_found then
-        l_target:=null;
-        l_wall:=first_blocking_depth(projectile.x,projectile.y,l_nx,l_ny);
-        begin
-          select mobj_id,depth into l_target,l_depth from (
+        select mobj_id,depth into l_target,l_depth from (
             select m.mobj_id,
               ((m.x-projectile.x)*projectile.momentum_x+
                (m.y-projectile.y)*projectile.momentum_y) /
@@ -565,6 +498,7 @@ create or replace package body doom_combat as
               m.radius
             from mobjs m join doom_thing_type_def td on td.thing_type=m.thing_type
             where m.session_token=p_session and m.mobj_id<>projectile.mobj_id
+              and (projectile.owner_mobj_id is null or m.mobj_id<>projectile.owner_mobj_id)
               and m.health>0 and m.projectile_kind is null
               and td.category in('monster','barrel')
               and m.x between least(projectile.x,l_nx)-m.radius-d.radius
@@ -573,13 +507,37 @@ create or replace package body doom_combat as
                           and greatest(projectile.y,l_ny)+m.radius+d.radius
             order by depth,m.mobj_id
           ) where depth between 0 and 1 and miss<=radius+d.radius fetch first 1 row only;
-        exception when no_data_found then l_target:=null;end;
-      end;
-      if l_wall is not null or l_target is not null then
-        if l_target is not null and (l_wall is null or l_depth<l_wall) then
-          damage_mobj(p_session,p_tic,l_target,d.damage,projectile.mobj_id,0);
+      exception when no_data_found then null;end;
+      -- Players live outside MOBJS. Only monster-owned missiles can hit the
+      -- player; player-fired missiles have a null owner and cannot self-hit.
+      if projectile.owner_mobj_id is not null then
+        begin
+          select p.player_id,
+            ((p.x-projectile.x)*projectile.momentum_x+
+             (p.y-projectile.y)*projectile.momentum_y) /
+             nullif(power(projectile.momentum_x,2)+power(projectile.momentum_y,2),0),
+            abs((p.x-projectile.x)*projectile.momentum_y-
+                (p.y-projectile.y)*projectile.momentum_x) /
+             nullif(sqrt(power(projectile.momentum_x,2)+power(projectile.momentum_y,2)),0)
+            into l_player,l_player_depth,l_player_miss
+          from players p join game_sessions s
+            on s.session_token=p.session_token and s.current_player_id=p.player_id
+          where p.session_token=p_session and p.alive=1;
+          if l_player_depth between 0 and 1 and l_player_miss<=16+d.radius
+             and (l_depth is null or l_player_depth<l_depth) then
+            l_depth:=l_player_depth;l_target:=null;l_player_hit:=1;
+          end if;
+        exception when no_data_found then null;end;
+      end if;
+      if l_wall is not null or l_depth is not null then
+        if l_depth is not null and (l_wall is null or l_depth<l_wall) then
+          if l_player_hit=1 then
+            damage_player(p_session,p_tic,l_player,d.damage,projectile.mobj_id);
+          else
+            damage_mobj(p_session,p_tic,l_target,d.damage,projectile.mobj_id,0);
+          end if;
         elsif l_wall is not null then
-          l_target:=null;
+          l_target:=null;l_player_hit:=0;
         end if;
         remove_mobj(p_session,projectile.mobj_id);
         emit_event(p_session,p_tic,'PROJECTILE_IMPACT',projectile.mobj_id,l_target,d.damage,d.projectile_kind);

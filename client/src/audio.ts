@@ -9,6 +9,7 @@ export class AudioPresenter {
   private muted = false;
   private cursor: Cursor | null = null;
   private readonly cache = new Map<string, Promise<AudioBuffer>>();
+  private queue: Promise<void> = Promise.resolve();
 
   async enable(): Promise<void> {
     if (this.context === null) this.context = new AudioContext();
@@ -71,5 +72,11 @@ export class AudioPresenter {
       panner.connect(context.destination);
       source.start(context.currentTime);
     }
+  }
+
+  enqueue(events: AudioTuple[], onError: (cause: unknown) => void): void {
+    this.queue = this.queue.then(() => this.consume(events)).catch(cause => {
+      onError(cause);
+    });
   }
 }

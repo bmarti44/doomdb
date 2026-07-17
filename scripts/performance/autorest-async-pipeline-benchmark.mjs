@@ -10,6 +10,7 @@ const commandPeriod=32,presentationPeriod=31.8;
 const submitDepth=Number(process.env.DOOM_SUBMIT_DEPTH??4);
 const fetchDepth=Number(process.env.DOOM_FETCH_DEPTH??2);
 const bufferFrames=Number(process.env.DOOM_BUFFER_FRAMES??10);
+const aheadFrames=Number(process.env.DOOM_AHEAD_FRAMES??16);
 const pollWaitMs=Number(process.env.DOOM_POLL_WAIT_MS??1000);
 const fireEvery=Number(process.env.DOOM_FIRE_EVERY??0);
 if(frames!==300)throw new Error('async pipeline gate requires exactly 300 frames');
@@ -70,7 +71,7 @@ const finish=()=>{
   const gaps=paints.slice(1).map((value,index)=>value-paints[index]);
   const elapsed=paints.at(-1)-paints[0];
   const result={session,frames,presented,uniqueFrames:hashes.size,submitDepth,fetchDepth,
-    bufferFrames,pollWaitMs,fireEvery,stalls,blockedSubmits,
+    bufferFrames,aheadFrames,pollWaitMs,fireEvery,stalls,blockedSubmits,
     frameChainSha:createHash('sha256').update(JSON.stringify(frameChain)).digest('hex'),
     displayFps:(presented-1)*1000/elapsed,
     submitP50Ms:quantile(submitLatency,.5),submitP95Ms:quantile(submitLatency,.95),
@@ -121,7 +122,7 @@ pump=setInterval(()=>{
   while(launched<Math.min(frames,submitDepth)&&submitInFlight<submitDepth)launchSubmit();
   const nextSeq=warm+1+launched;
   if(launched>=submitDepth&&launched<frames&&submitInFlight<submitDepth&&
-     nextSeq<=nextPresentation+16&&now>=nextDispatch){
+     nextSeq<=nextPresentation+aheadFrames&&now>=nextDispatch){
     // Advance from the absolute cadence. Basing the next deadline on `now`
     // permanently accumulates the pump's 0-4 ms timer lateness and creates an
     // artificial ~29 FPS ceiling even when the worker is keeping up.

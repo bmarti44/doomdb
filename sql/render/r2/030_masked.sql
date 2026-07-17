@@ -14,6 +14,7 @@ set define off
 -- binary parsing or name-specific rendering branches.
 create or replace view doom_r2_sprite_patch_metrics as
 select 'AMMOA0' asset_name,8 left_offset,16 top_offset from dual union all
+select 'BAL1A0' asset_name,8 left_offset,11 top_offset from dual union all
 select 'ARM1A0' asset_name,18 left_offset,28 top_offset from dual union all
 select 'ARM2A0' asset_name,18 left_offset,24 top_offset from dual union all
 select 'BAR1A0' asset_name,11 left_offset,30 top_offset from dual union all
@@ -155,40 +156,39 @@ asset_matches as (
   select state_rotations.state_id,state_rotations.rotation_no,
     asset.asset_id,asset.asset_name,asset.width,asset.height,
     metrics.left_offset,metrics.top_offset,
-    case
-      when substr(asset.asset_name,7,2) =
-           state_rotations.sprite_frame||to_char(state_rotations.rotation_no)
-        then 1 else 0
-    end flip_x,
+    case when substr(asset.asset_name,8,1)=to_char(state_rotations.rotation_no)
+      then 1 else 0 end flip_x,
     row_number() over (
       partition by state_rotations.state_id,state_rotations.rotation_no
       order by
-        case when substr(asset.asset_name,1,6) =
+        case when substr(asset.asset_name,1,6)=
           state_rotations.sprite_prefix||state_rotations.sprite_frame||
+          to_char(state_rotations.rotation_no)
+          or substr(asset.asset_name,7,2)=state_rotations.sprite_frame||
           to_char(state_rotations.rotation_no) then 0 else 1 end,
         asset.asset_id
     ) match_ordinal
   from state_rotations
   join doom_asset asset
     on asset.asset_kind = 'sprite_patch'
-   and (
-     substr(asset.asset_name,1,6) =
-       state_rotations.sprite_prefix||state_rotations.sprite_frame||
-       to_char(state_rotations.rotation_no)
-     or substr(asset.asset_name,7,2) =
-       state_rotations.sprite_frame||to_char(state_rotations.rotation_no)
-   )
+   and substr(asset.asset_name,1,4)=state_rotations.sprite_prefix
+   and (substr(asset.asset_name,6,1)=to_char(state_rotations.rotation_no)
+     or substr(asset.asset_name,8,1)=to_char(state_rotations.rotation_no))
   join doom_r2_sprite_patch_metrics metrics
     on metrics.asset_name=asset.asset_name
 ),
 rotation_zero as (
   select state.state_id,0 rotation_no,asset.asset_id,asset.asset_name,
     asset.width,asset.height,metrics.left_offset,metrics.top_offset,
-    0 flip_x,1 match_ordinal
+    0 flip_x,
+    row_number() over(partition by state.state_id order by
+      case when asset.asset_name=state.sprite_prefix||state.sprite_frame||'0'
+        then 0 else 1 end,asset.asset_id) match_ordinal
   from doom_state_def state
   join doom_asset asset
     on asset.asset_kind='sprite_patch'
-   and asset.asset_name=state.sprite_prefix||state.sprite_frame||'0'
+   and substr(asset.asset_name,1,4)=state.sprite_prefix
+   and substr(asset.asset_name,6,1)='0'
   join doom_r2_sprite_patch_metrics metrics
     on metrics.asset_name=asset.asset_name
   where state.sprite_prefix is not null
@@ -198,7 +198,7 @@ rotation_zero as (
 resolved as (
   select * from asset_matches where match_ordinal=1
   union all
-  select * from rotation_zero
+  select * from rotation_zero where match_ordinal=1
 )
 select resolved.state_id,resolved.rotation_no,resolved.asset_id,
   resolved.asset_name,resolved.width,resolved.height,

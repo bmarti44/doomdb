@@ -1915,6 +1915,32 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   menu navigation, automap modes, each required cheat, save/load, rewind, replay,
   death/restart, and intermission.
 
+#### T8.3 Live-client playtest defect closure
+
+- Treat the 2026-07-16 `/play/` reports as release blockers and reproduce each
+  against the real static client plus generated AutoREST endpoints before making
+  a fix:
+  1. record a moving/combat trace that demonstrates monsters blinking in and out;
+  2. record FIRE press/release tics and returned weapon-frame pixels to demonstrate
+     the missing gun animation;
+  3. measure key event to submitted ticcmd, correlated frame, decode, and paint to
+     attribute the delayed movement response;
+  4. start from a stationary fresh game and correlate every health decrement with
+     ordered damage/projectile/monster events and line-of-sight state.
+- Resolve causes in the dynamic renderer, retained simulation, or thin-client
+  scheduler as the evidence requires. Do not hide actors, synthesize weapon frames,
+  predict movement, or suppress legitimate damage in the browser.
+- Add deterministic regressions for continuous monster visibility across valid
+  state transitions, database-authored weapon fire/lower/raise frames, bounded
+  input-to-corresponding-frame latency, and zero unexplained health changes. A
+  health loss is valid only when the same correlated tic carries a replayable
+  damage cause.
+- Accept: a fresh 300-frame keyboard moving/combat soak through `/play/` has no
+  actor disappearance outside death/occlusion, shows every fired weapon's authored
+  animation, reports key-to-paint p50/p95 and maximum without a ten-frame startup
+  backlog, and reconciles the complete health delta/event ledger. Playwright,
+  direct API parity, restart/fencing, and the sustained 30 FPS gate remain green.
+
 ### P9 - MODEL fire
 
 #### T9.1 Ordered MODEL implementation

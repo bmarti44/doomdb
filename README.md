@@ -29,8 +29,9 @@ More reviewed views include the [shotgun HUD](goldens/t5.4/game-shotgun.png),
 
 ## Current status
 
-P0–P7 and the pulled-forward P12.0 playability gate are complete. Work has
-resumed on P8's full E1M1 completion route.
+P0–P7 are complete. P8's completion route is preserved while T8.3 closes four
+defects found during live `/play/` testing: actor blinking, absent weapon
+animation, delayed input, and unexplained-looking health loss.
 
 The selected retained worker now supports arbitrary live movement, collision,
 weapon selection, common hitscan/melee fire, `USE`/`WALK` triggers, doors,
@@ -40,22 +41,33 @@ monster death, and the complete rocket/plasma spawn, sweep, impact, splash, and
 removal lifecycle also run there with exact SQL parity. SQL remains an
 independently executable differential oracle.
 
-Isolated 300-frame moving baselines pass at **30.88 FPS** and **32.06 FPS**.
-Three FIRE-every-8 repeats pass at **32.00 FPS**, **30.82 FPS**, and **32.00 FPS**, proving that live
-combat no longer drains or serializes the command window. Every run produced
-300 distinct frames; the baseline retained the exact 330-frame chain
-`4d9a7a22dd8c3d02c37d40523e6f5d9fcec18665a374eccd7a9b63427d49b6fd`.
-Both combat repeats produced the identical chain
-`0d8475430dd0e40a603e729429659cfbbe5c9a8af14e3e7366be879f9d8ac817`.
-Their best paint-gap p50/p95 was 31.22/32.09 ms. The independent renderer oracle,
-dynamic special, projectile differential, rollback, restart, worker-fencing,
-and complete T5.1–T7.3 gates pass.
+The presentation fixes are deployed. Renderer catalog fallback keeps monsters
+visible across authored state transitions, the real Freedoom `BAL1A0` imp
+fireball is seeded, and both SQL and retained renderers now select the current
+database `weapon_state`. Audio loading no longer blocks canvas paint. The live
+client uses a two-frame presentation buffer and a three-frame command-ahead
+limit; the latest browser reproduction measured **31.6 ms input-to-submit** and
+**184.1 ms input-to-correlated-paint**, with seven distinct pistol animation
+frames.
+
+Projectile collision now excludes the owner and includes the separately stored
+player. A deterministic SQL fixture proves the missile travels, leaves its
+owner at 60 HP, and changes player health from 100 to 97 only on tic 7, which
+carries correlated `PROJECTILE_IMPACT` and `PLAYER_DAMAGE` events.
+
+The 30 FPS combat gate is reopened. Earlier baselines of 30.88–32.06 FPS were
+measured while the owner-collision bug deleted imp fireballs immediately. The
+corrected 300-frame FIRE-every-8 soak completes with 300 distinct frames but
+currently displays **12.34 FPS**. Current retained-worker averages after tic 100
+are 31.12 ms prepare (including 16.13 ms post-world simulation), 17.65 ms apply,
+and 21.13 ms render. Those stages—not resolution—are the active performance
+blockers. SQL remains the differential oracle while the retained projectile and
+bulk-delta paths are optimized.
 
 The client uses a depth-four command window, two concurrent correlated frame
 polls, ordered decode, a 32 ms command clock, a 31.8 ms display clock, and a
-ten-frame startup buffer. Every live ticcmd—including FIRE—uses this dynamic
-AutoREST pipeline. The buffer currently adds about 320 ms of input-to-display
-latency; reducing it without losing sustained cadence is still active work. The design is resolution-aware:
+two-frame startup buffer. Every live ticcmd—including FIRE—uses this dynamic
+AutoREST pipeline. The design is resolution-aware:
 visibility and simulation are independent of the 320×200 buffer, and horizontal
 plane spans remain planned before enabling the future 640×400 profile.
 
