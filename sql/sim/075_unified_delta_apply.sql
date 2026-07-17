@@ -748,20 +748,36 @@ create or replace package body doom_unified_delta_apply as
         where session_token=p_session_token and l_world_ops(i).operation=2 and
           (target_mobj_id=l_world_ops(i).id or tracer_mobj_id=l_world_ops(i).id or
            owner_mobj_id=l_world_ops(i).id);
+      -- These are fenced operations against existing IDs, never upserts.
+      -- Direct bulk UPDATE/DELETE avoids paying MERGE's USING-DUAL row source
+      -- and match machinery for the usual one- or two-record projectile delta.
       forall i in 1..l_world_op_count
-        merge into mobjs target using (
-          select l_world_ops(i).operation operation,l_world_ops(i).field_mask field_mask,
-            l_world_ops(i).id id,l_world_ops(i).x x,l_world_ops(i).y y,
-            l_world_ops(i).health health,l_world_ops(i).exploded exploded from dual
-        ) change on(target.session_token=p_session_token and target.mobj_id=change.id)
-        when matched then update set
-          target.x=case when bitand(change.field_mask,1)=1 then change.x else target.x end,
-          target.y=case when bitand(change.field_mask,2)=2 then change.y else target.y end,
-          target.health=case when bitand(change.field_mask,4)=4 then change.health else target.health end,
-          target.exploded=case when bitand(change.field_mask,8)=8 then change.exploded else target.exploded end
-        delete where change.operation=2;
+        update mobjs target set
+          target.x=case when bitand(l_world_ops(i).field_mask,1)=1
+            then l_world_ops(i).x else target.x end,
+          target.y=case when bitand(l_world_ops(i).field_mask,2)=2
+            then l_world_ops(i).y else target.y end,
+          target.health=case when bitand(l_world_ops(i).field_mask,4)=4
+            then l_world_ops(i).health else target.health end,
+          target.exploded=case when bitand(l_world_ops(i).field_mask,8)=8
+            then l_world_ops(i).exploded else target.exploded end
+        where target.session_token=p_session_token
+          and target.mobj_id=l_world_ops(i).id
+          and l_world_ops(i).operation=1;
       for i in 1..l_world_op_count loop
-        if sql%bulk_rowcount(i)<>1 then fail('world operation race');end if;
+        if (l_world_ops(i).operation=1 and sql%bulk_rowcount(i)<>1) or
+           (l_world_ops(i).operation=2 and sql%bulk_rowcount(i)<>0) then
+          fail('world update race');end if;
+      end loop;
+      forall i in 1..l_world_op_count
+        delete from mobjs target
+         where target.session_token=p_session_token
+           and target.mobj_id=l_world_ops(i).id
+           and l_world_ops(i).operation=2;
+      for i in 1..l_world_op_count loop
+        if (l_world_ops(i).operation=2 and sql%bulk_rowcount(i)<>1) or
+           (l_world_ops(i).operation=1 and sql%bulk_rowcount(i)<>0) then
+          fail('world removal race');end if;
       end loop;
     end if;
     g_last_world_dml_us:=elapsed_us(l_profile_stage);l_profile_stage:=systimestamp;

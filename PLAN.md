@@ -1956,6 +1956,21 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   FIRE route has no active world machine and measured 19.59 FPS, with retained
   render kernel 15.341/31.089 ms and delta apply 8.551/24.808 ms. Optimize those
   two independent slices next; do not attribute the public gate to movers.
+- Direct retained-world DML result (2026-07-17): DTIC world operations are
+  fenced mutations of existing IDs, so a `FORALL MERGE ... USING dual` paid
+  unnecessary match/row-source work. Separate direct bulk UPDATE and DELETE
+  statements retain exact ordered row-count/race checks, weak-reference
+  detachment, transient projectile reuse, and rollback. The projectile lifecycle
+  and full worker rollback/restart gates pass. On the corrected 300-frame
+  FIRE-every-eight public route, world-DML p95 fell from 10.608 to 5.210 ms,
+  total apply p95 fell from 24.808 to 14.420 ms, and displayed throughput rose
+  from the same-day 19.59 sample to 25.19 FPS with 300/300 unique frames and the
+  identical frame-chain SHA. The route still fails on 63.564 ms paint-gap p95;
+  its worker averages 41.364 ms between completions, with mean render 19.344 ms
+  and mean durable apply 9.159 ms. A depth-2/one-poller transport A/B regressed
+  to 15.35 FPS by starving correlated retrieval; retain two pollers and do not
+  retry that shape. Continue with retained render-walk and delta-decode/DML CPU,
+  not buffering claims—the producer itself remains below 30 FPS.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior
