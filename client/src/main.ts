@@ -22,6 +22,7 @@ function stylesheet(): HTMLStyleElement {
     [data-doom-shell]{width:100vw;height:100vh;display:grid;place-items:center}
     canvas[data-doom-canvas]{display:block;width:min(100vw,160vh);height:auto;max-width:100vw;max-height:100vh;image-rendering:pixelated;image-rendering:crisp-edges;background:#000}
     [data-doom-controls]{display:none}
+    [data-doom-status]{position:fixed;left:12px;top:12px;z-index:4;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.35 system-ui;white-space:pre-line;pointer-events:none}
     [data-doom-control]{position:relative;min-width:40px;min-height:40px;padding:0;border:1px solid #aaa;background:#171717;color:#fff;border-radius:7px;touch-action:none}
     [data-doom-control]::before{content:attr(data-icon);font:700 21px/1 system-ui}
     @media(max-width:900px){
@@ -60,7 +61,10 @@ const canvas = createDoomCanvas();
 const shell = document.createElement('div');
 shell.dataset.doomShell = '';
 const touch = controls();
-shell.append(canvas, touch.element);
+const status = document.createElement('div');
+status.dataset.doomStatus = '';
+status.textContent = 'Starting a new game inside Oracle…\nThe first frame currently takes about 10 seconds.';
+shell.append(canvas, touch.element, status);
 document.head.append(stylesheet());
 document.body.replaceChildren(shell);
 
@@ -74,6 +78,8 @@ async function boot(): Promise<void> {
   state.loading = false;
   state.setMode(frame.mode);
   await audio.consume(frame.audio);
+  status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\nFire/use may pause while their retained paths are completed.';
+  window.setTimeout(() => { status.style.opacity = '0.35'; }, 6000);
 
   let latest: Command = {
     seq: 0, turn: 0, forward: 0, strafe: 0, run: 0, fire: 0, use: 0,
@@ -143,5 +149,7 @@ async function boot(): Promise<void> {
 
 void boot().catch(cause => {
   const error = cause instanceof Error ? cause : new Error('client bootstrap failed');
-  queueMicrotask(() => { throw error; });
+  status.style.opacity = '1';
+  status.textContent = `Game startup failed: ${error.message}\nReturn to / for stack status, then refresh.`;
+  console.error(error);
 });

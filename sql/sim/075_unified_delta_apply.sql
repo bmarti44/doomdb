@@ -227,7 +227,9 @@ create or replace package body doom_unified_delta_apply as
       when 7 then 'MONSTER_PROJECTILE' when 8 then 'DAMAGE'
       when 9 then 'BARREL_EXPLODE' when 10 then 'PROJECTILE_IMPACT'
       when 11 then 'PLAYER_DAMAGE' when 12 then 'WEAPON_LOWER'
-      when 13 then 'WEAPON_RAISE' end;
+      when 13 then 'WEAPON_RAISE' when 14 then 'HITSCAN_HIT'
+      when 15 then 'HITSCAN_MISS' when 16 then 'DRY_FIRE'
+      when 17 then 'PROJECTILE_SPAWN' end;
   end;
 
   procedure retain_catalogs is
@@ -539,11 +541,13 @@ create or replace package body doom_unified_delta_apply as
       l_position:=l_position+40;
       l_events(i).text_value:=text_at(l_position,'event text');
       if l_events(i).ordinal<>l_initial_event+i-1 or
-         l_events(i).type_code<1 or l_events(i).type_code>13 or
+         l_events(i).type_code<1 or l_events(i).type_code>17 or
          (l_dtic_version=1 and l_events(i).type_code>11) or
-         (l_events(i).type_code<=11 and l_events(i).actor_id is null) or
-         (l_events(i).type_code>=12 and
-           (l_events(i).actor_id is not null or l_events(i).target_id is not null)) then
+         (l_events(i).type_code in(1,2,3,4,5,6,7,10,11,17) and
+           l_events(i).actor_id is null) or
+         (l_events(i).type_code in(12,13,14,15,16) and l_events(i).actor_id is not null) or
+         (l_events(i).type_code in(12,13,15,16) and l_events(i).target_id is not null) or
+         (l_events(i).type_code=14 and l_events(i).target_id is null) then
         fail('event value or ordinal');
       end if;
       l_events(i).event_name:=event_type(l_events(i).type_code);
@@ -783,8 +787,8 @@ create or replace package body doom_unified_delta_apply as
       if l_fire<>0 or l_use<>0 or l_weapon<>0 or l_reserved<>0 then
         fail('DMSC/v2 unsupported action/reserved');
       end if;
-    elsif l_fire<>0 or l_use<>0 or l_weapon<0 or l_weapon>9 or l_reserved<>0 then
-      fail('DMSC/v3 unsupported fire/use/action domain');
+    elsif l_fire not in(0,1) or l_use<>0 or l_weapon<0 or l_weapon>9 or l_reserved<>0 then
+      fail('DMSC/v3 unsupported use/action domain');
     end if;
 
     if p_delta is null then fail('null DCTC delta');end if;

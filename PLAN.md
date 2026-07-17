@@ -1758,6 +1758,18 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   missed one repeat at 29.462 FPS. Retained fire is next, then use/world
   machines; both continue to use the complete SQL fallback until their own
   strict parity gates pass.
+- Retained fire F1 checkpoint (2026-07-17): the catalog-driven retained kernel
+  now covers FIST/PISTOL/SHOTGUN/CHAINGUN/CHAINSAW ammo, READY/REFIRE gating,
+  flash/refire state, exact three-draw pellet order, reviewed renderer rays,
+  wall/nearest-target selection, DAMAGE/HITSCAN/DRY_FIRE events, and same-tic
+  monster processing. Its isolated AutoREST differential matches SQL exactly
+  at health 94, RNG 4, ammo 49, ordered event JSON, two durable owner/SQL parity
+  checks, and renderer output. This gate deliberately pins special-1 light
+  timers: it exposed that `doom_world_machines.advance` consumes RNG before
+  combat and the retained owner does not yet carry those machines. Therefore
+  F1 is parity-proven but not generally selected. Integrate retained world
+  machines first, then remove the guard; barrel recursion and player rocket/
+  plasma lifecycle remain F2 and continue through the complete SQL fallback.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

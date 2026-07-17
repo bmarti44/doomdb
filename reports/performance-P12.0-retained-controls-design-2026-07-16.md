@@ -81,3 +81,21 @@ weapon-switching public route produced 300/300 unique frames at 31.065 FPS,
 32.181/32.977 ms paint-gap p50/p95, and 49.303/81.127 ms request-to-decode
 p50/p95 with a depth-three window. Depth two was measured twice and is retained
 as a rejected borderline configuration because one repeat fell to 29.462 FPS.
+
+## Fire F1 checkpoint
+
+The retained hitscan/melee kernel is implemented for all five catalog-defined
+non-projectile weapons without a DTIC format change. It reuses the canonical
+renderer ray table, consumes three RNG values per pellet in SQL order, applies
+ammo/flash/refire and monster health before monster advancement, and emits the
+strict DAMAGE, HITSCAN_HIT, HITSCAN_MISS, and DRY_FIRE records. A two-tic
+AutoREST gate and an independent SQL session agree exactly on health 94, RNG
+cursor 4, bullets 49, event order/values/text, durable owner state, and frame
+construction.
+
+That differential also found the next required dependency: special-1 sector
+light timers in `doom_world_machines.advance` consume RNG before combat. The
+isolated combat gate pins those timers, so it proves F1 itself but does not
+authorize unrestricted public fire routing. Retained world-machine state must
+land first. Barrels with recursive splash and player rocket/plasma spawn plus
+same-tic advancement remain F2; these cases and use continue through SQL.

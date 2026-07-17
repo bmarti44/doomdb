@@ -3053,6 +3053,16 @@ public final class DoomBspKernelBench {
   public static long lastKernelLoadNanos() { return lastKernelLoadNanos; }
   public static long lastSnapshotNanos() { return lastSnapshotNanos; }
   static long retainedUpdateNanos() { return lastRetainedUpdateNanos; }
+  /** Canonical reviewed combat ray; the retained simulator must not rederive projection trig. */
+  static double combatRayX(int angle,int column){
+    require(angle>=0&&angle<ANGLES&&column>=0&&column<WIDTH,"combat ray index");
+    return rayXProfile[angle*WIDTH+column];
+  }
+  static double combatRayY(int angle,int column){
+    require(angle>=0&&angle<ANGLES&&column>=0&&column<WIDTH,"combat ray index");
+    return rayYProfile[angle*WIDTH+column];
+  }
+  static double combatFarDistance(){require(farDistance>0,"combat far distance");return farDistance;}
 
   private static byte[] gunzip(byte[] bytes, int length) throws Exception {
     try (GZIPInputStream input = new GZIPInputStream(new ByteArrayInputStream(bytes, 0, length));

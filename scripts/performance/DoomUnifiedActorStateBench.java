@@ -76,10 +76,11 @@ public final class DoomUnifiedActorStateBench {
     int[][] behaviorState;
     NUMBER[] behaviorSpeed,behaviorMeleeRange;
     String[] behaviorAttack;
-    int[] spawnThing,spawnState;NUMBER[] spawnRadius,spawnHeight;
+    int[] spawnThing,spawnState;NUMBER[] spawnRadius,spawnHeight;String[] spawnCategory;
     int[] projectileThing,projectileState;NUMBER[] projectileSpeed,projectileRadius,projectileHeight;
     int[] projectileDamage,projectileSplashDamage;NUMBER[] projectileSplashRadius;String[] projectileKind;
-    String[] weaponId,weaponAmmo;int[] weaponSlot,weaponAmmoCost,weaponReadyState,weaponFireState;
+    String[] weaponId,weaponAmmo,weaponAttack,weaponProjectile;NUMBER[] weaponSpread;
+    int[] weaponSlot,weaponAmmoCost,weaponPellets,weaponDamage,weaponReadyState,weaponFireState;
     int[] weaponRefireState,weaponFlashState,weaponLowerState,weaponRaiseState;
     byte[][] stateFragments,stateMobjFragments;
     WorldMobjs world;int[] worldSlot;
@@ -109,12 +110,14 @@ public final class DoomUnifiedActorStateBench {
       o.behaviorPainChance=behaviorPainChance;o.behaviorDamageBase=behaviorDamageBase;
       o.behaviorDamageDice=behaviorDamageDice;o.behaviorMeleeRange=behaviorMeleeRange;
       o.behaviorProjectileThing=behaviorProjectileThing;o.spawnThing=spawnThing;o.spawnState=spawnState;
-      o.spawnRadius=spawnRadius;o.spawnHeight=spawnHeight;o.projectileThing=projectileThing;
+      o.spawnRadius=spawnRadius;o.spawnHeight=spawnHeight;o.spawnCategory=spawnCategory;o.projectileThing=projectileThing;
       o.projectileState=projectileState;o.projectileSpeed=projectileSpeed;
       o.projectileRadius=projectileRadius;o.projectileHeight=projectileHeight;
       o.projectileDamage=projectileDamage;o.projectileSplashDamage=projectileSplashDamage;
       o.projectileSplashRadius=projectileSplashRadius;o.projectileKind=projectileKind;o.stateFragments=stateFragments;
-      o.weaponId=weaponId;o.weaponAmmo=weaponAmmo;o.weaponSlot=weaponSlot;o.weaponAmmoCost=weaponAmmoCost;
+      o.weaponId=weaponId;o.weaponAmmo=weaponAmmo;o.weaponAttack=weaponAttack;o.weaponProjectile=weaponProjectile;
+      o.weaponSpread=weaponSpread;o.weaponSlot=weaponSlot;o.weaponAmmoCost=weaponAmmoCost;
+      o.weaponPellets=weaponPellets;o.weaponDamage=weaponDamage;
       o.weaponReadyState=weaponReadyState;o.weaponFireState=weaponFireState;o.weaponRefireState=weaponRefireState;
       o.weaponFlashState=weaponFlashState;o.weaponLowerState=weaponLowerState;o.weaponRaiseState=weaponRaiseState;
       o.stateMobjFragments=stateMobjFragments==null?null:stateMobjFragments.clone();
@@ -523,14 +526,19 @@ public final class DoomUnifiedActorStateBench {
     HashMap<String,Integer> weaponIndex=new HashMap<String,Integer>();int weapons=0;
     try(Statement s=c.createStatement();ResultSet r=s.executeQuery("select count(*) from doom_weapon_def")){
       r.next();weapons=r.getInt(1);o.weaponId=new String[weapons];o.weaponAmmo=new String[weapons];
-      o.weaponSlot=new int[weapons];o.weaponAmmoCost=new int[weapons];o.weaponReadyState=new int[weapons];
+      o.weaponAttack=new String[weapons];o.weaponProjectile=new String[weapons];o.weaponSpread=new NUMBER[weapons];
+      o.weaponSlot=new int[weapons];o.weaponAmmoCost=new int[weapons];o.weaponPellets=new int[weapons];
+      o.weaponDamage=new int[weapons];o.weaponReadyState=new int[weapons];
       o.weaponFireState=new int[weapons];o.weaponRefireState=new int[weapons];o.weaponFlashState=new int[weapons];
       o.weaponLowerState=new int[weapons];o.weaponRaiseState=new int[weapons];}
     try(Statement s=c.createStatement();ResultSet r=s.executeQuery(
         "select weapon_id,slot_number,ammo_type,ammo_cost,ready_state_id,fire_state_id,"+
-        "refire_state_id,flash_state_id from doom_weapon_def order by slot_number")){
+        "refire_state_id,flash_state_id,attack_kind,pellet_count,damage_multiplier,"+
+        "utl_raw.cast_from_number(spread_scale),projectile_kind from doom_weapon_def order by slot_number")){
       int i=0;while(r.next()){String id=r.getString(1);o.weaponId[i]=id;weaponIndex.put(id,Integer.valueOf(i));
         o.weaponSlot[i]=r.getInt(2);o.weaponAmmo[i]=r.getString(3);o.weaponAmmoCost[i]=r.getInt(4);
+        o.weaponAttack[i]=r.getString(9);o.weaponPellets[i]=r.getInt(10);o.weaponDamage[i]=r.getInt(11);
+        o.weaponSpread[i]=new NUMBER(raw(r,12));o.weaponProjectile[i]=r.getString(13);
         String[] ids={r.getString(5),r.getString(6),r.getString(7),r.getString(8),
           "WEAPON_"+id+"_LOWER","WEAPON_"+id+"_RAISE"};int[] mapped=new int[ids.length];
         for(int k=0;k<ids.length;k++){Integer value=stateIndex.get(ids[k]);require(value!=null,"unified weapon state "+ids[k]);
@@ -568,13 +576,13 @@ public final class DoomUnifiedActorStateBench {
 
     try(Statement s=c.createStatement();ResultSet r=s.executeQuery("select count(*) from doom_thing_type_def")){
       r.next();int size=r.getInt(1);o.spawnThing=new int[size];o.spawnState=new int[size];
-      o.spawnRadius=new NUMBER[size];o.spawnHeight=new NUMBER[size];}
+      o.spawnRadius=new NUMBER[size];o.spawnHeight=new NUMBER[size];o.spawnCategory=new String[size];}
     try(Statement s=c.createStatement();ResultSet r=s.executeQuery("select thing_type,spawn_state_id,"+
-        "utl_raw.cast_from_number(coalesce(radius,8)),utl_raw.cast_from_number(coalesce(height,8)) "+
+        "utl_raw.cast_from_number(coalesce(radius,8)),utl_raw.cast_from_number(coalesce(height,8)),category "+
         "from doom_thing_type_def order by thing_type")){int i=0;while(r.next()){
       o.spawnThing[i]=r.getInt(1);String state=r.getString(2);Integer si=state==null?null:stateIndex.get(state);
       require(state==null||si!=null,"unified spawn state");o.spawnState[i]=si==null?-1:si.intValue();
-      o.spawnRadius[i]=new NUMBER(raw(r,3));o.spawnHeight[i]=new NUMBER(raw(r,4));i++;}}
+      o.spawnRadius[i]=new NUMBER(raw(r,3));o.spawnHeight[i]=new NUMBER(raw(r,4));o.spawnCategory[i]=r.getString(5);i++;}}
     try(Statement s=c.createStatement();ResultSet r=s.executeQuery("select count(*) from doom_projectile_def")){
       r.next();int size=r.getInt(1);o.projectileThing=new int[size];o.projectileState=new int[size];
       o.projectileSpeed=new NUMBER[size];o.projectileRadius=new NUMBER[size];o.projectileHeight=new NUMBER[size];
@@ -958,6 +966,79 @@ public final class DoomUnifiedActorStateBench {
         o.weaponStateTics=3;events.add(new AttackEvent(o.nextEvent++,13,-1,-1,null,o.weaponId[oldPending]));
       }else{o.weaponState=next;o.weaponStateTics=Math.max(o.stateDefaultTics[oldState],0);}}
   }
+  private static void consumeWeaponAmmo(Owner o,int weapon){
+    int cost=o.weaponAmmoCost[weapon];String type=o.weaponAmmo[weapon];
+    if("BULLET".equals(type))o.ammoBullets-=cost;else if("SHELL".equals(type))o.ammoShells-=cost;
+    else if("ROCKET".equals(type))o.ammoRockets-=cost;else if("CELL".equals(type))o.ammoCells-=cost;
+    else require("NONE".equals(type)&&cost==0,"retained fire ammo type");
+  }
+  private static String oracleDefaultNumberText(NUMBER value)throws Exception{
+    String text=value.stringValue();
+    if(text.startsWith("0."))return text.substring(1);
+    if(text.startsWith("-0."))return "-"+text.substring(2);
+    return text;
+  }
+  private static double firstCombatBlock(double x0,double y0,double x1,double y1){
+    double dx=x1-x0,dy=y1-y0,best=Double.POSITIVE_INFINITY;
+    for(int line=0;line<DoomSimCatalogBench.lineId.length;line++){
+      int left=DoomSimCatalogBench.lineLeftSector[line],right=DoomSimCatalogBench.lineRightSector[line];
+      boolean blocking=left<0||Math.min(DoomSimCatalogBench.baseCeiling[right],
+          DoomSimCatalogBench.baseCeiling[left])<=Math.max(DoomSimCatalogBench.baseFloor[right],
+          DoomSimCatalogBench.baseFloor[left]);
+      if(!blocking)continue;
+      double sx=DoomSimCatalogBench.lineX2[line]-DoomSimCatalogBench.lineX1[line];
+      double sy=DoomSimCatalogBench.lineY2[line]-DoomSimCatalogBench.lineY1[line];
+      double determinant=dx*sy-dy*sx;if(determinant==0.0)continue;
+      double rx=DoomSimCatalogBench.lineX1[line]-x0,ry=DoomSimCatalogBench.lineY1[line]-y0;
+      double u=(rx*dy-ry*dx)/determinant,t=(rx*sy-ry*sx)/determinant;
+      if(t>0.0&&t<1.0&&u>=0.0&&u<=1.0&&t<best)best=t;
+    }
+    return best;
+  }
+  private static void fireWeapon(Owner o,int fire,int[] draws,ArrayList<AttackEvent> events)throws Exception{
+    if(fire==0){o.refire=0;return;}
+    String state=o.stateId[o.weaponState];
+    if(!state.endsWith("_READY")&&!state.endsWith("_REFIRE"))return;
+    int weapon=o.selectedWeapon;
+    if(weaponAmmo(o,o.weaponAmmo[weapon])<o.weaponAmmoCost[weapon]){
+      events.add(new AttackEvent(o.nextEvent++,16,-1,-1,null,null));o.playerSound=1;return;
+    }
+    require("HITSCAN".equals(o.weaponAttack[weapon])||"MELEE".equals(o.weaponAttack[weapon]),
+        "retained fire projectile fallback");
+    consumeWeaponAmmo(o,weapon);o.weaponState=o.weaponFireState[weapon];o.weaponStateTics=4;
+    o.flashState=o.weaponFlashState[weapon];o.flashStateTics=2;o.refire++;
+    double far=DoomBspKernelBench.combatFarDistance(),px=o.playerX.doubleValue(),py=o.playerY.doubleValue();
+    for(int pellet=0;pellet<o.weaponPellets[weapon];pellet++){
+      int difference=draw(o,draws)-draw(o,draws);NUMBER spread=new NUMBER(difference).mul(o.weaponSpread[weapon]);
+      int damage=(draw(o,draws)%3+1)*o.weaponDamage[weapon];
+      int column=Math.max(0,Math.min(319,(int)Math.floor((Math.tan(spread.doubleValue())+1.0)*160.0)));
+      double rayX=DoomBspKernelBench.combatRayX(o.playerAngleIndex,column);
+      double rayY=DoomBspKernelBench.combatRayY(o.playerAngleIndex,column);
+      double length=Math.sqrt(rayX*rayX+rayY*rayY);rayX/=length;rayY/=length;
+      double wallFraction=firstCombatBlock(px,py,px+rayX*far,py+rayY*far);
+      double wall=Double.isInfinite(wallFraction)?Double.POSITIVE_INFINITY:wallFraction*far;
+      int target=-1,targetSlot=-1;double targetDepth=Double.POSITIVE_INFINITY;
+      for(int i=0;i<o.world.count;i++)if(o.world.health[i]>0){
+        int type=find(o.spawnThing,o.world.thing[i]);require(type>=0,"retained fire thing type");
+        String category=o.spawnCategory[type];if(!"monster".equals(category)&&!"barrel".equals(category))continue;
+        double dx=o.world.x[i].doubleValue()-px,dy=o.world.y[i].doubleValue()-py;
+        double depth=dx*rayX+dy*rayY,miss=Math.abs(dx*rayY-dy*rayX);
+        if(depth>0.0&&miss<=o.world.radius[i].doubleValue()&&depth<wall&&
+            (depth<targetDepth||(depth==targetDepth&&o.world.id[i]<target))){
+          target=o.world.id[i];targetSlot=i;targetDepth=depth;}
+      }
+      String spreadText=oracleDefaultNumberText(spread);
+      if(targetSlot<0)events.add(new AttackEvent(o.nextEvent++,15,-1,-1,null,spreadText));
+      else{
+        require("monster".equals(o.spawnCategory[find(o.spawnThing,o.world.thing[targetSlot])]),
+            "retained fire barrel fallback");
+        o.world.health[targetSlot]=Math.max(0,o.world.health[targetSlot]-damage);
+        int actor=find(o.id,target);require(actor>=0,"retained fire monster actor");o.health[actor]=o.world.health[targetSlot];
+        events.add(new AttackEvent(o.nextEvent++,8,-1,target,new NUMBER(damage),null));
+        events.add(new AttackEvent(o.nextEvent++,14,-1,target,new NUMBER(damage),spreadText));o.playerSound=1;
+      }
+    }
+  }
   private static byte[] ticDelta(Owner o,String s,String l,long g,String request)throws Exception{
     return ticDelta(o,s,l,g,request,false,null,false);
   }
@@ -967,6 +1048,11 @@ public final class DoomUnifiedActorStateBench {
   }
   private static byte[] ticDelta(Owner o,String s,String l,long g,String request,
       boolean advanceProjectiles,ArrayList<AttackEvent> prefixEvents,boolean weaponBlock)throws Exception{
+    return ticDelta(o,s,l,g,request,advanceProjectiles,prefixEvents,weaponBlock,0);
+  }
+  private static byte[] ticDelta(Owner o,String s,String l,long g,String request,
+      boolean advanceProjectiles,ArrayList<AttackEvent> prefixEvents,boolean weaponBlock,
+      int prefixDraws)throws Exception{
     long phase=System.nanoTime();
     ArrayList<AttackEvent> events=prefixEvents==null?new ArrayList<AttackEvent>():prefixEvents;
     ArrayList<WorldOp> worldOps=new ArrayList<WorldOp>();
@@ -984,7 +1070,7 @@ public final class DoomUnifiedActorStateBench {
     require(moves.length>=8+o.count*58&&moves[5]==0,"unified TIC movement oracle");
     ticChaseNs+=System.nanoTime()-phase;phase=System.nanoTime();
     ArrayList<TicSpawn> spawns=new ArrayList<TicSpawn>();
-    int[] draws=new int[]{0};
+    int[] draws=new int[]{prefixDraws};
     for(int i=0;i<o.count;i++){
       int oldSeen=o.healthSeen[i]<0?o.health[i]:o.healthSeen[i],oldCooldown=o.cooldown[i];
       o.healthSeen[i]=o.health[i];o.cooldown[i]=Math.max(0,oldCooldown-1);int bi=o.behaviorIndex[i];
@@ -1138,8 +1224,8 @@ public final class DoomUnifiedActorStateBench {
       require(turn>=-1&&turn<=1&&forward>=-1&&forward<=1&&strafe>=-1&&strafe<=1&&run<=1,
           "command TIC movement domain");
       int fire=command[20]&255,use=command[21]&255,weapon=command[22]&255,reserved=command[23]&255;
-      if(weaponActions)require(fire==0&&use==0&&weapon<=9&&reserved==0,
-          "command TIC unsupported fire/use/action domain");
+      if(weaponActions)require(fire<=1&&use==0&&weapon<=9&&reserved==0,
+          "command TIC unsupported use/action domain");
       else require(fire==0&&use==0&&weapon==0&&reserved==0,"command TIC unsupported action/reserved");
       Owner candidate=spare;require(candidate!=null&&candidate!=committed,"command TIC spare");
       candidate.copyFrom(committed);candidate.playerAngleIndex=(candidate.playerAngleIndex+turn+64)&63;
@@ -1157,9 +1243,11 @@ public final class DoomUnifiedActorStateBench {
       if(oldX.compareTo(candidate.playerX)!=0||oldY.compareTo(candidate.playerY)!=0)
         Arrays.fill(candidate.visibilityCache,-1);
       ArrayList<AttackEvent> commandEvents=null;
-      if(weaponActions){commandEvents=new ArrayList<AttackEvent>();advanceWeapon(candidate,weapon,commandEvents);}
+      int commandDraws=0;
+      if(weaponActions){commandEvents=new ArrayList<AttackEvent>();advanceWeapon(candidate,weapon,commandEvents);
+        int[] draws=new int[]{0};fireWeapon(candidate,fire,draws,commandEvents);commandDraws=draws[0];}
       long actorStarted=DoomPlayerMovementBench.traceEnabled?System.nanoTime():0;
-      byte[] nested=ticDelta(candidate,s,l,g,request,advanceProjectiles,commandEvents,weaponActions);
+      byte[] nested=ticDelta(candidate,s,l,g,request,advanceProjectiles,commandEvents,weaponActions,commandDraws);
       if(DoomPlayerMovementBench.traceEnabled)lastActorTicNs=System.nanoTime()-actorStarted;
       int nestedLength=ticOutputLength;
       require(candidate.seq==commandSeq&&candidate.tic==tic+1,"command TIC resulting frontier");
@@ -1258,6 +1346,41 @@ public final class DoomUnifiedActorStateBench {
     checkpointNumber(out,o.playerZ);checkpointNumber(out,o.playerEyeZ);
     out.writeInt(world.length);out.write(world);out.flush();return bytes.toByteArray();
   }
+  private static String worldDifference(WorldMobjs a,WorldMobjs b){
+    if(a.count!=b.count)return "count "+a.count+"/"+b.count;
+    for(int i=0;i<a.count;i++){
+      if(a.id[i]!=b.id[i])return "id slot="+i+" "+a.id[i]+"/"+b.id[i];
+      if(a.thing[i]!=b.thing[i])return "thing id="+a.id[i]+" "+a.thing[i]+"/"+b.thing[i];
+      if(a.health[i]!=b.health[i])return "health id="+a.id[i]+" "+a.health[i]+"/"+b.health[i];
+      if(a.healthSeen[i]!=b.healthSeen[i])return "healthSeen id="+a.id[i]+" "+a.healthSeen[i]+"/"+b.healthSeen[i];
+      if(a.state[i]!=b.state[i])return "state id="+a.id[i]+" "+a.state[i]+"/"+b.state[i];
+      if(a.tics[i]!=b.tics[i])return "tics id="+a.id[i]+" "+a.tics[i]+"/"+b.tics[i];
+      if(a.awake[i]!=b.awake[i])return "awake id="+a.id[i]+" "+a.awake[i]+"/"+b.awake[i];
+      if(a.cooldown[i]!=b.cooldown[i])return "cooldown id="+a.id[i]+" "+a.cooldown[i]+"/"+b.cooldown[i];
+      if(a.deathProcessed[i]!=b.deathProcessed[i])return "death id="+a.id[i]+" "+a.deathProcessed[i]+"/"+b.deathProcessed[i];
+      if(a.flags[i]!=b.flags[i])return "flags id="+a.id[i]+" "+a.flags[i]+"/"+b.flags[i];
+      if(a.target[i]!=b.target[i])return "target id="+a.id[i]+" "+a.target[i]+"/"+b.target[i];
+      if(a.tracer[i]!=b.tracer[i])return "tracer id="+a.id[i]+" "+a.tracer[i]+"/"+b.tracer[i];
+      if(a.reaction[i]!=b.reaction[i])return "reaction id="+a.id[i]+" "+a.reaction[i]+"/"+b.reaction[i];
+      if(a.spawnThing[i]!=b.spawnThing[i])return "spawnThing id="+a.id[i]+" "+a.spawnThing[i]+"/"+b.spawnThing[i];
+      if(a.owner[i]!=b.owner[i])return "owner id="+a.id[i]+" "+a.owner[i]+"/"+b.owner[i];
+      if(a.exploded[i]!=b.exploded[i])return "exploded id="+a.id[i]+" "+a.exploded[i]+"/"+b.exploded[i];
+      if(a.sector[i]!=b.sector[i])return "sector id="+a.id[i]+" "+a.sector[i]+"/"+b.sector[i];
+      if(a.direction[i]!=b.direction[i])return "direction id="+a.id[i]+" "+a.direction[i]+"/"+b.direction[i];
+      if(a.x[i].compareTo(b.x[i])!=0)return "x id="+a.id[i]+" "+a.x[i]+"/"+b.x[i];
+      if(a.y[i].compareTo(b.y[i])!=0)return "y id="+a.id[i]+" "+a.y[i]+"/"+b.y[i];
+      if(a.z[i].compareTo(b.z[i])!=0)return "z id="+a.id[i]+" "+a.z[i]+"/"+b.z[i];
+      if(a.mx[i].compareTo(b.mx[i])!=0)return "mx id="+a.id[i]+" "+a.mx[i]+"/"+b.mx[i];
+      if(a.my[i].compareTo(b.my[i])!=0)return "my id="+a.id[i]+" "+a.my[i]+"/"+b.my[i];
+      if(a.mz[i].compareTo(b.mz[i])!=0)return "mz id="+a.id[i]+" "+a.mz[i]+"/"+b.mz[i];
+      if(a.angle[i].compareTo(b.angle[i])!=0)return "angle id="+a.id[i]+" "+a.angle[i]+"/"+b.angle[i];
+      if(a.radius[i].compareTo(b.radius[i])!=0)return "radius id="+a.id[i]+" "+a.radius[i]+"/"+b.radius[i];
+      if(a.height[i].compareTo(b.height[i])!=0)return "height id="+a.id[i]+" "+a.height[i]+"/"+b.height[i];
+      if(a.projectileKind[i]==null?b.projectileKind[i]!=null:!a.projectileKind[i].equals(b.projectileKind[i]))
+        return "projectile id="+a.id[i];
+    }
+    return "unlisted bytes";
+  }
   private static Owner ownerBytes(Owner base,byte[] packed)throws Exception{
     return ownerBytes(base,packed,false);
   }
@@ -1342,7 +1465,8 @@ public final class DoomUnifiedActorStateBench {
               committed.playerSector==r.getInt(23),"owner SQL player state");}}
       HashMap<String,Integer> states=new HashMap<String,Integer>();for(int i=0;i<committed.stateId.length;i++)
         states.put(committed.stateId[i],Integer.valueOf(i));WorldMobjs sql=loadWorld(c,s,states);
-      require(Arrays.equals(worldBytes(committed.world),worldBytes(sql)),"owner SQL world");
+      require(Arrays.equals(worldBytes(committed.world),worldBytes(sql)),
+          "owner SQL world "+worldDifference(committed.world,sql));
       try(PreparedStatement p=c.prepareStatement("select coalesce(max(mobj_id),0)+1 from mobjs where session_token=?")){
         p.setString(1,s);try(ResultSet r=p.executeQuery()){require(r.next()&&r.getInt(1)==committed.nextMobj,"owner SQL mobj frontier");}}
       return "OK|"+committed.tic+"|"+committed.seq+"|"+sql.count;

@@ -164,7 +164,7 @@ create or replace package body doom_api as
     l_count number;l_seq number;l_turn number;l_forward number;l_strafe number;
     l_run number;l_fire number;l_use number;l_weapon number;l_pause number;
     l_automap number;l_menu varchar2(32);l_cheat varchar2(4000);
-    l_lineage varchar2(64);l_tic number;l_expected_seq number;
+    l_lineage varchar2(64);l_tic number;l_expected_seq number;l_fire_supported number;
     l_action_version number;
     l_deadline timestamp with time zone;
     l_generation number;l_ready number;l_map_sha varchar2(64);l_error varchar2(4000);
@@ -201,7 +201,7 @@ create or replace package body doom_api as
        l_strafe is null or l_run is null or
        l_turn not in(-1,0,1) or l_forward not in(-1,0,1) or
        l_strafe not in(-1,0,1) or l_run not in(0,1) or
-       coalesce(l_fire,0)<>0 or coalesce(l_use,0)<>0 or
+       coalesce(l_fire,0) not in(0,1) or coalesce(l_use,0)<>0 or
        coalesce(l_weapon,0) not between 0 and 9 or
        coalesce(l_pause,0)<>0 or coalesce(l_automap,0)<>0 or
        coalesce(l_menu,'NONE')<>'NONE' or l_cheat is not null then return;end if;
@@ -213,7 +213,8 @@ create or replace package body doom_api as
     -- final version must be selected only after pipelined predecessors commit.
     l_command:=hextoraw('444D534302010000'||u64_hex(l_seq)||byte_hex(l_turn)||
       byte_hex(l_forward)||byte_hex(l_strafe)||
-      case l_run when 0 then '00' else '01' end||'0000'||
+      case l_run when 0 then '00' else '01' end||
+      case coalesce(l_fire,0) when 0 then '00' else '01' end||'00'||
       lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||'00');
     -- A network retry can arrive after the durable frontier advanced. Return
     -- the immutable committed response without needing the old worker generation.
@@ -250,8 +251,23 @@ create or replace package body doom_api as
     end if;
     if l_seq<>l_expected_seq+1 then return;end if;
 
+    -- F1 retains every catalog-defined hitscan/melee weapon. Until the exact
+    -- recursive barrel/splash kernel lands, any live barrel keeps FIRE on the
+    -- complete SQL oracle; neutral/weapon tics remain retained.
+    if coalesce(l_fire,0)=1 then
+      select case when w.attack_kind in('HITSCAN','MELEE') and not exists(
+          select 1 from mobjs m join doom_thing_type_def td on td.thing_type=m.thing_type
+          where m.session_token=p_session and m.health>0 and td.category='barrel')
+        then 1 else 0 end
+        into l_fire_supported
+        from players p join doom_weapon_def w on w.weapon_id=p.selected_weapon
+        join game_sessions s on s.session_token=p.session_token and s.current_player_id=p.player_id
+        where p.session_token=p_session;
+      if l_fire_supported<>1 then return;end if;
+    end if;
+
     select s.current_tic,s.last_command_seq,
-      case when coalesce(l_weapon,0)<>0 or p.pending_weapon is not null or
+      case when coalesce(l_fire,0)<>0 or coalesce(l_weapon,0)<>0 or p.pending_weapon is not null or
         p.weapon_state not like 'WEAPON_%_READY' or p.weapon_state_tics not in(0,1)
         then 3 else 2 end
       into l_tic,l_expected_seq,l_action_version
@@ -264,7 +280,8 @@ create or replace package body doom_api as
     l_command:=hextoraw('444D5343'||case l_action_version when 3 then '03' else '02' end||
       '010000'||u64_hex(l_seq)||byte_hex(l_turn)||
       byte_hex(l_forward)||byte_hex(l_strafe)||
-      case l_run when 0 then '00' else '01' end||'0000'||
+      case l_run when 0 then '00' else '01' end||
+      case coalesce(l_fire,0) when 0 then '00' else '01' end||'00'||
       lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||'00');
 
     doom_worker_api.claim(p_session,l_generation,l_ready,l_map_sha,l_error);
@@ -288,7 +305,10 @@ create or replace package body doom_api as
        l_response_generation<>l_generation or l_committed_tic<>l_tic+1 or
        l_committed_seq<>l_seq or l_worker_payload is null then
       raise_application_error(c_bad_request,'worker step failed: '||
-        coalesce(l_error,l_status));
+        coalesce(l_error,l_status)||' generation='||coalesce(to_char(l_response_generation),'NULL')||
+        '/'||to_char(l_generation)||' tic='||coalesce(to_char(l_committed_tic),'NULL')||
+        '/'||to_char(l_tic+1)||' seq='||coalesce(to_char(l_committed_seq),'NULL')||
+        '/'||to_char(l_seq)||' payload='||case when l_worker_payload is null then 'NULL' else 'BLOB' end);
     end if;
     copy_blob(l_worker_payload,p_payload);p_used:=1;
   end;
