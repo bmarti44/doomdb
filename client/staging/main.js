@@ -63,6 +63,29 @@ status.textContent = 'Starting a new game inside Oracle…\nThe first frame curr
 shell.append(canvas, touch.element, status);
 document.head.append(stylesheet());
 document.body.replaceChildren(shell);
+let restartReady = false;
+const armRestart = (message) => {
+    restartReady = true;
+    status.style.opacity = '1';
+    status.style.pointerEvents = 'auto';
+    status.style.cursor = 'pointer';
+    status.textContent = `${message}\nPress R or click this message to restart.`;
+};
+window.addEventListener('keydown', event => {
+    if (!restartReady || (event.code !== 'KeyR' && event.code !== 'Enter'))
+        return;
+    event.preventDefault();
+    window.location.reload();
+});
+status.addEventListener('click', () => {
+    if (restartReady)
+        window.location.reload();
+});
+const trace = (name, detail) => {
+    window.dispatchEvent(new CustomEvent(`doom:${name}`, {
+        detail: { at: performance.now(), ...detail }
+    }));
+};
 async function boot() {
     const audio = new AudioPresenter();
     const game = await newGame();
@@ -90,26 +113,28 @@ async function boot() {
     let presentationTimer = 0;
     const commandPeriodMs = 32;
     const presentationPeriodMs = 31.8;
-    const submitDepth = 4;
+    const submitDepth = 2;
     const fetchDepth = 2;
-    const presentationBuffer = 10;
+    const presentationBuffer = 2;
     const submitted = new Set();
     const retryFetch = [];
     const completed = new Map();
-    const present = async () => {
+    const present = () => {
         if (presenting)
             return;
         const next = completed.get(nextPresentation);
         if (next === undefined)
             return;
         presenting = true;
-        completed.delete(nextPresentation);
+        const sequence = nextPresentation;
+        completed.delete(sequence);
         nextPresentation += 1;
         try {
             frame = next;
             blit(canvas, applyPalette(frame.indices, palette));
             state.setMode(frame.mode);
-            await audio.consume(frame.audio);
+            audio.enqueue(frame.audio, cause => console.error('audio presentation failed', cause));
+            trace('present', { sequence, frameSha: frame.frameSha });
         }
         finally {
             presenting = false;
@@ -119,24 +144,25 @@ async function boot() {
         if (presentationTimer !== 0 || completed.size < presentationBuffer)
             return;
         status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\n30 FPS database pipeline active';
-        presentationTimer = window.setInterval(() => { void present(); }, presentationPeriodMs);
+        presentationTimer = window.setInterval(present, presentationPeriodMs);
     };
-    // USE is retained; FIRE drains to the complete SQL oracle until the two F2
-    // splash/barrel cases are selected in the async worker.
+    // Live movement, USE, weapon selection, and every catalog fire mode now use
+    // the correlated retained worker. Presentation-only controls remain on the
+    // synchronous compatibility path.
     const retainedCommand = (command) => command.pause === 0 &&
         command.automap === 0 && command.menu === 'NONE' &&
         command.cheat.length === 0;
     const submitTick = () => {
         const sequence = ++nextSequence;
         const outgoing = { ...latest, seq: sequence };
+        trace('submit', { sequence, command: outgoing });
         submitInFlight += 1;
         void submitStep(game.session, outgoing)
             .then(() => { submitted.add(sequence); })
             .catch(cause => {
             const error = cause instanceof Error ? cause : new Error('submit failed');
             pipelineError = true;
-            status.style.opacity = '1';
-            status.textContent = `Game pipeline stopped: ${error.message}`;
+            armRestart(`Game pipeline stopped: ${error.message}`);
         })
             .finally(() => { submitInFlight -= 1; });
     };
@@ -149,14 +175,14 @@ async function boot() {
                 retryFetch.push(sequence);
             else {
                 completed.set(sequence, decoded);
+                trace('decoded', { sequence });
                 startPresentation();
             }
         })
             .catch(cause => {
             pipelineError = true;
             const error = cause instanceof Error ? cause : new Error('fetch failed');
-            status.style.opacity = '1';
-            status.textContent = `Game pipeline stopped: ${error.message}`;
+            armRestart(`Game pipeline stopped: ${error.message}`);
         })
             .finally(() => { fetchInFlight -= 1; });
     };
@@ -174,12 +200,12 @@ async function boot() {
         }).catch(cause => {
             pipelineError = true;
             const error = cause instanceof Error ? cause : new Error('control action failed');
-            status.style.opacity = '1';
-            status.textContent = `Game pipeline stopped: ${error.message}`;
+            armRestart(`Game pipeline stopped: ${error.message}`);
         }).finally(() => { syncInFlight = false; });
     };
     const send = (command) => {
         latest = command;
+        trace('input', { command });
     };
     const gesture = () => {
         void audio.enable();
@@ -223,7 +249,7 @@ async function boot() {
         if (nextSequence > 0 && prefill && !submitted.has(1))
             return;
         if (syncInFlight || submitInFlight >= submitDepth ||
-            nextSequence + 1 > nextPresentation + 16 ||
+            nextSequence + 1 > nextPresentation + 1 ||
             (!prefill && now < nextDispatch))
             return;
         submitTick();
@@ -238,7 +264,6 @@ async function boot() {
 }
 void boot().catch(cause => {
     const error = cause instanceof Error ? cause : new Error('client bootstrap failed');
-    status.style.opacity = '1';
-    status.textContent = `Game startup failed: ${error.message}\nReturn to / for stack status, then refresh.`;
+    armRestart(`Game startup failed: ${error.message}`);
     console.error(error);
 });

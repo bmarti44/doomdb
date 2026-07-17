@@ -6,6 +6,7 @@ export class AudioPresenter {
     muted = false;
     cursor = null;
     cache = new Map();
+    queue = Promise.resolve();
     async enable() {
         if (this.context === null)
             this.context = new AudioContext();
@@ -71,5 +72,10 @@ export class AudioPresenter {
             panner.connect(context.destination);
             source.start(context.currentTime);
         }
+    }
+    enqueue(events, onError) {
+        this.queue = this.queue.then(() => this.consume(events)).catch(cause => {
+            onError(cause);
+        });
     }
 }

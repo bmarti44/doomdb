@@ -789,14 +789,22 @@ create or replace package body doom_unified_worker as
       if sql%rowcount<>1 then
         raise_application_error(c_invalid,'worker request finalize race');
       end if;
-      update doom_worker_control set heartbeat=systimestamp
-        where worker_slot=p_slot and generation=l_generation and ready=1;
-      if sql%rowcount<>1 then
-        raise_application_error(c_invalid,'worker heartbeat fence');
+      -- The loop checks the control generation at the same cadence.  Rewriting
+      -- this control row on every tic only adds redo and row-cache work to the
+      -- durable frame transaction.
+      if mod(l_result_tic,32)=0 then
+        update doom_worker_control set heartbeat=systimestamp
+          where worker_slot=p_slot and generation=l_generation and ready=1;
+        if sql%rowcount<>1 then
+          raise_application_error(c_invalid,'worker heartbeat fence');
+        end if;
       end if;
       dbms_application_info.set_action('DOOM_DURABLE_COMMIT');
       l_stage:=systimestamp;
-      commit write batch wait;
+      -- Pin the durability contract explicitly.  With one latency-sensitive
+      -- writer, IMMEDIATE avoids waiting for a redo batch to form while WAIT
+      -- still guarantees the authoritative tic is durable before publication.
+      commit write immediate wait;
       l_commit_us:=elapsed_us(l_stage);
       l_committed:=1;
     exception when others then
@@ -872,12 +880,18 @@ create or replace package body doom_unified_worker as
       audit_event(p_request,p_slot,p_worker_generation,'POSTCOMMIT_RECOVERED',
         l_error);
     end;
-    update doom_worker_result set commit_us=l_commit_us
-      where request_id=p_request;
     -- The SQL/AQ dequeue transaction is already durable.  Correlate only after
     -- Java accept or combined reconstruction establishes the live generation.
-    if l_async_mode=0 then respond(p_request);end if;
-    commit;
+    if l_async_mode=0 then
+      update doom_worker_result set commit_us=l_commit_us where request_id=p_request;
+      respond(p_request);
+      commit;
+    elsif mod(l_committed_tic,32)=0 then
+      -- Sample durable-commit latency without forcing a second result-row DML
+      -- and commit onto every asynchronous frame.
+      update doom_worker_result set commit_us=l_commit_us where request_id=p_request;
+      commit;
+    end if;
     dbms_application_info.set_action(null);
   end;
 

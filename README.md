@@ -53,14 +53,14 @@ player. A deterministic SQL fixture proves the missile travels, leaves its
 owner at 60 HP, and changes player health from 100 to 97 only on tic 7, which
 carries correlated `PROJECTILE_IMPACT` and `PLAYER_DAMAGE` events.
 
-The 30 FPS combat gate is reopened. Earlier 30.88–32.06 FPS baselines were
-invalidated because the owner-collision bug deleted imp fireballs immediately.
-The first corrected, JIT-quiescent 300-frame FIRE-every-8 soak rendered 300
-distinct frames at **20.79 FPS**, with a 31.7 ms median and 93.8 ms p95 paint
-gap. Warm averages are 23.4 ms rendering and 10.1 ms durable relational apply;
-projectile simulation is now only 0.44 ms. The active work overlaps rendering
-with authoritative apply in a separately fenced resident database worker while
-preserving rollback, restart, parity, and exact response-correlation semantics.
+The corrected combat path now clears the 30 FPS gate. Two quiescent 300-frame
+FIRE-every-8 runs rendered 300/300 distinct frames at **31.95 FPS** and
+**30.81 FPS** with exact identical frame chains; paint-gap p95 was 32.14 and
+32.28 ms. The database producer itself sustained 31.55 and 30.40 FPS, so the
+result does not depend on prebuffering. A compact DMF3 frame envelope reduced
+the typical response from about 44 KB to 25.75 KB, explicit synchronous OJVM
+compilation removed cold-session compiler contention, and durable commits now
+use `IMMEDIATE WAIT`. Rollback/restart fencing and projectile parity still pass.
 
 The benchmark harness can exercise a deeper throughput window, while the live
 client remains latency-oriented at depth two with at most one queued successor.
@@ -69,9 +69,8 @@ resolution-aware:
 visibility and simulation are independent of the 320×200 buffer, and horizontal
 plane spans remain planned before enabling the future 640×400 profile.
 
-Full measurements and rejected alternatives are recorded in the
-[AutoREST 30 FPS report](reports/performance-P12.0-autorest-split-gate-2026-07-17.md),
-with the complete execution contract in [PLAN.md](PLAN.md).
+Full measurements, rejected alternatives, and remaining regression work are in
+[PLAN.md](PLAN.md) and [reports/](reports/).
 
 ## Architecture
 

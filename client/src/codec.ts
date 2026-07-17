@@ -104,6 +104,41 @@ function frameFrom(value: unknown): DecodedFrame {
   };
 }
 
+function ascii(bytes: Uint8Array<ArrayBuffer>, start: number, length: number): string {
+  return new TextDecoder('ascii', {fatal: true}).decode(bytes.subarray(start, start + length));
+}
+
+function binaryFrameFrom(bytes: Uint8Array<ArrayBuffer>): DecodedFrame {
+  if (bytes.length < 140 + 320 * 200 || ascii(bytes, 0, 4) !== 'DMF3') {
+    throw new TypeError('payload binary header is invalid');
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const tic = view.getInt32(4, false), modeByte = bytes[8], complete = bytes[9];
+  const stateSha = ascii(bytes, 10, 64), frameSha = ascii(bytes, 74, 64);
+  const audioLength = view.getUint16(138, false), frameStart = 140 + audioLength;
+  if (tic < 0 || (modeByte !== 0 && modeByte !== 1) ||
+      (complete !== 0 && complete !== 1) ||
+      !/^[0-9a-f]{64}$/.test(stateSha) || !/^[0-9a-f]{64}$/.test(frameSha) ||
+      bytes.length !== frameStart + 320 * 200) {
+    throw new TypeError('payload binary envelope is invalid');
+  }
+  let audio: unknown;
+  try {
+    audio = JSON.parse(new TextDecoder('utf-8', {fatal: true})
+      .decode(bytes.subarray(140, frameStart))) as unknown;
+  } catch (cause) {
+    throw new TypeError('payload binary audio is invalid', {cause});
+  }
+  const transportIndices = new Uint8Array(320 * 200);
+  transportIndices.set(bytes.subarray(frameStart));
+  const indices = new Uint8Array(320 * 200);
+  for (let x = 0; x < 320; x += 1) {
+    for (let y = 0; y < 200; y += 1) indices[y * 320 + x] = transportIndices[x * 200 + y] as number;
+  }
+  return {tic, mode: modeByte === 0 ? 'game' : 'dead', frameSha, indices,
+    audio: audioTuples(audio, tic), transportIndices};
+}
+
 async function sha256(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
   return Array.from(digest, value => value.toString(16).padStart(2, '0')).join('');
@@ -111,15 +146,25 @@ async function sha256(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
 
 export async function decodePayload(encoded: string): Promise<Frame> {
   const bytes = base64Bytes(encoded);
-  let document: unknown;
+  let inflated: Uint8Array<ArrayBuffer>;
   try {
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-    const text = await new Response(stream).text();
-    document = JSON.parse(text) as unknown;
+    inflated = new Uint8Array(await new Response(stream).arrayBuffer());
   } catch (cause) {
     throw new TypeError('gzip payload decode failed', {cause});
   }
-  const decoded = frameFrom(document);
+  let decoded: DecodedFrame;
+  if (inflated.length >= 4 && ascii(inflated, 0, 4) === 'DMF3') {
+    decoded = binaryFrameFrom(inflated);
+  } else {
+    let document: unknown;
+    try {
+      document = JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(inflated)) as unknown;
+    } catch (cause) {
+      throw new TypeError('gzip payload decode failed', {cause});
+    }
+    decoded = frameFrom(document);
+  }
   const [canvasSha, transportSha] = await Promise.all([
     sha256(decoded.indices), sha256(decoded.transportIndices)
   ]);

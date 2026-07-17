@@ -78,6 +78,7 @@ docker exec "$container" sh -c \
   < /run/secrets/doom_password"
 fi
 
+run_sql "$root/scripts/performance/ojvm-renderer-warmup.sql"
 run_sql "$root/scripts/performance/ojvm-resident-simulation-calls.sql"
 run_sql "$root/scripts/performance/ojvm-number-parity-calls.sql"
 run_sql "$root/scripts/performance/ojvm-sim-catalog-calls.sql"
@@ -89,6 +90,7 @@ run_sql "$root/scripts/performance/ojvm-fresh-death-calls.sql"
 run_sql "$root/scripts/performance/ojvm-retained-world-state-calls.sql"
 run_sql "$root/scripts/performance/ojvm-retained-render-scene-calls.sql"
 run_sql "$root/scripts/performance/ojvm-unified-actor-state-calls.sql"
+run_sql "$root/scripts/performance/ojvm-worker-native-compile.sql"
 run_sql "$root/sql/accel/019_simulation_kernel_pack.sql"
 run_sql "$root/scripts/performance/ojvm-resident-simulation-parity.sql"
 run_sql "$root/scripts/performance/ojvm-number-parity.sql"

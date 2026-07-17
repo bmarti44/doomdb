@@ -21,7 +21,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.CRC32;
@@ -126,6 +125,7 @@ public final class DoomBspKernelBench {
   private static short[] wallFrame;
   private static byte[] wallOwned;
   private static byte[] wallColored;
+  private static boolean retainWallDiagnostics;
   private static final int MAX_INTERVALS = 32768;
   private static int[] intervalOffset, intervalCount, intervalSector;
   private static double[] intervalStart, intervalEnd, intervalClipTop, intervalClipBottom;
@@ -157,9 +157,6 @@ public final class DoomBspKernelBench {
   private static final byte[] codecFrame = new byte[WIDTH * 200];
   private static final byte[] codecDigest = new byte[32];
   private static final byte[] HEX = "0123456789abcdef".getBytes(StandardCharsets.US_ASCII);
-  private static final byte[] BASE64 =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-          .getBytes(StandardCharsets.US_ASCII);
   private static final String ZERO_SHA =
       "0000000000000000000000000000000000000000000000000000000000000000";
   private static final byte[] codecJson = new byte[1_500_000];
@@ -2074,8 +2071,10 @@ public final class DoomBspKernelBench {
     activePortalPairs=0;largeSortColumns=orderedHitTotal=wallRowAttempts=planeRowAttempts=0;
     wallPieceAttempts=wallPieceWrites=maskedAttempts=maskedWrites=planeWrites=0;
     intervalTotal = 0;
-    Arrays.fill(wallFrame, (short) -1); Arrays.fill(wallOwned, (byte) 0);
-    Arrays.fill(wallColored, (byte) 0); Arrays.fill(intervalCount, 0);
+    Arrays.fill(wallFrame, (short) -1);
+    retainWallDiagnostics=retainCandidates;
+    if(retainCandidates){Arrays.fill(wallOwned, (byte) 0);Arrays.fill(wallColored, (byte) 0);}
+    Arrays.fill(intervalCount, 0);
     Arrays.fill(overlayDepth, Double.POSITIVE_INFINITY);
     Arrays.fill(overlayKind, (byte) 0);
     if (retainCandidates) Arrays.fill(portalCandidates, (byte) 0);
@@ -2227,9 +2226,8 @@ public final class DoomBspKernelBench {
     int skyBase=sky?(sqlFloor(column/2.0)&wallAssetWidthMask[asset])*skyHeight:0;
     for(int row=firstRow;row<endRow;row++){
       int frameOffset=column*200+row;
-      if(wallOwned[frameOffset]!=0||wallFrame[frameOffset]>=0)continue;
+      if(wallFrame[frameOffset]>=0||retainWallDiagnostics&&wallOwned[frameOffset]!=0)continue;
       double distance=ceiling?planeCeilingDistance[planeBase+row]:planeFloorDistance[planeBase+row];
-      if(distance<intervalStart[interval]||distance>=intervalEnd[interval])continue;
       int raw;if(sky)raw=texels[skyBase+wrap(row,skyHeight)];
       else{int x=fastFloor(px+rayX*distance)&63;
         int y=fastFloor(py+rayY*distance)&63;raw=texels[x*64+y];}
@@ -2514,20 +2512,28 @@ public final class DoomBspKernelBench {
     int sampleColumn=sqlFloor(sampleX)&wallAssetWidthMask[asset];
     int texelBase=sampleColumn*assetHeight;
     int colormapBase=Math.max(0,Math.min(31,(255-light)/8))*256;
+    int heightMask=wallAssetHeightMask[asset];
+    short[] assetTexels=wallAssetTexels[asset],colors=colormap,frame=wallFrame;
     int base = column * 200;
     wallRowAttempts+=end-first;
     wallPieceAttempts+=end-first;
+    // Ownership is disjoint, so the completed-write cardinality is the row
+    // range itself; avoid a static counter write for every wall pixel.
+    wallPieceWrites+=end-first;
     double sampleStep=depth/projectionK;
     double sampleY=anchor-(eyeZ+(100.0-(first+.5))*depth/projectionK)+yOffset;
     for (int row = first; row < end; row++) {
       int frameOffset = base + row;
-      if (wallOwned[frameOffset] != 0){sampleY+=sampleStep;continue;}
-      wallOwned[frameOffset] = 1;wallPieceWrites++;
-      int floorY=sqlFloor(sampleY),heightMask=wallAssetHeightMask[asset];
+      // The active walk is front-to-back and each portal clips the remaining
+      // opening before a deeper hit is visited. Wall-piece row ranges are
+      // therefore disjoint; oracle cardinality gates enforce that invariant.
+      if(retainWallDiagnostics){require(wallOwned[frameOffset]==0,
+          "active wall ownership overlap");wallOwned[frameOffset]=1;}
+      int floorY=sqlFloor(sampleY);
       int sampleRow=heightMask>=0?floorY&heightMask:wrap(floorY,assetHeight);
-      int raw=wallAssetTexels[asset][texelBase+sampleRow];
-      if(raw>=0){wallFrame[frameOffset]=colormap[colormapBase+raw];
-        wallColored[frameOffset]=1;}
+      int raw=assetTexels[texelBase+sampleRow];
+      if(raw>=0){frame[frameOffset]=colors[colormapBase+raw];
+        if(retainWallDiagnostics)wallColored[frameOffset]=1;}
       sampleY+=sampleStep;
     }
   }
@@ -2992,6 +2998,14 @@ public final class DoomBspKernelBench {
     }
   }
 
+  private static int appendBigEndianInt(int offset, int value) {
+    codecJson[offset++] = (byte) (value >>> 24);
+    codecJson[offset++] = (byte) (value >>> 16);
+    codecJson[offset++] = (byte) (value >>> 8);
+    codecJson[offset++] = (byte) value;
+    return offset;
+  }
+
   private static void prepareFrameSha() throws Exception {
     for (int index = 0; index < finalFrame.length; index++)
       codecFrame[index] = (byte) finalFrame[index];
@@ -3060,43 +3074,22 @@ public final class DoomBspKernelBench {
   }
 
   private static void buildPackedLiveJson(String stateSha) {
-    int offset = appendAscii(0, "{\"v\":2,\"tic\":");
-    offset = appendNumber(offset, liveTic);
-    offset = appendAscii(offset, ",\"w\":320,\"h\":200,\"mode\":\"");
-    offset = appendAscii(offset, liveMode);
-    offset = appendAscii(offset, "\",\"state_sha\":\"");
+    // DMF3 is the canonical live binary envelope inside gzip.  ORDS still
+    // carries the BLOB as base64, so embedding the 64 KiB indexed frame in a
+    // second JSON/base64 layer only expands compressor input and decode work.
+    int offset = appendAscii(0, "DMF3");
+    offset = appendBigEndianInt(offset, liveTic);
+    require("game".equals(liveMode)||"dead".equals(liveMode),"live binary mode");
+    codecJson[offset++] = (byte) ("dead".equals(liveMode) ? 1 : 0);
+    codecJson[offset++] = (byte) liveComplete;
     offset = appendAscii(offset, stateSha);
-    offset = appendAscii(offset, "\",\"frame_sha\":\"");
     offset = appendHexDigest(offset);
-    offset = appendAscii(offset, "\",\"frame_b64\":\"");
-    int index = 0;
-    while (index + 2 < codecFrame.length) {
-      int bits = ((codecFrame[index] & 255) << 16) |
-          ((codecFrame[index + 1] & 255) << 8) | (codecFrame[index + 2] & 255);
-      codecJson[offset++] = BASE64[(bits >>> 18) & 63];
-      codecJson[offset++] = BASE64[(bits >>> 12) & 63];
-      codecJson[offset++] = BASE64[(bits >>> 6) & 63];
-      codecJson[offset++] = BASE64[bits & 63];
-      index += 3;
-    }
-    if (index < codecFrame.length) {
-      int bits = (codecFrame[index] & 255) << 16;
-      codecJson[offset++] = BASE64[(bits >>> 18) & 63];
-      if (index + 1 < codecFrame.length) {
-        bits |= (codecFrame[index + 1] & 255) << 8;
-        codecJson[offset++] = BASE64[(bits >>> 12) & 63];
-        codecJson[offset++] = BASE64[(bits >>> 6) & 63];
-      } else {
-        codecJson[offset++] = BASE64[(bits >>> 12) & 63];
-        codecJson[offset++] = '=';
-      }
-      codecJson[offset++] = '=';
-    }
-    offset = appendAscii(offset, "\",\"audio\":");
+    int audioLength=liveAudio.length();
+    require(audioLength<=65535,"live binary audio capacity");
+    codecJson[offset++]=(byte)(audioLength>>>8);codecJson[offset++]=(byte)audioLength;
     offset = appendAscii(offset, liveAudio);
-    offset = appendAscii(offset, ",\"complete\":");
-    offset = appendNumber(offset, liveComplete);
-    codecJson[offset++] = '}';
+    System.arraycopy(codecFrame,0,codecJson,offset,codecFrame.length);
+    offset+=codecFrame.length;
     codecJsonLength = offset;
   }
 
@@ -3444,15 +3437,15 @@ public final class DoomBspKernelBench {
     byte[] packedRoundTrip = gunzip(codecGzip, codecGzipLength);
     require(equalPrefix(codecJson, codecJsonLength, packedRoundTrip),
         "packed gzip round trip differs from canonical payload");
-    String packedJson = new String(packedRoundTrip, StandardCharsets.UTF_8);
-    String marker = "\"frame_b64\":\"";
-    int frameStart = packedJson.indexOf(marker) + marker.length();
-    int frameEnd = packedJson.indexOf('"', frameStart);
-    require(frameStart >= marker.length() && frameEnd > frameStart,
-        "packed frame_b64 missing");
-    require(Arrays.equals(codecFrame,
-        Base64.getDecoder().decode(packedJson.substring(frameStart, frameEnd))),
-        "packed frame_b64 differs from indexed frame");
+    require(packedRoundTrip.length>=140+codecFrame.length&&packedRoundTrip[0]=='D'&&
+        packedRoundTrip[1]=='M'&&packedRoundTrip[2]=='F'&&packedRoundTrip[3]=='3',
+        "packed binary header");
+    int audioLength=((packedRoundTrip[138]&255)<<8)|(packedRoundTrip[139]&255);
+    int frameStart=140+audioLength;
+    require(packedRoundTrip.length==frameStart+codecFrame.length,
+        "packed binary frame length");
+    for(int index=0;index<codecFrame.length;index++)require(
+        codecFrame[index]==packedRoundTrip[frameStart+index],"packed binary frame differs");
     for (int index = 0; index < 1000; index++) encodePackedTicZeroPayload(ZERO_SHA);
     int count = 1500;
     long[] sha = new long[count], json = new long[count], gzip = new long[count], total = new long[count];

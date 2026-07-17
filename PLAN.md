@@ -1881,8 +1881,9 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   CPU after `loadjava`. Wait for the worker to quiesce, confirm the hot methods
   are `USER_JAVA_METHODS.IS_COMPILED='YES'`, and record container CPU alongside
   the sample. Post-load transition measurements belong only in cold/JIT-tail
-  evidence. Synchronous `DBMS_JAVA` compilation is not a substitute when the
-  selected hot methods are already compiled.
+  evidence. Synchronous `DBMS_JAVA` compilation is required after loading the
+  renderer and its dependent worker classes; it is a no-op only when every
+  non-`<clinit>` production method is already compiled.
 - Two-stage retained-render overlap (active, 2026-07-17): the serial critical
   path cannot meet 33.3 ms reliably because rendering and durable relational
   apply are summed. Add one bounded resident render Scheduler session and a
@@ -1971,6 +1972,26 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   to 15.35 FPS by starving correlated retrieval; retain two pollers and do not
   retry that shape. Continue with retained render-walk and delta-decode/DML CPU,
   not buffering claims—the producer itself remains below 30 FPS.
+- Corrected-combat 30 FPS selection (2026-07-17): production wall ownership is
+  disjoint across all 1,321 stored cardinality samples, so the non-diagnostic
+  renderer no longer clears/checks a 64,000-byte ownership plane or increments
+  a static counter per wall pixel; diagnostic mode still asserts the invariant.
+  Full synchronous compilation now covers every non-`<clinit>` method in the
+  renderer and retained simulation graph, eliminating the minute-long MZ00
+  contention previously triggered by newly claimed worker sessions. Async
+  worker heartbeat/commit-metric DML is sampled every 32 tics, while the
+  authoritative tic commit is pinned to `COMMIT WRITE IMMEDIATE WAIT`.
+  Finally, DMF3 replaces the redundant inner JSON/base64 frame with a compact
+  gzip binary envelope; generated AutoREST still transports the response BLOB,
+  legacy JSON frames remain decodable, and the frame/state SHA contract is
+  unchanged. Typical response size fell from about 44 KB to 25.75 KB. Two
+  quiescent corrected FIRE-every-eight runs produced 300/300 unique frames and
+  the identical chain `89e25e27276963b1602523a08beee647aad84c11911eef9c20317f066fce6121`
+  at 31.951/30.807 displayed FPS, with paint-gap p50 31.213/31.222 ms and p95
+  32.136/32.278 ms. Producer throughput independently measured 31.55/30.40 FPS.
+  Retained-render parity, codec v2/v3 compatibility, projectile lifecycle, and
+  rollback/restart/generation fencing pass. Complete the full T5--T7 regression
+  before closing P12.0, then resume the preserved P8 route.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

@@ -1,61 +1,46 @@
 whenever sqlerror exit failure rollback
-set serveroutput on feedback off heading off timing off
-
-select doom_bsp_warm_kernel_pack(30) from dual;
+set serveroutput on feedback off heading off timing on
 
 declare
-  payload blob;
-  batch_started number;
-begin
-  dbms_lob.createtemporary(payload, true);
-  for batch_index in 1 .. 10 loop
-    batch_started := dbms_utility.get_time;
-    for frame_index in 1 .. 50 loop
-      doom_bsp_kernel_fill(payload);
-    end loop;
-    dbms_output.put_line(
-      'WARM frames=' || batch_index * 50 ||
-      ' batch_ms=' ||
-      to_char((dbms_utility.get_time - batch_started) * 10, 'FM9999990.000')
-    );
-  end loop;
-  dbms_lob.freetemporary(payload);
-end;
-/
-
-declare
+  compiled_main number;
+  compiled_json number;
+  compiled_kernel number;
   missing_methods number;
 begin
-  -- JIT compilation is persisted asynchronously by the single MMON worker.
-  -- A hot call returning does not mean USER_JAVA_METHODS has been published
-  -- yet, especially after a database restart. Poll a bounded deployment-only
-  -- window instead of falsely failing while the last methods are in flight.
-  for attempt in 1 .. 120 loop
-    select count(*)
+  -- OJVM's asynchronous JIT otherwise spends roughly a minute compiling in
+  -- every newly claimed game-worker session.  Compile synchronously at deploy
+  -- time so stored native code is shared by all later sessions.
+  compiled_main := dbms_java.compile_class('DoomBspKernelBench');
+  compiled_json := dbms_java.compile_class('DoomBspKernelBench$JsonInput');
+  compiled_kernel := dbms_java.compile_class('DoomBspKernelBench$KernelInput');
+
+  select count(*)
     into missing_methods
     from user_java_methods
-    where name = 'DoomBspKernelBench'
-      and method_name in (
-        'traverseAndProject', 'projectSeg', 'applySolidCoverage',
-        'applyPortalWalk', 'drawActiveWall', 'drawWallPiece', 'drawPlanes',
-        'drawMaskedWall', 'drawSprites', 'projectSprite', 'rasterSprite',
-        'composeLivePresentation', 'prepareFrameSha',
-        'buildPackedLiveJson', 'compressJson', 'renderTicZero'
-      )
-      and is_compiled <> 'YES';
-    exit when missing_methods = 0;
-    dbms_session.sleep(.5);
-  end loop;
+   where name in (
+       'DoomBspKernelBench',
+       'DoomBspKernelBench$JsonInput',
+       'DoomBspKernelBench$KernelInput')
+     and is_compiled <> 'YES'
+     and method_name <> '<clinit>';
   if missing_methods <> 0 then
     raise_application_error(-20000,
-      missing_methods || ' hot OJVM renderer methods are not compiled');
+      missing_methods || ' OJVM renderer methods are not compiled');
   end if;
+
+  dbms_output.put_line('OJVM_RENDERER_COMPILED main=' || compiled_main ||
+    ' json=' || compiled_json || ' kernel=' || compiled_kernel);
 end;
 /
 
-select 'OJVM methods=' || count(*) ||
+select name || ' methods=' || count(*) ||
   ' compiled=' || sum(case when is_compiled = 'YES' then 1 else 0 end)
 from user_java_methods
-where name = 'DoomBspKernelBench';
+where name in (
+  'DoomBspKernelBench',
+  'DoomBspKernelBench$JsonInput',
+  'DoomBspKernelBench$KernelInput')
+group by name
+order by name;
 
 exit

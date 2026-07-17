@@ -24,6 +24,10 @@ docker exec "$container" sh -c \
   "exec '$java_home/bin/loadjava' -force -resolve -user DOOM@FREEPDB1 \
   '$tmp'/DoomBspKernelBench*.class '$tmp'/DoomRetainedRenderSceneBench*.class \
   < /run/secrets/doom_password"
+run_sql "$root/scripts/performance/ojvm-renderer-warmup.sql"
+run_sql <(printf '%s\n' 'whenever sqlerror exit failure rollback' \
+  "select 'RETAINED_RENDER_SCENE_COMPILED='||dbms_java.compile_class('DoomRetainedRenderSceneBench') from dual;" \
+  'exit')
 run_sql "$root/sql/accel/017_renderer_dynamic_snapshot.sql"
 run_sql "$root/scripts/performance/ojvm-retained-render-scene-calls.sql"
 printf 'retained render scene deployed\n'
