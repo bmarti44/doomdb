@@ -63,6 +63,17 @@ create or replace function doom_unified_command_post_world(
 return raw as language java name
   'DoomUnifiedActorStateBench.finishCommandPostWorld(java.lang.String,java.lang.String,long,java.lang.String,byte[],int) return byte[]';
 /
+create or replace function doom_unified_command_post_world_retained(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2,
+  p_projectile_pack in raw,p_retained_projectiles in number)
+return raw as language java name
+  'DoomUnifiedActorStateBench.finishCommandPostWorldRetained(java.lang.String,java.lang.String,long,java.lang.String,byte[],int) return byte[]';
+/
+create or replace function doom_unified_pending_world_pack(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2)
+return raw as language java name
+  'DoomUnifiedActorStateBench.pendingPassiveWorldPack(java.lang.String,java.lang.String,long,java.lang.String) return byte[]';
+/
 create or replace function doom_unified_actor_accept(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,p_request in varchar2)
 return varchar2 as language java name

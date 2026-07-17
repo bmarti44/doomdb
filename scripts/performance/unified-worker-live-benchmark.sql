@@ -191,9 +191,19 @@ begin
     from doom_worker_request q join doom_worker_result r on r.request_id=q.request_id
     where q.session_token=session_ and q.request_status='COMMITTED';
   dbms_output.put_line('unified_worker_frame_chain='||frame_chain_);
+  select sum(case when x.world_required=1 then 1 else 0 end),
+    sum(case when x.world_hybrid=1 then 1 else 0 end),
+    sum(case when x.world_active>0 then 1 else 0 end)
+    into p50_,p95_,max_ from doom_worker_request r join doom_worker_result x
+      on x.request_id=r.request_id where r.session_token=session_
+      and r.request_status='COMMITTED' and x.committed_tic>c_warm;
+  dbms_output.put_line('unified_worker_world_route=required:'||p50_||
+    '|hybrid:'||p95_||'|active:'||max_);
   for stage_ in (
     with measured as (
       select x.committed_tic,x.prepare_us,x.ledger_us,x.world_pack_us,x.java_prepare_us,
+        x.pre_movement_apply_us,x.world_advance_us,x.geometry_pack_us,x.world_sync_us,
+        x.projectile_pack_us,x.post_world_us,
         x.apply_us,x.world_apply_us,x.delta_apply_us,x.state_us,x.state_encode_us,
         x.state_blob_us,x.state_compare_us,x.state_object_encode_us,x.state_changed,
         x.state_reused,x.state_removed,x.render_us,x.render_call_us,x.render_update_us,
@@ -210,6 +220,12 @@ begin
       union all select 'ledger',ledger_us/1000 from measured where sample_no>c_warm
       union all select 'world_pack',world_pack_us/1000 from measured where sample_no>c_warm
       union all select 'java_prepare',java_prepare_us/1000 from measured where sample_no>c_warm
+      union all select 'pre_movement_apply',pre_movement_apply_us/1000 from measured where sample_no>c_warm
+      union all select 'world_advance',world_advance_us/1000 from measured where sample_no>c_warm
+      union all select 'geometry_pack',geometry_pack_us/1000 from measured where sample_no>c_warm
+      union all select 'world_sync',world_sync_us/1000 from measured where sample_no>c_warm
+      union all select 'projectile_pack',projectile_pack_us/1000 from measured where sample_no>c_warm
+      union all select 'post_world',post_world_us/1000 from measured where sample_no>c_warm
       union all select 'apply',apply_us/1000 from measured where sample_no>c_warm
       union all select 'world_apply',world_apply_us/1000 from measured where sample_no>c_warm
       union all select 'delta_apply',delta_apply_us/1000 from measured where sample_no>c_warm

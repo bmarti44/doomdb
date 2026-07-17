@@ -1905,6 +1905,28 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   two quiescent corrected-combat runs at >=30 unique displayed FPS with
   <=33.3 ms p50/p95 paint gaps. Report input-to-correlated-frame latency
   separately. Do not call uncommitted or eventually consistent output playable.
+- Two-stage overlap result (2026-07-17): the default-off implementation passes
+  packed/direct frame parity, staged/final BLOB identity, explicit accept,
+  post-render precommit discard, SQL-frontier rollback, generation fencing,
+  and restart recovery. It is rejected as a performance selection on Oracle
+  Free's two CPUs: the same 330-tic route measured 75.855/140.160 ms caller
+  p50/p95 with two workers versus 66.476/112.506 ms with one. Concurrent render
+  inflated other database work and added a second commit/rendezvous. Preserve
+  the implementation and gates default-off as evidence; do not enable or retry
+  it without a materially cheaper rendezvous or more CPU headroom.
+- Retained passive-world result (2026-07-17): specials 1/12 now have a clean-room
+  array-resident implementation that emits the existing DMWP/v1 delta and still
+  persists it through the strict SQL applier. A focused fixture matches both
+  the SQL-built 48-byte pack (three ordered sectors, three RNG draws) and the
+  complete unified delta byte-for-byte. Rollback/restart and the final 330-tic
+  owner/SQL parity gate pass. The quiescent same-revision route improved only
+  modestly to 64.911/105.244 ms caller p50/p95 because an active mover forced
+  the full-world branch on 280/300 measured tics (279 active). The exact
+  remaining full-world slices are world-machine advance at 1.709/40.975 ms and
+  geometry/switch packing at 13.830/15.127 ms; render is 19.278/21.658 ms and
+  durable apply 5.371/8.737 ms. Next move active mover/switch state into the
+  retained owner and emit only ordered dirty sector/line deltas. Keep the SQL
+  world-machine path as the differential oracle and durable delta applier.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

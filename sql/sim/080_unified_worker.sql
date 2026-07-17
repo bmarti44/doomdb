@@ -458,9 +458,6 @@ create or replace package body doom_unified_worker as
           l_java_prepare_us:=l_java_prepare_us+l_world_sync_us;l_stage:=systimestamp;
         else
           l_split_use:=0;l_world_hybrid:=1;
-          doom_retained_world_pack.build(l_session,l_result_tic,l_world_pack);
-          l_world_draws:=to_number(rawtohex(utl_raw.substr(l_world_pack,11,2)),'XXXX');
-          l_world_pack_us:=elapsed_us(l_stage);l_stage:=systimestamp;
         end if;
         if l_retained_projectiles=0 then
           doom_retained_projectiles.advance_and_pack(l_session,l_result_tic,l_projectile_pack);
@@ -471,8 +468,14 @@ create or replace package body doom_unified_worker as
           l_delta:=doom_unified_command_post_world(l_session,l_lineage,l_generation,
             p_request,l_projectile_pack,l_retained_projectiles);
         else
-          l_delta:=doom_unified_command_post_world_passive(l_session,l_lineage,l_generation,
-            p_request,l_projectile_pack,l_world_pack,l_retained_projectiles);
+          l_delta:=doom_unified_command_post_world_retained(l_session,l_lineage,l_generation,
+            p_request,l_projectile_pack,l_retained_projectiles);
+          l_world_pack:=doom_unified_pending_world_pack(
+            l_session,l_lineage,l_generation,p_request);
+          if l_world_pack is null or utl_raw.length(l_world_pack)<12 then
+            raise_application_error(c_invalid,'retained passive world pack: '||
+              substr(doom_unified_actor_last_error,1,3000));end if;
+          l_world_draws:=to_number(rawtohex(utl_raw.substr(l_world_pack,11,2)),'XXXX');
         end if;
         l_post_world_us:=elapsed_us(l_stage);
         l_java_prepare_us:=l_java_prepare_us+l_post_world_us;
@@ -1004,6 +1007,7 @@ create or replace package body doom_unified_worker as
       end if;
       exit when l_stop=1;
     end loop;
+    begin doom_render_worker.request_stop(l_target);exception when others then null;end;
     update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
       target_session=null,target_lineage=null,state_map_sha=null,
       heartbeat=systimestamp where worker_slot=p_worker_slot;
@@ -1013,6 +1017,7 @@ create or replace package body doom_unified_worker as
     l_failure:=substr(sqlerrm||' '||dbms_utility.format_error_backtrace,1,4000);
     begin
       rollback;
+      begin doom_render_worker.request_stop(l_target);exception when others then null;end;
       update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
         target_session=null,target_lineage=null,state_map_sha=null,
         last_error=l_failure,heartbeat=systimestamp
@@ -1096,6 +1101,7 @@ create or replace package body doom_unified_worker as
     if sql%rowcount<>1 then
       raise_application_error(c_invalid,'worker session is not active');
     end if;
+    begin doom_render_worker.request_stop(p_session);exception when others then null;end;
     commit;
   end;
 
@@ -1103,6 +1109,8 @@ create or replace package body doom_unified_worker as
     pragma autonomous_transaction;
   begin
     update doom_worker_control set stop_requested=1 where ready=1;
+    update doom_render_worker_control set stop_requested=1
+      where target_session is not null;
     commit;
   end;
 end doom_unified_worker;

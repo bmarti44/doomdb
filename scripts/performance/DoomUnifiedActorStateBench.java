@@ -64,6 +64,8 @@ public final class DoomUnifiedActorStateBench {
   private static byte[] historyOutput=new byte[524288];
   private static int historyOutputLength;
   private static long lastHistoryEncodeNs,lastHistoryBlobNs,lastHistoryTotalNs;
+  private static final byte[] passiveWorldOutput=new byte[32767];
+  private static int pendingWorldStartRng,pendingWorldDraws;
 
   private DoomUnifiedActorStateBench() {}
 
@@ -79,7 +81,8 @@ public final class DoomUnifiedActorStateBench {
     int playerSound,ammoBullets,ammoShells,ammoRockets,ammoCells,weaponMask;
     int selectedWeapon,pendingWeapon,weaponState,weaponStateTics,flashState,flashStateTics,refire;
     NUMBER playerX,playerY,playerZ,playerEyeZ;
-    int[] sectorLight,sectorLightTimer;
+    int[] sectorLight,sectorLightTimer,sectorSpecial,sectorBaseLight,sectorMinLight;
+    int strobeBright,strobeDark;
     int[] id,thingType,stateIndex,stateTics,health,flags,target,sector,direction,awake,cooldown;
     int[] healthSeen,deathProcessed,behaviorIndex;
     int[] visibilityCache;
@@ -108,6 +111,8 @@ public final class DoomUnifiedActorStateBench {
       o.playerArmor=playerArmor;o.playerArmorType=playerArmorType;o.playerAlive=playerAlive;
       o.playerSector=playerSector;o.playerAngleIndex=playerAngleIndex;
       o.sectorLight=sectorLight.clone();o.sectorLightTimer=sectorLightTimer.clone();
+      o.sectorSpecial=sectorSpecial;o.sectorBaseLight=sectorBaseLight;o.sectorMinLight=sectorMinLight;
+      o.strobeBright=strobeBright;o.strobeDark=strobeDark;
       o.playerSound=playerSound;o.ammoBullets=ammoBullets;o.ammoShells=ammoShells;
       o.ammoRockets=ammoRockets;o.ammoCells=ammoCells;o.weaponMask=weaponMask;
       o.selectedWeapon=selectedWeapon;o.pendingWeapon=pendingWeapon;o.weaponState=weaponState;
@@ -581,13 +586,25 @@ public final class DoomUnifiedActorStateBench {
     o.weaponState=weaponState.intValue();o.flashState=flashState==null?-1:flashState.intValue();
     try(Statement s=c.createStatement();ResultSet r=s.executeQuery("select count(*) from doom_map_sector")){
       r.next();int sectors=r.getInt(1);o.sectorLight=new int[sectors];o.sectorLightTimer=new int[sectors];
+      o.sectorSpecial=new int[sectors];o.sectorBaseLight=new int[sectors];o.sectorMinLight=new int[sectors];
       Arrays.fill(o.sectorLightTimer,-1);}
-    try(PreparedStatement s=c.prepareStatement("select sector_id,light_level,coalesce(light_timer,-1) "+
-        "from sector_state where session_token=? order by sector_id")){s.setString(1,session);
+    try(PreparedStatement s=c.prepareStatement("select ss.sector_id,ss.light_level,coalesce(ss.light_timer,-1),"+
+        "ms.special,ms.light_level,rt.min_neighbor_light from sector_state ss join doom_map_sector ms "+
+        "on ms.sector_id=ss.sector_id join doom_sector_runtime_static rt on rt.sector_id=ss.sector_id "+
+        "where ss.session_token=? order by ss.sector_id")){s.setString(1,session);
       try(ResultSet r=s.executeQuery()){int count=0;while(r.next()){int id=r.getInt(1);
         require(id==count&&id<o.sectorLight.length,"unified sector runtime order");
-        o.sectorLight[id]=r.getInt(2);o.sectorLightTimer[id]=r.getInt(3);count++;}
+        o.sectorLight[id]=r.getInt(2);o.sectorLightTimer[id]=r.getInt(3);o.sectorSpecial[id]=r.getInt(4);
+        o.sectorBaseLight[id]=r.getInt(5);o.sectorMinLight[id]=r.getInt(6);count++;}
         require(count==o.sectorLight.length,"unified sector runtime rows");}}
+    try(Statement s=c.createStatement();ResultSet r=s.executeQuery(
+        "select max(case when config_key='WORLD_STROBE_BRIGHT' then number_value end),"+
+        "max(case when config_key='WORLD_STROBE_DARK' then number_value end) from doom_config "+
+        "where config_key in('WORLD_STROBE_BRIGHT','WORLD_STROBE_DARK')")){
+      r.next();o.strobeBright=r.getInt(1);boolean missingBright=r.wasNull();
+      o.strobeDark=r.getInt(2);boolean missingDark=r.wasNull();
+      require(!missingBright&&!missingDark&&o.strobeBright>0&&o.strobeDark>0,
+        "unified strobe configuration");}
     o.world=loadWorld(c,session,stateIndex);
     HashMap<Integer,Integer> behavior=new HashMap<Integer,Integer>();
     try(Statement s=c.createStatement();ResultSet r=s.executeQuery("select count(*) from doom_monster_def")){r.next();int n=r.getInt(1);
@@ -1405,6 +1422,42 @@ public final class DoomUnifiedActorStateBench {
     o.rng=(o.rng+draws)&255;return draws;
   }
 
+  private static int advancePassiveWorld(Owner o){
+    pendingWorldStartRng=o.rng;int draws=0;long effectTic=committed.tic+1;
+    for(int sector=0;sector<o.sectorLight.length;sector++){
+      int special=o.sectorSpecial[sector];
+      if(special==12){o.sectorLight[sector]=
+          ((effectTic-1)%(o.strobeBright+o.strobeDark))<o.strobeBright?
+          o.sectorBaseLight[sector]:o.sectorMinLight[sector];
+      }else if(special==1){int timer=(o.sectorLightTimer[sector]<0?1:o.sectorLightTimer[sector])-1;
+        if(timer<=0){int random=DoomSimCatalogBench.rng(o.rng);require(random>=0,"passive world RNG");
+          o.rng=(o.rng+1)&255;draws++;
+          if(o.sectorLight[sector]==o.sectorBaseLight[sector]){
+            timer=(random&7)+1;o.sectorLight[sector]=o.sectorMinLight[sector];
+          }else{timer=(random&64)+1;o.sectorLight[sector]=o.sectorBaseLight[sector];}}
+        o.sectorLightTimer[sector]=timer;}
+    }
+    pendingWorldDraws=draws;return draws;
+  }
+
+  public static byte[] pendingPassiveWorldPack(String s,String l,long g,String request){
+    try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
+        committed.generation==g&&request!=null&&request.equals(pendingRequest),"pending world pack fence");
+      int count=0,p=12;putInt(passiveWorldOutput,0,0x444d5750);passiveWorldOutput[4]=1;
+      passiveWorldOutput[5]=0;
+      for(int sector=0;sector<pending.sectorLight.length;sector++)
+        if(committed.sectorLight[sector]!=pending.sectorLight[sector]||
+           committed.sectorLightTimer[sector]!=pending.sectorLightTimer[sector]){
+          require(p+12<=passiveWorldOutput.length,"pending world pack capacity");
+          putInt(passiveWorldOutput,p,sector);putInt(passiveWorldOutput,p+4,pending.sectorLight[sector]);
+          putInt(passiveWorldOutput,p+8,pending.sectorLightTimer[sector]);p+=12;count++;}
+      passiveWorldOutput[6]=(byte)(count>>>8);passiveWorldOutput[7]=(byte)count;
+      passiveWorldOutput[8]=(byte)(pendingWorldStartRng>>>8);passiveWorldOutput[9]=(byte)pendingWorldStartRng;
+      passiveWorldOutput[10]=(byte)(pendingWorldDraws>>>8);passiveWorldOutput[11]=(byte)pendingWorldDraws;
+      lastError="";return Arrays.copyOf(passiveWorldOutput,p);
+    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return new byte[0];}
+  }
+
   /** Canonical split phase 1: validate DMSC and apply only player movement. */
   public static byte[] prepareCommandPreWorld(String s,String l,long g,String request,long tic,long seq,
       int rng,int nextMobj,int nextEvent,byte[] command){
@@ -1447,19 +1500,24 @@ public final class DoomUnifiedActorStateBench {
   /** Canonical split phase 2: world state is already synchronized; now run combat/actors. */
   public static byte[] finishCommandPostWorld(String s,String l,long g,String request,
       byte[] projectilePack,int retainedProjectiles){
-    return finishCommandPostWorldInternal(s,l,g,request,projectilePack,null,retainedProjectiles);
+    return finishCommandPostWorldInternal(s,l,g,request,projectilePack,null,retainedProjectiles,false);
   }
   /** Fast split completion when retained movement crossed no active/special world boundary. */
   public static byte[] finishCommandPostWorldPassive(String s,String l,long g,String request,
       byte[] projectilePack,byte[] worldPack,int retainedProjectiles){
-    return finishCommandPostWorldInternal(s,l,g,request,projectilePack,worldPack,retainedProjectiles);
+    return finishCommandPostWorldInternal(s,l,g,request,projectilePack,worldPack,retainedProjectiles,false);
+  }
+  public static byte[] finishCommandPostWorldRetained(String s,String l,long g,String request,
+      byte[] projectilePack,int retainedProjectiles){
+    return finishCommandPostWorldInternal(s,l,g,request,projectilePack,null,retainedProjectiles,true);
   }
   private static byte[] finishCommandPostWorldInternal(String s,String l,long g,String request,
-      byte[] projectilePack,byte[] worldPack,int retainedProjectiles){
+      byte[] projectilePack,byte[] worldPack,int retainedProjectiles,boolean retainedPassive){
     try{require(committed!=null&&pending!=null&&pendingCommand!=null&&committed.session.equals(s)&&
         committed.lineage.equals(l)&&committed.generation==g&&request.equals(pendingRequest)&&
         (retainedProjectiles==0||retainedProjectiles==1),"post-world command fence");Owner candidate=pending;
-      int commandDraws=worldPack==null?0:applyPassiveWorldPack(candidate,worldPack);
+      int commandDraws=retainedPassive?advancePassiveWorld(candidate):
+        worldPack==null?0:applyPassiveWorldPack(candidate,worldPack);
       boolean advanceProjectiles=retainedProjectiles==1||
         (projectilePack!=null&&applyProjectilePack(candidate,projectilePack));
       if(retainedProjectiles==1)require(ownerProjectilesEligible(candidate),"retained projectile eligibility");
