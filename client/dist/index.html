@@ -57,7 +57,7 @@
     <article class="panel">
       <h2>Current milestone</h2>
       <p class="big">30 FPS database gate<br><span>active play 49.8 / 38.4 FPS p50/p95</span></p>
-      <p class="muted">The strict-durable 300-frame worker passes at 20.065 / 26.008 ms with exact checkpoint, event-chain, and tic-330 SQL parity. Public AutoREST cutover, full controls, and browser timing remain open.</p>
+      <p class="muted">The strict-durable worker passes at 20.065 / 26.008 ms. A bounded AutoREST prototype reaches 30.35 displayed FPS at 32.135 / 33.083 ms paint-gap p50/p95; the unique-moving-frame gate and full controls remain open.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -69,9 +69,9 @@
 
   <section class="panel" aria-label="current route status">
     <h2>Live implementation status · July 16, 2026</h2>
-    <p><strong>Route:</strong> preserved behind the playability gate; public <code>DOOM_TIC_TX.APPLY_BATCH</code> only; lift 1 completed and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
+    <p><strong>Route:</strong> preserved behind the playability gate; eligible movement can use the retained worker while unsupported actions retain the SQL fallback. Lift 1 is complete and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted">Recent integration fixes now have focused regressions: finite-portal boundary enforcement, transactional MOBJ reference cleanup, save/load command-lineage isolation, and rising-floor actor carry. No noclip, teleport, direct simulation calls, or evaluator state mutation is accepted as route evidence.</p>
-    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived AQ/Scheduler workers. Packed projectile mutations, changed-actor deltas, bulk world DML, cached SecureFiles, strict BATCH WAIT commits, and 64-tic exact checkpoints bring active database work to 26.008 ms p95. The worker remains default-off; the public SQL route remains about 0.128 FPS until AutoREST cutover, full controls, and the ORDS/browser gate pass. One isolated 435 ms JIT pause remains recorded in the maximum.</p>
+    <p><strong>Performance:</strong> ORDS resets request-session OJVM state, so the fast path uses long-lived AQ/Scheduler workers. Four warm ORDS connections, a hard depth-four command window, 32 ms deadline scheduling, ordered decode, and a six-frame presentation buffer reach 30.35 cadence-only FPS. Input/decode latency is 70.417 / 169.555 ms p50/p95, and the fresh route produced only 112 unique frames, so this is not yet the final playability claim. Full controls and a 270-unique-frame run remain.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">

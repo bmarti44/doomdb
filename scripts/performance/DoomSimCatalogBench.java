@@ -15,8 +15,10 @@ import oracle.sql.NUMBER;
 public final class DoomSimCatalogBench {
   private static final int MAGIC = 0x44534350; // DSCP
   private static final int VERSION = 6;
+  private static final NUMBER ZERO=NUMBER.zero();
   private static boolean loaded;
   private static int[] nodeX, nodeY, nodeDx, nodeDy, child0, child1;
+  private static NUMBER[] nodeXExact,nodeYExact,nodeDxExact,nodeDyExact;
   private static byte[] child0Leaf, child1Leaf;
   private static int[] subsectorSector;
   static int[] lineId, lineFlags, lineLeftSector, lineRightSector;
@@ -315,11 +317,15 @@ public final class DoomSimCatalogBench {
     require(in.readInt() == MAGIC && in.readInt() == VERSION, "catalog header");
     int count = in.readInt();
     nodeX = new int[count]; nodeY = new int[count]; nodeDx = new int[count]; nodeDy = new int[count];
+    nodeXExact=new NUMBER[count];nodeYExact=new NUMBER[count];
+    nodeDxExact=new NUMBER[count];nodeDyExact=new NUMBER[count];
     child0Leaf = new byte[count]; child1Leaf = new byte[count];
     child0 = new int[count]; child1 = new int[count];
     for (int id = 0; id < count; id++) {
       nodeX[id] = in.readInt(); nodeY[id] = in.readInt();
+      nodeXExact[id]=new NUMBER((long)nodeX[id]);nodeYExact[id]=new NUMBER((long)nodeY[id]);
       nodeDx[id] = in.readInt(); nodeDy[id] = in.readInt();
+      nodeDxExact[id]=new NUMBER((long)nodeDx[id]);nodeDyExact[id]=new NUMBER((long)nodeDy[id]);
       child0Leaf[id] = (byte) in.readInt(); child0[id] = in.readInt();
       child1Leaf[id] = (byte) in.readInt(); child1[id] = in.readInt();
     }
@@ -437,6 +443,21 @@ public final class DoomSimCatalogBench {
       }
     } catch (Throwable error) {
       lastError = error.getClass().getName() + ":" + error.getMessage(); return -1;
+    }
+  }
+
+  static int locateSector(NUMBER x,NUMBER y)throws Exception{
+    require(loaded&&x!=null&&y!=null,"exact point");int node=nodeX.length-1;
+    while(true){int dx=nodeDx[node],dy=nodeDy[node],side;
+      if(dx==0)side=x.compareTo(nodeXExact[node])<=0?(dy>0?1:0):(dy<0?1:0);
+      else if(dy==0)side=y.compareTo(nodeYExact[node])<=0?(dx<0?1:0):(dx>0?1:0);
+      else side=x.sub(nodeXExact[node]).mul(nodeDyExact[node])
+          .sub(y.sub(nodeYExact[node]).mul(nodeDxExact[node])).compareTo(ZERO)>0?0:1;
+      boolean leaf=side==0?child0Leaf[node]!=0:child1Leaf[node]!=0;
+      int child=side==0?child0[node]:child1[node];
+      if(leaf){require(child>=0&&child<subsectorSector.length,"exact subsector");
+        return subsectorSector[child];}
+      require(child>=0&&child<nodeX.length,"exact node child");node=child;
     }
   }
 

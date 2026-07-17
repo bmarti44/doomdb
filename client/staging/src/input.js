@@ -4,10 +4,9 @@ const keyControls = {
     ControlLeft: 'fire', Space: 'use', Tab: 'automap', Escape: 'menu', KeyP: 'pause', KeyM: 'audio'
 };
 const held = new Set();
-let sequence = 0;
 function command() {
     return {
-        seq: ++sequence,
+        seq: 0,
         turn: Number(held.has('turn-right')) - Number(held.has('turn-left')),
         forward: Number(held.has('forward')) - Number(held.has('backward')),
         strafe: 0,

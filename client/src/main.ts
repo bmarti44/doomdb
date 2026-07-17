@@ -75,27 +75,46 @@ async function boot(): Promise<void> {
   state.setMode(frame.mode);
   await audio.consume(frame.audio);
 
-  let pending = Promise.resolve();
-  let staged: Command | null = null;
-  let timer = 0;
+  let latest: Command = {
+    seq: 0, turn: 0, forward: 0, strafe: 0, run: 0, fire: 0, use: 0,
+    weapon: 0, pause: 0, automap: 0, menu: 'NONE', cheat: ''
+  };
   let nextSequence = 0;
-  const flush = (): void => {
-    timer = 0;
-    const selected = staged;
-    staged = null;
-    if (selected === null) return;
-    const outgoing = {...selected, seq: ++nextSequence};
-    pending = pending.then(async () => {
-      frame = await decodePayload(await step(game.session, outgoing));
+  let nextPresentation = 1;
+  let inFlight = 0;
+  let presenting = false;
+  let presentationTimer = 0;
+  const framePeriodMs = 32;
+  const completed = new Map<number, typeof frame>();
+  const present = async (): Promise<void> => {
+    if (presenting) return;
+    const next = completed.get(nextPresentation);
+    if (next === undefined) return;
+    presenting = true;
+    completed.delete(nextPresentation);
+    nextPresentation += 1;
+    try {
+      frame = next;
       blit(canvas, applyPalette(frame.indices, palette));
       state.setMode(frame.mode);
       await audio.consume(frame.audio);
-    });
+    } finally { presenting = false; }
+  };
+  const startPresentation = (): void => {
+    if (presentationTimer !== 0 || completed.size < 6) return;
+    presentationTimer = window.setInterval(() => { void present(); }, framePeriodMs);
+  };
+  const tick = (): void => {
+    const sequence = ++nextSequence;
+    const outgoing = {...latest, seq: sequence};
+    inFlight += 1;
+    void step(game.session, outgoing)
+      .then(decodePayload)
+      .then(decoded => { completed.set(sequence, decoded); startPresentation(); })
+      .finally(() => { inFlight -= 1; });
   };
   const send = (command: Command): void => {
-    staged = command;
-    if (timer !== 0) window.clearTimeout(timer);
-    timer = window.setTimeout(flush, 10);
+    latest = command;
   };
   const gesture = (): void => {
     void audio.enable();
@@ -109,6 +128,17 @@ async function boot(): Promise<void> {
   document.addEventListener('visibilitychange', () => {
     state.visible = document.visibilityState === 'visible';
   });
+  let nextDispatch = performance.now() + framePeriodMs;
+  window.setInterval(() => {
+    const now = performance.now();
+    if (!state.visible || !state.focused) {
+      nextDispatch = now + framePeriodMs;
+      return;
+    }
+    if (now < nextDispatch || inFlight >= 4) return;
+    tick();
+    nextDispatch += framePeriodMs;
+  }, 4);
 }
 
 void boot().catch(cause => {

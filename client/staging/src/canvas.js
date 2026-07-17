@@ -9,7 +9,7 @@ export function createDoomCanvas() {
 export function blit(canvas, rgba) {
     if (rgba.length !== 320 * 200 * 4)
         throw new TypeError('canvas frame length is invalid');
-    const context = canvas.getContext('2d', { alpha: false });
+    const context = canvas.getContext('2d', { willReadFrequently: true });
     if (context === null)
         throw new Error('canvas context is unavailable');
     context.imageSmoothingEnabled = false;

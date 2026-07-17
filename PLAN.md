@@ -1688,6 +1688,43 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   OJVM JIT pause remains in max latency. This passes the database p95 gate only:
   default-off public cutover, full action controls, and fixed AutoREST/browser
   p50/p95 remain mandatory before P12.0 completes.
+- Public AutoREST integration checkpoint (2026-07-16): `DOOM_API.STEP` now
+  selects the retained worker for one dynamic DMSC/v2 movement command and
+  preserves the complete SQL path for unsupported actions/batches. Deterministic
+  request IDs make lost-response retries immutable across an advanced frontier.
+  Repeated `CLAIM` had leaked the ready worker-control row lock, making the
+  resident worker wait 10--30 seconds despite only 23 ms of measured work; the
+  ready path now commits before returning and its regression passes at 45.082 ms
+  for a reconstructed worker. A reused-connection 20-frame HTTP run measures
+  58.699/83.536 ms p50/p95 while its database requests measure 20.323/25.109 ms.
+  Moving worker selection ahead of the legacy SQL canonicalization reduces the
+  active 20-frame HTTP path to 47.919/52.925 ms and reduces an
+  immutable full-frame AutoREST replay to 23.109/39.131 ms over 100 requests;
+  the scalar AutoREST floor is 19.521/25.316 ms. The remaining public gate is
+  therefore transport scheduling/serialization plus fire/use/weapon parity, not
+  an unidentified renderer slice. Bound the next experiments to ORDS pool
+  configuration, a one-frame asynchronous throughput pipeline, and a smaller
+  retained response/delta codec; separately report corresponding-input latency
+  and displayed-frame throughput. Alternate non-AutoREST transports remain out
+  of scope.
+- AutoREST pipeline experiment (2026-07-16): the fixed pool is now four warm
+  connections and the client uses a hard depth-four command window, a 32 ms
+  deadline scheduler, ordered decode, and a six-frame server-frame presentation
+  buffer. The best 300-frame cadence-only run reached 30.350 displayed FPS with
+  32.135/33.083 ms paint-gap p50/p95 and 70.417/169.555 ms input-to-decode
+  latency. A fresh-session run reached 31.039 FPS and 32.197/33.103 ms gaps but
+  only 112 unique frame hashes; a more active command pattern produced 113
+  unique frames and missed cadence at 28.921 FPS. Therefore this is feasibility
+  evidence, not the final public gate: the fixed replay must produce at least
+  270 unique moving frames while preserving the cadence result, and full
+  fire/use/weapon parity remains open. Depth two (22.666 FPS) and depth three
+  (28.099 FPS) were measured and rejected for this local two-core stack.
+- Exact movement boundary correction (2026-07-16): a long pipelined run reached
+  `x=-192`, where double BSP traversal selected sector 141 but Oracle NUMBER
+  tie semantics selected sector 99. The worker rolled the tic back. Final
+  movement location now uses the exact NUMBER BSP cross product after the
+  established portal traversal; the failing command commits and all 270 SQL/
+  Java movement parity cases pass.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior

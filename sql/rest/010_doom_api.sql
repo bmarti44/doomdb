@@ -132,6 +132,161 @@ create or replace package body doom_api as
     dbms_lob.copy(p_target,p_source,dbms_lob.getlength(p_source));
   end;
 
+  function config_number(p_key varchar2,p_default number) return number is
+    l_value number;
+  begin
+    select number_value into l_value from doom_config where config_key=p_key;
+    return l_value;
+  exception when no_data_found then return p_default;
+  end;
+
+  function byte_hex(p_value number) return varchar2 is
+  begin
+    if p_value not in(-1,0,1) then fail(c_bad_request,'invalid movement command');end if;
+    return case p_value when -1 then 'FF' when 0 then '00' else '01' end;
+  end;
+
+  function u64_hex(p_value number) return varchar2 is
+  begin
+    if p_value is null or p_value<>trunc(p_value) or
+       p_value not between 0 and 999999999999 then
+      fail(c_bad_request,'invalid command sequence');
+    end if;
+    return lpad(to_char(floor(p_value/4294967296),'fmxxxxxxxx'),8,'0')||
+      lpad(to_char(mod(p_value,4294967296),'fmxxxxxxxx'),8,'0');
+  end;
+
+  -- Select the retained worker only for the DMSC/v2 surface it currently owns.
+  -- Unsupported controls deliberately fall through to the complete SQL oracle.
+  procedure worker_step(
+    p_session in varchar2,p_commands in clob,p_used out number,p_payload out blob
+  ) is
+    l_count number;l_seq number;l_turn number;l_forward number;l_strafe number;
+    l_run number;l_fire number;l_use number;l_weapon number;l_pause number;
+    l_automap number;l_menu varchar2(32);l_cheat varchar2(4000);
+    l_lineage varchar2(64);l_tic number;l_expected_seq number;
+    l_deadline timestamp with time zone;
+    l_generation number;l_ready number;l_map_sha varchar2(64);l_error varchar2(4000);
+    l_request varchar2(32);l_command raw(24);l_status varchar2(16);
+    l_response_generation number;l_committed_tic number;l_committed_seq number;
+    l_delta_version number;l_delta_count number;l_delta_sha varchar2(64);
+    l_state_sha varchar2(64);l_frame_sha varchar2(64);l_response_bytes number;
+    l_response_sha varchar2(64);l_delta blob;l_worker_payload blob;
+  begin
+    p_used:=0;p_payload:=null;
+    if config_number('UNIFIED_WORKER_ENABLED',0)<>1 then return;end if;
+    begin
+      select count(*),min(seq),min(turn),min(forward_move),min(strafe),min(run),
+        min(fire),min(use_action),min(weapon),min(pause_toggle),min(automap_toggle),
+        min(menu_action),min(cheat_json)
+        into l_count,l_seq,l_turn,l_forward,l_strafe,l_run,l_fire,l_use,l_weapon,
+          l_pause,l_automap,l_menu,l_cheat
+        from json_table(p_commands,'$.commands[*]' columns(
+          seq number path '$.seq' error on error,
+          turn number path '$.turn' error on error,
+          forward_move number path '$.forward' error on error,
+          strafe number path '$.strafe' error on error,
+          run number path '$.run' error on error,
+          fire number path '$.fire' error on error,
+          use_action number path '$.use' error on error,
+          weapon number path '$.weapon' error on error,
+          pause_toggle number path '$.pause' error on error,
+          automap_toggle number path '$.automap' error on error,
+          menu_action varchar2(32) path '$.menu' error on error,
+          cheat_json varchar2(4000) path '$.cheat' error on error));
+    exception when others then return;
+    end;
+    if l_count<>1 or l_seq is null or l_turn is null or l_forward is null or
+       l_strafe is null or l_run is null or
+       l_turn not in(-1,0,1) or l_forward not in(-1,0,1) or
+       l_strafe not in(-1,0,1) or l_run not in(0,1) or
+       coalesce(l_fire,0)<>0 or coalesce(l_use,0)<>0 or coalesce(l_weapon,0)<>0 or
+       coalesce(l_pause,0)<>0 or coalesce(l_automap,0)<>0 or
+       coalesce(l_menu,'NONE')<>'NONE' or l_cheat is not null then return;end if;
+
+    select save_lineage,current_tic,last_command_seq
+      into l_lineage,l_tic,l_expected_seq from game_sessions
+      where session_token=p_session;
+    l_command:=hextoraw('444D534302010000'||u64_hex(l_seq)||byte_hex(l_turn)||
+      byte_hex(l_forward)||byte_hex(l_strafe)||
+      case l_run when 0 then '00' else '01' end||'00000000');
+    -- A network retry can arrive after the durable frontier advanced. Return
+    -- the immutable committed response without needing the old worker generation.
+    begin
+      select r.response_blob into l_worker_payload
+        from doom_worker_request q join doom_worker_result r
+          on r.request_id=q.request_id
+        where q.session_token=p_session and q.save_lineage=l_lineage
+          and q.command_pack=l_command
+          and q.request_status='COMMITTED';
+      copy_blob(l_worker_payload,p_payload);p_used:=1;return;
+    exception when no_data_found then null;end;
+    if l_seq between l_expected_seq+2 and l_expected_seq+5 then
+      -- The browser permits four ordered HTTP calls in flight. Earlier
+      -- database tics normally commit while ORDS is still serializing their
+      -- responses; wait only for those bounded predecessors.
+      l_deadline:=systimestamp+numtodsinterval(1,'SECOND');
+      loop
+        select current_tic,last_command_seq into l_tic,l_expected_seq
+          from game_sessions where session_token=p_session;
+        exit when l_seq=l_expected_seq+1;
+        if l_seq<=l_expected_seq or systimestamp>=l_deadline then
+          raise_application_error(c_capacity,'pipelined command frontier timeout');
+        end if;
+        dbms_session.sleep(.005);
+      end loop;
+    end if;
+    if l_seq<>l_expected_seq+1 then return;end if;
+
+    doom_worker_api.claim(p_session,l_generation,l_ready,l_map_sha,l_error);
+    if l_ready<>1 or l_error is not null then
+      raise_application_error(c_capacity,coalesce(l_error,'worker is not ready'));
+    end if;
+    l_request:=lower(substr(rawtohex(dbms_crypto.hash(
+      utl_i18n.string_to_raw(p_session||'|'||l_lineage||'|'||
+        to_char(l_generation,'TM9')||'|'||rawtohex(l_command),'AL32UTF8'),
+        dbms_crypto.hash_sh256)),1,32));
+    for l_attempt in 1..3 loop
+      doom_worker_api.step(p_session,l_lineage,l_generation,l_request,l_tic,
+        l_expected_seq,2,1,l_command,
+        config_number('UNIFIED_WORKER_WAIT_SECONDS',10),l_status,
+        l_response_generation,l_committed_tic,l_committed_seq,l_delta_version,
+        l_delta_count,l_delta_sha,l_state_sha,l_frame_sha,l_response_bytes,
+        l_response_sha,l_delta,l_worker_payload,l_error);
+      exit when l_status in('COMMITTED','ROLLED_BACK','FAILED');
+    end loop;
+    if l_status<>'COMMITTED' or l_error is not null or
+       l_response_generation<>l_generation or l_committed_tic<>l_tic+1 or
+       l_committed_seq<>l_seq or l_worker_payload is null then
+      raise_application_error(c_bad_request,'worker step failed: '||
+        coalesce(l_error,l_status));
+    end if;
+    copy_blob(l_worker_payload,p_payload);p_used:=1;
+  end;
+
+  procedure stop_worker_for_sql_fallback(p_session varchar2) is
+    l_active number;l_deadline timestamp with time zone;
+  begin
+    if config_number('UNIFIED_WORKER_ENABLED',0)<>1 then return;end if;
+    begin
+      doom_unified_worker.request_stop(p_session);
+    exception when others then
+      if sqlcode<>-20721 then raise;end if;
+      return;
+    end;
+    l_deadline:=systimestamp+numtodsinterval(
+      config_number('UNIFIED_WORKER_WAIT_SECONDS',10),'SECOND');
+    loop
+      select count(*) into l_active from doom_worker_control
+        where target_session=p_session and ready=1;
+      exit when l_active=0;
+      if systimestamp>=l_deadline then
+        raise_application_error(c_capacity,'worker stop timeout for SQL fallback');
+      end if;
+      dbms_session.sleep(.05);
+    end loop;
+  end;
+
   procedure render_payload(
     p_session varchar2,
     p_state_sha varchar2,
@@ -462,9 +617,14 @@ create or replace package body doom_api as
     l_first number;l_last number;l_sha varchar2(64);l_cached blob;
     l_canonical clob;
     l_internal blob;l_state_sha varchar2(64);
-    l_response_text clob;
+    l_response_text clob;l_worker_used number;
   begin
     p_payload:=null;require_session(p_session);
+    worker_step(p_session,p_commands,l_worker_used,p_payload);
+    if l_worker_used=1 then return;end if;
+    -- SQL may accept controls that are not yet retained. Stop the current owner
+    -- first so the next eligible command reconstructs from the new SQL frontier.
+    stop_worker_for_sql_fallback(p_session);
     begin
       select min(seq) keep(dense_rank first order by ord),
         max(seq) keep(dense_rank last order by ord)

@@ -219,7 +219,7 @@ public final class DoomPlayerMovementBench {
       NUMBER deltaX = DoomSimCatalogBench.movementX(angleIndex, forward, strafe, run);
       NUMBER deltaY = DoomSimCatalogBench.movementY(angleIndex, forward, strafe, run);
       require(deltaX != null && deltaY != null, DoomSimCatalogBench.lastError());
-      long portal=traceEnabled?System.nanoTime():0;int startSector = DoomSimCatalogBench.locateSector(startX.doubleValue(), startY.doubleValue());
+      long portal=traceEnabled?System.nanoTime():0;int startSector = DoomSimCatalogBench.locateSector(startX.doubleValue(),startY.doubleValue());
       if(traceEnabled)tracePortalNs+=System.nanoTime()-portal;
       require(startSector >= 0, DoomSimCatalogBench.lastError());
       NUMBER x = startX, y = startY, remainingX = deltaX, remainingY = deltaY;
@@ -244,13 +244,19 @@ public final class DoomPlayerMovementBench {
       } else {
         x = x.add(remainingX); y = y.add(remainingY);
       }
-      portal=traceEnabled?System.nanoTime():0;int sector = DoomSimCatalogBench.locateSector(x.doubleValue(), y.doubleValue());
-      require(sector >= 0, DoomSimCatalogBench.lastError());
+      portal=traceEnabled?System.nanoTime():0;int transitionSector =
+          DoomSimCatalogBench.locateSector(x.doubleValue(),y.doubleValue());
+      require(transitionSector >= 0, DoomSimCatalogBench.lastError());
       if (!portalTransition(startX.doubleValue(), startY.doubleValue(), startZ.doubleValue(),
-          x.doubleValue(), y.doubleValue(), startSector, sector)) {
-        x = startX; y = startY; sector = startSector;
+          x.doubleValue(), y.doubleValue(), startSector, transitionSector)) {
+        x = startX; y = startY;
         firstLine = -1; secondLine = -1; firstT = null; secondT = null;
       }
+      // The durable SQL contract uses exact NUMBER BSP tie rules. Keep the
+      // established double portal traversal, then canonicalize the final
+      // boundary point before encoding the command delta.
+      int sector=DoomSimCatalogBench.locateSector(x,y);
+      require(sector>=0,DoomSimCatalogBench.lastError());
       if(traceEnabled)tracePortalNs+=System.nanoTime()-portal;
       NUMBER z = new NUMBER((long) DoomSimCatalogBench.baseFloor[sector]);
       resultX = x; resultY = y; resultZ = z; resultSector = sector;

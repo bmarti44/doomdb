@@ -5,8 +5,9 @@ export class PresentationState {
     focused = document.hasFocus();
     visible = document.visibilityState === 'visible';
     setMode(value) {
-        if (value === 'GAME' || value === 'MENU' || value === 'AUTOMAP' || value === 'INTERMISSION') {
-            this.mode = value;
+        const normalized = value.toUpperCase();
+        if (normalized === 'GAME' || normalized === 'MENU' || normalized === 'AUTOMAP' || normalized === 'INTERMISSION') {
+            this.mode = normalized;
         }
     }
 }

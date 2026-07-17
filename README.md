@@ -53,11 +53,13 @@ rendering, compression, response storage, commit, and AQ correlation. One
 isolated 435 ms OJVM JIT pause remains visible in the maximum and is not hidden
 by the p95 claim.
 
-The public `DOOM_API.STEP` route still uses the complete SQL renderer at about
-0.128 FPS. The faster worker remains default-off until it is cut over behind the
-same AutoREST contract and measured through ORDS, wire transfer, browser decode,
-and blit. Full fire/use/weapon controls also remain to be connected, so the
-public game is not yet generally playable despite the database gate passing.
+The public `DOOM_API.STEP` contract now selects the worker for eligible
+single-command movement when its rollout flag is enabled; batches and
+fire/use/weapon/UI actions still fall back to the complete SQL oracle. A reused
+HTTP connection currently measures 47.919/52.925 ms p50/p95 for active frames,
+versus 20.323/25.109 ms inside the database. Full controls and the fixed
+ORDS/browser gate remain open, so the public game is not yet generally playable
+despite the database gate passing.
 
 The worker passes live commit, idempotent replay, rollback/discard, post-commit
 reconstruction, restart fencing, and two-session isolation. SecureFile tracing
@@ -195,11 +197,13 @@ BLOB handoff is 0.063 ms p95 and the full renderer+codec+BLOB total is
 ## Is it playable yet?
 
 The database worker is now fast enough at p95, but the public game is not yet
-generally playable. AutoREST still points at the slow SQL reference path, and
-the retained command envelope currently exposes movement rather than the full
-fire/use/weapon input surface. The next integration slice is public cutover plus
-the fixed ORDS/browser 300-frame measurement; SQL remains independently
-executable as the differential oracle.
+generally playable. Eligible movement now uses the retained worker through the
+same AutoREST endpoint, with bounded ordered client pipelining. The best
+cadence-only 300-frame prototype reaches 30.35 FPS with 32.135/33.083 ms
+paint-gap p50/p95, but corresponding input/decode latency is
+70.417/169.555 ms and the fresh route has not yet produced 270 unique moving
+frames. Fire/use/weapon actions still use the slow SQL fallback. SQL remains
+independently executable as the differential oracle.
 
 The selected warm worker no longer serializes and immediately reparses its own
 state. A request-fenced, rollback-capable world diff moves pending player and

@@ -1,5 +1,5 @@
--- Production retained-worker coordinator.  The feature stays default-off
--- behind UNIFIED_WORKER_ENABLED; DOOM_API.STEP is intentionally unchanged.
+-- Production retained-worker coordinator. The feature stays default-off
+-- behind UNIFIED_WORKER_ENABLED; DOOM_API.STEP owns the guarded public selector.
 
 create or replace package doom_unified_worker authid definer as
   procedure run_slot(p_worker_slot in number);
@@ -678,7 +678,21 @@ create or replace package body doom_unified_worker as
     begin
       select worker_slot,ready into l_slot,l_running from doom_worker_control
         where target_session=p_session for update;
-      if l_running=1 then return;end if;
+      -- CLAIM is called by every public STEP. Release the ownership-row lock
+      -- before returning or the resident worker blocks on the same control row.
+      if l_running=1 then
+        select count(*) into l_running from user_scheduler_running_jobs
+          where job_name='DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00');
+        if l_running=1 then commit;return;end if;
+        -- Package/job replacement can terminate a Scheduler session before its
+        -- exception cleanup runs. Fence and restart that stale READY owner.
+        update doom_worker_request set request_status='FAILED',
+          error_text='stale worker generation',completed_at=systimestamp
+          where worker_slot=l_slot and request_status in('QUEUED','PROCESSING');
+        update doom_worker_control set ready=0,worker_sid=null,
+          last_error='stale ready worker restarted',heartbeat=systimestamp
+          where worker_slot=l_slot;
+      end if;
     exception when no_data_found then
       l_slot:=null;
       for candidate in (

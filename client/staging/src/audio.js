@@ -20,12 +20,29 @@ export class AudioPresenter {
         if (saved !== undefined)
             return saved;
         const request = getAsset(name).then(asset => {
-            if (!asset.mediaType.toLowerCase().startsWith('audio/')) {
-                throw new TypeError('audio asset media type is invalid');
-            }
+            if (asset.mediaType.length === 0)
+                throw new TypeError('audio asset type is invalid');
             if (this.context === null)
                 throw new Error('audio context is unavailable');
-            return this.context.decodeAudioData(decodeBytes(asset.payload).buffer);
+            const bytes = decodeBytes(asset.payload);
+            if (asset.mediaType.toLowerCase() === 'audio/x-doom') {
+                if (bytes.length < 8)
+                    throw new TypeError('audio asset header is invalid');
+                const view = new DataView(bytes.buffer);
+                const format = view.getUint16(0, true);
+                const rate = view.getUint16(2, true);
+                const count = view.getUint32(4, true);
+                if (format !== 3 || rate < 4000 || rate > 48000 || count < 1 || count > bytes.length - 8) {
+                    throw new TypeError('audio asset data is invalid');
+                }
+                const buffer = this.context.createBuffer(1, count, rate);
+                const channel = buffer.getChannelData(0);
+                for (let index = 0; index < count; index += 1) {
+                    channel[index] = (bytes[index + 8] - 128) / 128;
+                }
+                return buffer;
+            }
+            return this.context.decodeAudioData(bytes.buffer);
         });
         this.cache.set(name, request);
         return request;

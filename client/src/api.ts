@@ -19,7 +19,7 @@ const ROOT = '/ords/doom/doom_api/';
 let uppercaseProcedures = false;
 
 async function post(path: string, body: RestDocument): Promise<RestDocument> {
-  const request = () => fetch(`${ROOT}${uppercaseProcedures ? path.toUpperCase() : path}/`, {
+  const request = () => fetch(`${ROOT}${uppercaseProcedures ? path.toUpperCase() : path}`, {
     method: 'POST',
     headers: {'content-type': 'application/json'},
     body: JSON.stringify(body)
