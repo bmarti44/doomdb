@@ -122,6 +122,16 @@ create or replace function doom_retained_render_pack(
 return varchar2 as language java name
   'DoomRetainedRenderSceneBench.stageOwnerPack(java.lang.String,long,java.lang.String,byte[],java.lang.String,java.sql.Blob) return java.lang.String';
 /
+create or replace function doom_retained_render_accept(
+  p_session in varchar2,p_generation in number,p_request in varchar2)
+return varchar2 as language java name
+  'DoomRetainedRenderSceneBench.acceptOwnerTic(java.lang.String,long,java.lang.String) return java.lang.String';
+/
+create or replace function doom_retained_render_discard(
+  p_session in varchar2,p_generation in number,p_request in varchar2)
+return varchar2 as language java name
+  'DoomRetainedRenderSceneBench.discardOwnerTic(java.lang.String,long,java.lang.String) return java.lang.String';
+/
 create or replace function doom_unified_actor_benchmark(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,p_mode in varchar2,
   p_tic in number,p_command_seq in number,p_rng in number,p_next_mobj in number,

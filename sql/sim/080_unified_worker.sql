@@ -274,7 +274,9 @@ create or replace package body doom_unified_worker as
     l_player_sector number;l_player_x number;l_player_y number;l_previous_x number;l_previous_y number;
     l_current_x number;l_current_y number;l_current_sector number;l_full_world number:=0;
     l_world_hybrid number:=0;
-    l_state_payload blob;l_render_payload blob;l_history_payload blob;
+    l_state_payload blob;l_render_payload blob;l_overlap_payload blob;l_history_payload blob;
+    l_render_pack raw(32767);l_overlap number:=0;l_render_staged number:=0;
+    l_render_status varchar2(24);l_render_error varchar2(4000);
     l_committed_tic number;l_committed_seq number;l_delta_version number;
     l_delta_count number;l_delta_sha varchar2(64);l_state_sha varchar2(64);
     l_frame_sha varchar2(4000);l_response_sha varchar2(64);
@@ -516,6 +518,9 @@ create or replace package body doom_unified_worker as
       l_prepared:=1;
       l_prepare_us:=elapsed_us(l_prepare_stage);
       l_failpoint:=config_number('UNIFIED_WORKER_FAILPOINT');
+      l_overlap:=config_number('RENDER_OVERLAP_ENABLED');
+      if l_overlap not in(0,1) then
+        raise_application_error(c_invalid,'invalid render overlap selector');end if;
       l_history_interval:=config_number('HISTORY_SNAPSHOT_INTERVAL');
       l_parity_interval:=config_number('UNIFIED_WORKER_PARITY_INTERVAL');
       if l_history_interval<>trunc(l_history_interval) or l_history_interval<1 then
@@ -594,15 +599,35 @@ create or replace package body doom_unified_worker as
       l_state_us:=elapsed_us(l_stage);
       l_stage:=systimestamp;
       dbms_application_info.set_action('DOOM_RENDER');
-      dbms_lob.createtemporary(l_render_payload,true,dbms_lob.call);
-      if l_full_world=1 then
-        l_frame_sha:=doom_unified_render_pending_world(l_session,l_lineage,l_generation,
-          p_request,l_world_pack,l_state_sha,l_render_payload);
+      if l_overlap=1 then
+        l_render_pack:=doom_unified_render_pack(l_session,l_lineage,l_generation,
+          p_request,case when l_full_world=1 then l_world_pack end);
+        if l_render_pack is null or utl_raw.length(l_render_pack)<1 or
+           utl_raw.length(l_render_pack)>32671 then
+          raise_application_error(c_invalid,'bounded render pack: '||
+            substr(doom_unified_actor_last_error,1,3000));end if;
+        doom_render_worker.enqueue_stage(p_slot,p_request,l_state_sha,l_render_pack);
+        doom_render_worker.await_stage(p_request,config_number('RENDER_OVERLAP_WAIT_MS'),
+          l_render_status,l_frame_sha,l_response_bytes,l_response_sha,
+          l_overlap_payload,l_render_error);
+        if l_render_status<>'STAGED' then
+          raise_application_error(c_invalid,'render stage '||l_render_status||': '||
+            substr(l_render_error,1,3000));end if;
+        l_render_staged:=1;
+        select render_us,render_kernel_us,codec_us into
+          l_render_call_us,l_render_kernel_us,l_codec_us
+          from doom_render_stage where request_id=p_request;
       else
-        l_frame_sha:=doom_unified_render_pending(l_session,l_lineage,l_generation,
-          p_request,l_state_sha,l_render_payload);
+        dbms_lob.createtemporary(l_render_payload,true,dbms_lob.call);
+        if l_full_world=1 then
+          l_frame_sha:=doom_unified_render_pending_world(l_session,l_lineage,l_generation,
+            p_request,l_world_pack,l_state_sha,l_render_payload);
+        else
+          l_frame_sha:=doom_unified_render_pending(l_session,l_lineage,l_generation,
+            p_request,l_state_sha,l_render_payload);
+        end if;
+        l_render_call_us:=elapsed_us(l_stage);
       end if;
-      l_render_call_us:=elapsed_us(l_stage);
       if not regexp_like(l_frame_sha,'^[0-9a-f]{64}$') then
         raise_application_error(c_invalid,'direct pending renderer: '||
           substr(l_frame_sha,1,3000));
@@ -613,8 +638,13 @@ create or replace package body doom_unified_worker as
       l_stage:=systimestamp;
       dbms_application_info.set_action('DOOM_RESPONSE_COPY');
       dbms_lob.trim(l_response_locator,0);
-      dbms_lob.copy(l_response_locator,l_render_payload,
-        dbms_lob.getlength(l_render_payload),1,1);
+      if l_overlap=1 then
+        dbms_lob.copy(l_response_locator,l_overlap_payload,
+          dbms_lob.getlength(l_overlap_payload),1,1);
+      else
+        dbms_lob.copy(l_response_locator,l_render_payload,
+          dbms_lob.getlength(l_render_payload),1,1);
+      end if;
       free_temp(l_render_payload);
       l_response_copy_us:=elapsed_us(l_stage);
       l_response_bytes:=dbms_lob.getlength(l_response_locator);
@@ -626,20 +656,25 @@ create or replace package body doom_unified_worker as
         l_response_locator,dbms_crypto.hash_sh256)));
       l_response_hash_us:=elapsed_us(l_stage);
       l_render_us:=l_render_call_us+l_response_copy_us+l_response_hash_us;
-      l_render_update_us:=round(doom_retained_render_last_update_ns/1000);
-      l_render_kernel_us:=round(doom_bsp_last_render_ns/1000);
-      l_render_cardinality:=doom_bsp_last_cardinality;
-      l_bsp_us:=round(doom_bsp_last_bsp_ns/1000);
-      l_solid_us:=round(doom_bsp_last_solid_ns/1000);
-      l_portal_us:=round(doom_bsp_last_portal_ns/1000);
-      l_portal_reset_us:=round(doom_bsp_last_portal_reset_ns/1000);
-      l_portal_sort_us:=round(doom_bsp_last_portal_sort_ns/1000);
-      l_portal_walk_us:=round(doom_bsp_last_portal_walk_ns/1000);
-      l_plane_us:=round(doom_bsp_last_plane_ns/1000);
-      l_sprite_us:=round(doom_bsp_last_sprite_ns/1000);
-      l_presentation_us:=round(doom_bsp_last_presentation_ns/1000);
-      l_codec_us:=round(doom_bsp_last_codec_ns/1000);
-      l_blob_us:=round(doom_bsp_last_blob_ns/1000);
+      if l_overlap=0 then
+        l_render_update_us:=round(doom_retained_render_last_update_ns/1000);
+        l_render_kernel_us:=round(doom_bsp_last_render_ns/1000);
+        l_render_cardinality:=doom_bsp_last_cardinality;
+        l_bsp_us:=round(doom_bsp_last_bsp_ns/1000);
+        l_solid_us:=round(doom_bsp_last_solid_ns/1000);
+        l_portal_us:=round(doom_bsp_last_portal_ns/1000);
+        l_portal_reset_us:=round(doom_bsp_last_portal_reset_ns/1000);
+        l_portal_sort_us:=round(doom_bsp_last_portal_sort_ns/1000);
+        l_portal_walk_us:=round(doom_bsp_last_portal_walk_ns/1000);
+        l_plane_us:=round(doom_bsp_last_plane_ns/1000);
+        l_sprite_us:=round(doom_bsp_last_sprite_ns/1000);
+        l_presentation_us:=round(doom_bsp_last_presentation_ns/1000);
+        l_codec_us:=round(doom_bsp_last_codec_ns/1000);
+        l_blob_us:=round(doom_bsp_last_blob_ns/1000);
+      end if;
+      if l_failpoint=5 then
+        raise_application_error(c_invalid,'injected post-render worker failure');
+      end if;
 
       l_finalize_stage:=systimestamp;
       doom_command_ledger.finalize_command(l_session,l_lineage,l_result_seq,
@@ -740,6 +775,10 @@ create or replace package body doom_unified_worker as
       l_error:=substr(sqlerrm||' '||dbms_utility.format_error_backtrace,1,4000);
       if l_committed=0 then
         rollback;
+        if l_render_staged=1 then
+          begin doom_render_worker.decide(p_request,'DISCARD');
+          exception when others then null;end;
+        end if;
         if l_prepared=1 and l_failpoint=4 then
           l_result:='ERR|injected discard failure';
         elsif l_prepared=1 then
@@ -765,6 +804,7 @@ create or replace package body doom_unified_worker as
     end;
 
     begin
+      if l_render_staged=1 then doom_render_worker.decide(p_request,'ACCEPT');end if;
       if l_failpoint=2 then
         l_result:='ERR|injected post-commit accept failure';
       else
@@ -1000,9 +1040,11 @@ create or replace package body doom_unified_worker as
       stop_requested=0,last_error=null where worker_slot=l_slot;
     commit;
     begin
+      doom_render_worker.start_worker(l_slot,p_session,l_lineage,l_map_sha);
       dbms_scheduler.run_job(
         'DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00'),false);
     exception when others then
+      begin doom_render_worker.request_stop(p_session);exception when others then null;end;
       update doom_worker_control set target_session=null,target_lineage=null,
         state_map_sha=null where worker_slot=l_slot and ready=0
         and target_session=p_session;

@@ -18,6 +18,9 @@ using (
   select 'UNIFIED_WORKER_FAILPOINT', 0, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_PARITY_INTERVAL', 0, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_SPLIT_USE_ENABLED', 0, cast(null as varchar2(4000)) from dual union all
+  select 'RENDER_OVERLAP_ENABLED', 0, cast(null as varchar2(4000)) from dual union all
+  select 'RENDER_OVERLAP_WAIT_MS', 100, cast(null as varchar2(4000)) from dual union all
+  select 'RENDER_OVERLAP_DECISION_MS', 2000, cast(null as varchar2(4000)) from dual union all
   select 'MAP_NAME', cast(null as number), 'E1M1' from dual union all
   select 'WAD_SHA256', cast(null as number), '7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d' from dual
 ) s

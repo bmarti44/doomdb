@@ -13,7 +13,14 @@ begin
       dbms_scheduler.drop_job(
         'DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00'),true);
     exception when others then null;end;
+    begin
+      dbms_scheduler.drop_job(
+        'DOOM_RENDER_WORKER_'||to_char(l_slot,'FM00'),true);
+    exception when others then null;end;
   end loop;
+  begin dbms_aqadm.stop_queue('DOOM_RENDER_TASK_Q'); exception when others then null; end;
+  begin dbms_aqadm.drop_queue('DOOM_RENDER_TASK_Q'); exception when others then null; end;
+  begin dbms_aqadm.drop_queue_table('DOOM_RENDER_TASK_QT',true); exception when others then null; end;
   begin dbms_aqadm.stop_queue('DOOM_UNIFIED_REQUEST_Q'); exception when others then null; end;
   begin dbms_aqadm.stop_queue('DOOM_UNIFIED_RESPONSE_Q'); exception when others then null; end;
   begin dbms_aqadm.drop_queue('DOOM_UNIFIED_REQUEST_Q'); exception when others then null; end;
@@ -23,6 +30,7 @@ begin
   drop_object('drop property graph doom_sector_graph', -42421);
   drop_object('drop package doom_worker_api', -4043);
   drop_object('drop package doom_unified_worker', -4043);
+  drop_object('drop package doom_render_worker', -4043);
   drop_object('drop package doom_unified_delta_apply', -4043);
   drop_object('drop function doom_unified_recover_sql_renderer', -4043);
   drop_object('drop function doom_unified_actor_prepare', -4043);

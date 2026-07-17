@@ -210,13 +210,13 @@ begin
 
   -- Fail after Java prepare and after strict relational apply.  Both must roll
   -- SQL back and discard renderer/simulation pending state.
-  for failpoint_ in 1..4 loop
+  for failpoint_ in 1..5 loop
     if failpoint_=2 then continue;end if;
     update doom_config set number_value=failpoint_
       where config_key='UNIFIED_WORKER_FAILPOINT';
     commit;
     invoke_(case failpoint_ when 1 then request_(2)
-      when 3 then request_(3) else request_(8) end,
+      when 3 then request_(3) when 4 then request_(8) else request_(9) end,
       generation_,tic_,seq_,command_(seq_+1));
     assert_(status_='FAILED' and
       ((failpoint_<>4 and response_generation_=generation_) or
