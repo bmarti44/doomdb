@@ -8,7 +8,7 @@ declare
   bad_map_sha_ varchar2(64);
   result_ varchar2(4000);dtic_sha_ varchar2(64);direct_sha_ varchar2(4000);
   replay_sha_ varchar2(64);oracle_sha_ varchar2(64);
-  dtic_ raw(32767);bad_ raw(32767);tic_ number;seq_ number;rng_ number;
+  dtic_ raw(32767);bad_ raw(32767);render_pack_ raw(32767);tic_ number;seq_ number;rng_ number;
   next_mobj_ number;next_event_ number;projectile_id_ number;death_id_ number;px_ number;py_ number;
   actors_ pls_integer;spawns_ pls_integer;events_ pls_integer;off_ pls_integer;len_ pls_integer;
   found_ boolean;
@@ -92,11 +92,16 @@ begin
       substr(doom_retained_render_last_error,1,1000));end if;
   result_:=doom_unified_actor_discard(session_,lineage_,1,request_);
   if result_<>'OK' then raise_application_error(-20000,'direct mixed discard '||result_);end if;
-  -- A second identical stage after discard is the atomic A-B-A rollback gate.
+  -- The bounded cross-session render pack must reproduce the direct-array
+  -- stage byte-for-byte. A second identical stage after discard is also the
+  -- atomic A-B-A rollback gate.
   request_:=lower(rawtohex(sys_guid()));dtic_:=doom_unified_actor_prepare(session_,lineage_,1,request_,'TIC',
     tic_,seq_,rng_,next_mobj_,next_event_);
-  replay_sha_:=doom_unified_render_pending(session_,lineage_,1,request_,zero_sha_,frame_);
-  if replay_sha_<>direct_sha_ then raise_application_error(-20000,'direct discard A-B-A');end if;
+  render_pack_:=doom_unified_render_pack(session_,lineage_,1,request_,null);
+  if render_pack_ is null or utl_raw.length(render_pack_)<32 then
+    raise_application_error(-20000,'empty render pack '||doom_unified_actor_last_error);end if;
+  replay_sha_:=doom_retained_render_pack(session_,1,request_,render_pack_,zero_sha_,frame_);
+  if replay_sha_<>direct_sha_ then raise_application_error(-20000,'direct/pack A-B-A');end if;
   result_:=doom_unified_actor_discard(session_,lineage_,1,request_);
   if result_<>'OK' then raise_application_error(-20000,'direct replay discard '||result_);end if;
   put_blob(dtic_,dtic_blob_);
@@ -226,7 +231,8 @@ begin
   -- its independent 5 ms handoff and end-to-end 30 FPS gates.
   if render_p95_>25 then raise_application_error(-20000,'DTIC render p95='||render_p95_);end if;
   dbms_output.put_line('RETAINED_RENDER_DTIC_PARITY_OK actors='||actors_||' spawns='||spawns_||
-    ' events='||events_||' bytes='||utl_raw.length(dtic_)||' sha='||substr(dtic_sha_,1,12));
+    ' events='||events_||' dtic_bytes='||utl_raw.length(dtic_)||
+    ' render_pack_bytes='||utl_raw.length(render_pack_)||' sha='||substr(dtic_sha_,1,12));
   dbms_output.put_line('retained_dtic_update_ms='||round(update_p50_,3)||'|'||round(update_p95_,3)||'|'||
     round(update_max_,3));
   dbms_output.put_line('retained_direct_update_ms='||round(direct_p50_,3)||'|'||round(direct_p95_,3)||'|'||

@@ -262,6 +262,18 @@ create or replace function doom_unified_render_pending_world(
 return varchar2 as language java name
   'DoomUnifiedActorStateBench.renderPendingWorld(java.lang.String,java.lang.String,long,java.lang.String,byte[],java.lang.String,java.sql.Blob) return java.lang.String';
 /
+create or replace function doom_unified_render_pack(
+  p_session in varchar2,p_lineage in varchar2,p_generation in number,
+  p_request in varchar2,p_world_pack in raw)
+return raw as language java name
+  'DoomUnifiedActorStateBench.pendingRenderPack(java.lang.String,java.lang.String,long,java.lang.String,byte[]) return byte[]';
+/
+create or replace function doom_retained_render_pack(
+  p_session in varchar2,p_generation in number,p_request in varchar2,
+  p_render_pack in raw,p_state_sha in varchar2,p_payload in blob)
+return varchar2 as language java name
+  'DoomRetainedRenderSceneBench.stageOwnerPack(java.lang.String,long,java.lang.String,byte[],java.lang.String,java.sql.Blob) return java.lang.String';
+/
 create or replace function doom_unified_actor_recovery_status(
   p_session in varchar2,p_lineage in varchar2,p_generation in number)
 return varchar2 as language java name

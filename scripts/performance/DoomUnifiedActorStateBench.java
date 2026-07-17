@@ -53,6 +53,7 @@ public final class DoomUnifiedActorStateBench {
   private static int[] renderOp=new int[0],renderId=new int[0],renderState=new int[0];
   private static int[] renderSectorId=new int[0],renderSectorLight=new int[0];
   private static NUMBER[] renderX=new NUMBER[0],renderY=new NUMBER[0],renderZ=new NUMBER[0],renderAngle=new NUMBER[0];
+  private static int renderDirtyCount,renderDirtySectorCount;
   private static int lastRenderUpserts,lastRenderRemoves;
   private static byte[] stateOutput=new byte[262144];
   private static int stateOutputLength;
@@ -2008,30 +2009,62 @@ public final class DoomUnifiedActorStateBench {
   }
   public static String renderPendingWorld(String s,String l,long g,String request,byte[] geometryPack,
       String stateSha,Blob payload){return renderPendingInternal(s,l,g,request,geometryPack,stateSha,payload);}
+  private static void prepareRenderDiff(){
+    int dirty=0,old=0,next=0;lastRenderUpserts=lastRenderRemoves=0;
+    WorldMobjs before=committed.world,after=pending.world;
+    while(old<before.count||next<after.count){int oldId=old<before.count?before.id[old]:Integer.MAX_VALUE;
+      int nextId=next<after.count?after.id[next]:Integer.MAX_VALUE;
+      if(oldId<nextId){require(dirty<renderId.length,"unified render diff capacity");renderOp[dirty]=0;
+        renderId[dirty]=oldId;renderState[dirty]=0;renderX[dirty]=renderY[dirty]=renderZ[dirty]=renderAngle[dirty]=null;
+        dirty++;lastRenderRemoves++;old++;continue;}
+      if(nextId<oldId){require(dirty<renderId.length,"unified render diff capacity");renderOp[dirty]=1;
+        renderId[dirty]=nextId;renderState[dirty]=after.state[next];renderX[dirty]=after.x[next];
+        renderY[dirty]=after.y[next];renderZ[dirty]=after.z[next];renderAngle[dirty]=after.angle[next];
+        dirty++;lastRenderUpserts++;next++;continue;}
+      if(before.state[old]!=after.state[next]||before.x[old]!=after.x[next]||before.y[old]!=after.y[next]||
+          before.z[old]!=after.z[next]||before.angle[old]!=after.angle[next]){
+        require(dirty<renderId.length,"unified render diff capacity");renderOp[dirty]=1;renderId[dirty]=nextId;
+        renderState[dirty]=after.state[next];renderX[dirty]=after.x[next];renderY[dirty]=after.y[next];
+        renderZ[dirty]=after.z[next];renderAngle[dirty]=after.angle[next];dirty++;lastRenderUpserts++;}old++;next++;}
+    int dirtySectors=0;for(int sector=0;sector<pending.sectorLight.length;sector++)
+      if(committed.sectorLight[sector]!=pending.sectorLight[sector]){
+        renderSectorId[dirtySectors]=sector;renderSectorLight[dirtySectors]=pending.sectorLight[sector];dirtySectors++;}
+    renderDirtyCount=dirty;renderDirtySectorCount=dirtySectors;
+  }
+  private static void writeRenderNumber(DataOutputStream out,NUMBER value)throws Exception{
+    byte[] raw=value.toBytes();require(raw.length>=1&&raw.length<=22,"render pack NUMBER");
+    out.writeByte(raw.length);out.write(raw);
+  }
+  public static byte[] pendingRenderPack(String s,String l,long g,String request,byte[] geometryPack){
+    try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
+        committed.generation==g&&request!=null&&request.equals(pendingRequest)&&
+        (pendingMode==MODE_TIC||pendingMode==MODE_COMMAND_TIC),"unified render pack fence");
+      prepareRenderDiff();ByteArrayOutputStream bytes=new ByteArrayOutputStream(4096);
+      DataOutputStream out=new DataOutputStream(bytes);out.writeInt(0x4452504b);out.writeByte(1);
+      out.writeByte(geometryPack==null?0:1);out.writeShort(0);out.writeLong(pending.tic);out.writeLong(pending.seq);
+      writeRenderNumber(out,pending.playerX);writeRenderNumber(out,pending.playerY);
+      writeRenderNumber(out,pending.playerEyeZ);out.writeInt(pending.playerAngleIndex);
+      out.writeInt(pending.playerHealth);out.writeInt(pending.playerArmor);out.writeInt(pending.playerAlive);
+      out.writeInt(weaponAmmo(pending,pending.weaponAmmo[pending.selectedWeapon]));
+      out.writeUTF(pending.weaponId[pending.selectedWeapon]);out.writeUTF(pending.stateId[pending.weaponState]);
+      out.writeShort(renderDirtyCount);out.writeShort(renderDirtySectorCount);
+      out.writeInt(geometryPack==null?0:geometryPack.length);
+      for(int change=0;change<renderDirtyCount;change++){out.writeByte(renderOp[change]);
+        out.writeInt(renderId[change]);out.writeInt(renderState[change]);
+        if(renderOp[change]==1){writeRenderNumber(out,renderX[change]);writeRenderNumber(out,renderY[change]);
+          writeRenderNumber(out,renderZ[change]);writeRenderNumber(out,renderAngle[change]);}}
+      for(int change=0;change<renderDirtySectorCount;change++){
+        out.writeInt(renderSectorId[change]);out.writeInt(renderSectorLight[change]);}
+      if(geometryPack!=null)out.write(geometryPack);out.flush();byte[] result=bytes.toByteArray();
+      require(result.length<=32767,"render pack exceeds RAW boundary");lastError="";return result;
+    }catch(Throwable e){lastError=e.getClass().getName()+":"+e.getMessage();return new byte[0];}
+  }
   private static String renderPendingInternal(String s,String l,long g,String request,byte[] geometryPack,
       String stateSha,Blob payload){
     try{require(committed!=null&&pending!=null&&committed.session.equals(s)&&committed.lineage.equals(l)&&
         committed.generation==g&&request!=null&&request.equals(pendingRequest)&&
         (pendingMode==MODE_TIC||pendingMode==MODE_COMMAND_TIC),"unified render pending fence");
-      int dirty=0,old=0,next=0;lastRenderUpserts=lastRenderRemoves=0;
-      WorldMobjs before=committed.world,after=pending.world;
-      while(old<before.count||next<after.count){int oldId=old<before.count?before.id[old]:Integer.MAX_VALUE;
-        int nextId=next<after.count?after.id[next]:Integer.MAX_VALUE;
-        if(oldId<nextId){require(dirty<renderId.length,"unified render diff capacity");renderOp[dirty]=0;
-          renderId[dirty]=oldId;renderState[dirty]=0;renderX[dirty]=renderY[dirty]=renderZ[dirty]=renderAngle[dirty]=null;
-          dirty++;lastRenderRemoves++;old++;continue;}
-        if(nextId<oldId){require(dirty<renderId.length,"unified render diff capacity");renderOp[dirty]=1;
-          renderId[dirty]=nextId;renderState[dirty]=after.state[next];renderX[dirty]=after.x[next];
-          renderY[dirty]=after.y[next];renderZ[dirty]=after.z[next];renderAngle[dirty]=after.angle[next];
-          dirty++;lastRenderUpserts++;next++;continue;}
-        if(before.state[old]!=after.state[next]||before.x[old]!=after.x[next]||before.y[old]!=after.y[next]||
-            before.z[old]!=after.z[next]||before.angle[old]!=after.angle[next]){
-          require(dirty<renderId.length,"unified render diff capacity");renderOp[dirty]=1;renderId[dirty]=nextId;
-          renderState[dirty]=after.state[next];renderX[dirty]=after.x[next];renderY[dirty]=after.y[next];
-          renderZ[dirty]=after.z[next];renderAngle[dirty]=after.angle[next];dirty++;lastRenderUpserts++;}old++;next++;}
-      int dirtySectors=0;for(int sector=0;sector<pending.sectorLight.length;sector++)
-        if(committed.sectorLight[sector]!=pending.sectorLight[sector]){
-          renderSectorId[dirtySectors]=sector;renderSectorLight[dirtySectors]=pending.sectorLight[sector];dirtySectors++;}
+      prepareRenderDiff();int dirty=renderDirtyCount,dirtySectors=renderDirtySectorCount;
       String result=geometryPack==null?DoomRetainedRenderSceneBench.stageOwnerTic(s,g,request,pending.tic,pending.seq,
         pending.playerX,pending.playerY,pending.playerEyeZ,pending.playerAngleIndex,pending.playerHealth,
         pending.playerArmor,pending.playerAlive,pending.weaponId[pending.selectedWeapon],

@@ -1,4 +1,6 @@
 import java.sql.Blob;
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import oracle.sql.NUMBER;
 
 /** Fenced owner for one renderer scene retained across compact frame updates. */
@@ -121,6 +123,42 @@ public final class DoomRetainedRenderSceneBench {
       lastError="";return "OK";
     }catch(Throwable failure){lastError=failure.getClass().getName()+":"+failure.getMessage();
       return "ERR|"+lastError;}
+  }
+  private static NUMBER readNumber(DataInputStream in)throws Exception{
+    int length=in.readUnsignedByte();require(length>=1&&length<=22,"render pack NUMBER");
+    byte[] raw=new byte[length];in.readFully(raw);return new NUMBER(raw);
+  }
+  public static String stageOwnerPack(String owner,long ownerGeneration,String request,
+      byte[] pack,String stateSha,Blob payload){
+    try{require(loaded&&stateMapFenced&&session.equals(owner)&&generation==ownerGeneration&&
+        pack!=null&&pack.length>0&&pack.length<=32767,"render pack scene fence");
+      DataInputStream in=new DataInputStream(new ByteArrayInputStream(pack));
+      require(in.readInt()==0x4452504b&&in.readUnsignedByte()==1,"render pack header");
+      int flags=in.readUnsignedByte();require((flags&~1)==0&&in.readUnsignedShort()==0,"render pack flags");
+      long tic=in.readLong(),seq=in.readLong();NUMBER x=readNumber(in),y=readNumber(in),eyeZ=readNumber(in);
+      int angle=in.readInt(),health=in.readInt(),armor=in.readInt(),alive=in.readInt(),ammo=in.readInt();
+      String weapon=in.readUTF(),weaponState=in.readUTF();int changes=in.readUnsignedShort();
+      int sectors=in.readUnsignedShort(),geometryLength=in.readInt();
+      require(changes<=4096&&sectors<=4096&&geometryLength>=0&&geometryLength<=32767&&
+          ((flags&1)==0)==(geometryLength==0),"render pack counts");
+      int[] op=new int[changes],id=new int[changes],state=new int[changes];
+      NUMBER[] wx=new NUMBER[changes],wy=new NUMBER[changes],wz=new NUMBER[changes],wa=new NUMBER[changes];
+      for(int change=0;change<changes;change++){op[change]=in.readUnsignedByte();id[change]=in.readInt();
+        state[change]=in.readInt();require(op[change]==0||op[change]==1,"render pack operation");
+        if(op[change]==1){wx[change]=readNumber(in);wy[change]=readNumber(in);
+          wz[change]=readNumber(in);wa[change]=readNumber(in);}}
+      int[] sectorId=new int[sectors],sectorLight=new int[sectors];
+      for(int change=0;change<sectors;change++){sectorId[change]=in.readInt();sectorLight[change]=in.readInt();}
+      byte[] geometry=null;if(geometryLength>0){geometry=new byte[geometryLength];in.readFully(geometry);}
+      require(in.available()==0,"render pack trailing bytes");
+      String result=geometry==null?DoomBspKernelBench.stageRetainedOwnerAndRender(request,tic,seq,
+        x,y,eyeZ,angle,health,armor,alive,weapon,weaponState,ammo,changes,op,id,state,wx,wy,wz,wa,
+        sectors,sectorId,sectorLight,stateSha,payload):
+        DoomBspKernelBench.stageRetainedOwnerAndRender(request,tic,seq,x,y,eyeZ,angle,health,armor,
+        alive,weapon,weaponState,ammo,changes,op,id,state,wx,wy,wz,wa,sectors,sectorId,sectorLight,
+        geometry,stateSha,payload);lastError="";return result;
+    }catch(Throwable failure){lastError=failure.getClass().getName()+":"+failure.getMessage();
+      try{if(payload!=null)payload.truncate(0);}catch(Throwable ignored){}return "ERR|"+lastError;}
   }
   public static boolean ownerTicPending(){return DoomBspKernelBench.retainedOwnerPending();}
   public static long lastUpdateNanos(){return DoomBspKernelBench.retainedUpdateNanos();}
