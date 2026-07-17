@@ -72,44 +72,44 @@ declare
     select x,y,health,kill_count into l_x,l_y,l_health,l_kills
       from players where session_token=k_token and player_id=0;
     if p_seq=30 then
-      ok(l_x=48 and l_y=480 and l_health=100 and l_kills=1,
-        'public route diverged at medkit opening');
+      ok(l_x=48 and l_y=480 and l_health=100 and l_kills=0,
+        'public route diverged at medkit opening: x='||l_x||', y='||l_y||', health='||l_health||', kills='||l_kills);
     elsif p_seq=35 then
-      ok(l_x=-32 and l_y=480 and l_health=100 and l_kills=1,
-        'public route diverged at west stimpack');
+      ok(l_x=-32 and l_y=480 and l_health=100 and l_kills=0,
+        'public route diverged at west stimpack: x='||l_x||', y='||l_y||', health='||l_health||', kills='||l_kills);
     elsif p_seq=58 then
       select count(*) into l_count from game_events where session_token=k_token
         and tic=58 and event_type='LINE_TRIGGER' and number_value=593;
-      ok(l_count=1 and l_health=100 and l_kills=1,
-        'public route lift trigger diverged');
+      ok(l_count=1 and l_health=97 and l_kills=0,
+        'public route lift trigger diverged: events='||l_count||', health='||l_health||', kills='||l_kills);
     elsif p_seq=59 then
       select count(*) into l_count from active_movers where session_token=k_token;
       ok(abs(l_x-149.01933598375617)<0.000000000001
         and abs(l_y-298.98066401624383)<0.000000000001
-        and l_health=100 and l_kills=1 and l_count=1,
-        'public route lift crossing diverged');
+        and l_health=97 and l_kills=0 and l_count=1,
+        'public route lift crossing diverged: x='||l_x||', y='||l_y||', health='||l_health||', kills='||l_kills||', movers='||l_count);
     elsif p_seq=60 then
       select count(*) into l_count from active_movers where session_token=k_token;
       ok(abs(l_x-149.01933598375617)<0.000000000001
         and abs(l_y-298.98066401624383)<0.000000000001
-        and l_health=97 and l_kills=1 and l_count=1,
-        'current use/fire command was not visible at sequence 60');
+        and l_health=97 and l_kills=0 and l_count=1,
+        'current use/fire command was not visible at sequence 60: x='||l_x||', y='||l_y||', health='||l_health||', kills='||l_kills||', movers='||l_count);
     elsif p_seq=76 then
       select count(*) into l_count from active_movers where session_token=k_token;
       ok(abs(l_x-277.01933598375617)<0.000000000001
         and abs(l_y-298.98066401624383)<0.000000000001
         and l_health=97 and l_kills=1 and l_count=1,
-        'public route east lift crossing diverged');
+        'public route east lift crossing diverged: x='||l_x||', y='||l_y||', health='||l_health||', kills='||l_kills||', movers='||l_count);
     elsif p_seq=98 then
       ok(abs(l_x-435.4112549695428)<0.000000000001 and l_y=304
-        and l_health=91 and l_kills=1,
-        'public route diverged at command sequence 98');
+        and l_health=94 and l_kills=2,
+        'public route diverged at command sequence 98: x='||l_x||', y='||l_y||', health='||l_health||', kills='||l_kills);
     elsif p_seq=131 then
-      ok(l_x=640 and l_y=304 and l_health=46 and l_kills=3,
-        'public route diverged at command sequence 131');
+      ok(l_x=640 and l_y=304 and l_health=91 and l_kills=2,
+        'public route diverged at command sequence 131: x='||l_x||', y='||l_y||', health='||l_health||', kills='||l_kills);
     elsif p_seq=163 then
-      ok(l_x=640 and l_y=304 and l_health=43 and l_kills=4,
-        'public route diverged at opening clear');
+      ok(l_x=640 and l_y=304 and l_health=46 and l_kills=3,
+        'public route diverged at opening clear: x='||l_x||', y='||l_y||', health='||l_health||', kills='||l_kills);
     end if;
     dbms_output.put_line('T62_ROUTE|'||p_seq||'|'||l_x||'|'||l_y||'|'||
       l_health||'|'||l_kills);

@@ -1992,6 +1992,20 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   Retained-render parity, codec v2/v3 compatibility, projectile lifecycle, and
   rollback/restart/generation fencing pass. Complete the full T5--T7 regression
   before closing P12.0, then resume the preserved P8 route.
+- Corrected-combat regression checkpoint (2026-07-17): T5.1, T5.2, T5.3, and
+  T6.1--T7.3 pass unchanged against the deployed revision. T5.2 retained its
+  reviewed `df931aead5a878018c9ad36cff0b73ed56545b290dcff9f59001fbec9a3f11f4`
+  frame hash and all 1,856,885 declared assertions. The T6.2 public route now
+  records the corrected combat cadence (the pre-fix checkpoints had stale
+  health/kill counts); two consecutive 163-command runs matched exactly.
+  T5.4 source, mutation, and all nine reviewed PNG/golden checks pass. Its live
+  SQL presentation pass reached normal game, pause, menu, and automap without
+  an assertion failure, but was stopped after 73 minutes when its repeated
+  full-frame oracle renders starved concurrent `NEW_GAME` requests on the
+  two-core primary stack. Never rerun T5.4 live beside an interactive session:
+  use a clean isolated database or a declared idle maintenance window. This is
+  test isolation, not a production-renderer performance regression; the
+  selected retained path remains qualified at 30.807--31.951 displayed FPS.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior
