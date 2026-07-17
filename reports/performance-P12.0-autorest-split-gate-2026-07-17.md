@@ -12,7 +12,7 @@ Selected protocol:
 - `SUBMIT_STEP`: idempotently records one live tic command in the durable worker
   ledger and returns its deterministic request identifier.
 - `POLL_FRAME`: returns the immutable committed response for a command sequence.
-- Depth-four command submission, exactly one result waiter, ordered decode, an
+- Depth-four command submission, two correlated result waiters, ordered decode, an
   absolute 32 ms command deadline, a 31.8 ms presentation clock, and a ten-frame
   startup buffer.
 - Idle Scheduler workers back off from 5 ms polling and release their slot after
@@ -29,16 +29,24 @@ Selected protocol:
 | Selected post-index run | 300 | 300 | 31.083 | 31.214/32.357 ms | exact frontier uniqueness enabled |
 | Occlusion repeat A | 300 | 300 | 31.036 | 31.198/32.157 ms | dynamic USE selected; exact chain |
 | Occlusion repeat B | 300 | 300 | 32.064 | 31.159/32.048 ms | zero stalls; exact chain |
+| Projectile baseline | 300 | 300 | 30.879 | 31.287/32.407 ms | isolated; DMSC/v3 commands |
+| FIRE every 8 A | 300 | 300 | 31.995 | 31.220/32.087 ms | DMSC/v4 + DTIC/v3 |
+| FIRE every 8 B | 300 | 300 | 30.817 | 31.234/32.121 ms | exact combat-chain repeat |
+| Final isolated baseline | 300 | 300 | 32.064 | 31.166/31.961 ms | zero stalls; production defaults |
+| Final FIRE every 8 | 300 | 300 | 31.999 | 31.202/32.124 ms | zero stalls; production defaults |
 
-The subsequent F2 barrel slice is correctness-neutral to these cadence results.
-It adds retained hitscan barrel damage and exact recursive splash. An independent
+The subsequent F2 combat slices add retained hitscan barrel damage, recursive
+splash, and exact rocket/plasma projectile lifecycles. An independent
 retained-versus-SQL fixture matched 11 ordered events and final player/world
 state, including two barrel explosions, recursive monster damage, player
 armor/death, and same-tic monster death. Type 2035's previously null dimensions
 were corrected to radius 10/height 42 so the test and live game can actually
-select barrels. Player rocket/plasma lifecycle remains on the SQL fallback; the
-browser therefore drains its async window for FIRE until that protocol is
-complete.
+select barrels. DMSC/v4 and DTIC/v3 preserve canonical projectile angle and
+nullable sector state, validate transient spawn/impact lifecycles, and allow
+the same transient ID to be reused by an ordered monster drop. The public
+submit/poll acceptance matches the SQL oracle exactly. All live FIRE commands
+now remain inside the depth-four async window; two concurrent frame polls remove
+the result-fetch head-of-line tail that one waiter exposed during combat.
 
 The final 330-frame chain (30 warm frames plus 300 moving frames) is
 `4d9a7a22dd8c3d02c37d40523e6f5d9fcec18665a374eccd7a9b63427d49b6fd`.
@@ -85,7 +93,9 @@ one green run is not enough to spend the current latency margin.
   command deadline, imposing an artificial ~29 FPS ceiling. Deadlines now
   advance from the prior absolute target.
 - Three concurrent table waiters contended with the renderer on Oracle Free's
-  two CPUs. Exactly one waiter is selected.
+  two CPUs. One waiter was sufficient before retained projectile FIRE, but its
+  fetch tail then capped combat at 27.58 FPS. Exactly two waiters are selected:
+  combat repeats pass at 31.995 and 30.817 FPS without three-way contention.
 - Correlated response AQ regressed the full workload to 23.775 FPS even though
   its isolated ping-pong latency was good. Do not retry it without new evidence.
 - Tightening the result-table poll from 50 to 30 ms regressed to 27.838 FPS.
@@ -102,11 +112,13 @@ one green run is not enough to spend the current latency margin.
   deterministic cadence; the 31.8 ms display clock consumes ready buffered
   frames with scheduling margin and does not alter simulation timing or hashes.
 
-## Remaining P12.0 work
+## Gate disposition and follow-up
 
 The ten-frame buffer adds roughly 320 ms of presentation latency and is a
 throughput solution, not the final responsiveness target. Further plane-span,
 portal-wall, and submit-tail reduction should shrink it. A rare cold maximum
-hitch also remains visible even though p50/p95 and sustained FPS pass. Barrel
-recursion, the complete player rocket/plasma lifecycle, and the complete T5–T7
-rerun remain before P12.0 is complete.
+hitch also remains visible even though p50/p95 and sustained FPS pass. The
+complete warmed resident suite and T5.1–T7.3 regression pass after the
+projectile cutover. P12.0 is therefore complete and P8 resumes. Buffer-latency,
+plane-span, and cold-tail improvements remain useful follow-up work but no
+longer block the selected playability gate.

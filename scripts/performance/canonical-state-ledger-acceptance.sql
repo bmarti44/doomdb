@@ -12,6 +12,8 @@ declare
   l_bad_command raw(24):=hextoraw('444D53430201000000000000000000010101FF0100000001');
   l_action_command raw(24):=hextoraw('444D53430301000000000000000000010101FF0100000200');
   l_bad_action raw(24):=hextoraw('444D53430301000000000000000000010101FF0100000201');
+  l_projectile_command raw(24):=hextoraw('444D53430401000000000000000000010101FF0101000000');
+  l_bad_projectile raw(24):=hextoraw('444D53430401000000000000000000010101FF0101000001');
   l_command_doc clob:=to_clob(
     '{"v":1,"commands":[{"turn":1,"forward":1,"strafe":-1,"run":1,'||
     '"fire":0,"use":0,"weapon":0,"pause":0,"automap":0,"menu":"NONE",'||
@@ -232,6 +234,14 @@ begin
   assert_(l_count=1,'DMSC/v3 action fields');
   rollback to action_ledger_start;
 
+  savepoint projectile_ledger_start;
+  doom_command_ledger.begin_dmsc_v4(l_session,l_lineage,l_tic,l_seq,
+    l_projectile_command,l_result_tic,l_result_seq,l_command_sha,l_locator);
+  select count(*) into l_count from tic_commands where session_token=l_session
+    and command_seq=l_result_seq and fire=1 and use_action=0 and weapon_slot=0;
+  assert_(l_count=1,'DMSC/v4 projectile action fields');
+  rollback to projectile_ledger_start;
+
   -- Malformed packs and invalid frontiers must reject before any ledger write.
   begin
     doom_command_ledger.begin_dmsc_v2(l_session,l_lineage,l_tic,l_seq,l_bad_command,
@@ -251,6 +261,13 @@ begin
     doom_command_ledger.begin_dmsc_v3(l_session,l_lineage,l_tic,l_seq,l_bad_action,
       l_result_tic,l_result_seq,l_command_sha,l_locator);
     raise_application_error(-20000,'DMSC/v3 reserved byte accepted');
+  exception when others then
+    if sqlcode<>-20867 then raise;end if;
+  end;
+  begin
+    doom_command_ledger.begin_dmsc_v4(l_session,l_lineage,l_tic,l_seq,l_bad_projectile,
+      l_result_tic,l_result_seq,l_command_sha,l_locator);
+    raise_application_error(-20000,'DMSC/v4 reserved byte accepted');
   exception when others then
     if sqlcode<>-20867 then raise;end if;
   end;

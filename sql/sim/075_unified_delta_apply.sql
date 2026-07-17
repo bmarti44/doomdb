@@ -1,4 +1,4 @@
--- Strict durable applier for the committed DUOP/DTIC v1 worker result.
+-- Strict durable applier for committed DUOP and DTIC v1/v2/v3 worker results.
 -- This package owns no commit.  It validates the complete buffer and all
 -- relational frontiers before the first mutation, and rolls its own work back
 -- on every exception so a malformed worker result cannot partially land.
@@ -49,6 +49,7 @@ create or replace package body doom_unified_delta_apply as
   c_duop_header constant pls_integer:=12;
   c_dtic_header constant pls_integer:=60;
   c_dtic_v2_header constant pls_integer:=108;
+  c_dtic_v3_header constant pls_integer:=112;
   c_actor_bytes constant pls_integer:=90;
   c_world_op_bytes constant pls_integer:=62;
   c_spawn_bytes constant pls_integer:=238;
@@ -65,7 +66,7 @@ create or replace package body doom_unified_delta_apply as
     x number,y number,z number,mx number,my number,mz number,
     radius number,height number,health number,flags number,target_id number,
     tracer_id number,reaction_time number,spawn_thing_id number,
-    owner_id number,exploded number,sector_id number,projectile_kind varchar2(4000),
+    owner_id number,exploded number,angle number,sector_id number,projectile_kind varchar2(4000),
     state_id varchar2(64));
   type spawn_tab is table of spawn_rec index by pls_integer;
   type world_op_rec is record(
@@ -325,6 +326,8 @@ create or replace package body doom_unified_delta_apply as
   ) is
     l_position pls_integer;l_child_length number;
     l_actor_count pls_integer;l_spawn_count pls_integer;l_event_count pls_integer;
+    l_transient_count pls_integer:=0;l_transient_spawn_events pls_integer:=0;
+    l_transient_impact_events pls_integer:=0;
     l_dtic_version pls_integer;l_dtic_header pls_integer;
     l_world_op_count pls_integer;
     l_rng_draws pls_integer;l_final_rng number;l_player_health number;
@@ -344,6 +347,7 @@ create or replace package body doom_unified_delta_apply as
     l_actors actor_tab;l_spawns spawn_tab;l_events event_tab;l_world_ops world_op_tab;
     l_removed id_set;
     l_world_presence presence_map;l_actor_ids ordered_id_tab;l_actor_presence id_set;
+    l_spawn_presence id_set;l_transient_presence id_set;
   begin
     savepoint doom_unified_delta_apply_start;
     p_committed_tic:=null;p_committed_command_seq:=null;
@@ -366,8 +370,9 @@ create or replace package body doom_unified_delta_apply as
     if l_child_length<>g_length-c_duop_header then fail('DUOP exact length');end if;
     if rawtohex(utl_raw.substr(g_delta,13,4))<>'44544943' then fail('DTIC magic');end if;
     l_dtic_version:=byte_at(17,'DTIC version');
-    if l_dtic_version not in(1,2) or byte_at(18,'DTIC status')<>0 then fail('DTIC header');end if;
-    l_dtic_header:=case l_dtic_version when 1 then c_dtic_header else c_dtic_v2_header end;
+    if l_dtic_version not in(1,2,3) or byte_at(18,'DTIC status')<>0 then fail('DTIC header');end if;
+    l_dtic_header:=case l_dtic_version when 1 then c_dtic_header
+      when 2 then c_dtic_v2_header else c_dtic_v3_header end;
     if g_length<c_duop_header+l_dtic_header then fail('short DTIC versioned header');end if;
     l_actor_count:=u16_at(19,'actor count');l_spawn_count:=u16_at(21,'spawn count');
     l_event_count:=u16_at(23,'event count');l_rng_draws:=u16_at(25,'RNG draws');
@@ -399,7 +404,7 @@ create or replace package body doom_unified_delta_apply as
     -- this avoids issuing one validation SELECT for every actor/reference.
     retain_catalogs;
     l_state_count:=g_state_ids.count;
-    if l_dtic_version=2 then
+    if l_dtic_version>=2 then
       l_ammo_bullets:=i32_at(73,'ammo bullets');
       l_ammo_shells:=i32_at(77,'ammo shells');
       l_ammo_rockets:=i32_at(81,'ammo rockets');
@@ -435,6 +440,12 @@ create or replace package body doom_unified_delta_apply as
       l_flash_state:=case when l_flash_state_index=-1 then null
         else g_state_ids(l_flash_state_index) end;
     end if;
+    if l_dtic_version=3 then
+      l_transient_count:=u16_at(121,'transient count');
+      if l_transient_count not between 0 and 1 or u16_at(123,'transient reserved')<>0 then
+        fail('transient header');
+      end if;
+    end if;
     -- DTIC actor_count is deliberately the behavior-bound monster subset
     -- (currently 53 on E1M1), not the owner's complete all-MOBJ world image
     -- (currently 280).  Non-monster rows remain unchanged; newly emitted drop
@@ -458,7 +469,7 @@ create or replace package body doom_unified_delta_apply as
       where session_token=p_session_token and lineage=p_save_lineage and tic=l_next_tic;
     if l_next_event<>l_initial_event+l_event_count then fail('event frontier');end if;
 
-    l_position:=case l_dtic_version when 1 then 73 else 121 end;
+    l_position:=case l_dtic_version when 1 then 73 when 2 then 121 else 125 end;
     need(l_position,l_actor_count*c_actor_bytes,'actor block');
     for i in 1..l_actor_count loop
       l_actors(i).id:=fixed_i32_at(l_position);
@@ -520,7 +531,7 @@ create or replace package body doom_unified_delta_apply as
       elsif world_id_exists(p_session_token,l_spawn_base-1,l_world_presence) then exit;
       else l_spawn_base:=l_spawn_base-1;end if;
     end loop;
-    if l_next_mobj<>l_spawn_base+l_spawn_count then fail('mobj frontier');end if;
+    if l_dtic_version<3 and l_next_mobj<>l_spawn_base+l_spawn_count then fail('mobj frontier');end if;
 
     for i in 1..l_spawn_count loop
       l_spawns(i).id:=i32_at(l_position,'spawn id');
@@ -540,18 +551,47 @@ create or replace package body doom_unified_delta_apply as
       l_spawns(i).spawn_thing_id:=nullable_id(i32_at(l_position+220,'spawn source'),'spawn source');
       l_spawns(i).owner_id:=nullable_id(i32_at(l_position+224,'spawn owner'),'spawn owner');
       l_spawns(i).exploded:=i32_at(l_position+228,'spawn exploded');
-      l_spawns(i).sector_id:=i32_at(l_position+232,'spawn sector');
-      l_position:=l_position+236;
+      if l_dtic_version=3 then
+        l_spawns(i).angle:=fixed_number_at(l_position+232);
+        l_spawns(i).sector_id:=nullable_id(fixed_i32_at(l_position+255),'spawn sector');
+        l_position:=l_position+259;
+      else
+        l_spawns(i).angle:=0;l_spawns(i).sector_id:=i32_at(l_position+232,'spawn sector');
+        l_position:=l_position+236;
+      end if;
       l_spawns(i).projectile_kind:=text_at(l_position,'spawn projectile kind');
-      if l_spawns(i).id<>l_spawn_base+i-1 or l_spawns(i).thing_type<0 or
+      if (l_dtic_version<3 and l_spawns(i).id<>l_spawn_base+i-1) or
+         (l_dtic_version=3 and (i>1 and l_spawns(i).id<=l_spawns(i-1).id)) or
+         l_spawns(i).thing_type<0 or
          l_spawns(i).state_index<0 or l_spawns(i).state_index>=l_state_count or
          l_spawns(i).state_tics< -1 or l_spawns(i).radius<0 or l_spawns(i).height<0 or
          l_spawns(i).health<0 or l_spawns(i).flags<0 or l_spawns(i).reaction_time<0 or
-         l_spawns(i).exploded not in(0,1) or l_spawns(i).sector_id<0 then
+         l_spawns(i).exploded not in(0,1) or l_spawns(i).angle<0 or l_spawns(i).angle>=360 or
+         (l_dtic_version<3 and l_spawns(i).sector_id<0) then
         fail('spawn value range or ID sequence');
       end if;
+      l_spawn_presence(l_spawns(i).id):=true;
       l_spawns(i).state_id:=g_state_ids(l_spawns(i).state_index);
     end loop;
+
+    for i in 1..l_transient_count loop
+      l_value:=fixed_i32_at(l_position);l_position:=l_position+4;
+      if l_value<>l_initial_mobj or l_transient_presence.exists(l_value) then
+        fail('transient projectile ID');
+      end if;
+      l_transient_presence(l_value):=true;
+    end loop;
+
+    if l_dtic_version=3 then
+      declare l_final_max number:=l_spawn_base-1;begin
+        for i in 1..l_spawn_count loop
+          if world_id_exists(p_session_token,l_spawns(i).id,l_world_presence) and
+             not l_removed.exists(l_spawns(i).id) then fail('spawn overwrites survivor');end if;
+          l_final_max:=greatest(l_final_max,l_spawns(i).id);
+        end loop;
+        if l_next_mobj<>l_final_max+1 then fail('v3 mobj frontier');end if;
+      end;
+    end if;
 
     for i in 1..l_event_count loop
       l_events(i).ordinal:=i32_at(l_position,'event ordinal');
@@ -579,7 +619,16 @@ create or replace package body doom_unified_delta_apply as
         fail('event value or ordinal');
       end if;
       l_events(i).event_name:=event_type(l_events(i).type_code);
+      if l_events(i).actor_id is not null and l_transient_presence.exists(l_events(i).actor_id) then
+        if l_events(i).type_code=17 then l_transient_spawn_events:=l_transient_spawn_events+1;
+        elsif l_events(i).type_code=10 then
+          if l_transient_spawn_events<>1 then fail('transient impact before spawn');end if;
+          l_transient_impact_events:=l_transient_impact_events+1;
+        end if;
+      end if;
     end loop;
+    if l_transient_spawn_events<>l_transient_count or
+       l_transient_impact_events<>l_transient_count then fail('transient event lifecycle');end if;
     if l_position<>g_length+1 then fail('trailing bytes');end if;
 
     -- Actor records are an ordered changed subset.  The full resident owner is
@@ -593,13 +642,16 @@ create or replace package body doom_unified_delta_apply as
     for i in 1..l_actor_count loop
       if not g_sector_ids.exists(l_actors(i).sector_id) then fail('actor sector ID');end if;
       if l_actors(i).target_id is not null and
-         not world_id_exists(p_session_token,l_actors(i).target_id,l_world_presence) then
+         not ((world_id_exists(p_session_token,l_actors(i).target_id,l_world_presence) and
+               not l_removed.exists(l_actors(i).target_id)) or
+              l_spawn_presence.exists(l_actors(i).target_id)) then
         fail('actor target ID');
       end if;
     end loop;
     for i in 1..l_spawn_count loop
       if not g_thing_type_ids.exists(l_spawns(i).thing_type) then fail('spawn thing ID');end if;
-      if not g_sector_ids.exists(l_spawns(i).sector_id) then fail('spawn sector ID');end if;
+      if l_spawns(i).sector_id is not null and
+         not g_sector_ids.exists(l_spawns(i).sector_id) then fail('spawn sector ID');end if;
       if l_spawns(i).projectile_kind is not null and
          not g_projectile_ids.exists(to_char(l_spawns(i).thing_type,'TM9',
            'NLS_NUMERIC_CHARACTERS=''.,''')||':'||l_spawns(i).projectile_kind) then
@@ -612,8 +664,9 @@ create or replace package body doom_unified_delta_apply as
       for j in 1..3 loop
         l_value:=case j when 1 then l_spawns(i).target_id when 2 then l_spawns(i).tracer_id else l_spawns(i).owner_id end;
         if l_value is not null then
-          if not world_id_exists(p_session_token,l_value,l_world_presence) and
-             (l_value<l_spawn_base or l_value>=l_next_mobj) then
+          if not ((world_id_exists(p_session_token,l_value,l_world_presence) and
+                   not l_removed.exists(l_value)) or
+                  l_spawn_presence.exists(l_value) or l_transient_presence.exists(l_value)) then
             fail('spawn referenced mobj ID');
           end if;
         end if;
@@ -622,13 +675,15 @@ create or replace package body doom_unified_delta_apply as
     for i in 1..l_event_count loop
       if l_events(i).actor_id is not null then
         if not world_id_exists(p_session_token,l_events(i).actor_id,l_world_presence) and
-           (l_events(i).actor_id<l_spawn_base or l_events(i).actor_id>=l_next_mobj) then
+           not l_spawn_presence.exists(l_events(i).actor_id) and
+           not l_transient_presence.exists(l_events(i).actor_id) then
           fail('event actor ID');
         end if;
       end if;
       if l_events(i).target_id is not null then
         if not world_id_exists(p_session_token,l_events(i).target_id,l_world_presence) and
-           (l_events(i).target_id<l_spawn_base or l_events(i).target_id>=l_next_mobj) then
+           not l_spawn_presence.exists(l_events(i).target_id) and
+           not l_transient_presence.exists(l_events(i).target_id) then
           fail('event target ID');
         end if;
       end if;
@@ -695,7 +750,7 @@ create or replace package body doom_unified_delta_apply as
           monster_health_seen,death_processed)
         values(p_session_token,l_spawns(i).id,l_spawns(i).thing_type,l_spawns(i).state_id,
           l_spawns(i).state_tics,l_spawns(i).x,l_spawns(i).y,l_spawns(i).z,
-          l_spawns(i).mx,l_spawns(i).my,l_spawns(i).mz,0,l_spawns(i).radius,
+          l_spawns(i).mx,l_spawns(i).my,l_spawns(i).mz,l_spawns(i).angle,l_spawns(i).radius,
           l_spawns(i).height,l_spawns(i).health,l_spawns(i).flags,l_spawns(i).target_id,
           l_spawns(i).tracer_id,l_spawns(i).reaction_time,l_spawns(i).spawn_thing_id,
           l_spawns(i).owner_id,l_spawns(i).projectile_kind,l_spawns(i).exploded,
@@ -805,13 +860,13 @@ create or replace package body doom_unified_delta_apply as
     g_delta:=p_command;g_length:=c_command_bytes;
     l_command_version:=byte_at(5,'DMSC version');
     if rawtohex(utl_raw.substr(g_delta,1,4))<>'444D5343' or
-       l_command_version not in(2,3) or byte_at(6,'DMSC count')<>1 or
+       l_command_version not in(2,3,4) or byte_at(6,'DMSC count')<>1 or
        byte_at(7,'DMSC reserved')<>0 or byte_at(8,'DMSC reserved')<>0 then
       fail('DMSC header');
     end if;
     l_expected_dtic_version:=l_command_version-1;
     l_expected_dtic_header:=case l_expected_dtic_version
-      when 1 then c_dtic_header else c_dtic_v2_header end;
+      when 1 then c_dtic_header when 2 then c_dtic_v2_header else c_dtic_v3_header end;
     l_command_seq:=u64_at(9,'DMSC sequence');
     if l_command_seq<>p_expected_command_seq+1 then fail('DMSC sequence gap');end if;
     l_turn:=signed_byte_at(17,'DMSC turn');
@@ -828,7 +883,7 @@ create or replace package body doom_unified_delta_apply as
         fail('DMSC/v2 unsupported action/reserved');
       end if;
     elsif l_fire not in(0,1) or l_use not in(0,1) or l_weapon<0 or l_weapon>9 or l_reserved<>0 then
-      fail('DMSC/v3 unsupported use/action domain');
+      fail('DMSC action unsupported use/action domain');
     end if;
     if l_use=1 and (not g_split_prepared or g_split_session<>p_session_token or
        g_split_lineage<>p_save_lineage or g_split_tic<>p_expected_tic or
@@ -940,7 +995,7 @@ create or replace package body doom_unified_delta_apply as
       fail('pre-world DMSC exact length');end if;
     g_delta:=p_command;g_length:=c_command_bytes;
     if rawtohex(utl_raw.substr(g_delta,1,4))<>'444D5343' or
-       byte_at(5,'pre-world DMSC version') not in(2,3) or byte_at(6,'pre-world DMSC count')<>1 or
+       byte_at(5,'pre-world DMSC version') not in(2,3,4) or byte_at(6,'pre-world DMSC count')<>1 or
        byte_at(7,'pre-world DMSC reserved')<>0 or byte_at(8,'pre-world DMSC reserved')<>0 then
       fail('pre-world DMSC header');end if;
     l_command_seq:=u64_at(9,'pre-world DMSC sequence');

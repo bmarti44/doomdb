@@ -36,8 +36,10 @@ History is lineage qualified. `TIC_COMMANDS`, `GAME_EVENTS`, and `AUDIO_EVENTS`
 are insert-only; restoration never updates or deletes them. Load and rewind restore
 state into a deterministic new lineage while global command sequence continues
 monotonically. The original lineage remains replayable. Periodic snapshots occur
-at logical tics divisible by four in this visible evaluator; production stores the
-same reviewed value as relational configuration `HISTORY_SNAPSHOT_INTERVAL=4`.
+at logical tics divisible by four in the compact model and differential fixture;
+production uses the selected relational configuration
+`HISTORY_SNAPSHOT_INTERVAL=64`, which the live oracle checks before temporarily
+shortening its fixture and rolling that test-only change back.
 Every save creates or reuses a complete checkpoint at its exact tic, including
 non-periodic tics. Replacing a slot changes only the slot pointer.
 

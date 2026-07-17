@@ -88,7 +88,7 @@ async function boot(): Promise<void> {
   let nextSequence = 0;
   let nextPresentation = 1;
   let submitInFlight = 0;
-  let fetchInFlight = false;
+  let fetchInFlight = 0;
   let syncInFlight = false;
   let pipelineError = false;
   let nextFetch = 1;
@@ -97,6 +97,7 @@ async function boot(): Promise<void> {
   const commandPeriodMs = 32;
   const presentationPeriodMs = 31.8;
   const submitDepth = 4;
+  const fetchDepth = 2;
   const presentationBuffer = 10;
   const submitted = new Set<number>();
   const retryFetch: number[] = [];
@@ -120,12 +121,11 @@ async function boot(): Promise<void> {
     status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\n30 FPS database pipeline active';
     presentationTimer = window.setInterval(() => { void present(); }, presentationPeriodMs);
   };
-  // USE is now covered by the retained split-world gate. FIRE still has two
-  // catalog cases (barrel recursion and player splash projectiles) that must
-  // drain the pipeline and use the complete SQL oracle instead of stopping the
-  // async client with a rejected SUBMIT_STEP.
-  const retainedCommand = (command: Command): boolean => command.fire === 0 &&
-    command.pause === 0 && command.automap === 0 && command.menu === 'NONE' &&
+  // Live movement, USE, weapon selection, and every catalog fire mode now use
+  // the correlated retained worker. Presentation-only controls remain on the
+  // synchronous compatibility path.
+  const retainedCommand = (command: Command): boolean => command.pause === 0 &&
+    command.automap === 0 && command.menu === 'NONE' &&
     command.cheat.length === 0;
   const submitTick = (): void => {
     const sequence = ++nextSequence;
@@ -141,7 +141,7 @@ async function boot(): Promise<void> {
       .finally(() => { submitInFlight -= 1; });
   };
   const fetchTick = (sequence: number): void => {
-    fetchInFlight = true;
+    fetchInFlight += 1;
     void pollFrame(game.session, sequence)
       .then(payload => payload === null ? null : decodePayload(payload))
       .then(decoded => {
@@ -152,7 +152,7 @@ async function boot(): Promise<void> {
         pipelineError = true;const error = cause instanceof Error ? cause : new Error('fetch failed');
         status.style.opacity = '1';status.textContent = `Game pipeline stopped: ${error.message}`;
       })
-      .finally(() => { fetchInFlight = false; });
+      .finally(() => { fetchInFlight -= 1; });
   };
   const syncTick = (): void => {
     const sequence = ++nextSequence;
@@ -190,12 +190,13 @@ async function boot(): Promise<void> {
       nextDispatch = now + commandPeriodMs;
       return;
     }
-    if (!fetchInFlight) {
+    while (fetchInFlight < fetchDepth) {
       if (retryFetch.length > 0) fetchTick(retryFetch.shift()!);
       else if (nextFetch <= nextSequence && submitted.has(nextFetch)) fetchTick(nextFetch++);
+      else break;
     }
     if (!retainedCommand(latest)) {
-      if (!syncInFlight && submitInFlight === 0 && !fetchInFlight &&
+      if (!syncInFlight && submitInFlight === 0 && fetchInFlight === 0 &&
           nextFetch > nextSequence) syncTick();
       return;
     }

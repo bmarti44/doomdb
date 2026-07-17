@@ -29,34 +29,33 @@ More reviewed views include the [shotgun HUD](goldens/t5.4/game-shotgun.png),
 
 ## Current status
 
-P0–P7 are complete. P12.0 was pulled ahead of the full E1M1 route to make the
-dynamic game playable before continuing P8.
+P0–P7 and the pulled-forward P12.0 playability gate are complete. Work has
+resumed on P8's full E1M1 completion route.
 
 The selected retained worker now supports arbitrary live movement, collision,
 weapon selection, common hitscan/melee fire, `USE`/`WALK` triggers, doors,
 lifts, switches, carry, blocking, monsters, pickups, and world presentation.
-Hitscan barrel damage, ordered recursive splash, player armor/death, and
-same-tic monster death now also run in the retained worker with exact SQL
-parity. The complete player rocket/plasma lifecycle is the remaining retained
-gameplay gap; unsupported actions preserve the complete SQL fallback and SQL
-remains an independently executable differential oracle.
+Hitscan barrel damage, ordered recursive splash, player armor/death, same-tic
+monster death, and the complete rocket/plasma spawn, sweep, impact, splash, and
+removal lifecycle also run there with exact SQL parity. SQL remains an
+independently executable differential oracle.
 
-Two fresh 300-frame moving runs after front-to-back solid-column BSP rejection
-passed at **31.04 FPS** and **32.06 FPS**. Both produced 300 distinct frames and
-the exact 330-frame chain
+Isolated 300-frame moving baselines pass at **30.88 FPS** and **32.06 FPS**.
+Three FIRE-every-8 repeats pass at **32.00 FPS**, **30.82 FPS**, and **32.00 FPS**, proving that live
+combat no longer drains or serializes the command window. Every run produced
+300 distinct frames; the baseline retained the exact 330-frame chain
 `4d9a7a22dd8c3d02c37d40523e6f5d9fcec18665a374eccd7a9b63427d49b6fd`.
-The second run had zero stalls and 31.16/32.05 ms paint-gap p50/p95. The
-independent 12-pose SQL oracle matched 57,012 accepted intersections, 21,050
-visible hits, 12,487 active portal hits, and all 64,000 final pixels with no
-differences. Dynamic special, lifecycle, rollback, restart, and worker-fencing
-gates also pass.
+Both combat repeats produced the identical chain
+`0d8475430dd0e40a603e729429659cfbbe5c9a8af14e3e7366be879f9d8ac817`.
+Their best paint-gap p50/p95 was 31.22/32.09 ms. The independent renderer oracle,
+dynamic special, projectile differential, rollback, restart, worker-fencing,
+and complete T5.1–T7.3 gates pass.
 
-The client uses a depth-four command window, ordered decode, a 32 ms command
-clock, a 31.8 ms display clock, and a ten-frame startup buffer. That buffer
-currently adds about 320 ms of input-to-display latency; reducing it without
-losing sustained cadence is still active work. FIRE currently drains that
-window and uses the synchronous correctness path until rocket/plasma deltas are
-complete; movement, USE, and weapon selection remain pipelined. The design is resolution-aware:
+The client uses a depth-four command window, two concurrent correlated frame
+polls, ordered decode, a 32 ms command clock, a 31.8 ms display clock, and a
+ten-frame startup buffer. Every live ticcmd—including FIRE—uses this dynamic
+AutoREST pipeline. The buffer currently adds about 320 ms of input-to-display
+latency; reducing it without losing sustained cadence is still active work. The design is resolution-aware:
 visibility and simulation are independent of the 320×200 buffer, and horizontal
 plane spans remain planned before enabling the future 640×400 profile.
 

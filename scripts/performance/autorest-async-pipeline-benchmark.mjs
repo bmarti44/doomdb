@@ -8,9 +8,10 @@ const root=(process.env.DOOM_ORDS_URL??'http://localhost:8080/ords/doom').replac
 const frames=Number(process.env.DOOM_PIPELINE_FRAMES??300),warm=30;
 const commandPeriod=32,presentationPeriod=31.8;
 const submitDepth=Number(process.env.DOOM_SUBMIT_DEPTH??4);
-const fetchDepth=Number(process.env.DOOM_FETCH_DEPTH??1);
+const fetchDepth=Number(process.env.DOOM_FETCH_DEPTH??2);
 const bufferFrames=Number(process.env.DOOM_BUFFER_FRAMES??10);
 const pollWaitMs=Number(process.env.DOOM_POLL_WAIT_MS??1000);
+const fireEvery=Number(process.env.DOOM_FIRE_EVERY??0);
 if(frames!==300)throw new Error('async pipeline gate requires exactly 300 frames');
 
 async function post(procedure,body){
@@ -21,7 +22,7 @@ async function post(procedure,body){
   return response.json();
 }
 const command=(seq,intent={})=>({seq,turn:intent.turn??0,forward:intent.forward??0,
-  strafe:0,run:0,fire:0,use:0,weapon:intent.weapon??0,pause:0,automap:0,
+  strafe:0,run:0,fire:intent.fire??0,use:0,weapon:intent.weapon??0,pause:0,automap:0,
   menu:'NONE',cheat:''});
 const step=async(session,seq,intent={})=>(await post('STEP',{p_session:session,
   p_commands:JSON.stringify({v:1,commands:[command(seq,intent)]})})).p_payload;
@@ -46,6 +47,7 @@ forward(8);turn(16);forward(12);turn(16);forward(12);turn(16);forward(24);
 turn(16);forward(16);turn(16);forward(28);turn(16);forward(20);turn(16);
 forward(32);turn(16);forward(20);route[0].weapon=1;
 if(route.length!==frames)throw new Error('async pipeline route length');
+if(fireEvery>0)for(let i=0;i<route.length;i++)if(i%fireEvery===0)route[i].fire=1;
 
 const created=await post('NEW_GAME',{p_skill:3});
 const session=created.p_session;await decodePayload(created.p_payload);
@@ -68,7 +70,7 @@ const finish=()=>{
   const gaps=paints.slice(1).map((value,index)=>value-paints[index]);
   const elapsed=paints.at(-1)-paints[0];
   const result={session,frames,presented,uniqueFrames:hashes.size,submitDepth,fetchDepth,
-    bufferFrames,pollWaitMs,stalls,blockedSubmits,
+    bufferFrames,pollWaitMs,fireEvery,stalls,blockedSubmits,
     frameChainSha:createHash('sha256').update(JSON.stringify(frameChain)).digest('hex'),
     displayFps:(presented-1)*1000/elapsed,
     submitP50Ms:quantile(submitLatency,.5),submitP95Ms:quantile(submitLatency,.95),

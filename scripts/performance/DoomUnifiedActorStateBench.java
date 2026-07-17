@@ -202,7 +202,7 @@ public final class DoomUnifiedActorStateBench {
       exploded[i]=p.exploded;sector[i]=p.sector;direction[i]=-1;awake[i]=0;cooldown[i]=0;healthSeen[i]=-1;
       deathProcessed[i]=0;x[i]=canonicalNumber(p.x);y[i]=canonicalNumber(p.y);z[i]=canonicalNumber(p.z);
       mx[i]=canonicalNumber(p.mx);my[i]=canonicalNumber(p.my);mz[i]=canonicalNumber(p.mz);
-      angle[i]=NUMBER.zero();radius[i]=canonicalNumber(p.radius);height[i]=canonicalNumber(p.height);
+      angle[i]=canonicalNumber(p.angle);radius[i]=canonicalNumber(p.radius);height[i]=canonicalNumber(p.height);
       projectileKind[i]=p.kind;
       require(slot.put(Integer.valueOf(p.id),Integer.valueOf(i))==null,"world append duplicate");count=n;}
     private void copySlot(int from,int to){if(from==to)return;
@@ -863,7 +863,7 @@ public final class DoomUnifiedActorStateBench {
 
   private static final class TicSpawn{
     int id,thing,state,tics,health=1,flags=0,target=-1,tracer=-1,reaction=0,spawnThing=-1;
-    int owner,exploded=0,sector;NUMBER x,y,z,mx,my,mz,radius,height;String kind;
+    int owner=-1,exploded=0,sector=-1;NUMBER x,y,z,mx,my,mz,angle=NUMBER.zero(),radius,height;String kind;
   }
   private static final class WorldOp{
     int op,mask,id,health,exploded;NUMBER x,y;
@@ -877,37 +877,66 @@ public final class DoomUnifiedActorStateBench {
     for(int i=0;i<values.length;i++)if(values[i].equals(value))return i;return -1;
   }
   private static boolean advanceOwnerProjectiles(Owner o,ArrayList<WorldOp> ops,
-      ArrayList<AttackEvent> events)throws Exception{
-    ArrayList<Integer> ids=new ArrayList<Integer>();HashSet<Integer> owners=new HashSet<Integer>();
-    for(int i=0;i<o.world.count;i++)if(o.world.projectileKind[i]!=null){
-      int owner=o.world.owner[i],actor=find(o.id,owner),def=find(o.projectileKind,o.world.projectileKind[i]);
-      if(actor<0||def<0||o.health[actor]<=0||!o.projectileSplashRadius[def].isZero()||
-          !owners.add(Integer.valueOf(owner)))return false;
-      ids.add(Integer.valueOf(o.world.id[i]));
+      ArrayList<AttackEvent> events,ArrayList<TicSpawn> spawns,
+      ArrayList<Integer> transientIds)throws Exception{
+    int projectileCount=0;for(int i=0;i<o.world.count;i++)if(o.world.projectileKind[i]!=null)projectileCount++;
+    int[] projectileIds=new int[projectileCount],removals=new int[projectileCount];int at=0,removalCount=0;
+    for(int i=0;i<o.world.count;i++)if(o.world.projectileKind[i]!=null)projectileIds[at++]=o.world.id[i];
+    NUMBER zero=NUMBER.zero(),one=new NUMBER(1);
+    for(int projectileId:projectileIds){int slot=o.world.slot(projectileId);
+      require(slot>=0,"retained projectile slot");String kind=o.world.projectileKind[slot];
+      int def=find(o.projectileKind,kind);require(def>=0,"retained projectile def");
+      NUMBER nx=o.world.x[slot].add(o.world.mx[slot]),ny=o.world.y[slot].add(o.world.my[slot]);
+      NUMBER wall=DoomPlayerMovementBench.firstBlockingFraction(o.world.x[slot],o.world.y[slot],nx,ny);
+      int target=-1,targetSlot=-1;NUMBER targetDepth=null;
+      int ownerSlot=o.world.slot(o.world.owner[slot]);
+      if(ownerSlot>=0&&o.world.health[ownerSlot]>0&&o.world.projectileKind[ownerSlot]==null){
+        int type=find(o.spawnThing,o.world.thing[ownerSlot]);String category=type<0?null:o.spawnCategory[type];
+        if("monster".equals(category)||"barrel".equals(category)){
+          target=o.world.id[ownerSlot];targetSlot=ownerSlot;targetDepth=zero;
+        }
+      }
+      if(targetSlot<0){NUMBER mx=o.world.mx[slot],my=o.world.my[slot];
+        NUMBER denominator=mx.mul(mx).add(my.mul(my));require(!denominator.isZero(),"projectile momentum");
+        NUMBER length=denominator.sqroot();
+        for(int candidate=0;candidate<o.world.count;candidate++)if(candidate!=slot&&
+            o.world.health[candidate]>0&&o.world.projectileKind[candidate]==null){
+          int type=find(o.spawnThing,o.world.thing[candidate]);String category=type<0?null:o.spawnCategory[type];
+          if(!"monster".equals(category)&&!"barrel".equals(category))continue;
+          NUMBER dx=o.world.x[candidate].sub(o.world.x[slot]),dy=o.world.y[candidate].sub(o.world.y[slot]);
+          NUMBER depth=dx.mul(mx).add(dy.mul(my)).div(denominator);
+          NUMBER miss=dx.mul(my).sub(dy.mul(mx));if(miss.compareTo(zero)<0)miss=miss.negate();
+          miss=miss.div(length);
+          if(depth.compareTo(zero)>=0&&depth.compareTo(one)<=0&&
+              miss.compareTo(o.world.radius[candidate].add(o.projectileRadius[def]))<=0&&
+              (targetDepth==null||depth.compareTo(targetDepth)<0||
+               (depth.compareTo(targetDepth)==0&&o.world.id[candidate]<target))){
+            target=o.world.id[candidate];targetSlot=candidate;targetDepth=depth;
+          }
+        }
+      }
+      boolean impact=wall!=null||targetSlot>=0;
+      if(impact){if(targetSlot>=0&&(wall==null||targetDepth.compareTo(wall)<0))
+          damageMobj(o,targetSlot,o.projectileDamage[def],projectileId,false,events);
+        else{target=-1;targetSlot=-1;}
+        o.world.health[slot]=0;removals[removalCount++]=projectileId;
+        events.add(new AttackEvent(o.nextEvent++,10,projectileId,target,
+            new NUMBER(o.projectileDamage[def]),kind));
+        if(!o.projectileSplashRadius[def].isZero())splashDamage(o,nx,ny,
+            o.projectileSplashRadius[def].intValue(),o.projectileSplashDamage[def],projectileId,events);
+      }else{o.world.x[slot]=nx;o.world.y[slot]=ny;
+        for(TicSpawn spawn:spawns)if(spawn.id==projectileId){spawn.x=nx;spawn.y=ny;break;}}
     }
-    int[] removals=new int[ids.size()];int removalCount=0;
-    for(Integer boxed:ids){int projectileId=boxed.intValue(),slot=o.world.slot(projectileId);
-      require(slot>=0,"retained projectile slot");int owner=o.world.owner[slot],actor=find(o.id,owner);
-      int def=find(o.projectileKind,o.world.projectileKind[slot]),damage=o.projectileDamage[def];
-      int ownerSlot=o.world.slot(owner);require(ownerSlot>=0&&actor>=0,"retained projectile owner");
-      o.world.health[ownerSlot]=Math.max(0,o.world.health[ownerSlot]-damage);o.health[actor]=o.world.health[ownerSlot];
-      String kind=o.world.projectileKind[slot];removals[removalCount++]=projectileId;
-      ops.add(new WorldOp(2,0,projectileId));
-      events.add(new AttackEvent(o.nextEvent++,10,projectileId,owner,new NUMBER(damage),kind));
+    if(removalCount>0){o.world.removeMany(removals,removalCount);
+      for(int i=spawns.size()-1;i>=0;i--)
+        if(Arrays.binarySearch(removals,0,removalCount,spawns.get(i).id)>=0){
+          transientIds.add(Integer.valueOf(spawns.get(i).id));spawns.remove(i);}
     }
-    if(removalCount>0)o.world.removeMany(removals,removalCount);
-    Collections.sort(ops,new Comparator<WorldOp>(){public int compare(WorldOp a,WorldOp b){
-      return a.id<b.id?-1:a.id==b.id?0:1;}});
-    for(int i=1;i<ops.size();i++)require(ops.get(i-1).id<ops.get(i).id,"retained projectile op order");
     o.nextMobj=o.world.count==0?1:o.world.id[o.world.count-1]+1;return true;
   }
   private static boolean ownerProjectilesEligible(Owner o)throws Exception{
-    HashSet<Integer> owners=new HashSet<Integer>();
-    for(int i=0;i<o.world.count;i++)if(o.world.projectileKind[i]!=null){
-      int owner=o.world.owner[i],actor=find(o.id,owner),def=find(o.projectileKind,o.world.projectileKind[i]);
-      if(actor<0||def<0||o.health[actor]<=0||!o.projectileSplashRadius[def].isZero()||
-          !owners.add(Integer.valueOf(owner)))return false;
-    }
+    for(int i=0;i<o.world.count;i++)if(o.world.projectileKind[i]!=null&&
+        find(o.projectileKind,o.world.projectileKind[i])<0)return false;
     return true;
   }
   public static int ownerProjectilesReady(String s,String l,long g){
@@ -932,6 +961,16 @@ public final class DoomUnifiedActorStateBench {
     else{s.mx=dx.mul(o.projectileSpeed[p]).div(length);s.my=dy.mul(o.projectileSpeed[p]).div(length);}
     s.radius=o.projectileRadius[p];s.height=o.projectileHeight[p];s.owner=o.id[actor];
     s.kind=o.projectileKind[p];s.sector=o.sector[actor];return s;
+  }
+  private static TicSpawn playerProjectile(Owner o,int weapon)throws Exception{
+    int p=find(o.projectileKind,o.weaponProjectile[weapon]);require(p>=0,"player projectile def");
+    TicSpawn s=new TicSpawn();s.id=o.nextMobj++;s.thing=o.projectileThing[p];s.state=o.projectileState[p];
+    s.tics=o.stateDefaultTics[s.state];s.x=o.playerX;s.y=o.playerY;s.z=o.playerZ.add(new NUMBER(32));
+    s.mx=DoomSimCatalogBench.playerProjectileCos[o.playerAngleIndex].mul(o.projectileSpeed[p]);
+    s.my=DoomSimCatalogBench.playerProjectileSin[o.playerAngleIndex].mul(o.projectileSpeed[p]);
+    s.mz=NUMBER.zero();
+    s.angle=new NUMBER((long)o.playerAngleIndex*5625L).div(new NUMBER(1000));
+    s.radius=o.projectileRadius[p];s.height=o.projectileHeight[p];s.kind=o.projectileKind[p];return s;
   }
   private static void ticAttack(Owner o,int actor,int bi,int[] draws,
       ArrayList<AttackEvent> events,ArrayList<TicSpawn> spawns)throws Exception{
@@ -1058,7 +1097,8 @@ public final class DoomUnifiedActorStateBench {
       splashDamage(o,o.world.x[slot],o.world.y[slot],128,128,id,events);
     }
   }
-  private static void fireWeapon(Owner o,int fire,int[] draws,ArrayList<AttackEvent> events)throws Exception{
+  private static void fireWeapon(Owner o,int fire,int[] draws,ArrayList<AttackEvent> events,
+      ArrayList<TicSpawn> spawns)throws Exception{
     if(fire==0){o.refire=0;return;}
     String state=o.stateId[o.weaponState];
     if(!state.endsWith("_READY")&&!state.endsWith("_REFIRE"))return;
@@ -1066,10 +1106,16 @@ public final class DoomUnifiedActorStateBench {
     if(weaponAmmo(o,o.weaponAmmo[weapon])<o.weaponAmmoCost[weapon]){
       events.add(new AttackEvent(o.nextEvent++,16,-1,-1,null,null));o.playerSound=1;return;
     }
-    require("HITSCAN".equals(o.weaponAttack[weapon])||"MELEE".equals(o.weaponAttack[weapon]),
-        "retained fire projectile fallback");
     consumeWeaponAmmo(o,weapon);o.weaponState=o.weaponFireState[weapon];o.weaponStateTics=4;
     o.flashState=o.weaponFlashState[weapon];o.flashStateTics=2;o.refire++;
+    if("PROJECTILE".equals(o.weaponAttack[weapon])){
+      TicSpawn spawn=playerProjectile(o,weapon);spawns.add(spawn);
+      int definition=find(o.projectileKind,spawn.kind);
+      events.add(new AttackEvent(o.nextEvent++,17,spawn.id,-1,o.projectileSpeed[definition],spawn.kind));
+      o.playerSound=1;return;
+    }
+    require("HITSCAN".equals(o.weaponAttack[weapon])||"MELEE".equals(o.weaponAttack[weapon]),
+        "retained fire attack kind");
     double far=DoomBspKernelBench.combatFarDistance(),px=o.playerX.doubleValue(),py=o.playerY.doubleValue();
     for(int pellet=0;pellet<o.weaponPellets[weapon];pellet++){
       int difference=draw(o,draws)-draw(o,draws);NUMBER spread=new NUMBER(difference).mul(o.weaponSpread[weapon]);
@@ -1123,15 +1169,23 @@ public final class DoomUnifiedActorStateBench {
   }
   private static byte[] ticDelta(Owner o,String s,String l,long g,String request,
       boolean advanceProjectiles,ArrayList<AttackEvent> prefixEvents,boolean weaponBlock)throws Exception{
-    return ticDelta(o,s,l,g,request,advanceProjectiles,prefixEvents,weaponBlock,0);
+    return ticDelta(o,s,l,g,request,advanceProjectiles,prefixEvents,null,weaponBlock?2:1,0);
   }
   private static byte[] ticDelta(Owner o,String s,String l,long g,String request,
-      boolean advanceProjectiles,ArrayList<AttackEvent> prefixEvents,boolean weaponBlock,
+      boolean advanceProjectiles,ArrayList<AttackEvent> prefixEvents,ArrayList<TicSpawn> prefixSpawns,
+      int outputVersion,
       int prefixDraws)throws Exception{
     long phase=System.nanoTime();
     ArrayList<AttackEvent> events=prefixEvents==null?new ArrayList<AttackEvent>():prefixEvents;
     ArrayList<WorldOp> worldOps=new ArrayList<WorldOp>();
-    if(advanceProjectiles)require(advanceOwnerProjectiles(o,worldOps,events),"retained projectile fallback");
+    ArrayList<TicSpawn> spawns=prefixSpawns==null?new ArrayList<TicSpawn>():prefixSpawns;
+    ArrayList<Integer> transientIds=new ArrayList<Integer>();
+    for(TicSpawn spawn:spawns)o.world.append(spawn);
+    if(advanceProjectiles)require(advanceOwnerProjectiles(o,worldOps,events,spawns,transientIds),
+        "retained projectile fallback");
+    require(outputVersion==1||outputVersion==2||outputVersion==3,"retained DTIC version");
+    require(outputVersion==3||transientIds.isEmpty(),"transient projectile requires DTIC v3");
+    int prefixSpawnCount=spawns.size();
     if(priorHealthScratch.length!=o.count){priorHealthScratch=new int[o.count];moveMaskScratch=new int[o.count];}
     System.arraycopy(o.health,0,priorHealthScratch,0,o.count);Arrays.fill(moveMaskScratch,0);
     int[] priorHealth=priorHealthScratch,moveMask=moveMaskScratch;
@@ -1144,7 +1198,6 @@ public final class DoomUnifiedActorStateBench {
     byte[] moves=DoomMonsterChaseBench.prepareWorld(s,l,g,request,o.playerX,o.playerY,priorHealth,moveMask);
     require(moves.length>=8+o.count*58&&moves[5]==0,"unified TIC movement oracle");
     ticChaseNs+=System.nanoTime()-phase;phase=System.nanoTime();
-    ArrayList<TicSpawn> spawns=new ArrayList<TicSpawn>();
     int[] draws=new int[]{prefixDraws};
     for(int i=0;i<o.count;i++){
       int oldSeen=o.healthSeen[i]<0?o.health[i]:o.healthSeen[i],oldCooldown=o.cooldown[i];
@@ -1192,18 +1245,19 @@ public final class DoomUnifiedActorStateBench {
       o.world.sector[w]=o.sector[i];o.world.direction[w]=o.direction[i];o.world.awake[w]=o.awake[i];
       o.world.cooldown[w]=o.cooldown[i];o.world.healthSeen[w]=o.healthSeen[i];
       o.world.deathProcessed[w]=o.deathProcessed[i];}
-    for(TicSpawn spawn:spawns)o.world.append(spawn);
+    for(int i=prefixSpawnCount;i<spawns.size();i++)o.world.append(spawns.get(i));
     rebuildWorldOps(o,worldOps);
     ticLoopNs+=System.nanoTime()-phase;phase=System.nanoTime();
     int changedActors=0;for(int i=0;i<o.count;i++)if(!sameActorDelta(o,committed,i))changedActors++;
-    int p=0;p=fastInt(p,0x44544943);ticOutput[p++]=(byte)(weaponBlock?2:1);ticOutput[p++]=0;p=fastShort(p,changedActors);
+    int p=0;p=fastInt(p,0x44544943);ticOutput[p++]=(byte)outputVersion;ticOutput[p++]=0;p=fastShort(p,changedActors);
     p=fastShort(p,spawns.size());p=fastShort(p,events.size());p=fastShort(p,draws[0]);p=fastShort(p,worldOps.size());
     p=fastInt(p,o.rng);p=fastInt(p,o.playerHealth);p=fastInt(p,o.playerArmor);p=fastInt(p,o.playerAlive);
     p=fastInt(p,o.killCount);p=fastInt(p,o.nextMobj);p=fastInt(p,o.nextEvent);p=fastLong(p,o.tic+1);p=fastLong(p,o.seq+1);
-    if(weaponBlock){p=fastInt(p,o.ammoBullets);p=fastInt(p,o.ammoShells);p=fastInt(p,o.ammoRockets);
+    if(outputVersion>=2){p=fastInt(p,o.ammoBullets);p=fastInt(p,o.ammoShells);p=fastInt(p,o.ammoRockets);
       p=fastInt(p,o.ammoCells);p=fastInt(p,o.weaponMask);p=fastInt(p,o.selectedWeapon);
       p=fastInt(p,o.pendingWeapon);p=fastInt(p,o.weaponState);p=fastInt(p,o.weaponStateTics);
       p=fastInt(p,o.flashState);p=fastInt(p,o.flashStateTics);p=fastInt(p,o.refire);}
+    if(outputVersion==3){p=fastShort(p,transientIds.size());p=fastShort(p,0);}
     for(int i=0;i<o.count;i++)if(!sameActorDelta(o,committed,i)){p=fastInt(p,o.id[i]);p=fastInt(p,o.healthSeen[i]);p=fastInt(p,o.cooldown[i]);
       p=fastInt(p,o.stateIndex[i]);p=fastInt(p,o.stateTics[i]);p=fastInt(p,o.deathProcessed[i]);
       p=fastInt(p,o.awake[i]);p=fastInt(p,o.flags[i]);p=fastInt(p,o.target[i]);p=fastInt(p,o.direction[i]);
@@ -1216,7 +1270,11 @@ public final class DoomUnifiedActorStateBench {
       p=fastNumber(p,q.x);p=fastNumber(p,q.y);p=fastNumber(p,q.z);p=fastNumber(p,q.mx);p=fastNumber(p,q.my);
       p=fastNumber(p,q.mz);p=fastNumber(p,q.radius);p=fastNumber(p,q.height);p=fastInt(p,q.health);p=fastInt(p,q.flags);
       p=fastInt(p,q.target);p=fastInt(p,q.tracer);p=fastInt(p,q.reaction);p=fastInt(p,q.spawnThing);
-      p=fastInt(p,q.owner);p=fastInt(p,q.exploded);p=fastInt(p,q.sector);p=fastText(p,q.kind);}
+      p=fastInt(p,q.owner);p=fastInt(p,q.exploded);
+      if(outputVersion==3){p=fastNumber(p,q.angle);p=fastInt(p,q.sector);}
+      else p=fastInt(p,q.sector);
+      p=fastText(p,q.kind);}
+    for(Integer transientId:transientIds)p=fastInt(p,transientId.intValue());
     for(AttackEvent e:events){p=fastInt(p,e.ordinal);p=fastInt(p,e.type);p=fastInt(p,e.actor);p=fastInt(p,e.target);
       ticOutput[p++]=(byte)(e.value==null?0:1);if(e.value!=null)p=fastNumber(p,e.value);
       else{Arrays.fill(ticOutput,p,p+23,(byte)0);p+=23;}p=fastText(p,e.text);}
@@ -1279,7 +1337,8 @@ public final class DoomUnifiedActorStateBench {
       int rng,int nextMobj,int nextEvent,byte[] command){
     try{fence(s,l,g,tic,seq,rng,nextMobj,nextEvent);require(pending==null&&request!=null&&
         request.matches("[0-9a-f]{32}")&&command!=null&&command.length==COMMAND_BYTES&&
-        int_(command,0)==0x444d5343&&(command[4]==2||command[4]==3)&&(command[5]&255)==1&&
+        int_(command,0)==0x444d5343&&(command[4]==2||command[4]==3||command[4]==4)&&
+        (command[5]&255)==1&&
         command[6]==0&&command[7]==0&&long_(command,8)==seq+1,"pre-world command fence/header");
       int turn=command[16],forward=command[17],strafe=command[18],run=command[19]&255;
       int fire=command[20]&255,use=command[21]&255,weapon=command[22]&255,reserved=command[23]&255;
@@ -1331,11 +1390,18 @@ public final class DoomUnifiedActorStateBench {
       boolean advanceProjectiles=retainedProjectiles==1||
         (projectilePack!=null&&applyProjectilePack(candidate,projectilePack));
       if(retainedProjectiles==1)require(ownerProjectilesEligible(candidate),"retained projectile eligibility");
-      boolean actions=pendingCommand[4]==3;ArrayList<AttackEvent> events=null;
-      if(actions){events=new ArrayList<AttackEvent>();advanceWeapon(candidate,pendingCommand[22]&255,events);
-        int[] draws=new int[]{commandDraws};fireWeapon(candidate,pendingCommand[20]&255,draws,events);
+      boolean actions=pendingCommand[4]==3||pendingCommand[4]==4;ArrayList<AttackEvent> events=null;
+      ArrayList<TicSpawn> actionSpawns=null;
+      if(actions){events=new ArrayList<AttackEvent>();actionSpawns=new ArrayList<TicSpawn>();
+        advanceWeapon(candidate,pendingCommand[22]&255,events);
+        if(pendingCommand[4]==3&&(pendingCommand[20]&255)==1)
+          require(!"PROJECTILE".equals(candidate.weaponAttack[candidate.selectedWeapon]),
+              "DMSC v3 projectile fire");
+        int[] draws=new int[]{commandDraws};fireWeapon(candidate,pendingCommand[20]&255,draws,events,actionSpawns);
+        if(!actionSpawns.isEmpty())advanceProjectiles=true;
         require(draws[0]>=0,"post-world weapon draws");commandDraws=draws[0];}
-      byte[] nested=ticDelta(candidate,s,l,g,request,advanceProjectiles,events,actions,commandDraws);
+      byte[] nested=ticDelta(candidate,s,l,g,request,advanceProjectiles,events,actionSpawns,
+          actions?(pendingCommand[4]-1):1,commandDraws);
       int nestedLength=ticOutputLength;require(candidate.seq==committed.seq+1&&candidate.tic==committed.tic+1,
           "post-world resulting frontier");byte[] child=new byte[COMMAND_CHILD_HEADER+nestedLength];
       putInt(child,0,0x44435443);child[4]=1;child[5]=0;child[6]=0;child[7]=(byte)COMMAND_BYTES;
@@ -1400,7 +1466,8 @@ public final class DoomUnifiedActorStateBench {
       fence(s,l,g,tic,seq,rng,nextMobj,nextEvent);require(pending==null&&request!=null&&
           request.matches("[0-9a-f]{32}"),"command TIC request");
       require(command!=null&&command.length==COMMAND_BYTES&&int_(command,0)==0x444d5343&&
-          command[4]==(byte)(weaponActions?3:2)&&(command[5]&255)==1&&command[6]==0&&command[7]==0,
+          (weaponActions?(command[4]==3||command[4]==4):command[4]==2)&&
+          (command[5]&255)==1&&command[6]==0&&command[7]==0,
           "command TIC DMSC header");
       long commandSeq=long_(command,8);require(commandSeq==seq+1,"command TIC sequence gap");
       int turn=command[16],forward=command[17],strafe=command[18],run=command[19]&255;
@@ -1425,12 +1492,17 @@ public final class DoomUnifiedActorStateBench {
       candidate.playerSector=DoomPlayerMovementBench.resultSector;
       if(oldX.compareTo(candidate.playerX)!=0||oldY.compareTo(candidate.playerY)!=0)
         Arrays.fill(candidate.visibilityCache,-1);
-      ArrayList<AttackEvent> commandEvents=null;
+      ArrayList<AttackEvent> commandEvents=null;ArrayList<TicSpawn> actionSpawns=null;
       int commandDraws=worldPack==null?0:applyPassiveWorldPack(candidate,worldPack);
-      if(weaponActions){commandEvents=new ArrayList<AttackEvent>();advanceWeapon(candidate,weapon,commandEvents);
-        int[] draws=new int[]{commandDraws};fireWeapon(candidate,fire,draws,commandEvents);commandDraws=draws[0];}
+      if(weaponActions){commandEvents=new ArrayList<AttackEvent>();actionSpawns=new ArrayList<TicSpawn>();
+        advanceWeapon(candidate,weapon,commandEvents);
+        if(command[4]==3&&fire==1)require(!"PROJECTILE".equals(
+            candidate.weaponAttack[candidate.selectedWeapon]),"DMSC v3 projectile fire");
+        int[] draws=new int[]{commandDraws};fireWeapon(candidate,fire,draws,commandEvents,actionSpawns);
+        if(!actionSpawns.isEmpty())advanceProjectiles=true;commandDraws=draws[0];}
       long actorStarted=DoomPlayerMovementBench.traceEnabled?System.nanoTime():0;
-      byte[] nested=ticDelta(candidate,s,l,g,request,advanceProjectiles,commandEvents,weaponActions,commandDraws);
+      byte[] nested=ticDelta(candidate,s,l,g,request,advanceProjectiles,commandEvents,actionSpawns,
+          weaponActions?(command[4]-1):1,commandDraws);
       if(DoomPlayerMovementBench.traceEnabled)lastActorTicNs=System.nanoTime()-actorStarted;
       int nestedLength=ticOutputLength;
       require(candidate.seq==commandSeq&&candidate.tic==tic+1,"command TIC resulting frontier");

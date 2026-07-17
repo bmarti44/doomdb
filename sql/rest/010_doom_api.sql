@@ -257,32 +257,15 @@ create or replace package body doom_api as
       if p_async=0 then copy_blob(l_worker_payload,p_payload);end if;
       return;
     exception when no_data_found then null;end;
-    if l_seq between l_expected_seq+2 and l_expected_seq+32 and
-       coalesce(l_fire,0)=0 and coalesce(l_use,0)=0 and
-       coalesce(l_weapon,0)=0 then
-      -- Neutral ticcmds are response-independent keyboard state. Queue them
-      -- against their deterministic future frontier immediately so ORDS can
-      -- serialize the preceding response in parallel with the retained tic.
-      -- DMSC v3 is valid for both ready and transitional weapon states, which
-      -- avoids reading predecessor-dependent player state on this path.
+    if l_seq between l_expected_seq+2 and l_expected_seq+32 then
+      -- Ticcmds are keyboard state, not response-derived actions. DMSC/v3 and
+      -- v4 defer READY/transition decisions to the ordered resident worker, so
+      -- every live command can be queued against its deterministic future
+      -- frontier without occupying an ORDS connection waiting on a predecessor.
       l_pipeline_ahead:=l_seq-l_expected_seq-1;
       l_tic:=l_tic+l_pipeline_ahead;
       l_expected_seq:=l_seq-1;
-      l_action_version:=3;
-    elsif l_seq between l_expected_seq+2 and l_expected_seq+32 then
-      -- Response-dependent fire/weapon commands retain the conservative
-      -- predecessor fence until their exact action state can be inspected.
-      l_deadline:=systimestamp+numtodsinterval(
-        config_number('UNIFIED_WORKER_WAIT_SECONDS',10),'SECOND');
-      loop
-        select current_tic,last_command_seq into l_tic,l_expected_seq
-          from game_sessions where session_token=p_session;
-        exit when l_seq=l_expected_seq+1;
-        if l_seq<=l_expected_seq or systimestamp>=l_deadline then
-          raise_application_error(c_capacity,'pipelined command frontier timeout');
-        end if;
-        dbms_session.sleep(.005);
-      end loop;
+      l_action_version:=case when coalesce(l_fire,0)=1 then 4 else 3 end;
     end if;
     if l_seq<>l_expected_seq+1 then
       if p_async=1 then fail(c_capacity,'async frontier seq='||l_seq||
@@ -290,11 +273,10 @@ create or replace package body doom_api as
       return;
     end if;
 
-    -- F2 retains catalog-defined hitscan/melee combat, including deterministic
-    -- recursive barrel splash.  Projectile weapons remain on the complete SQL
-    -- oracle until the versioned transient-projectile delta lands.
+    -- DMSC/v4 retains every catalog-defined weapon attack, including exact
+    -- rocket/plasma transient projectile lifecycles and recursive splash.
     if coalesce(l_fire,0)=1 then
-      select case when w.attack_kind in('HITSCAN','MELEE') then 1 else 0 end
+      select case when w.attack_kind in('HITSCAN','MELEE','PROJECTILE') then 1 else 0 end
         into l_fire_supported
         from players p join doom_weapon_def w on w.weapon_id=p.selected_weapon
         join game_sessions s on s.session_token=p.session_token and s.current_player_id=p.player_id
@@ -307,7 +289,8 @@ create or replace package body doom_api as
 
     if l_pipeline_ahead=0 then
       select s.current_tic,s.last_command_seq,
-        case when coalesce(l_fire,0)<>0 or coalesce(l_use,0)<>0 or coalesce(l_weapon,0)<>0 or
+        case when coalesce(l_fire,0)<>0 then 4
+          when coalesce(l_use,0)<>0 or coalesce(l_weapon,0)<>0 or
           p.pending_weapon is not null or p.weapon_state not like 'WEAPON_%_READY' or
           p.weapon_state_tics not in(0,1) then 3 else 2 end
         into l_tic,l_expected_seq,l_action_version
@@ -318,7 +301,7 @@ create or replace package body doom_api as
         raise_application_error(c_capacity,'pipelined action-version frontier race');
       end if;
     end if;
-    l_command:=hextoraw('444D5343'||case l_action_version when 3 then '03' else '02' end||
+    l_command:=hextoraw('444D5343'||case l_action_version when 4 then '04' when 3 then '03' else '02' end||
       '010000'||u64_hex(l_seq)||byte_hex(l_turn)||
       byte_hex(l_forward)||byte_hex(l_strafe)||
       case l_run when 0 then '00' else '01' end||

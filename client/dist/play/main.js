@@ -82,7 +82,7 @@ async function boot() {
     let nextSequence = 0;
     let nextPresentation = 1;
     let submitInFlight = 0;
-    let fetchInFlight = false;
+    let fetchInFlight = 0;
     let syncInFlight = false;
     let pipelineError = false;
     let nextFetch = 1;
@@ -91,6 +91,7 @@ async function boot() {
     const commandPeriodMs = 32;
     const presentationPeriodMs = 31.8;
     const submitDepth = 4;
+    const fetchDepth = 2;
     const presentationBuffer = 10;
     const submitted = new Set();
     const retryFetch = [];
@@ -122,8 +123,8 @@ async function boot() {
     };
     // USE is retained; FIRE drains to the complete SQL oracle until the two F2
     // splash/barrel cases are selected in the async worker.
-    const retainedCommand = (command) => command.fire === 0 &&
-        command.pause === 0 && command.automap === 0 && command.menu === 'NONE' &&
+    const retainedCommand = (command) => command.pause === 0 &&
+        command.automap === 0 && command.menu === 'NONE' &&
         command.cheat.length === 0;
     const submitTick = () => {
         const sequence = ++nextSequence;
@@ -140,7 +141,7 @@ async function boot() {
             .finally(() => { submitInFlight -= 1; });
     };
     const fetchTick = (sequence) => {
-        fetchInFlight = true;
+        fetchInFlight += 1;
         void pollFrame(game.session, sequence)
             .then(payload => payload === null ? null : decodePayload(payload))
             .then(decoded => {
@@ -157,7 +158,7 @@ async function boot() {
             status.style.opacity = '1';
             status.textContent = `Game pipeline stopped: ${error.message}`;
         })
-            .finally(() => { fetchInFlight = false; });
+            .finally(() => { fetchInFlight -= 1; });
     };
     const syncTick = () => {
         const sequence = ++nextSequence;
@@ -201,14 +202,16 @@ async function boot() {
             nextDispatch = now + commandPeriodMs;
             return;
         }
-        if (!fetchInFlight) {
+        while (fetchInFlight < fetchDepth) {
             if (retryFetch.length > 0)
                 fetchTick(retryFetch.shift());
             else if (nextFetch <= nextSequence && submitted.has(nextFetch))
                 fetchTick(nextFetch++);
+            else
+                break;
         }
         if (!retainedCommand(latest)) {
-            if (!syncInFlight && submitInFlight === 0 && !fetchInFlight &&
+            if (!syncInFlight && submitInFlight === 0 && fetchInFlight === 0 &&
                 nextFetch > nextSequence)
                 syncTick();
             return;

@@ -23,7 +23,11 @@ begin
   select count(*) into n from user_procedures where object_name='DOOM_HISTORY' and procedure_name in('CAPTURE_TIC','SAVE_GAME','LOAD_GAME','REWIND_TO_TIC','START_REPLAY','STEP_REPLAY');ok(n=6,'history public procedure set absent or overloaded');
   select count(*) into n from user_tables where table_name='REPLAY_CURSORS';ok(n=1,'REPLAY_CURSORS absent');
   select count(*) into n from user_tab_columns where (table_name='TIC_COMMANDS' and column_name in('LINEAGE','PREVIOUS_COMMAND_SHA','STATE_SHA','FRAME_SHA')) or (table_name='GAME_EVENTS' and column_name in('LINEAGE','PREVIOUS_EVENT_SHA','EVENT_SHA')) or (table_name='AUDIO_EVENTS' and column_name in('LINEAGE','PREVIOUS_EVENT_SHA','EVENT_SHA')) or (table_name='STATE_HISTORY' and column_name in('LINEAGE','STATE_SHA','COMMAND_SHA','EVENT_SHA','FRAME_SHA','SNAPSHOT_SHA','SNAPSHOT_REASON'));ok(n=17,'lineage/hash history columns incomplete');
-  select count(*) into n from doom_config where config_key='HISTORY_SNAPSHOT_INTERVAL' and number_value=4;ok(n=1,'reviewed snapshot interval absent');
+  select count(*) into n from doom_config where config_key='HISTORY_SNAPSHOT_INTERVAL' and number_value=64;ok(n=1,'reviewed snapshot interval absent');
+  -- Keep this compact differential fixture at four tics while independently
+  -- asserting the selected production cadence above.  The final rollback
+  -- restores the session-visible configuration to 64.
+  update doom_config set number_value=4 where config_key='HISTORY_SNAPSHOT_INTERVAL';
   select weapon_id into k_weapon from (select weapon_id from doom_weapon_def order by slot_number,weapon_id) where rownum=1;
   delete from game_sessions where session_token=k_token;
   insert into game_sessions(session_token,game_mode,skill,current_tic,rng_cursor,map_status,paused,menu_state,automap_state,current_player_id,save_lineage,last_command_seq,expires_at,created_at) values(k_token,'GAME',3,0,0,'ACTIVE',0,'NONE','OFF',null,lower(standard_hash('T64-LINEAGE','SHA256')),0,systimestamp+interval '1' hour,systimestamp);

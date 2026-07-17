@@ -95,6 +95,29 @@ public final class DoomPlayerMovementBench {
     return best;
   }
 
+  /** Exact Oracle NUMBER twin used for projectile wall/actor tie ordering. */
+  static NUMBER firstBlockingFraction(NUMBER x0,NUMBER y0,NUMBER x1,NUMBER y1)throws Exception{
+    ensureGeometry();collectCandidates(x0.doubleValue(),y0.doubleValue(),x1.doubleValue(),y1.doubleValue(),128.0);
+    NUMBER dx=x1.sub(x0),dy=y1.sub(y0),best=null,zero=NUMBER.zero(),one=new NUMBER(1);
+    for(int candidate=0;candidate<candidateCount;candidate++){
+      int line=candidateLines[candidate],left=DoomSimCatalogBench.lineLeftSector[line];
+      int right=DoomSimCatalogBench.lineRightSector[line];
+      if(left>=0&&right>=0&&Math.min(liveCeiling[left],liveCeiling[right])>
+          Math.max(liveFloor[left],liveFloor[right]))continue;
+      NUMBER lx1=new NUMBER(DoomSimCatalogBench.lineX1[line]);
+      NUMBER ly1=new NUMBER(DoomSimCatalogBench.lineY1[line]);
+      NUMBER sx=new NUMBER(DoomSimCatalogBench.lineX2[line]).sub(lx1);
+      NUMBER sy=new NUMBER(DoomSimCatalogBench.lineY2[line]).sub(ly1);
+      NUMBER determinant=dx.mul(sy).sub(dy.mul(sx));if(determinant.isZero())continue;
+      NUMBER rx=lx1.sub(x0),ry=ly1.sub(y0);
+      NUMBER u=rx.mul(dy).sub(ry.mul(dx)).div(determinant);
+      NUMBER t=rx.mul(sy).sub(ry.mul(sx)).div(determinant);
+      if(t.compareTo(zero)>0&&t.compareTo(one)<0&&u.compareTo(zero)>=0&&u.compareTo(one)<=0&&
+          (best==null||t.compareTo(best)<0))best=t;
+    }
+    return best;
+  }
+
   private static int clamp(int value, int minimum, int maximum) {
     return Math.max(minimum, Math.min(maximum, value));
   }

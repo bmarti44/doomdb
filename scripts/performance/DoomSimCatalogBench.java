@@ -14,7 +14,7 @@ import oracle.sql.NUMBER;
 /** Immutable SQL-built simulation catalog retained by one database worker. */
 public final class DoomSimCatalogBench {
   private static final int MAGIC = 0x44534350; // DSCP
-  private static final int VERSION = 7;
+  private static final int VERSION = 8;
   private static final NUMBER ZERO=NUMBER.zero();
   private static boolean loaded;
   private static int[] nodeX, nodeY, nodeDx, nodeDy, child0, child1;
@@ -39,6 +39,7 @@ public final class DoomSimCatalogBench {
   static int[] stateTics, stateNext, stateAction;
   static byte[][] movementDeltaX, movementDeltaY;
   static NUMBER[] movementXExact, movementYExact;
+  static NUMBER[] playerProjectileCos,playerProjectileSin;
   private static String catalogSha = "";
   private static String lastError = "";
 
@@ -282,6 +283,14 @@ public final class DoomSimCatalogBench {
       }
       require(count == 64 * 18, "movement lookup count");
     }
+    out.writeInt(64);
+    try(Statement statement=connection.createStatement();ResultSet rows=statement.executeQuery(
+        "select utl_raw.cast_from_number(cos((level-1)*5.625*acos(-1)/180)),"+
+        "utl_raw.cast_from_number(sin((level-1)*5.625*acos(-1)/180)) "+
+        "from dual connect by level<=64 order by level")){
+      int count=0;while(rows.next()){writeNumber(out,rows.getBytes(1));writeNumber(out,rows.getBytes(2));count++;}
+      require(count==64,"projectile direction count");
+    }
     out.flush(); return bytes.toByteArray();
   }
 
@@ -406,6 +415,10 @@ public final class DoomSimCatalogBench {
       movementXExact[id] = new NUMBER(movementDeltaX[id]);
       movementYExact[id] = new NUMBER(movementDeltaY[id]);
     }
+    count=in.readInt();require(count==64,"projectile direction count");
+    playerProjectileCos=new NUMBER[count];playerProjectileSin=new NUMBER[count];
+    for(int id=0;id<count;id++){playerProjectileCos[id]=new NUMBER(readNumber(in));
+      playerProjectileSin[id]=new NUMBER(readNumber(in));}
     require(in.read() == -1, "catalog trailing bytes");
   }
 

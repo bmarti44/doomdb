@@ -137,11 +137,11 @@ create or replace package body doom_unified_worker as
     doom_retained_world_pack.build(p_session,l_tic+1,l_world_pack);
     -- READY means the actual movement/action/renderer call graph is hot, not
     -- merely that a generic actor tick ran once. Repeated prepare/render/
-    -- discard cycles compile both stable DMSC/v2 and action DMSC/v3 without
+    -- discard cycles compile stable DMSC/v2 and action DMSC/v3/v4 without
     -- advancing the durable frontier.
-    for i in 1..8 loop
+    for i in 1..9 loop
       l_request:=lower(rawtohex(sys_guid()));
-      l_command:=hextoraw('444D5343'||case when i<=4 then '02' else '03' end||
+      l_command:=hextoraw('444D5343'||case when i<=4 then '02' when i<=8 then '03' else '04' end||
         '010000'||lpad(to_char(floor((l_seq+1)/4294967296),'fmxxxxxxxx'),8,'0')||
         lpad(to_char(mod(l_seq+1,4294967296),'fmxxxxxxxx'),8,'0')||
         case when i<=4 then '0001000000000000' else '0001000000000100' end);
@@ -331,7 +331,7 @@ create or replace package body doom_unified_worker as
         audit_event(p_request,p_slot,l_generation,'TERMINAL_REPLAY',l_status);
         return;
       end if;
-      if l_command_version not in(2,3) or l_command_count<>1 or l_command_bytes<>24 or
+      if l_command_version not in(2,3,4) or l_command_count<>1 or l_command_bytes<>24 or
          utl_raw.length(l_command)<>24 or
          lower(rawtohex(dbms_crypto.hash(l_command,dbms_crypto.hash_sh256)))<>
            l_command_sha then
@@ -367,8 +367,12 @@ create or replace package body doom_unified_worker as
         doom_command_ledger.begin_dmsc_v2(l_session,l_lineage,l_expected_tic,
           l_expected_seq,l_command,l_result_tic,l_result_seq,l_ledger_sha,
           l_state_locator);
-      else
+      elsif l_command_version=3 then
         doom_command_ledger.begin_dmsc_v3(l_session,l_lineage,l_expected_tic,
+          l_expected_seq,l_command,l_result_tic,l_result_seq,l_ledger_sha,
+          l_state_locator);
+      else
+        doom_command_ledger.begin_dmsc_v4(l_session,l_lineage,l_expected_tic,
           l_expected_seq,l_command,l_result_tic,l_result_seq,l_ledger_sha,
           l_state_locator);
       end if;
@@ -1055,7 +1059,7 @@ create or replace package body doom_worker_api as
        p_expected_tic not between 0 and 999999999998 or
        p_expected_seq is null or p_expected_seq<>trunc(p_expected_seq) or
        p_expected_seq not between 0 and 999999999998 or
-       p_command_version not in(2,3) or p_command_count<>1 or p_command is null or
+       p_command_version not in(2,3,4) or p_command_count<>1 or p_command is null or
        utl_raw.length(p_command)<>24 or
        utl_raw.length(p_command)>least(2000,
          config_number('UNIFIED_WORKER_MAX_PACK_BYTES')) then

@@ -1842,9 +1842,28 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   zero; fresh and upgraded databases now use radius 10/height 42. Retained
   removals detach weak target/tracer/owner references in bulk on both sides and
   compact Java arrays once per removal set. Player rocket/plasma spawn, swept
-  advance, impact, splash, and transient same-tic ID reuse remain the final F2
-  protocol slice. Until it passes, the browser drains the pipeline for FIRE and
-  preserves the synchronous SQL fallback.
+  advance, impact, splash, and transient same-tic ID reuse were the final F2
+  protocol slice and are now complete.
+- Retained projectile and live-FIRE gate (2026-07-17): DMSC/v4 carries dynamic
+  FIRE ticcmds and DTIC/v3 carries exact canonical spawn angle, nullable sector,
+  and transient projectile lifecycles. Rocket and plasma survivor/impact paths,
+  splash, same-tic monster death/drop ID reuse, malformed fencing, public
+  `SUBMIT_STEP`/`POLL_FRAME`, and SQL differential parity pass. All future
+  ticcmds are predecessor-independent at submit time; the ordered resident
+  worker remains the sole state-transition authority. Removing the former FIRE
+  wait restored the 300-frame combat route from 12.92 to 27.58 FPS, and two
+  correlated result polls then produced repeat passes at 31.995 and 30.817 FPS
+  with identical combat chains and 31.220/32.087 ms best paint-gap p50/p95. The
+  isolated non-FIRE baseline passes at 30.879 FPS. The complete warmed resident
+  suite and T7.1–T7.3 visible evaluators pass.
+- P12.0 completion (2026-07-17): final isolated production-default runs passed
+  at 32.064 FPS for ordinary movement and 31.999 FPS for FIRE every eight tics,
+  both with 300/300 unique frames, zero stalls, and their exact expected chains.
+  The complete T5.1–T7.3 regression passes after reconciling the T6.1 audit with
+  the separate canonical-ledger package and the T6.4 live oracle with the
+  already-selected 64-tic production checkpoint cadence. The pulled-forward
+  enabling gate is complete; P8 resumes. Ten-frame presentation latency and
+  plane-span/cold-tail headroom remain non-blocking follow-up optimizations.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior
