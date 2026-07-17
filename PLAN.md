@@ -1935,6 +1935,13 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   input-to-corresponding-frame latency, and zero unexplained health changes. A
   health loss is valid only when the same correlated tic carries a replayable
   damage cause.
+- Reproduce a transient worker/ORDS interruption while a play tab is open. Keep
+  async requests retrying across the bounded interruption and expose an
+  unmistakable keyboard/click restart path if the retry budget is exhausted;
+  never leave a failed pipeline looking like dead keyboard controls.
+- Keep the reviewed live scheduler at depth 2 with at most one queued successor;
+  reject configurations where corrected combat throughput makes fresh keyboard
+  state wait behind a four-command prefill backlog.
 - Accept: a fresh 300-frame keyboard moving/combat soak through `/play/` has no
   actor disappearance outside death/occlusion, shows every fired weapon's authored
   animation, reports key-to-paint p50/p95 and maximum without a ten-frame startup

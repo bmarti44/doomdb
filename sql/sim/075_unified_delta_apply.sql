@@ -4,6 +4,12 @@
 -- on every exception so a malformed worker result cannot partially land.
 create or replace package doom_unified_delta_apply authid definer as
   function trusted_event_insert return number;
+  function last_decode_us return number;
+  function last_validate_us return number;
+  function last_world_dml_us return number;
+  function last_actor_dml_us return number;
+  function last_event_dml_us return number;
+  function last_frontier_dml_us return number;
   procedure apply_tic(
     p_session_token in varchar2,
     p_save_lineage in varchar2,
@@ -97,6 +103,9 @@ create or replace package body doom_unified_delta_apply as
   g_spawn_thing_ids id_set;
   g_projectile_ids text_set;
   g_trusted_event_insert boolean:=false;
+  g_last_decode_us number:=0;g_last_validate_us number:=0;
+  g_last_world_dml_us number:=0;g_last_actor_dml_us number:=0;
+  g_last_event_dml_us number:=0;g_last_frontier_dml_us number:=0;
   -- The split USE path is deliberately session-local and transaction-scoped.
   -- A final DCTC containing USE is accepted only after this package applied
   -- the exact matching pre-world movement in the same resident DB session.
@@ -115,6 +124,21 @@ create or replace package body doom_unified_delta_apply as
 
   function trusted_event_insert return number is
   begin return case when g_trusted_event_insert then 1 else 0 end;end;
+
+  function last_decode_us return number is begin return g_last_decode_us;end;
+  function last_validate_us return number is begin return g_last_validate_us;end;
+  function last_world_dml_us return number is begin return g_last_world_dml_us;end;
+  function last_actor_dml_us return number is begin return g_last_actor_dml_us;end;
+  function last_event_dml_us return number is begin return g_last_event_dml_us;end;
+  function last_frontier_dml_us return number is begin return g_last_frontier_dml_us;end;
+
+  function elapsed_us(p_started timestamp with time zone) return number is
+    l_elapsed interval day to second:=systimestamp-p_started;
+  begin
+    return round((extract(day from l_elapsed)*86400+
+      extract(hour from l_elapsed)*3600+extract(minute from l_elapsed)*60+
+      extract(second from l_elapsed))*1000000);
+  end;
 
   procedure fail(p_message varchar2) is
   begin
@@ -264,6 +288,10 @@ create or replace package body doom_unified_delta_apply as
   procedure retain_catalogs is
     l_signature varchar2(4000);
   begin
+    -- Catalogs are immutable for the lifetime of a retained worker session.
+    -- Bootstrap/deploy replaces the package state and therefore reloads them;
+    -- rescanning six catalog tables on every tic only adds SQL execution cost.
+    if g_catalog_signature is not null then return;end if;
     select
       (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_state_def)||'|'||
       (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_map_sector)||'|'||
@@ -272,7 +300,6 @@ create or replace package body doom_unified_delta_apply as
       (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_projectile_def)||'|'||
       (select count(*)||':'||coalesce(max(ora_rowscn),0) from doom_weapon_def)
       into l_signature from dual;
-    if l_signature=g_catalog_signature then return;end if;
     g_state_ids.delete;g_weapon_ids.delete;g_weapon_bits.delete;
     g_weapon_mask_all:=0;g_sector_ids.delete;g_thing_type_ids.delete;
     g_spawn_thing_ids.delete;g_projectile_ids.delete;
@@ -348,7 +375,11 @@ create or replace package body doom_unified_delta_apply as
     l_removed id_set;
     l_world_presence presence_map;l_actor_ids ordered_id_tab;l_actor_presence id_set;
     l_spawn_presence id_set;l_transient_presence id_set;
+    l_profile_stage timestamp with time zone;
   begin
+    l_profile_stage:=systimestamp;
+    g_last_decode_us:=0;g_last_validate_us:=0;g_last_world_dml_us:=0;
+    g_last_actor_dml_us:=0;g_last_event_dml_us:=0;g_last_frontier_dml_us:=0;
     savepoint doom_unified_delta_apply_start;
     p_committed_tic:=null;p_committed_command_seq:=null;
     p_delta_version:=null;p_delta_count:=null;p_delta_sha:=null;
@@ -451,15 +482,23 @@ create or replace package body doom_unified_delta_apply as
     -- (currently 280).  Non-monster rows remain unchanged; newly emitted drop
     -- and projectile records are appended below with the same defaults as the
     -- SQL oracle and the Java WorldMobjs.append path.
-    select m.mobj_id bulk collect into l_actor_ids from mobjs m
-      where m.session_token=p_session_token
-      and exists(select 1 from doom_monster_def d where d.thing_type=m.thing_type)
-      order by m.mobj_id;
+    -- One ordered scan supplies both the behavior-bound actor image and the
+    -- complete fenced MOBJ presence map used by all later references.
+    l_actor_ids:=ordered_id_tab();l_initial_mobj:=1;
+    for r in (
+      select m.mobj_id,case when d.thing_type is null then 0 else 1 end is_actor
+      from mobjs m left join doom_monster_def d on d.thing_type=m.thing_type
+      where m.session_token=p_session_token order by m.mobj_id
+    ) loop
+      l_world_presence(r.mobj_id):=1;
+      l_initial_mobj:=greatest(l_initial_mobj,r.mobj_id+1);
+      if r.is_actor=1 then
+        l_actor_ids.extend;l_actor_ids(l_actor_ids.count):=r.mobj_id;
+      end if;
+    end loop;
     l_expected_actors:=l_actor_ids.count;
     for i in 1..l_expected_actors loop l_actor_presence(l_actor_ids(i)):=true;end loop;
     if l_actor_count>l_expected_actors then fail('actor count');end if;
-    select coalesce(max(mobj_id),0)+1 into l_initial_mobj from mobjs
-      where session_token=p_session_token;
     -- A prepared tic advances EXPECTED_TIC to NEXT_TIC.  Its events belong to
     -- that resulting logical tic, matching DOOM_TIC_TX.APPLY_BATCH(l_tic+ord).
     -- The retained owner starts NEXT_EVENT at zero for each new tic; deriving
@@ -634,6 +673,7 @@ create or replace package body doom_unified_delta_apply as
     if l_transient_spawn_events<>l_transient_count or
        l_transient_impact_events<>l_transient_count then fail('transient event lifecycle');end if;
     if l_position<>g_length+1 then fail('trailing bytes');end if;
+    g_last_decode_us:=elapsed_us(l_profile_stage);l_profile_stage:=systimestamp;
 
     -- Actor records are an ordered changed subset.  The full resident owner is
     -- independently parity-checked; every transmitted ID must still be a
@@ -693,6 +733,8 @@ create or replace package body doom_unified_delta_apply as
       end if;
     end loop;
 
+    g_last_validate_us:=elapsed_us(l_profile_stage);l_profile_stage:=systimestamp;
+
     if l_world_op_count>0 then
       -- Actor references are weak pointers.  Match DOOM_COMBAT.REMOVE_MOBJ by
       -- detaching every inbound reference before a retained removal reaches
@@ -722,6 +764,7 @@ create or replace package body doom_unified_delta_apply as
         if sql%bulk_rowcount(i)<>1 then fail('world operation race');end if;
       end loop;
     end if;
+    g_last_world_dml_us:=elapsed_us(l_profile_stage);l_profile_stage:=systimestamp;
     if l_actor_count>0 then
       forall i in 1..l_actor_count
         update mobjs set
@@ -745,6 +788,7 @@ create or replace package body doom_unified_delta_apply as
       -- The ordered actor-ID image was locked and validated above; zero-row
       -- bulk entries here are intentionally unchanged actors, not omissions.
     end if;
+    g_last_actor_dml_us:=elapsed_us(l_profile_stage);l_profile_stage:=systimestamp;
     if l_spawn_count>0 then
       forall i in 1..l_spawn_count
         insert into mobjs(session_token,mobj_id,thing_type,state_id,state_tics,x,y,z,
@@ -795,6 +839,7 @@ create or replace package body doom_unified_delta_apply as
         where session_token=p_session_token and lineage=p_save_lineage;
       if sql%rowcount<>1 then fail('event history head');end if;
     end if;
+    g_last_event_dml_us:=elapsed_us(l_profile_stage);l_profile_stage:=systimestamp;
     if l_dtic_version=1 then
       update players set health=l_player_health,armor=l_player_armor,
         alive=l_player_alive,kill_count=l_player_kills
@@ -818,6 +863,7 @@ create or replace package body doom_unified_delta_apply as
     p_committed_tic:=l_next_tic;p_committed_command_seq:=l_next_seq;
     p_delta_version:=l_dtic_version;p_delta_count:=1;
     p_delta_sha:=lower(rawtohex(dbms_crypto.hash(g_delta,dbms_crypto.hash_sh256)));
+    g_last_frontier_dml_us:=elapsed_us(l_profile_stage);
   exception
     when no_data_found then
       g_trusted_event_insert:=false;

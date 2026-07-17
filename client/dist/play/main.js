@@ -63,6 +63,24 @@ status.textContent = 'Starting a new game inside Oracle…\nThe first frame curr
 shell.append(canvas, touch.element, status);
 document.head.append(stylesheet());
 document.body.replaceChildren(shell);
+let restartReady = false;
+const armRestart = (message) => {
+    restartReady = true;
+    status.style.opacity = '1';
+    status.style.pointerEvents = 'auto';
+    status.style.cursor = 'pointer';
+    status.textContent = `${message}\nPress R or click this message to restart.`;
+};
+window.addEventListener('keydown', event => {
+    if (!restartReady || (event.code !== 'KeyR' && event.code !== 'Enter'))
+        return;
+    event.preventDefault();
+    window.location.reload();
+});
+status.addEventListener('click', () => {
+    if (restartReady)
+        window.location.reload();
+});
 const trace = (name, detail) => {
     window.dispatchEvent(new CustomEvent(`doom:${name}`, {
         detail: { at: performance.now(), ...detail }
@@ -95,7 +113,7 @@ async function boot() {
     let presentationTimer = 0;
     const commandPeriodMs = 32;
     const presentationPeriodMs = 31.8;
-    const submitDepth = 4;
+    const submitDepth = 2;
     const fetchDepth = 2;
     const presentationBuffer = 2;
     const submitted = new Set();
@@ -144,8 +162,7 @@ async function boot() {
             .catch(cause => {
             const error = cause instanceof Error ? cause : new Error('submit failed');
             pipelineError = true;
-            status.style.opacity = '1';
-            status.textContent = `Game pipeline stopped: ${error.message}`;
+            armRestart(`Game pipeline stopped: ${error.message}`);
         })
             .finally(() => { submitInFlight -= 1; });
     };
@@ -165,8 +182,7 @@ async function boot() {
             .catch(cause => {
             pipelineError = true;
             const error = cause instanceof Error ? cause : new Error('fetch failed');
-            status.style.opacity = '1';
-            status.textContent = `Game pipeline stopped: ${error.message}`;
+            armRestart(`Game pipeline stopped: ${error.message}`);
         })
             .finally(() => { fetchInFlight -= 1; });
     };
@@ -184,8 +200,7 @@ async function boot() {
         }).catch(cause => {
             pipelineError = true;
             const error = cause instanceof Error ? cause : new Error('control action failed');
-            status.style.opacity = '1';
-            status.textContent = `Game pipeline stopped: ${error.message}`;
+            armRestart(`Game pipeline stopped: ${error.message}`);
         }).finally(() => { syncInFlight = false; });
     };
     const send = (command) => {
@@ -234,7 +249,7 @@ async function boot() {
         if (nextSequence > 0 && prefill && !submitted.has(1))
             return;
         if (syncInFlight || submitInFlight >= submitDepth ||
-            nextSequence + 1 > nextPresentation + 3 ||
+            nextSequence + 1 > nextPresentation + 1 ||
             (!prefill && now < nextDispatch))
             return;
         submitTick();
@@ -249,7 +264,6 @@ async function boot() {
 }
 void boot().catch(cause => {
     const error = cause instanceof Error ? cause : new Error('client bootstrap failed');
-    status.style.opacity = '1';
-    status.textContent = `Game startup failed: ${error.message}\nReturn to / for stack status, then refresh.`;
+    armRestart(`Game startup failed: ${error.message}`);
     console.error(error);
 });

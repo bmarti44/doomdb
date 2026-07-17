@@ -57,12 +57,12 @@ async function postStep(body: RestDocument): Promise<RestDocument> {
 
 async function postAsync(path: string, body: RestDocument): Promise<RestDocument> {
   let lastFailure: Error | undefined;
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
     try { return await post(path, body); }
     catch (cause) {
       lastFailure = cause instanceof Error ? cause : new Error(`${path} request failed`);
-      if (attempt === 3) break;
-      await delay(25 * (attempt + 1));
+      if (attempt === 7) break;
+      await delay(Math.min(25 * (2 ** attempt), 500));
     }
   }
   throw lastFailure ?? new Error(`${path} request failed`);

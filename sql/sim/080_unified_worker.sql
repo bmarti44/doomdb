@@ -286,7 +286,15 @@ create or replace package body doom_unified_worker as
     l_pre_movement_apply_us number:=0;l_world_advance_us number:=0;
     l_geometry_pack_us number:=0;l_world_sync_us number:=0;
     l_projectile_pack_us number:=0;l_post_world_us number:=0;
+    l_actor_tic_us number:=0;l_projectile_us number:=0;l_chase_us number:=0;
+    l_projectile_setup_us number:=0;l_projectile_wall_us number:=0;
+    l_projectile_target_us number:=0;l_projectile_impact_us number:=0;
+    l_projectile_count number:=0;l_projectile_target_checks number:=0;
+    l_actor_loop_us number:=0;l_delta_encode_us number:=0;l_command_encode_us number:=0;
     l_apply_us number;l_world_apply_us number;l_delta_apply_us number;
+    l_delta_decode_us number:=0;l_delta_validate_us number:=0;
+    l_delta_world_dml_us number:=0;l_delta_actor_dml_us number:=0;
+    l_delta_event_dml_us number:=0;l_delta_frontier_dml_us number:=0;
     l_apply_stage timestamp with time zone;
     l_state_us number;l_render_us number;l_finalize_us number;
     l_render_call_us number;l_render_update_us number;l_render_kernel_us number;
@@ -492,6 +500,18 @@ create or replace package body doom_unified_worker as
         end if;
         l_java_prepare_us:=elapsed_us(l_stage);
       end if;
+      l_actor_tic_us:=round(doom_unified_actor_tic_ns/1000);
+      l_projectile_us:=round(doom_unified_projectile_ns/1000);
+      l_projectile_setup_us:=round(doom_unified_projectile_setup_ns/1000);
+      l_projectile_wall_us:=round(doom_unified_projectile_wall_ns/1000);
+      l_projectile_target_us:=round(doom_unified_projectile_target_ns/1000);
+      l_projectile_impact_us:=round(doom_unified_projectile_impact_ns/1000);
+      l_projectile_count:=doom_unified_projectile_count;
+      l_projectile_target_checks:=doom_unified_projectile_target_checks;
+      l_chase_us:=round(doom_unified_chase_ns/1000);
+      l_actor_loop_us:=round(doom_unified_actor_loop_ns/1000);
+      l_delta_encode_us:=round(doom_unified_delta_encode_ns/1000);
+      l_command_encode_us:=round(doom_unified_command_encode_ns/1000);
       l_prepared:=1;
       l_prepare_us:=elapsed_us(l_prepare_stage);
       l_failpoint:=config_number('UNIFIED_WORKER_FAILPOINT');
@@ -519,6 +539,12 @@ create or replace package body doom_unified_worker as
         raise_application_error(c_invalid,'ledger/apply frontier mismatch');
       end if;
       l_delta_apply_us:=elapsed_us(l_stage);l_apply_us:=elapsed_us(l_apply_stage);
+      l_delta_decode_us:=doom_unified_delta_apply.last_decode_us;
+      l_delta_validate_us:=doom_unified_delta_apply.last_validate_us;
+      l_delta_world_dml_us:=doom_unified_delta_apply.last_world_dml_us;
+      l_delta_actor_dml_us:=doom_unified_delta_apply.last_actor_dml_us;
+      l_delta_event_dml_us:=doom_unified_delta_apply.last_event_dml_us;
+      l_delta_frontier_dml_us:=doom_unified_delta_apply.last_frontier_dml_us;
       if l_failpoint=3 then
         raise_application_error(c_invalid,'injected post-apply worker failure');
       end if;
@@ -657,8 +683,19 @@ create or replace package body doom_unified_worker as
         world_sync_us=l_world_sync_us,
         projectile_pack_us=l_projectile_pack_us,
         post_world_us=l_post_world_us,
+        actor_tic_us=l_actor_tic_us,projectile_us=l_projectile_us,
+        projectile_setup_us=l_projectile_setup_us,projectile_wall_us=l_projectile_wall_us,
+        projectile_target_us=l_projectile_target_us,projectile_impact_us=l_projectile_impact_us,
+        projectile_count=l_projectile_count,
+        projectile_target_checks=l_projectile_target_checks,
+        chase_us=l_chase_us,actor_loop_us=l_actor_loop_us,
+        delta_encode_us=l_delta_encode_us,command_encode_us=l_command_encode_us,
         java_prepare_us=l_java_prepare_us,apply_us=l_apply_us,
         world_apply_us=l_world_apply_us,delta_apply_us=l_delta_apply_us,state_us=l_state_us,
+        delta_decode_us=l_delta_decode_us,delta_validate_us=l_delta_validate_us,
+        delta_world_dml_us=l_delta_world_dml_us,delta_actor_dml_us=l_delta_actor_dml_us,
+        delta_event_dml_us=l_delta_event_dml_us,
+        delta_frontier_dml_us=l_delta_frontier_dml_us,
         state_encode_us=l_state_encode_us,state_blob_us=l_state_blob_us,
         state_compare_us=l_state_compare_us,
         state_object_encode_us=l_state_object_encode_us,

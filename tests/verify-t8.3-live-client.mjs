@@ -57,6 +57,7 @@ try {
   assert.ok(latency.inputToSubmitMs <= 70, `input scheduling latency ${latency.inputToSubmitMs}`);
   assert.ok(latency.inputToPaintMs <= 250, `input-to-correlated-paint latency ${latency.inputToPaintMs}`);
   assert.ok(new Set(weaponHashes).size >= 2, 'FIRE produced no visible weapon animation');
+
   process.stdout.write(`PASS T8.3-LIVE-CLIENT ${JSON.stringify({latency,
     weaponFrames:new Set(weaponHashes).size,presented:trace.filter(row=>row.name==='present').length})}\n`);
 } finally {

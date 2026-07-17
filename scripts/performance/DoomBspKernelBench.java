@@ -2089,7 +2089,8 @@ public final class DoomBspKernelBench {
         double depth = columnVisibleDepth[base + i];
         orderedDepths[orderedCount]=depth;orderedSegs[orderedCount++]=id;
       }
-      sortVisibleHits(orderedCount);
+      long sortStarted=System.nanoTime();sortVisibleHits(orderedCount);
+      lastPortalSortNanos+=System.nanoTime()-sortStarted;
       if (orderedCount == 0) continue;
       int currentSector = facingSector(orderedSegs[0], px, py);
       // SQL retains back-facing one-sided hits as solid diagnostics, but their
@@ -2134,6 +2135,7 @@ public final class DoomBspKernelBench {
       portalClipBottom[column] = Math.min(200.0, clipBottom);
     }
     lastPortalNanos = System.nanoTime() - stageStarted;
+    lastPortalWalkNanos=Math.max(0,lastPortalNanos-lastPortalResetNanos-lastPortalSortNanos);
     stageStarted = System.nanoTime();
     drawPlanes(px, py, dirX, dirY, plnX, plnY);
     lastPlaneNanos = System.nanoTime() - stageStarted;

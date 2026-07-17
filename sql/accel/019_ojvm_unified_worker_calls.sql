@@ -167,6 +167,42 @@ create or replace function doom_unified_owner_sql_parity(
 return varchar2 as language java name
   'DoomUnifiedActorStateBench.ownerSqlParity(java.lang.String,java.lang.String,long) return java.lang.String';
 /
+create or replace function doom_unified_actor_tic_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastActorTicNanos() return long';
+/
+create or replace function doom_unified_projectile_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastProjectileNanos() return long';
+/
+create or replace function doom_unified_projectile_setup_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastProjectileSetupNanos() return long';
+/
+create or replace function doom_unified_projectile_wall_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastProjectileWallNanos() return long';
+/
+create or replace function doom_unified_projectile_target_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastProjectileTargetNanos() return long';
+/
+create or replace function doom_unified_projectile_impact_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastProjectileImpactNanos() return long';
+/
+create or replace function doom_unified_projectile_count return number as language java name
+  'DoomUnifiedActorStateBench.lastProjectileCount() return int';
+/
+create or replace function doom_unified_projectile_target_checks return number as language java name
+  'DoomUnifiedActorStateBench.lastProjectileTargetChecks() return int';
+/
+create or replace function doom_unified_chase_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastChaseNanos() return long';
+/
+create or replace function doom_unified_actor_loop_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastActorLoopNanos() return long';
+/
+create or replace function doom_unified_delta_encode_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastDeltaEncodeNanos() return long';
+/
+create or replace function doom_unified_command_encode_ns return number as language java name
+  'DoomUnifiedActorStateBench.lastCommandEncodeNanos() return long';
+/
 create or replace function doom_unified_state_fill(
   p_session in varchar2,p_lineage in varchar2,p_generation in number,
   p_request in varchar2,p_payload in blob)
