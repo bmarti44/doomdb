@@ -56,8 +56,8 @@
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">Live defect closure<br><span>30 FPS combat gate reopened</span></p>
-      <p class="muted">Actor and weapon presentation, nonblocking audio, projectile ownership, and health-event causality are fixed. The corrected 300-frame combat soak renders 300/300 distinct frames at 12.34 FPS; retained projectile and delta-apply costs are now the active blockers.</p>
+      <p class="big">Corrected combat<br><span>30 FPS overlap work active</span></p>
+      <p class="muted">Actor and weapon presentation, nonblocking audio, projectile ownership, and health-event causality are fixed. The first JIT-quiescent corrected soak renders 300/300 distinct frames at 20.79 FPS; serial render plus durable apply is the remaining blocker.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
@@ -71,7 +71,7 @@
     <h2>Live implementation status · July 17, 2026</h2>
     <p><strong>Route:</strong> preserved behind the playability gate. Arbitrary live movement, weapon selection, every catalog attack, rocket/plasma projectiles, barrel chains, USE/WALK triggers, doors, lifts, switches, carry, and blocking are supported by the retained database worker. SQL remains the exact differential oracle. Lift 1 is complete and the tic-1430 checkpoint remains committed. Next after P12.0: lift 2, blue key, exit, repeatability, and reviewed milestone frames.</p>
     <p class="muted"><strong>T8.3 correctness:</strong> all monster states resolve continuously; <code>BAL1A0</code> is seeded; SQL/OJVM render the database weapon state; audio fetch/decode is off the paint path; owner-safe projectiles cause player health changes only with correlated damage events.</p>
-    <p><strong>Performance:</strong> the two-frame buffer and three-frame command-ahead limit measure 184.1 ms key-to-correlated-paint in the latest focused browser test. Correct projectiles exposed that the former 30+ FPS evidence depended on immediate owner self-collision. The corrected combat soak is 12.34 FPS (prepare 31.12 ms, apply 17.65 ms, render 21.13 ms averages after tic 100), so the 30 FPS gate is active again.</p>
+    <p><strong>Performance:</strong> the latest focused browser regression measures 148 ms key-to-correlated-paint. Correct projectiles invalidated the former 30+ FPS evidence; after JIT quiescence, the corrected combat soak reaches 20.79 FPS with 31.7/93.8 ms paint-gap p50/p95. Warm rendering averages 23.4 ms, durable apply 10.1 ms, and projectile simulation only 0.44 ms. The active design overlaps the first two stages in separately fenced resident Oracle workers.</p>
   </section>
 
   <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">
@@ -131,8 +131,8 @@
     <div class="metric"><strong>1,430</strong><span class="muted">public route tics</span></div>
     <div class="metric"><strong>46 HP</strong><span class="muted">current checkpoint</span></div>
     <div class="metric"><strong>9 kills</strong><span class="muted">current checkpoint</span></div>
-    <div class="metric"><strong>184.1 ms</strong><span class="muted">focused key-to-paint</span></div>
-    <div class="metric"><strong>12.34 FPS</strong><span class="muted">corrected combat soak</span></div>
+    <div class="metric"><strong>148 ms</strong><span class="muted">focused key-to-paint</span></div>
+    <div class="metric"><strong>20.79 FPS</strong><span class="muted">corrected combat soak</span></div>
   </section>
 
   <section class="panel review-grid" aria-label="database ray diagnostic">
@@ -161,7 +161,7 @@
     <article class="panel phase done"><b>P5.4</b><span>Presentation</span><p class="muted">HUD, weapons, menu, pause, automap, intermission</p></article>
     <article class="panel phase done"><b>P6</b><span>Simulation</span><p class="muted">tic, movement, machines, history, replay</p></article>
     <article class="panel phase done"><b>P7</b><span>Gameplay</span><p class="muted">weapons, monsters, pickups, audio</p></article>
-    <article class="panel phase active"><b>P12.0</b><span>Integration</span><p class="muted">correct projectile path · 30 FPS combat optimization active</p></article>
+    <article class="panel phase active"><b>P12.0</b><span>Integration</span><p class="muted">correct combat · retained render/apply overlap active</p></article>
     <article class="panel phase active"><b>T8.3</b><span>Playtest defects</span><p class="muted">correctness green · sustained cadence pending</p></article>
   </section>
   <footer><a href="/play/">Open the live playable client</a> · build-review surface · no credentials or evaluator data are exposed to the browser.</footer>

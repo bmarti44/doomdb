@@ -43,31 +43,29 @@ independently executable differential oracle.
 
 The presentation fixes are deployed. Renderer catalog fallback keeps monsters
 visible across authored state transitions, the real Freedoom `BAL1A0` imp
-fireball is seeded, and both SQL and retained renderers now select the current
-database `weapon_state`. Audio loading no longer blocks canvas paint. The live
-client uses a two-frame presentation buffer and a three-frame command-ahead
-limit; the latest browser reproduction measured **31.6 ms input-to-submit** and
-**184.1 ms input-to-correlated-paint**, with seven distinct pistol animation
-frames.
+fireball is seeded, and both SQL and retained renderers select the current
+database `weapon_state`. Audio loading no longer blocks canvas paint. A fresh
+browser regression measured **25.9 ms input-to-submit** and **148 ms
+input-to-correlated-paint**, with seven distinct pistol animation frames.
 
 Projectile collision now excludes the owner and includes the separately stored
 player. A deterministic SQL fixture proves the missile travels, leaves its
 owner at 60 HP, and changes player health from 100 to 97 only on tic 7, which
 carries correlated `PROJECTILE_IMPACT` and `PLAYER_DAMAGE` events.
 
-The 30 FPS combat gate is reopened. Earlier baselines of 30.88–32.06 FPS were
-measured while the owner-collision bug deleted imp fireballs immediately. The
-corrected 300-frame FIRE-every-8 soak completes with 300 distinct frames but
-currently displays **12.34 FPS**. Current retained-worker averages after tic 100
-are 31.12 ms prepare (including 16.13 ms post-world simulation), 17.65 ms apply,
-and 21.13 ms render. Those stages—not resolution—are the active performance
-blockers. SQL remains the differential oracle while the retained projectile and
-bulk-delta paths are optimized.
+The 30 FPS combat gate is reopened. Earlier 30.88–32.06 FPS baselines were
+invalidated because the owner-collision bug deleted imp fireballs immediately.
+The first corrected, JIT-quiescent 300-frame FIRE-every-8 soak rendered 300
+distinct frames at **20.79 FPS**, with a 31.7 ms median and 93.8 ms p95 paint
+gap. Warm averages are 23.4 ms rendering and 10.1 ms durable relational apply;
+projectile simulation is now only 0.44 ms. The active work overlaps rendering
+with authoritative apply in a separately fenced resident database worker while
+preserving rollback, restart, parity, and exact response-correlation semantics.
 
-The client uses a depth-four command window, two concurrent correlated frame
-polls, ordered decode, a 32 ms command clock, a 31.8 ms display clock, and a
-two-frame startup buffer. Every live ticcmd—including FIRE—uses this dynamic
-AutoREST pipeline. The design is resolution-aware:
+The benchmark harness can exercise a deeper throughput window, while the live
+client remains latency-oriented at depth two with at most one queued successor.
+Every ticcmd—including FIRE—uses the dynamic AutoREST pipeline. The design is
+resolution-aware:
 visibility and simulation are independent of the 320×200 buffer, and horizontal
 plane spans remain planned before enabling the future 640×400 profile.
 

@@ -1864,6 +1864,47 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   already-selected 64-tic production checkpoint cadence. The pulled-forward
   enabling gate is complete; P8 resumes. Ten-frame presentation latency and
   plane-span/cold-tail headroom remain non-blocking follow-up optimizations.
+- P12.0 combat correction and measurement reconciliation (2026-07-17): the
+  earlier completion evidence is superseded for combat because it depended on
+  the projectile-owner collision defect. After owner-safe projectiles, catalog
+  caching, packed-delta tracing, coordinate hoisting, retained scratch arrays,
+  and renderer texture specialization, the first valid post-JIT-quiescence
+  300-frame FIRE-every-eight route produced 300 unique frames and the exact
+  expected chain at 20.786 FPS. Its paint-gap p50/p95 was 31.724/93.828 ms.
+  Warm averages were 23.417 ms render (18.268 kernel, 10.408 portal walk),
+  10.085 ms durable apply, 5.812 ms prepare, 3.664 ms codec, and 2.815 ms
+  commit; retained projectile work was only 0.440 ms. Therefore projectile
+  tuning is no longer the gate. P12.0 is reopened until corrected combat again
+  passes 30 unique FPS at p50 and p95.
+- JIT measurement rule (2026-07-17): never retain a warm-path benchmark taken
+  while Oracle's `MZ00`/`MMON_SLAVE` JavaVM JIT worker is consuming foreground
+  CPU after `loadjava`. Wait for the worker to quiesce, confirm the hot methods
+  are `USER_JAVA_METHODS.IS_COMPILED='YES'`, and record container CPU alongside
+  the sample. Post-load transition measurements belong only in cold/JIT-tail
+  evidence. Synchronous `DBMS_JAVA` compilation is not a substitute when the
+  selected hot methods are already compiled.
+- Two-stage retained-render overlap (active, 2026-07-17): the serial critical
+  path cannot meet 33.3 ms reliably because rendering and durable relational
+  apply are summed. Add one bounded resident render Scheduler session and a
+  compact, versioned render-delta envelope. The simulation worker sends the
+  pending camera/HUD, dirty actor, sector-light, and dynamic-world changes to
+  that session, which stages the exact response while relational delta apply,
+  state/hash work, and commit preparation proceed concurrently. The renderer
+  must retain a pending frontier and expose explicit ACCEPT/DISCARD; it may not
+  advance accepted arrays until the authoritative command transaction commits.
+  Tables remain the durable authority, SQL simulation and SQL rendering remain
+  independently executable differential oracles, and the public API remains
+  generated AutoREST `SUBMIT_STEP`/`POLL_FRAME` with exact request correlation.
+- Two-stage acceptance gates: keep the render envelope within the bounded RAW
+  transport or fail closed; fence every request by session, lineage,
+  generation, command sequence, and expected tic; make duplicate delivery
+  idempotent; discard staged renderer state on simulation rollback; recover
+  either worker from tables/checkpoint with an identical state/frame SHA chain;
+  survive renderer death after stage and simulation death before/after commit;
+  pass 300-frame SQL/retained parity plus the complete T5--T7 suite; then pass
+  two quiescent corrected-combat runs at >=30 unique displayed FPS with
+  <=33.3 ms p50/p95 paint gaps. Report input-to-correlated-frame latency
+  separately. Do not call uncommitted or eventually consistent output playable.
 - Actor snapshot bulk-collection rejection (2026-07-16): replacing the ordered
   record assignment loop with `BULK COLLECT` passed T7.2 and the exact
   163-command route, but measured 1,168.745 ms over the route versus the prior
