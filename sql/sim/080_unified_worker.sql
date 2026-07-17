@@ -275,7 +275,8 @@ create or replace package body doom_unified_worker as
     l_current_x number;l_current_y number;l_current_sector number;l_full_world number:=0;
     l_world_hybrid number:=0;
     l_state_payload blob;l_render_payload blob;l_overlap_payload blob;l_history_payload blob;
-    l_render_pack raw(32767);l_overlap number:=0;l_render_staged number:=0;
+    l_render_pack raw(32767);l_overlap number:=0;l_render_enqueued number:=0;
+    l_render_staged number:=0;l_pre_delta_sha varchar2(64);
     l_render_status varchar2(24);l_render_error varchar2(4000);
     l_committed_tic number;l_committed_seq number;l_delta_version number;
     l_delta_count number;l_delta_sha varchar2(64);l_state_sha varchar2(64);
@@ -532,6 +533,26 @@ create or replace package body doom_unified_worker as
       if l_failpoint in(1,4) then
         raise_application_error(c_invalid,'injected pre-apply worker failure');
       end if;
+      -- Non-checkpoint state identity depends only on values already retained
+      -- in this session. Publish the packed render task before relational DML
+      -- so the separate renderer overlaps apply/state work. Full canonical
+      -- checkpoint JSON still launches after apply.
+      if l_overlap=1 and mod(l_result_tic,l_history_interval)<>0 then
+        l_pre_delta_sha:=lower(rawtohex(dbms_crypto.hash(l_delta,dbms_crypto.hash_sh256)));
+        l_state_sha:=lower(rawtohex(dbms_crypto.hash(
+          utl_i18n.string_to_raw('DOOM_STATE_CHAIN_V1|'||l_lineage||'|'||
+            to_char(l_result_tic,'TM9','NLS_NUMERIC_CHARACTERS=''.,''')||'|'||
+            l_ledger_sha||'|'||l_pre_delta_sha,'AL32UTF8'),
+          dbms_crypto.hash_sh256)));
+        l_render_pack:=doom_unified_render_pack(l_session,l_lineage,l_generation,
+          p_request,case when l_full_world=1 then l_world_pack end);
+        if l_render_pack is null or utl_raw.length(l_render_pack)<1 or
+           utl_raw.length(l_render_pack)>32671 then
+          raise_application_error(c_invalid,'bounded render pack: '||
+            substr(doom_unified_actor_last_error,1,3000));end if;
+        doom_render_worker.enqueue_stage(p_slot,p_request,l_state_sha,l_render_pack);
+        l_render_enqueued:=1;
+      end if;
       l_apply_stage:=systimestamp;l_stage:=l_apply_stage;
       if l_full_world=0 then
         doom_retained_world_pack.apply(l_session,l_result_tic,l_world_pack,
@@ -551,6 +572,8 @@ create or replace package body doom_unified_worker as
       l_delta_actor_dml_us:=doom_unified_delta_apply.last_actor_dml_us;
       l_delta_event_dml_us:=doom_unified_delta_apply.last_event_dml_us;
       l_delta_frontier_dml_us:=doom_unified_delta_apply.last_frontier_dml_us;
+      if l_pre_delta_sha is not null and l_delta_sha<>l_pre_delta_sha then
+        raise_application_error(c_invalid,'precomputed delta SHA mismatch');end if;
       if l_failpoint=3 then
         raise_application_error(c_invalid,'injected post-apply worker failure');
       end if;
@@ -600,13 +623,16 @@ create or replace package body doom_unified_worker as
       l_stage:=systimestamp;
       dbms_application_info.set_action('DOOM_RENDER');
       if l_overlap=1 then
-        l_render_pack:=doom_unified_render_pack(l_session,l_lineage,l_generation,
-          p_request,case when l_full_world=1 then l_world_pack end);
-        if l_render_pack is null or utl_raw.length(l_render_pack)<1 or
-           utl_raw.length(l_render_pack)>32671 then
-          raise_application_error(c_invalid,'bounded render pack: '||
-            substr(doom_unified_actor_last_error,1,3000));end if;
-        doom_render_worker.enqueue_stage(p_slot,p_request,l_state_sha,l_render_pack);
+        if l_render_enqueued=0 then
+          l_render_pack:=doom_unified_render_pack(l_session,l_lineage,l_generation,
+            p_request,case when l_full_world=1 then l_world_pack end);
+          if l_render_pack is null or utl_raw.length(l_render_pack)<1 or
+             utl_raw.length(l_render_pack)>32671 then
+            raise_application_error(c_invalid,'bounded render pack: '||
+              substr(doom_unified_actor_last_error,1,3000));end if;
+          doom_render_worker.enqueue_stage(p_slot,p_request,l_state_sha,l_render_pack);
+          l_render_enqueued:=1;
+        end if;
         doom_render_worker.await_stage(p_request,config_number('RENDER_OVERLAP_WAIT_MS'),
           l_render_status,l_frame_sha,l_response_bytes,l_response_sha,
           l_overlap_payload,l_render_error);
@@ -775,8 +801,16 @@ create or replace package body doom_unified_worker as
       l_error:=substr(sqlerrm||' '||dbms_utility.format_error_backtrace,1,4000);
       if l_committed=0 then
         rollback;
-        if l_render_staged=1 then
-          begin doom_render_worker.decide(p_request,'DISCARD');
+        if l_render_enqueued=1 then
+          begin
+            if l_render_staged=0 then
+              doom_render_worker.await_stage(p_request,
+                config_number('RENDER_OVERLAP_WAIT_MS'),l_render_status,
+                l_frame_sha,l_response_bytes,l_response_sha,l_overlap_payload,
+                l_render_error);
+              if l_render_status='STAGED' then l_render_staged:=1;end if;
+            end if;
+            if l_render_staged=1 then doom_render_worker.decide(p_request,'DISCARD');end if;
           exception when others then null;end;
         end if;
         if l_prepared=1 and l_failpoint=4 then
