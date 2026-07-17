@@ -84,10 +84,33 @@ declare
   l_count number;
 begin
   select count(*) into l_count from user_tab_columns
+    where table_name='DOOM_WORKER_RESULT' and column_name='RENDER_CARDINALITY';
+  if l_count=0 then
+    execute immediate 'alter table doom_worker_result add (render_cardinality varchar2(4000))';
+  end if;
+end;
+/
+
+declare
+  l_count number;
+begin
+  select count(*) into l_count from user_tab_columns
     where table_name='DOOM_WORKER_REQUEST' and column_name='ASYNC_MODE';
   if l_count=0 then
     execute immediate 'alter table doom_worker_request add (async_mode number(1) default 0 not null)';
     execute immediate 'alter table doom_worker_request add constraint doom_worker_request_async_ck check(async_mode in(0,1))';
+  end if;
+end;
+/
+
+declare
+  l_count number;
+begin
+  select count(*) into l_count from user_indexes
+    where index_name='DOOM_WORKER_REQUEST_QUEUE_IX';
+  if l_count=0 then
+    execute immediate q'~create index doom_worker_request_queue_ix on doom_worker_request(
+      worker_slot,session_token,generation,request_status,expected_command_seq,created_at)~';
   end if;
 end;
 /

@@ -70,6 +70,9 @@ create table doom_worker_request (
 create index doom_worker_request_status_ix
   on doom_worker_request(request_status,created_at);
 
+create index doom_worker_request_queue_ix on doom_worker_request(
+  worker_slot,session_token,generation,request_status,expected_command_seq,created_at);
+
 create unique index doom_worker_request_frontier_uq on doom_worker_request(
   case when request_status in('QUEUED','PROCESSING','COMMITTED') then session_token end,
   case when request_status in('QUEUED','PROCESSING','COMMITTED') then save_lineage end,
@@ -116,6 +119,7 @@ create table doom_worker_result (
   state_us number,
   render_us number,
   render_kernel_us number,
+  render_cardinality varchar2(4000),
   bsp_us number,
   solid_us number,
   portal_us number,

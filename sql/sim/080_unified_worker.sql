@@ -298,6 +298,7 @@ create or replace package body doom_unified_worker as
     l_apply_stage timestamp with time zone;
     l_state_us number;l_render_us number;l_finalize_us number;
     l_render_call_us number;l_render_update_us number;l_render_kernel_us number;
+    l_render_cardinality varchar2(4000);
     l_bsp_us number;l_solid_us number;l_portal_us number;l_plane_us number;
     l_portal_reset_us number;l_portal_sort_us number;l_portal_walk_us number;
     l_sprite_us number;l_presentation_us number;
@@ -627,6 +628,7 @@ create or replace package body doom_unified_worker as
       l_render_us:=l_render_call_us+l_response_copy_us+l_response_hash_us;
       l_render_update_us:=round(doom_retained_render_last_update_ns/1000);
       l_render_kernel_us:=round(doom_bsp_last_render_ns/1000);
+      l_render_cardinality:=doom_bsp_last_cardinality;
       l_bsp_us:=round(doom_bsp_last_bsp_ns/1000);
       l_solid_us:=round(doom_bsp_last_solid_ns/1000);
       l_portal_us:=round(doom_bsp_last_portal_ns/1000);
@@ -702,7 +704,8 @@ create or replace package body doom_unified_worker as
         state_changed=l_state_changed,state_reused=l_state_reused,
         state_removed=l_state_removed,render_us=l_render_us,
         render_call_us=l_render_call_us,render_update_us=l_render_update_us,
-        render_kernel_us=l_render_kernel_us,codec_us=l_codec_us,
+        render_kernel_us=l_render_kernel_us,render_cardinality=l_render_cardinality,
+        codec_us=l_codec_us,
         bsp_us=l_bsp_us,solid_us=l_solid_us,portal_us=l_portal_us,
         portal_reset_us=l_portal_reset_us,portal_sort_us=l_portal_sort_us,
         portal_walk_us=l_portal_walk_us,

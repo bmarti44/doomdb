@@ -90,7 +90,7 @@ public final class DoomBspKernelBench {
   private static boolean[] visiblePlaneSector;
   private static int skyAsset;
   private static Map<String, Integer> wallAssetByName;
-  private static int[] wallAssetWidth, wallAssetHeight;
+  private static int[] wallAssetWidth,wallAssetHeight,wallAssetWidthMask,wallAssetHeightMask;
   private static short[][] wallAssetTexels;
   private static Map<String, Integer> flatAssetByName;
   private static short[][] flatAssetTexels;
@@ -221,6 +221,7 @@ public final class DoomBspKernelBench {
   private static int visiblePairs;
   private static int activePortalPairs;
   private static int largeSortColumns,orderedHitTotal,wallRowAttempts,planeRowAttempts;
+  private static int wallPieceAttempts,wallPieceWrites,maskedAttempts,maskedWrites,planeWrites;
   private static int occludedBboxes;
   private static volatile long sink;
 
@@ -2071,6 +2072,7 @@ public final class DoomBspKernelBench {
     long stageStarted = System.nanoTime();
     resolveActiveWallAssets();
     activePortalPairs=0;largeSortColumns=orderedHitTotal=wallRowAttempts=planeRowAttempts=0;
+    wallPieceAttempts=wallPieceWrites=maskedAttempts=maskedWrites=planeWrites=0;
     intervalTotal = 0;
     Arrays.fill(wallFrame, (short) -1); Arrays.fill(wallOwned, (byte) 0);
     Arrays.fill(wallColored, (byte) 0); Arrays.fill(intervalCount, 0);
@@ -2222,7 +2224,7 @@ public final class DoomBspKernelBench {
     short[] texels=sky?wallAssetTexels[asset]:flatAssetTexels[asset];
     int colormapBase=sky?0:sectorLightBand[sector]*256;
     int skyHeight=sky?wallAssetHeight[asset]:0;
-    int skyBase=sky?wrap(sqlFloor(column/2.0),wallAssetWidth[asset])*skyHeight:0;
+    int skyBase=sky?(sqlFloor(column/2.0)&wallAssetWidthMask[asset])*skyHeight:0;
     for(int row=firstRow;row<endRow;row++){
       int frameOffset=column*200+row;
       if(wallOwned[frameOffset]!=0||wallFrame[frameOffset]>=0)continue;
@@ -2232,7 +2234,7 @@ public final class DoomBspKernelBench {
       else{int x=fastFloor(px+rayX*distance)&63;
         int y=fastFloor(py+rayY*distance)&63;raw=texels[x*64+y];}
       if(raw<0)continue;
-      wallFrame[frameOffset]=colormap[colormapBase+raw];
+      wallFrame[frameOffset]=colormap[colormapBase+raw];planeWrites++;
     }
   }
 
@@ -2462,6 +2464,13 @@ public final class DoomBspKernelBench {
       if(asset!=null)wallAnimationByAsset[asset.intValue()]=entry.getValue();
     }
     activeWallAsset=new int[wallAssetWidth.length];
+    wallAssetWidthMask=new int[wallAssetWidth.length];wallAssetHeightMask=new int[wallAssetHeight.length];
+    for(int asset=0;asset<wallAssetWidth.length;asset++){
+      require((wallAssetWidth[asset]&(wallAssetWidth[asset]-1))==0,"wall width power of two");
+      wallAssetWidthMask[asset]=wallAssetWidth[asset]-1;
+      int height=wallAssetHeight[asset];wallAssetHeightMask[asset]=
+        (height&(height-1))==0?height-1:-1;
+    }
   }
 
   private static void resolveActiveWallAssets(){
@@ -2502,18 +2511,20 @@ public final class DoomBspKernelBench {
     int asset=activeWallAsset[presentedWallAsset(id,baseAsset)];
     double sampleX=segOffset[id]+xOffset+hitU*segLength[id];
     int assetHeight=wallAssetHeight[asset];
-    int sampleColumn=wrap(sqlFloor(sampleX),wallAssetWidth[asset]);
+    int sampleColumn=sqlFloor(sampleX)&wallAssetWidthMask[asset];
     int texelBase=sampleColumn*assetHeight;
     int colormapBase=Math.max(0,Math.min(31,(255-light)/8))*256;
     int base = column * 200;
     wallRowAttempts+=end-first;
+    wallPieceAttempts+=end-first;
     double sampleStep=depth/projectionK;
     double sampleY=anchor-(eyeZ+(100.0-(first+.5))*depth/projectionK)+yOffset;
     for (int row = first; row < end; row++) {
       int frameOffset = base + row;
       if (wallOwned[frameOffset] != 0){sampleY+=sampleStep;continue;}
-      wallOwned[frameOffset] = 1;
-      int sampleRow=wrap(sqlFloor(sampleY),assetHeight);
+      wallOwned[frameOffset] = 1;wallPieceWrites++;
+      int floorY=sqlFloor(sampleY),heightMask=wallAssetHeightMask[asset];
+      int sampleRow=heightMask>=0?floorY&heightMask:wrap(floorY,assetHeight);
       int raw=wallAssetTexels[asset][texelBase+sampleRow];
       if(raw>=0){wallFrame[frameOffset]=colormap[colormapBase+raw];
         wallColored[frameOffset]=1;}
@@ -2525,9 +2536,6 @@ public final class DoomBspKernelBench {
       double depth, double dirX, double dirY, double plnX, double plnY,
       int from, int to, double clipTop, double clipBottom, double eyeZ) {
     boolean right=rightFacingCache[id]!=0;
-    String upper = right ? rightUpper[id] : leftUpper[id];
-    String lower = right ? rightLower[id] : leftLower[id];
-    String middle = right ? rightMiddle[id] : leftMiddle[id];
     int upperAsset=right?rightUpperAsset[id]:leftUpperAsset[id];
     int lowerAsset=right?rightLowerAsset[id]:leftLowerAsset[id];
     int middleAsset=right?rightMiddleAsset[id]:leftMiddleAsset[id];
@@ -2537,7 +2545,7 @@ public final class DoomBspKernelBench {
     boolean termination = to < 0 || Math.min(sectorCeiling[from], sectorCeiling[to]) <=
         Math.max(sectorFloor[from], sectorFloor[to]);
     if (termination) {
-      int asset=!"-".equals(middle)?middleAsset:(!"-".equals(upper)?upperAsset:lowerAsset);
+      int asset=middleAsset>=0?middleAsset:(upperAsset>=0?upperAsset:lowerAsset);
       double anchor = (lineFlags[id] & 16) != 0 ? sectorFloor[from] + 128.0 :
           sectorCeiling[from];
       drawWallPiece(id, column, depth, hitU, clipTop, clipBottom,
@@ -2545,13 +2553,13 @@ public final class DoomBspKernelBench {
           xOffset, yOffset, sectorLight[from], eyeZ);
       return;
     }
-    if (sectorFloor[to] > sectorFloor[from] && !"-".equals(lower)) {
+    if (sectorFloor[to] > sectorFloor[from] && lowerAsset>=0) {
       double anchor = (lineFlags[id] & 16) != 0 ? sectorCeiling[from] : sectorFloor[to];
       drawWallPiece(id, column, depth, hitU, clipTop, clipBottom,
           sectorFloor[to], sectorFloor[from], lowerAsset, anchor,
           xOffset, yOffset, sectorLight[from], eyeZ);
     }
-    if (sectorCeiling[to] < sectorCeiling[from] && !"-".equals(upper) &&
+    if (sectorCeiling[to] < sectorCeiling[from] && upperAsset>=0 &&
         !("F_SKY1".equals(sectorCeilingFlat[from]) &&
           "F_SKY1".equals(sectorCeilingFlat[to]))) {
       double anchor = (lineFlags[id] & 8) != 0 ? sectorCeiling[to] + 128.0 :
@@ -2583,18 +2591,20 @@ public final class DoomBspKernelBench {
     int xOffset = right ? rightXOffset[id] : leftXOffset[id];
     int yOffset = right ? rightYOffset[id] : leftYOffset[id];
     double hitU=acceptedUCache[id*WIDTH+column];
-    int assetX = wrap(sqlFloor(segOffset[id] + xOffset + hitU * segLength[id]),
-        wallAssetWidth[asset]);
+    int assetX=sqlFloor(segOffset[id]+xOffset+hitU*segLength[id])&wallAssetWidthMask[asset];
     int first = Math.max(0, (int) Math.ceil(Math.max(0.0, clipTop) - .5));
     int end = Math.min(200, (int) Math.ceil(Math.min(200.0, clipBottom) - .5));
     wallRowAttempts+=end-first;
+    maskedAttempts+=end-first;
     double sampleStep=depth/160.0;
     double sampleY=sectorCeiling[from]-(eyeZ+(100.0-(first+.5))*depth/160.0)+yOffset;
     for (int row = first; row < end; row++) {
-      int assetY = wrap(sqlFloor(sampleY), wallAssetHeight[asset]);
+      int floorY=sqlFloor(sampleY),heightMask=wallAssetHeightMask[asset];
+      int assetY=heightMask>=0?floorY&heightMask:wrap(floorY,wallAssetHeight[asset]);
       int raw = wallAssetTexels[asset][assetX * wallAssetHeight[asset] + assetY];
       int index=column*200+row;
       if(raw>=0&&overlayWins(index,depth,(byte)1,segLineId[id],assetY,assetX)){
+        maskedWrites++;
         overlayDepth[index] = depth; overlayKind[index] = 1;
         overlaySource[index] = segLineId[id]; overlayAssetX[index] = assetX;
         overlayAssetY[index] = assetY; overlayPalette[index] = (short) raw;
@@ -3395,7 +3405,8 @@ public final class DoomBspKernelBench {
   public static String lastCardinality(){return projectedSegs+"|"+candidatePairs+"|"+
     acceptedPairs+"|"+visiblePairs+"|"+activePortalPairs+"|"+intervalTotal+"|"+
     orderedHitTotal+"|"+largeSortColumns+"|"+wallRowAttempts+"|"+planeRowAttempts+"|"+
-    occludedBboxes;}
+    occludedBboxes+"|"+wallPieceAttempts+"|"+wallPieceWrites+"|"+maskedAttempts+"|"+
+    maskedWrites+"|"+planeWrites;}
   public static long lastKernelLoadNanos() { return lastKernelLoadNanos; }
   public static long lastSnapshotNanos() { return lastSnapshotNanos; }
   static long retainedUpdateNanos() { return lastRetainedUpdateNanos; }
