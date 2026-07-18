@@ -39,8 +39,9 @@ captured database frame is shown below. Its frame SHA is
 `32028078e1db3695ff9b8809641d3dea3a1c458caa25973c4f5a88489ce8e851`.
 The next route slice replaces the checkpoint-chain prefix with one uninterrupted
 public-command replay. Its clean lineage now reaches tic 2,110 alive; the
-remaining route work is replacing an exact-radius door-jamb/corner trap with a
-normal-input bridge before running the complete route twice.
+exact-radius line-54 door-jamb defect is fixed without changing the canonical
+opening route. Remaining work is routing the low-health combat bridge before
+running the complete route twice.
 
 ![Database-rendered E1M1 completion](artifacts/t8.1-live/exit-intermission.png)
 

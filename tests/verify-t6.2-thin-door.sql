@@ -62,6 +62,16 @@ begin
   ok(l_x=784 and l_y=2128 and l_contacts=0,
     'exact jamb endpoint tangency was treated as inward contact');
 
+  -- E1M1's sector-10 door has an ordinary one-sided east jamb rather than the
+  -- sub-diameter paired-portal shape above. Once the door has player-height
+  -- clearance, a radius-exact center moving parallel/away from endpoint
+  -- (896,512) must not stick at y=512.
+  update sector_state set ceiling_height=-54
+   where session_token=k_token and sector_id=10;
+  place(880,512);move_(0,16);
+  ok(l_x=880 and l_y=528 and l_contacts=0,
+    'ordinary exact jamb tangency blocked non-inward motion');
+
   -- Genuine inward motion into the east one-sided jamb remains blocked.
   place(736,2088);move_(64,0);
   ok(l_x=752 and l_y=2088 and l_contacts=1 and l_first=484,

@@ -84,7 +84,7 @@ begin
                +power(jamb_vertex.y-(qv.y+greatest(0,least(qg.length,
                    (jamb_vertex.x-qv.x)*qg.direction_x+
                    (jamb_vertex.y-qv.y)*qg.direction_y))*qg.direction_y),2)
-                  <power(2*p_radius,2)
+                  <=power(2*p_radius,2)
             and greatest(coalesce(qrs.floor_height,qrm.floor_height),
                          coalesce(qls.floor_height,qlm.floor_height))-p_z<=p_step
             and least(coalesce(qrs.ceiling_height,qrm.ceiling_height),

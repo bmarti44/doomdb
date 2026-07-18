@@ -1013,6 +1013,10 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   height from destination sector.
 - Accept: head-on, oblique, corner, portal, step, too-high step, closed door,
   translated geometry, tunneling, and noclip cases pass independent checks.
+- Exact-jamb hardening (2026-07-17): an open paired portal whose opposite jamb
+  is exactly two player radii away now admits non-inward endpoint tangency. The
+  E1M1 line-54 regression crosses `(880,512)` to `(880,528)` without weakening
+  inward-jamb, closed-door, finite-portal, or canonical opening-route gates.
 
 #### T6.3 Doors, lifts, switches, sectors, secrets, exit
 
