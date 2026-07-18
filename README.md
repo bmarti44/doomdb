@@ -35,7 +35,12 @@ lab. Two clean post-checkpoint replays ended at tic 4,118 with 49 HP, 42 kills,
 34 items, one secret, and exact state SHA
 `ac5d82cba9ab641192e91e02dc6856dd9210dc57b4b7fad156bab0b40373b7e6`.
 The exit command now authors `DONE/INTERMISSION` before canonical capture; the
-next route slice freezes milestone frames and runs the complete replay gate.
+captured database frame is shown below. Its frame SHA is
+`32028078e1db3695ff9b8809641d3dea3a1c458caa25973c4f5a88489ce8e851`.
+The next route slice replaces the checkpoint-chain prefix with one uninterrupted
+public-command replay.
+
+![Database-rendered E1M1 completion](artifacts/t8.1-live/exit-intermission.png)
 
 The selected retained worker now supports arbitrary live movement, collision,
 weapon selection, common hitscan/melee fire, `USE`/`WALK` triggers, doors,

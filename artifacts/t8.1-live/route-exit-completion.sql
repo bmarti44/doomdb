@@ -28,6 +28,11 @@ declare
   ) is
     l_commands clob;
     l_width pls_integer;
+    l_alive number;
+    l_health number;
+    l_x number;
+    l_y number;
+    l_tic number;
   begin
     for batch_start in 0..ceil(p_count / 4) - 1 loop
       l_width := least(4, p_count - batch_start * 4);
@@ -48,6 +53,16 @@ declare
       end loop;
       l_commands := l_commands || ']}';
       doom_tic_tx.apply_batch(k_session, l_commands, l_payload);
+      select player.alive,player.health,player.x,player.y,session_row.current_tic
+        into l_alive,l_health,l_x,l_y,l_tic
+      from players player join game_sessions session_row
+        on session_row.session_token=player.session_token
+       and session_row.current_player_id=player.player_id
+      where player.session_token=k_session;
+      if l_alive<>1 then
+        raise_application_error(-20010,'route player died at tic=' ||
+          l_tic || ',health=' || l_health || ',pos=' || l_x || ',' || l_y);
+      end if;
     end loop;
   end;
 

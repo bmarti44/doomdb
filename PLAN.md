@@ -2070,7 +2070,13 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   geometry. The exit-causing command now transitions from `COMPLETED/GAME` to
   `DONE/INTERMISSION` before canonical capture; death takes precedence on a
   simultaneous terminal tic, and later commands freeze gameplay. The remaining
-  T8.1 slice is milestone frame capture and the full replay-repeatability gate.
+  terminal presentation contains all 64,000 database-authored palette bytes:
+  frame SHA
+  `32028078e1db3695ff9b8809641d3dea3a1c458caa25973c4f5a88489ce8e851`
+  and indexed PNG SHA
+  `b5a37ae70425b5f536936439ae999ec059fb0a9d6fcd3cc8913beade12e99581`.
+  The remaining T8.1 slice replaces the accepted checkpoint-chain prefix with
+  one uninterrupted public-command replay and freezes its intermediate frames.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 

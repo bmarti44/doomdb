@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "kind": "doomdb-t8.1-exit-intermission",
+  "width": 320,
+  "height": 200,
+  "order": "column-row",
+  "tic": 4118,
+  "mapStatus": "DONE",
+  "mode": "INTERMISSION",
+  "health": 49,
+  "kills": 42,
+  "items": 34,
+  "secrets": 1,
+  "stateSha": "ac5d82cba9ab641192e91e02dc6856dd9210dc57b4b7fad156bab0b40373b7e6",
+  "frameSha": "32028078e1db3695ff9b8809641d3dea3a1c458caa25973c4f5a88489ce8e851",
+  "pngSha": "b5a37ae70425b5f536936439ae999ec059fb0a9d6fcd3cc8913beade12e99581",
+  "sourceCounts": {
+    "INTERMISSION_PATCH": 61320,
+    "TEXT": 2680
+  }
+}
