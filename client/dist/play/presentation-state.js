@@ -2,7 +2,6 @@ export class PresentationState {
     loading = true;
     mode = 'GAME';
     muted = false;
-    focused = document.hasFocus();
     visible = document.visibilityState === 'visible';
     setMode(value) {
         const normalized = value.toUpperCase();

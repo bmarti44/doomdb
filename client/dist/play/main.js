@@ -223,8 +223,6 @@ async function boot() {
         state.muted = !state.muted;
         audio.setMuted(state.muted);
     }, gesture);
-    window.addEventListener('focus', () => { state.focused = true; });
-    window.addEventListener('blur', () => { state.focused = false; });
     document.addEventListener('visibilitychange', () => {
         state.visible = document.visibilityState === 'visible';
     });
@@ -233,7 +231,11 @@ async function boot() {
         const now = performance.now();
         if (pipelineError)
             return;
-        if (!state.visible || !state.focused) {
+        // Page focus is not a reliable lifecycle signal: Chrome can load the game
+        // while the address bar, DevTools, or another window owns focus and never
+        // emit a balancing window focus event. Pause only genuinely hidden tabs so
+        // a visible game can never freeze forever on its initial frame.
+        if (!state.visible) {
             nextDispatch = now + commandPeriodMs;
             return;
         }
