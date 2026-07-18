@@ -95,9 +95,13 @@ pose, and frame SHA exactly.
 The remaining worker fault gates are now green as well. Two simultaneous games
 owned separate Scheduler/OJVM sessions, matched after identical commands, then
 diverged correctly after opposite turns with no cross-session rows. A forced
-worker stop at tic 50 exposed and fixed stale `READY` detection; the public API
-advanced generation 382→383, replayed Oracle's ledger, and produced the same
-tic-51 frame as an uninterrupted twin with 102 total commands.
+worker stop at tic 50 now advances the generation, replays Oracle's ledger, and
+produces the same tic-51 frame as an uninterrupted twin with 102 total commands.
+If a fresh heartbeat temporarily masks the dead job, the aged correlated poll
+performs the exceptional Scheduler check and migrates the exact stored command
+to the reconstructed generation. Owner rows and jobs whose game session is gone
+are reclaimed without touching active games, and worker map/engine identity is
+derived from the immutable session lineage instead of a mutable global selector.
 
 Audio, persistence, and the reported gameplay defects now have
 production-shaped gates. Oracle imports all 69 IWAD sound lumps, records a
@@ -108,6 +112,8 @@ damage event. New game returns the exact retained Mocha tic-zero frame.
 Save/load forks an exact command lineage, continues the monotonic public command
 sequence, and replays every frame across the branch. Crash reconstruction,
 concurrent sessions, tic-zero, gameplay, audio, save/load, and replay all pass.
+The gates preserve the engine selector they found, so running verification can
+no longer switch the live `/play/` page back to the legacy SQL engine.
 
 The current local gate is green. Mocha returns raw binary DMF3 while the client
 remains backward-compatible with gzip SQL frames, and Jetty compresses only the

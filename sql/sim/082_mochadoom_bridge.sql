@@ -149,14 +149,16 @@ create or replace package body doom_mocha_bridge as
       raise_application_error(c_invalid,'Mocha frontier fence');
     end if;
 
-    if l_db_seq>0 then
-      -- The durable frontier already names the exact predecessor.  Scanning
-      -- the full lineage for MAX(tic) on every step made a session
-      -- progressively slower (quadratic work over a route).
+    if l_db_tic>0 then
+      -- A loaded lineage keeps the global command sequence monotonic while its
+      -- local tic frontier resumes at the saved tic. The predecessor state is
+      -- therefore named by lineage-local TIC, not LAST_COMMAND_SEQ (which can
+      -- include commands from the abandoned branch). Avoid MAX(tic) so this
+      -- remains an indexed constant-time lookup over long routes.
       select state_sha
         into l_previous_state_sha from doom_mocha_command
         where session_token=p_session and save_lineage=p_lineage
-          and command_seq=l_db_seq;
+          and tic=l_db_tic;
     end if;
     p_status:=doom_mocha_step_controls_payload(p_turn,p_forward,p_strafe,p_run,
       p_fire,p_use,p_weapon,p_pause,p_automap,p_menu,

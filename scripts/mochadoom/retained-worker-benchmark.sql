@@ -7,6 +7,7 @@ declare
   l_started timestamp with time zone;l_value number;l_active number;
   l_deadline timestamp with time zone;l_worker_p50 number;l_worker_p95 number;
   l_render_p95 number;l_ticker_p95 number;l_codec_p95 number;l_blob_p95 number;
+  l_previous_engine varchar2(4000);
 
   function elapsed_ms(p_span interval day to second) return number is
   begin
@@ -36,9 +37,12 @@ declare
       end loop;
       delete from game_sessions where session_token=l_session;
     end if;
-    update doom_config set text_value='SQL' where config_key='GAME_ENGINE';commit;
+    update doom_config set text_value=coalesce(l_previous_engine,text_value)
+      where config_key='GAME_ENGINE';commit;
   end;
 begin
+  select text_value into l_previous_engine from doom_config
+    where config_key='GAME_ENGINE';
   update doom_config set text_value='MOCHA' where config_key='GAME_ENGINE';commit;
   doom_api.new_game(3,l_session,l_payload);
   for i in 1..330 loop

@@ -2212,8 +2212,8 @@ the clean-room engine unless it is needed to validate the new public contract.
   zero stalls, 31.215/32.058 ms p50/p95 paint gaps, and 32.795 ms max. The frame
   chain SHA is
   `a1888c88d8fa779b9b90e8e650a8a5324f3085c21fe4b44f8e810b26b84be900`.
-  This closes the first local Mocha 30 FPS gate. The harness restores
-  `GAME_ENGINE=SQL` and removes its session; subsequent native-code,
+  This closes the first local Mocha 30 FPS gate. The harness restores the
+  engine selector it observed and removes its session; subsequent native-code,
   recovery/concurrency/audio/gameplay/presentation gates passed and `/play/`
   now selects Mocha for new sessions.
   An independent rerun reproduced the exact frame-chain SHA at 32.038 FPS with
@@ -2237,6 +2237,21 @@ the clean-room engine unless it is needed to validate the new public contract.
   Original-lineage 0..12 replay, completed-cursor idempotency, and loaded-lineage
   0..25 replay pass. The normalized `TIC_COMMANDS` insert now binds the actual
   Mocha lineage instead of its migration sentinel.
+- Recovery-hardening checkpoint (2026-07-18): API exception entries capture the
+  original SQL code/message before rollback or nested cleanup, eliminating the
+  `ORA-21002` cleared-error failure. Loaded lineages now chain predecessor state
+  by lineage-local tic while preserving the monotonic global command sequence;
+  save-at-24, abandon-through-34, load, and command 35 pass exact replay. A
+  forced stop with a still-fresh heartbeat is repaired from `POLL_FRAME` only
+  after the correlated request ages one second: the exceptional path verifies
+  Scheduler liveness, reconstructs, and idempotently migrates the stored command
+  bytes to the next generation. The final rerun advanced 529→530 and passed 102
+  commands with identical tic-
+  51 frames. Admission also force-stops/reclaims only worker jobs whose owner
+  session is provably gone. Admission and Scheduler startup now derive map/engine
+  identity from the immutable session lineage, closing the cross-session global-
+  selector race. Core gates preserve the caller's engine selector and explicitly
+  require a PASS marker; `/play/` remains on `MOCHA` after tests.
 - Accept: duplicate batches are byte-identical and apply once; two fresh runs of
   a fixed 300-tic trace have identical state/frame chains; save/load and restart
   reconstruction reproduce the uninterrupted chain across the seam.

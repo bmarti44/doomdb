@@ -44,8 +44,8 @@ begin
       1,1,1,1,1,1,3,0,0,0,l_frame,l_status,l_ticcmd,l_state_sha,l_frame_sha);
   end;
   if rawtohex(l_ticcmd)<>'3228FEC000000017' or
-     dbms_lob.getlength(l_frame) not between 1000 and 64142 or
-     rawtohex(dbms_lob.substr(l_frame,2,1))<>'1F8B' then
+     dbms_lob.getlength(l_frame) not between 64142 and 68142 or
+     rawtohex(dbms_lob.substr(l_frame,4,1))<>'444D4633' then
     raise_application_error(-20000,'durable bridge result mismatch');
   end if;
   l_plain:=doom_mocha_payload_plain(l_frame);

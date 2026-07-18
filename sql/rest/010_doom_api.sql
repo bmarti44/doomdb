@@ -734,6 +734,10 @@ create or replace package body doom_api as
     doom_history.save_game(p_session,99,l_state_sha);
     delete from save_slots where session_token=p_session and slot_number=99;
     if config_text('GAME_ENGINE','SQL')='MOCHA' then
+      -- Freeze engine identity in the durable lineage before Scheduler
+      -- admission. Worker startup and every later request derive their engine
+      -- path from this row, never from a mutable global selector.
+      doom_mocha_bridge.create_lineage(p_session,l_lineage,p_skill,1,1);
       -- The Scheduler session cannot see the lineage until it is committed.
       -- READY is published only after that retained owner has encoded its
       -- generation-fenced current frame into DOOM_MOCHA_FRAME_CACHE.
@@ -752,15 +756,22 @@ create or replace package body doom_api as
     render_payload(p_session,l_state_sha,p_payload);
     commit;
   exception when others then
-    rollback;p_payload:=null;
-    if l_mocha_committed=1 and p_session is not null then
-      begin doom_unified_worker.request_stop(p_session);exception when others then null;end;
-      begin delete from game_sessions where session_token=p_session;commit;
-      exception when others then rollback;end;
-    end if;
-    p_session:=null;
-    if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_bad_request,'new game failed');
+    declare
+      l_error_code pls_integer:=sqlcode;
+      l_error_message varchar2(2000):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_payload:=null;
+      if l_mocha_committed=1 and p_session is not null then
+        begin doom_unified_worker.request_stop(p_session);exception when others then null;end;
+        begin delete from game_sessions where session_token=p_session;commit;
+        exception when others then rollback;end;
+      end if;
+      p_session:=null;
+      if l_error_code between -20999 and -20000 then
+        raise_application_error(l_error_code,l_error_message);
+      end if;
+      raise_application_error(c_bad_request,'new game failed');
+    end;
   end;
 
   procedure step(
@@ -823,9 +834,14 @@ create or replace package body doom_api as
       where session_token=p_session and first_seq=l_first and last_seq=l_last;
     commit;
   exception when others then
-    rollback;p_payload:=null;
-    if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_bad_request,'step failed');
+    declare l_error_code pls_integer:=sqlcode;l_error_message varchar2(2000):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_payload:=null;
+      if l_error_code between -20999 and -20000 then
+        raise_application_error(l_error_code,l_error_message);
+      end if;
+      raise_application_error(c_bad_request,'step failed');
+    end;
   end;
 
   procedure submit_step(
@@ -840,9 +856,14 @@ create or replace package body doom_api as
     end if;
     commit;
   exception when others then
-    rollback;p_request:=null;
-    if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_bad_request,'submit step failed');
+    declare l_error_code pls_integer:=sqlcode;l_error_message varchar2(2000):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_request:=null;
+      if l_error_code between -20999 and -20000 then
+        raise_application_error(l_error_code,l_error_message);
+      end if;
+      raise_application_error(c_bad_request,'submit step failed');
+    end;
   end;
 
   procedure poll_frame(
@@ -850,6 +871,11 @@ create or replace package body doom_api as
     p_ready out number,p_payload out blob
   ) is
     l_lineage varchar2(64);l_source blob;l_request varchar2(32);
+    l_request_generation number;l_expected_tic number;l_expected_seq number;
+    l_command_version number;l_command_count number;l_command raw(2000);
+    l_created timestamp with time zone;l_generation number;l_worker_ready number;
+    l_map_sha varchar2(64);l_worker_error varchar2(4000);
+    l_replacement varchar2(32);l_submit_status varchar2(16);
     l_deadline timestamp with time zone;
   begin
     p_ready:=0;p_payload:=null;require_session(p_session);
@@ -861,7 +887,11 @@ create or replace package body doom_api as
     select save_lineage into l_lineage from game_sessions
       where session_token=p_session;
     begin
-      select request_id into l_request from doom_worker_request
+      select request_id,generation,expected_tic,expected_command_seq,
+        command_version,command_count,command_pack,created_at
+        into l_request,l_request_generation,l_expected_tic,l_expected_seq,
+          l_command_version,l_command_count,l_command,l_created
+        from doom_worker_request
         where session_token=p_session and save_lineage=l_lineage
           and expected_command_seq=p_seq-1
           and request_status in('QUEUED','PROCESSING','COMMITTED');
@@ -878,11 +908,41 @@ create or replace package body doom_api as
       exit when systimestamp>=l_deadline;
       dbms_session.sleep(.05);
     end loop;
+    -- A forced Scheduler stop can leave READY plus a fresh heartbeat behind.
+    -- Keep the expensive data-dictionary liveness check off the hot submit
+    -- path: perform it only for a correlated request that has made no progress
+    -- for one second. CLAIM fences/reconstructs a dead generation. If that
+    -- changes the generation, migrate the exact durable command bytes under a
+    -- deterministic replacement id; concurrent polls collapse idempotently.
+    if systimestamp>=l_created+numtodsinterval(1,'SECOND') then
+      doom_worker_api.claim(p_session,l_generation,l_worker_ready,l_map_sha,
+        l_worker_error);
+      if l_worker_ready<>1 or l_worker_error is not null then
+        fail(c_capacity,coalesce(l_worker_error,'worker recovery is not ready'));
+      end if;
+      if l_generation<>l_request_generation then
+        l_replacement:=lower(substr(rawtohex(dbms_crypto.hash(
+          utl_i18n.string_to_raw(p_session||'|'||l_lineage||'|'||
+            to_char(l_generation,'TM9')||'|'||rawtohex(l_command),'AL32UTF8'),
+          dbms_crypto.hash_sh256)),1,32));
+        doom_worker_api.submit_async(p_session,l_lineage,l_generation,
+          l_replacement,l_expected_tic,l_expected_seq,l_command_version,
+          l_command_count,l_command,l_submit_status);
+        if l_submit_status not in('QUEUED','PROCESSING','COMMITTED') then
+          fail(c_capacity,'worker recovery submit failed');
+        end if;
+      end if;
+    end if;
     commit;
   exception when others then
-    rollback;p_ready:=0;p_payload:=null;
-    if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_bad_request,'poll frame failed');
+    declare l_error_code pls_integer:=sqlcode;l_error_message varchar2(2000):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_ready:=0;p_payload:=null;
+      if l_error_code between -20999 and -20000 then
+        raise_application_error(l_error_code,l_error_message);
+      end if;
+      raise_application_error(c_bad_request,'poll frame failed');
+    end;
   end;
 
   procedure save_game(
@@ -921,9 +981,14 @@ create or replace package body doom_api as
     end if;
     doom_history.save_game(p_session,p_slot,p_state_sha);commit;
   exception when others then
-    rollback;p_state_sha:=null;
-    if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_bad_request,'save failed');
+    declare l_error_code pls_integer:=sqlcode;l_error_message varchar2(2000):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_state_sha:=null;
+      if l_error_code between -20999 and -20000 then
+        raise_application_error(l_error_code,l_error_message);
+      end if;
+      raise_application_error(c_bad_request,'save failed');
+    end;
   end;
 
   procedure load_game(
@@ -1006,9 +1071,14 @@ create or replace package body doom_api as
     l_state_sha:=json_value(blob_text(l_internal),'$.state_sha');
     render_payload(p_session,l_state_sha,p_payload);commit;
   exception when others then
-    rollback;p_payload:=null;
-    if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_bad_request,'load failed');
+    declare l_error_code pls_integer:=sqlcode;l_error_message varchar2(2000):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_payload:=null;
+      if l_error_code between -20999 and -20000 then
+        raise_application_error(l_error_code,l_error_message);
+      end if;
+      raise_application_error(c_bad_request,'load failed');
+    end;
   end;
 
   procedure start_replay(
@@ -1060,10 +1130,15 @@ create or replace package body doom_api as
     end if;
     doom_history.start_replay(p_session,p_from_tic,p_to_tic,p_replay_id);commit;
   exception when others then
-    rollback;p_replay_id:=null;
-    if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_bad_request,
-      'replay start failed: '||substr(sqlerrm,1,1800));
+    declare l_error_code pls_integer:=sqlcode;l_error_message varchar2(2000):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_replay_id:=null;
+      if l_error_code between -20999 and -20000 then
+        raise_application_error(l_error_code,l_error_message);
+      end if;
+      raise_application_error(c_bad_request,
+        'replay start failed: '||l_error_message);
+    end;
   end;
 
   procedure step_replay(p_replay_id in varchar2,p_payload out blob) is
@@ -1110,10 +1185,15 @@ create or replace package body doom_api as
     l_state_sha:=json_value(blob_text(l_internal),'$.state_sha');
     render_payload(l_session,l_state_sha,p_payload);commit;
   exception when others then
-    rollback;p_payload:=null;
-    if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_bad_request,
-      'replay step failed: '||substr(sqlerrm,1,1800));
+    declare l_error_code pls_integer:=sqlcode;l_error_message varchar2(2000):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_payload:=null;
+      if l_error_code between -20999 and -20000 then
+        raise_application_error(l_error_code,l_error_message);
+      end if;
+      raise_application_error(c_bad_request,
+        'replay step failed: '||l_error_message);
+    end;
   end;
 
   procedure get_asset(
@@ -1149,9 +1229,14 @@ create or replace package body doom_api as
     rollback;p_payload:=null;p_media_type:=null;
     raise_application_error(c_asset,'asset is not allowlisted');
   when others then
-    rollback;p_payload:=null;p_media_type:=null;
-    if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_asset,'asset request failed');
+    declare l_error_code pls_integer:=sqlcode;l_error_message varchar2(2000):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_payload:=null;p_media_type:=null;
+      if l_error_code between -20999 and -20000 then
+        raise_application_error(l_error_code,l_error_message);
+      end if;
+      raise_application_error(c_asset,'asset request failed');
+    end;
   end;
 end doom_api;
 /

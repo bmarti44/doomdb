@@ -20,10 +20,19 @@ gates=(
 
 [[ -n "$container" ]] || { printf 'database container is not running\n' >&2; exit 1; }
 for gate in "${gates[@]}"; do
-  {
+  if output="$({
     printf 'connect DOOM/"'
     docker exec "$container" sh -c "tr -d '\\r\\n' < /run/secrets/doom_password"
     printf '"@FREEPDB1\n'
     cat "$root/scripts/mochadoom/$gate"
-  } | docker exec -i "$container" "$java_home/bin/sqlplus" -s /nolog
+  } | docker exec -i "$container" "$java_home/bin/sqlplus" -s /nolog)"; then
+    gate_status=0
+  else
+    gate_status=$?
+  fi
+  printf '%s\n' "$output"
+  if ((gate_status != 0)) || ! grep -q '^PASS ' <<<"$output"; then
+    printf 'gate failed (exit %d): %s\n' "$gate_status" "$gate" >&2
+    exit 1
+  fi
 done

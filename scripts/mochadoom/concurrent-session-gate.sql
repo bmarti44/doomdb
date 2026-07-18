@@ -5,6 +5,7 @@ declare
   l_a varchar2(32);l_b varchar2(32);l_payload blob;l_request varchar2(32);
   l_ready number;l_deadline timestamp with time zone;l_plain blob;
   l_a_sha varchar2(64);l_b_sha varchar2(64);l_rows number;l_slots number;
+  l_previous_engine varchar2(4000);
 
   function command_json(p_seq number,p_turn number) return clob is
   begin
@@ -48,9 +49,12 @@ declare
     end loop;
     if l_a is not null then delete from game_sessions where session_token=l_a;end if;
     if l_b is not null then delete from game_sessions where session_token=l_b;end if;
-    update doom_config set text_value='SQL' where config_key='GAME_ENGINE';commit;
+    update doom_config set text_value=coalesce(l_previous_engine,text_value)
+      where config_key='GAME_ENGINE';commit;
   end;
 begin
+  select text_value into l_previous_engine from doom_config
+    where config_key='GAME_ENGINE';
   update doom_config set text_value='MOCHA' where config_key='GAME_ENGINE';commit;
   doom_api.new_game(3,l_a,l_payload);doom_api.new_game(3,l_b,l_payload);
   -- First submissions claim two distinct retained Scheduler sessions.

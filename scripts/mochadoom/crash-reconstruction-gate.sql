@@ -6,6 +6,7 @@ declare
   l_ready number;l_deadline timestamp with time zone;l_plain blob;
   l_a_sha varchar2(64);l_b_sha varchar2(64);l_slot number;l_old_generation number;
   l_new_generation number;l_running number;l_rows number;
+  l_previous_engine varchar2(4000);
 
   function command_json(p_seq number) return clob is
   begin
@@ -18,7 +19,10 @@ declare
 
   function await_sha(p_session varchar2,p_seq number) return varchar2 is
   begin
-    l_deadline:=systimestamp+numtodsinterval(30,'SECOND');
+    -- Forced restart includes a complete retained-engine reconstruction and
+    -- may synchronously recompile invalidated OJVM methods on a two-CPU host.
+    -- This is a bounded recovery deadline, not the warm per-frame latency gate.
+    l_deadline:=systimestamp+numtodsinterval(120,'SECOND');
     loop
       doom_api.poll_frame(p_session,p_seq,100,l_ready,l_payload);
       exit when l_ready=1;
@@ -51,14 +55,26 @@ declare
           j.job_name='DOOM_UNIFIED_WORKER_'||to_char(c.worker_slot,'FM00'));
     if l_a is not null then delete from game_sessions where session_token=l_a;end if;
     if l_b is not null then delete from game_sessions where session_token=l_b;end if;
-    update doom_config set text_value='SQL' where config_key='GAME_ENGINE';commit;
+    update doom_config set text_value=coalesce(l_previous_engine,text_value)
+      where config_key='GAME_ENGINE';commit;
   end;
 begin
+  select text_value into l_previous_engine from doom_config
+    where config_key='GAME_ENGINE';
   update doom_config set text_value='MOCHA' where config_key='GAME_ENGINE';commit;
   doom_api.new_game(3,l_a,l_payload);doom_api.new_game(3,l_b,l_payload);
   for l_seq in 1..50 loop
     doom_api.submit_step(l_a,command_json(l_seq),l_request);
     doom_api.submit_step(l_b,command_json(l_seq),l_request);
+    -- This is a crash/reconstruction gate, not an unbounded queue-capacity
+    -- test. Keep both lineages within the public future-command window even on
+    -- a cold two-CPU host where native compilation can briefly pause a worker.
+    if mod(l_seq,8)=0 then
+      l_a_sha:=await_sha(l_a,l_seq);l_b_sha:=await_sha(l_b,l_seq);
+      if l_a_sha<>l_b_sha then
+        raise_application_error(-20000,'pre-seam checkpoint mismatch');
+      end if;
+    end if;
   end loop;
   l_a_sha:=await_sha(l_a,50);l_b_sha:=await_sha(l_b,50);
   if l_a_sha<>l_b_sha then raise_application_error(-20000,'pre-seam mismatch');end if;

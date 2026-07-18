@@ -5,6 +5,7 @@ declare
   l_session varchar2(32);l_payload blob;l_request varchar2(32);
   l_duplicate varchar2(32);l_ready number;l_deadline timestamp with time zone;
   l_tic number;l_seq number;l_rows number;l_results number;
+  l_previous_engine varchar2(4000);
 
   function command_json(p_seq number,p_turn number,p_forward number,
     p_strafe number,p_run number,p_fire number) return clob is
@@ -45,10 +46,13 @@ declare
       end loop;
       delete from game_sessions where session_token=l_session;
     end if;
-    update doom_config set text_value='SQL' where config_key='GAME_ENGINE';
+    update doom_config set text_value=coalesce(l_previous_engine,text_value)
+      where config_key='GAME_ENGINE';
     commit;
   end;
 begin
+  select text_value into l_previous_engine from doom_config
+    where config_key='GAME_ENGINE';
   update doom_config set text_value='MOCHA' where config_key='GAME_ENGINE';commit;
   doom_api.new_game(3,l_session,l_payload);
 

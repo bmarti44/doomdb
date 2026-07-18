@@ -133,9 +133,10 @@ turn those latency distributions into stable throughput without synthesizing
 input from prior responses. The frame-chain SHA was
 `a1888c88d8fa779b9b90e8e650a8a5324f3085c21fe4b44f8e810b26b84be900`.
 
-This is a green local end-to-end Mocha 30 FPS gate. `GAME_ENGINE` remains `SQL`
-until recovery, stale-generation, concurrent-session, audio, and gameplay-defect
-gates pass; the test harness restores the selector and removes its session.
+This is the first green local end-to-end Mocha 30 FPS gate. The selector stayed
+guarded until the recovery, stale-generation, concurrent-session, audio, and
+gameplay-defect gates passed; `GAME_ENGINE` now defaults to `MOCHA`, and every
+test harness restores the selector it observed before removing its session.
 
 An independent second 300-frame run reproduced the exact frame-chain SHA at
 32.038 FPS, again with 300 unique frames and zero stalls. Its paint gaps were
@@ -154,11 +155,27 @@ reconstructed from the committed ledger, and matched an uninterrupted twin at
 tic 51 with 102 exact commands. Concurrent isolation, stale generation, forced
 restart reconstruction, and no-lost-command seams are green.
 
+A later clean regression found two recovery gaps hidden by the original gate.
+First, a freshly stopped job could retain a recent heartbeat long enough for one
+command to be durably queued to the dead generation. An aged `POLL_FRAME` now
+performs the Scheduler lookup only on that exceptional tail, reconstructs the
+worker, and migrates the exact stored command under a deterministic request id.
+The final rerun advanced generation 529→530 and matched both tic-51 frames across
+102 commands. Second, a failed `NEW_GAME` could leave an idle Scheduler job whose
+owner session had already been deleted. Admission now force-stops and reclaims
+only that provable orphan; active sessions are excluded. The same pass fixed
+save/load predecessor chaining to use lineage-local tic 24 rather than abandoned
+global sequence 34, preserved API error codes across cleanup, updated the durable
+codec gate to raw DMF3, and made every gate restore its incoming engine selector.
+Admission and Scheduler startup also derive map/engine identity from the immutable
+lineage, eliminating a global-selector race; the next clean tic-zero gate passed
+in 13.4 seconds and left `GAME_ENGINE=MOCHA` with zero orphan owners/jobs.
+
 Cold initialization improved from 15.75-18.40 seconds interpreted to 5.29-6.21
 seconds after native compilation. It is startup-only and belongs in the retained
 Scheduler worker, never in an ORDS request session.
 
-## Next gates
+## Current gate status
 
 ### Async submit and fixed-pool requalification
 
@@ -179,9 +196,10 @@ p50/p95 was 155.101/157.187 ms. The 47-class native audit passed with zero
 classes requiring recompilation. Fresh post-redefinition runs retain cold
 AutoREST/OJVM tails and are reported separately from steady play.
 
-1. Add bounded authored audio events and rerun the four reported gameplay defects.
-2. Guardedly select Mocha for `/play/`, then repeat the local gate and collect
-   independent managed-ORDS evidence before production selection.
+Authored audio, the four reported gameplay defects, selector cutover, save/load,
+replay, concurrent isolation, and forced recovery are now green locally. The
+remaining production evidence is the complete public E1M1 workflow and an
+independent managed-ORDS/cloud run; neither is inferred from localhost results.
 
 ## Reproduction
 

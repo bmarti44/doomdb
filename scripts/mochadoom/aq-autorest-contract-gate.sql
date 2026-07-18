@@ -5,6 +5,7 @@ declare
   l_session varchar2(32);l_payload blob;l_duplicate blob;l_plain blob;
   l_commands clob;l_tic number;l_seq number;l_rows number;l_sha varchar2(64);
   l_duplicate_sha varchar2(64);l_deadline timestamp with time zone;
+  l_previous_engine varchar2(4000);
 
   procedure stop_and_clean is
     l_active number;
@@ -20,10 +21,13 @@ declare
       end loop;
       delete from game_sessions where session_token=l_session;
     end if;
-    update doom_config set text_value='SQL' where config_key='GAME_ENGINE';
+    update doom_config set text_value=coalesce(l_previous_engine,text_value)
+      where config_key='GAME_ENGINE';
     commit;
   end;
 begin
+  select text_value into l_previous_engine from doom_config
+    where config_key='GAME_ENGINE';
   update doom_config set text_value='MOCHA' where config_key='GAME_ENGINE';
   if sql%rowcount<>1 then raise_application_error(-20000,'engine selector missing');end if;
   commit;

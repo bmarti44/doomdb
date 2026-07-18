@@ -5,6 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 container="$(docker compose -f "$root/compose.yaml" ps -q db)"
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/doomdb-mocha-http.XXXXXX")"
 session=""
+previous_engine=""
 
 sql() {
   {
@@ -32,16 +33,23 @@ begin
 end;
 /
 delete from game_sessions where session_token='$session';
-update doom_config set text_value='SQL' where config_key='GAME_ENGINE';
+update doom_config set text_value='$previous_engine' where config_key='GAME_ENGINE';
 commit;" >/dev/null
   else
-    sql "update doom_config set text_value='SQL' where config_key='GAME_ENGINE'; commit;" \
+    sql "update doom_config set text_value='$previous_engine' where config_key='GAME_ENGINE'; commit;" \
       >/dev/null
   fi
   rm -rf "$tmp"
 }
 trap cleanup EXIT
 
+previous_engine="$(sql "set heading off feedback off pages 0
+select text_value from doom_config where config_key='GAME_ENGINE';" |
+  tail -n 1 | tr -d '[:space:]')"
+[[ "$previous_engine" == SQL || "$previous_engine" == MOCHA ]] || {
+  printf 'invalid GAME_ENGINE selector: %s\n' "$previous_engine" >&2
+  exit 1
+}
 sql "whenever sqlerror exit failure rollback
 update doom_config set text_value='MOCHA' where config_key='GAME_ENGINE';
 commit;" >/dev/null

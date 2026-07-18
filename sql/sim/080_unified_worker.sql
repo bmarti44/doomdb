@@ -36,9 +36,12 @@ create or replace package body doom_unified_worker as
     raise_application_error(c_invalid,'missing worker configuration');
   end;
 
-  function mocha_selected return boolean is
+  function mocha_lineage(p_session varchar2,p_lineage varchar2) return boolean is
+    l_count number;
   begin
-    return config_text('GAME_ENGINE')='MOCHA';
+    select count(*) into l_count from doom_mocha_lineage
+      where session_token=p_session and save_lineage=p_lineage;
+    return l_count=1;
   end;
 
   function elapsed_us(p_started timestamp with time zone) return number is
@@ -86,11 +89,11 @@ create or replace package body doom_unified_worker as
     end if;
   end;
 
-  function state_map_sha return varchar2 is
+  function state_map_sha(p_session varchar2,p_lineage varchar2) return varchar2 is
     l_text clob;l_document blob;l_sha varchar2(64);l_iwad_sha varchar2(64);
     l_dest integer:=1;l_src integer:=1;l_context integer:=0;l_warning integer;
   begin
-    if mocha_selected then
+    if mocha_lineage(p_session,p_lineage) then
       select payload_sha256 into l_iwad_sha from doom_engine_artifact
         where artifact_name='freedoom1.wad'
           and engine_revision=c_mocha_revision;
@@ -173,7 +176,7 @@ create or replace package body doom_unified_worker as
     l_next_mobj number;l_skill number;l_status varchar2(4000);
     l_state_sha varchar2(64);
   begin
-    if mocha_selected then
+    if mocha_lineage(p_session,p_lineage) then
       select skill,current_tic,last_command_seq into l_skill,l_tic,l_seq
         from game_sessions where session_token=p_session;
       doom_mocha_bridge.create_lineage(p_session,p_lineage,l_skill,1,1);
@@ -510,7 +513,7 @@ create or replace package body doom_unified_worker as
 
   procedure process_request(
     p_slot number,p_request varchar2,p_worker_map_sha varchar2,
-    p_worker_generation in out number
+    p_worker_generation in out number,p_mocha boolean
   ) is
     l_request_slot number;l_session varchar2(32);l_lineage varchar2(64);
     l_async_mode number;
@@ -579,7 +582,7 @@ create or replace package body doom_unified_worker as
     exception when others then p_lob:=null;
     end;
   begin
-    if mocha_selected then
+    if p_mocha then
       process_mocha_request(p_slot,p_request,p_worker_map_sha,
         p_worker_generation);
       return;
@@ -1168,7 +1171,7 @@ create or replace package body doom_unified_worker as
     l_failure varchar2(4000);l_limit pls_integer;l_idle_polls pls_integer:=0;
     l_processed pls_integer:=0;l_idle_seconds number;
     l_idle_started timestamp with time zone:=systimestamp;
-    l_dequeued pls_integer;
+    l_dequeued pls_integer;l_mocha boolean:=false;
     no_messages exception;pragma exception_init(no_messages,-25228);
   begin
     require_enabled;l_limit:=pool_size;
@@ -1185,7 +1188,8 @@ create or replace package body doom_unified_worker as
     if l_target is null or l_lineage is null then
       raise_application_error(c_invalid,'worker target is not configured');
     end if;
-    l_map_sha:=state_map_sha;
+    l_mocha:=mocha_lineage(l_target,l_lineage);
+    l_map_sha:=state_map_sha(l_target,l_lineage);
     if l_control_map<>l_map_sha then
       raise_application_error(c_invalid,'worker state-map fence');
     end if;
@@ -1228,7 +1232,7 @@ create or replace package body doom_unified_worker as
             and q.expected_command_seq=s.last_command_seq
           order by q.created_at fetch first 1 row only;
         l_dequeued:=1;l_idle_polls:=0;l_idle_started:=systimestamp;
-        process_request(p_worker_slot,l_request,l_map_sha,l_generation);
+        process_request(p_worker_slot,l_request,l_map_sha,l_generation,l_mocha);
       exception when no_data_found then
         begin
           dbms_aq.dequeue('DOOM_UNIFIED_REQUEST_Q',l_dequeue,l_properties,
@@ -1247,7 +1251,7 @@ create or replace package body doom_unified_worker as
               l_requeue_properties,l_payload,l_requeue_id);
             commit;dbms_session.sleep(.001);l_dequeued:=0;
           else
-            process_request(p_worker_slot,l_request,l_map_sha,l_generation);
+            process_request(p_worker_slot,l_request,l_map_sha,l_generation,l_mocha);
           end if;
           l_dequeue.navigation:=dbms_aq.first_message;
         exception
@@ -1282,7 +1286,7 @@ create or replace package body doom_unified_worker as
       end if;
       exit when l_stop=1;
     end loop;
-    if not mocha_selected then
+    if not l_mocha then
       begin doom_render_worker.request_stop(l_target);exception when others then null;end;
     end if;
     update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
@@ -1294,7 +1298,7 @@ create or replace package body doom_unified_worker as
     l_failure:=substr(sqlerrm||' '||dbms_utility.format_error_backtrace,1,4000);
     begin
       rollback;
-      if not mocha_selected then
+      if not l_mocha then
         begin doom_render_worker.request_stop(l_target);exception when others then null;end;
       end if;
       update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
@@ -1308,7 +1312,8 @@ create or replace package body doom_unified_worker as
 
   procedure start_worker(p_session in varchar2) is
     l_lineage varchar2(64);l_map_sha varchar2(64);
-    l_slot number;l_running number;l_limit pls_integer;
+    l_slot number;l_running number;l_limit pls_integer;l_orphan_running number;
+    l_mocha boolean;
   begin
     require_enabled;l_limit:=pool_size;
     if p_session is null or not regexp_like(p_session,'^[0-9a-f]{32}$') then
@@ -1316,7 +1321,42 @@ create or replace package body doom_unified_worker as
     end if;
     select save_lineage into l_lineage from game_sessions
       where session_token=p_session;
-    l_map_sha:=state_map_sha;
+    l_mocha:=mocha_lineage(p_session,l_lineage);
+    l_map_sha:=state_map_sha(p_session,l_lineage);
+    -- A forced stop or timed-out NEW_GAME cannot always run RUN_SLOT's normal
+    -- exception cleanup. A missing game session proves that no accepted public
+    -- owner remains. Stop only that orphan's still-running job, then reclaim its
+    -- fenced row. Active sessions are never selected by this recovery path.
+    for l_orphan in (
+      select c.worker_slot from doom_worker_control c
+      where c.worker_slot<=l_limit and c.target_session is not null
+        and not exists(select 1 from game_sessions s
+          where s.session_token=c.target_session)
+      order by c.worker_slot for update skip locked
+    ) loop
+      select count(*) into l_orphan_running from user_scheduler_running_jobs j
+        where j.job_name='DOOM_UNIFIED_WORKER_'||
+          to_char(l_orphan.worker_slot,'FM00');
+      if l_orphan_running=1 then
+        begin
+          dbms_scheduler.stop_job('DOOM_UNIFIED_WORKER_'||
+            to_char(l_orphan.worker_slot,'FM00'),true);
+        exception when others then
+          select count(*) into l_orphan_running from user_scheduler_running_jobs j
+            where j.job_name='DOOM_UNIFIED_WORKER_'||
+              to_char(l_orphan.worker_slot,'FM00');
+          if l_orphan_running<>0 then raise;end if;
+        end;
+      end if;
+      update doom_worker_request set request_status='FAILED',
+        error_text='orphan worker owner reclaimed',completed_at=systimestamp
+        where worker_slot=l_orphan.worker_slot
+          and request_status in('QUEUED','PROCESSING');
+      update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
+        target_session=null,target_lineage=null,state_map_sha=null,
+        last_error='orphan owner reclaimed',heartbeat=systimestamp
+        where worker_slot=l_orphan.worker_slot;
+    end loop;
     begin
       select worker_slot,ready into l_slot,l_running from doom_worker_control
         where target_session=p_session for update;
@@ -1358,13 +1398,13 @@ create or replace package body doom_unified_worker as
       stop_requested=0,last_error=null where worker_slot=l_slot;
     commit;
     begin
-      if not mocha_selected then
+      if not l_mocha then
         doom_render_worker.start_worker(l_slot,p_session,l_lineage,l_map_sha);
       end if;
       dbms_scheduler.run_job(
         'DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00'),false);
     exception when others then
-      if not mocha_selected then
+      if not l_mocha then
         begin doom_render_worker.request_stop(p_session);exception when others then null;end;
       end if;
       update doom_worker_control set target_session=null,target_lineage=null,
@@ -1384,9 +1424,10 @@ create or replace package body doom_unified_worker as
     if sql%rowcount<>1 then
       raise_application_error(c_invalid,'worker session is not active');
     end if;
-    if not mocha_selected then
-      begin doom_render_worker.request_stop(p_session);exception when others then null;end;
-    end if;
+    -- SQL lineages own a companion render worker; Mocha lineages do not. The
+    -- helper is idempotent/error-fenced, so an unconditional stop avoids using
+    -- a mutable global selector during teardown.
+    begin doom_render_worker.request_stop(p_session);exception when others then null;end;
     commit;
   end;
 
