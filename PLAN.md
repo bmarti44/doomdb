@@ -66,8 +66,9 @@ All of the following are core scope:
 12. Deterministic visible and held-back verification, mutation testing, and
     Playwright canvas validation.
 
-Multiplayer presence and deathmatch are optional only after all core rows above
-are green.
+Multiplayer is a planned post-core workstream after all single-player rows above
+are green. It cannot compensate for a missing required single-player capability,
+and selection may not weaken the single-player performance or recovery gates.
 
 ### 0.3 Non-goals
 
@@ -2530,14 +2531,130 @@ the clean-room engine unless it is needed to validate the new public contract.
 - Accept: all correctness and mutation tests remain green and the final report
   states the highest verified local and cloud FPS without a marketing estimate.
 
-### P13 - Optional multiplayer
+### P13 - Database-authoritative multiplayer
 
-Only after P0-P12 are complete:
+P13 is restored as a planned workstream after the P0-P12 single-player/local
+performance gates are green. It reuses Oracle DB + generated ORDS AutoREST +
+the static browser. It may not add peer-to-peer traffic, WebSockets, an ORDS
+game loop, or an external relay/game server. Mocha Doom already contains
+vanilla four-player state (`MAXPLAYERS=4`, per-player `netcmds`, co-op and
+deathmatch spawning, frags, respawn, and per-player display state); adapt those
+primitives to database-supplied command vectors instead of its socket layer.
 
-- Add multiple player rows, player damage/death/respawn, database-authoritative
-  command ordering, other-player sprites, and deathmatch starts.
-- Verify two and four concurrent clients with deterministic server ordering,
-  independent frames, no state leakage, and replayable match history.
+One retained OJVM worker owns one match and one authoritative engine. Never run
+one independent engine per player. Each accepted tic contains an ordered
+four-slot command vector and membership bitmap. The engine advances once, then
+renders immutable POV responses for active players without advancing again.
+Match, membership, commands, results, events, frame identities, checkpoints,
+and generations remain authoritative and restartable in Oracle. Every mutation
+is fenced by match, slot, membership epoch, worker generation, tic, and sequence.
+
+#### T13.0 Feasibility, contracts, and schema
+
+- Route: Codex high for OJVM/SQL; Terra high for client/AutoREST security.
+- First build a disposable two-player adapter probe. Explicitly set `netgame`,
+  `playeringame`, and slots; feed two distinct `ticcmd_t` values into one tic;
+  prove one world advance, mutual sprites, damage/death, and two stable POV hashes.
+- Benchmark one world tick plus one, two, and four POV renders on pinned two-CPU
+  Oracle Free. Report simulation, each render, codec/BLOB, persistence, ORDS,
+  decode, and paint. Two-player work proceeds only with credible dual-30-FPS
+  evidence; four players remain evidence-gated, never a projected claim.
+- Add normalized `doom_match`, `doom_match_member`, `doom_match_command`,
+  `doom_match_tic`, `doom_match_frame`, and `doom_match_checkpoint` contracts.
+  Store only salted hashes of unguessable host/join/player capabilities. Tokens,
+  display names, and client metadata never enter state/frame hashes or replay RNG.
+- Freeze v1 membership: two slots assigned only in `LOBBY`, all READY before
+  start, no mid-match join, reconnect to the same slot, and deterministic leave/
+  timeout. Spectators, host transfer, public matchmaking, and bots are deferred.
+- Accept: bootstrap/drop, constraints/cascades, fence mutations, exact adapter
+  hashes, recorded 1/2/4-POV timings, and unchanged single-player hashes.
+
+#### T13.1 Lobby, capabilities, and AutoREST lifecycle
+
+- Extend only allowlisted `DOOM_API` with generated AutoREST procedures:
+  `CREATE_MATCH`, `JOIN_MATCH`, `READY_MATCH`, `MATCH_STATUS`,
+  `SUBMIT_MATCH_STEP`, `POLL_MATCH_FRAME`, and `LEAVE_MATCH`. Base tables and
+  worker controls remain unreachable. Public discovery is deferred by default.
+- Use a public match id plus separate host/player bearer capabilities. Compare
+  only hashes in Oracle, rotate on explicit reconnect, use constant-shape errors
+  for unknown/unauthorized matches, and redact capabilities everywhere.
+- Bound names/metadata, match/member counts, body size, future-tic lead, retries,
+  poll duration, idle lifetime, and create/join rates. Reject duplicate slots,
+  old-token replay, cross-match polling, excessive gaps, and commands for another
+  slot. Cleanup is generation-fenced with replay-safe retention.
+- Host mode/skill/map and start/cancel apply only in `LOBBY`. Start atomically
+  freezes membership, creates the worker generation, and returns tic-zero POVs.
+- Accept: two browser contexts create/join/ready/start entirely through AutoREST;
+  authorization, enumeration, race, retry, expiry, reconnect, leave, rate-limit,
+  and cleanup tests pass without secret-bearing output or table exposure.
+
+#### T13.2 Deterministic lockstep and retained match worker
+
+- Use server-authoritative delayed lockstep, initially two tics. Clients submit
+  keyboard-state commands for bounded future tics without deriving them from
+  frames. At each deadline the worker orders by slot and durably records a
+  neutral command for a missing connected player. Late commands are reported
+  idempotently and never cause rollback or client-side prediction.
+- Arrival order never determines world order. Advance only after the complete
+  next command vector/deadline decision is durable; publish player frames only
+  after command vector, state/hash, events, frames, and commit succeed.
+- Add catch-all adapter entry points for multiplayer new-game, vector-step,
+  per-player render, checkpoint, reconstruction, and disposal. POV rendering
+  must restore selectors on failure and must not mutate RNG, thinkers, audio, or
+  world state. Author spatial audio separately for each listener slot.
+- A disconnected slot receives neutral commands for a bounded grace period,
+  then becomes `LEFT` at a recorded tic. Co-op v1 makes it inactive until match
+  end. Reconnect before expiry resumes only at a future command boundary.
+- Accept: randomized arrival order, duplicate/out-of-order HTTP, missing input,
+  reconnect/leave, simultaneous use/fire, and contention reproduce a direct
+  ordered command/state/event/frame chain with no cross-match visibility.
+
+#### T13.3 Co-op client, replay, and recovery
+
+- Select two-player co-op first. Verify starts, mutual visibility, shared world
+  machines, monster targeting, friendly-fire policy, vanilla netgame pickups,
+  keys, death/reborn, exit, intermission, player colors/HUD, and listener audio.
+- Add a compact lobby/join/reconnect flow to the static client. It samples local
+  input, submits future ticcmds, and decodes only its database-authored POV/audio.
+  It does not simulate, interpolate world state, or expose another capability.
+- Record membership epochs and four-slot vectors in the lineage. Checkpoints
+  include every player and multiplayer flag. Reconstruction replays slot order
+  and reproduces all player state, RNG, events, and POV hashes. Save/load is
+  host-only and match-wide; personal rollback/divergent saves do not exist.
+- Accept: two browsers complete a representative E1M1 co-op route. Fixtures
+  cover damage, death/respawn, pickup contention, door/lift/use, reconnect, and
+  exit. Kill the worker mid-fight and ORDS mid-poll; fenced reconstruction must
+  resume both clients with the same final chains as an uninterrupted twin.
+
+#### T13.4 Deathmatch and player-count expansion
+
+- Enable deathmatch only after co-op passes. Use authored deathmatch starts,
+  vanilla spawn RNG, damage, armor/ammo/pickups, frags, suicide attribution,
+  death/reborn, scoreboard/intermission, and frozen frag/time limits.
+- Prove two-player correctness first, then remeasure three/four players. If POV
+  rendering or four frame streams exceed the two-CPU/ORDS budget, retain the
+  verified lower cap; never reduce resolution, duplicate simulation, skip unique
+  frames, or infer per-client FPS from aggregate throughput.
+- Accept: deterministic spawn/frag/respawn, simultaneous-kill/tie, scoreboard,
+  isolation, replay, and restart fixtures. A selected player count requires every
+  browser to show 300 unique frames at >=30 FPS with paint-gap p50/p95 <=33.3 ms
+  and input-to-own-frame p95 <=250 ms while single-player remains green.
+
+#### T13.5 Operations, cloud, and final gate
+
+- Report bounded lobby/active/finished counts, worker occupancy, command lead/
+  misses/late rejects, per-player submit/poll latency, match tick rate, per-POV
+  render/codec, recovery count, and ORDS pool waits. Use pseudonyms only.
+- Admission control uses measured worker, Java/shared-pool, SecureFile/redo,
+  ORDS, and bandwidth budgets. Full capacity returns a retryable error and never
+  evicts a match. Purge uses an explicit replay-safe retention policy.
+- Repeat security, correctness, recovery, and selected-player performance on
+  managed ORDS/Autonomous Database and the real S3 client. Cloud capacity may
+  reduce admitted matches/player count but never deterministic semantics.
+- Accept: two consecutive local and cloud matches at the selected modes/cap pass
+  exact replay/recovery and per-client performance; a 30-minute soak has bounded
+  storage/memory, no worker/session leak, unexplained neutral command, capability
+  exposure, or cross-match data. Only then mark multiplayer selected.
 
 ## 8. Final acceptance matrix
 
@@ -2561,6 +2678,7 @@ Only after P0-P12 are complete:
 | Production audit | no evaluator/reference/test shortcuts |
 | Cloud | actual S3 + Autonomous Database browser run |
 | Performance | external samples, optimization history, final p50/p95/FPS |
+| Multiplayer | co-op lockstep/reconnect/recovery and per-POV hashes/FPS; deathmatch/player cap if selected |
 
 No partial capability matrix may be described as project completion.
 
