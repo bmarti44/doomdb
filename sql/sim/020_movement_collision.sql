@@ -20,9 +20,10 @@ when matched then update set d.number_value=s.number_value,d.text_value=null
 when not matched then insert(config_key,number_value,text_value)
 values(s.config_key,s.number_value,null);
 
--- Narrow Doom-compatible exception for a one-sided jamb endpoint shared by a
--- crossed, currently open portal into a sub-diameter sector with a second
--- parallel open portal. Ordinary endpoint tangency remains blocking.
+-- Narrow Doom-compatible transition exception for a one-sided jamb endpoint
+-- shared by a crossed, currently open portal into a sub-diameter sector with
+-- a second parallel open portal. The sweep itself blocks only inward endpoint
+-- motion; zero-penetration tangent or outward motion remains nonblocking.
 create or replace function doom_thin_portal_graze(
   p_session varchar2,p_blocking_linedef number,p_vertex_id number,
   p_x number,p_y number,p_dx number,p_dy number,p_z number,
@@ -217,17 +218,8 @@ begin
             where disc.discriminant>=0
           ) cap
           where cap.contact_t between 0 and 1
-            and (
-              ((p_x+cap.contact_t*p_dx-cap.ex)*p_dx
-                +(p_y+cap.contact_t*p_dy-cap.ey)*p_dy)<0
-              or (
-                ((p_x+cap.contact_t*p_dx-cap.ex)*p_dx
-                  +(p_y+cap.contact_t*p_dy-cap.ey)*p_dy)=0
-                and doom_thin_portal_graze(p_session,cap.linedef_id,
-                      cap.endpoint_vertex_id,p_x,p_y,p_dx,p_dy,p_z,
-                      p_radius,p_height,p_step)=0
-              )
-            )
+            and ((p_x+cap.contact_t*p_dx-cap.ex)*p_dx
+                  +(p_y+cap.contact_t*p_dy-cap.ey)*p_dy)<0
         ) roots
         group by roots.linedef_id,roots.direction_x,roots.direction_y
       ) exact_line

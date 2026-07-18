@@ -1,9 +1,14 @@
 # Local stack
 
 The stack runs the pinned Oracle Free and ORDS images from `versions.lock`.
-Oracle is constrained to exactly two CPUs and 2 GiB. The database entrypoint
-regenerates the vendor SPFILE with `sga_target=1024m` and
-`pga_aggregate_target=256m` before handing control back to the vendor entrypoint.
+Oracle is constrained to exactly two CPUs and 4 GiB. The database entrypoint
+regenerates the vendor SPFILE with `sga_target=1024m`,
+`pga_aggregate_target=256m`, and OJVM-aware shared/Java/buffer-cache floors
+of 320/128/320 MiB before handing control back to the vendor entrypoint. Oracle
+Free rebalances above those floors as the OJVM classes, shared cursors, and game
+ledgers become hot; the explicit buffer-cache request protects the per-tic
+ledger and frontier working set without hard-coding one observed component
+split.
 The first-database initialization hook grants the fixed `DOOM` owner direct
 `EXECUTE` capability on `SYS.DBMS_CRYPTO`, which DoomDB requires for canonical
 SHA-256 documents. The same first-database hook presizes the USERS datafile to

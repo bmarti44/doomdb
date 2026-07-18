@@ -44,3 +44,10 @@ Wallet_*.zip
 
 # Local test/bootstrap scratch directories may contain generated passwords.
 .tmp-*/
+
+# Local OJVM/Mocha Doom build products and user-supplied game data.
+*.class
+*.jar
+*.wad
+*.dsg
+build/mochadoom-ojvm/

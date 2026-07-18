@@ -152,6 +152,14 @@ create or replace package body doom_api as
   exception when no_data_found then return p_default;
   end;
 
+  function config_text(p_key varchar2,p_default varchar2) return varchar2 is
+    l_value varchar2(4000);
+  begin
+    select text_value into l_value from doom_config where config_key=p_key;
+    return l_value;
+  exception when no_data_found then return p_default;
+  end;
+
   function byte_hex(p_value number) return varchar2 is
   begin
     if p_value not in(-1,0,1) then fail(c_bad_request,'invalid movement command');end if;
@@ -168,9 +176,9 @@ create or replace package body doom_api as
       lpad(to_char(mod(p_value,4294967296),'fmxxxxxxxx'),8,'0');
   end;
 
-  -- Select the retained worker for movement and deterministic weapon-state tics.
-  -- USE is admitted only by the separately default-off split-phase gate;
-  -- administrative controls deliberately fall through to SQL.
+  -- Select the retained worker for exact gameplay and presentation ticcmds.
+  -- USE is admitted only by the separately default-off split-phase gate when
+  -- the SQL engine is selected; Mocha owns its native USE/pause/map/menu path.
   procedure worker_step(
     p_session in varchar2,p_commands in clob,p_async in number,p_used out number,
     p_request_out out varchar2,p_payload out blob
@@ -188,7 +196,7 @@ create or replace package body doom_api as
     l_delta_version number;l_delta_count number;l_delta_sha varchar2(64);
     l_state_sha varchar2(64);l_frame_sha varchar2(64);l_response_bytes number;
     l_response_sha varchar2(64);l_delta blob;l_worker_payload blob;
-    l_pipeline_ahead number:=0;
+    l_pipeline_ahead number:=0;l_flags number:=0;
   begin
     p_used:=0;p_request_out:=null;p_payload:=null;
     if config_number('UNIFIED_WORKER_ENABLED',0)<>1 then
@@ -223,13 +231,16 @@ create or replace package body doom_api as
        l_turn not in(-1,0,1) or l_forward not in(-1,0,1) or
        l_strafe not in(-1,0,1) or l_run not in(0,1) or
        coalesce(l_fire,0) not in(0,1) or coalesce(l_use,0) not in(0,1) or
-       (coalesce(l_use,0)=1 and config_number('UNIFIED_WORKER_SPLIT_USE_ENABLED',0)<>1) or
+       (coalesce(l_use,0)=1 and config_text('GAME_ENGINE','SQL')<>'MOCHA' and
+        config_number('UNIFIED_WORKER_SPLIT_USE_ENABLED',0)<>1) or
        coalesce(l_weapon,0) not between 0 and 9 or
-       coalesce(l_pause,0)<>0 or coalesce(l_automap,0)<>0 or
-       coalesce(l_menu,'NONE')<>'NONE' or l_cheat is not null then
+       coalesce(l_pause,0) not in(0,1) or coalesce(l_automap,0) not in(0,1) or
+       coalesce(l_menu,'NONE') not in('NONE','OPTIONS') or l_cheat is not null then
       if p_async=1 then fail(c_bad_request,'command is outside retained submit controls');end if;
       return;
     end if;
+    l_flags:=coalesce(l_pause,0)+coalesce(l_automap,0)*2+
+      case coalesce(l_menu,'NONE') when 'OPTIONS' then 4 else 0 end;
 
     select save_lineage,current_tic,last_command_seq
       into l_lineage,l_tic,l_expected_seq from game_sessions
@@ -241,22 +252,26 @@ create or replace package body doom_api as
       case l_run when 0 then '00' else '01' end||
       case coalesce(l_fire,0) when 0 then '00' else '01' end||
       case coalesce(l_use,0) when 0 then '00' else '01' end||
-      lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||'00');
-    -- A network retry can arrive after the durable frontier advanced. Return
-    -- the immutable committed response without needing the old worker generation.
-    begin
-      select q.request_id,r.response_blob into l_request,l_worker_payload
-        from doom_worker_request q join doom_worker_result r
-          on r.request_id=q.request_id
-        where q.session_token=p_session and q.save_lineage=l_lineage
-          and q.expected_command_seq=l_seq-1
-          and utl_raw.compare(utl_raw.substr(q.command_pack,17,7),
-            utl_raw.substr(l_command,17,7))=0
-          and q.request_status='COMMITTED';
-      p_request_out:=l_request;p_used:=1;
-      if p_async=0 then copy_blob(l_worker_payload,p_payload);end if;
-      return;
-    exception when no_data_found then null;end;
+      lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||
+      lpad(to_char(l_flags,'fmxx'),2,'0'));
+    -- A network retry can arrive after the durable frontier advanced. New and
+    -- bounded-future commands cannot possibly have a committed response, so
+    -- never pay the immutable BLOB lookup on their hot submit path.
+    if l_seq<=l_expected_seq then
+      begin
+        select q.request_id,r.response_blob into l_request,l_worker_payload
+          from doom_worker_request q join doom_worker_result r
+            on r.request_id=q.request_id
+          where q.session_token=p_session and q.save_lineage=l_lineage
+            and q.expected_command_seq=l_seq-1
+            and utl_raw.compare(utl_raw.substr(q.command_pack,17,8),
+              utl_raw.substr(l_command,17,8))=0
+            and q.request_status='COMMITTED';
+        p_request_out:=l_request;p_used:=1;
+        if p_async=0 then copy_blob(l_worker_payload,p_payload);end if;
+        return;
+      exception when no_data_found then null;end;
+    end if;
     if l_seq between l_expected_seq+2 and l_expected_seq+32 then
       -- Ticcmds are keyboard state, not response-derived actions. DMSC/v3 and
       -- v4 defer READY/transition decisions to the ordered resident worker, so
@@ -265,7 +280,7 @@ create or replace package body doom_api as
       l_pipeline_ahead:=l_seq-l_expected_seq-1;
       l_tic:=l_tic+l_pipeline_ahead;
       l_expected_seq:=l_seq-1;
-      l_action_version:=case when coalesce(l_fire,0)=1 then 4 else 3 end;
+      l_action_version:=case when coalesce(l_fire,0)=1 or l_flags>0 then 4 else 3 end;
     end if;
     if l_seq<>l_expected_seq+1 then
       if p_async=1 then fail(c_capacity,'async frontier seq='||l_seq||
@@ -289,7 +304,7 @@ create or replace package body doom_api as
 
     if l_pipeline_ahead=0 then
       select s.current_tic,s.last_command_seq,
-        case when coalesce(l_fire,0)<>0 then 4
+        case when coalesce(l_fire,0)<>0 or l_flags>0 then 4
           when coalesce(l_use,0)<>0 or coalesce(l_weapon,0)<>0 or
           p.pending_weapon is not null or p.weapon_state not like 'WEAPON_%_READY' or
           p.weapon_state_tics not in(0,1) then 3 else 2 end
@@ -307,7 +322,8 @@ create or replace package body doom_api as
       case l_run when 0 then '00' else '01' end||
       case coalesce(l_fire,0) when 0 then '00' else '01' end||
       case coalesce(l_use,0) when 0 then '00' else '01' end||
-      lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||'00');
+      lpad(to_char(coalesce(l_weapon,0),'fmxx'),2,'0')||
+      lpad(to_char(l_flags,'fmxx'),2,'0'));
 
     if p_async=1 then
       begin
@@ -330,16 +346,20 @@ create or replace package body doom_api as
       utl_i18n.string_to_raw(p_session||'|'||l_lineage||'|'||
         to_char(l_generation,'TM9')||'|'||rawtohex(l_command),'AL32UTF8'),
         dbms_crypto.hash_sh256)),1,32));
-    for l_attempt in 1..case when p_async=1 then 1 else 3 end loop
-      doom_worker_api.step(p_session,l_lineage,l_generation,l_request,l_tic,
-        l_expected_seq,l_action_version,1,l_command,
-        case when p_async=1 then 0 else
-          config_number('UNIFIED_WORKER_WAIT_SECONDS',10) end,l_status,
-        l_response_generation,l_committed_tic,l_committed_seq,l_delta_version,
-        l_delta_count,l_delta_sha,l_state_sha,l_frame_sha,l_response_bytes,
-        l_response_sha,l_delta,l_worker_payload,l_error);
-      exit when l_status in('COMMITTED','ROLLED_BACK','FAILED');
-    end loop;
+    if p_async=1 then
+      doom_worker_api.submit_async(p_session,l_lineage,l_generation,l_request,
+        l_tic,l_expected_seq,l_action_version,1,l_command,l_status);
+    else
+      for l_attempt in 1..3 loop
+        doom_worker_api.step(p_session,l_lineage,l_generation,l_request,l_tic,
+          l_expected_seq,l_action_version,1,l_command,
+          config_number('UNIFIED_WORKER_WAIT_SECONDS',10),l_status,
+          l_response_generation,l_committed_tic,l_committed_seq,l_delta_version,
+          l_delta_count,l_delta_sha,l_state_sha,l_frame_sha,l_response_bytes,
+          l_response_sha,l_delta,l_worker_payload,l_error);
+        exit when l_status in('COMMITTED','ROLLED_BACK','FAILED');
+      end loop;
+    end if;
     if p_async=1 then
       if l_status not in('QUEUED','PROCESSING','COMMITTED') or l_error is not null then
         raise_application_error(c_bad_request,'worker submit failed: '||
@@ -636,6 +656,9 @@ create or replace package body doom_api as
     l_now timestamp with time zone;
     l_spawn_x number;l_spawn_y number;l_spawn_z number;l_spawn_angle number;
     l_spawn_sector number;
+    l_generation number;l_ready number;l_map_sha varchar2(64);
+    l_worker_error varchar2(4000);l_worker_payload blob;
+    l_mocha_committed number:=0;
   begin
     p_session:=null;p_payload:=null;
     if p_skill is null or p_skill<>trunc(p_skill) or p_skill not between 1 and 5 then
@@ -664,8 +687,19 @@ create or replace package body doom_api as
 
     select x,y,angle into l_spawn_x,l_spawn_y,l_spawn_angle
       from doom_map_thing where thing_type=1 and rownum=1;
-    select sector_id into l_spawn_sector
-      from table(doom_bsp_locate(l_spawn_x,l_spawn_y)) where rownum=1;
+    begin
+      select sector_id into l_spawn_sector
+        from table(doom_bsp_locate(l_spawn_x,l_spawn_y)) where rownum=1;
+    exception when no_data_found then
+      -- A cached SQL-macro cursor can retain an empty bind-sensitive plan after
+      -- an OJVM-heavy session reset. Re-expanding the immutable spawn literals
+      -- gives Oracle a distinct cursor while preserving the exact BSP oracle.
+      select sector_id into l_spawn_sector
+        from table(doom_bsp_locate(
+          (select x from doom_map_thing where thing_type=1 and rownum=1),
+          (select y from doom_map_thing where thing_type=1 and rownum=1)))
+        where rownum=1;
+    end;
     select floor_height into l_spawn_z from doom_map_sector
       where sector_id=l_spawn_sector;
     insert into players(session_token,player_id,x,y,z,momentum_x,momentum_y,
@@ -699,10 +733,32 @@ create or replace package body doom_api as
     -- the trusted tic-zero snapshot.  Slot 99 is removed before publication.
     doom_history.save_game(p_session,99,l_state_sha);
     delete from save_slots where session_token=p_session and slot_number=99;
+    if config_text('GAME_ENGINE','SQL')='MOCHA' then
+      -- The Scheduler session cannot see the lineage until it is committed.
+      -- READY is published only after that retained owner has encoded its
+      -- generation-fenced current frame into DOOM_MOCHA_FRAME_CACHE.
+      commit;l_mocha_committed:=1;
+      doom_worker_api.claim(p_session,l_generation,l_ready,l_map_sha,l_worker_error);
+      if l_ready<>1 or l_worker_error is not null then
+        raise_application_error(c_capacity,
+          coalesce(l_worker_error,'Mocha worker is not ready'));
+      end if;
+      select response_blob into l_worker_payload from doom_mocha_frame_cache
+        where session_token=p_session and save_lineage=l_lineage
+          and generation=l_generation and tic=0;
+      copy_blob(l_worker_payload,p_payload);
+      return;
+    end if;
     render_payload(p_session,l_state_sha,p_payload);
     commit;
   exception when others then
-    rollback;p_session:=null;p_payload:=null;
+    rollback;p_payload:=null;
+    if l_mocha_committed=1 and p_session is not null then
+      begin doom_unified_worker.request_stop(p_session);exception when others then null;end;
+      begin delete from game_sessions where session_token=p_session;commit;
+      exception when others then rollback;end;
+    end if;
+    p_session:=null;
     if sqlcode between -20999 and -20000 then raise;end if;
     raise_application_error(c_bad_request,'new game failed');
   end;
@@ -832,8 +888,37 @@ create or replace package body doom_api as
   procedure save_game(
     p_session in varchar2,p_slot in number,p_state_sha out varchar2
   ) is
+    l_lineage varchar2(64);l_tic number;l_rng number;l_seq number;
+    l_frame_sha varchar2(64);
   begin
     p_state_sha:=null;require_session(p_session);
+    if config_text('GAME_ENGINE','SQL')='MOCHA' then
+      if p_slot is null or p_slot<>trunc(p_slot) or p_slot not between 0 and 99 then
+        fail(c_bad_request,'save slot must be an integer from 0 through 99');
+      end if;
+      select save_lineage,current_tic,rng_cursor into l_lineage,l_tic,l_rng
+        from game_sessions where session_token=p_session for update;
+      if l_tic=0 then
+        l_seq:=0;
+        select state_sha,frame_sha into p_state_sha,l_frame_sha
+          from doom_mocha_frame_cache where session_token=p_session
+            and save_lineage=l_lineage and tic=0;
+      else
+        select command_seq,state_sha,frame_sha into l_seq,p_state_sha,l_frame_sha
+          from doom_mocha_command where session_token=p_session
+            and save_lineage=l_lineage and tic=l_tic;
+      end if;
+      merge into doom_mocha_save_slot d using(select p_session session_token,
+        p_slot slot_number from dual) s
+      on(d.session_token=s.session_token and d.slot_number=s.slot_number)
+      when matched then update set d.source_lineage=l_lineage,
+        d.saved_tic=l_tic,d.saved_command_seq=l_seq,d.rng_cursor=l_rng,
+        d.state_sha=p_state_sha,d.frame_sha=l_frame_sha,d.saved_at=systimestamp
+      when not matched then insert(session_token,slot_number,source_lineage,
+        saved_tic,saved_command_seq,rng_cursor,state_sha,frame_sha)
+      values(p_session,p_slot,l_lineage,l_tic,l_seq,l_rng,p_state_sha,l_frame_sha);
+      commit;return;
+    end if;
     doom_history.save_game(p_session,p_slot,p_state_sha);commit;
   exception when others then
     rollback;p_state_sha:=null;
@@ -845,8 +930,78 @@ create or replace package body doom_api as
     p_session in varchar2,p_slot in number,p_payload out blob
   ) is
     l_internal blob;l_state_sha varchar2(64);
+    l_source_lineage varchar2(64);l_old_lineage varchar2(64);
+    l_new_lineage varchar2(64);l_frame_sha varchar2(64);
+    l_saved_tic number;l_saved_seq number;l_rng number;l_frontier number;
+    l_generation number;l_ready number;l_map_sha varchar2(64);
+    l_worker_error varchar2(4000);l_source blob;
   begin
     p_payload:=null;require_session(p_session);
+    if config_text('GAME_ENGINE','SQL')='MOCHA' then
+      if p_slot is null or p_slot<>trunc(p_slot) or p_slot not between 0 and 99 then
+        fail(c_bad_request,'save slot must be an integer from 0 through 99');
+      end if;
+      stop_worker_for_sql_fallback(p_session);
+      select source_lineage,saved_tic,saved_command_seq,rng_cursor,
+        state_sha,frame_sha
+        into l_source_lineage,l_saved_tic,l_saved_seq,l_rng,
+          l_state_sha,l_frame_sha
+        from doom_mocha_save_slot where session_token=p_session
+          and slot_number=p_slot;
+      select save_lineage,last_command_seq into l_old_lineage,l_frontier
+        from game_sessions where session_token=p_session for update;
+      select lower(standard_hash('MOCHA_LOAD|'||l_old_lineage||'|'||
+        to_char(l_frontier+1,'TM9','NLS_NUMERIC_CHARACTERS=''.,''')||'|'||
+        to_char(p_slot,'TM9')||'|'||l_state_sha,'SHA256'))
+        into l_new_lineage from dual;
+      insert into doom_mocha_lineage(session_token,save_lineage,skill,episode,map,
+        engine_revision,iwad_sha)
+      select session_token,l_new_lineage,skill,episode,map,engine_revision,iwad_sha
+        from doom_mocha_lineage where session_token=p_session
+          and save_lineage=l_source_lineage;
+      insert into doom_mocha_command(session_token,save_lineage,command_seq,tic,
+        generation,ticcmd_raw,ticcmd_sha,state_sha,frame_sha,created_at)
+      select session_token,l_new_lineage,command_seq,tic,generation,ticcmd_raw,
+        ticcmd_sha,state_sha,frame_sha,created_at
+        from doom_mocha_command where session_token=p_session
+          and save_lineage=l_source_lineage and tic<=l_saved_tic;
+      insert into doom_mocha_initial_frame(session_token,save_lineage,state_sha,
+        frame_sha,response_blob)
+      select session_token,l_new_lineage,state_sha,frame_sha,response_blob
+        from doom_mocha_initial_frame where session_token=p_session
+          and save_lineage=l_source_lineage;
+      insert into doom_mocha_frame_ledger(session_token,save_lineage,
+        command_seq,tic,request_id,state_sha,frame_sha,response_sha,created_at)
+      select session_token,l_new_lineage,command_seq,tic,request_id,state_sha,
+        frame_sha,response_sha,created_at
+        from doom_mocha_frame_ledger where session_token=p_session
+          and save_lineage=l_source_lineage and tic<=l_saved_tic;
+      update game_sessions set save_lineage=l_new_lineage,current_tic=l_saved_tic,
+        rng_cursor=l_rng where session_token=p_session
+          and save_lineage=l_old_lineage and last_command_seq=l_frontier;
+      if sql%rowcount<>1 then fail(c_bad_request,'load lineage race');end if;
+      for l_audio in (
+        select tic,event_ordinal,asset_kind,asset_name,volume,separation
+          from audio_events where session_token=p_session
+            and lineage=l_source_lineage and tic<=l_saved_tic
+          order by tic,event_ordinal
+      ) loop
+        insert into audio_events(session_token,tic,event_ordinal,asset_kind,
+          asset_name,volume,separation)
+        values(p_session,l_audio.tic,l_audio.event_ordinal,l_audio.asset_kind,
+          l_audio.asset_name,l_audio.volume,l_audio.separation);
+      end loop;
+      commit;
+      doom_worker_api.claim(p_session,l_generation,l_ready,l_map_sha,l_worker_error);
+      if l_ready<>1 or l_worker_error is not null then
+        raise_application_error(c_capacity,
+          coalesce(l_worker_error,'Mocha load worker is not ready'));
+      end if;
+      select response_blob into l_source from doom_mocha_frame_cache
+        where session_token=p_session and save_lineage=l_new_lineage
+          and generation=l_generation and tic=l_saved_tic;
+      copy_blob(l_source,p_payload);return;
+    end if;
     doom_history.load_game(p_session,p_slot,l_internal);
     l_state_sha:=json_value(blob_text(l_internal),'$.state_sha');
     render_payload(p_session,l_state_sha,p_payload);commit;
@@ -860,32 +1015,105 @@ create or replace package body doom_api as
     p_session in varchar2,p_from_tic in number,p_to_tic in number,
     p_replay_id out varchar2
   ) is
+    l_lineage varchar2(64);l_state_sha varchar2(64);l_frame_sha varchar2(64);
+    l_command_sha varchar2(64);l_count number;l_seed varchar2(4000);
+    c_zero_sha constant varchar2(64) := rpad('0',64,'0');
   begin
     p_replay_id:=null;require_session(p_session);
+    if config_text('GAME_ENGINE','SQL')='MOCHA' then
+      if p_from_tic is null or p_to_tic is null or
+         p_from_tic<>trunc(p_from_tic) or p_to_tic<>trunc(p_to_tic) or
+         p_from_tic<0 or p_to_tic<p_from_tic then
+        fail(c_bad_request,'invalid replay range');
+      end if;
+      select save_lineage into l_lineage from game_sessions
+        where session_token=p_session for update;
+      select count(*) into l_count from doom_mocha_command
+        where session_token=p_session and save_lineage=l_lineage
+          and tic>p_from_tic and tic<=p_to_tic;
+      if l_count<>p_to_tic-p_from_tic then
+        fail(c_bad_request,'incomplete replay range');
+      end if;
+      if p_from_tic=0 then
+        select state_sha,frame_sha into l_state_sha,l_frame_sha
+          from doom_mocha_initial_frame where session_token=p_session
+            and save_lineage=l_lineage;
+        l_command_sha:=c_zero_sha;
+      else
+        select ticcmd_sha,state_sha,frame_sha
+          into l_command_sha,l_state_sha,l_frame_sha
+          from doom_mocha_command where session_token=p_session
+            and save_lineage=l_lineage and tic=p_from_tic;
+      end if;
+      select 'MOCHA_REPLAY|'||p_session||'|'||l_lineage||'|'||
+        to_char(p_from_tic,'TM9')||'|'||to_char(p_to_tic,'TM9')||'|'||
+        to_char(count(*)+1,'TM9') into l_seed from replay_cursors;
+      select lower(substr(standard_hash(l_seed,'SHA256'),1,32))
+        into p_replay_id from dual;
+      insert into replay_cursors(replay_id,session_token,lineage,from_tic,
+        current_tic,to_tic,command_sha,event_sha,state_sha,frame_sha,state_blob,
+        completed)
+      values(p_replay_id,p_session,l_lineage,p_from_tic,p_from_tic,p_to_tic,
+        l_command_sha,c_zero_sha,l_state_sha,l_frame_sha,empty_blob(),
+        case when p_from_tic=p_to_tic then 1 else 0 end);
+      commit;return;
+    end if;
     doom_history.start_replay(p_session,p_from_tic,p_to_tic,p_replay_id);commit;
   exception when others then
     rollback;p_replay_id:=null;
     if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_bad_request,'replay start failed');
+    raise_application_error(c_bad_request,
+      'replay start failed: '||substr(sqlerrm,1,1800));
   end;
 
   procedure step_replay(p_replay_id in varchar2,p_payload out blob) is
-    l_internal blob;l_session varchar2(32);l_state_sha varchar2(64);
+    l_internal blob;l_source blob;l_session varchar2(32);l_lineage varchar2(64);
+    l_state_sha varchar2(64);l_frame_sha varchar2(64);l_command_sha varchar2(64);
+    l_current number;l_to number;l_completed number;l_mocha number;
   begin
     p_payload:=null;
     if p_replay_id is null or not regexp_like(p_replay_id,'^[0-9a-f]{32}$') then
       fail(c_bad_request,'unknown replay identifier');
     end if;
-    select session_token into l_session from replay_cursors
+    select session_token,lineage,current_tic,to_tic,completed
+      into l_session,l_lineage,l_current,l_to,l_completed from replay_cursors
       where replay_id=p_replay_id;
     require_session(l_session);
+    select count(*) into l_mocha from doom_mocha_lineage
+      where session_token=l_session and save_lineage=l_lineage;
+    if l_mocha=1 then
+      if l_completed=0 then
+        select ticcmd_sha,state_sha,frame_sha
+          into l_command_sha,l_state_sha,l_frame_sha
+          from doom_mocha_command where session_token=l_session
+            and save_lineage=l_lineage and tic=l_current+1;
+        update replay_cursors set current_tic=l_current+1,
+          command_sha=l_command_sha,state_sha=l_state_sha,frame_sha=l_frame_sha,
+          completed=case when l_current+1=l_to then 1 else 0 end
+          where replay_id=p_replay_id and current_tic=l_current;
+        if sql%rowcount<>1 then fail(c_bad_request,'replay cursor race');end if;
+        l_current:=l_current+1;
+      end if;
+      if l_current=0 then
+        select response_blob into l_source from doom_mocha_initial_frame
+          where session_token=l_session and save_lineage=l_lineage;
+      else
+        select r.response_blob into l_source from doom_mocha_frame_ledger f
+          join doom_worker_result r on r.request_id=f.request_id
+          where f.session_token=l_session and f.save_lineage=l_lineage
+            and f.tic=l_current and r.state_sha=f.state_sha
+            and r.frame_sha=f.frame_sha and r.response_sha=f.response_sha;
+      end if;
+      copy_blob(l_source,p_payload);commit;return;
+    end if;
     doom_history.step_replay(p_replay_id,l_internal);
     l_state_sha:=json_value(blob_text(l_internal),'$.state_sha');
     render_payload(l_session,l_state_sha,p_payload);commit;
   exception when others then
     rollback;p_payload:=null;
     if sqlcode between -20999 and -20000 then raise;end if;
-    raise_application_error(c_bad_request,'replay step failed');
+    raise_application_error(c_bad_request,
+      'replay step failed: '||substr(sqlerrm,1,1800));
   end;
 
   procedure get_asset(
@@ -895,8 +1123,9 @@ create or replace package body doom_api as
     l_hex clob;
   begin
     p_payload:=null;p_media_type:=null;
-    if p_asset_name is null or p_asset_name not in
-       ('PLAYPAL','GENMIDI','DSPISTOL') then
+    if p_asset_name is null or
+       (p_asset_name not in('PLAYPAL','GENMIDI') and
+        not regexp_like(p_asset_name,'^DS[A-Z0-9]{1,6}$')) then
       fail(c_asset,'asset is not allowlisted');
     end if;
     if p_asset_name='PLAYPAL' then
@@ -911,9 +1140,9 @@ create or replace package body doom_api as
       select b.encoded_bytes into l_blob
         from doom_asset a join doom_asset_blob b on b.asset_id=a.asset_id
         where a.asset_name=p_asset_name
-          and (p_asset_name<>'DSPISTOL' or a.asset_kind='sound');
-      p_media_type:=case p_asset_name when 'DSPISTOL' then 'audio/x-doom'
-        else 'application/octet-stream' end;
+          and (p_asset_name='GENMIDI' or a.asset_kind='sound');
+      p_media_type:=case when substr(p_asset_name,1,2)='DS'
+        then 'audio/x-doom' else 'application/octet-stream' end;
     end if;
     copy_blob(l_blob,p_payload);commit;
   exception when no_data_found then

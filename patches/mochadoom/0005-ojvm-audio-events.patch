@@ -1,0 +1,53 @@
+diff --git a/src/s/DummySFX.java b/src/s/DummySFX.java
+--- a/src/s/DummySFX.java
++++ b/src/s/DummySFX.java
+@@ -3,7 +3,40 @@
+ import data.sfxinfo_t;
+ 
+ public class DummySFX implements ISoundDriver {
++	private static final StringBuilder events = new StringBuilder();
++	private static int eventCount;
+ 
++	public static synchronized void clearEvents() {
++		events.setLength(0);
++		eventCount = 0;
++	}
++
++	public static synchronized String drainEvents(long tic) {
++		if (eventCount == 0) return "[]";
++		return "[" + events + "]";
++	}
++
++	private static synchronized void record(
++			int id, int volume, int separation) {
++		data.sounds.sfxenum_t[] values = data.sounds.sfxenum_t.values();
++		if (id <= 0 || id >= values.length || eventCount >= 64) return;
++		String name = values[id].name();
++		if (name.startsWith("sfx_")) name = name.substring(4);
++		if (events.length() > 0) events.append(',');
++		events.append('[').append(currentTic).append(',').append(eventCount)
++			.append(",\"DS").append(name.toUpperCase()).append("\",")
++			.append(Math.max(0, Math.min(255, volume))).append(',')
++			.append(Math.max(0, Math.min(255, separation))).append(']');
++		eventCount++;
++	}
++
++	private static long currentTic;
++
++	public static synchronized void beginTic(long tic) {
++		clearEvents();
++		currentTic = tic;
++	}
++
+ 	@Override
+ 	public boolean InitSound() {
+ 		// Dummy is super-reliable ;-)
+@@ -36,7 +69,7 @@
+ 
+ 	@Override
+ 	public int StartSound(int id, int vol, int sep, int pitch, int priority) {
+-		// TODO Auto-generated method stub
++		record(id, vol, sep);
+ 		return 0;
+ 	}
+ 

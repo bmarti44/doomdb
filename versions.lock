@@ -31,6 +31,12 @@
     "archiveSha256": "3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59",
     "freedoom1WadSha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
   },
+  "mochaDoom": {
+    "repository": "https://github.com/AXDOOMER/mochadoom.git",
+    "commit": "c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93",
+    "license": "GPL-3.0-or-later",
+    "javaRelease": 11
+  },
   "deploymentTools": {
     "awsCli": "2.34.36",
     "sqlcl": "26.2.0.181.2110"

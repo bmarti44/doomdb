@@ -56,6 +56,7 @@ services:
       - ./deploy/local/ords-entrypoint.sh:/doomdb/ords-entrypoint.sh:ro
       - ./deploy/local/ords-entrypoint.d:/ords-entrypoint.d:ro
       - ./client/dist:/var/www/doomdb:ro
+      - ./deploy/local/jetty-gzip.xml:/etc/ords/config/global/standalone/etc/jetty-gzip.xml:ro
     ports:
       - "${DOOMDB_HTTP_PORT:-8080}:8080"
     healthcheck:

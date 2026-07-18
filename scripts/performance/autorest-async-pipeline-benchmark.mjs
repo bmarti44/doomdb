@@ -5,15 +5,23 @@ import {decodePayload} from '../../client/staging/codec.js';
 import {applyPalette} from '../../client/staging/palette.js';
 
 const root=(process.env.DOOM_ORDS_URL??'http://localhost:8080/ords/doom').replace(/\/$/,'');
-const frames=Number(process.env.DOOM_PIPELINE_FRAMES??300),warm=30;
+const frames=Number(process.env.DOOM_PIPELINE_FRAMES??300);
+const warm=Number(process.env.DOOM_PIPELINE_WARMUPS??30);
 const commandPeriod=32,presentationPeriod=31.8;
 const submitDepth=Number(process.env.DOOM_SUBMIT_DEPTH??4);
 const fetchDepth=Number(process.env.DOOM_FETCH_DEPTH??2);
-const bufferFrames=Number(process.env.DOOM_BUFFER_FRAMES??10);
-const aheadFrames=Number(process.env.DOOM_AHEAD_FRAMES??16);
+const bufferFrames=Number(process.env.DOOM_BUFFER_FRAMES??4);
+const aheadFrames=Number(process.env.DOOM_AHEAD_FRAMES??4);
 const pollWaitMs=Number(process.env.DOOM_POLL_WAIT_MS??1000);
 const fireEvery=Number(process.env.DOOM_FIRE_EVERY??0);
+const existingSession=process.env.DOOM_PIPELINE_SESSION??'';
+const sequenceOffset=Number(process.env.DOOM_PIPELINE_SEQUENCE_OFFSET??0);
 if(frames!==300)throw new Error('async pipeline gate requires exactly 300 frames');
+if(bufferFrames>aheadFrames+1)
+  throw new Error('buffer frames cannot exceed the initial ahead window');
+if((existingSession!==''&&!/^[0-9a-f]{32}$/.test(existingSession))||
+   !Number.isSafeInteger(sequenceOffset)||sequenceOffset<0)
+  throw new Error('invalid existing pipeline session or sequence offset');
 
 async function post(procedure,body){
   const response=await fetch(`${root}/doom_api/${procedure}`,{method:'POST',
@@ -50,19 +58,21 @@ forward(32);turn(16);forward(20);route[0].weapon=1;
 if(route.length!==frames)throw new Error('async pipeline route length');
 if(fireEvery>0)for(let i=0;i<route.length;i++)if(i%fireEvery===0)route[i].fire=1;
 
-const created=await post('NEW_GAME',{p_skill:3});
-const session=created.p_session;await decodePayload(created.p_payload);
+const created=existingSession===''?await post('NEW_GAME',{p_skill:3}):null;
+const session=created?.p_session??existingSession;
+if(created!==null)await decodePayload(created.p_payload);
 const frameChain=[];
-for(let seq=1;seq<=warm;seq++)frameChain.push(
+for(let seq=sequenceOffset+1;seq<=sequenceOffset+warm;seq++)frameChain.push(
   (await decodePayload(await step(session,seq))).frameSha);
 
-let launched=0,submitInFlight=0,fetchInFlight=0,nextFetch=warm+1;
-let nextPresentation=warm+1,presented=0,stalls=0,blockedSubmits=0;
+const measuredStart=sequenceOffset+warm+1,measuredEnd=measuredStart+frames-1;
+let launched=0,submitInFlight=0,fetchInFlight=0,nextFetch=measuredStart;
+let nextPresentation=measuredStart,presented=0,stalls=0,blockedSubmits=0;
 let presentationTimer=null,pump=null,aborted=false;
 const submitted=new Set(),fetching=new Set(),completed=new Map(),starts=new Map();
 const activeSubmits=new Set();
 const retryFetch=[];let nextDispatch=performance.now()+commandPeriod;
-const submitLatency=[],fetchLatency=[],paints=[],hashes=new Set(),palette=new Uint8Array(768);
+const submitLatency=[],fetchLatency=[],inputLatency=[],paints=[],hashes=new Set(),palette=new Uint8Array(768);
 let resolveDone,rejectDone;
 const done=new Promise((resolve,reject)=>{resolveDone=resolve;rejectDone=reject;});
 
@@ -76,6 +86,8 @@ const finish=()=>{
     displayFps:(presented-1)*1000/elapsed,
     submitP50Ms:quantile(submitLatency,.5),submitP95Ms:quantile(submitLatency,.95),
     fetchP50Ms:quantile(fetchLatency,.5),fetchP95Ms:quantile(fetchLatency,.95),
+    inputToFrameP50Ms:quantile(inputLatency,.5),
+    inputToFrameP95Ms:quantile(inputLatency,.95),
     paintGapP50Ms:quantile(gaps,.5),paintGapP95Ms:quantile(gaps,.95),
     paintGapMaxMs:Math.max(...gaps)};
   console.log(JSON.stringify(result));
@@ -88,7 +100,9 @@ const startPresentation=()=>{
   presentationTimer=setInterval(()=>{
     const frame=completed.get(nextPresentation);
     if(frame===undefined){stalls++;return;}
-    completed.delete(nextPresentation++);applyPalette(frame.indices,palette);
+    const sequence=nextPresentation++;
+    completed.delete(sequence);applyPalette(frame.indices,palette);
+    if(starts.has(sequence))inputLatency.push(performance.now()-starts.get(sequence));
     hashes.add(frame.frameSha);frameChain.push(frame.frameSha);
     paints.push(performance.now());presented++;
     if(presented===frames)finish();
@@ -106,7 +120,7 @@ const launchFetch=seq=>{
     .finally(()=>{fetchInFlight--;fetching.delete(seq);});
 };
 const launchSubmit=()=>{
-  const seq=warm+1+launched,intent=route[launched++];submitInFlight++;
+  const seq=measuredStart+launched,intent=route[launched++];submitInFlight++;
   starts.set(seq,performance.now());activeSubmits.add(seq);
   void submit(session,seq,intent).then(request=>{
     if(typeof request!=='string'||!/^[0-9a-f]{32}$/.test(request))
@@ -120,7 +134,7 @@ pump=setInterval(()=>{
   if(aborted)return;
   const now=performance.now();
   while(launched<Math.min(frames,submitDepth)&&submitInFlight<submitDepth)launchSubmit();
-  const nextSeq=warm+1+launched;
+  const nextSeq=measuredStart+launched;
   if(launched>=submitDepth&&launched<frames&&submitInFlight<submitDepth&&
      nextSeq<=nextPresentation+aheadFrames&&now>=nextDispatch){
     // Advance from the absolute cadence. Basing the next deadline on `now`
@@ -130,7 +144,7 @@ pump=setInterval(()=>{
   }
   if(launched<frames&&submitInFlight>=submitDepth)blockedSubmits++;
   while(fetchInFlight<fetchDepth&&retryFetch.length>0)launchFetch(retryFetch.shift());
-  while(fetchInFlight<fetchDepth&&nextFetch<=warm+frames&&submitted.has(nextFetch)){
+  while(fetchInFlight<fetchDepth&&nextFetch<=measuredEnd&&submitted.has(nextFetch)){
     launchFetch(nextFetch++);
   }
 },4);

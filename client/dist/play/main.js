@@ -113,18 +113,18 @@ async function boot() {
     let presentationTimer = 0;
     const commandPeriodMs = 32;
     const presentationPeriodMs = 31.8;
-    const submitDepth = 2;
+    const submitDepth = 4;
     const fetchDepth = 2;
-    const presentationBuffer = 2;
+    const presentationBuffer = 4;
     const submitted = new Set();
     const retryFetch = [];
     const completed = new Map();
     const present = () => {
         if (presenting)
-            return;
+            return false;
         const next = completed.get(nextPresentation);
         if (next === undefined)
-            return;
+            return false;
         presenting = true;
         const sequence = nextPresentation;
         completed.delete(sequence);
@@ -139,12 +139,21 @@ async function boot() {
         finally {
             presenting = false;
         }
+        return true;
+    };
+    const presentationLoop = () => {
+        presentationTimer = 0;
+        const painted = present();
+        // When a server frame misses its nominal display slot, check the local
+        // decoded queue promptly. setInterval previously waited another complete
+        // 31.8 ms period even when the frame arrived a millisecond later.
+        presentationTimer = window.setTimeout(presentationLoop, painted ? presentationPeriodMs : 4);
     };
     const startPresentation = () => {
         if (presentationTimer !== 0 || completed.size < presentationBuffer)
             return;
-        status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\n30 FPS database pipeline active';
-        presentationTimer = window.setInterval(present, presentationPeriodMs);
+        status.textContent = 'W/S move · A/D turn · Ctrl fire · Space use\nDatabase pipeline active';
+        presentationTimer = window.setTimeout(presentationLoop, 0);
     };
     // Live movement, USE, weapon selection, and every catalog fire mode now use
     // the correlated retained worker. Presentation-only controls remain on the
@@ -249,7 +258,7 @@ async function boot() {
         if (nextSequence > 0 && prefill && !submitted.has(1))
             return;
         if (syncInFlight || submitInFlight >= submitDepth ||
-            nextSequence + 1 > nextPresentation + 1 ||
+            nextSequence + 1 > nextPresentation + 4 ||
             (!prefill && now < nextDispatch))
             return;
         submitTick();

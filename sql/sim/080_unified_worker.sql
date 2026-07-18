@@ -15,6 +15,8 @@ create or replace package body doom_unified_worker as
   c_capacity constant pls_integer:=-20722;
   c_max_slots constant pls_integer:=4;
   c_zero_sha constant varchar2(64):=rpad('0',64,'0');
+  c_mocha_revision constant varchar2(40):=
+    'c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93';
 
   function config_number(p_key varchar2) return number is
     l_value number;
@@ -25,11 +27,47 @@ create or replace package body doom_unified_worker as
     raise_application_error(c_invalid,'missing worker configuration');
   end;
 
+  function config_text(p_key varchar2) return varchar2 is
+    l_value varchar2(4000);
+  begin
+    select text_value into l_value from doom_config where config_key=p_key;
+    return l_value;
+  exception when no_data_found then
+    raise_application_error(c_invalid,'missing worker configuration');
+  end;
+
+  function mocha_selected return boolean is
+  begin
+    return config_text('GAME_ENGINE')='MOCHA';
+  end;
+
   function elapsed_us(p_started timestamp with time zone) return number is
     l_span interval day to second:=systimestamp-p_started;
   begin
     return round((extract(day from l_span)*86400+extract(hour from l_span)*3600+
       extract(minute from l_span)*60+extract(second from l_span))*1000000);
+  end;
+
+  function status_number(p_status varchar2,p_name varchar2) return number is
+    l_start pls_integer:=instr(p_status,'|'||p_name||'=');l_end pls_integer;
+  begin
+    if l_start=0 then
+      raise_application_error(c_invalid,'worker status missing '||p_name);
+    end if;
+    l_start:=l_start+length(p_name)+2;l_end:=instr(p_status,'|',l_start);
+    return to_number(substr(p_status,l_start,
+      case when l_end=0 then length(p_status)+1 else l_end end-l_start));
+  end;
+
+  function status_text(p_status varchar2,p_name varchar2) return varchar2 is
+    l_start pls_integer:=instr(p_status,'|'||p_name||'=');l_end pls_integer;
+  begin
+    if l_start=0 then
+      raise_application_error(c_invalid,'worker status missing '||p_name);
+    end if;
+    l_start:=l_start+length(p_name)+2;l_end:=instr(p_status,'|',l_start);
+    return substr(p_status,l_start,
+      case when l_end=0 then length(p_status)+1 else l_end end-l_start);
   end;
 
   function pool_size return pls_integer is
@@ -49,9 +87,17 @@ create or replace package body doom_unified_worker as
   end;
 
   function state_map_sha return varchar2 is
-    l_text clob;l_document blob;l_sha varchar2(64);
+    l_text clob;l_document blob;l_sha varchar2(64);l_iwad_sha varchar2(64);
     l_dest integer:=1;l_src integer:=1;l_context integer:=0;l_warning integer;
   begin
+    if mocha_selected then
+      select payload_sha256 into l_iwad_sha from doom_engine_artifact
+        where artifact_name='freedoom1.wad'
+          and engine_revision=c_mocha_revision;
+      select lower(rawtohex(standard_hash(
+        c_mocha_revision||':'||l_iwad_sha,'SHA256'))) into l_sha from dual;
+      return l_sha;
+    end if;
     select json_arrayagg(json_array(state_id,tics,next_state_id,action_name,
       sprite_prefix,sprite_frame,rotations null on null returning varchar2)
       order by state_id returning clob) into l_text from doom_state_def;
@@ -109,6 +155,9 @@ create or replace package body doom_unified_worker as
   begin
     l_options.visibility:=dbms_aq.on_commit;
     l_properties.correlation:=p_request;
+    -- An abandoned browser must not leave an unbounded durable completion
+    -- backlog. Active POLL_FRAME calls consume this immediately.
+    l_properties.expiration:=60;
     l_payload:=utl_raw.cast_to_raw(p_request);
     dbms_aq.enqueue('DOOM_UNIFIED_RESPONSE_Q',l_options,l_properties,
       l_payload,l_message_id);
@@ -117,12 +166,65 @@ create or replace package body doom_unified_worker as
   procedure load_and_warm(
     p_session varchar2,p_lineage varchar2,p_generation number,p_map_sha varchar2
   ) is
-    l_snapshot blob;l_payload blob;l_delta raw(32767);l_command raw(24);
+    l_snapshot blob;l_initial blob;l_payload blob;l_delta raw(32767);l_command raw(24);
     l_world_pack raw(32767);
     l_result varchar2(4000);l_frame_sha varchar2(4000);
     l_request varchar2(32);l_tic number;l_seq number;l_rng number;
-    l_next_mobj number;
+    l_next_mobj number;l_skill number;l_status varchar2(4000);
+    l_state_sha varchar2(64);
   begin
+    if mocha_selected then
+      select skill,current_tic,last_command_seq into l_skill,l_tic,l_seq
+        from game_sessions where session_token=p_session;
+      doom_mocha_bridge.create_lineage(p_session,p_lineage,l_skill,1,1);
+      doom_mocha_bridge.reconstruct(p_session,p_lineage,l_status);
+      if l_status not like 'ok|%' then
+        raise_application_error(c_invalid,'Mocha recovery: '||substr(l_status,1,3000));
+      end if;
+      if l_seq=0 then
+        l_state_sha:=c_zero_sha;
+      else
+        select max(state_sha) keep(dense_rank last order by tic)
+          into l_state_sha from doom_mocha_command
+          where session_token=p_session and save_lineage=p_lineage
+          ;
+        l_state_sha:=coalesce(l_state_sha,c_zero_sha);
+      end if;
+      dbms_lob.createtemporary(l_payload,true,dbms_lob.call);
+      l_status:=doom_mocha_current_payload(l_state_sha,l_payload);
+      if l_status not like 'ok|%' then
+        raise_application_error(c_invalid,'Mocha current frame: '||
+          substr(l_status,1,3000));
+      end if;
+      l_state_sha:=status_text(l_status,'stateSha256');
+      l_frame_sha:=status_text(l_status,'frameSha256');
+      delete from doom_mocha_frame_cache where session_token=p_session;
+      insert into doom_mocha_frame_cache(session_token,save_lineage,generation,
+        tic,state_sha,frame_sha,response_blob)
+      values(p_session,p_lineage,p_generation,l_tic,l_state_sha,l_frame_sha,
+        empty_blob()) returning response_blob into l_snapshot;
+      dbms_lob.copy(l_snapshot,l_payload,dbms_lob.getlength(l_payload),1,1);
+      if l_tic=0 then
+        begin
+          insert into doom_mocha_initial_frame(session_token,save_lineage,
+            state_sha,frame_sha,response_blob)
+          values(p_session,p_lineage,l_state_sha,l_frame_sha,empty_blob())
+          returning response_blob into l_initial;
+          dbms_lob.copy(l_initial,l_payload,dbms_lob.getlength(l_payload),1,1);
+        exception when dup_val_on_index then
+          -- A tic-zero crash restart must reproduce the immutable payload.
+          select response_blob into l_initial from doom_mocha_initial_frame
+            where session_token=p_session and save_lineage=p_lineage
+              and state_sha=l_state_sha and frame_sha=l_frame_sha;
+          if dbms_lob.compare(l_initial,l_payload)<>0 then
+            raise_application_error(c_invalid,
+              'Mocha tic-zero reconstruction mismatch');
+          end if;
+        end;
+      end if;
+      dbms_lob.freetemporary(l_payload);
+      return;
+    end if;
     dbms_lob.createtemporary(l_snapshot,true,dbms_lob.call);
     doom_renderer_snapshot_fill(p_session,l_snapshot);
     l_result:=doom_unified_recover_sql_renderer(
@@ -168,6 +270,11 @@ create or replace package body doom_unified_worker as
       l_request:=null;
     end loop;
   exception when others then
+    begin
+      if l_payload is not null and dbms_lob.istemporary(l_payload)=1 then
+        dbms_lob.freetemporary(l_payload);
+      end if;
+    exception when others then null;end;
     begin
       if l_request is not null then
         l_result:=doom_unified_actor_discard(
@@ -252,6 +359,155 @@ create or replace package body doom_unified_worker as
     io_generation:=l_next_generation;
   end;
 
+  procedure process_mocha_request(
+    p_slot number,p_request varchar2,p_worker_map_sha varchar2,
+    p_worker_generation in out number
+  ) is
+    l_request_slot number;l_session varchar2(32);l_lineage varchar2(64);
+    l_generation number;l_expected_tic number;l_expected_seq number;
+    l_version number;l_count number;l_bytes number;l_command_sha varchar2(64);
+    l_command raw(2000);l_async number;l_status varchar2(16);
+    l_target varchar2(32);l_target_lineage varchar2(64);l_control_sha varchar2(64);
+    l_control_generation number;l_ready number;l_db_lineage varchar2(64);
+    l_db_tic number;l_db_seq number;l_result varchar2(4000);l_ticcmd raw(8);
+    l_state_sha varchar2(64);l_frame_sha varchar2(64);l_payload blob;
+    l_delta blob;l_response_bytes number;l_response_sha varchar2(64);
+    l_error varchar2(4000);l_committed number:=0;
+    l_turn number;l_forward number;l_strafe number;l_run number;l_fire number;
+    l_use number;l_weapon number;l_flags number;l_pause number;
+    l_automap number;l_menu number;
+    l_started timestamp with time zone:=systimestamp;
+    l_stage timestamp with time zone;l_prepare_us number;l_finalize_us number;
+    l_commit_us number;l_java_us number;l_ticker_us number;l_render_us number;l_codec_us number;
+    l_blob_us number;
+    function byte_value(p_offset number,p_signed boolean default false)
+      return number is l_value number;
+    begin
+      l_value:=to_number(rawtohex(utl_raw.substr(l_command,p_offset,1)),'XX');
+      if p_signed and l_value>=128 then l_value:=l_value-256;end if;
+      return l_value;
+    end;
+  begin
+    select worker_slot,session_token,save_lineage,generation,expected_tic,
+      expected_command_seq,command_version,command_count,command_bytes,
+      command_sha,command_pack,async_mode,request_status
+      into l_request_slot,l_session,l_lineage,l_generation,l_expected_tic,
+        l_expected_seq,l_version,l_count,l_bytes,l_command_sha,l_command,
+        l_async,l_status
+      from doom_worker_request where request_id=p_request for update;
+    if l_request_slot<>p_slot then
+      raise_application_error(c_invalid,'Mocha worker slot fence');
+    end if;
+    if l_status in('COMMITTED','ROLLED_BACK','FAILED') then
+      if l_async=0 then respond(p_request);commit;end if;
+      return;
+    end if;
+    if l_version not in(2,3,4) or l_count<>1 or l_bytes<>24 or
+       utl_raw.length(l_command)<>24 or
+       lower(rawtohex(dbms_crypto.hash(l_command,dbms_crypto.hash_sh256)))<>
+         l_command_sha then
+      raise_application_error(c_invalid,'Mocha request envelope fence');
+    end if;
+    select target_session,target_lineage,state_map_sha,generation,ready
+      into l_target,l_target_lineage,l_control_sha,l_control_generation,l_ready
+      from doom_worker_control where worker_slot=p_slot for update;
+    if l_target<>l_session or l_target_lineage<>l_lineage or l_ready<>1 or
+       l_generation<>l_control_generation or l_generation<>p_worker_generation or
+       l_control_sha<>p_worker_map_sha then
+      raise_application_error(c_invalid,'Mocha worker generation fence');
+    end if;
+    select save_lineage,current_tic,last_command_seq
+      into l_db_lineage,l_db_tic,l_db_seq from game_sessions
+      where session_token=l_session for update;
+    if l_db_lineage<>l_lineage or l_db_tic<>l_expected_tic or
+       l_db_seq<>l_expected_seq then
+      raise_application_error(c_invalid,'Mocha database frontier fence');
+    end if;
+    l_turn:=byte_value(17,true);l_forward:=byte_value(18,true);
+    l_strafe:=byte_value(19,true);l_run:=byte_value(20);
+    l_fire:=byte_value(21);l_use:=byte_value(22);l_weapon:=byte_value(23);
+    l_flags:=byte_value(24);l_pause:=bitand(l_flags,1);
+    l_automap:=bitand(l_flags,2)/2;l_menu:=bitand(l_flags,4)/4;
+    if l_turn not between -1 and 1 or l_forward not between -1 and 1 or
+       l_strafe not between -1 and 1 or l_run not in(0,1) or
+       l_fire not in(0,1) or l_use not in(0,1) or l_weapon not between 0 and 9 or
+       l_flags not between 0 and 7 then
+      raise_application_error(c_invalid,'Mocha normalized command fence');
+    end if;
+    update doom_worker_request set request_status='PROCESSING',error_text=null
+      where request_id=p_request and request_status='QUEUED';
+    if sql%rowcount<>1 then
+      raise_application_error(c_invalid,'Mocha request status race');
+    end if;
+    insert into doom_worker_result(request_id,committed_tic,
+      committed_command_seq,delta_version,delta_count,delta_bytes,delta_sha,
+      state_sha,frame_sha,response_bytes,response_sha,delta_blob,response_blob)
+    values(p_request,l_expected_tic+1,l_expected_seq+1,l_version-1,0,0,
+      c_zero_sha,c_zero_sha,c_zero_sha,0,c_zero_sha,empty_blob(),empty_blob())
+    returning delta_blob,response_blob into l_delta,l_payload;
+
+    l_prepare_us:=elapsed_us(l_started);l_stage:=systimestamp;
+    doom_mocha_bridge.step(l_session,l_lineage,l_generation,l_expected_tic,
+      l_expected_seq+1,l_turn,l_forward,l_strafe,l_run,l_fire,l_use,l_weapon,
+      l_pause,l_automap,l_menu,l_payload,l_result,l_ticcmd,l_state_sha,l_frame_sha);
+    l_ticker_us:=status_number(l_result,'tickerMicros');
+    l_render_us:=status_number(l_result,'renderMicros');
+    l_codec_us:=status_number(l_result,'codecMicros');
+    l_java_us:=status_number(l_result,'payloadElapsedMicros');
+    l_blob_us:=status_number(l_result,'blobMicros')+
+      status_number(l_result,'payloadBlobMicros');
+    l_response_bytes:=dbms_lob.getlength(l_payload);
+    l_response_sha:=status_text(l_result,'payloadSha256');
+    if not regexp_like(l_response_sha,'^[0-9a-f]{64}$') then
+      raise_application_error(c_invalid,'Mocha payload SHA fence');
+    end if;
+    insert into doom_mocha_frame_ledger(session_token,save_lineage,command_seq,
+      tic,request_id,state_sha,frame_sha,response_sha)
+    select l_session,l_lineage,l_expected_seq+1,l_expected_tic+1,p_request,
+      l_state_sha,l_frame_sha,l_response_sha from dual;
+    update doom_worker_request set request_status='COMMITTED',
+      response_generation=l_generation,error_text=null,completed_at=systimestamp
+      where request_id=p_request and request_status='PROCESSING';
+    if sql%rowcount<>1 then
+      raise_application_error(c_invalid,'Mocha request finalize race');
+    end if;
+    l_finalize_us:=elapsed_us(l_stage)-l_java_us;
+    -- Persist the payload identity and profile in one row change.  The prior
+    -- two-update shape rewrote the same SecureFile-owning result row twice per
+    -- tic even though the ledger and request finalization use local values.
+    update doom_worker_result set state_sha=l_state_sha,frame_sha=l_frame_sha,
+      response_bytes=l_response_bytes,response_sha=l_response_sha,
+      prepare_us=l_prepare_us,
+      java_prepare_us=l_java_us,actor_tic_us=l_ticker_us,
+      render_us=l_render_us,codec_us=l_codec_us,
+      blob_us=l_blob_us,finalize_us=greatest(l_finalize_us,0)
+      where request_id=p_request;
+    if mod(l_expected_tic+1,32)=0 then
+      update doom_worker_control set heartbeat=systimestamp
+        where worker_slot=p_slot and generation=l_generation and ready=1;
+    end if;
+    l_stage:=systimestamp;commit write immediate wait;
+    l_commit_us:=elapsed_us(l_stage);l_committed:=1;
+    if mod(l_expected_tic+1,32)=0 then
+      update doom_worker_result set commit_us=l_commit_us where request_id=p_request;
+      commit;
+    end if;
+    if l_async=0 then respond(p_request);commit;end if;
+  exception when others then
+    l_error:=substr(sqlerrm||' '||dbms_utility.format_error_backtrace,1,4000);
+    if l_committed=0 then
+      rollback;
+      terminal_status(p_request,p_slot,l_generation,'FAILED',l_error);
+      if l_session is not null and l_generation is not null then
+        recover_after_rollback(p_slot,p_request,l_session,l_lineage,
+          p_worker_map_sha,p_worker_generation);
+      end if;
+      if l_async=0 then respond(p_request);commit;end if;
+    else
+      audit_event(p_request,p_slot,l_generation,'MOCHA_POSTCOMMIT_FAILURE',l_error);
+    end if;
+  end;
+
   procedure process_request(
     p_slot number,p_request varchar2,p_worker_map_sha varchar2,
     p_worker_generation in out number
@@ -323,6 +579,11 @@ create or replace package body doom_unified_worker as
     exception when others then p_lob:=null;
     end;
   begin
+    if mocha_selected then
+      process_mocha_request(p_slot,p_request,p_worker_map_sha,
+        p_worker_generation);
+      return;
+    end if;
     begin
       select worker_slot,session_token,save_lineage,generation,expected_tic,
         expected_command_seq,command_version,command_count,command_bytes,
@@ -1021,7 +1282,9 @@ create or replace package body doom_unified_worker as
       end if;
       exit when l_stop=1;
     end loop;
-    begin doom_render_worker.request_stop(l_target);exception when others then null;end;
+    if not mocha_selected then
+      begin doom_render_worker.request_stop(l_target);exception when others then null;end;
+    end if;
     update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
       target_session=null,target_lineage=null,state_map_sha=null,
       heartbeat=systimestamp where worker_slot=p_worker_slot;
@@ -1031,7 +1294,9 @@ create or replace package body doom_unified_worker as
     l_failure:=substr(sqlerrm||' '||dbms_utility.format_error_backtrace,1,4000);
     begin
       rollback;
-      begin doom_render_worker.request_stop(l_target);exception when others then null;end;
+      if not mocha_selected then
+        begin doom_render_worker.request_stop(l_target);exception when others then null;end;
+      end if;
       update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
         target_session=null,target_lineage=null,state_map_sha=null,
         last_error=l_failure,heartbeat=systimestamp
@@ -1093,11 +1358,15 @@ create or replace package body doom_unified_worker as
       stop_requested=0,last_error=null where worker_slot=l_slot;
     commit;
     begin
-      doom_render_worker.start_worker(l_slot,p_session,l_lineage,l_map_sha);
+      if not mocha_selected then
+        doom_render_worker.start_worker(l_slot,p_session,l_lineage,l_map_sha);
+      end if;
       dbms_scheduler.run_job(
         'DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00'),false);
     exception when others then
-      begin doom_render_worker.request_stop(p_session);exception when others then null;end;
+      if not mocha_selected then
+        begin doom_render_worker.request_stop(p_session);exception when others then null;end;
+      end if;
       update doom_worker_control set target_session=null,target_lineage=null,
         state_map_sha=null where worker_slot=l_slot and ready=0
         and target_session=p_session;
@@ -1115,7 +1384,9 @@ create or replace package body doom_unified_worker as
     if sql%rowcount<>1 then
       raise_application_error(c_invalid,'worker session is not active');
     end if;
-    begin doom_render_worker.request_stop(p_session);exception when others then null;end;
+    if not mocha_selected then
+      begin doom_render_worker.request_stop(p_session);exception when others then null;end;
+    end if;
     commit;
   end;
 
@@ -1139,6 +1410,12 @@ create or replace package doom_worker_api authid definer as
     p_session in varchar2,p_generation out number,p_ready out number,
     p_state_map_sha out varchar2,p_heartbeat out timestamp with time zone,
     p_error out varchar2);
+
+  procedure submit_async(
+    p_session in varchar2,p_lineage in varchar2,p_generation in number,
+    p_request in varchar2,p_expected_tic in number,p_expected_seq in number,
+    p_command_version in number,p_command_count in number,p_command in raw,
+    p_status out varchar2);
 
   procedure step(
     p_session in varchar2,p_lineage in varchar2,p_generation in number,
@@ -1185,8 +1462,7 @@ create or replace package body doom_worker_api as
     l_message_id raw(16);l_payload raw(32767);l_sha varchar2(64);
     l_slot number;l_session varchar2(32);l_lineage varchar2(64);
     l_generation number;l_tic number;l_seq number;l_version number;
-    l_count number;l_command raw(2000);l_frontier number;l_predecessor number;
-    l_deadline timestamp with time zone;
+    l_count number;l_command raw(2000);
   begin
     require_enabled;
     if p_session is null or not regexp_like(p_session,'^[0-9a-f]{32}$') or
@@ -1226,28 +1502,11 @@ create or replace package body doom_worker_api as
     exception when no_data_found then
       raise_application_error(c_invalid,'worker ownership fence');
     end;
-    -- Parallel AutoREST calls can arrive at the database out of order. Do not
-    -- publish a future-frontier AQ message until its immediate predecessor is
-    -- durably visible. This waits only for the predecessor enqueue (normally a
-    -- few milliseconds), never for the predecessor tic or HTTP response.
-    select last_command_seq into l_frontier from game_sessions
-      where session_token=p_session;
-    if p_expected_seq>l_frontier then
-      l_deadline:=systimestamp+numtodsinterval(
-        config_number('UNIFIED_WORKER_WAIT_SECONDS'),'SECOND');
-      loop
-        select count(*) into l_predecessor from doom_worker_request
-          where session_token=p_session and save_lineage=p_lineage
-            and generation=p_generation
-            and expected_command_seq=p_expected_seq-1
-            and request_status in('QUEUED','PROCESSING','COMMITTED');
-        exit when l_predecessor>0;
-        if systimestamp>=l_deadline then
-          raise_application_error(c_invalid,'worker predecessor enqueue timeout');
-        end if;
-        dbms_session.sleep(.001);
-      end loop;
-    end if;
+    -- AutoREST calls may arrive out of order. Persist them immediately: the
+    -- resident worker consumes only expected_command_seq=last_command_seq and
+    -- therefore cannot skip a missing predecessor. A bounded future request
+    -- is harmlessly retained until its predecessor arrives (or cascades away
+    -- with the session), so submit-side millisecond polling adds no safety.
     select lower(rawtohex(standard_hash(p_command,'SHA256'))) into l_sha from dual;
     begin
       insert into doom_worker_request(request_id,worker_slot,session_token,
@@ -1293,16 +1552,46 @@ create or replace package body doom_worker_api as
     p_state_map_sha out varchar2,p_heartbeat out timestamp with time zone,
     p_error out varchar2
   ) is
+    l_slot number;l_running number;
   begin
     require_enabled;
     if p_session is null or not regexp_like(p_session,'^[0-9a-f]{32}$') then
       raise_application_error(c_invalid,'invalid worker session');
     end if;
-    select generation,ready,state_map_sha,heartbeat,last_error
-      into p_generation,p_ready,p_state_map_sha,p_heartbeat,p_error
+    select worker_slot,generation,ready,state_map_sha,heartbeat,last_error
+      into l_slot,p_generation,p_ready,p_state_map_sha,p_heartbeat,p_error
       from doom_worker_control where target_session=p_session;
+    -- READY plus a fresh fenced heartbeat is the steady-state liveness proof.
+    -- USER_SCHEDULER_RUNNING_JOBS is a data-dictionary join that costs tens of
+    -- milliseconds under the two-CPU game load; querying it for every input
+    -- submission starves the worker we are trying to verify. Active workers
+    -- refresh at least every 32 tics and idle workers every ~2 seconds. Retain
+    -- the authoritative Scheduler check only as the stale-owner fallback.
+    if p_ready=1 and (p_heartbeat is null or p_heartbeat<
+       systimestamp-numtodsinterval(10,'SECOND')) then
+      select count(*) into l_running from user_scheduler_running_jobs
+        where job_name='DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00');
+      if l_running<>1 then
+        raise_application_error(c_invalid,'worker session is not running');
+      end if;
+    end if;
   exception when no_data_found then
     raise_application_error(c_invalid,'worker session is not active');
+  end;
+
+  procedure submit_async(
+    p_session in varchar2,p_lineage in varchar2,p_generation in number,
+    p_request in varchar2,p_expected_tic in number,p_expected_seq in number,
+    p_command_version in number,p_command_count in number,p_command in raw,
+    p_status out varchar2
+  ) is
+  begin
+    -- Async AutoREST callers only need the durable correlated request id.
+    -- Going through STEP also probes the response AQ and rereads result
+    -- metadata, even though async requests deliberately publish no response
+    -- message. The empty AQ dequeue alone measured about 16 ms per command.
+    submit_request(p_session,p_lineage,p_generation,p_request,p_expected_tic,
+      p_expected_seq,p_command_version,p_command_count,p_command,0,p_status);
   end;
 
   procedure claim(

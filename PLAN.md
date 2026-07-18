@@ -13,15 +13,16 @@ listed acceptance command succeeds without weakening an existing check.
 ### 0.1 Mission
 
 Build a complete, playable Freedoom Phase 1 E1M1 experience in which Oracle
-Database owns the game:
+Database hosts and owns the game service:
 
 - WAD geometry, render assets, engine definitions, live objects, player state,
   sector machines, saves, replays, and audio events are relational data.
-- SQL remains the independent simulation oracle. Under the approved P12.0
-  amendments, a project-owned Java 11 worker inside Oracle JVM may perform the
-  production simulation and render/codec hot paths over retained primitive
-  state, while each committed tic persists exact relational deltas,
-  checkpoints, commands, hashes, events, and response BLOBs in Oracle.
+- The production game engine is the pinned GPLv3 Mocha Doom Java source port,
+  adapted to run headlessly inside a long-lived Oracle JVM Scheduler session.
+  Oracle persists accepted commands, save/checkpoint material, hashes, events,
+  worker generations, and response BLOBs. The existing SQL simulation and
+  renderer remain independently executable migration/regression oracles until
+  each affected acceptance gate is explicitly replaced.
 - Thin PL/SQL procedures lock a game session, validate input, execute set-based
   statements, persist the result, and return a frame. They do not contain a
   second procedural game engine.
@@ -72,23 +73,22 @@ are green.
 
 - No byte-for-byte vanilla framebuffer, state, savegame, or .lmp compatibility.
 - No claim that the project reproduces vanilla bugs or integer overflow.
-- No MLE JavaScript, WebAssembly, native extproc, or externally embedded Doom
-  engine in the simulation or render path. The sole Java exception is the
-  clean-room Oracle JVM worker approved for P12.0; SQL remains the independent
-  simulation oracle and relational persistence contract.
+- No MLE JavaScript, WebAssembly, native extproc, or engine process outside
+  Oracle Database in the simulation or render path. The approved Mocha Doom
+  engine executes as Java schema objects inside OJVM, reached through the
+  resident database worker and generated AutoREST procedures.
 - No custom ORDS modules, templates, or handlers.
 - No client-side prediction, interpolation, gameplay, collision, ray casting,
   sprite sorting, or reference implementation.
 - No maps beyond E1M1 in core scope.
 - No pre-authorized lower resolution, flat-color mode, removed effects, or
   smaller game as a substitute for a failed requirement.
-- No vendored, translated, mechanically generated, or copied implementation or
-  engine-definition tables from GPL Doom engine source.
-
-The id and Chocolate Doom sources may be cited as behavioral research. Do not
-copy code, data arrays, state tables, or translated control flow from them.
-Engine definitions must be independently authored from public file-format and
-behavior specifications and documented in this repository.
+- No silent mixing of incompatible licenses or unpinned third-party engine
+  revisions. Mocha Doom-derived code and its OJVM adapter are distributed under
+  GPLv3-compatible terms with complete provenance and corresponding source.
+  Oracle Database itself remains a separately obtained runtime governed by
+  Oracle's applicable Free Use Terms; release packaging must not imply that the
+  Oracle binaries are relicensed by this project.
 
 ### 0.4 Charter reconciliation rule
 
@@ -134,6 +134,41 @@ worker generation fencing and restart reconstruction, the full T5-T7 suite,
 and <=33.3 ms p50/p95 end-to-end. No GPL engine code, control flow, constants,
 or tables may be copied or translated; the implementation remains independently
 designed from this project's SQL contracts and public behavior documentation.
+
+#### Approved Mocha Doom OJVM engine amendment — 2026-07-18
+
+The user's explicit instruction to pivot the implementation to Mocha Doom
+inside Oracle Database supersedes the earlier clean-room/no-GPL restrictions
+for the production game engine. Pin upstream
+`AXDOOMER/mochadoom` commit
+`c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93`, retain its GPLv3 license and source
+notices, publish all project modifications and adapters under GPLv3-compatible
+terms, and record the exact build input and output hashes.
+
+Mocha Doom must run as Java schema objects inside OJVM, not in ORDS, the browser,
+or an adjacent application process. A long-lived `DBMS_SCHEDULER` worker owns
+each live engine instance because generated AutoREST requests cannot retain Java
+heap state. The existing durable AQ request/response ledger, session/lineage/
+generation/sequence fencing, idempotency rules, response BLOB transport, and
+thin static client remain the public architecture. ORDS AutoREST remains the
+only dynamic HTTP surface.
+
+The adapter must replace desktop window, host keyboard, audio-device, filesystem,
+wall-clock loop, and `System.exit` behavior with bounded database entry points:
+`new_game`, `step`, `frame`, `save`, `load`, `reconstruct`, and `dispose`. The
+pinned Freedoom IWAD is stored as an Oracle BLOB or database-resident Java
+resource and is never read from an untracked host path. Every Java entry point
+has a catch-all that returns a fenced failure and forces clean reconstruction;
+no throwable may escape and silently invalidate retained state.
+
+The existing SQL engine is frozen as a legacy regression oracle during the
+migration; Mocha Doom is not required to reproduce project-specific SQL state
+hashes or non-vanilla simulation behavior. Replacement goldens require explicit
+reviewed fixtures, deterministic command replay, save/load and restart hash
+continuity, complete public workflow coverage, and two quiescent 300-frame
+moving/combat runs at at least 30 unique displayed FPS with paint-gap p50/p95
+no greater than 33.3 ms. Resolution remains data-driven with 320x200 selected
+and a 640x400 follow-on profile that does not require another engine rewrite.
 
 ## 1. Grounded facts and corrected contracts
 
@@ -762,9 +797,10 @@ it does not claim a minimum FPS.
 
 ## 7. Execution phases and task cards
 
-Execution order is P0-P7, the local T12.0 acceleration gate, P8-P11, then the
-full local-and-cloud T12.1/T12.2 protocol. T12.0 may improve implementation
-speed but may not relax or replace the final 300-frame local/cloud evidence.
+Execution order is P0-P7, the completed local T12.0 acceleration evidence, the
+active P12.M Mocha Doom migration, P8-P11 against the selected engine, then the
+full local-and-cloud T12.1/T12.2 protocol. Earlier T12.0 evidence may guide the
+migration but may not relax or replace the final 300-frame local/cloud evidence.
 
 ### P0 - Contract and evaluator foundation
 
@@ -2045,6 +2081,276 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   pass, and P8 resumes against the selected faster revision. This is an enabling
   gate, not final T12 acceptance; T12.1/T12.2 still require the fixed 300-frame
   replay and independent local/cloud evidence after P11.
+
+### P12.M - Mocha Doom inside Oracle JVM
+
+This migration is the active implementation path. Preserve the paused SQL-route
+working tree as diagnostic evidence, but do not spend additional effort extending
+the clean-room engine unless it is needed to validate the new public contract.
+
+#### T12.M1 Pinned source, license, and reproducible OJVM build
+
+- Pin `AXDOOMER/mochadoom` at
+  `c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93` as an explicit third-party source
+  dependency. Do not track generated classes, JARs, credentials, WAD files, or
+  local Oracle artifacts.
+- Preserve upstream GPLv3 and per-file notices. Add a machine-readable license
+  ledger and document that the project adapter and combined engine distribution
+  are GPLv3-compatible while Oracle Database is a separately licensed runtime.
+- Compile all sources with Oracle's embedded `javac --release 11`; package a
+  deterministic JAR; load it with `loadjava -resolve`; fail on any invalid Java
+  object or resolver error.
+- Spike evidence (2026-07-18): all 442 upstream Java sources compiled unchanged
+  into 820 classes and a 1.2 MB JAR. A disposable OJVM schema resolved all 820
+  classes with zero errors and a SQL call returned
+  `ok|headless=true|fineSine=10240|fineTangent=8192`. Reproduce this from checked-
+  in scripts before closing the task.
+- Accept: a clean build verifies the pinned commit and source hash, resolves the
+  complete class graph in a disposable schema, runs the headless call probe, and
+  removes the schema without leaving credentials or generated files.
+
+#### T12.M2 Bounded headless engine adapter and IWAD source
+
+- Add a GPLv3 OJVM adapter that owns no JFrame, Canvas, desktop event listener,
+  audio device, network socket, filesystem configuration, wall-clock loop,
+  background renderer pool, or `System.exit` path.
+- Refactor startup just enough to inject command variables, configuration,
+  ticker, sound sink, presentation sink, and WAD loader. Prefer upstream-facing
+  patches that keep engine logic unchanged over a forked second implementation.
+- Store the pinned Freedoom IWAD bytes in an Oracle SecureFile BLOB or a correctly
+  named Java resource. Verify its SHA before constructing the engine and provide
+  seekable/read-only lump access without writing a host temporary file.
+- Export catch-all entry points for bounded `probe`, `initialize`, `new_game`,
+  `step`, `frame`, `save`, `load`, `reconstruct`, and `dispose` operations.
+- Implementation checkpoint (2026-07-18): the pinned 442-source engine plus
+  GPLv3 adapter compiles to 822 classes; the schema reports 852 valid Java
+  classes including 30 preserved legacy helpers. A 28,795,076-byte
+  database-resident Freedoom IWAD is verified as
+  `7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d`.
+  Narrow patch overlays remove the desktop loop/window, inject the seekable
+  IWAD, ignore absent host configuration, avoid privileged logging setup, and
+  block external configuration/translucency-map file I/O. E1M1 now initializes
+  wholly inside a 4 GB Oracle container and produces a deterministic 320x200
+  indexed framebuffer. The selected tic-zero SHA is
+  `a1c9b0378eed9e82425cae593b82dfa44715627d8aa635562b450e4c1af3d3b5`.
+  A bounded no-input tic advances to tic 1, the caller-owned BLOB handoff writes
+  all 64,000 bytes in 1.431 ms, and caller-selected new-game plus deterministic
+  disposal entry points pass. Interpreted cold initialization was 15.75-18.40 s;
+  after selected native renderer compilation it is 6.21 s and remains
+  startup-only. All 18 upstream `System.exit` sites are mechanically replaced
+  with catchable fenced errors and deployment fails if a new exit remains.
+  Native vanilla save/load is implemented as a bounded diagnostic but rejected
+  for production: a 61,498-byte checkpoint reload changed the immediate frame
+  and the next 20-command branch. Exact reconstruction now uses the durable
+  packed `ticcmd_t` ledger. A fresh-engine replay of 70 forward/FIRE-every-8
+  commands reproduced tic 70, level time 70, RNG index 82, player pose, command
+  SHA `afb9740b82590f9678ababc1376ba6fd1d388130f39a1e060b9127b5d3235140`,
+  and frame SHA
+  `1404cf810faeb1a237a86966b4b3d67cb7f9f42d6a2be91cf1207facccdca509`
+  exactly. Persisted replay integration and a complete state token remain open;
+  T12.M2 is not yet complete.
+- Accept: E1M1 initializes inside OJVM without GUI/audio/filesystem access; one
+  deterministic no-input tic returns a complete 320x200 indexed framebuffer and
+  state token; every entry point converts all failures into a fenced error.
+
+#### T12.M3 Deterministic command, frame, audio, and persistence bridge
+
+- Map the current ordered AutoREST tic command fields to Mocha Doom `ticcmd_t`
+  without response-dependent input synthesis or browser gameplay logic.
+- Convert the selected indexed framebuffer, palette, HUD/weapon/menu/automap/
+  intermission state, and authored sound events into the existing compact public
+  response envelope. Version the envelope when semantics differ; retain legacy
+  decoding during migration.
+- Persist accepted command batches, correlated result metadata, frame/state
+  hashes, save material, and periodic reconstruction checkpoints in Oracle before
+  signaling completion. Record the pinned engine and IWAD revisions in every
+  lineage root.
+- Reconstruction decision (2026-07-18): do not select `VanillaDSG` as the
+  authoritative checkpoint. It is a deliberately lossy vanilla compatibility
+  format and failed both immediate-frame and continued-branch parity. Rebuild
+  from the SHA-locked ordered command ledger instead. The compiled engine makes
+  replay bounded; record clean-deploy reconstruction time separately from the
+  17.28 s interpreted adapter-reload diagnostic, which is not valid performance
+  evidence because loading the adapter invalidated renderer native methods.
+- Command-bridge checkpoint (2026-07-18): the retained adapter now maps the
+  existing normalized AutoREST axes/buttons to vanilla walk/run magnitudes,
+  the first-five-tic slow-turn ramp, fire/use, and zero-based weapon bits. Each
+  combined step/render/BLOB call returns the exact executed eight-byte
+  `ticcmd_t`. `DOOM_MOCHA_COMMAND` is an append-only, generation-fenced schema
+  ledger for those bytes plus command/frame hashes. `GAME_ENGINE` now defaults
+  to `MOCHA` after cutover gates passed. The byte-level database gate passes seven control
+  cases. A clean 30-warmup/300-sample forward/FIRE-every-8 combined-path rerun
+  produced 300 unique frames at 1.704/3.191/6.025 ms p50/p95/p99 and 22.047 ms
+  max. The first durable
+  bridge gate committed turn-bearing command `3228fec000000017`, disposed the
+  retained JVM, reconstructed solely from the lineage-aware Oracle ledger, and
+  reproduced frame SHA
+  `c426186759cd917ce9465ea0ad93bbb180b0b5f498e3a4804e3bbe048709c7d8`.
+  This exposed upstream `ticcmd_t.unpack` sign-extension of the low short byte;
+  the replay adapter now decodes network-order shorts explicitly unsigned.
+  A subsequent 300-sample path added both ledger inserts, frontier update, and
+  per-tic `COMMIT WRITE IMMEDIATE WAIT`: 6.124/20.889/39.378 ms p50/p95/p99,
+  42.324 ms max. It then replayed all 330 committed commands to final frame SHA
+  `e8d24e1073c833486dd738b6c18c4e4cc29a277536c8f050c48c654b18d710ec`.
+  The durable p95 leaves 12.444 ms for response codec, AQ/ORDS, wire, decode,
+  and paint; those stages remain before selection.
+  The existing gzip/DMF3 public envelope is now integrated and independently
+  decompressed/field-checked in Oracle. Its component path is 4.900/12.797 ms
+  p50/p95. With encoding, both ledgers, frontier update, and synchronous commit
+  together, 300 samples measured 8.290/19.560/38.798 ms p50/p95/p99 and 69.414
+  ms max; the final payload was 10,480 bytes and the 330-command replay still
+  matched. The selected p95 leaves 13.773 ms for AQ/ORDS, wire, decode, and
+  paint. AQ integration is now the next implementation slice.
+- Scheduler/AQ/AutoREST checkpoint (2026-07-18): the unchanged public command
+  envelope now selects Mocha only when `GAME_ENGINE=MOCHA`. Synchronous STEP,
+  byte-identical duplicate replay, async SUBMIT_STEP/POLL_FRAME, and a four-
+  command pipelined burst pass with exact durable frontiers/results. A real
+  localhost 300-frame HTTP/browser-decode/palette/presentation run with movement
+  and FIRE-every-8 rejected depth-2/buffer-2 at 27.933 FPS, then passed the
+  existing depth-4/buffer-10 shape at 32.029 displayed FPS, 300 unique frames,
+  zero stalls, 31.215/32.058 ms p50/p95 paint gaps, and 32.795 ms max. The frame
+  chain SHA is
+  `a1888c88d8fa779b9b90e8e650a8a5324f3085c21fe4b44f8e810b26b84be900`.
+  This closes the first local Mocha 30 FPS gate. The harness restores
+  `GAME_ENGINE=SQL` and removes its session; subsequent native-code,
+  recovery/concurrency/audio/gameplay/presentation gates passed and `/play/`
+  now selects Mocha for new sessions.
+  An independent rerun reproduced the exact frame-chain SHA at 32.038 FPS with
+  300 unique frames, zero stalls, 31.219/31.976 ms p50/p95 paint gaps, and
+  32.777 ms max. The two-fresh-run deterministic AutoREST chain gate is green.
+  Concurrent isolation is green: two games owned distinct Scheduler/OJVM
+  sessions, matched under identical commands, then diverged under opposite
+  turns with 62 correctly partitioned exact rows. A forced stop at tic 50
+  exposed stale `READY=1` trust in async status; status now also proves the
+  Scheduler job is running. The repaired public request advanced generation
+  382→383, reconstructed from Oracle, and matched an uninterrupted twin at tic
+  51 with 102 commands. Concurrent, stale-generation, forced-restart, and
+  no-lost-command gates are closed.
+  Persistence integration is now green. `NEW_GAME` publishes an exact retained
+  tic-zero payload; `SAVE_GAME` records an immutable lineage pointer; `LOAD_GAME`
+  forks the exact command/audio/frame prefix while preserving the global public
+  command sequence. A save-at-24/diverge-to-34/load/continue-at-sequence-35 gate
+  reproduced the saved payload and replayed all 25 branch frames exactly.
+  Replay uses an immutable tic-zero row plus a lineage/tic index into the
+  already-durable worker-result BLOB, avoiding a second per-tic SecureFile copy.
+  Original-lineage 0..12 replay, completed-cursor idempotency, and loaded-lineage
+  0..25 replay pass. The normalized `TIC_COMMANDS` insert now binds the actual
+  Mocha lineage instead of its migration sentinel.
+- Accept: duplicate batches are byte-identical and apply once; two fresh runs of
+  a fixed 300-tic trace have identical state/frame chains; save/load and restart
+  reconstruction reproduce the uninterrupted chain across the seam.
+
+#### T12.M4 Resident worker and generated AutoREST cutover
+
+- Reuse the existing Scheduler/AQ worker, exclusive generation lease, durable
+  request/response queues, and generated AutoREST procedures. Keep the Mocha
+  engine heap only in the worker session; never assume ORDS connection affinity.
+- Support dynamic independent game sessions. No command route, player outcome,
+  or preselected playthrough may be hardcoded. Enforce bounded active-engine
+  memory with deterministic eviction/reconstruction under Oracle Free's 2 GB
+  database memory limit.
+- Add a default-off engine selector until new-game, step, save/load, restart,
+  timeout, duplicate, stale-generation, and concurrent-session gates pass.
+- Integration checkpoint (2026-07-18): new-game, save/load, exact replay,
+  duplicate, concurrent-session, authored-audio, gameplay-defect, initial-frame,
+  forced-restart, pause, automap, menu, and native-code gates pass. Two fresh
+  deterministic 300-frame runs exceeded 30 displayed FPS, so the selector is
+  now `MOCHA` for new `/play/` sessions. Full public workflow parity remains in
+  T12.M5 rather than blocking the playable cutover.
+- Accept: the unmodified static client can start and freely play a new game only
+  through generated AutoREST endpoints; killing and restarting the worker loses
+  no accepted command and never returns another session's frame.
+
+#### T12.M5 Gameplay and performance selection
+
+- Re-run the T8.3 defects against Mocha Doom: continuous monster visibility,
+  weapon animation, bounded keyboard-to-correlated-frame latency, and complete
+  health-damage causality. Replace obsolete SQL goldens only with reviewed Mocha
+  fixtures; do not weaken public behavior checks.
+- Benchmark single-threaded rendering first. Treat desktop parallel renderers as
+  rejected unless an isolated OJVM experiment proves they improve throughput on
+  Oracle Free's two CPUs without starving ORDS or the worker.
+- First interpreted warm-path evidence (2026-07-18): eight moving tics and one
+  firing tic measured 136-193 ms inside the Java entry point (about 5-7 FPS),
+  while the 64 KB BLOB copy is only 1.431 ms. This is a correctness milestone,
+  not a performance selection. Detailed stable no-input samples isolate the
+  ticker at 4.4-6.9 ms, `Display()` at about 193 ms, and framebuffer hashing at
+  1.4-1.7 ms; early cold samples reached 302 ms render and one 37 ms ticker.
+  Rendering is the current blocker. Verify native compilation of the actual
+  hot Mocha renderer methods, and then measure a stationary 300-tic route before
+  considering parallel rendering or transport work.
+- Native renderer checkpoint (2026-07-18): synchronous compilation of 18
+  serial-renderer classes changed stable `Display()` from about 193 ms to
+  2.8-4.9 ms while preserving every observed frame SHA. Stable no-input ticker
+  time is 2.7-6.5 ms, framebuffer status/hash is 1.2-1.6 ms, and complete
+  internal step time is 7.0-11.1 ms after the first call (roughly 90-143 engine
+  steps/s). Cold initialization fell to 6.21 s. This restores 30 FPS component
+  budget feasibility but is not an end-to-end claim; make the compilation gate
+  reproducible, then run moving/combat percentiles through AQ/commit/ORDS and
+  the browser.
+- Moving/combat native checkpoint (2026-07-18): the first 300-sample
+  forward-moving, FIRE-every-8 route exposed route-only partially compiled
+  draw records/functions, action dispatch, and map traversal; it measured
+  22.584/49.013 ms p50/p95 with 299 unique frames. Extending the synchronous
+  gate to 44 evidence-selected classes produced the same 299 unique frames at
+  1.323/3.927/8.236 ms total p50/p95/p99 and 14.239 ms maximum. Ticker p95 is
+  2.080 ms and renderer p95 is 1.876 ms. This leaves 29.406 ms of the 33.3 ms
+  display budget for durable persistence, AQ, ORDS, wire, decode, and paint.
+  The engine component is decisively feasible; next integrate it without
+  weakening the end-to-end or determinism gates.
+- Run two clean 300-frame moving/combat routes with unique-frame verification,
+  producer completion rate, paint-gap p50/p95/max, and input-to-frame latency.
+  Repeat at 640x400 as a scaling report after 320x200 selection; 640x400 need not
+  meet the initial 30 FPS gate.
+- Post-persistence trace (2026-07-18): a 300-sample database-only retained-worker
+  run under current host contention measured ticker/render at 4.038/4.319 ms p95
+  but codec/BLOB stages at 33.893/11.383 ms p95 and worker completion at 104.058
+  ms p95. The corresponding HTTP run was red, so the earlier 32.029/32.038 FPS
+  results are historical feasibility evidence, not current selection evidence.
+  A `Deflater.BEST_SPEED` experiment worsened codec p95 to 108.651 ms and was
+  reverted. Continue isolation at the gzip/LOB boundary; do not retune engine
+  simulation or duplicate frame BLOBs while ticker/render remain below 8 ms.
+  Raw binary DMF3 then removed gzip without changing the indexed frame or hash
+  semantics; the client detects raw DMF3 first and retains gzip decoding for the
+  SQL engine and existing ledgers. The next 300-sample database run measured
+  12.806/23.837 ms worker p50/p95, 1.956 ms ticker p95, 0.960 ms render p95,
+  0.820 ms codec p95, and 1.454 ms BLOB p95. The first raw-wire AutoREST run
+  delivered 300 unique frames at 26.902 FPS but had 57 stalls and 126.689 ms
+  fetch p95, so transport remains open. Raising fetch depth to four was rejected
+  under contention at 8.927 FPS. Stateless bytewise PackBits shrank one frame to
+  29,030 bytes but cost 176.067 ms codec p95 in OJVM and was reverted.
+  A bulk-array PackBits rewrite reduced codec p95 to 32.987 ms but still pushed
+  worker p95 to 46.296 ms, so raw DMF3 remains selected. ORDS standalone now
+  uses its documented Jetty XML extension point and Jetty 12 `GzipHandler` for
+  `application/json` responses at least 1 KiB. A representative new-game
+  response fell from 123,611 bytes of JSON to 7,443 wire bytes with DMF3 still
+  raw inside AutoREST base64. This preserves the Oracle DB + ORDS + static-site
+  architecture and moves compression off the database worker.
+  Two fresh depth-4/fetch-2/buffer-4/lookahead-4 runs then passed at 31.516 and
+  31.787 displayed FPS with 300 unique frames, exact frame-chain SHA
+  `a1888c88d8fa779b9b90e8e650a8a5324f3085c21fe4b44f8e810b26b84be900`,
+  31.204/32.097 and 31.255/32.104 ms paint-gap p50/p95, and 155.1/187.1 and
+  155.3/158.9 ms input-to-frame p50/p95. These close the local post-persistence
+  30 FPS requalification. Remaining selection work is public-client workflow
+  and cutover evidence, not producer throughput.
+- AutoREST async-submit tail closure (2026-07-18): ASH proved the longest
+  missing time was outside the instrumented Mocha stages. Generated AutoREST
+  procedure discovery through `USER_PROCEDURES`/`USER_ARGUMENTS` caused cursor
+  pin/load-lock bursts when the pool grew mid-route, so ORDS now starts and
+  remains at exactly six physical connections for the selected four-submit,
+  two-poll shape. More importantly, async `SUBMIT_STEP` had still entered the
+  synchronous worker routine and executed an empty response-AQ dequeue averaging
+  about 16 ms per command. The new `doom_worker_api.submit_async` persists the
+  identical correlated request but skips response dequeue/result retrieval.
+  Two consecutive warm 300-frame moving/FIRE-every-8 continuations passed at
+  30.751 and 32.050 displayed FPS with 300 unique frames, paint-gap p95
+  32.080/32.052 ms, and input-to-frame p95 231.770/157.187 ms. The second run
+  had zero stalls and a 33.022 ms maximum. The full 47-class native audit passed
+  with no missing compiled methods. Cold post-redefinition tails remain startup
+  evidence and do not replace the required warm-play measurements.
+- Accept: 320x200 produces at least 30 unique displayed FPS with paint-gap p50
+  and p95 no greater than 33.3 ms, deterministic replay/recovery remains green,
+  and a human can freely complete the required E1M1 workflow through `/play/`.
 
 ### P8 - Full E1M1 and presentation workflows
 

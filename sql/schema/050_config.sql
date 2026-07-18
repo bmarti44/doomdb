@@ -8,11 +8,17 @@ using (
   select 'SESSION_TTL_SECONDS', 3600, cast(null as varchar2(4000)) from dual union all
   select 'MAX_COMMAND_BYTES', 65536, cast(null as varchar2(4000)) from dual union all
   select 'MAX_COMMANDS_PER_STEP', 4, cast(null as varchar2(4000)) from dual union all
-  select 'UNIFIED_WORKER_ENABLED', 0, cast(null as varchar2(4000)) from dual union all
+  -- Mocha is the selected playable engine after worker/recovery/AutoREST gates.
+  -- SQL remains installed as the independently executable differential oracle.
+  select 'GAME_ENGINE', cast(null as number), 'MOCHA' from dual union all
+  select 'UNIFIED_WORKER_ENABLED', 1, cast(null as varchar2(4000)) from dual union all
   -- A cold resident session admits the retained renderer/state packs before
   -- its first dequeue; steady-state calls remain millisecond-bounded.
-  select 'UNIFIED_WORKER_WAIT_SECONDS', 30, cast(null as varchar2(4000)) from dual union all
-  select 'UNIFIED_WORKER_IDLE_SECONDS', 60, cast(null as varchar2(4000)) from dual union all
+  -- A cold OJVM worker can spend tens of seconds linking the Mocha class
+  -- graph after an instance restart. Keep the bounded claim alive long enough
+  -- to retain that warm session instead of timing out and repeating the cost.
+  select 'UNIFIED_WORKER_WAIT_SECONDS', 120, cast(null as varchar2(4000)) from dual union all
+  select 'UNIFIED_WORKER_IDLE_SECONDS', 600, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_MAX_PACK_BYTES', 2000, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_POOL_SIZE', 4, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_FAILPOINT', 0, cast(null as varchar2(4000)) from dual union all

@@ -102,7 +102,8 @@ function ascii(bytes, start, length) {
     return new TextDecoder('ascii', { fatal: true }).decode(bytes.subarray(start, start + length));
 }
 function binaryFrameFrom(bytes) {
-    if (bytes.length < 140 + 320 * 200 || ascii(bytes, 0, 4) !== 'DMF3') {
+    const magic = bytes.length >= 4 ? ascii(bytes, 0, 4) : '';
+    if ((magic !== 'DMF3' && magic !== 'DMF4') || bytes.length < 140) {
         throw new TypeError('payload binary header is invalid');
     }
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -112,7 +113,8 @@ function binaryFrameFrom(bytes) {
     if (tic < 0 || (modeByte !== 0 && modeByte !== 1) ||
         (complete !== 0 && complete !== 1) ||
         !/^[0-9a-f]{64}$/.test(stateSha) || !/^[0-9a-f]{64}$/.test(frameSha) ||
-        bytes.length !== frameStart + 320 * 200) {
+        frameStart > bytes.length ||
+        (magic === 'DMF3' && bytes.length !== frameStart + 320 * 200)) {
         throw new TypeError('payload binary envelope is invalid');
     }
     let audio;
@@ -124,7 +126,30 @@ function binaryFrameFrom(bytes) {
         throw new TypeError('payload binary audio is invalid', { cause });
     }
     const transportIndices = new Uint8Array(320 * 200);
-    transportIndices.set(bytes.subarray(frameStart));
+    if (magic === 'DMF3') {
+        transportIndices.set(bytes.subarray(frameStart));
+    }
+    else {
+        let source = frameStart, target = 0;
+        while (source < bytes.length && target < transportIndices.length) {
+            const control = bytes[source++];
+            const length = (control & 0x7f) + 1;
+            if ((control & 0x80) !== 0) {
+                if (source >= bytes.length || target + length > transportIndices.length)
+                    throw new TypeError('payload binary RLE is invalid');
+                transportIndices.fill(bytes[source++], target, target + length);
+            }
+            else {
+                if (source + length > bytes.length || target + length > transportIndices.length)
+                    throw new TypeError('payload binary RLE is invalid');
+                transportIndices.set(bytes.subarray(source, source + length), target);
+                source += length;
+            }
+            target += length;
+        }
+        if (source !== bytes.length || target !== transportIndices.length)
+            throw new TypeError('payload binary RLE coverage is invalid');
+    }
     const indices = new Uint8Array(320 * 200);
     for (let x = 0; x < 320; x += 1) {
         for (let y = 0; y < 200; y += 1)
@@ -140,15 +165,20 @@ async function sha256(bytes) {
 export async function decodePayload(encoded) {
     const bytes = base64Bytes(encoded);
     let inflated;
-    try {
-        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-        inflated = new Uint8Array(await new Response(stream).arrayBuffer());
+    if (bytes.length >= 4 && /^(?:DMF3|DMF4)$/.test(ascii(bytes, 0, 4))) {
+        inflated = bytes;
     }
-    catch (cause) {
-        throw new TypeError('gzip payload decode failed', { cause });
+    else {
+        try {
+            const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+            inflated = new Uint8Array(await new Response(stream).arrayBuffer());
+        }
+        catch (cause) {
+            throw new TypeError('gzip payload decode failed', { cause });
+        }
     }
     let decoded;
-    if (inflated.length >= 4 && ascii(inflated, 0, 4) === 'DMF3') {
+    if (inflated.length >= 4 && /^(?:DMF3|DMF4)$/.test(ascii(inflated, 0, 4))) {
         decoded = binaryFrameFrom(inflated);
     }
     else {

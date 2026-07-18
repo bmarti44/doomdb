@@ -73,6 +73,12 @@ create index doom_worker_request_status_ix
 create index doom_worker_request_queue_ix on doom_worker_request(
   worker_slot,session_token,generation,request_status,expected_command_seq,created_at);
 
+-- Public retry detection and POLL_FRAME correlate by lineage/sequence without
+-- knowing a worker slot.  Keeping that access path separate avoids hundreds
+-- of buffer gets on every AutoREST submit and poll.
+create index doom_worker_request_replay_ix on doom_worker_request(
+  session_token,save_lineage,expected_command_seq,request_status);
+
 create unique index doom_worker_request_frontier_uq on doom_worker_request(
   case when request_status in('QUEUED','PROCESSING','COMMITTED') then session_token end,
   case when request_status in('QUEUED','PROCESSING','COMMITTED') then save_lineage end,

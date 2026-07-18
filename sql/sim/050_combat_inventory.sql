@@ -441,6 +441,7 @@ create or replace package body doom_combat as
 
   procedure fire_weapon(p_session varchar2,p_tic number,p_player number) is
     l_fire number;l_b number;l_s number;l_r number;l_c number;
+    l_berserk number;
     l_state varchar2(64);
     w doom_weapon_def%rowtype;
   begin
@@ -464,8 +465,9 @@ create or replace package body doom_combat as
     select wd.* into w from doom_weapon_def wd join players p
       on p.selected_weapon=wd.weapon_id
       where p.session_token=p_session and p.player_id=p_player;
-    select ammo_bullets,ammo_shells,ammo_rockets,ammo_cells
-      into l_b,l_s,l_r,l_c from players where session_token=p_session and player_id=p_player;
+    select ammo_bullets,ammo_shells,ammo_rockets,ammo_cells,power_berserk
+      into l_b,l_s,l_r,l_c,l_berserk from players
+      where session_token=p_session and player_id=p_player;
     if not has_ammo(l_b,l_s,l_r,l_c,w.ammo_type,w.ammo_cost) then
       emit_event(p_session,p_tic,'DRY_FIRE');return;
     end if;
@@ -474,7 +476,12 @@ create or replace package body doom_combat as
       flash_state=w.flash_state_id,flash_state_tics=2,refire=refire+1
       where session_token=p_session and player_id=p_player;
     if w.attack_kind in('HITSCAN','MELEE') then
-      hitscan_attack(p_session,p_tic,p_player,w.pellet_count,w.damage_multiplier,w.spread_scale);
+      -- Vanilla's strength power multiplies only fist damage by ten.  Keeping
+      -- the multiplier at attack time also preserves save/load semantics: the
+      -- durable POWER_BERSERK flag is the sole source of truth.
+      hitscan_attack(p_session,p_tic,p_player,w.pellet_count,
+        w.damage_multiplier*case when w.weapon_id='FIST' and l_berserk=1
+          then 10 else 1 end,w.spread_scale);
     else
       spawn_projectile(p_session,p_tic,p_player,w.projectile_kind);
     end if;

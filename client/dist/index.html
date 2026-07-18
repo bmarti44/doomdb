@@ -56,22 +56,24 @@
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">Corrected combat<br><span>30 FPS gate passed</span></p>
-      <p class="muted">Actor and weapon presentation, nonblocking audio, projectile ownership, and health-event causality are fixed. Two quiescent corrected-combat runs render 300/300 distinct frames at 31.95 and 30.81 FPS with exact deterministic chains.</p>
+      <p class="big">Mocha Doom in OJVM<br><span>live selection green</span></p>
+      <p class="muted">New /play/ sessions now run the pinned Mocha engine inside Oracle. Dynamic play, authored audio, save/load, exact replay, deterministic 320×200 frames, native compilation, and the local 30 FPS gate are green.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
-      <p><strong>P0–P7 — complete</strong><br><span class="muted">renderer, simulation, combat, history, audio, mutation and browser gates</span></p>
-      <p><strong>T8.1 — exit reached</strong><br><span class="muted">tic 4,118 · 49 HP · 42 kills · exact replay</span></p>
+      <p><strong>P12.M — active</strong><br><span class="muted">headless engine, persistence, worker, AutoREST, and 30 FPS migration</span></p>
+      <p><strong>Legacy oracle preserved</strong><br><span class="muted">P0–P7 complete · independently executable SQL differential oracle</span></p>
       <div class="links"><a href="/health.txt">static health</a><a href="/ords/">ORDS</a></div>
     </article>
   </section>
 
   <section class="panel" aria-label="current route status">
-    <h2>Live implementation status · July 17, 2026</h2>
-    <p><strong>Route:</strong> the isolated route lab now reaches E1M1's real exit switch through public tic commands. The exit-causing command enters <code>DONE/INTERMISSION</code> at tic 4,118 with 49 HP, 42 kills, 34 items, one secret, and exact state SHA <code>ac5d82…b7e6</code>. The clean uninterrupted lineage reaches tic 2,110 alive; its exact-radius line-54 jamb is fixed, and the remaining low-health combat bridge is under replay.</p>
-    <p class="muted"><strong>T8.3 correctness:</strong> all monster states resolve continuously; <code>BAL1A0</code> is seeded; SQL/OJVM render the database weapon state; audio fetch/decode is off the paint path; owner-safe projectiles cause player health changes only with correlated damage events. Player fire and monster LOS share live moving-door geometry. Event/audio consumers now fence the active save lineage, so abandoned history remains auditable without affecting LOAD continuations.</p>
-    <p><strong>Performance:</strong> two corrected FIRE-every-8 qualification runs reach 31.95 and 30.81 displayed FPS with 32.14/32.28 ms paint-gap p95 and exact 300-frame chains. Producer throughput is independently green at 31.55 and 30.40 FPS. Typical responses are 25.75 KB using the compact DMF3 envelope; synchronous OJVM compilation prevents first-session JIT contention, and authoritative commits remain durable with <code>IMMEDIATE WAIT</code>.</p>
+    <h2>Live implementation status · July 18, 2026</h2>
+    <p><strong>Engine:</strong> all 442 pinned upstream sources plus the DoomDB adapter compile to 822 classes; the schema reports 852 valid Java classes including 30 preserved legacy helpers. Oracle verifies the 28,795,076-byte Freedoom IWAD by SHA-256 before constructing E1M1. The engine has no desktop loop, external configuration files, privileged logger setup, or host WAD file; all 18 upstream process-exit sites are fenced into catchable OJVM errors.</p>
+    <p class="muted"><strong>Bounded bridge:</strong> dynamic <code>ticcmd_t</code> input advances exactly one tic and renders a deterministic 320×200 indexed framebuffer. Tic zero hashes to <code>a1c9b037…d3b5</code>; a caller-owned Oracle BLOB receives all 64,000 pixels in 1.431 ms. Cold initialization is 16–18 seconds and belongs only in the retained Scheduler worker.</p>
+    <p><strong>Performance:</strong> raw binary DMF3 keeps compression outside OJVM, ORDS uses a fixed six-connection pool, and asynchronous submission no longer probes the synchronous response queue. Two consecutive warm moving/combat runs passed at 30.75 and 32.05 FPS with 300 unique frames and paint-gap p95 below 32.1 ms.</p>
+    <p><strong>Recovery and gameplay:</strong> exact command reconstruction, save/load lineage forking, frame replay, duplicate/AQ, concurrent sessions, and a forced worker restart all pass. All 69 IWAD sounds are imported; the authored audio hash chain reconstructs exactly. A 330-tic defect route has continuous monsters, weapon/muzzle animation, and no unexplained health loss.</p>
+    <p class="muted"><strong>Current play page:</strong> new <code>/play/</code> games use Mocha Doom in OJVM through the same generated AutoREST endpoints. Reload any tab opened before cutover to start a Mocha session.</p>
   </section>
 
   <section class="panel review-grid" aria-label="E1M1 completion milestone">
@@ -141,11 +143,15 @@
   </section>
 
   <section class="metrics" aria-label="verified metrics">
-    <div class="metric"><strong>4,118</strong><span class="muted">exit-route tics</span></div>
-    <div class="metric"><strong>49 HP</strong><span class="muted">alive at exit</span></div>
-    <div class="metric"><strong>42 kills</strong><span class="muted">exit checkpoint</span></div>
-    <div class="metric"><strong>148 ms</strong><span class="muted">focused key-to-paint</span></div>
-    <div class="metric"><strong>30.81–31.95 FPS</strong><span class="muted">corrected combat qualification</span></div>
+    <div class="metric"><strong>822 / 852</strong><span class="muted">Mocha / total valid classes</span></div>
+    <div class="metric"><strong>28.8 MB</strong><span class="muted">verified IWAD BLOB</span></div>
+    <div class="metric"><strong>64,000</strong><span class="muted">indexed frame bytes</span></div>
+    <div class="metric"><strong>1.431 ms</strong><span class="muted">frame BLOB handoff</span></div>
+    <div class="metric"><strong>3.927 ms p95</strong><span class="muted">moving/combat Mocha step</span></div>
+    <div class="metric"><strong>3.191 ms p95</strong><span class="muted">controls → tic → render → BLOB</span></div>
+    <div class="metric"><strong>0.820 ms p95</strong><span class="muted">raw DMF3 codec</span></div>
+    <div class="metric"><strong>23.837 ms p95</strong><span class="muted">retained durable worker</span></div>
+    <div class="metric"><strong>32.05 FPS</strong><span class="muted">AutoREST · verified warm run</span></div>
   </section>
 
   <section class="panel review-grid" aria-label="database ray diagnostic">
@@ -174,10 +180,10 @@
     <article class="panel phase done"><b>P5.4</b><span>Presentation</span><p class="muted">HUD, weapons, menu, pause, automap, intermission</p></article>
     <article class="panel phase done"><b>P6</b><span>Simulation</span><p class="muted">tic, movement, machines, history, replay</p></article>
     <article class="panel phase done"><b>P7</b><span>Gameplay</span><p class="muted">weapons, monsters, pickups, audio</p></article>
-    <article class="panel phase active"><b>P12.0</b><span>Integration</span><p class="muted">30 FPS green · full regression closing</p></article>
-    <article class="panel phase done"><b>T8.3</b><span>Playtest defects</span><p class="muted">correctness and sustained cadence green</p></article>
+    <article class="panel phase active"><b>P12.M</b><span>Mocha migration</span><p class="muted">playable cutover green · parity work active</p></article>
+    <article class="panel phase done"><b>T12.M4</b><span>AutoREST cutover</span><p class="muted">worker, recovery, persistence, and controls green</p></article>
   </section>
-  <footer><a href="/play/">Open the live playable client</a> · build-review surface · no credentials or evaluator data are exposed to the browser.</footer>
+  <footer><a href="/play/">Open the Mocha Doom playable client</a> · Oracle/ORDS/AutoREST only · no credentials or evaluator data are exposed to the browser.</footer>
 </main>
 <script>
 fetch('/health.txt',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.text()}).then(t=>{

@@ -1,25 +1,43 @@
 set serveroutput on size unlimited
 set feedback on
+set sqlblanklines on
 declare
   l_session varchar2(32);
   l_payload blob;
   l_seq number;
+  l_tic number;
+  l_save_sha varchar2(64);
 
   procedure mark(p_label varchar2) is
   begin
     for r in (
-      select p.x,p.y,p.angle,p.health,p.alive,p.blue_key,p.secret_count,
-             g.current_tic,g.map_status,b.sector_id,
-             (select count(*) from active_movers a
-               where a.session_token=p.session_token) mover_count
+      select p.x,p.y,p.z,p.angle,p.health,p.alive,p.kill_count,p.item_count,
+        p.secret_count,p.blue_key,p.ammo_bullets,p.ammo_shells,
+        p.selected_weapon,p.weapon_mask,p.armor,p.armor_type,g.current_tic,
+        g.map_status,(select count(*) from active_movers a
+          where a.session_token=p.session_token) mover_count,
+        (select listagg(a.source_linedef_id||':'||a.sector_id||':'||a.direction||
+          ':'||a.timer_tics||':'||a.target_height,',')
+          within group(order by a.mover_id) from active_movers a
+          where a.session_token=p.session_token) mover_sources,
+        (select floor_height from sector_state s where s.session_token=p.session_token
+          and s.sector_id=98) floor98,
+        (select floor_height from sector_state s where s.session_token=p.session_token
+          and s.sector_id=103) floor103,
+        (select b.sector_id from table(doom_bsp_locate(p.x,p.y)) b
+          where rownum=1) sector_id
       from players p join game_sessions g on g.session_token=p.session_token
-      cross apply table(doom_bsp_locate(p.x,p.y)) b
-      where p.session_token=l_session and p.player_id=0 and rownum=1
+      where p.session_token=l_session and p.player_id=0
     ) loop
-      dbms_output.put_line('CONT|'||p_label||'|seq='||l_seq||'|pos='||r.x||','||
-        r.y||'|angle='||r.angle||'|sector='||r.sector_id||'|hp='||r.health||
-        '|alive='||r.alive||'|blue='||r.blue_key||'|secret='||r.secret_count||
-        '|status='||r.map_status||'|movers='||r.mover_count);
+      dbms_output.put_line('PUBLIC_CONT|'||p_label||'|tic='||r.current_tic||
+        '|command_seq='||l_seq||'|pos='||r.x||','||r.y||','||r.z||'|angle='||r.angle||
+        '|sector='||r.sector_id||'|hp='||r.health||'|alive='||r.alive||
+        '|kills='||r.kill_count||'|items='||r.item_count||'|secrets='||
+        r.secret_count||'|blue='||r.blue_key||'|ammo='||r.ammo_bullets||','||
+        r.ammo_shells||'|weapon='||r.selected_weapon||','||r.weapon_mask||
+        '|armor='||r.armor||','||r.armor_type||'|status='||r.map_status||
+        '|movers='||r.mover_count||'['||r.mover_sources||']|floors98,103='||
+        r.floor98||','||r.floor103);
     end loop;
   end;
 
@@ -27,49 +45,49 @@ declare
     p_forward number default 0,p_strafe number default 0,
     p_run number default 0,p_fire number default 0,
     p_use number default 0,p_weapon number default 0) is
-    l_previous_x number;l_previous_y number;l_angle number;
-    l_delta_x number;l_delta_y number;l_player_id number;
-    l_dest_x number;l_dest_y number;l_dest_z number;l_dest_view number;
+    l_done number := 0;
+    l_take number;
+    l_commands clob;
   begin
-    for i in 1..p_count loop
-      l_seq:=l_seq+1;
-      select p.x,p.y,mod(p.angle+p_turn*5.625+360,360)
-        into l_previous_x,l_previous_y,l_angle
-      from game_sessions g join players p
-        on p.session_token=g.session_token and p.player_id=g.current_player_id
-      where g.session_token=l_session;
-      update players set angle=l_angle where session_token=l_session and player_id=0;
-      l_delta_x:=(p_forward*cos(l_angle*acos(-1)/180)+
-        p_strafe*sin(l_angle*acos(-1)/180))*8*(p_run+1);
-      l_delta_y:=(p_forward*sin(l_angle*acos(-1)/180)-
-        p_strafe*cos(l_angle*acos(-1)/180))*8*(p_run+1);
-      select player_id,dest_x,dest_y,dest_z,view_height
-        into l_player_id,l_dest_x,l_dest_y,l_dest_z,l_dest_view
-      from table(doom_player_move(l_session,l_delta_x,l_delta_y));
-      update players set x=l_dest_x,y=l_dest_y,z=l_dest_z,view_height=l_dest_view
-        where session_token=l_session and player_id=l_player_id;
-      insert into tic_commands(session_token,command_seq,tic,command_ordinal,
-        turn,forward_move,strafe,run,fire,use_action,weapon_slot,pause_toggle,
-        automap_toggle,menu_action,cheat_code,command_sha,lineage)
-      select l_session,l_seq,l_seq,0,p_turn,p_forward,p_strafe,p_run,p_fire,
-        p_use,p_weapon,0,0,'NONE',null,lpad(to_char(l_seq),64,'0'),save_lineage
-      from game_sessions where session_token=l_session;
-      doom_world_machines.advance(l_session,l_seq,l_previous_x,l_previous_y,p_use);
-      doom_combat.advance(l_session,l_seq);
-      doom_monsters.advance(l_session,l_seq);
-      update game_sessions set current_tic=l_seq,last_command_seq=l_seq
-        where session_token=l_session;
+    while l_done<p_count loop
+      l_take:=least(4,p_count-l_done);
+      l_commands:='{"v":1,"commands":[';
+      for i in 1..l_take loop
+        if i>1 then l_commands:=l_commands||',';end if;
+        l_commands:=l_commands||'{"seq":'||to_char(l_seq+i,'TM9')||
+          ',"turn":'||to_char(p_turn,'TM9')||
+          ',"forward":'||to_char(p_forward,'TM9')||
+          ',"strafe":'||to_char(p_strafe,'TM9')||
+          ',"run":'||to_char(p_run,'TM9')||
+          ',"fire":'||to_char(p_fire,'TM9')||
+          ',"use":'||to_char(p_use,'TM9')||
+          ',"weapon":'||to_char(p_weapon,'TM9')||
+          ',"pause":0,"automap":0,"menu":"NONE","cheat":""}';
+      end loop;
+      l_commands:=l_commands||']}';
+      doom_tic_tx.apply_batch(l_session,l_commands,l_payload);
+      l_seq:=l_seq+l_take;
+      l_done:=l_done+l_take;
     end loop;
   end;
 begin
   select session_token into l_session from (
     select s.session_token from save_slots s join game_sessions g
       on g.session_token=s.session_token
-    where s.slot_number=99 order by g.created_at desc
+    where s.slot_number=35 and s.saved_tic=1478 order by g.created_at desc
   ) where rownum=1;
-  doom_history.rewind_to_tic(l_session,715,l_payload);
-  select current_tic into l_seq from game_sessions where session_token=l_session;
-  mark('restored');
-  rollback;
+  doom_history.load_game(l_session,35,l_payload);
+  select last_command_seq,current_tic into l_seq,l_tic from game_sessions
+    where session_token=l_session;
+  mark('restored-west-sweep-circle');
+  go(16,p_turn=>-1,p_forward=>1,p_strafe=>1,p_run=>1,p_fire=>1);
+  mark('preclear-shotgunner-aim-circle');
+
+  doom_history.save_game(l_session,34,l_save_sha);
+  execute immediate 'set constraints all immediate';
+  select current_tic into l_tic from game_sessions where session_token=l_session;
+  dbms_output.put_line('EVAL_PUBLIC_CHECKPOINT_SAVED|session='||l_session||
+    '|slot=34|tic='||l_tic||'|command_seq='||l_seq||'|state_sha='||l_save_sha);
+  commit;
 end;
 /

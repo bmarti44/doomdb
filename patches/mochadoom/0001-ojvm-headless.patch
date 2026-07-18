@@ -1,0 +1,190 @@
+diff --git a/src/mochadoom/Engine.java b/src/mochadoom/Engine.java
+index ca8f04e..87f76ea 100644
+--- a/src/mochadoom/Engine.java
++++ b/src/mochadoom/Engine.java
+@@ -62,6 +62,21 @@ public class Engine {
+             System.exit(1);
+         }
+     }  
++
++    /** Construct the engine without a desktop window or free-running loop. */
++    public static DoomMain<?, ?> createHeadless(final String... argv) throws IOException {
++        synchronized (Engine.class) {
++            final Engine local = new Engine(true, argv);
++            return local.DOOM;
++        }
++    }
++
++    /** Release the session-private headless engine. */
++    public static void releaseHeadless() {
++        synchronized (Engine.class) {
++            instance = null;
++        }
++    }
+     
+     public final CVarManager cvm;
+     public final ConfigManager cm;
+@@ -70,6 +78,11 @@ public class Engine {
+     
+     @SuppressWarnings("unchecked")
+     private Engine(final String... argv) throws IOException {
++        this(false, argv);
++    }
++
++    @SuppressWarnings("unchecked")
++    private Engine(final boolean headless, final String... argv) throws IOException {
+         instance = this;
+         
+         // reads command line arguments
+@@ -82,7 +95,7 @@ public class Engine {
+         this.DOOM = new DoomMain<>();
+         
+         // opens a window
+-        this.windowController = /*cvm.bool(CommandVariable.AWTFRAME)
++        this.windowController = headless ? null : /*cvm.bool(CommandVariable.AWTFRAME)
+             ? */DoomWindow.createCanvasWindowController(
+                 DOOM.graphicSystem::getScreenImage,
+                 DOOM::PostEvent,
+@@ -95,6 +108,7 @@ public class Engine {
+                 DOOM.graphicSystem.getScreenHeight()
+             )*/;
+         
++        if (!headless) {
+         windowController.getObserver().addInterest(
+             new KeyStateInterest<>(obs -> {
+                 EventHandler.fullscreenChanges(windowController.getObserver(), windowController.switchFullscreen());
+@@ -127,13 +141,17 @@ public class Engine {
+                 return WANTS_MORE_PASS;
+             }, SC_PAUSE)
+         );
++        }
+     }
+     
+     /**
+      * Temporary solution. Will be later moved in more detalied place
+      */
+     public static void updateFrame() {
+-        instance.windowController.updateFrame();
++        final Engine local = instance;
++        if (local != null && local.windowController != null) {
++            local.windowController.updateFrame();
++        }
+     }
+         
+     public String getWindowTitle(double frames) {
+diff --git a/src/utils/C2JUtils.java b/src/utils/C2JUtils.java
+index 8509c29..7b57d36 100644
+--- a/src/utils/C2JUtils.java
++++ b/src/utils/C2JUtils.java
+@@ -377,6 +377,10 @@ public final class C2JUtils {
+     public static boolean testReadAccess(String URI) {
+         InputStream in;
+ 
++        if (InputStreamSugar.hasInjectedResource(URI)) {
++            return true;
++        }
++
+         // This is bullshit.
+         if (URI == null) {
+             return false;
+@@ -806,6 +810,10 @@ public final class C2JUtils {
+      */
+     public static int guessResourceType(String URI) {
+ 
++        if (InputStreamSugar.hasInjectedResource(URI)) {
++            return InputStreamSugar.NETWORK_FILE;
++        }
++
+         int result = 0;
+         InputStream in;
+ 
+diff --git a/src/doom/ConfigBase.java b/src/doom/ConfigBase.java
+index 4a77b31..a098cd3 100644
+--- a/src/doom/ConfigBase.java
++++ b/src/doom/ConfigBase.java
+@@ -102,7 +102,7 @@ public enum ConfigBase {
+             } catch (SecurityException ex) {}
+ 
+             if (getPath == null || "".equals(getPath)) {
+-                return new String[] {folder};
++                return paths = new String[] {getFolder() + fileName};
+             }
+             
+             getPath += System.getProperty("file.separator");
+diff --git a/src/w/InputStreamSugar.java b/src/w/InputStreamSugar.java
+index e237369..68408f3 100644
+--- a/src/w/InputStreamSugar.java
++++ b/src/w/InputStreamSugar.java
+@@ -1,5 +1,6 @@
+ package w;
+ 
++import java.io.ByteArrayInputStream;
+ import java.io.FileInputStream;
+ import java.io.FileNotFoundException;
+ import java.io.IOException;
+@@ -35,6 +36,24 @@ public class InputStreamSugar {
+     
+     public static final int BAD_URI = -1; // Bad or unparseable 
+ 
++    private static final String INJECTED_URI = "freedoom1.wad";
++    private static byte[] injectedResource;
++
++    public static synchronized void setInjectedResource(byte[] bytes) {
++        if (bytes == null || bytes.length < 12) {
++            throw new IllegalArgumentException("invalid injected IWAD");
++        }
++        injectedResource = bytes;
++    }
++
++    public static synchronized void clearInjectedResource() {
++        injectedResource = null;
++    }
++
++    public static synchronized boolean hasInjectedResource(String resource) {
++        return INJECTED_URI.equals(resource) && injectedResource != null;
++    }
++
+     /**
+      * Creates an inputstream from a local file, network resource, or zipped
+      * file (also over a network). If an entry name is specifid AND the type is
+@@ -129,6 +148,12 @@ public class InputStreamSugar {
+         InputStream is = null;
+         URL u;
+ 
++        synchronized (InputStreamSugar.class) {
++            if (hasInjectedResource(resource)) {
++                return new ByteArrayInputStream(injectedResource);
++            }
++        }
++
+         try { // Is it a net resource?
+             u = new URL(resource);
+             is = u.openStream();
+@@ -170,6 +195,17 @@ public class InputStreamSugar {
+         if (is == null)
+             return is;
+ 
++        if (is instanceof ByteArrayInputStream) {
++            is.reset();
++            long skipped = 0;
++            while (skipped < pos) {
++                long amount = is.skip(pos - skipped);
++                if (amount <= 0) throw new IOException("short injected IWAD seek");
++                skipped += amount;
++            }
++            return is;
++        }
++
+         // If we know our actual position in the stream, we can aid seeking
+         // forward
+ 
+@@ -270,6 +306,9 @@ public class InputStreamSugar {
+      */
+     
+     public static long getSizeEstimate(InputStream is, ZipEntry z) {
++        if (is instanceof ByteArrayInputStream) {
++            return ((ByteArrayInputStream) is).available();
++        }
+         if (is instanceof FileInputStream) {
+             try {
+                 return ((FileInputStream) is).getChannel().size();

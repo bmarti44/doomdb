@@ -1,0 +1,41 @@
+diff --git a/src/mochadoom/Loggers.java b/src/mochadoom/Loggers.java
+--- a/src/mochadoom/Loggers.java
++++ b/src/mochadoom/Loggers.java
+@@ -63,7 +63,11 @@ public class Loggers {
+     
+     public static Logger getLogger(final String className) {
+         final Logger ret = Logger.getLogger(className);
+-        ret.setParent(INDIVIDUAL_CLASS_LOGGERS.getOrDefault(className, DEFAULT_LOGGER));
++        try {
++            ret.setParent(INDIVIDUAL_CLASS_LOGGERS.getOrDefault(className, DEFAULT_LOGGER));
++        } catch (SecurityException deniedInOJVM) {
++            // OJVM schemas do not need LoggingPermission for gameplay.
++        }
+         
+         return ret;
+     }
+@@ -134,12 +138,16 @@ public class Loggers {
+     private Loggers() {}
+     
+     private static Logger newLoggerHandlingLevel(final Level l) {
+-        final OutHandler h = new OutHandler();
+-        h.setLevel(l);
+-        final Logger ret = Logger.getAnonymousLogger();
+-        ret.setUseParentHandlers(false);
+-        ret.setLevel(l);
+-        ret.addHandler(h);
+-        return ret;
++        try {
++            final OutHandler h = new OutHandler();
++            h.setLevel(l);
++            final Logger ret = Logger.getAnonymousLogger();
++            ret.setUseParentHandlers(false);
++            ret.setLevel(l);
++            ret.addHandler(h);
++            return ret;
++        } catch (SecurityException deniedInOJVM) {
++            return Logger.getLogger("mochadoom." + l.getName());
++        }
+     }
+     
+     private static final class OutHandler extends ConsoleHandler {

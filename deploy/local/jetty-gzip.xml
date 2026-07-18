@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "http://www.eclipse.org/jetty/configure.dtd">
+<!--
+  ORDS 26.2 embeds Jetty 12.  Compress JSON at the HTTP boundary so the OJVM
+  worker can emit its fast raw DMF3 BLOB without paying the database gzip tail.
+  Static assets are already compact and responses below one KiB are skipped.
+-->
+<Configure id="Server" class="org.eclipse.jetty.server.Server">
+  <Call name="insertHandler">
+    <Arg>
+      <New class="org.eclipse.jetty.server.handler.gzip.GzipHandler">
+        <Set name="minGzipSize">1024</Set>
+        <Set name="includedMimeTypes">
+          <Array type="java.lang.String">
+            <Item>application/json</Item>
+          </Array>
+        </Set>
+      </New>
+    </Arg>
+  </Call>
+</Configure>

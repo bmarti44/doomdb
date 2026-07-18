@@ -106,6 +106,22 @@ create or replace package body doom_monsters as
             case when geometry.left_sidedef_id is null then 1
                  when least(geometry.right_ceiling,geometry.left_ceiling)
                     <=greatest(geometry.right_floor,geometry.left_floor)
+                   then 1
+                 when p_z+
+                   (((geometry.vx-p_x)*geometry.sy-
+                      (geometry.vy-p_y)*geometry.sx) /
+                    nullif(((p_target_x-p_x)*geometry.sy-
+                             (p_target_y-p_y)*geometry.sx),0)) *
+                   (p_target_z-p_z)
+                   <=greatest(geometry.right_floor,geometry.left_floor)
+                   then 1
+                 when p_z+
+                   (((geometry.vx-p_x)*geometry.sy-
+                      (geometry.vy-p_y)*geometry.sx) /
+                    nullif(((p_target_x-p_x)*geometry.sy-
+                             (p_target_y-p_y)*geometry.sx),0)) *
+                   (p_target_z-p_z)
+                   >=least(geometry.right_ceiling,geometry.left_ceiling)
                    then 1 else 0 end as blocking
           from (
             select l.linedef_id,l.left_sector_id as left_sidedef_id,
@@ -390,7 +406,19 @@ create or replace package body doom_monsters as
                 or least(coalesce(rss.ceiling_height,rs.ceiling_height),
                          coalesce(lss.ceiling_height,ls.ceiling_height))
                    <=greatest(coalesce(rss.floor_height,rs.floor_height),
-                              coalesce(lss.floor_height,ls.floor_height)))
+                              coalesce(lss.floor_height,ls.floor_height))
+                or (m.z+coalesce(m.height,56)/2)+
+                   (((los.vx-m.x)*los.sy-(los.vy-m.y)*los.sx) /
+                    ((l_px-m.x)*los.sy-(l_py-m.y)*los.sx)) *
+                   ((l_pz+41)-(m.z+coalesce(m.height,56)/2))
+                   <=greatest(coalesce(rss.floor_height,rs.floor_height),
+                              coalesce(lss.floor_height,ls.floor_height))
+                or (m.z+coalesce(m.height,56)/2)+
+                   (((los.vx-m.x)*los.sy-(los.vy-m.y)*los.sx) /
+                    ((l_px-m.x)*los.sy-(l_py-m.y)*los.sx)) *
+                   ((l_pz+41)-(m.z+coalesce(m.height,56)/2))
+                   >=least(coalesce(rss.ceiling_height,rs.ceiling_height),
+                           coalesce(lss.ceiling_height,ls.ceiling_height)))
           ) then 0 else 1 end visible
       from mobjs m join doom_monster_def d on d.thing_type=m.thing_type
       join doom_state_def s on s.state_id=m.state_id

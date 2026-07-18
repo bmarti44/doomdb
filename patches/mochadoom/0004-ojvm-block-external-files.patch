@@ -1,0 +1,55 @@
+diff --git a/src/utils/C2JUtils.java b/src/utils/C2JUtils.java
+--- a/src/utils/C2JUtils.java
++++ b/src/utils/C2JUtils.java
+@@ -381,6 +381,8 @@ public final class C2JUtils {
+             return true;
+         }
+ 
++        if (ResourceIO.isExternalIODisabled()) return false;
++
+         // This is bullshit.
+         if (URI == null) {
+             return false;
+@@ -421,6 +423,8 @@ public final class C2JUtils {
+     public static boolean testWriteAccess(String URI) {
+         OutputStream out;
+ 
++        if (ResourceIO.isExternalIODisabled()) return false;
++
+         // This is bullshit.
+         if (URI == null) {
+             return false;
+diff --git a/src/m/MenuMisc.java b/src/m/MenuMisc.java
+--- a/src/m/MenuMisc.java
++++ b/src/m/MenuMisc.java
+@@ -17,5 +17,6 @@ import java.nio.ByteBuffer;
+ import java.util.Arrays;
+ import javax.imageio.ImageIO;
+ import w.IWritableDoomObject;
++import utils.ResourceIO;
+ 
+ // Emacs style mode select   -*- C++ -*- 
+@@ -53,6 +54,7 @@ public abstract class MenuMisc{
+     //
+   
+     public static boolean WriteFile(String name, byte[] source, int length) {
++        if (ResourceIO.isExternalIODisabled()) return false;
+         OutputStream handle;
+         try {
+             handle = new  FileOutputStream(name);
+@@ -67,6 +69,7 @@ public abstract class MenuMisc{
+     }
+ 
+     public static boolean WriteFile(String name, IWritableDoomObject source) {
++        if (ResourceIO.isExternalIODisabled()) return false;
+         DataOutputStream handle;
+         try {
+             handle = new DataOutputStream(new FileOutputStream(name));
+@@ -86,6 +89,7 @@ public abstract class MenuMisc{
+      * 
+      */
+     public static ByteBuffer ReadFile(String name) {
++        if (ResourceIO.isExternalIODisabled()) return null;
+         BufferedInputStream handle;
+         int length;
+         // struct stat fileinfo;

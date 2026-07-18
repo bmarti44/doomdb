@@ -18,8 +18,26 @@ assert.equal(decoded.tic,7);assert.equal(decoded.mode,'game');
 assert.equal(decoded.frameSha,frameSha);assert.deepEqual(decoded.audio,[[7,0,'DSPISTOL',127,128]]);
 for(let x=0;x<320;x++)for(let y=0;y<200;y++)
   assert.equal(decoded.indices[y*320+x],transport[x*200+y]);
+const rawDmf3=await decodePayload(envelope.toString('base64'));
+assert.deepEqual(rawDmf3.indices,decoded.indices);
+
+const packBits=bytes=>{const chunks=[];let offset=0;while(offset<bytes.length){
+  let run=1;while(run<128&&offset+run<bytes.length&&bytes[offset+run]===bytes[offset])run++;
+  if(run>=3){chunks.push(Buffer.from([0x80|(run-1),bytes[offset]]));offset+=run;continue;}
+  const start=offset;offset+=run;
+  while(offset<bytes.length&&offset-start<128){run=1;
+    while(run<128&&offset+run<bytes.length&&bytes[offset+run]===bytes[offset])run++;
+    if(run>=3)break;offset+=Math.min(run,128-(offset-start));}
+  chunks.push(Buffer.from([offset-start-1]),bytes.subarray(start,offset));
+}return Buffer.concat(chunks);};
+const encoded=packBits(transport),dmf4=Buffer.concat([
+  Buffer.from(envelope.subarray(0,140+audio.length)),encoded]);
+dmf4.write('DMF4',0,'ascii');dmf4[8]=0;
+const rawDecoded=await decodePayload(dmf4.toString('base64'));
+assert.equal(rawDecoded.frameSha,frameSha);assert.deepEqual(rawDecoded.audio,decoded.audio);
+assert.deepEqual(rawDecoded.indices,decoded.indices);
 
 envelope[8]=2;
 await assert.rejects(decodePayload(gzipSync(envelope).toString('base64')),
   /binary envelope is invalid/);
-console.log('PASS codec v3 binary indexed frame');
+console.log(`PASS codec v3/v4 binary indexed frame dmf4Bytes=${dmf4.length}`);

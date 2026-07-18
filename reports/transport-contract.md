@@ -29,6 +29,17 @@ Observed contract results:
 The live command ended with `PASS T0.3 (23/23 assertions)`. The contract does
 not provide or permit a fallback transport.
 
+## Mocha binary-frame extension (2026-07-18)
+
+P12.M versions the payload inside the same AutoREST BLOB. Mocha emits raw DMF3
+so OJVM does not pay the measured gzip tail; the client detects DMF3 before
+attempting legacy gzip decode. ORDS standalone applies Jetty 12 HTTP compression
+to the outer `application/json` response when the client advertises gzip. A
+representative 64,142-byte DMF3 new-game payload produced 123,611 bytes of JSON
+and a 7,443-byte HTTP body with `Content-Encoding: gzip`. The BLOB remains
+default AutoREST base64 and the generated package surface is unchanged. The
+legacy SQL engine continues to return its original gzip member.
+
 Oracle documentation basis: ORDS 26.2 Developer's Guide sections 2.3.1.11 and
 2.3.3. It specifies package-level exposure, POST with JSON, OUT-parameter JSON,
 and default base64 encoding of AutoREST LOB values.

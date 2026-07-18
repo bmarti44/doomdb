@@ -29,6 +29,7 @@ begin
   begin dbms_aqadm.drop_queue_table('DOOM_UNIFIED_RESPONSE_QT',true); exception when others then null; end;
   drop_object('drop property graph doom_sector_graph', -42421);
   drop_object('drop package doom_worker_api', -4043);
+  drop_object('drop package doom_mocha_bridge', -4043);
   drop_object('drop package doom_unified_worker', -4043);
   drop_object('drop package doom_render_worker', -4043);
   drop_object('drop package doom_unified_delta_apply', -4043);
@@ -81,6 +82,22 @@ begin
   drop_object('drop package doom_retained_projectiles', -4043);
   drop_object('drop procedure doom_bsp_build_kernel_pack', -4043);
   drop_object('drop function doom_bsp_build_kernel_pack_java', -4043);
+  drop_object('drop function doom_mocha_iwad_probe', -4043);
+  drop_object('drop function doom_mocha_initialize', -4043);
+  drop_object('drop function doom_mocha_step', -4043);
+  drop_object('drop function doom_mocha_step_frame', -4043);
+  drop_object('drop function doom_mocha_step_controls_frame', -4043);
+  drop_object('drop function doom_mocha_step_controls_payload', -4043);
+  drop_object('drop function doom_mocha_current_payload', -4043);
+  drop_object('drop function doom_mocha_payload_plain', -4043);
+  drop_object('drop function doom_mocha_save', -4043);
+  drop_object('drop function doom_mocha_load', -4043);
+  drop_object('drop function doom_mocha_reconstruct', -4043);
+  drop_object('drop function doom_mocha_frame', -4043);
+  drop_object('drop function doom_mocha_new_game', -4043);
+  drop_object('drop function doom_mocha_dispose', -4043);
+  drop_object('drop function doom_mocha_benchmark', -4043);
+  drop_object('drop function doom_mocha_probe', -4043);
   drop_object('drop view doom_r2_masked_candidate_rows', -942);
   drop_object('drop view doom_api_presentation_rows', -942);
   drop_object('drop view doom_r2_staged_masked_candidate_rows', -942);
@@ -112,7 +129,7 @@ begin
         'FRAME_SPRITE','FRAME_WALL','FRAME_SECTOR_INTERVAL','FRAME_PORTAL_HIT',
         'FRAME_R1_HIT','FRAME_RENDER_SEG_BOUND','FRAME_COLUMN',
         'REPLAY_CURSORS','HISTORY_HEADS','SAVE_SLOTS','STATE_HISTORY','STEP_RESPONSES','AUDIO_EVENTS','GAME_EVENTS',
-        'DOOM_WORKER_AUDIT','DOOM_WORKER_RESULT','DOOM_WORKER_REQUEST','DOOM_WORKER_CONTROL',
+        'DOOM_MOCHA_COMMAND','DOOM_MOCHA_LINEAGE','DOOM_WORKER_AUDIT','DOOM_WORKER_RESULT','DOOM_WORKER_REQUEST','DOOM_WORKER_CONTROL',
         'TIC_COMMANDS','ACTIVE_SWITCHES','ACTIVE_MOVERS','LINE_STATE','SECTOR_STATE',
         'MOBJS','PLAYERS','GAME_SESSIONS','DOOM_BLOCK_LINE','DOOM_BLOCK_CELL',
         'DOOM_SECTOR_REJECT','DOOM_SECTOR_SOUND_REACH','DOOM_SECTOR_EDGE','DOOM_LOS_SEGMENT','DOOM_RNG_VALUE','DOOM_AUDIO_EVENT_DEF','DOOM_MONSTER_DEF','DOOM_PROJECTILE_DEF','DOOM_AMMO_DEF',
@@ -124,7 +141,7 @@ begin
         'DOOM_MAP_SSECTOR','DOOM_MAP_SEG','DOOM_MAP_LINEDEF','DOOM_MAP_SIDEDEF',
         'DOOM_MAP_THING','DOOM_MAP_SECTOR','DOOM_LINEDEF','DOOM_MAP_LINEDEF',
         'DOOM_VERTEX','DOOM_MAP_VERTEX','DOOM_BLOCKMAP_BYTE','DOOM_REJECT_BYTE','DOOM_COLORMAP_TEXEL',
-        'DOOM_PALETTE_TEXEL','DOOM_ASSET','DOOM_WAD_SOURCE','DOOM_CONFIG'))
+        'DOOM_PALETTE_TEXEL','DOOM_ASSET','DOOM_ENGINE_ARTIFACT','DOOM_WAD_SOURCE','DOOM_CONFIG'))
   ) loop
     drop_object('drop table ' || t.table_name || ' cascade constraints purge', -942);
   end loop;

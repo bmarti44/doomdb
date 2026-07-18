@@ -15,6 +15,13 @@ sed -i \
   -e 's/^sga_target=.*/sga_target=1024m/' \
   -e 's/^pga_aggregate_target=.*/pga_aggregate_target=256m/' \
   /tmp/doomdb-init.ora
+# Reserve viable floors for the retained OJVM graph and the database's hot
+# relational working set. Oracle Free may rebalance above these floors inside
+# its fixed 1 GiB SGA as classes and game ledgers become hot.
+printf '%s\n' \
+  'shared_pool_size=320m' \
+  'java_pool_size=128m' \
+  'db_cache_size=320m' >>/tmp/doomdb-init.ora
 
 rm -f "${ORACLE_HOME}/dbs/spfileFREE.ora"
 printf "create spfile='%s/dbs/spfileFREE.ora' from pfile='/tmp/doomdb-init.ora';\nexit\n" \

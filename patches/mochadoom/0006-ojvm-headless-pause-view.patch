@@ -1,0 +1,14 @@
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -319,7 +319,9 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+             if (automapactive) {
+                 y = 4 * graphicSystem.getScalingY();
+             } else {
+-                y = view.getViewWindowY() + 4 * graphicSystem.getScalingY();
++                // Headless OJVM execution does not enter DoomLoop(), where the
++                // desktop path caches this renderer-owned view at line 421.
++                y = (view == null ? sceneRenderer.getView() : view).getViewWindowY() + 4 * graphicSystem.getScalingY();
+             }
+             
+             final patch_t pause = wadLoader.CachePatchName("M_PAUSE", PU_CACHE);
