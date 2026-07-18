@@ -62,14 +62,14 @@
     <article class="panel">
       <h2>Canonical acceptance</h2>
       <p><strong>P0–P7 — complete</strong><br><span class="muted">renderer, simulation, combat, history, audio, mutation and browser gates</span></p>
-      <p><strong>T8.1 — tic 3,158</strong><br><span class="muted">43 HP · 33 kills · blue key · alive</span></p>
+      <p><strong>T8.1 — tic 3,543</strong><br><span class="muted">53 HP · plasma · 240 cells · blue key</span></p>
       <div class="links"><a href="/health.txt">static health</a><a href="/ords/">ORDS</a></div>
     </article>
   </section>
 
   <section class="panel" aria-label="current route status">
     <h2>Live implementation status · July 17, 2026</h2>
-    <p><strong>Route:</strong> resumed in the isolated route lab. Arbitrary live movement, weapon selection, every catalog attack, rocket/plasma projectiles, barrel chains, USE/WALK triggers, doors, lifts, switches, carry, and blocking are supported by the retained database worker. SQL remains the exact differential oracle. The latest committed checkpoint is tic 3,158 with 43 HP, 33 kills, 28 items, one secret, the blue key, and 14 shells. Next: the southern combat/exit push, repeatability, and reviewed milestone frames.</p>
+    <p><strong>Route:</strong> resumed in the isolated route lab. Arbitrary live movement, weapon selection, every catalog attack, rocket/plasma projectiles, barrel chains, USE/WALK triggers, doors, lifts, switches, carry, and blocking are supported by the retained database worker. SQL remains the exact differential oracle. The latest committed checkpoint is tic 3,543 with 53 HP, 33 kills, 30 items, one secret, the blue key, the plasma rifle, and 240 cells; two clean rebuilds matched its exact state SHA. Next: the southern combat/exit push, final repeatability, and reviewed milestone frames.</p>
     <p class="muted"><strong>T8.3 correctness:</strong> all monster states resolve continuously; <code>BAL1A0</code> is seeded; SQL/OJVM render the database weapon state; audio fetch/decode is off the paint path; owner-safe projectiles cause player health changes only with correlated damage events.</p>
     <p><strong>Performance:</strong> two corrected FIRE-every-8 qualification runs reach 31.95 and 30.81 displayed FPS with 32.14/32.28 ms paint-gap p95 and exact 300-frame chains. Producer throughput is independently green at 31.55 and 30.40 FPS. Typical responses are 25.75 KB using the compact DMF3 envelope; synchronous OJVM compilation prevents first-session JIT contention, and authoritative commits remain durable with <code>IMMEDIATE WAIT</code>.</p>
   </section>
@@ -128,8 +128,8 @@
   </section>
 
   <section class="metrics" aria-label="verified metrics">
-    <div class="metric"><strong>3,158</strong><span class="muted">route-lab tics</span></div>
-    <div class="metric"><strong>43 HP</strong><span class="muted">current checkpoint</span></div>
+    <div class="metric"><strong>3,543</strong><span class="muted">route-lab tics</span></div>
+    <div class="metric"><strong>53 HP</strong><span class="muted">plasma checkpoint</span></div>
     <div class="metric"><strong>33 kills</strong><span class="muted">current checkpoint</span></div>
     <div class="metric"><strong>148 ms</strong><span class="muted">focused key-to-paint</span></div>
     <div class="metric"><strong>30.81–31.95 FPS</strong><span class="muted">corrected combat qualification</span></div>

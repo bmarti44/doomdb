@@ -2049,14 +2049,15 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
 - Accept: state and frame hashes at every milestone, final completion flags,
   kills/items/secrets, and replay repeatability match approved goldens.
 - Route checkpoint (2026-07-17): the isolated route lab now commits slot 99 at
-  tic 3,158 with state SHA
-  `02bcd424e9785f9a6e2d884e0280513b3de5081fec373b9de3014d092b22b6c6`.
-  The player is alive at `(480.01582430798503, 2208)`, angle 90, with 43 HP,
-  33 kills, 28 items, one secret, the blue key, and 14 shells. This supersedes
-  the doomed tic-2,941 branch: the accepted sequence restores tic 2,880,
-  retreats through sector 78 for the medkit, then reopens the alcove and sector
-  80 for the stimpack without waking the south room. Next drive the southern
-  combat/exit push, freeze milestone frames, and prove replay repeatability.
+  tic 3,543 with state SHA
+  `8c25c91be470e6b0f9808e229b3e2db4dac6722a9b0fda04ae7295eec1bc996a`.
+  The player is alive at `(-95.98417569201497, 2000)`, angle 180, with 53 HP,
+  33 kills, 30 items, one secret, the blue key, the plasma rifle, 240 cells,
+  and 14 shells. The accepted sequence builds from the prior tic-3,158 health
+  recovery, takes the nearby sector-87 plasma rifle and sector-74 stimpack, and
+  returns to the blue-door approach. Two clean rebuilds from slot 96 reproduced
+  the exact pose and SHA. Next clear the two doorway hitscanners and demons,
+  drive the exit, freeze milestone frames, and prove final replay repeatability.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 

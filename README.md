@@ -31,9 +31,11 @@ More reviewed views include the [shotgun HUD](goldens/t5.4/game-shotgun.png),
 
 P0–P7 and the T8.3 live-play defect closure are complete. P8's deterministic
 E1M1 route has resumed in an isolated route lab. Its latest committed checkpoint
-is tic 3,158: alive with 43 HP, 33 kills, 28 items, one secret, the blue key,
-and 14 shells. The remaining route work is the southern combat/exit push,
-repeatability, and reviewed milestone frames.
+is tic 3,543: alive at the blue-door approach with 53 HP, 33 kills, 30 items,
+one secret, the blue key, the plasma rifle, and 240 cells. Its exact state SHA
+reproduced twice from the prior accepted checkpoint. The remaining route work
+is the southern combat/exit push, final repeatability, and reviewed milestone
+frames.
 
 The selected retained worker now supports arbitrary live movement, collision,
 weapon selection, common hitscan/melee fire, `USE`/`WALK` triggers, doors,
