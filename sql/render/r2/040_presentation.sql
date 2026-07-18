@@ -329,7 +329,7 @@ begin
       join doom_asset asset
         on asset.asset_kind='ui_patch' and asset.asset_name='WIMAP0'
       join at texel on texel.a=asset.asset_id and texel.c>=0
-      where state.game_mode='INTERMISSION' and state.map_status='COMPLETE'
+      where state.game_mode='INTERMISSION' and state.map_status in('COMPLETE','DONE')
     ),
     intermission_patches as (
       select state.session_token,floor((320-asset.width)/2)+texel.x column_no,
@@ -349,7 +349,7 @@ begin
         on asset.asset_kind='ui_patch'
        and asset.asset_name=placement.asset_name
       join at texel on texel.a=asset.asset_id and texel.c>=0
-      where state.game_mode='INTERMISSION' and state.map_status='COMPLETE'
+      where state.game_mode='INTERMISSION' and state.map_status in('COMPLETE','DONE')
         and floor((320-asset.width)/2)+texel.x between 0 and 319
         and placement.top_row+texel.y between 0 and 199
     ),
@@ -358,17 +358,17 @@ begin
         to_char(state.kill_count,'FM000',
           'NLS_NUMERIC_CHARACTERS=''.,''') field_value,250 right_edge,
         70 top_row from session_state state
-      where state.game_mode='INTERMISSION' and state.map_status='COMPLETE'
+      where state.game_mode='INTERMISSION' and state.map_status in('COMPLETE','DONE')
       union all
       select state.session_token,'ITEMS',to_char(state.item_count,'FM000',
         'NLS_NUMERIC_CHARACTERS=''.,'''),
         250,95 from session_state state
-      where state.game_mode='INTERMISSION' and state.map_status='COMPLETE'
+      where state.game_mode='INTERMISSION' and state.map_status in('COMPLETE','DONE')
       union all
       select state.session_token,'SECRETS',to_char(state.secret_count,'FM000',
         'NLS_NUMERIC_CHARACTERS=''.,'''),
         250,120 from session_state state
-      where state.game_mode='INTERMISSION' and state.map_status='COMPLETE'
+      where state.game_mode='INTERMISSION' and state.map_status in('COMPLETE','DONE')
     ),
     intermission_characters as (
       select value_row.*,character_axis.character_ordinal,

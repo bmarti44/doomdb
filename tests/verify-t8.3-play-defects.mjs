@@ -9,6 +9,7 @@ const masked = read('sql/render/r2/030_masked.sql');
 const presentation = read('sql/render/r2/040_presentation.sql');
 const fireball = read('sql/accel/014_imp_fireball_asset.sql');
 const combat = read('sql/sim/050_combat_inventory.sql');
+const ticTransaction = read('sql/sim/tic/010_tic_transaction.sql');
 const worker = read('scripts/performance/DoomUnifiedActorStateBench.java');
 const renderer = read('scripts/performance/DoomBspKernelBench.java');
 const exitRoute = read('artifacts/t8.1-live/route-exit-completion.sql');
@@ -50,7 +51,13 @@ assert.match(combat,
 assert.match(exitRoute, /linedef_id = 407[\s\S]*?completion_events = 1[\s\S]*?exit_triggers = 1/i,
   'the public route must prove the real E1M1 exit switch fired exactly once');
 assert.match(exitRoute,
-  /k_state_sha constant varchar2\(64\)[\s\S]*?8a10b3f3fc896ea927f6927a647ed0713a786fe70d88ff33420450b37f7cc51b/i,
+  /k_state_sha constant varchar2\(64\)[\s\S]*?ac5d82cba9ab641192e91e02dc6856dd9210dc57b4b7fad156bab0b40373b7e6/i,
   'the live-door combat route must retain its exact completion state identity');
+assert.match(ticTransaction,
+  /set game_mode='INTERMISSION',map_status='DONE'[\s\S]*?doom_canonical_state\.build_into_locator/i,
+  'the exit-causing command must enter intermission before canonical capture');
+assert.match(ticTransaction,
+  /set game_mode='DEAD'[\s\S]*?if sql%rowcount=0 then[\s\S]*?set game_mode='INTERMISSION'/i,
+  'death must take precedence over exit on a simultaneous terminal tic');
 
-process.stdout.write('PASS T8.3-PLAY-DEFECT-SOURCE (reproductions, actor/weapon presentation, nonblocking audio, projectile ownership, live door fire geometry, E1M1 exit route)\n');
+process.stdout.write('PASS T8.3-PLAY-DEFECT-SOURCE (reproductions, actor/weapon presentation, nonblocking audio, projectile ownership, live door fire geometry, E1M1 intermission route)\n');

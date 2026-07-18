@@ -5,7 +5,7 @@ variable result varchar2(4000)
 declare
   k_session constant varchar2(32) := 'f5c560edf961fb6373e0c0cf47814af3';
   k_state_sha constant varchar2(64) :=
-    '8a10b3f3fc896ea927f6927a647ed0713a786fe70d88ff33420450b37f7cc51b';
+    'ac5d82cba9ab641192e91e02dc6856dd9210dc57b4b7fad156bab0b40373b7e6';
   l_payload blob;
   l_seq number;
   l_terminal_rows number := 0;
@@ -197,9 +197,9 @@ begin
   ) loop
     l_terminal_rows := l_terminal_rows + 1;
     assert_(terminal.current_tic = 4118, 'terminal tic drifted');
-    assert_(terminal.map_status = 'COMPLETED', 'exit did not complete E1M1');
-    assert_(terminal.game_mode = 'GAME',
-      'intermission hook landed; update this pre-hook route golden deliberately');
+    assert_(terminal.map_status = 'DONE', 'exit did not seal E1M1 completion');
+    assert_(terminal.game_mode = 'INTERMISSION',
+      'exit command did not enter intermission');
     assert_(abs(terminal.x + 368) < 0.000001 and
       abs(terminal.y - 1296) < 0.000001 and terminal.angle = 180,
       'terminal pose drifted');
@@ -211,7 +211,8 @@ begin
       ',items=' || terminal.item_count || ',secrets=' ||
       terminal.secret_count || ',blue=' || terminal.blue_key);
     assert_(terminal.ammo_cells = 143, 'terminal plasma count drifted');
-    assert_(terminal.state_sha = k_state_sha, 'terminal state SHA drifted');
+    assert_(terminal.state_sha = k_state_sha,
+      'terminal state SHA drifted: ' || terminal.state_sha);
     assert_(terminal.completion_events = 1 and terminal.exit_triggers = 1,
       'exit activation evidence drifted');
   end loop;

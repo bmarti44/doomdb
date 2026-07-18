@@ -33,9 +33,9 @@ P0–P7 and the original T8.3 live-play defect closure are complete. P8's
 deterministic E1M1 route now reaches the real exit switch in the isolated route
 lab. Two clean post-checkpoint replays ended at tic 4,118 with 49 HP, 42 kills,
 34 items, one secret, and exact state SHA
-`8a10b3f3fc896ea927f6927a647ed0713a786fe70d88ff33420450b37f7cc51b`.
-The next route slice connects that `COMPLETED` state to the public intermission
-workflow, freezes milestone frames, and runs the complete replay gate.
+`ac5d82cba9ab641192e91e02dc6856dd9210dc57b4b7fad156bab0b40373b7e6`.
+The exit command now authors `DONE/INTERMISSION` before canonical capture; the
+next route slice freezes milestone frames and runs the complete replay gate.
 
 The selected retained worker now supports arbitrary live movement, collision,
 weapon selection, common hitscan/melee fire, `USE`/`WALK` triggers, doors,

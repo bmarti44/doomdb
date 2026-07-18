@@ -303,7 +303,7 @@ create or replace package body doom_tic_tx as
         command_row.menu_action,command_row.automap_toggle,command_row.cheat_code,
         l_paused,l_menu,l_automap,l_mode);
 
-      if l_world_ready=1 then
+      if l_world_ready=1 and l_mode not in ('DEAD','INTERMISSION') then
         select p.x,p.y,mod(p.angle+command_row.turn*5.625+360,360)
           into l_previous_x,l_previous_y,l_angle
           from game_sessions g join players p
@@ -338,6 +338,22 @@ create or replace package body doom_tic_tx as
       update game_sessions set current_tic=l_tic+command_row.ord,
         last_command_seq=command_row.seq,paused=l_paused,menu_state=l_menu,
         automap_state=l_automap,game_mode=l_mode where session_token=p_session;
+      -- Terminal modes are authored by the same command that caused them, so
+      -- canonical state and the correlated frame cannot expose a transient
+      -- COMPLETED/GAME or zero-health/GAME combination. Death wins if both
+      -- conditions occur on the exit tic.
+      update game_sessions session_row set game_mode='DEAD'
+        where session_row.session_token=p_session and exists (
+          select 1 from players player
+          where player.session_token=session_row.session_token
+            and player.player_id=session_row.current_player_id
+            and (player.alive=0 or player.health=0));
+      if sql%rowcount=0 then
+        update game_sessions set game_mode='INTERMISSION',map_status='DONE'
+          where session_token=p_session and map_status='COMPLETED';
+      end if;
+      select game_mode into l_mode from game_sessions
+        where session_token=p_session;
       doom_canonical_state.build_into_locator(p_session,l_legacy,
         l_command_state_blob,l_state_sha);
       doom_command_ledger.finalize_command(p_session,l_lineage,command_row.seq,

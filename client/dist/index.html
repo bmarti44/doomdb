@@ -69,7 +69,7 @@
 
   <section class="panel" aria-label="current route status">
     <h2>Live implementation status · July 17, 2026</h2>
-    <p><strong>Route:</strong> the isolated route lab now reaches E1M1's real exit switch through public tic commands. Two clean post-plasma replays end at tic 4,118 with 49 HP, 42 kills, 34 items, one secret, and exact state SHA <code>8a10b3…c51b</code>. Next: connect <code>COMPLETED</code> to the public intermission workflow, freeze milestone frames, and run the complete replay gate.</p>
+    <p><strong>Route:</strong> the isolated route lab now reaches E1M1's real exit switch through public tic commands. The exit-causing command enters <code>DONE/INTERMISSION</code> at tic 4,118 with 49 HP, 42 kills, 34 items, one secret, and exact state SHA <code>ac5d82…b7e6</code>. Next: freeze milestone frames and run the complete replay gate.</p>
     <p class="muted"><strong>T8.3 correctness:</strong> all monster states resolve continuously; <code>BAL1A0</code> is seeded; SQL/OJVM render the database weapon state; audio fetch/decode is off the paint path; owner-safe projectiles cause player health changes only with correlated damage events. Player fire and monster LOS now share live moving-door geometry.</p>
     <p><strong>Performance:</strong> two corrected FIRE-every-8 qualification runs reach 31.95 and 30.81 displayed FPS with 32.14/32.28 ms paint-gap p95 and exact 300-frame chains. Producer throughput is independently green at 31.55 and 30.40 FPS. Typical responses are 25.75 KB using the compact DMF3 envelope; synchronous OJVM compilation prevents first-session JIT contention, and authoritative commits remain durable with <code>IMMEDIATE WAIT</code>.</p>
   </section>
