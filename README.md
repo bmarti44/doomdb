@@ -38,7 +38,9 @@ The exit command now authors `DONE/INTERMISSION` before canonical capture; the
 captured database frame is shown below. Its frame SHA is
 `32028078e1db3695ff9b8809641d3dea3a1c458caa25973c4f5a88489ce8e851`.
 The next route slice replaces the checkpoint-chain prefix with one uninterrupted
-public-command replay.
+public-command replay. Its clean lineage now reaches tic 2,110 alive; the
+remaining route work is replacing an exact-radius door-jamb/corner trap with a
+normal-input bridge before running the complete route twice.
 
 ![Database-rendered E1M1 completion](artifacts/t8.1-live/exit-intermission.png)
 
@@ -49,6 +51,11 @@ Hitscan barrel damage, ordered recursive splash, player armor/death, same-tic
 monster death, and the complete rocket/plasma spawn, sweep, impact, splash, and
 removal lifecycle also run there with exact SQL parity. SQL remains an
 independently executable differential oracle.
+
+Save/load branch isolation is now enforced end to end. Event ordinals, monster
+sound perception, retained worker loads, renderer snapshots, and response audio
+all read only the active `save_lineage`; a live regression proves abandoned
+events remain auditable without affecting the continued game.
 
 The presentation fixes are deployed. Renderer catalog fallback keeps monsters
 visible across authored state transitions, the real Freedoom `BAL1A0` imp

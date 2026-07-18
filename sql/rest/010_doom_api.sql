@@ -388,6 +388,7 @@ create or replace package body doom_api as
     p_payload out blob
   ) is
     l_tic number;
+    l_lineage varchar2(64);
     l_mode varchar2(16);
     l_complete number;
     l_cols clob;
@@ -398,8 +399,8 @@ create or replace package body doom_api as
     l_document clob;
     l_plain blob;
   begin
-    select current_tic,lower(game_mode),case when map_status='DONE' then 1 else 0 end
-      into l_tic,l_mode,l_complete from game_sessions
+    select current_tic,save_lineage,lower(game_mode),case when map_status='DONE' then 1 else 0 end
+      into l_tic,l_lineage,l_mode,l_complete from game_sessions
       where session_token=p_session;
 
     -- Materialize shared render relations once. World and masked SQL otherwise
@@ -604,7 +605,7 @@ create or replace package body doom_api as
       order by event_ordinal returning clob),to_clob('[]'))
       into l_audio
       from audio_events
-      where session_token=p_session and tic=l_tic;
+      where session_token=p_session and lineage=l_lineage and tic=l_tic;
 
     select json_object(
       'v' value 1,

@@ -539,8 +539,9 @@ public final class DoomUnifiedActorStateBench {
     // current_tic is already accepted; a new resulting tic always starts event ordinals at zero.
     o.nextEvent=0;
     try(PreparedStatement s=c.prepareStatement("select count(*) from game_events where session_token=? "+
-        "and tic=? and event_type in('DAMAGE','BARREL_EXPLODE','PROJECTILE_SPAWN','PROJECTILE_IMPACT','DRY_FIRE')")){
-      s.setString(1,session);s.setLong(2,o.tic);try(ResultSet r=s.executeQuery()){r.next();o.playerSound=r.getInt(1)>0?1:0;}}
+        "and lineage=? and tic=? and event_type in('DAMAGE','BARREL_EXPLODE','PROJECTILE_SPAWN','PROJECTILE_IMPACT','DRY_FIRE')")){
+      s.setString(1,session);s.setString(2,lineage);s.setLong(3,o.tic);
+      try(ResultSet r=s.executeQuery()){r.next();o.playerSound=r.getInt(1)>0?1:0;}}
 
     HashMap<String,Integer> stateIndex=new HashMap<String,Integer>();int states=0;
     try(Statement s=c.createStatement();ResultSet r=s.executeQuery("select count(*) from doom_state_def")){

@@ -17,7 +17,10 @@ create or replace package body doom_combat as
     l_ordinal number;
   begin
     select coalesce(max(event_ordinal)+1,0) into l_ordinal
-      from game_events where session_token=p_session and tic=p_tic;
+      from game_events where session_token=p_session
+        and lineage=(select save_lineage from game_sessions
+          where session_token=p_session)
+        and tic=p_tic;
     insert into game_events(session_token,tic,event_ordinal,event_type,
       actor_mobj_id,target_mobj_id,number_value,text_value)
     values(p_session,p_tic,l_ordinal,p_type,p_actor,p_target,p_number,p_text);

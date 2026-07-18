@@ -31,7 +31,10 @@ create or replace package body doom_monsters as
     l_ordinal number;
   begin
     select coalesce(max(event_ordinal)+1,0) into l_ordinal
-      from game_events where session_token=p_session and tic=p_tic;
+      from game_events where session_token=p_session
+        and lineage=(select save_lineage from game_sessions
+          where session_token=p_session)
+        and tic=p_tic;
     insert into game_events(session_token,tic,event_ordinal,event_type,
       actor_mobj_id,target_mobj_id,number_value,text_value)
     values(p_session,p_tic,l_ordinal,p_type,p_actor,p_target,p_number,p_text);
@@ -156,7 +159,10 @@ create or replace package body doom_monsters as
     l_count number;
   begin
     select count(*) into l_count from game_events
-      where session_token=p_session and tic=p_tic
+      where session_token=p_session
+        and lineage=(select save_lineage from game_sessions
+          where session_token=p_session)
+        and tic=p_tic
         and event_type in('DAMAGE','BARREL_EXPLODE','PROJECTILE_SPAWN',
                           'PROJECTILE_IMPACT','DRY_FIRE');
     return case when l_count>0 then 1 else 0 end;

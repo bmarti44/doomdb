@@ -52,14 +52,18 @@ create or replace package body doom_tic_tx as
       insert into game_events(session_token,tic,event_ordinal,event_type,text_value)
       select p_session,p_tic,coalesce(max(event_ordinal)+1,0),
         'CONTROL_PAUSE',to_char(io_paused,'TM9') from game_events
-      where session_token=p_session and tic=p_tic;
+      where session_token=p_session
+        and lineage=(select save_lineage from game_sessions
+          where session_token=p_session) and tic=p_tic;
     end if;
     if p_menu_action<>'NONE' then
       io_menu:=p_menu_action;
       insert into game_events(session_token,tic,event_ordinal,event_type,text_value)
       select p_session,p_tic,coalesce(max(event_ordinal)+1,0),
         'CONTROL_MENU',io_menu from game_events
-      where session_token=p_session and tic=p_tic;
+      where session_token=p_session
+        and lineage=(select save_lineage from game_sessions
+          where session_token=p_session) and tic=p_tic;
     end if;
     if p_automap_toggle=1 then
       io_automap:=case when io_automap='ON' then 'OFF' else 'ON' end;
@@ -67,13 +71,17 @@ create or replace package body doom_tic_tx as
       insert into game_events(session_token,tic,event_ordinal,event_type,text_value)
       select p_session,p_tic,coalesce(max(event_ordinal)+1,0),
         'CONTROL_AUTOMAP',io_automap from game_events
-      where session_token=p_session and tic=p_tic;
+      where session_token=p_session
+        and lineage=(select save_lineage from game_sessions
+          where session_token=p_session) and tic=p_tic;
     end if;
     if p_cheat_code is not null then
       insert into game_events(session_token,tic,event_ordinal,event_type,text_value)
       select p_session,p_tic,coalesce(max(event_ordinal)+1,0),
         'CONTROL_CHEAT',p_cheat_code from game_events
-      where session_token=p_session and tic=p_tic;
+      where session_token=p_session
+        and lineage=(select save_lineage from game_sessions
+          where session_token=p_session) and tic=p_tic;
     end if;
   end;
 
@@ -81,6 +89,8 @@ create or replace package body doom_tic_tx as
     return number is l_count number;
   begin
     select count(*) into l_count from game_events where session_token=p_session
+      and lineage=(select save_lineage from game_sessions
+        where session_token=p_session)
       and tic between p_first_tic and p_last_tic;
     return l_count;
   end;

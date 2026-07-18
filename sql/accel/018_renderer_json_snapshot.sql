@@ -23,10 +23,10 @@ begin
     'm' value (select json_arrayagg(json_array(mobj_id,state_id,x,y,z,angle returning clob)
       order by mobj_id returning clob) from mobjs where session_token=p_session) format json,
     'a' value (select json_arrayagg(
-      json_array(event_ordinal,asset_name,volume,separation returning clob)
-      order by event_ordinal returning clob) from audio_events
-      where session_token=p_session and tic=(select current_tic from game_sessions
-        where session_token=p_session)) format json
+      json_array(a.event_ordinal,a.asset_name,a.volume,a.separation returning clob)
+      order by a.event_ordinal returning clob) from audio_events a
+      join game_sessions g on g.session_token=a.session_token and g.save_lineage=a.lineage
+      where a.session_token=p_session and a.tic=g.current_tic) format json
     returning blob) into l_json from dual;
   l_length:=dbms_lob.getlength(l_json);dbms_lob.trim(p_snapshot,0);
   dbms_lob.copy(p_snapshot,l_json,l_length,1,1);dbms_lob.freetemporary(l_json);

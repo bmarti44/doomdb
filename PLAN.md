@@ -1053,6 +1053,11 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   drops for monster types 9/58/3001/3002/3004.
 - Accept: idle/wake, heard/not-heard, seen/occluded, chase, melee, hitscan,
   projectile, pain, death, drop, and replay-determinism scenarios for every type.
+- Completed correctness hardening (2026-07-17): every production GAME_EVENTS and
+  AUDIO_EVENTS consumer is fenced to the current save lineage. The live branch
+  regression preserves an abandoned `DRY_FIRE` event while proving it neither
+  shifts the new branch's event ordinal nor wakes REJECT-hidden monsters after
+  LOAD; retained Java owners and renderer/audio snapshots use the same fence.
 
 #### T7.3 Audio events and browser assets
 

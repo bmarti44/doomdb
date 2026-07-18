@@ -22,6 +22,7 @@ create or replace package body doom_retained_projectiles as
     l_total pls_integer;l_java_count pls_integer;l_java_owner pls_integer:=0;
     l_player_health number;l_player_armor number;l_player_alive number;
     l_next_mobj number;l_next_event number;
+    l_lineage varchar2(64);
     procedure append_raw(p_value raw) is
     begin
       if p_value is not null then p_pack:=utl_raw.concat(p_pack,p_value);end if;
@@ -48,6 +49,8 @@ create or replace package body doom_retained_projectiles as
           hextoraw('00000000000000000000000000000000000000000000')),1,22)));
     end;
   begin
+    select save_lineage into l_lineage from game_sessions
+      where session_token=p_session_token;
     select count(*),coalesce(sum(case when owner.mobj_id is not null
       and td.category='monster' and d.splash_radius=0
       and 1=(select count(*) from mobjs sibling
@@ -66,7 +69,7 @@ create or replace package body doom_retained_projectiles as
 
     select
       (select count(*) from (select distinct target_mobj_id from game_events
-        where session_token=p_session_token and tic=p_tic
+        where session_token=p_session_token and lineage=l_lineage and tic=p_tic
           and event_type in('DAMAGE','BARREL_EXPLODE')
           and target_mobj_id is not null)),
       (select count(*) from mobjs where session_token=p_session_token
@@ -76,7 +79,7 @@ create or replace package body doom_retained_projectiles as
       (select coalesce(max(mobj_id),0)+1 from mobjs
         where session_token=p_session_token),
       (select coalesce(max(event_ordinal)+1,0) from game_events
-        where session_token=p_session_token and tic=p_tic)
+        where session_token=p_session_token and lineage=l_lineage and tic=p_tic)
       into l_player_health,l_player_armor,l_player_alive,l_next_mobj,l_next_event
       from players p join game_sessions s
         on s.session_token=p.session_token and s.current_player_id=p.player_id
@@ -95,7 +98,7 @@ create or replace package body doom_retained_projectiles as
       from mobjs m join (
         select distinct target_mobj_id
         from game_events
-        where session_token=p_session_token and tic=p_tic
+        where session_token=p_session_token and lineage=l_lineage and tic=p_tic
           and event_type in('DAMAGE','BARREL_EXPLODE')
           and target_mobj_id is not null
       ) e on e.target_mobj_id=m.mobj_id

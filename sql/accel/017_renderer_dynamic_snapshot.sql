@@ -77,8 +77,10 @@ begin
     append_int(2);append_int(m.mobj_id);append_string(m.state_id);
     append_double(m.x);append_double(m.y);append_double(m.z);append_double(m.angle);
   end loop;
-  for a in (select event_ordinal,asset_name,volume,separation from audio_events
-    where session_token=p_session and tic=l_tic order by event_ordinal) loop
+  for a in (select a.event_ordinal,a.asset_name,a.volume,a.separation
+    from audio_events a join game_sessions g on g.session_token=a.session_token
+      and g.save_lineage=a.lineage
+    where a.session_token=p_session and a.tic=l_tic order by a.event_ordinal) loop
     append_int(3);append_int(a.event_ordinal);append_string(a.asset_name);
     append_int(a.volume);append_int(a.separation);
   end loop;
@@ -127,8 +129,10 @@ begin
     append_int(p.ammo_shells);append_int(p.ammo_rockets);append_int(p.ammo_cells);
   end loop;
   if l_tic is null then raise_application_error(-20000,'renderer delta session not found');end if;
-  for a in (select event_ordinal,asset_name,volume,separation from audio_events
-    where session_token=p_session and tic=l_tic order by event_ordinal) loop
+  for a in (select a.event_ordinal,a.asset_name,a.volume,a.separation
+    from audio_events a join game_sessions g on g.session_token=a.session_token
+      and g.save_lineage=a.lineage
+    where a.session_token=p_session and a.tic=l_tic order by a.event_ordinal) loop
     append_int(3);append_int(a.event_ordinal);append_string(a.asset_name);
     append_int(a.volume);append_int(a.separation);
   end loop;

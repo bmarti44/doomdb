@@ -416,8 +416,10 @@ public final class DoomBspKernelBench {
     StringBuilder audio = new StringBuilder("[");
     try (PreparedStatement statement = connection.prepareStatement(
         "select event_ordinal,asset_name,volume,separation from audio_events " +
-        "where session_token=? and tic=? order by event_ordinal")) {
-      statement.setString(1, session); statement.setInt(2, liveTic);
+        "where session_token=? and lineage=(select save_lineage from game_sessions " +
+        "where session_token=?) and tic=? order by event_ordinal")) {
+      statement.setString(1, session); statement.setString(2, session);
+      statement.setInt(3, liveTic);
       try (ResultSet rows = statement.executeQuery()) {
         int countAudio = 0;
         while (rows.next()) {
@@ -452,8 +454,9 @@ public final class DoomBspKernelBench {
         "where session_token=? union all " +
         "select 2,mobj_id,state_id,null,x,y,z,angle,null,null,null,null,null,null,null,null,null,null,null " +
         "from mobjs where session_token=? union all " +
-        "select 3,event_ordinal,asset_name,null,volume,separation,null,null,null,null,null,null,null,null,null,null,null,null,null " +
-        "from audio_events where session_token=? and tic=(select current_tic from game_sessions where session_token=?)) " +
+        "select 3,a.event_ordinal,a.asset_name,null,a.volume,a.separation,null,null,null,null,null,null,null,null,null,null,null,null,null " +
+        "from audio_events a join game_sessions g on g.session_token=a.session_token and g.save_lineage=a.lineage " +
+        "where a.session_token=? and a.tic=g.current_tic and g.session_token=?) " +
         "order by kind,id1";
     int sectors = 0, mobjs = 0, playerRows = 0;
     StringBuilder audio = new StringBuilder("[");

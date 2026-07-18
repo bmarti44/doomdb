@@ -102,6 +102,7 @@ case "$1" in
         scripts/db_sql.sh tests/verify-t7.2-runtime.sql
         scripts/db_sql.sh tests/verify-t7.2-mobj-integrity.sql
         scripts/db_sql.sh tests/verify-t7.2-branch-command-isolation.sql
+        scripts/db_sql.sh tests/verify-t7.2-branch-event-isolation.sql
         ;;
       T7.3)
         evaluator/t7.3/run-visible.sh

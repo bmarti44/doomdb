@@ -181,8 +181,9 @@ public final class DoomRetainedWorldStateBench {
       statement.setString(1,session);try(ResultSet row=statement.executeQuery()){row.next();nextMobj=row.getInt(1);}
     }
     try(PreparedStatement statement=connection.prepareStatement(
-        "select coalesce(max(event_ordinal)+1,0) from game_events where session_token=? and tic=?")) {
-      statement.setString(1,session);statement.setLong(2,tic);
+        "select coalesce(max(event_ordinal)+1,0) from game_events " +
+        "where session_token=? and lineage=? and tic=?")) {
+      statement.setString(1,session);statement.setString(2,lineage);statement.setLong(3,tic);
       try(ResultSet row=statement.executeQuery()){row.next();nextEvent=row.getInt(1);}
     }
     String actualMapSha=stateMapSha(connection);
