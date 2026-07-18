@@ -65,7 +65,7 @@ create or replace package body doom_combat as
   end;
 
   function first_blocking_depth(
-    p_x0 number,p_y0 number,p_x1 number,p_y1 number
+    p_session varchar2,p_x0 number,p_y0 number,p_x1 number,p_y1 number
   ) return number is
     l_depth number;
   begin
@@ -78,8 +78,11 @@ create or replace package body doom_combat as
         ((v1.x-p_x0)*(v2.y-v1.y)-(v1.y-p_y0)*(v2.x-v1.x)) /
           nullif((p_x1-p_x0)*(v2.y-v1.y)-(p_y1-p_y0)*(v2.x-v1.x),0) as hit_t,
         case when l.left_sidedef_id is null then 1
-             when least(sr.ceiling_height,sl.ceiling_height)
-                  <=greatest(sr.floor_height,sl.floor_height) then 1 else 0 end blocking
+             when least(coalesce(srs.ceiling_height,sr.ceiling_height),
+                        coalesce(sls.ceiling_height,sl.ceiling_height))
+                  <=greatest(coalesce(srs.floor_height,sr.floor_height),
+                             coalesce(sls.floor_height,sl.floor_height))
+             then 1 else 0 end blocking
       from (
         select distinct bl.linedef_id
         from doom_block_cell bc join doom_block_line bl on bl.cell_id=bc.cell_id
@@ -93,17 +96,21 @@ create or replace package body doom_combat as
       join doom_map_vertex v2 on v2.vertex_id=l.end_vertex_id
       join doom_map_sidedef dr on dr.sidedef_id=l.right_sidedef_id
       join doom_map_sector sr on sr.sector_id=dr.sector_id
+      left join sector_state srs on srs.session_token=p_session
+        and srs.sector_id=sr.sector_id
       left join doom_map_sidedef dl on dl.sidedef_id=l.left_sidedef_id
       left join doom_map_sector sl on sl.sector_id=dl.sector_id
+      left join sector_state sls on sls.session_token=p_session
+        and sls.sector_id=sl.sector_id
     ) where blocking=1 and hit_t>0 and hit_t<1 and hit_u between 0 and 1;
     return l_depth;
   end;
 
   function line_blocks_segment(
-    p_x0 number,p_y0 number,p_x1 number,p_y1 number
+    p_session varchar2,p_x0 number,p_y0 number,p_x1 number,p_y1 number
   ) return number is
   begin
-    return case when first_blocking_depth(p_x0,p_y0,p_x1,p_y1) is null
+    return case when first_blocking_depth(p_session,p_x0,p_y0,p_x1,p_y1) is null
       then 0 else 1 end;
   end;
 
@@ -165,7 +172,7 @@ create or replace package body doom_combat as
     ) loop
       l_distance:=sqrt(power(victim.x-p_x,2)+power(victim.y-p_y,2));
       l_amount:=greatest(0,p_damage-floor(l_distance));
-      if l_amount>0 and line_blocks_segment(p_x,p_y,victim.x,victim.y)=0 then
+      if l_amount>0 and line_blocks_segment(p_session,p_x,p_y,victim.x,victim.y)=0 then
         damage_mobj(p_session,p_tic,victim.mobj_id,l_amount,p_source);
       end if;
     end loop;
@@ -176,7 +183,7 @@ create or replace package body doom_combat as
       l_distance:=sqrt(power(player_victim.x-p_x,2)+power(player_victim.y-p_y,2));
       l_amount:=greatest(0,p_damage-floor(l_distance));
       if l_distance<=p_radius and l_amount>0
-         and line_blocks_segment(p_x,p_y,player_victim.x,player_victim.y)=0 then
+         and line_blocks_segment(p_session,p_x,p_y,player_victim.x,player_victim.y)=0 then
         damage_player(p_session,p_tic,player_victim.player_id,l_amount,p_source);
       end if;
     end loop;
@@ -386,7 +393,7 @@ create or replace package body doom_combat as
       -- projectiles and splash occlusion, then convert its segment fraction to
       -- world distance.  Keeping render expansion out of the simulation path
       -- is essential for shotgun/multi-pellet latency.
-      l_wall_fraction:=first_blocking_depth(l_x,l_y,
+      l_wall_fraction:=first_blocking_depth(p_session,l_x,l_y,
         l_x+l_dx*l_far,l_y+l_dy*l_far);
       l_wall:=case when l_wall_fraction is null then null
         else l_wall_fraction*l_far end;
@@ -485,7 +492,7 @@ create or replace package body doom_combat as
       l_nx:=projectile.x+projectile.momentum_x;
       l_ny:=projectile.y+projectile.momentum_y;
       l_target:=null;l_depth:=null;l_player_hit:=0;
-      l_wall:=first_blocking_depth(projectile.x,projectile.y,l_nx,l_ny);
+      l_wall:=first_blocking_depth(p_session,projectile.x,projectile.y,l_nx,l_ny);
       begin
         select mobj_id,depth into l_target,l_depth from (
             select m.mobj_id,

@@ -11,6 +11,7 @@ const fireball = read('sql/accel/014_imp_fireball_asset.sql');
 const combat = read('sql/sim/050_combat_inventory.sql');
 const worker = read('scripts/performance/DoomUnifiedActorStateBench.java');
 const renderer = read('scripts/performance/DoomBspKernelBench.java');
+const exitRoute = read('artifacts/t8.1-live/route-exit-completion.sql');
 
 for (const phrase of ['monsters blinking', 'missing gun animation',
   'key event to submitted ticcmd', 'correlate every health decrement']) {
@@ -40,5 +41,16 @@ assert.match(worker, /o\.world\.id\[candidate\]==o\.world\.owner\[slot\]/,
 assert.match(combat, /damage_player\(p_session,p_tic,l_player,d\.damage,projectile\.mobj_id\)/i);
 assert.match(worker, /damagePlayer\(o,o\.projectileDamage\[def\],projectileId,events\)/);
 assert.doesNotMatch(combat, /owner is the exact depth-zero winner/i);
+assert.match(combat,
+  /function first_blocking_depth\(\s*p_session varchar2[\s\S]*?left join sector_state srs on srs\.session_token=p_session[\s\S]*?left join sector_state sls on sls\.session_token=p_session/i,
+  'player hitscan/projectile blockers must use the same live door heights as monster LOS');
+assert.match(combat,
+  /first_blocking_depth\(p_session,l_x,l_y,[\s\S]*?first_blocking_depth\(p_session,projectile\.x/i,
+  'both hitscan and projectile paths must carry the active session into live geometry');
+assert.match(exitRoute, /linedef_id = 407[\s\S]*?completion_events = 1[\s\S]*?exit_triggers = 1/i,
+  'the public route must prove the real E1M1 exit switch fired exactly once');
+assert.match(exitRoute,
+  /k_state_sha constant varchar2\(64\)[\s\S]*?8a10b3f3fc896ea927f6927a647ed0713a786fe70d88ff33420450b37f7cc51b/i,
+  'the live-door combat route must retain its exact completion state identity');
 
-process.stdout.write('PASS T8.3-PLAY-DEFECT-SOURCE (reproductions, actor/weapon presentation, nonblocking audio, projectile ownership)\n');
+process.stdout.write('PASS T8.3-PLAY-DEFECT-SOURCE (reproductions, actor/weapon presentation, nonblocking audio, projectile ownership, live door fire geometry, E1M1 exit route)\n');

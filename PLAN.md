@@ -2056,8 +2056,20 @@ speed but may not relax or replace the final 300-frame local/cloud evidence.
   and 14 shells. The accepted sequence builds from the prior tic-3,158 health
   recovery, takes the nearby sector-87 plasma rifle and sector-74 stimpack, and
   returns to the blue-door approach. Two clean rebuilds from slot 96 reproduced
-  the exact pose and SHA. Next clear the two doorway hitscanners and demons,
-  drive the exit, freeze milestone frames, and prove final replay repeatability.
+  the exact pose and SHA.
+- Exit checkpoint (2026-07-17): `route-exit-completion.sql` drives only public
+  tic commands from slot 99, clears the blue-door and exit encounters, activates
+  linedef 407's real `USE|ONCE|EXIT` switch, and ends alive at tic 4,118 with
+  49 HP, 42 kills, 34 items, one secret, and 143 cells. Two clean replays matched
+  exact state SHA
+  `8a10b3f3fc896ea927f6927a647ed0713a786fe70d88ff33420450b37f7cc51b`.
+  The route exposed and now guards a combat correctness defect: player hitscan,
+  projectile, and splash blockers consulted static sector heights while monster
+  LOS consulted live `sector_state`, so an opened door could pass monster fire
+  but reject player fire. Both paths now use the same session-bound live door
+  geometry. The remaining T8.1 slice is the ordered public transition from
+  `COMPLETED/GAME` to `DONE/INTERMISSION`, milestone frame capture, and the full
+  replay-repeatability gate; do not fake intermission in the route harness.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 

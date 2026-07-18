@@ -29,13 +29,13 @@ More reviewed views include the [shotgun HUD](goldens/t5.4/game-shotgun.png),
 
 ## Current status
 
-P0–P7 and the T8.3 live-play defect closure are complete. P8's deterministic
-E1M1 route has resumed in an isolated route lab. Its latest committed checkpoint
-is tic 3,543: alive at the blue-door approach with 53 HP, 33 kills, 30 items,
-one secret, the blue key, the plasma rifle, and 240 cells. Its exact state SHA
-reproduced twice from the prior accepted checkpoint. The remaining route work
-is the southern combat/exit push, final repeatability, and reviewed milestone
-frames.
+P0–P7 and the original T8.3 live-play defect closure are complete. P8's
+deterministic E1M1 route now reaches the real exit switch in the isolated route
+lab. Two clean post-checkpoint replays ended at tic 4,118 with 49 HP, 42 kills,
+34 items, one secret, and exact state SHA
+`8a10b3f3fc896ea927f6927a647ed0713a786fe70d88ff33420450b37f7cc51b`.
+The next route slice connects that `COMPLETED` state to the public intermission
+workflow, freezes milestone frames, and runs the complete replay gate.
 
 The selected retained worker now supports arbitrary live movement, collision,
 weapon selection, common hitscan/melee fire, `USE`/`WALK` triggers, doors,
@@ -56,6 +56,11 @@ Projectile collision now excludes the owner and includes the separately stored
 player. A deterministic SQL fixture proves the missile travels, leaves its
 owner at 60 HP, and changes player health from 100 to 97 only on tic 7, which
 carries correlated `PROJECTILE_IMPACT` and `PLAYER_DAMAGE` events.
+
+Player hitscan, projectiles, and splash now read live sector heights, matching
+monster line-of-sight when doors move. This removes the asymmetric case where
+monsters could fire through an open doorway while the player's shots still hit
+its original closed geometry; the completed E1M1 route exercises the fix.
 
 The corrected combat path now clears the 30 FPS gate. Two quiescent 300-frame
 FIRE-every-8 runs rendered 300/300 distinct frames at **31.95 FPS** and
