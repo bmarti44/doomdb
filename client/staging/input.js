@@ -1,8 +1,14 @@
 const keyControls = {
     KeyW: 'forward', ArrowUp: 'forward', KeyS: 'backward', ArrowDown: 'backward',
     KeyA: 'turn-left', ArrowLeft: 'turn-left', KeyD: 'turn-right', ArrowRight: 'turn-right',
-    ControlLeft: 'fire', Space: 'use', Tab: 'automap', Escape: 'menu', KeyP: 'pause', KeyM: 'audio'
+    KeyF: 'fire', Space: 'use', Tab: 'automap', Escape: 'menu', KeyP: 'pause', KeyM: 'audio'
 };
+// macOS may reserve a double-Control press for Dictation before the browser
+// can cancel it. Keep classic Doom's Ctrl binding elsewhere and use F on Mac.
+if (!navigator.platform.startsWith('Mac')) {
+    keyControls.ControlLeft = 'fire';
+    keyControls.ControlRight = 'fire';
+}
 const held = new Set();
 function command() {
     return {
@@ -36,19 +42,24 @@ export function bindInput(controls, emit, toggleAudio, gesture) {
     };
     window.addEventListener('keydown', event => {
         const name = keyControls[event.code];
-        if (name === undefined || event.repeat)
+        if (name === undefined)
             return;
+        // A held key continues producing repeat events. Those repeats must also be
+        // cancelled or Control leaks to browser/OS accessibility shortcuts even
+        // though the first press was consumed by the game.
         event.preventDefault();
+        if (event.repeat)
+            return;
         gesture();
         update(name, true);
-    });
+    }, { capture: true });
     window.addEventListener('keyup', event => {
         const name = keyControls[event.code];
         if (name === undefined)
             return;
         event.preventDefault();
         update(name, false);
-    });
+    }, { capture: true });
     const release = () => {
         held.clear();
         emit(command());

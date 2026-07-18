@@ -3,7 +3,11 @@ export function createDoomCanvas(): HTMLCanvasElement {
   canvas.width = 320;
   canvas.height = 200;
   canvas.dataset.doomCanvas = '';
+  canvas.tabIndex = 0;
   canvas.setAttribute('aria-label', 'DoomDB game');
+  canvas.addEventListener('pointerdown', () => {
+    canvas.focus({preventScroll: true});
+  });
   return canvas;
 }
 

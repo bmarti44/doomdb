@@ -19,6 +19,23 @@ try {
     ?.textContent?.includes('pipeline active'), null, {timeout: 120_000});
   await page.waitForTimeout(250);
 
+  const keyboardCapture = await page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    canvas.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true}));
+    const first = new KeyboardEvent('keydown',
+      {code: 'KeyF', bubbles: true, cancelable: true});
+    const repeated = new KeyboardEvent('keydown',
+      {code: 'KeyF', repeat: true, bubbles: true, cancelable: true});
+    const firstCancelled = !window.dispatchEvent(first);
+    const repeatCancelled = !window.dispatchEvent(repeated);
+    window.dispatchEvent(new KeyboardEvent('keyup',
+      {code: 'KeyF', bubbles: true, cancelable: true}));
+    return {canvasFocused: document.activeElement === canvas, firstCancelled, repeatCancelled};
+  });
+  assert.deepEqual(keyboardCapture,
+    {canvasFocused: true, firstCancelled: true, repeatCancelled: true},
+    'click-to-focus or held-key capture failed');
+
   const hashWeapon = () => page.evaluate(async () => {
     const context = document.querySelector('canvas').getContext('2d');
     const bytes = context.getImageData(72, 92, 176, 76).data;
@@ -30,13 +47,13 @@ try {
   await page.waitForTimeout(180);
   await page.keyboard.up('KeyW');
   await page.waitForTimeout(300);
-  await page.keyboard.down('ControlLeft');
+  await page.keyboard.down('KeyF');
   const weaponHashes = [];
   for (let sample = 0; sample < 18; sample += 1) {
     weaponHashes.push(await hashWeapon());
     await page.waitForTimeout(24);
   }
-  await page.keyboard.up('ControlLeft');
+  await page.keyboard.up('KeyF');
   await page.waitForTimeout(600);
 
   const trace = await page.evaluate(() => window.__doomTrace);
