@@ -2,7 +2,7 @@
   "schema":1,
   "task":"T8.2-EVAL",
   "algorithm":"sha256",
-  "approval":"APPROVED AND RE-FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-19 FOR MOCHA RAW-DMF3, SIGNED-AXIS V2, AND PUBLIC INTERMISSION WORKFLOWS; T8.1 NO-CHEAT FULL ROUTE AND T8.2 DEATH/RESTART REMAIN PENDING",
+  "approval":"APPROVED AND RE-FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-19 FOR COMPLETE MOCHA RAW-DMF3, SIGNED-AXIS V2, INTERMISSION, AND NO-CHEAT DEATH/RESTART WORKFLOWS; T8.1 NO-CHEAT FULL ROUTE REMAINS PENDING",
   "dependencies":[
     {"task":"T6.4","status":"IMPLEMENTATION ACCEPTED 848/848"},
     {"task":"T7.1","status":"PRODUCTION ACCEPTED"},
@@ -19,19 +19,20 @@
     {"path":"evaluator/integrity.pending-T8.1.json","sha256":"5d67fa78932123407f390208933cf18bd174604f91bbec73bd43d744d5b665c5"}
   ],
   "files":{
+    "artifacts/t8.2-live/mocha-death-route.json":"d0deb6140bce6ece42e7072e04d0653e845f4122a4d9b8d17147c15dac29b36a",
     "artifacts/t8.2-live/mocha-intermission-route.json":"b98614788440442f9d4ca31c85b57935a05b9a6d887e7fdede662986b8c7767c",
-    "evaluator/t8.2/README.md":"a10262f558b21c544f9dd253e9fc3c61647558193820a715ff7fca98efadd43b",
-    "evaluator/t8.2/browser-test-ids.json":"222c203407a6af335219bc2cb7c49d85bcd6505fa98e844154072e6c7b6709d6",
+    "evaluator/t8.2/README.md":"9ae406aa6d860abd6be20fc5317b2a02bd1e142cdb6d0444bce19afd24210776",
+    "evaluator/t8.2/browser-test-ids.json":"b44f990e2856ef2a370bab3c304dc68c02029783b37568607800e388bc685542",
     "evaluator/t8.2/direct-api.mjs":"445dab0f2bfe63b478e1b5f8a987aff110acd21f50d63e35dc806db4ed679a7a",
-    "evaluator/t8.2/fixtures.json":"ecb98786d4782d1ee33600e9a871a01d86e67d9d3a884139e7220fcefd5fa845",
+    "evaluator/t8.2/fixtures.json":"4fce0d04189e04d464e92ac205281935eeb8ae5b0a30b4daeb098dc1ce5626b5",
     "evaluator/t8.2/mutation-self-check.mjs":"446b38de51ccd93a00c3404b83d952f009d7a2341d31e3a52e9d55fbd47d95fd",
     "evaluator/t8.2/mutation-specs.json":"d43cbb09f44306730b2bf1dd2365d43fcc4b2775937195c0339ece38761fa470",
     "evaluator/t8.2/playwright.config.ts":"73dc41e9d37e05bd0cba2f2d264936a88fa396c86c4d60ace43dc8827a9240a4",
     "evaluator/t8.2/reference.mjs":"42622975064486d1cfbd7353a523410859121fc90e6ce878240b6ae3dac78b73",
-    "evaluator/t8.2/run-visible.sh":"70748ea58795534d8b009468aed4edb4fe3e5ffd25b46f246731fba5302d3537",
-    "evaluator/t8.2/self-check.mjs":"edf676b8ce03bb013c00afb15be2403d9163e2154195bba283e3d7e22488a38a",
+    "evaluator/t8.2/run-visible.sh":"aaeb37b36097dd67a1ceae17bd947ef13a8cc428e50313ff015546c4f61043e6",
+    "evaluator/t8.2/self-check.mjs":"65e9336874dee75589189ecef98644b1e94c00678d4ee199a212bbe5f6c6d1da",
     "evaluator/t8.2/source-audit.mjs":"73d45f14bb86e430c886a92e1e3c966d1a0fd79b0b97e6aa436fe1892f55ff5f",
-    "evaluator/t8.2/test-ids.json":"ff2b1cf505257bf6d27b2a88e06ab84b511520f46e08fb7d03b441a06d789810",
-    "evaluator/t8.2/tests/workflows.spec.ts":"d411b76908175bd0b0449eb2a52d4562e121a9db0e9565554abd9a0b214ec27b"
+    "evaluator/t8.2/test-ids.json":"56edbb44adc5f7aa171e648c4c40da96086caa40ccf07c9e7e493f87b11fad75",
+    "evaluator/t8.2/tests/workflows.spec.ts":"4900bb4a20bd86cf72af850b2b5857b6c861e43a5b15140a5fce362422b2dcb1"
   }
 }

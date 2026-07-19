@@ -1,9 +1,10 @@
 # T8.2 public workflow evaluator
 
 This evaluator freezes the complete presentation workflow without implementing
-or importing production game logic. It drives state-changing controls only as
-version-one commands submitted to the public `DOOM_API.STEP` contract. Direct
-HTTP and pinned-Chromium paths independently exercise the same operations.
+or importing production game logic. It drives in-session controls only as
+versioned commands submitted to the public `DOOM_API.STEP` contract; a restart
+creates a fresh session through public `NEW_GAME`, matching the live client.
+Direct HTTP and pinned-Chromium paths independently exercise the same operations.
 
 ## Frozen control vocabulary
 
@@ -34,9 +35,9 @@ hash, maps bytes through the actual `PLAYPAL` asset, and hashes raw Chromium
 Save/load and rewind continuations are compared tic by tic with uninterrupted
 play. Replay is walked independently after the live session diverges and must
 match stored state/frame/audio while leaving live rows unchanged. Death and
-intermission sessions are evaluator-provisioned before browser launch, then all
-browser mutations occur only through STEP. Restart must equal a fresh E1M1 spawn
-for the retained skill, not a partial resurrection.
+intermission are reached through frozen, no-cheat and cheat-assisted signed-axis
+routes respectively. Restart must create a new session equal to a fresh E1M1
+spawn for the retained skill, not partially resurrect dead state.
 
 All HTTP requests are same-origin `application/json` POSTs to the seven fixed
 AutoREST procedures. Redirects, external origins, base-table paths, internal
@@ -54,6 +55,5 @@ node evaluator/t8.2/source-audit.mjs
 ```
 
 The complete live gate is `bash evaluator/t8.2/run-visible.sh`. It requires a
-real `DOOM_T82_BASE_URL` plus evaluator-provisioned dead and intermission session
-tokens/frontiers. It never substitutes mocks, empty discovery, screenshots, or
-implementation-authored expected files for the real public paths.
+real `DOOM_T82_BASE_URL`. It never substitutes mocks, empty discovery,
+screenshots, or implementation-authored expected files for the real public paths.

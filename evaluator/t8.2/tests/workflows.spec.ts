@@ -7,6 +7,8 @@ if (!base) throw Error('DOOM_T82_BASE_URL is required; browser workflows never s
 const origin = new URL(base).origin;
 const intermissionRoute = JSON.parse(fs.readFileSync(new URL(
   '../../../artifacts/t8.2-live/mocha-intermission-route.json', import.meta.url), 'utf8'));
+const deathRoute = JSON.parse(fs.readFileSync(new URL(
+  '../../../artifacts/t8.2-live/mocha-death-route.json', import.meta.url), 'utf8'));
 
 async function boot(page: any, viewport: {width: number; height: number}) {
   await page.setViewportSize(viewport);
@@ -86,6 +88,7 @@ async function boot(page: any, viewport: {width: number; height: number}) {
       await w.__loadPalette();
       const result = await w.__post('new_game', {p_skill: skill});
       w.__session = w.__value(result, 'p_session');
+      w.__seq = 0;
       return w.__paint(await w.__decode(result));
     };
     w.__step = async (patch: any = {}, version = 1) => {
@@ -200,5 +203,38 @@ test('[T82-PLAYWRIGHT-INTERMISSION] public v2 route paints terminal frame',
     expect(await canvasHash(page)).not.toBe(spawnHash);
     expect(terminal.rgba).toHaveLength(256000);
     expect(spawn.p.mode).toBe('GAME');
+    gate.finish();
+  });
+
+test('[T82-PLAYWRIGHT-DEATH-RESTART] death paints and new game is exact',
+  async ({page}, info) => {
+    info.annotations.push({type: 'doom-assertions', description: '96'});
+    const gate = await boot(page, {width: 1280, height: 720});
+    const spawn = await page.evaluate(skill => (window as any).__new(skill), deathRoute.skill);
+    const spawnCanvas = await canvasHash(page);
+    const firstSession = await page.evaluate(() => (window as any).__session);
+    const commands = deathRoute.runs.flatMap((run: any) =>
+      Array.from({length: run.repeat}, () => run.command));
+    expect(commands).toHaveLength(deathRoute.commandCount);
+    const dead = await page.evaluate(async ({commands, version}) => {
+      let frame: any;
+      for (const command of commands) frame = await (window as any).__step(command, version);
+      return frame;
+    }, {commands, version: deathRoute.envelopeVersion});
+    expect(dead.p.tic).toBe(deathRoute.accepted.terminalTic);
+    expect(dead.p.mode).toBe('DEAD');
+    expect(dead.p.complete).toBe(0);
+    expect(dead.p.state_sha).toBe(deathRoute.accepted.stateSha);
+    expect(dead.p.frame_sha).toBe(deathRoute.accepted.frameSha);
+    expect(await canvasHash(page)).not.toBe(spawnCanvas);
+    const restarted = await page.evaluate(skill => (window as any).__new(skill), deathRoute.skill);
+    const secondSession = await page.evaluate(() => (window as any).__session);
+    expect(secondSession).not.toBe(firstSession);
+    expect(restarted.p.tic).toBe(0);
+    expect(restarted.p.mode).toBe('GAME');
+    expect(restarted.p.complete).toBe(0);
+    expect([restarted.p.state_sha, restarted.p.frame_sha])
+      .toEqual([spawn.p.state_sha, spawn.p.frame_sha]);
+    expect(await canvasHash(page)).toBe(spawnCanvas);
     gate.finish();
   });

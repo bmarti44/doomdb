@@ -47,7 +47,7 @@
       {"turn":-1,"forward":0,"strafe":1,"run":0,"fire":0,"use":1,"weapon":0}
     ]
   },
-  "deathRestart": {"death":{"health":0,"alive":0,"mode":"DEAD"},"restartCommand":"RESTART","restart":{"map":"E1M1","health":100,"alive":1,"mode":"GAME","tic":0}},
+  "deathRestart": {"death":{"health":0,"alive":0,"mode":"DEAD"},"restartCommand":"NEW_GAME","restart":{"map":"E1M1","health":100,"alive":1,"mode":"GAME","tic":0}},
   "intermission": {"mode":"INTERMISSION","complete":1,"gameplayFrozen":true,"requiredFields":["kills","items","secrets","time_tics","state_sha","frame_sha"]},
   "payload": {"keys":["v","tic","w","h","mode","state_sha","frame_sha","cols","audio","complete"],"w":320,"h":200,"columns":320,"rowsPerColumn":200},
   "network": {

@@ -2580,7 +2580,9 @@ the clean-room engine unless it is needed to validate the new public contract.
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 
 - Route: Terra high.
-- Drive each feature only through the public STEP input contract.
+- Drive every in-session feature only through the public STEP input contract;
+  restart uses the existing public NEW_GAME endpoint and a fresh session, as the
+  live Mocha client does.
 - Accept: Playwright plus direct API scenarios cover new game/skill, pause freeze,
   menu navigation, automap modes, each required cheat, save/load, rewind, replay,
   death/restart, and intermission.
@@ -2616,8 +2618,13 @@ the clean-room engine unless it is needed to validate the new public contract.
   `0438e180f3e9a0b644004563223c20f67aaaeddd9a6d41b3dd08070088408921`,
   and frame SHA is
   `7ad3d6e57913d2f2cca837b54a37d74bceeb5b56a52885735b2c5e8718b3f2fe`.
-  T8.2 now retains only browser-visible death/restart; T8.1 retains the distinct
-  uninterrupted no-cheat full-E1M1 route.
+  A second no-cheat, skill-5 demo route reaches the exact DEAD frame at tic 188
+  (state SHA `27563d3aa36e1ef8c1ff230573569a853b732b38d47951f06be93348078a0962`,
+  frame SHA `2982e30c9fc6d2d0f2c36cd3ec05d9a1bb86765cbc0d0451e9bb87ab1a1bb31c`).
+  Its pinned Chromium workflow paints death, starts a new same-skill AutoREST
+  session, and proves a distinct token with byte-identical canonical spawn.
+  T8.2 is complete; T8.1 retains the distinct uninterrupted no-cheat full-E1M1
+  route.
 
 #### T8.3 Live-client playtest defect closure
 

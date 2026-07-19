@@ -1,5 +1,6 @@
-{"schema":1,"task":"T8.2-BROWSER","declaredAssertions":244,"tests":[
+{"schema":1,"task":"T8.2-BROWSER","declaredAssertions":340,"tests":[
  {"id":"T82-PLAYWRIGHT-DESKTOP","assertions":92,"intent":"Pinned desktop Chromium drives actual public STEP workflows and validates raw canvas bytes, state transitions, strict network behavior, and browser health."},
  {"id":"T82-PLAYWRIGHT-MOBILE","assertions":72,"intent":"Pinned mobile Chromium drives pause, menu, automap, save/load, and restart while preserving canonical canvas resolution and strict network behavior."},
- {"id":"T82-PLAYWRIGHT-INTERMISSION","assertions":80,"intent":"Pinned Chromium drives the frozen signed-axis public route to the database-authored intermission frame and verifies its terminal hashes and complete byte."}
+ {"id":"T82-PLAYWRIGHT-INTERMISSION","assertions":80,"intent":"Pinned Chromium drives the frozen signed-axis public route to the database-authored intermission frame and verifies its terminal hashes and complete byte."},
+ {"id":"T82-PLAYWRIGHT-DEATH-RESTART","assertions":96,"intent":"Pinned Chromium drives a no-cheat signed-axis route to the exact database-authored death frame, then starts a new same-skill AutoREST session and verifies the canonical fresh spawn."}
 ]}
