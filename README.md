@@ -59,10 +59,10 @@ Key verified numbers (local two-core Oracle Free stack):
 
 What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 
-- **P8** — finish the remaining reviewed Mocha fixtures (uninterrupted full-
-  E1M1 completion replay and browser-visible death/restart/intermission); the
-  42-request direct AutoREST workflow and desktop/mobile Playwright workflows
-  are green.
+- **P8** — finish the remaining reviewed Mocha fixtures: an uninterrupted,
+  no-cheat full-E1M1 completion replay and browser-visible death/restart. The
+  46-request direct AutoREST workflow and desktop, mobile, and authentic
+  intermission Playwright workflows are green.
 - **P9** — the Oracle `MODEL`-clause title fire animation (T9.1).
 - **P11** — the real S3 + Autonomous Database deployment; blocked only on
   cloud credentials, local dry-runs exist.

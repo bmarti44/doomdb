@@ -145,7 +145,7 @@ create table tic_commands (
   command_seq number(12) not null,
   tic number(12) not null,
   command_ordinal number(1) not null,
-  turn number(1) not null, forward_move number(1) not null, strafe number(1) not null,
+  turn number(3) not null, forward_move number(3) not null, strafe number(3) not null,
   run number(1) not null, fire number(1) not null, use_action number(1) not null,
   weapon_slot number(1) not null, pause_toggle number(1) not null, automap_toggle number(1) not null,
   menu_action varchar2(32) not null,
@@ -157,7 +157,7 @@ create table tic_commands (
   constraint tic_commands_tic_uq unique (session_token, tic, command_ordinal),
   constraint tic_commands_session_fk foreign key (session_token) references game_sessions (session_token) on delete cascade,
   constraint tic_commands_seq_ck check (command_seq > 0 and tic >= 0 and command_ordinal between 0 and 3),
-  constraint tic_commands_axis_ck check (turn between -1 and 1 and forward_move between -1 and 1 and strafe between -1 and 1),
+  constraint tic_commands_axis_ck check (turn between -127 and 127 and forward_move between -127 and 127 and strafe between -127 and 127),
   constraint tic_commands_bool_ck check (run in (0,1) and fire in (0,1) and use_action in (0,1) and pause_toggle in (0,1) and automap_toggle in (0,1)),
   constraint tic_commands_weapon_ck check (weapon_slot between 0 and 9),
   constraint tic_commands_sha_ck check (regexp_like(command_sha, '^[0-9a-f]{64}$'))

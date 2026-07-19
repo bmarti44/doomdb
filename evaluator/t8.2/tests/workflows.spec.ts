@@ -1,9 +1,12 @@
 import {test, expect} from '@playwright/test';
+import fs from 'node:fs';
 import {installStrictPageGuards} from '../../playwright/strict-page.mjs';
 
 const base = process.env.DOOM_T82_BASE_URL;
 if (!base) throw Error('DOOM_T82_BASE_URL is required; browser workflows never skip');
 const origin = new URL(base).origin;
+const intermissionRoute = JSON.parse(fs.readFileSync(new URL(
+  '../../../artifacts/t8.2-live/mocha-intermission-route.json', import.meta.url), 'utf8'));
 
 async function boot(page: any, viewport: {width: number; height: number}) {
   await page.setViewportSize(viewport);
@@ -85,12 +88,12 @@ async function boot(page: any, viewport: {width: number; height: number}) {
       w.__session = w.__value(result, 'p_session');
       return w.__paint(await w.__decode(result));
     };
-    w.__step = async (patch: any = {}) => {
+    w.__step = async (patch: any = {}, version = 1) => {
       const command = {seq: ++w.__seq, turn: 0, forward: 0, strafe: 0, run: 0,
         fire: 0, use: 0, weapon: 0, pause: 0, automap: 0, menu: 'NONE', cheat: '',
         ...patch};
       return w.__paint(await w.__decode(await w.__post('step', {
-        p_session: w.__session, p_commands: JSON.stringify({v: 1, commands: [command]})
+        p_session: w.__session, p_commands: JSON.stringify({v: version, commands: [command]})
       })));
     };
   }, {base});
@@ -174,3 +177,28 @@ test('[T82-PLAYWRIGHT-MOBILE] responsive raw-DMF3 control canvas', async ({page}
     .toEqual([320, 200]);
   gate.finish();
 });
+
+test('[T82-PLAYWRIGHT-INTERMISSION] public v2 route paints terminal frame',
+  async ({page}, info) => {
+    info.annotations.push({type: 'doom-assertions', description: '80'});
+    const gate = await boot(page, {width: 1280, height: 720});
+    const spawn = await page.evaluate(() => (window as any).__new(1));
+    const spawnHash = await canvasHash(page);
+    const commands = intermissionRoute.runs.flatMap((run: any) =>
+      Array.from({length: run.repeat}, () => run.command));
+    expect(commands).toHaveLength(intermissionRoute.commandCount);
+    const terminal = await page.evaluate(async ({commands, version}) => {
+      let frame: any;
+      for (const command of commands) frame = await (window as any).__step(command, version);
+      return frame;
+    }, {commands, version: intermissionRoute.envelopeVersion});
+    expect(terminal.p.tic).toBe(intermissionRoute.accepted.terminalTic);
+    expect(terminal.p.mode).toBe('INTERMISSION');
+    expect(terminal.p.complete).toBe(1);
+    expect(terminal.p.state_sha).toBe(intermissionRoute.accepted.stateSha);
+    expect(terminal.p.frame_sha).toBe(intermissionRoute.accepted.frameSha);
+    expect(await canvasHash(page)).not.toBe(spawnHash);
+    expect(terminal.rgba).toHaveLength(256000);
+    expect(spawn.p.mode).toBe('GAME');
+    gate.finish();
+  });

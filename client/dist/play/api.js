@@ -71,14 +71,14 @@ export async function step(session, command) {
     // timeout returns the immutable committed response instead of applying twice.
     const document = await postStep({
         p_session: session,
-        p_commands: JSON.stringify({ v: 1, commands: [command] })
+        p_commands: JSON.stringify({ v: 2, commands: [command] })
     });
     return stringField(document, 'p_payload');
 }
 export async function submitStep(session, command) {
     const document = await postAsync('submit_step', {
         p_session: session,
-        p_commands: JSON.stringify({ v: 1, commands: [command] })
+        p_commands: JSON.stringify({ v: 2, commands: [command] })
     });
     const request = stringField(document, 'p_request');
     if (!/^[0-9a-f]{32}$/.test(request))

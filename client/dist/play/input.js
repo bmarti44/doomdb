@@ -96,7 +96,9 @@ export function bindInput(canvas, controls, emit, toggleAudio, gesture) {
     document.addEventListener('mousemove', event => {
         if (document.pointerLockElement !== canvas || event.movementX === 0)
             return;
-        mouseTurn = Math.sign(event.movementX);
+        // Envelope v2 preserves a signed mouse delta in Doom's existing turn
+        // byte. Keyboard turns remain -1/0/+1 and retain vanilla acceleration.
+        mouseTurn = Math.max(-127, Math.min(127, Math.round(event.movementX)));
         window.clearTimeout(mouseTurnTimer);
         mouseTurnTimer = window.setTimeout(clearMouseTurn, 48);
         emit(currentCommand());

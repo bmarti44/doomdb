@@ -162,8 +162,10 @@ create or replace package body doom_api as
 
   function byte_hex(p_value number) return varchar2 is
   begin
-    if p_value not in(-1,0,1) then fail(c_bad_request,'invalid movement command');end if;
-    return case p_value when -1 then 'FF' when 0 then '00' else '01' end;
+    if p_value<>trunc(p_value) or p_value not between -127 and 127 then
+      fail(c_bad_request,'invalid signed-byte command');
+    end if;
+    return lpad(to_char(mod(p_value+256,256),'fmxx'),2,'0');
   end;
 
   function u64_hex(p_value number) return varchar2 is
@@ -183,7 +185,7 @@ create or replace package body doom_api as
     p_session in varchar2,p_commands in clob,p_async in number,p_used out number,
     p_request_out out varchar2,p_payload out blob
   ) is
-    l_count number;l_seq number;l_turn number;l_forward number;l_strafe number;
+    l_input_version number;l_count number;l_seq number;l_turn number;l_forward number;l_strafe number;
     l_run number;l_fire number;l_use number;l_weapon number;l_pause number;
     l_automap number;l_menu varchar2(32);l_cheat varchar2(4000);
     l_lineage varchar2(64);l_tic number;l_expected_seq number;l_fire_supported number;
@@ -204,6 +206,8 @@ create or replace package body doom_api as
       return;
     end if;
     begin
+      select json_value(p_commands,'$.v' returning number error on error)
+        into l_input_version from dual;
       select count(*),min(seq),min(turn),min(forward_move),min(strafe),min(run),
         min(fire),min(use_action),min(weapon),min(pause_toggle),min(automap_toggle),
         min(menu_action),min(cheat_json)
@@ -226,10 +230,16 @@ create or replace package body doom_api as
       if p_async=1 then fail(c_bad_request,'invalid retained command JSON');end if;
       return;
     end;
-    if l_count<>1 or l_seq is null or l_turn is null or l_forward is null or
+    if l_input_version not in(1,2) or
+       (l_input_version=2 and config_text('GAME_ENGINE','SQL')<>'MOCHA') or
+       l_count<>1 or l_seq is null or l_turn is null or l_forward is null or
        l_strafe is null or l_run is null or
-       l_turn not in(-1,0,1) or l_forward not in(-1,0,1) or
-       l_strafe not in(-1,0,1) or l_run not in(0,1) or
+       (l_input_version=1 and l_turn not in(-1,0,1)) or
+       (l_input_version=2 and (l_turn<>trunc(l_turn) or l_turn not between -127 and 127 or
+         l_forward<>trunc(l_forward) or l_forward not between -127 and 127 or
+         l_strafe<>trunc(l_strafe) or l_strafe not between -127 and 127)) or
+       (l_input_version=1 and (l_forward not in(-1,0,1) or l_strafe not in(-1,0,1))) or
+       l_run not in(0,1) or
        coalesce(l_fire,0) not in(0,1) or coalesce(l_use,0) not in(0,1) or
        (coalesce(l_use,0)=1 and config_text('GAME_ENGINE','SQL')<>'MOCHA' and
         config_number('UNIFIED_WORKER_SPLIT_USE_ENABLED',0)<>1) or

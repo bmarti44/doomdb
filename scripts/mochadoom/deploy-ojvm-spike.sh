@@ -340,6 +340,11 @@ done
   printf '%s\n' 'whenever sqlerror exit failure rollback'
   printf '%s\n' 'set heading off feedback off pages 0 lines 32767 serveroutput on'
   printf '%s\n' "merge into doom_config d using(select 'GAME_ENGINE' config_key,'MOCHA' text_value from dual)s on(d.config_key=s.config_key) when not matched then insert(config_key,text_value) values(s.config_key,s.text_value);"
+  # Command envelope v2 uses the already-packed signed axis bytes for exact
+  # mouse/demo input. Preserve v1's -1/0/+1 behavior while widening storage.
+  printf '%s\n' 'alter table tic_commands drop constraint tic_commands_axis_ck;'
+  printf '%s\n' 'alter table tic_commands modify (turn number(3),forward_move number(3),strafe number(3));'
+  printf '%s\n' 'alter table tic_commands add constraint tic_commands_axis_ck check(turn between -127 and 127 and forward_move between -127 and 127 and strafe between -127 and 127);'
   cat "$root/sql/sim/082_mochadoom_bridge.sql"
   # Reinstall dependants after the Java call/bridge signatures. This ordering
   # prevents a successful class replacement from leaving the live AutoREST

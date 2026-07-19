@@ -213,9 +213,9 @@ public final class DoomDbMochaAdapter {
         if (!initialized.startsWith("ok|")) return initialized;
       }
       if (output == null) throw new IllegalArgumentException("output BLOB required");
-      turn = clamp(turn, -1, 1);
-      forward = clamp(forward, -1, 1);
-      strafe = clamp(strafe, -1, 1);
+      turn = clamp(turn, -127, 127);
+      forward = clamp(forward, -127, 127);
+      strafe = clamp(strafe, -127, 127);
       run = clamp(run, 0, 1);
       fire = clamp(fire, 0, 1);
       use = clamp(use, 0, 1);
@@ -225,13 +225,14 @@ public final class DoomDbMochaAdapter {
       menu = clamp(menu, 0, 1);
       cheat = clamp(cheat, 0, 4);
 
-      if (turn == 0) {
+      boolean mouseTurn = Math.abs(turn) > 1;
+      if (turn == 0 || mouseTurn) {
         controlTurnHeld = 0;
       } else {
         controlTurnHeld += engine.getTicdup();
       }
-      int turnMagnitude = controlTurnHeld < 6 ? 320
-          : (run == 1 ? 1280 : 640);
+      int turnMagnitude = mouseTurn ? Math.abs(turn) * 256
+          : controlTurnHeld < 6 ? 320 : (run == 1 ? 1280 : 640);
       int buttons = (fire == 1 ? data.Defines.BT_ATTACK : 0)
           | (use == 1 ? data.Defines.BT_USE : 0);
       if (weapon > 0) {
@@ -246,10 +247,12 @@ public final class DoomDbMochaAdapter {
       int buffer = (engine.gametic / engine.getTicdup())
           % engine.netcmds[engine.consoleplayer].length;
       doom.ticcmd_t command = engine.netcmds[engine.consoleplayer][buffer];
-      command.forwardmove = (byte) (forward * (run == 1 ? 50 : 25));
-      command.sidemove = (byte) (strafe * (run == 1 ? 40 : 24));
+      command.forwardmove = (byte) (Math.abs(forward) > 1
+          ? forward : forward * (run == 1 ? 50 : 25));
+      command.sidemove = (byte) (Math.abs(strafe) > 1
+          ? strafe : strafe * (run == 1 ? 40 : 24));
       // Public +1 is turn-right; vanilla represents right as a negative delta.
-      command.angleturn = (short) (-turn * turnMagnitude);
+      command.angleturn = (short) (-Math.signum(turn) * turnMagnitude);
       // Single-player consistency is otherwise unused. Persist presentation
       // controls here so the canonical eight-byte ticcmd ledger reconstructs
       // automap, menu, and cheat state across save/load and worker restarts.

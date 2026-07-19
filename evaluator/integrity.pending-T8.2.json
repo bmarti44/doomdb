@@ -2,7 +2,7 @@
   "schema":1,
   "task":"T8.2-EVAL",
   "algorithm":"sha256",
-  "approval":"APPROVED AND RE-FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-19 FOR THE MOCHA RAW-DMF3 AUTOREST WORKFLOW; T8.1 FULL-ROUTE DEATH AND INTERMISSION ACCEPTANCE REMAIN PENDING",
+  "approval":"APPROVED AND RE-FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-19 FOR MOCHA RAW-DMF3, SIGNED-AXIS V2, AND PUBLIC INTERMISSION WORKFLOWS; T8.1 NO-CHEAT FULL ROUTE AND T8.2 DEATH/RESTART REMAIN PENDING",
   "dependencies":[
     {"task":"T6.4","status":"IMPLEMENTATION ACCEPTED 848/848"},
     {"task":"T7.1","status":"PRODUCTION ACCEPTED"},
@@ -19,18 +19,19 @@
     {"path":"evaluator/integrity.pending-T8.1.json","sha256":"5d67fa78932123407f390208933cf18bd174604f91bbec73bd43d744d5b665c5"}
   ],
   "files":{
+    "artifacts/t8.2-live/mocha-intermission-route.json":"b98614788440442f9d4ca31c85b57935a05b9a6d887e7fdede662986b8c7767c",
     "evaluator/t8.2/README.md":"a10262f558b21c544f9dd253e9fc3c61647558193820a715ff7fca98efadd43b",
-    "evaluator/t8.2/browser-test-ids.json":"20adf55bf2c32cc4c5f6af84ffcf030f5513b301df8c2d0dbd17d233a5b7c334",
-    "evaluator/t8.2/direct-api.mjs":"4e5ce751dca30f51501b81f6cebc8887d66e3db96568cf9fbadb8b24710a4ccf",
+    "evaluator/t8.2/browser-test-ids.json":"222c203407a6af335219bc2cb7c49d85bcd6505fa98e844154072e6c7b6709d6",
+    "evaluator/t8.2/direct-api.mjs":"445dab0f2bfe63b478e1b5f8a987aff110acd21f50d63e35dc806db4ed679a7a",
     "evaluator/t8.2/fixtures.json":"ecb98786d4782d1ee33600e9a871a01d86e67d9d3a884139e7220fcefd5fa845",
     "evaluator/t8.2/mutation-self-check.mjs":"446b38de51ccd93a00c3404b83d952f009d7a2341d31e3a52e9d55fbd47d95fd",
     "evaluator/t8.2/mutation-specs.json":"d43cbb09f44306730b2bf1dd2365d43fcc4b2775937195c0339ece38761fa470",
     "evaluator/t8.2/playwright.config.ts":"73dc41e9d37e05bd0cba2f2d264936a88fa396c86c4d60ace43dc8827a9240a4",
     "evaluator/t8.2/reference.mjs":"42622975064486d1cfbd7353a523410859121fc90e6ce878240b6ae3dac78b73",
-    "evaluator/t8.2/run-visible.sh":"bc27523cd18062d7635bd9b18146b634e0868441f870f36aaeab0cabf9f391ba",
-    "evaluator/t8.2/self-check.mjs":"08df8c06ca08abfed680af4dd0eeb9006248618c8b669b88415717b329395a9e",
+    "evaluator/t8.2/run-visible.sh":"70748ea58795534d8b009468aed4edb4fe3e5ffd25b46f246731fba5302d3537",
+    "evaluator/t8.2/self-check.mjs":"edf676b8ce03bb013c00afb15be2403d9163e2154195bba283e3d7e22488a38a",
     "evaluator/t8.2/source-audit.mjs":"73d45f14bb86e430c886a92e1e3c966d1a0fd79b0b97e6aa436fe1892f55ff5f",
-    "evaluator/t8.2/test-ids.json":"cc73d22dcfc7d22ac5e8fe4dc87f8ec83ad53f52b2f6f7e74601cf9bb101a9a9",
-    "evaluator/t8.2/tests/workflows.spec.ts":"7f6a56910a6d9f24a8728158429ce0b7c21e68a9974c4b234268e46bc318c7d9"
+    "evaluator/t8.2/test-ids.json":"ff2b1cf505257bf6d27b2a88e06ab84b511520f46e08fb7d03b441a06d789810",
+    "evaluator/t8.2/tests/workflows.spec.ts":"d411b76908175bd0b0449eb2a52d4562e121a9db0e9565554abd9a0b214ec27b"
   }
 }

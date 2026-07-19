@@ -127,8 +127,8 @@ create or replace package body doom_mocha_bridge as
     l_previous_state_sha varchar2(64):=rpad('0',64,'0');
     l_audio_json varchar2(4000);l_audio_ordinal number:=0;
   begin
-    if p_turn not between -1 and 1 or p_forward not between -1 and 1 or
-       p_strafe not between -1 and 1 or p_run not in(0,1) or
+    if p_turn not between -127 and 127 or p_forward not between -127 and 127 or
+       p_strafe not between -127 and 127 or p_run not in(0,1) or
        p_fire not in(0,1) or p_use not in(0,1) or p_weapon not between 0 and 9 or
        p_pause not in(0,1) or p_automap not in(0,1) or p_menu not in(0,1) or
        p_cheat not between 0 and 4 or

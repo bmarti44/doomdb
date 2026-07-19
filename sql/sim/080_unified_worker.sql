@@ -432,8 +432,8 @@ create or replace package body doom_unified_worker as
     l_flags:=byte_value(24);l_pause:=bitand(l_flags,1);
     l_automap:=bitand(l_flags,2)/2;l_menu:=bitand(l_flags,4)/4;
     l_cheat:=floor(l_flags/8);
-    if l_turn not between -1 and 1 or l_forward not between -1 and 1 or
-       l_strafe not between -1 and 1 or l_run not in(0,1) or
+    if l_turn not between -127 and 127 or l_forward not between -127 and 127 or
+       l_strafe not between -127 and 127 or l_run not in(0,1) or
        l_fire not in(0,1) or l_use not in(0,1) or l_weapon not between 0 and 9 or
        l_cheat not between 0 and 4 or l_flags<>l_pause+l_automap*2+l_menu*4+l_cheat*8 then
       raise_application_error(c_invalid,'Mocha normalized command fence');

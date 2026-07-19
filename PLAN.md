@@ -2601,9 +2601,23 @@ the clean-room engine unless it is needed to validate the new public contract.
   generated AutoREST procedures. The focused live-client contract also proves
   that the dedicated button is the only fullscreen entry, Tab is the Doom menu
   command, and Escape exits browser capture/fullscreen without becoming a game
-  menu command. The remaining T8.2 acceptance is the browser-visible
-  death/restart/intermission route, which depends on the remaining T8.1 full
-  route fixture.
+  menu command.
+- Signed-input/intermission checkpoint (2026-07-19): public command envelope v2
+  admits exact signed Doom axis bytes (`-127..127`) for Mocha sessions while v1
+  remains frozen at normalized `-1/0/+1`; keyboard acceleration and every
+  durable eight-byte ticcmd/reconstruction contract are unchanged. The client
+  now preserves pointer-lock mouse deltas instead of reducing them to a sign.
+  A pinned Freedoom 0.13 E1M1 demo supplies the authentic first 250 commands;
+  because Mocha's movement compatibility diverges from that complevel-3 demo,
+  a measured NOCLIP-assisted suffix closes only the T8.2 presentation fixture,
+  not T8.1's no-cheat acceptance. Three pinned Chromium workflows now drive the
+  public AutoREST API on desktop, mobile, and through 343 commands to a complete
+  intermission frame. The terminal tic is 343, state SHA is
+  `0438e180f3e9a0b644004563223c20f67aaaeddd9a6d41b3dd08070088408921`,
+  and frame SHA is
+  `7ad3d6e57913d2f2cca837b54a37d74bceeb5b56a52885735b2c5e8718b3f2fe`.
+  T8.2 now retains only browser-visible death/restart; T8.1 retains the distinct
+  uninterrupted no-cheat full-E1M1 route.
 
 #### T8.3 Live-client playtest defect closure
 

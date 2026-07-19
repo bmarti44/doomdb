@@ -1,8 +1,8 @@
 {
-  "schema":1,"task":"T8.2","declaredAssertions":323056,
+  "schema":1,"task":"T8.2","declaredAssertions":323136,
   "tests":[
     {"id":"T82-NEW-GAME-SKILLS","assertions":92,"intent":"Public NEW_GAME accepts exactly integral skills one through five, rejects every reviewed invalid type and range without a session row, and returns a fresh opaque token plus canonical spawn payload."},
-    {"id":"T82-STEP-ONLY-CONTROLS","assertions":48,"intent":"Pause, menus, automap, cheats, rewind, death restart, and intermission controls enter production exclusively as exact version-one STEP command fields with no alternate state-changing endpoint."},
+    {"id":"T82-STEP-ONLY-CONTROLS","assertions":48,"intent":"Pause, menus, automap, cheats, rewind, death restart, intermission, and signed axes enter production exclusively as exact versioned STEP command fields with no alternate state-changing endpoint."},
     {"id":"T82-PAUSE-FREEZE","assertions":64092,"intent":"A pause toggle renders the exact pause presentation while movement, use, fire, RNG, actors, sector machines, pickups, damage, and audio remain frozen across hostile held inputs until unpause."},
     {"id":"T82-PAUSE-HISTORY","assertions":44,"intent":"Paused commands still advance logical tic and the global command frontier exactly once, append only control history, retry idempotently, and preserve replay reconstruction."},
     {"id":"T82-MENU-NAVIGATION","assertions":192,"intent":"OPEN, DOWN, UP, SELECT, and BACK traverse the frozen ordered menu states exactly, clamp or wrap only as specified, freeze gameplay, and alter only reviewed menu canvas regions."},
@@ -26,6 +26,7 @@
     {"id":"T82-CANONICAL-CANVAS","assertions":836,"intent":"Every workflow payload has exactly 320 adjacent complete RLE columns, expands to exactly 64000 palette indices, matches frame_sha, and maps through the reviewed PLAYPAL to exact raw canvas RGBA bytes."},
     {"id":"T82-PLAYWRIGHT-DESKTOP","assertions":92,"intent":"Pinned Chromium drives the actual public workflow at desktop size, validates exact canvas byte hashes and state transitions, and fails on console, page, request, response, decode, network, or assertion errors."},
     {"id":"T82-PLAYWRIGHT-MOBILE","assertions":72,"intent":"Pinned Chromium at the reviewed mobile viewport drives pause, menus, automap, save/load and restart without changing raw 320 by 200 canvas bytes or issuing any non-AutoREST gameplay request."},
+    {"id":"T82-PLAYWRIGHT-INTERMISSION","assertions":80,"intent":"Pinned Chromium drives the frozen signed-axis public route through generated AutoREST, paints the terminal database frame, and pins its complete byte plus state and frame identities."},
     {"id":"T82-METAMORPHIC-CONTINUATIONS","assertions":124,"intent":"Single versus batched STEP, retry, uninterrupted, save-load, rewind, and replay paths agree on canonical logical state, frame, ordered event/audio history, RNG consumption, and terminal completion."},
     {"id":"T82-SOURCE-POLICY","assertions":72,"intent":"Production exposes only the fixed package boundary, keeps helpers private and SQL-owned, and contains no evaluator coupling, client simulation, dynamic SQL, autonomous transaction, host nondeterminism, or hidden endpoint."},
     {"id":"T82-MUTATION-WITNESSES","assertions":96,"intent":"Every isolated workflow, persistence, canvas, API, ordering, error-atomicity, and anti-reward-hacking mutation has a focused semantic witness with green baseline and unrelated health canaries."}
