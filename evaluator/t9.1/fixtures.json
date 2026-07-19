@@ -11,5 +11,16 @@
   "storage": {"table":"DOOM_FIRE_FRAME_RUN","key":["FRAME_NO","RUN_NO"],"columns":["START_OFFSET","RUN_LENGTH","INTENSITY"],"flattening":"offset=y*160+x"},
   "generator": {"package":"DOOM_FIRE","procedure":"GENERATE"},
   "feasibility": {"small":{"frames":8,"width":16,"height":12},"full":{"frames":150,"width":160,"height":96},"maxEstimatedBytes":268435456},
-  "visualReview": {"status":"PENDING","artifactSha256":null,"reviewedFrameHashes":[],"note":"Must be a real 150-frame animation decoded from accepted Oracle RLE rows; no evaluator-generated image is a visual golden."}
+  "visualReview": {
+    "status":"APPROVED",
+    "artifactSha256":"79c27b9755741d90c75d405b3ecb01a3dd676957d5517266acffdbf9c24169b3",
+    "reviewedFrameHashes":[
+      "2566ba337ed0f31a9de3ded6c144865826f4ff88115602704f52f9a70c287824",
+      "ac0d701c925ff0c9a4da440801bd58a9d39a9be60fe9f235a86d9c8d2308a111",
+      "e486c622732061ebd2b2d8d55474004b9f87e81b457bf1729f89d0e99e27a113",
+      "722e1a3f34342492676563a7a2d978530016443dcfdaa6f5f5a68fb8a8e59b21",
+      "daa88a67ac0d492f009a515b69bdad1a463683392949320bc070c4ef17220d0a"
+    ],
+    "note":"Approved under the user's standing authorization after inspection of the real database-derived 150-frame APNG and exact frames 0, 35, 75, 110, and 149 on 2026-07-19; the client contains no cellular simulation."
+  }
 }

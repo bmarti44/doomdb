@@ -14,5 +14,5 @@
   "reportMetrics": ["endToEndMs", "databaseMs", "ordsMs", "decodeBlitMs", "r1Ms", "r2Ms", "payloadBytes", "effectiveFps"],
   "forbiddenPayloadKeys": ["r1Ms", "r2Ms", "databaseMs", "ordsMs", "stageTimers", "sqlId", "planHash"],
   "forbiddenSecretPatterns": ["authorization", "bearer ", "password", "passwd", "secret", "token", "jdbc:", "oraclecloud.com", "amazonaws.com", "ordsBaseUrl", "wallet", "private_key"],
-  "ancestry": {"t11_2": "6c131343e5d3a1de14576df654cc993f81c665fe175320e030df9b8f0c003d3c"}
+  "ancestry": {"t11_2": "5422ee7e3c135f2c40e6eff8772b14361ca1c514ca134a78abeb4a54087608da"}
 }

@@ -10,9 +10,10 @@ const keyControls: Record<string, ControlName> = {
   KeyW: 'forward', ArrowUp: 'forward', KeyS: 'backward', ArrowDown: 'backward',
   KeyA: 'turn-left', ArrowLeft: 'turn-left', KeyD: 'turn-right', ArrowRight: 'turn-right',
   KeyF: 'fire', Space: 'use', Tab: 'menu', KeyM: 'automap',
-  // Escape belongs to the browser: it releases the pointer capture and (held)
-  // exits fullscreen. Binding it to the database menu made one key race three
-  // behaviors, so Tab opens the Doom menu and Escape stays a pure release.
+  // Escape belongs to the browser: one press releases pointer capture and
+  // exits fullscreen when active. Binding it to the database menu made one
+  // key race three behaviors, so Tab opens the Doom menu and Escape stays a
+  // pure release.
   Escape: 'release', KeyP: 'pause', KeyV: 'audio',
   // Classic Ctrl-fire is bound everywhere. macOS reserves rapid double-Control
   // presses for Dictation, which only the dedicated fullscreen Keyboard Lock

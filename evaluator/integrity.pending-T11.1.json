@@ -13,9 +13,9 @@
   ],
   "approvedBaselines": [
     {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
-    {"path":"evaluator/integrity.pending-T10.1.json","sha256":"87ed9f9af1239536ac0d0fc559ca9f0ede21259ca601920f575a3059406120d6"},
-    {"path":"evaluator/integrity.pending-T10.2.json","sha256":"76674b880fad2197d2b8da01c415a76ccf8675cb5d459ce597f250b97d6f42d1"},
-    {"path":"evaluator/integrity.pending-T10.3.json","sha256":"530095621f343aae15a6dcbe1c19fe1164c17e93f23e412279150a3e5277ef3e"}
+    {"path":"evaluator/integrity.pending-T10.1.json","sha256":"aa349eaab74065c6a347fd7555ce9c42c4fdfcd8927ab6d1abad3d0bd255179c"},
+    {"path":"evaluator/integrity.pending-T10.2.json","sha256":"ba61881413a65285fe7dd56bccb04c945c34ef3c0c4b12071230c54cf74ed4dc"},
+    {"path":"evaluator/integrity.pending-T10.3.json","sha256":"5fbd29cb2936e320fa93ae5d1f6e8309f6664ad54d7c1b391c29e7b2d034fee9"}
   ],
   "files": {
     "evaluator/t11.1/README.md":"5b120e95bdc0619b6e6ecf1d914aef9987973c953ac7dad7747ae90ce5b6bf91",
@@ -24,7 +24,7 @@
     "evaluator/t11.1/mutation-specs.json":"21b445d3ed18134d339f426d0b79fed700517666950848fa7db820011b2d3c74",
     "evaluator/t11.1/reference.mjs":"82f5fdab00d603d6ac28af606ffdd6285742f92765643cea300e483789e131d0",
     "evaluator/t11.1/run-visible.sh":"c6c88d05caa428eeb12937fddd7ed7adefb33c8f20764dc066fd732b452271fa",
-    "evaluator/t11.1/self-check.mjs":"493e441cc86a6cb4b64b92e4f6ebc6f635e521e7e449b52d3af94db6dd84f435",
+    "evaluator/t11.1/self-check.mjs":"74ff42eecf9908038d4c0d94683c7b6fcec1f842e3cb0670d12627d4acd462ed",
     "evaluator/t11.1/source-audit.mjs":"3ee9d82bb1528b063b3f7749a0ba2b00ed850f03742ad97aed04d3d9f12740e4",
     "evaluator/t11.1/test-ids.json":"16a8a86cd2267c21aed25c68081544eadeb03c30b284aa54c9a74c85e7316469",
     "evaluator/t11.1/validate-evidence.mjs":"c821ff31ec3fbf0686af647d9d45a872c520b2405f1683cbbc15ad8627329ba9"

@@ -23,12 +23,15 @@ authoritative record.
   the 2026-07-19 checkpoints added worker-admission self-healing, bounded
   eviction, the canonical presentation contract, collision-free key bindings,
   speculative skill-menu game allocation, and a byte-exact pre-warmed standby.
-  The complete eleven-gate Mocha core suite and the P8.2 direct AutoREST
-  workflow are green; the full E1M1 route and final P8.2 Playwright replacement
-  are the remaining selection work.
-- **Next:** P8 replacement Mocha fixtures (uninterrupted E1M1 completion
-  replay, workflow coverage), P9 MODEL fire, P11 real S3 + Autonomous cloud
-  deployment (needs credentials; local dry-runs exist), then the full
+  The complete eleven-gate Mocha core suite, the P8.2 direct AutoREST workflow,
+  and all four P8.2 browser workflows are green. A repeatable 762-command
+  no-cheat route completes E1M1; the broader normal-skill-3 resource/combat/
+  key/lift/secret matrix remains open. P9 is complete: two independent
+  full-size Oracle MODEL runs produced the same 604,369 RLE rows, all 150
+  frame hashes, and canonical animation SHA.
+- **Next:** finish the exhaustive P8.1 skill-3 route; then P11 real S3 +
+  Autonomous cloud deployment (needs
+  credentials; local dry-runs exist), followed by the full
   T12.1/T12.2 local-and-cloud 300-frame performance protocol, then P13
   multiplayer.
 - **Known cost:** cold Mocha engine construction in a fresh worker session is
@@ -2362,8 +2365,8 @@ the clean-room engine unless it is needed to validate the new public contract.
   mapping and cannot collide with fire, menu, Escape, or Pointer Lock.
 - Collision-free key map (2026-07-19): Escape had three simultaneous meanings
   (database menu, pointer-lock release, fullscreen exit). Escape is now
-  reserved for the browser — tap releases the captured mouse, hold exits
-  fullscreen — while the Doom menu moved to Tab, the automap to M, and audio
+  reserved for the browser — one press releases the captured mouse and exits
+  fullscreen when active — while the Doom menu moved to Tab, the automap to M, and audio
   toggle to V. Escape stays a bound no-op control so the reviewed T10.2
   keyboard contract (every bound key emits a command) is unchanged, and the
   pre-game skill menu keeps Escape as back.
@@ -2686,6 +2689,10 @@ the clean-room engine unless it is needed to validate the new public contract.
 - Accept: cell/range invariants, independent TS cellular reference, exact frame
   hashes, mutation checks, and a human-reviewed animation pass. Full-size failure
   blocks; do not reduce frames or dimensions.
+- Completed 2026-07-19: two independent full-size production executions each
+  stored 604,369 canonical RLE rows and reproduced all 150 frame hashes plus
+  animation SHA `b1eac353252af51494cfe4ca77a80ac2bad502761bbaf79dd382f1146cb7e4ba`.
+  The database-derived APNG and five exact review frames passed visual review.
 
 ### P10 - AutoREST integration and thin client
 

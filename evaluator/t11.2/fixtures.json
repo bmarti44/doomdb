@@ -11,5 +11,5 @@
   "browserCases":["S3_DOCUMENT","CORS_PREFLIGHT","NEW_GAME","STEP","ASSET_PLAYPAL","ASSET_AUDIO","CANVAS_RGBA","AUDIO_EVENT","SAVE_LOAD","REPLAY","COMPLETION_SMOKE"],
   "apiFamilies":["NEW_GAME","STEP","GET_ASSET","SAVE","LOAD","REPLAY"],
   "forbiddenEvidencePatterns":["aws_access","secret_access","session_token","authorization","bearer ","bucket","region","account_id","password","wallet","private_key","adb_ords","https://","http://","s3.amazonaws","oraclecloud","game_token","session_id"],
-  "ancestry":{"t10_2":"76674b880fad2197d2b8da01c415a76ccf8675cb5d459ce597f250b97d6f42d1","t10_3":"530095621f343aae15a6dcbe1c19fe1164c17e93f23e412279150a3e5277ef3e","t11_1":"04d1282dfc05f918a471737ccef1b065232c4d4ff7977abbf675dda3f03459ea"}
+  "ancestry":{"t10_2":"ba61881413a65285fe7dd56bccb04c945c34ef3c0c4b12071230c54cf74ed4dc","t10_3":"5fbd29cb2936e320fa93ae5d1f6e8309f6664ad54d7c1b391c29e7b2d034fee9","t11_1":"c271b6723b1f6685e01ea01bd565ca4a11df478e069e6d37ea88d440da1e3f1f"}
 }

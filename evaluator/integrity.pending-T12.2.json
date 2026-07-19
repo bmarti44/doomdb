@@ -9,11 +9,11 @@
     {"task":"T12.2","status":"PRODUCTION OPTIMIZATION DRIVER, REAL ATTEMPTS, HUMAN BOTTLENECK REVIEW, AND LOCAL/CLOUD EVIDENCE PENDING"}
   ],
   "approvedBaselines": [
-    {"path":"evaluator/integrity.pending-T12.1.json","sha256":"2fcdd0f204ea7a248f29970be8a6ce56f6a18b3e3f4ff4bd2c10a9c5a7d1cd93"}
+    {"path":"evaluator/integrity.pending-T12.1.json","sha256":"8a93c521c4facb04f59f07a85ec4d8b701bfa340f1b4e72b6bb4228c949551d4"}
   ],
   "files": {
     "evaluator/t12.2/README.md":"146747f37b8a7ccd78cac5da7d4779fe3c64926958992ddb44443248c3cfc74a",
-    "evaluator/t12.2/fixtures.json":"9ed998a41e61696419b095374725b79832d0ef056ce7b483859e8dac97402e8a",
+    "evaluator/t12.2/fixtures.json":"0079621f6cbb5a7fd5c9ebb93d0e488c81a581112dfefa450cbedec88ef40a9d",
     "evaluator/t12.2/mutation-self-check.mjs":"3110bd7ef4341afd66bb786ccc27a68d41f6c372734074824bdb4a23b83f7c59",
     "evaluator/t12.2/mutation-specs.json":"b78e214a9d37ffb0a08521a9f20de7c7dede3115ff3a2457e2826fcc46da58e5",
     "evaluator/t12.2/reference.mjs":"f805e9d1aa53dbe82e8191704e0dbdfa7b804bf5664bf1ca7978c895173e4a81",

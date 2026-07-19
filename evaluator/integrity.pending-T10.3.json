@@ -10,8 +10,8 @@
   ],
   "approvedBaselines": [
     {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
-    {"path":"evaluator/integrity.pending-T10.1.json","sha256":"87ed9f9af1239536ac0d0fc559ca9f0ede21259ca601920f575a3059406120d6"},
-    {"path":"evaluator/integrity.pending-T10.2.json","sha256":"76674b880fad2197d2b8da01c415a76ccf8675cb5d459ce597f250b97d6f42d1"}
+    {"path":"evaluator/integrity.pending-T10.1.json","sha256":"aa349eaab74065c6a347fd7555ce9c42c4fdfcd8927ab6d1abad3d0bd255179c"},
+    {"path":"evaluator/integrity.pending-T10.2.json","sha256":"ba61881413a65285fe7dd56bccb04c945c34ef3c0c4b12071230c54cf74ed4dc"}
   ],
   "files": {
     "evaluator/t10.3/README.md":"9383897fa5f13e9fc4357a460eca6e2b9ab0c9ee33466055d0235cd272142f5d",

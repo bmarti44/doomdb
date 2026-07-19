@@ -8,11 +8,11 @@
     {"task":"T12.1","status":"PRODUCTION BASELINE DRIVER, REAL REPLAY, DATABASE OBSERVATIONS, AND RAW/REPORT ARTIFACTS PENDING"}
   ],
   "approvedBaselines": [
-    {"path":"evaluator/integrity.pending-T11.2.json","sha256":"6c131343e5d3a1de14576df654cc993f81c665fe175320e030df9b8f0c003d3c"}
+    {"path":"evaluator/integrity.pending-T11.2.json","sha256":"5422ee7e3c135f2c40e6eff8772b14361ca1c514ca134a78abeb4a54087608da"}
   ],
   "files": {
     "evaluator/t12.1/README.md":"8e7c9ee235869d3e33e746e77a0ce2d0871dc35570a5336dd969f732f89cd48c",
-    "evaluator/t12.1/fixtures.json":"724d93dd9a209bd8d68cbbea25b7da4f86775610aa54cd0aa7653ee7c4fa8cea",
+    "evaluator/t12.1/fixtures.json":"324592bda2eac1958e0568e9022e9ed97b0f4b95002b7ed759fb8689c7f6d2ba",
     "evaluator/t12.1/mutation-self-check.mjs":"d4c1a4d75934dedcd5224dc2d5c2b81897e7de450dc120c66f6c12c161c5d7cd",
     "evaluator/t12.1/mutation-specs.json":"0527030215fa686fc868f67b8e6f30bbc89a6d609c29fb39c6aea8dc97e15d17",
     "evaluator/t12.1/reference.mjs":"a5daca56a6957349871c685b9adc23701bc9ef5d7a5e5d0d3e09f4757bfc2fb0",

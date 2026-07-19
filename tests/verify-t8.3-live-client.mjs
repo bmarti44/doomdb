@@ -138,13 +138,27 @@ try {
     'captured relative mouse movement did not reach the command register');
   assert.ok(mouseTrace.some(row => row.name === 'input' && row.command.fire === 1),
     'captured left mouse button did not reach the command register');
+
+  const tabTraceStart = await page.evaluate(() => window.__doomTrace.length);
+  await page.keyboard.down('Tab');
+  await page.waitForTimeout(40);
+  await page.keyboard.up('Tab');
+  const tabTrace = (await page.evaluate(() => window.__doomTrace)).slice(tabTraceStart);
+  assert.ok(tabTrace.some(row => row.name === 'input' && row.command.menu === 'OPTIONS'),
+    'Tab did not emit the Doom menu command');
+
+  const escapeTraceStart = await page.evaluate(() => window.__doomTrace.length);
   await page.keyboard.press('Escape');
-  await page.evaluate(() => document.exitPointerLock());
   await page.waitForFunction(() => document.pointerLockElement === null);
+  const escapeTrace = (await page.evaluate(() => window.__doomTrace)).slice(escapeTraceStart)
+    .filter(row => row.name === 'input');
+  assert.ok(escapeTrace.length > 0, 'Escape did not pass through the bound-key input contract');
+  assert.ok(escapeTrace.every(row => row.command.menu === 'NONE'),
+    'Escape leaked into the Doom menu command');
 
   process.stdout.write(`PASS T8.3-LIVE-CLIENT ${JSON.stringify({latency,
     weaponFrames:new Set(weaponHashes).size,presented:trace.filter(row=>row.name==='present').length,
-    mouseCaptured:true,ticZeroSuppressed:true})}\n`);
+    mouseCaptured:true,ticZeroSuppressed:true,tabMenu:true,escapeBrowserOnly:true})}\n`);
 } finally {
   await browser.close();
 }

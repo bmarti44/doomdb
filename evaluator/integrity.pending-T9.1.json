@@ -2,11 +2,11 @@
   "schema":1,
   "task":"T9.1-EVAL",
   "algorithm":"sha256",
-  "approval":"APPROVED AND FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-15; LIVE ORACLE AND ACTUAL ANIMATION VISUAL ACCEPTANCE REMAIN UPSTREAM-BLOCKED",
+  "approval":"APPROVED AND IMPLEMENTED UNDER USER STANDING AUTHORIZATION 2026-07-19; FULL LIVE ORACLE GENERATION AND DATABASE-DERIVED ANIMATION VISUAL ACCEPTANCE COMPLETE",
   "dependencies":[
-    {"task":"T8.1","status":"LIVE ROUTE AND MILESTONE VISUAL ACCEPTANCE PENDING"},
-    {"task":"T8.2","status":"LIVE WORKFLOW ACCEPTANCE PENDING"},
-    {"task":"T9.1","status":"PRODUCTION MODEL IMPLEMENTATION ABSENT; VISUAL CHECKPOINT PENDING"}
+    {"task":"T8.1","status":"BASIC NO-CHEAT COMPLETION GREEN; EXHAUSTIVE SKILL-3 MATRIX REMAINS PENDING"},
+    {"task":"T8.2","status":"DIRECT AUTOREST AND FOUR BROWSER WORKFLOWS GREEN"},
+    {"task":"T9.1","status":"PRODUCTION MODEL IMPLEMENTED; FULL-SIZE HASH AND VISUAL CHECKPOINTS GREEN"}
   ],
   "approvedBaselines":[
     {"path":"evaluator/integrity.json","sha256":"2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3"},
@@ -18,13 +18,13 @@
     "evaluator/t9.1/build-expectations.mjs":"ca58df1aeff918fe41234883c6186138f5147a81762c59eb959c52ed3f1d3eb0",
     "evaluator/t9.1/capability-policy.json":"ace76242d062e54d0bb17868afdd109c4a87873426ca3a351a3e0450235c04d0",
     "evaluator/t9.1/expectations.json":"798fed01f69290767e7ee0797f43db1a1f09d10c3ae2f2cf92b5a082db6497ab",
-    "evaluator/t9.1/fixtures.json":"8c40b32d01157b4f68fe407963f41b886058da8539cbef707b504ab873fb9651",
-    "evaluator/t9.1/mutation-self-check.mjs":"738461ef6ab65314eba8d0e838b4957d2c1a340dee5cd7d9e082f011a4c63317",
+    "evaluator/t9.1/fixtures.json":"e8e5d1fbb00d6edf96442df8342d87c3677e56a9b035c9d674c858b0cc0e768c",
+    "evaluator/t9.1/mutation-self-check.mjs":"5c157aa01b695506431baf7fa2d68059d86df61bef15a5f89660e070c21386a5",
     "evaluator/t9.1/mutation-specs.json":"785594db05127b26a83c1244da36b8be7c0cf51901c217e9e650052efafd93f4",
     "evaluator/t9.1/oracle-production.sql":"5dea4ac9a1c70d8ffa0040dc2d9b8bddead79bf709eb64840295c6f366cb98c1",
     "evaluator/t9.1/reference.mjs":"6146eb5eb17ded30db189e235c7b871aae7358a8bdfe98ee82f3473c900f84d2",
     "evaluator/t9.1/run-visible.sh":"57d0efb71cbb0356cad3803d8eeec275121835e973df44e05b9703db899a4e8a",
-    "evaluator/t9.1/self-check.mjs":"466e48fdd6d12a9695a8f2e84d515a9ab028fa1d1ba216ab7c118eb44086725e",
+    "evaluator/t9.1/self-check.mjs":"04dbdd6aa24f7738ed1510c86ac72d586d4552cc54ef328f6b6d1aa35550bcbc",
     "evaluator/t9.1/source-audit.mjs":"adf23c251633a4f4050624cca5f90d2b06d364afb92bb3bf89f49b0d9913db25",
     "evaluator/t9.1/test-ids.json":"4a50239f1cf1ea5f65a5ea4f57a60cbcef81992bacdf0738e34afc0ce2c76329",
     "evaluator/t9.1/validate-oracle-output.mjs":"db50172b5313e92526fabfb5bbe754a66944e49d6a461e3a627da4a7330823d6"

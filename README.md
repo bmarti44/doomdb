@@ -45,6 +45,10 @@ What works today, all verified by repeatable gates:
   proven byte-exact with a cold construction (identical frame/state/payload
   SHA chains). The skill menu additionally overlaps any remaining
   construction with a speculative default-skill allocation.
+- **Oracle MODEL fire.** The complete 150-frame, 160×96 title-fire operation
+  ran twice at full size inside Oracle. Both runs produced the same 604,369
+  canonical RLE rows, all frame hashes, and animation SHA
+  `b1eac353…e4ba`; the resulting APNG and exact-frame strip are reviewed.
 
 Key verified numbers (local two-core Oracle Free stack):
 
@@ -63,7 +67,9 @@ What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
   representative combat, keyed door, lift, secret, replay, and visual review).
   A separate uninterrupted 762-command no-cheat route now completes E1M1
   repeatably; direct AutoREST and all four T8.2 browser workflows are green.
-- **P9** — the Oracle `MODEL`-clause title fire animation (T9.1).
+- **P9 is complete** — the Oracle `MODEL`-clause title fire animation passed
+  two independent full-size database runs, deterministic checks, mutation
+  checks, and visual review.
 - **P11** — the real S3 + Autonomous Database deployment; blocked only on
   cloud credentials, local dry-runs exist.
 - **T12.1/T12.2** — the final golden-preserving local *and cloud* 300-frame
@@ -89,6 +95,10 @@ which remains the independent visual oracle during migration.
 | Menu | Intermission |
 | --- | --- |
 | ![Database-rendered menu](goldens/t5.4/menu-selection-2.png) | ![Database-rendered intermission](goldens/t5.4/intermission.png) |
+
+The database-generated Oracle `MODEL` title fire is also frozen and reviewed:
+
+![Oracle MODEL fire exact-frame review](client/dist/review/model-fire-review.png)
 
 The legacy E1M1 route also reached the real exit at tic 4,118 with an exact,
 database-rendered intermission frame:
@@ -145,7 +155,7 @@ Controls are W/S or Up/Down to move, A/D or Left/Right to turn, F or Ctrl to
 fire, Space to use, Tab for the Doom menu, M for the automap, P to pause, and V
 to toggle audio.
 Escape is deliberately reserved for the browser so one key never races three
-behaviors: a tap releases the captured mouse, and holding it exits fullscreen.
+behaviors: one press releases the captured mouse and exits fullscreen when active.
 Once gameplay starts, click the game to capture the cursor; horizontal mouse
 movement turns and left-click fires. On macOS, rapid double-Control presses
 trigger the host's Dictation prompt in a windowed browser. Canvas clicks never
