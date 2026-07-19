@@ -2595,8 +2595,15 @@ the clean-room engine unless it is needed to validate the new public contract.
   passes with seven cheat transitions and exact reconstruction, and a real
   42-request generated-AutoREST workflow passes pause, automap/full-map,
   GOD/ALL/NOCLIP, save/load branch equality, replay, and invalid-command
-  atomicity over raw DMF3. The remaining T8.2 slice is the Mocha Playwright
-  replacement for browser-visible menu/death/restart/intermission workflows.
+  atomicity over raw DMF3. The Mocha Playwright replacement is now green on
+  desktop and mobile: it drives raw-DMF3 pause, menu, automap/full-map,
+  GOD/ALL/NOCLIP, save/load, and byte-identical branch replay through the real
+  generated AutoREST procedures. The focused live-client contract also proves
+  that the dedicated button is the only fullscreen entry, Tab is the Doom menu
+  command, and Escape exits browser capture/fullscreen without becoming a game
+  menu command. The remaining T8.2 acceptance is the browser-visible
+  death/restart/intermission route, which depends on the remaining T8.1 full
+  route fixture.
 
 #### T8.3 Live-client playtest defect closure
 

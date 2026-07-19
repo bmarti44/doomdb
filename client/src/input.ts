@@ -56,8 +56,8 @@ export function bindInput(canvas: HTMLCanvasElement,
     if (name === 'audio') {
       if (down) toggleAudio();
     } else if (name === 'release') {
-      // The browser owns the actual release behavior; emitting the unchanged
-      // command keeps every bound key observable to the input contract.
+      // Browser capture release is owned by main.ts so it is available on the
+      // title/menu screens too. This branch emits no Doom menu command.
     } else if (down) {
       held.add(name);
     } else {

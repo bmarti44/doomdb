@@ -61,7 +61,8 @@ What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 
 - **P8** — finish the remaining reviewed Mocha fixtures (uninterrupted full-
   E1M1 completion replay and browser-visible death/restart/intermission); the
-  42-request direct AutoREST workflow is green.
+  42-request direct AutoREST workflow and desktop/mobile Playwright workflows
+  are green.
 - **P9** — the Oracle `MODEL`-clause title fire animation (T9.1).
 - **P11** — the real S3 + Autonomous Database deployment; blocked only on
   cloud credentials, local dry-runs exist.

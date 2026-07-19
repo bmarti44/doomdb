@@ -24,7 +24,7 @@ try {
     ?.hasAttribute('data-doom-shell') && document.querySelector('[data-doom-fullscreen]')
       ?.getAttribute('aria-pressed') === 'true');
   assert.equal(await fullscreen.getAttribute('aria-pressed'), 'true');
-  await fullscreen.click();
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => document.fullscreenElement === null &&
     document.querySelector('[data-doom-fullscreen]')?.getAttribute('aria-pressed') === 'false');
   assert.equal(await fullscreen.getAttribute('aria-pressed'), 'false');
@@ -61,7 +61,7 @@ try {
     ?.textContent?.includes('Game startup failed'));
   assert.equal(newGameCalls, 2, 'confirming a non-default skill must fall back to a fresh allocation');
   assert.deepEqual(newGameBody, {p_skill: 4});
-  process.stdout.write('PASS PLAY-MENU title=1 main=1 skill=4 windowed=1 fullscreen-button=1\n');
+  process.stdout.write('PASS PLAY-MENU title=1 main=1 skill=4 windowed=1 fullscreen-button=1 escape-exit=1\n');
 } finally {
   await browser.close();
 }

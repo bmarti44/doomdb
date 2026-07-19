@@ -139,7 +139,9 @@ const enterFullscreen = async (): Promise<void> => {
       await keyboard.lock([
         'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'ArrowUp', 'ArrowDown',
         'ArrowLeft', 'ArrowRight', 'ControlLeft', 'ControlRight', 'Space',
-        'Tab', 'Escape', 'KeyM', 'KeyP', 'KeyV', 'Enter'
+        // Escape deliberately remains browser-owned so one press releases
+        // pointer lock or fullscreen. Tab is Doom's in-game menu key.
+        'Tab', 'KeyM', 'KeyP', 'KeyV', 'Enter'
       ]);
       shell.dataset.keyboardCaptured = '';
     }
@@ -154,6 +156,13 @@ fullscreen.addEventListener('click', event => {
   if (document.fullscreenElement === shell) void document.exitFullscreen();
   else void enterFullscreen();
 });
+// Keep Escape a browser-level release key at every presentation stage,
+// including before bindInput starts after the first game has loaded.
+window.addEventListener('keydown', event => {
+  if (event.code !== 'Escape' || event.repeat) return;
+  if (document.pointerLockElement !== null) document.exitPointerLock();
+  if (document.fullscreenElement !== null) void document.exitFullscreen().catch(() => {});
+}, {capture: true});
 document.addEventListener('fullscreenchange', () => {
   const active = document.fullscreenElement === shell;
   fullscreen.textContent = active ? 'Exit fullscreen' : '⛶ Fullscreen';

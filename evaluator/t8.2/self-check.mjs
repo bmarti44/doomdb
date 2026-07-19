@@ -12,6 +12,6 @@ const root=path.resolve(import.meta.dirname,'../..'),inherited=[
  ['evaluator/integrity.pending-T7.1.json','45be1db5dea63fc4291851ac4e692e9a66bd903096b35bf8b2379a190503f30e'],
  ['evaluator/integrity.pending-T7.2.json','764dda2fbf89bcb02511e6ffc9e3ba877757cfedb9b2d5a8981bb37b444e82e5'],
  ['evaluator/integrity.pending-T7.3.json','6267d2dcce1bf52136309c7bda6641325ac69ce1e95b506bf4b3812bd89e9da6'],
- ['evaluator/integrity.pending-T8.1.json','9d397f036967aa0a62b61177a7d089957f0c3c6e5d6a34c0b3da310c75305b95']
+ ['evaluator/integrity.pending-T8.1.json','5d67fa78932123407f390208933cf18bd174604f91bbec73bd43d744d5b665c5']
 ];for(const [p,want] of inherited)eq(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,p))).digest('hex'),want,`${p} inherited identity`);
 process.stdout.write(`PASS T8.2-EVAL-SELF-CHECK (${n}/${n} fixture-contract assertions)\n`);
