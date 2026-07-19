@@ -139,15 +139,16 @@ OJVM. Click or press Enter to begin; the game remains windowed.
 The visible menus are composed from the pinned Freedoom IWAD's original Doom
 patches served by Oracle; browser HTML supplies accessibility targets only.
 Controls are W/S or Up/Down to move, A/D or Left/Right to turn, F or Ctrl to
-fire, Space to use, Tab for the automap, O for the Doom menu, and P to pause.
+fire, Space to use, Tab for the Doom menu, M for the automap, P to pause, and V
+to toggle audio.
 Escape is deliberately reserved for the browser so one key never races three
 behaviors: a tap releases the captured mouse, and holding it exits fullscreen.
 Once gameplay starts, click the game to capture the cursor; horizontal mouse
 movement turns and left-click fires. On macOS, rapid double-Control presses
-trigger the host's Dictation prompt in a windowed browser; double-click the
-game to enter fullscreen Keyboard Lock, which captures both Ctrl keys so
-firing never opens that prompt. Leaving fullscreen restores the windowed
-capture.
+trigger the host's Dictation prompt in a windowed browser. Canvas clicks never
+enter fullscreen. Use the dedicated top-right Fullscreen button to explicitly
+enter fullscreen Keyboard Lock, which captures both Ctrl keys so firing never
+opens that prompt. Leaving fullscreen restores the windowed capture.
 
 Real credentials, wallets, private keys, environment files, WADs, generated
 classes/JARs, and Terraform variable files are ignored by

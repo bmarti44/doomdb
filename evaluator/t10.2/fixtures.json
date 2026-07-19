@@ -1,9 +1,9 @@
 {
   "schema":1,
   "production":{"entry":"client/dist/index.html","source":"client/src","canvasSelector":"canvas[data-doom-canvas]"},
-  "modules":["api","input","codec","palette","canvas","audio","presentation-state","main"],
+  "modules":["api","input","codec","palette","canvas","audio","patch","presentation-state","main"],
   "semanticControls":["forward","backward","turn-left","turn-right","fire","use","automap","menu","pause","audio"],
-  "keyboard":{"KeyW":"forward","ArrowUp":"forward","KeyS":"backward","ArrowDown":"backward","KeyA":"turn-left","ArrowLeft":"turn-left","KeyD":"turn-right","ArrowRight":"turn-right","ControlLeft":"fire","Space":"use","Tab":"automap","Escape":"menu","KeyP":"pause","KeyM":"audio"},
+  "keyboard":{"KeyW":"forward","ArrowUp":"forward","KeyS":"backward","ArrowDown":"backward","KeyA":"turn-left","ArrowLeft":"turn-left","KeyD":"turn-right","ArrowRight":"turn-right","ControlLeft":"fire","ControlRight":"fire","KeyF":"fire","Space":"use","Tab":"menu","KeyM":"automap","Escape":"release","KeyP":"pause","KeyV":"audio"},
   "viewports":[{"name":"desktop","width":1280,"height":720},{"name":"phone-portrait","width":390,"height":844},{"name":"phone-landscape","width":844,"height":390}],
   "apiPaths":{"newGame":"/ords/doom/doom_api/new_game/","step":"/ords/doom/doom_api/step/","asset":"/ords/doom/doom_api/get_asset/"},
   "hashes":{"palette":"ec785d7eb39d15cfa7f7fcf2ec07f8badcb04919320eb992d19ca2ccdcd66457","index0":"32da1251e85b2c4aa08a99a38d78111dcf9890b800f2119403408e38cc08d037","rgba0":"14a2fd5d1fe1648dc5f31e1f1bdd0ad37f99e329fbc5b712123f267317d183ff","rgba1":"0c266ccd01f0f76de3d2cf5ae5f72f4f7a2b92a86fc01e67515cfbc7c44b7e80","rgba2":"1822ad14982dda57609268ec3a8d4ecdb3c3ca16158a7340bb7ae51c5572708a"},

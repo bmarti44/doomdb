@@ -30,6 +30,8 @@ function stylesheet() {
     [data-doom-menu] button:not([data-selected])::before{content:'';display:inline-block;width:24px}
     [data-doom-menu] button[data-selected]{color:#fff1cf;text-shadow:1px 1px #5b140d}
     [data-doom-status]{position:fixed;left:12px;top:12px;z-index:4;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.35 system-ui;white-space:pre-line;pointer-events:none}
+    [data-doom-fullscreen]{position:fixed;right:12px;top:12px;z-index:5;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.2 system-ui;cursor:pointer}
+    [data-doom-fullscreen]:hover,[data-doom-fullscreen]:focus-visible{border-color:#d7b84b;color:#fff}
     [data-doom-control]{position:relative;min-width:40px;min-height:40px;padding:0;border:1px solid #aaa;background:#171717;color:#fff;border-radius:7px;touch-action:none}
     [data-doom-control]::before{content:attr(data-icon);font:700 21px/1 system-ui}
     @media(max-width:900px){
@@ -67,7 +69,7 @@ const fireLabel = 'F/Ctrl/left-click fire';
 // macOS Dictation owns rapid double-Control presses outside fullscreen
 // Keyboard Lock, so tell macOS players where the clean Ctrl capture lives.
 const captureHint = navigator.platform.startsWith('Mac') ?
-    ' · Double-click: fullscreen Ctrl capture' : '';
+    ' · Fullscreen button: Ctrl capture' : '';
 const shell = document.createElement('div');
 shell.dataset.doomShell = '';
 const touch = controls();
@@ -78,7 +80,14 @@ menu.setAttribute('aria-live', 'polite');
 const status = document.createElement('div');
 status.dataset.doomStatus = '';
 status.textContent = 'Starting a new game inside Oracle…\nThe first frame currently takes about 10 seconds.';
-shell.append(canvas, menu, touch.element, status);
+const fullscreen = document.createElement('button');
+fullscreen.type = 'button';
+fullscreen.dataset.doomFullscreen = '';
+fullscreen.textContent = '⛶ Fullscreen';
+fullscreen.setAttribute('aria-label', 'Enter fullscreen');
+fullscreen.setAttribute('aria-pressed', 'false');
+fullscreen.hidden = !document.fullscreenEnabled;
+shell.append(canvas, menu, touch.element, status, fullscreen);
 document.head.append(stylesheet());
 document.body.replaceChildren(shell);
 let pointerCapturePending = false;
@@ -112,22 +121,21 @@ canvas.addEventListener('click', event => {
 });
 const keyboard = navigator.keyboard;
 let keyboardCapturePending = false;
-const captureKeyboard = async () => {
-    if (state.loading || !menu.hidden || keyboard === undefined ||
-        !document.fullscreenEnabled || keyboardCapturePending ||
-        shell.dataset.keyboardCaptured !== undefined)
+const enterFullscreen = async () => {
+    if (!document.fullscreenEnabled || keyboardCapturePending ||
+        document.fullscreenElement === shell)
         return;
     keyboardCapturePending = true;
     try {
-        if (document.fullscreenElement !== shell) {
-            await shell.requestFullscreen({ navigationUI: 'hide' });
+        await shell.requestFullscreen({ navigationUI: 'hide' });
+        if (keyboard !== undefined) {
+            await keyboard.lock([
+                'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'ArrowUp', 'ArrowDown',
+                'ArrowLeft', 'ArrowRight', 'ControlLeft', 'ControlRight', 'Space',
+                'Tab', 'Escape', 'KeyM', 'KeyP', 'KeyV', 'Enter'
+            ]);
+            shell.dataset.keyboardCaptured = '';
         }
-        await keyboard.lock([
-            'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'ArrowUp', 'ArrowDown',
-            'ArrowLeft', 'ArrowRight', 'ControlLeft', 'ControlRight', 'Space',
-            'Tab', 'Escape', 'KeyO', 'KeyP', 'KeyM', 'Enter'
-        ]);
-        shell.dataset.keyboardCaptured = '';
     }
     catch (cause) {
         console.warn('fullscreen keyboard capture was declined', cause);
@@ -136,19 +144,22 @@ const captureKeyboard = async () => {
         keyboardCapturePending = false;
     }
 };
-canvas.addEventListener('dblclick', event => {
-    if (!event.isTrusted)
-        return;
+fullscreen.addEventListener('click', event => {
     event.preventDefault();
-    // Entering fullscreen can drop an existing pointer lock; re-request it with
-    // the same trusted activation once the keyboard is captured.
-    void captureKeyboard().then(capturePointer);
+    if (document.fullscreenElement === shell)
+        void document.exitFullscreen();
+    else
+        void enterFullscreen();
 });
 document.addEventListener('fullscreenchange', () => {
-    if (document.fullscreenElement === shell)
-        return;
-    keyboard?.unlock();
-    delete shell.dataset.keyboardCaptured;
+    const active = document.fullscreenElement === shell;
+    fullscreen.textContent = active ? 'Exit fullscreen' : '⛶ Fullscreen';
+    fullscreen.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+    fullscreen.setAttribute('aria-pressed', String(active));
+    if (!active) {
+        keyboard?.unlock();
+        delete shell.dataset.keyboardCaptured;
+    }
 });
 document.addEventListener('pointerlockchange', () => {
     const captured = document.pointerLockElement === canvas;
@@ -159,7 +170,7 @@ document.addEventListener('pointerlockchange', () => {
     if (state.loading || !menu.hidden || restartReady)
         return;
     status.style.opacity = '1';
-    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · O menu\n${captured ? 'Mouse captured · Esc releases' : 'Click game to capture mouse'}${captureHint}`;
+    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · Tab menu · M map\n${captured ? 'Mouse captured · Esc releases' : 'Click game to capture mouse'}${captureHint}`;
     window.setTimeout(() => { if (!restartReady)
         status.style.opacity = '0.35'; }, 1800);
 });
@@ -431,7 +442,7 @@ async function boot() {
     state.loading = false;
     state.setMode(frame.mode);
     await audio.consume(frame.audio);
-    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · O menu\nClick game for mouse capture${captureHint} · 30 FPS pipeline warming up…`;
+    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · Tab menu · M map\nClick game for mouse capture${captureHint} · 30 FPS pipeline warming up…`;
     window.setTimeout(() => { status.style.opacity = '0.35'; }, 6000);
     let latest = {
         seq: 0, turn: 0, forward: 0, strafe: 0, run: 0, fire: 0, use: 0,
@@ -487,7 +498,7 @@ async function boot() {
     const startPresentation = () => {
         if (presentationTimer !== 0 || completed.size < presentationBuffer)
             return;
-        status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · O menu\nDatabase pipeline active · ${document.pointerLockElement === canvas ? 'mouse captured' : 'click game to capture mouse'}${captureHint}`;
+        status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · Tab menu · M map\nDatabase pipeline active · ${document.pointerLockElement === canvas ? 'mouse captured' : 'click game to capture mouse'}${captureHint}`;
         presentationTimer = window.setTimeout(presentationLoop, 0);
     };
     // Live movement, USE, weapon selection, and every catalog fire mode now use

@@ -9,14 +9,14 @@ type AudioToggle = () => void;
 const keyControls: Record<string, ControlName> = {
   KeyW: 'forward', ArrowUp: 'forward', KeyS: 'backward', ArrowDown: 'backward',
   KeyA: 'turn-left', ArrowLeft: 'turn-left', KeyD: 'turn-right', ArrowRight: 'turn-right',
-  KeyF: 'fire', Space: 'use', Tab: 'automap',
+  KeyF: 'fire', Space: 'use', Tab: 'menu', KeyM: 'automap',
   // Escape belongs to the browser: it releases the pointer capture and (held)
   // exits fullscreen. Binding it to the database menu made one key race three
-  // behaviors, so the Doom menu lives on O and Escape stays a pure release.
-  KeyO: 'menu', Escape: 'release', KeyP: 'pause', KeyM: 'audio',
+  // behaviors, so Tab opens the Doom menu and Escape stays a pure release.
+  Escape: 'release', KeyP: 'pause', KeyV: 'audio',
   // Classic Ctrl-fire is bound everywhere. macOS reserves rapid double-Control
-  // presses for Dictation, which only fullscreen Keyboard Lock (double-click
-  // the game) can suppress; the windowed game still fires on Ctrl but cannot
+  // presses for Dictation, which only the dedicated fullscreen Keyboard Lock
+  // can suppress; the windowed game still fires on Ctrl but cannot
   // stop that host prompt itself.
   ControlLeft: 'fire', ControlRight: 'fire'
 };

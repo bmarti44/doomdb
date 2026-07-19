@@ -18,6 +18,16 @@ try {
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
     ?.textContent?.includes('press Enter to start'), null, {timeout: 30_000});
   assert.equal(newGameCalls, 0, 'title screen allocated a game');
+  const fullscreen = page.locator('[data-doom-fullscreen]');
+  await fullscreen.click();
+  await page.waitForFunction(() => document.fullscreenElement
+    ?.hasAttribute('data-doom-shell') && document.querySelector('[data-doom-fullscreen]')
+      ?.getAttribute('aria-pressed') === 'true');
+  assert.equal(await fullscreen.getAttribute('aria-pressed'), 'true');
+  await fullscreen.click();
+  await page.waitForFunction(() => document.fullscreenElement === null &&
+    document.querySelector('[data-doom-fullscreen]')?.getAttribute('aria-pressed') === 'false');
+  assert.equal(await fullscreen.getAttribute('aria-pressed'), 'false');
 
   await page.locator('canvas').click({position: {x: 160, y: 100}});
   await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
@@ -51,7 +61,7 @@ try {
     ?.textContent?.includes('Game startup failed'));
   assert.equal(newGameCalls, 2, 'confirming a non-default skill must fall back to a fresh allocation');
   assert.deepEqual(newGameBody, {p_skill: 4});
-  process.stdout.write('PASS PLAY-MENU title=1 main=1 skill=4 windowed=1\n');
+  process.stdout.write('PASS PLAY-MENU title=1 main=1 skill=4 windowed=1 fullscreen-button=1\n');
 } finally {
   await browser.close();
 }

@@ -2351,18 +2351,19 @@ the clean-room engine unless it is needed to validate the new public contract.
   evicts and succeeds in about 13 s while all four slots were ready.
 - macOS Ctrl-fire (2026-07-19): both Control keys are bound to fire on every
   platform again. Because a windowed browser cannot suppress macOS's rapid
-  double-Control Dictation prompt, the client keeps the reviewed windowed
-  single-click mouse capture and adds an explicit double-click opt-in that
-  enters fullscreen Keyboard Lock (locking both Control keys and the gameplay
-  set) so Ctrl-fire never raises the Dictation prompt; leaving fullscreen
-  unlocks and returns to windowed capture. The status line advertises the
-  capture on macOS only.
+  double-Control Dictation prompt, canvas clicks remain exclusively windowed
+  mouse capture and a separate top-right button is the only fullscreen entry.
+  That explicit opt-in enables Keyboard Lock (locking both Control keys and the
+  gameplay set) so Ctrl-fire never raises the Dictation prompt; leaving
+  fullscreen unlocks and returns to windowed capture. The control has no ticcmd
+  mapping and cannot collide with fire, menu, Escape, or Pointer Lock.
 - Collision-free key map (2026-07-19): Escape had three simultaneous meanings
   (database menu, pointer-lock release, fullscreen exit). Escape is now
   reserved for the browser — tap releases the captured mouse, hold exits
-  fullscreen — while the Doom menu moved to O. Escape stays a bound no-op
-  control so the reviewed T10.2 keyboard contract (every bound key emits a
-  command) is unchanged, and the pre-game skill menu keeps Escape as back.
+  fullscreen — while the Doom menu moved to Tab, the automap to M, and audio
+  toggle to V. Escape stays a bound no-op control so the reviewed T10.2
+  keyboard contract (every bound key emits a command) is unchanged, and the
+  pre-game skill menu keeps Escape as back.
 - New-game latency (2026-07-19): the entire FREEDOOM-title stall after skill
   confirmation is `NEW_GAME`; the browser pipeline paints within ~200 ms of
   its payload. Cold Mocha engine construction in a fresh worker session
