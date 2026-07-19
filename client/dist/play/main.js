@@ -4,6 +4,7 @@ import { createDoomCanvas, blit } from './canvas.js';
 import { decodeBytes, decodePayload } from './codec.js';
 import { bindInput } from './input.js';
 import { applyPalette, createPalette } from './palette.js';
+import { decodePatch, drawPatch } from './patch.js';
 import { PresentationState } from './presentation-state.js';
 import { getAsset } from './api.js';
 const controlNames = [
@@ -21,7 +22,7 @@ function stylesheet() {
     canvas[data-doom-canvas]{display:block;width:min(100vw,160vh);height:auto;max-width:100vw;max-height:100vh;image-rendering:pixelated;image-rendering:crisp-edges;background:#000;outline:0}
     canvas[data-doom-canvas]:focus-visible{outline:2px solid #d7b84b;outline-offset:2px}
     [data-doom-controls]{display:none}
-    [data-doom-menu]{position:absolute;z-index:3;left:50%;top:55%;width:min(92vw,430px);transform:translate(-50%,-50%);padding:18px 22px;background:#080000df;border:2px solid #8d251d;box-shadow:0 0 0 2px #1c0907,0 12px 40px #000;color:#ddd;font:700 18px/1.2 ui-monospace,monospace;text-align:center}
+    [data-doom-menu]{position:absolute;z-index:3;left:50%;top:55%;width:min(92vw,430px);transform:translate(-50%,-50%);padding:18px 22px;opacity:0;pointer-events:none;font:700 18px/1.2 ui-monospace,monospace;text-align:center}
     [data-doom-menu][hidden]{display:none}
     [data-doom-menu] h2{margin:0 0 14px;color:#cf3b28;font:900 24px/1 ui-monospace,monospace;text-shadow:2px 2px #3d0905}
     [data-doom-menu] button{display:block;width:100%;padding:7px 10px;border:0;background:transparent;color:#b9b9b9;font:inherit;text-align:left;cursor:pointer}
@@ -149,9 +150,10 @@ function awaitStart(audio) {
         canvas.addEventListener('pointerdown', finish);
     });
 }
-function chooseMenu(heading, choices, initial = 0, allowBack = false) {
+function chooseMenu(heading, choices, initial, allowBack, rowY, render) {
     return new Promise(resolve => {
         let selected = initial;
+        let skull = 0;
         const title = document.createElement('h2');
         title.textContent = heading;
         const buttons = choices.map((choice, index) => {
@@ -161,7 +163,8 @@ function chooseMenu(heading, choices, initial = 0, allowBack = false) {
             button.addEventListener('pointerenter', () => { selected = index; paint(); });
             button.addEventListener('click', event => {
                 event.preventDefault();
-                finish(choice.value);
+                if (choice.value !== null)
+                    finish(choice.value);
             });
             return button;
         });
@@ -173,6 +176,7 @@ function chooseMenu(heading, choices, initial = 0, allowBack = false) {
                     delete button.dataset.selected;
                 button.setAttribute('aria-current', index === selected ? 'true' : 'false');
             });
+            render(selected, skull);
         };
         const keydown = (event) => {
             if (event.code === 'ArrowUp' || event.code === 'KeyW') {
@@ -187,15 +191,45 @@ function chooseMenu(heading, choices, initial = 0, allowBack = false) {
             }
             else if (event.code === 'Enter' || event.code === 'Space') {
                 event.preventDefault();
-                finish(choices[selected].value);
+                const value = choices[selected].value;
+                if (value !== null)
+                    finish(value);
             }
             else if (allowBack && event.code === 'Escape') {
                 event.preventDefault();
                 finish(null);
             }
         };
+        const pointerIndex = (event) => {
+            const bounds = canvas.getBoundingClientRect();
+            const logicalY = (event.clientY - bounds.top) * 200 / bounds.height;
+            const relative = logicalY - rowY;
+            const index = Math.floor(relative / 16);
+            return relative >= 0 && relative % 16 < 15 && index >= 0 && index < choices.length ? index : -1;
+        };
+        const pointermove = (event) => {
+            const index = pointerIndex(event);
+            if (index >= 0 && index !== selected) {
+                selected = index;
+                paint();
+            }
+        };
+        const pointerdown = (event) => {
+            const index = pointerIndex(event);
+            if (index < 0)
+                return;
+            event.preventDefault();
+            selected = index;
+            paint();
+            const value = choices[selected].value;
+            if (value !== null)
+                finish(value);
+        };
         const finish = (value) => {
             window.removeEventListener('keydown', keydown, { capture: true });
+            canvas.removeEventListener('pointermove', pointermove);
+            canvas.removeEventListener('pointerdown', pointerdown);
+            window.clearInterval(skullTimer);
             menu.hidden = true;
             menu.replaceChildren();
             resolve(value);
@@ -203,10 +237,51 @@ function chooseMenu(heading, choices, initial = 0, allowBack = false) {
         menu.replaceChildren(title, ...buttons);
         menu.hidden = false;
         paint();
+        const skullTimer = window.setInterval(() => { skull ^= 1; render(selected, skull); }, 230);
         window.addEventListener('keydown', keydown, { capture: true });
+        canvas.addEventListener('pointermove', pointermove);
+        canvas.addEventListener('pointerdown', pointerdown);
     });
 }
-async function chooseSkill() {
+const menuPatchNames = [
+    'M_DOOM', 'M_NGAME', 'M_OPTION', 'M_LOADG', 'M_SAVEG', 'M_RDTHIS',
+    'M_QUITG', 'M_NEWG', 'M_SKILL', 'M_JKILL', 'M_ROUGH', 'M_HURT',
+    'M_ULTRA', 'M_NMARE', 'M_SKULL1', 'M_SKULL2'
+];
+async function loadMenuPatches() {
+    const entries = await Promise.all(menuPatchNames.map(async (name) => {
+        const asset = await getAsset(name);
+        if (asset.mediaType !== 'application/x-doom-patch') {
+            throw new TypeError(`menu patch ${name} has an invalid media type`);
+        }
+        return [name, decodePatch(asset.payload)];
+    }));
+    return new Map(entries);
+}
+function menuPatch(patches, name) {
+    const patch = patches.get(name);
+    if (patch === undefined)
+        throw new Error(`menu patch ${name} is unavailable`);
+    return patch;
+}
+function paintNativeMenu(base, palette, patches, placements) {
+    const frame = new Uint8Array(base);
+    for (const [name, x, y] of placements)
+        drawPatch(frame, menuPatch(patches, name), x, y);
+    blit(canvas, applyPalette(frame, palette));
+}
+async function chooseSkill(base, palette, patches) {
+    const mainItems = [
+        { label: 'NEW GAME', value: 'NEW_GAME' },
+        { label: 'OPTIONS', value: null },
+        { label: 'LOAD GAME', value: null },
+        { label: 'SAVE GAME', value: null },
+        { label: 'READ THIS', value: null },
+        { label: 'QUIT GAME', value: null }
+    ];
+    const mainNames = [
+        'M_NGAME', 'M_OPTION', 'M_LOADG', 'M_SAVEG', 'M_RDTHIS', 'M_QUITG'
+    ];
     const skillChoices = [
         { label: "I'M TOO YOUNG TO DIE", value: 1 },
         { label: 'HEY, NOT TOO ROUGH', value: 2 },
@@ -214,11 +289,28 @@ async function chooseSkill() {
         { label: 'ULTRA-VIOLENCE', value: 4 },
         { label: 'NIGHTMARE!', value: 5 }
     ];
+    const skillNames = [
+        'M_JKILL', 'M_ROUGH', 'M_HURT', 'M_ULTRA', 'M_NMARE'
+    ];
+    const renderMain = (selected, skull) => {
+        const placements = [['M_DOOM', 94, 2]];
+        mainNames.forEach((name, index) => placements.push([name, 97, 64 + index * 16]));
+        placements.push([skull === 0 ? 'M_SKULL1' : 'M_SKULL2', 65, 59 + selected * 16]);
+        paintNativeMenu(base, palette, patches, placements);
+    };
+    const renderSkill = (selected, skull) => {
+        const placements = [['M_NEWG', 96, 14], ['M_SKILL', 54, 38]];
+        skillNames.forEach((name, index) => placements.push([name, 48, 63 + index * 16]));
+        placements.push([skull === 0 ? 'M_SKULL1' : 'M_SKULL2', 16, 58 + selected * 16]);
+        paintNativeMenu(base, palette, patches, placements);
+    };
     for (;;) {
         status.textContent = 'MAIN MENU\nArrow keys + Enter · click to select';
-        await chooseMenu('MAIN MENU', [{ label: 'NEW GAME', value: 'NEW_GAME' }]);
+        const action = await chooseMenu('MAIN MENU', mainItems, 0, false, 64, renderMain);
+        if (action !== 'NEW_GAME')
+            continue;
         status.textContent = 'NEW GAME\nChoose a skill level · Escape goes back';
-        const skill = await chooseMenu('CHOOSE SKILL LEVEL', skillChoices, 2, true);
+        const skill = await chooseMenu('CHOOSE SKILL LEVEL', skillChoices, 2, true, 63, renderSkill);
         if (skill !== null)
             return skill;
     }
@@ -237,7 +329,11 @@ async function boot() {
     blit(canvas, applyPalette(titleIndices, palette));
     status.textContent = 'DoomDB · Mocha Doom inside Oracle\nClick for captured fullscreen · Enter for windowed';
     await awaitStart(audio);
-    const skill = await chooseSkill();
+    status.textContent = 'Loading authentic menu patches from Oracle…';
+    const menuPatches = await loadMenuPatches();
+    status.style.opacity = '0';
+    const skill = await chooseSkill(titleIndices, palette, menuPatches);
+    status.style.opacity = '1';
     status.textContent = 'Starting a new game inside Oracle…\nPreparing the retained database worker.';
     const game = await newGame(skill);
     let frame = await decodePayload(game.payload);

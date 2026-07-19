@@ -2282,6 +2282,14 @@ the clean-room engine unless it is needed to validate the new public contract.
   game. Both Ctrl keys and F fire, including cancelled held-key repeats. Hidden
   tabs pause, but a visible window can no longer freeze because browser focus
   was initially elsewhere.
+- Authentic-menu checkpoint (2026-07-18): the pinned-IWAD loader imports the
+  16 Freedoom/Mocha main-menu, skill, and skull-cursor lumps into Oracle as
+  SHA-checked `mocha_ui_patch` BLOB assets. Generated `GET_ASSET` AutoREST
+  allowlists those names. The thin client decodes Doom column/post patches with
+  transparency and signed offsets, then composites the main and skill menus at
+  Mocha Doom's original 320x200 coordinates with the alternating skull cursor.
+  The HTML menu is now invisible accessibility/click geometry only; it supplies
+  no visible approximation.
 - Accept: the unmodified static client can start and freely play a new game only
   through generated AutoREST endpoints; killing and restarting the worker loses
   no accepted command and never returns another session's frame.

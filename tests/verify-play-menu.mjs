@@ -41,7 +41,11 @@ try {
   await page.keyboard.press('ArrowDown');
   assert.equal(await page.locator('[data-doom-menu] button[data-selected]').textContent(),
     'ULTRA-VIOLENCE');
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowUp');
+  const bounds = await page.locator('canvas').boundingBox();
+  assert.ok(bounds, 'menu canvas has no pointer bounds');
+  await page.mouse.click(bounds.x + bounds.width * 100 / 320,
+    bounds.y + bounds.height * 118 / 200);
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
     ?.textContent?.includes('Game startup failed'));
   assert.equal(newGameCalls, 1);

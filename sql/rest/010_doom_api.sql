@@ -1204,7 +1204,11 @@ create or replace package body doom_api as
   begin
     p_payload:=null;p_media_type:=null;
     if p_asset_name is null or
-       (p_asset_name not in('PLAYPAL','TITLEPIC','GENMIDI') and
+       (p_asset_name not in(
+          'PLAYPAL','TITLEPIC','GENMIDI','M_DOOM','M_NGAME','M_OPTION',
+          'M_LOADG','M_SAVEG','M_RDTHIS','M_QUITG','M_NEWG','M_SKILL',
+          'M_JKILL','M_ROUGH','M_HURT','M_ULTRA','M_NMARE',
+          'M_SKULL1','M_SKULL2') and
         not regexp_like(p_asset_name,'^DS[A-Z0-9]{1,6}$')) then
       fail(c_asset,'asset is not allowlisted');
     end if;
@@ -1226,6 +1230,10 @@ create or replace package body doom_api as
       l_blob:=hex_blob(l_hex);
       if dbms_lob.getlength(l_blob)<>320*200 then fail(c_asset,'title asset is invalid');end if;
       p_media_type:='application/x-doom-indexed';
+    elsif substr(p_asset_name,1,2)='M_' then
+      select b.encoded_bytes,b.media_type into l_blob,p_media_type
+        from doom_asset a join doom_asset_blob b on b.asset_id=a.asset_id
+        where a.asset_kind='mocha_ui_patch' and a.asset_name=p_asset_name;
     else
       select b.encoded_bytes into l_blob
         from doom_asset a join doom_asset_blob b on b.asset_id=a.asset_id
