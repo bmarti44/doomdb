@@ -31,7 +31,14 @@ try {
     ?.textContent === 'CHOOSE SKILL LEVEL');
   assert.equal(await page.locator('[data-doom-menu] button[data-selected]').textContent(),
     'HURT ME PLENTY');
-  assert.equal(newGameCalls, 0, 'skill menu allocated a game before confirmation');
+  // Selecting NEW GAME is explicit intent: the client overlaps the ~10 s
+  // engine construction with the skill menu by speculatively allocating the
+  // highlighted default skill. Title and main-menu lurkers allocate nothing.
+  for (let waited = 0; newGameCalls === 0 && waited < 3000; waited += 100) {
+    await page.waitForTimeout(100);
+  }
+  assert.equal(newGameCalls, 1, 'skill menu did not begin the speculative default-skill allocation');
+  assert.deepEqual(newGameBody, {p_skill: 3});
   await page.keyboard.press('ArrowDown');
   assert.equal(await page.locator('[data-doom-menu] button[data-selected]').textContent(),
     'ULTRA-VIOLENCE');
@@ -42,7 +49,7 @@ try {
     bounds.y + bounds.height * 118 / 200);
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
     ?.textContent?.includes('Game startup failed'));
-  assert.equal(newGameCalls, 1);
+  assert.equal(newGameCalls, 2, 'confirming a non-default skill must fall back to a fresh allocation');
   assert.deepEqual(newGameBody, {p_skill: 4});
   process.stdout.write('PASS PLAY-MENU title=1 main=1 skill=4 windowed=1\n');
 } finally {

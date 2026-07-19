@@ -8,6 +8,30 @@ This document is the implementation contract. A task is not complete because a
 demo looks plausible or because a subset passes. It is complete only when its
 listed acceptance command succeeds without weakening an existing check.
 
+## Status summary (updated 2026-07-19)
+
+Orientation only; the task cards and dated checkpoints in Section 7 are the
+authoritative record.
+
+- **Complete:** P0–P7 (SQL engine, frozen as the differential/visual oracle),
+  P12.0 (pulled-forward 30 FPS enabling gate), T12.M1–T12.M4 (pinned Mocha
+  Doom build, bounded OJVM adapter, deterministic command/audio/persistence
+  bridge, resident worker + AutoREST cutover). T10.1/T10.2 shipped the public
+  package and thin client for the SQL engine and carry forward under Mocha.
+- **Active:** T12.M5 gameplay/performance selection. Local 30 FPS is
+  requalified (two independent 300-frame routes, identical frame-chain SHA);
+  the 2026-07-19 checkpoints added worker-admission self-healing, bounded
+  eviction, the canonical presentation contract, collision-free key bindings,
+  and speculative skill-menu game allocation.
+- **Next:** P8 replacement Mocha fixtures (uninterrupted E1M1 completion
+  replay, workflow coverage), P9 MODEL fire, P11 real S3 + Autonomous cloud
+  deployment (needs credentials; local dry-runs exist), then the full
+  T12.1/T12.2 local-and-cloud 300-frame performance protocol, then P13
+  multiplayer.
+- **Known cost:** cold Mocha engine construction in a fresh worker session is
+  ~10–20 s depending on host load; a pre-warmed standby-worker architecture is
+  the identified follow-up (see the T12.M5 checkpoint notes).
+
 ## 0. Charter
 
 ### 0.1 Mission
@@ -2331,6 +2355,28 @@ the clean-room engine unless it is needed to validate the new public contract.
   set) so Ctrl-fire never raises the Dictation prompt; leaving fullscreen
   unlocks and returns to windowed capture. The status line advertises the
   capture on macOS only.
+- Collision-free key map (2026-07-19): Escape had three simultaneous meanings
+  (database menu, pointer-lock release, fullscreen exit). Escape is now
+  reserved for the browser — tap releases the captured mouse, hold exits
+  fullscreen — while the Doom menu moved to O. Escape stays a bound no-op
+  control so the reviewed T10.2 keyboard contract (every bound key emits a
+  command) is unchanged, and the pre-game skill menu keeps Escape as back.
+- New-game latency (2026-07-19): the entire FREEDOOM-title stall after skill
+  confirmation is `NEW_GAME`; the browser pipeline paints within ~200 ms of
+  its payload. Cold Mocha engine construction in a fresh worker session
+  measures ~10–20 s (one-time per JVM: class loading plus giant interpreted
+  static initializers; repeat `InitNew` is ~1 s, the IWAD BLOB read is
+  ~0.5 s, and targeted `DBMS_JAVA` compilation of loader classes did not
+  move it — one monolithic class also stalls the accelerator and must be
+  skipped). Selected mitigations: the skill menu speculatively allocates the
+  highlighted default-skill game the moment NEW GAME is chosen (a different
+  confirmed skill falls back to a fresh allocation; title/main-menu lurkers
+  allocate nothing), and the startup status line ticks elapsed seconds so the
+  wait is visibly alive. An 8-second menu dwell cut confirm-to-first-paint
+  from ~13 s to ~5 s. The identified structural fix is a pre-warmed standby
+  worker that constructs the engine before it is claimed and only runs
+  `InitNew` at claim time; it requires its own fencing/differential gates and
+  remains open follow-up work.
 
 #### T12.M5 Gameplay and performance selection
 

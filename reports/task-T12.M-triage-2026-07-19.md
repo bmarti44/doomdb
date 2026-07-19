@@ -95,3 +95,32 @@ without triggering the host Dictation prompt.
   `ALTER SYSTEM SET job_queue_processes=0; ALTER SYSTEM SET job_queue_processes=8;`
 - `NEW_GAME` currently costs ~12–14 s cold (Mocha engine construction in a
   fresh worker session). Unchanged by this work.
+
+## Follow-up round (same day)
+
+1. **FREEDOOM-title stall.** A browser timing probe attributed the entire
+   post-skill stall to `NEW_GAME` (13.1 s); the pipeline painted 185 ms after
+   its payload decoded. Splitting the cost in-database: JVM+classload 75 ms,
+   IWAD BLOB read 0.5 s (cached SecureFile), first `doom_mocha_new_game`
+   11.3–11.7 s, repeat `InitNew` 1.05 s, first step 21 ms. The one-time cost
+   is interpreted class loading plus giant static initializers; targeted
+   `DBMS_JAVA.COMPILE_CLASS` over the loader packages did not move it and one
+   monolithic class stalled the accelerator (killed; a DB restart cleared the
+   orphaned session). Mitigations shipped: speculative default-skill
+   allocation when NEW GAME is selected (8 s of menu dwell cut
+   confirm-to-first-paint from ~13 s to ~5.2 s) and a ticking elapsed-seconds
+   status line. The structural fix — a pre-warmed standby worker that
+   constructs the engine before claim and only runs `InitNew` at claim — is
+   recorded as open follow-up in PLAN.md.
+2. **Escape collisions.** Escape simultaneously meant database menu,
+   pointer-lock release, and fullscreen exit. Escape is now browser-reserved
+   (tap releases the mouse, hold exits fullscreen; still "back" in the
+   pre-game skill menu), the Doom menu moved to O, and Escape remains a bound
+   no-op control so the reviewed T10.2 keyboard contract (every bound key
+   emits a command) still holds. Status lines and README document the map.
+3. **Test updates.** `verify-play-menu` and `verify-play-visible-unfocused`
+   now encode the speculative-allocation design (title/main-menu lurkers
+   allocate nothing; the skill menu allocates the highlighted default; a
+   different confirmed skill falls back to a fresh allocation).
+4. **Re-verification.** Ten-gate Mocha regression suite, both codec fixtures,
+   and all live play tests pass after these changes and a stack restart.

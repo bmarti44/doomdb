@@ -41,8 +41,15 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
     ?.textContent === 'CHOOSE SKILL LEVEL');
-  assert.ok(!requests.some(path => path.endsWith('/NEW_GAME')),
-    'skill menu allocated a game before skill confirmation');
+  // Selecting NEW GAME is explicit intent: the client overlaps the ~10 s
+  // engine construction with the skill menu by speculatively allocating the
+  // highlighted default skill. Title and main-menu lurkers allocate nothing.
+  for (let waited = 0; waited < 5000 &&
+       !requests.some(path => path.endsWith('/NEW_GAME')); waited += 100) {
+    await page.waitForTimeout(100);
+  }
+  assert.ok(requests.some(path => path.endsWith('/NEW_GAME')),
+    'skill menu did not begin the speculative default-skill allocation');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
     ?.textContent?.includes('pipeline active'), null, {timeout: 120_000});

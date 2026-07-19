@@ -125,7 +125,7 @@ const captureKeyboard = async () => {
         await keyboard.lock([
             'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'ArrowUp', 'ArrowDown',
             'ArrowLeft', 'ArrowRight', 'ControlLeft', 'ControlRight', 'Space',
-            'Tab', 'Escape', 'KeyP', 'KeyM', 'Enter'
+            'Tab', 'Escape', 'KeyO', 'KeyP', 'KeyM', 'Enter'
         ]);
         shell.dataset.keyboardCaptured = '';
     }
@@ -159,7 +159,7 @@ document.addEventListener('pointerlockchange', () => {
     if (state.loading || !menu.hidden || restartReady)
         return;
     status.style.opacity = '1';
-    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\n${captured ? 'Mouse captured · Esc releases' : 'Click game to capture mouse'}${captureHint}`;
+    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · O menu\n${captured ? 'Mouse captured · Esc releases' : 'Click game to capture mouse'}${captureHint}`;
     window.setTimeout(() => { if (!restartReady)
         status.style.opacity = '0.35'; }, 1800);
 });
@@ -323,7 +323,7 @@ function paintNativeMenu(base, palette, patches, placements) {
         drawPatch(frame, menuPatch(patches, name), x, y);
     blit(canvas, applyPalette(frame, palette));
 }
-async function chooseSkill(base, palette, patches) {
+async function chooseSkill(base, palette, patches, onSkillMenu) {
     const mainItems = [
         { label: 'NEW GAME', value: 'NEW_GAME' },
         { label: 'OPTIONS', value: null },
@@ -363,6 +363,10 @@ async function chooseSkill(base, palette, patches) {
         if (action !== 'NEW_GAME')
             continue;
         status.textContent = 'NEW GAME\nChoose a skill level · Escape goes back';
+        // Selecting NEW GAME is the explicit intent signal: overlap the ~10 s
+        // engine construction with the player's time on the skill menu. A title
+        // or main-menu lurker still allocates nothing.
+        onSkillMenu();
         const skill = await chooseMenu('CHOOSE SKILL LEVEL', skillChoices, 2, true, 63, renderSkill);
         if (skill !== null)
             return skill;
@@ -385,14 +389,40 @@ async function boot() {
     status.textContent = 'Loading authentic menu patches from Oracle…';
     const menuPatches = await loadMenuPatches();
     status.style.opacity = '0';
-    const skill = await chooseSkill(titleIndices, palette, menuPatches);
+    const speculative = { current: null };
+    const skill = await chooseSkill(titleIndices, palette, menuPatches, () => {
+        if (speculative.current !== null)
+            return;
+        const promise = newGame(3);
+        speculative.current = { skill: 3, promise };
+        promise.catch(() => { speculative.current = null; });
+    });
     // Mocha's authentic tic-0 framebuffer contains only the tiled border flat:
     // vanilla Display() does not render the player view until gametic advances.
     // Restore the last complete presentation while the retained worker starts.
     blit(canvas, applyPalette(titleIndices, palette));
     status.style.opacity = '1';
-    status.textContent = 'Starting a new game inside Oracle…\nPreparing the retained database worker.';
-    const game = await newGame(skill);
+    const gameStartedAt = performance.now();
+    status.textContent = 'Starting a new game inside Oracle…\nBuilding the Doom engine in the database.';
+    const startTicker = window.setInterval(() => {
+        const seconds = Math.round((performance.now() - gameStartedAt) / 1000);
+        status.textContent = `Starting a new game inside Oracle…\nBuilding the Doom engine in the database · ${seconds}s`;
+    }, 500);
+    let game;
+    try {
+        const prepared = speculative.current;
+        if (prepared !== null && prepared.skill === skill) {
+            game = await prepared.promise.catch(() => newGame(skill));
+        }
+        else {
+            if (prepared !== null)
+                prepared.promise.catch(() => undefined);
+            game = await newGame(skill);
+        }
+    }
+    finally {
+        window.clearInterval(startTicker);
+    }
     let frame = await decodePayload(game.payload);
     const initialPainted = frame.tic > 0;
     if (initialPainted)
@@ -401,7 +431,7 @@ async function boot() {
     state.loading = false;
     state.setMode(frame.mode);
     await audio.consume(frame.audio);
-    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nClick game for mouse capture${captureHint} · 30 FPS pipeline warming up…`;
+    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · O menu\nClick game for mouse capture${captureHint} · 30 FPS pipeline warming up…`;
     window.setTimeout(() => { status.style.opacity = '0.35'; }, 6000);
     let latest = {
         seq: 0, turn: 0, forward: 0, strafe: 0, run: 0, fire: 0, use: 0,
@@ -457,7 +487,7 @@ async function boot() {
     const startPresentation = () => {
         if (presentationTimer !== 0 || completed.size < presentationBuffer)
             return;
-        status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nDatabase pipeline active · ${document.pointerLockElement === canvas ? 'mouse captured' : 'click game to capture mouse'}${captureHint}`;
+        status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · O menu\nDatabase pipeline active · ${document.pointerLockElement === canvas ? 'mouse captured' : 'click game to capture mouse'}${captureHint}`;
         presentationTimer = window.setTimeout(presentationLoop, 0);
     };
     // Live movement, USE, weapon selection, and every catalog fire mode now use

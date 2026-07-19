@@ -133,7 +133,7 @@ const captureKeyboard = async (): Promise<void> => {
     await keyboard.lock([
       'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'ArrowUp', 'ArrowDown',
       'ArrowLeft', 'ArrowRight', 'ControlLeft', 'ControlRight', 'Space',
-      'Tab', 'Escape', 'KeyP', 'KeyM', 'Enter'
+      'Tab', 'Escape', 'KeyO', 'KeyP', 'KeyM', 'Enter'
     ]);
     shell.dataset.keyboardCaptured = '';
   } catch (cause) {
@@ -160,7 +160,7 @@ document.addEventListener('pointerlockchange', () => {
   else delete shell.dataset.pointerCaptured;
   if (state.loading || !menu.hidden || restartReady) return;
   status.style.opacity = '1';
-  status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\n${
+  status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · O menu\n${
     captured ? 'Mouse captured · Esc releases' : 'Click game to capture mouse'}${captureHint}`;
   window.setTimeout(() => { if (!restartReady) status.style.opacity = '0.35'; }, 1800);
 });
@@ -320,7 +320,8 @@ function paintNativeMenu(base: Uint8Array<ArrayBuffer>, palette: Uint8Array<Arra
 }
 
 async function chooseSkill(base: Uint8Array<ArrayBuffer>, palette: Uint8Array<ArrayBuffer>,
-                           patches: ReadonlyMap<MenuPatchName, DoomPatch>): Promise<number> {
+                           patches: ReadonlyMap<MenuPatchName, DoomPatch>,
+                           onSkillMenu: () => void): Promise<number> {
   const mainItems: readonly MenuChoice<string>[] = [
     {label: 'NEW GAME', value: 'NEW_GAME'},
     {label: 'OPTIONS', value: null},
@@ -359,6 +360,10 @@ async function chooseSkill(base: Uint8Array<ArrayBuffer>, palette: Uint8Array<Ar
     const action = await chooseMenu('MAIN MENU', mainItems, 0, false, 64, renderMain);
     if (action !== 'NEW_GAME') continue;
     status.textContent = 'NEW GAME\nChoose a skill level · Escape goes back';
+    // Selecting NEW GAME is the explicit intent signal: overlap the ~10 s
+    // engine construction with the player's time on the skill menu. A title
+    // or main-menu lurker still allocates nothing.
+    onSkillMenu();
     const skill = await chooseMenu('CHOOSE SKILL LEVEL', skillChoices, 2, true, 63, renderSkill);
     if (skill !== null) return skill;
   }
@@ -381,14 +386,42 @@ async function boot(): Promise<void> {
   status.textContent = 'Loading authentic menu patches from Oracle…';
   const menuPatches = await loadMenuPatches();
   status.style.opacity = '0';
-  const skill = await chooseSkill(titleIndices, palette, menuPatches);
+  // Cold Mocha engine construction inside a fresh worker session costs about
+  // 10 seconds. The skill menu is the earliest moment player intent is known,
+  // and its default row is HURT ME PLENTY, so speculatively allocate that game
+  // while the player reads the menu. A different final skill falls back to an
+  // ordinary allocation and the speculative session ages out or is evicted.
+  type SpeculativeGame = {skill: number; promise: Promise<Awaited<ReturnType<typeof newGame>>>};
+  const speculative: {current: SpeculativeGame | null} = {current: null};
+  const skill = await chooseSkill(titleIndices, palette, menuPatches, () => {
+    if (speculative.current !== null) return;
+    const promise = newGame(3);
+    speculative.current = {skill: 3, promise};
+    promise.catch(() => { speculative.current = null; });
+  });
   // Mocha's authentic tic-0 framebuffer contains only the tiled border flat:
   // vanilla Display() does not render the player view until gametic advances.
   // Restore the last complete presentation while the retained worker starts.
   blit(canvas, applyPalette(titleIndices, palette));
   status.style.opacity = '1';
-  status.textContent = 'Starting a new game inside Oracle…\nPreparing the retained database worker.';
-  const game = await newGame(skill);
+  const gameStartedAt = performance.now();
+  status.textContent = 'Starting a new game inside Oracle…\nBuilding the Doom engine in the database.';
+  const startTicker = window.setInterval(() => {
+    const seconds = Math.round((performance.now() - gameStartedAt) / 1000);
+    status.textContent = `Starting a new game inside Oracle…\nBuilding the Doom engine in the database · ${seconds}s`;
+  }, 500);
+  let game;
+  try {
+    const prepared: SpeculativeGame | null = speculative.current;
+    if (prepared !== null && prepared.skill === skill) {
+      game = await prepared.promise.catch(() => newGame(skill));
+    } else {
+      if (prepared !== null) prepared.promise.catch(() => undefined);
+      game = await newGame(skill);
+    }
+  } finally {
+    window.clearInterval(startTicker);
+  }
   let frame = await decodePayload(game.payload);
   const initialPainted = frame.tic > 0;
   if (initialPainted) blit(canvas, applyPalette(frame.indices, palette));
@@ -396,7 +429,7 @@ async function boot(): Promise<void> {
   state.loading = false;
   state.setMode(frame.mode);
   await audio.consume(frame.audio);
-  status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nClick game for mouse capture${captureHint} · 30 FPS pipeline warming up…`;
+  status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · O menu\nClick game for mouse capture${captureHint} · 30 FPS pipeline warming up…`;
   window.setTimeout(() => { status.style.opacity = '0.35'; }, 6000);
 
   let latest: Command = {
@@ -448,7 +481,7 @@ async function boot(): Promise<void> {
   };
   const startPresentation = (): void => {
     if (presentationTimer !== 0 || completed.size < presentationBuffer) return;
-    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nDatabase pipeline active · ${
+    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use · O menu\nDatabase pipeline active · ${
       document.pointerLockElement === canvas ? 'mouse captured' : 'click game to capture mouse'}${captureHint}`;
     presentationTimer = window.setTimeout(presentationLoop, 0);
   };

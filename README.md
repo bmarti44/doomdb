@@ -10,129 +10,62 @@ client at <http://localhost:8080/play/> while the Compose stack is running.
 
 ## Current status
 
-The active implementation path is **P12.M: Mocha Doom inside Oracle's JVM**.
-The previous clean-room SQL/PLSQL engine remains intact as the differential
-oracle. New `/play/` sessions now use the Mocha engine; the SQL implementation
-remains independently executable for parity and recovery diagnostics.
+The active implementation path is **P12.M: Mocha Doom inside Oracle's JVM**,
+and it is playable end to end on the local stack. New `/play/` sessions run the
+pinned GPLv3 `AXDOOMER/mochadoom` engine (commit `c0af1322…abe93`) as Java
+schema objects inside OJVM, owned by a long-lived Scheduler worker session and
+reached only through generated ORDS AutoREST. The previous clean-room SQL/PLSQL
+engine (phases P0–P7) remains intact and independently executable as the
+differential and visual oracle.
 
-The Mocha Doom feasibility gate is green:
+What works today, all verified by repeatable gates:
 
-- Upstream `AXDOOMER/mochadoom` is pinned at commit
-  `c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93` as a GPLv3 submodule.
-- All 442 upstream sources plus the adapter compile to 822 classes; the DOOM
-  schema reports 852 valid Java classes including 30 preserved legacy helpers.
-- Oracle stores and verifies the 28,795,076-byte Freedoom IWAD as a SecureFile
-  BLOB; its SHA-256 is `7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d`.
-- A bounded headless engine initializes E1M1, accepts dynamic `ticcmd_t` input,
-  advances exactly one game tic, and renders a deterministic 320×200 indexed
-  framebuffer entirely inside the database.
-- The tic-zero frame SHA-256 is
-  `a1c9b0378eed9e82425cae593b82dfa44715627d8aa635562b450e4c1af3d3b5`.
-  A caller-owned Oracle BLOB receives all 64,000 frame bytes in 1.431 ms.
+- **Playable game.** Title screen, WAD-native menus, skill selection, dynamic
+  movement/turning/fire/use, doors and lifts, monsters, damage, authored audio
+  events, pause/automap/menu, save/load with lineage forking, and exact replay
+  — every displayed pixel selected inside Oracle, every input a database
+  transaction.
+- **Determinism and recovery.** Frames and state carry SHA-256 identities; the
+  append-only `ticcmd_t` ledger reconstructs a killed or restarted worker to
+  the identical frame chain; duplicate requests replay byte-identical
+  responses; concurrent sessions are isolated by generation fencing.
+- **30 FPS locally.** Repeated 300-frame moving/combat routes through the real
+  HTTP/browser pipeline hold 30–32 displayed FPS with paint-gap p95 ≤ 33.3 ms
+  and 300/300 unique frames (frame-chain SHA `a1888c88…4be900` reproduced
+  across independent runs).
+- **Operational resilience (2026-07-19).** Worker claims self-heal when the
+  Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
+  when all four worker slots are busy the least-recently-active idle worker is
+  evicted (bounded, deterministic, durable-state reconstruct) so a new player
+  is never refused; the ten-gate Mocha regression suite passes from a fully
+  occupied pool.
 
-This path is playable and selected locally. The initial interpreted trace
-isolated `Display()` at about 193 ms, but synchronous native compilation of the
-actual renderer/action classes reduced stable rendering to 2.8–4.9 ms while
-preserving frame hashes. Cold initialization is retained in the Scheduler
-worker rather than repeated in ORDS request sessions.
+Key verified numbers (local two-core Oracle Free stack):
 
-A second evidence-driven gate compiles 26 additional classes touched only by
-movement/combat. The resulting 300-sample moving/FIRE-every-8 route produced 299
-unique frames at **1.323 ms p50 / 3.927 ms p95 / 8.236 ms p99 / 14.239 ms max**
-internally. Ticker and renderer p95 are 2.080 and 1.876 ms. This leaves about
-29.4 ms of the 33.3 ms frame budget for persistence and delivery; it is strong
-30 FPS feasibility evidence, not yet an end-to-end browser claim.
+| Measurement | Result |
+| --- | --- |
+| Engine step + render + BLOB (warm, p95) | 3.2–3.9 ms |
+| Durable tic with ledger + synchronous commit (p95) | ~20 ms |
+| Displayed FPS, two independent 300-frame routes | 30.75–32.05 |
+| Tic-zero frame SHA-256 | `a1c9b037…d3b5` |
+| IWAD BLOB (SecureFile, SHA-verified) | 28,795,076 bytes |
 
-The first production-shaped command bridge is also green. Oracle maps the
-existing live `turn/forward/strafe/run/fire/use/weapon` controls with vanilla
-walk/run speeds and the six-tic turn ramp, advances Mocha, renders, and writes
-the 64,000-byte frame BLOB in one bounded call. A 300-tic moving/FIRE-every-8
-clean rerun measured **1.704 ms p50 / 3.191 ms p95 / 6.025 ms p99 / 22.047 ms max**
-with 300 unique frames. Every call returns the exact executed eight-byte
-`ticcmd_t`; the new lineage-aware, append-only Oracle ledger stores those bytes
-and their command/frame hashes for exact restart replay. A turn-bearing durable
-bridge test committed `3228fec000000017`, disposed the JVM, rebuilt from Oracle,
-and reproduced frame SHA
-`c426186759cd917ce9465ea0ad93bbb180b0b5f498e3a4804e3bbe048709c7d8`.
-That gate also found and fixed an upstream low-byte sign-extension defect in
-`ticcmd_t.unpack`. The schema's `GAME_ENGINE` selector is now `MOCHA` after the
-worker, recovery, persistence, gameplay, presentation-control, and native-code
-gates passed.
+What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 
-The existing client-compatible gzip/DMF3 response codec is now part of the same
-call. Its component path measured **4.900 ms p50 / 12.797 ms p95**. The next
-300-sample gate additionally included both command-ledger inserts, the
-authoritative session-frontier update, and `COMMIT WRITE IMMEDIATE WAIT` on
-every tic. It measured **8.290 ms p50 / 19.560 ms p95 / 38.798 ms p99 / 69.414
-ms max**, then disposed the engine and replayed all 330 committed commands to
-the identical final frame SHA. At p95 this durable encoded database core has
-13.773 ms left in the 33.3 ms frame budget for AQ/ORDS, wire, decode, and paint.
-
-The unchanged generated AutoREST contract now drives the same path through a
-generation-fenced Scheduler/AQ worker. Synchronous STEP plus byte-identical
-retry passed, as did asynchronous SUBMIT_STEP/POLL_FRAME with a four-command
-burst. The real localhost HTTP/browser-decode harness then rendered **300/300
-unique frames at 32.03 displayed FPS** with movement and FIRE-every-8: 31.215 ms
-p50 / 32.058 ms p95 paint gaps, 32.795 ms max, and zero presentation stalls.
-A depth-2/two-frame-buffer probe was correctly rejected at 27.93 FPS; the
-selected depth-4/buffer-10 shape absorbs ORDS tail latency without changing game
-semantics. This is the first green Mocha end-to-end 30 FPS gate.
-
-An immediate independent rerun produced the identical frame-chain SHA
-`a1888c88d8fa779b9b90e8e650a8a5324f3085c21fe4b44f8e810b26b84be900`
-at 32.04 FPS, again with 300 unique frames and zero stalls. Its paint gaps were
-31.219 ms p50 / 31.976 ms p95 / 32.777 ms max. The two-run deterministic
-AutoREST frame-chain gate is therefore green.
-
-Bounded caller-selected new-game and deterministic disposal calls now pass. All
-18 upstream `System.exit` sites are mechanically fenced into catchable OJVM
-errors, and deployment fails if an unfenced exit remains. Mocha's native vanilla
-save stream was measured and rejected because it diverges at the frame and
-continued-branch seam. Exact reconstruction now replays the durable packed
-`ticcmd_t` ledger: a fresh 70-command run reproduced tic, RNG index, player
-pose, and frame SHA exactly.
-
-The remaining worker fault gates are now green as well. Two simultaneous games
-owned separate Scheduler/OJVM sessions, matched after identical commands, then
-diverged correctly after opposite turns with no cross-session rows. A forced
-worker stop at tic 50 now advances the generation, replays Oracle's ledger, and
-produces the same tic-51 frame as an uninterrupted twin with 102 total commands.
-If a fresh heartbeat temporarily masks the dead job, the aged correlated poll
-performs the exceptional Scheduler check and migrates the exact stored command
-to the reconstructed generation. Owner rows and jobs whose game session is gone
-are reclaimed without touching active games, and worker map/engine identity is
-derived from the immutable session lineage instead of a mutable global selector.
-
-Audio, persistence, and the reported gameplay defects now have
-production-shaped gates. Oracle imports all 69 IWAD sound lumps, records a
-lineage-hashed authored-audio ledger, and serves observed sounds through
-AutoREST. A 330-tic route has continuous visible monsters, weapon and muzzle
-animation, no one-frame sprite dropouts, and no health loss without a correlated
-damage event. New game returns the exact retained Mocha tic-zero frame.
-Save/load forks an exact command lineage, continues the monotonic public command
-sequence, and replays every frame across the branch. Crash reconstruction,
-concurrent sessions, tic-zero, gameplay, audio, save/load, and replay all pass.
-The gates preserve the engine selector they found, so running verification can
-no longer switch the live `/play/` page back to the legacy SQL engine.
-
-The current local gate is green. Mocha returns raw binary DMF3 while the client
-remains backward-compatible with gzip SQL frames, and Jetty compresses only the
-outer AutoREST JSON. ORDS keeps exactly six physical connections for the
-four-submit/two-poll pipeline. Most importantly, asynchronous submission now
-skips a synchronous response-AQ probe that could never produce a message and
-cost about 16 ms per command. Two consecutive warm 300-frame moving/FIRE routes
-passed at **30.75 and 32.05 FPS**, each with 300 unique frames. Their paint-gap
-p95 values were 32.08 and 32.05 ms; the second run had zero stalls and a 33.02 ms
-maximum. A newly restarted or redefined stack still reports that the database
-pipeline is warming until its retained OJVM/AutoREST caches settle.
-
-The previous SQL/retained-worker implementation did pass two corrected-combat
-qualifications at 31.95 and 30.81 displayed FPS. Those results remain valid for
-that engine, but they must not be presented as Mocha Doom performance.
+- **P8** — replace the remaining legacy-route fixtures with reviewed Mocha
+  equivalents (uninterrupted full-E1M1 completion replay, workflow coverage).
+- **P9** — the Oracle `MODEL`-clause title fire animation (T9.1).
+- **P11** — the real S3 + Autonomous Database deployment; blocked only on
+  cloud credentials, local dry-runs exist.
+- **T12.1/T12.2** — the final golden-preserving local *and cloud* 300-frame
+  performance protocol (the local 30 FPS evidence does not substitute for it).
+- **P13** — database-authoritative multiplayer, planned after the
+  single-player matrix is fully green.
 
 Full measurements, rejected alternatives, and acceptance gates are maintained
 in [PLAN.md](PLAN.md), the
 [P12.M OJVM performance report](reports/performance-P12.M-mochadoom-ojvm-2026-07-18.md),
+the [2026-07-19 outage triage](reports/task-T12.M-triage-2026-07-19.md),
 and [reports/](reports/).
 
 ## Reviewed database output
@@ -200,13 +133,15 @@ OJVM. Click or press Enter to begin; the game remains windowed.
 The visible menus are composed from the pinned Freedoom IWAD's original Doom
 patches served by Oracle; browser HTML supplies accessibility targets only.
 Controls are W/S or Up/Down to move, A/D or Left/Right to turn, F or Ctrl to
-fire, Space to use, Tab for the automap, Escape for the menu, and P to
-pause. Once gameplay starts, click the game to capture the cursor; horizontal
-mouse movement turns, left-click fires, and Escape releases the cursor. On
-macOS, rapid double-Control presses trigger the host's Dictation prompt in a
-windowed browser; double-click the game to enter fullscreen Keyboard Lock,
-which captures both Ctrl keys so firing never opens that prompt. Leaving
-fullscreen restores the windowed capture.
+fire, Space to use, Tab for the automap, O for the Doom menu, and P to pause.
+Escape is deliberately reserved for the browser so one key never races three
+behaviors: a tap releases the captured mouse, and holding it exits fullscreen.
+Once gameplay starts, click the game to capture the cursor; horizontal mouse
+movement turns and left-click fires. On macOS, rapid double-Control presses
+trigger the host's Dictation prompt in a windowed browser; double-click the
+game to enter fullscreen Keyboard Lock, which captures both Ctrl keys so
+firing never opens that prompt. Leaving fullscreen restores the windowed
+capture.
 
 Real credentials, wallets, private keys, environment files, WADs, generated
 classes/JARs, and Terraform variable files are ignored by

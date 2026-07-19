@@ -1,7 +1,7 @@
 import type {Command} from './api.js';
 
 export type ControlName = 'forward' | 'backward' | 'turn-left' | 'turn-right' |
-  'fire' | 'use' | 'automap' | 'menu' | 'pause' | 'audio';
+  'fire' | 'use' | 'automap' | 'menu' | 'pause' | 'audio' | 'release';
 
 type Emit = (command: Command) => void;
 type AudioToggle = () => void;
@@ -10,7 +10,10 @@ const keyControls: Record<string, ControlName> = {
   KeyW: 'forward', ArrowUp: 'forward', KeyS: 'backward', ArrowDown: 'backward',
   KeyA: 'turn-left', ArrowLeft: 'turn-left', KeyD: 'turn-right', ArrowRight: 'turn-right',
   KeyF: 'fire', Space: 'use', Tab: 'automap',
-  Escape: 'menu', KeyP: 'pause', KeyM: 'audio',
+  // Escape belongs to the browser: it releases the pointer capture and (held)
+  // exits fullscreen. Binding it to the database menu made one key race three
+  // behaviors, so the Doom menu lives on O and Escape stays a pure release.
+  KeyO: 'menu', Escape: 'release', KeyP: 'pause', KeyM: 'audio',
   // Classic Ctrl-fire is bound everywhere. macOS reserves rapid double-Control
   // presses for Dictation, which only fullscreen Keyboard Lock (double-click
   // the game) can suppress; the windowed game still fires on Ctrl but cannot
@@ -52,6 +55,9 @@ export function bindInput(canvas: HTMLCanvasElement,
   const update = (name: ControlName, down: boolean): void => {
     if (name === 'audio') {
       if (down) toggleAudio();
+    } else if (name === 'release') {
+      // The browser owns the actual release behavior; emitting the unchanged
+      // command keeps every bound key observable to the input contract.
     } else if (down) {
       held.add(name);
     } else {
