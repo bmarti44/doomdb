@@ -18,7 +18,7 @@ begin
   l_status:=doom_mocha_new_game(2,1,1);
   for l_tic in 1..24 loop
     l_status:=doom_mocha_step_controls_payload(
-      0,0,0,0,1,0,0,0,0,0,l_state_sha,l_payload);
+      0,0,0,0,1,0,0,0,0,0,0,l_state_sha,l_payload);
     if l_status not like 'ok|%' then raise_application_error(-20000,l_status);end if;
     l_state_sha:=field(l_status,'stateSha256');
     l_plain:=doom_mocha_payload_plain(l_payload);

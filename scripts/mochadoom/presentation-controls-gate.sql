@@ -17,11 +17,12 @@ declare
       case when l_end=0 then length(l_status)+1 else l_end end-l_start);
   end;
 
-  procedure step(p_pause number,p_automap number,p_menu number) is
+  procedure step(p_pause number,p_automap number,p_menu number,
+    p_cheat number default 0) is
   begin
     l_seq:=l_seq+1;
     doom_mocha_bridge.step(l_session,l_lineage,l_generation,l_seq-1,l_seq,
-      0,0,0,0,0,0,0,p_pause,p_automap,p_menu,l_frame,l_status,l_ticcmd,
+      0,0,0,0,0,0,0,p_pause,p_automap,p_menu,p_cheat,l_frame,l_status,l_ticcmd,
       l_state_sha,l_frame_sha);
     if l_status not like 'ok|%' then raise_application_error(-20000,l_status);end if;
   end;
@@ -103,18 +104,46 @@ begin
     and lineage=l_lineage and menu_action='OPTIONS';
   if l_count<>1 then raise_application_error(-20000,'durable menu rows='||l_count);end if;
 
-  l_status:=doom_mocha_dispose;
-  doom_mocha_bridge.reconstruct(l_session,l_lineage,l_status);
-  if instr(l_status,'replayedCommands=7')=0 or field('paused')<>'0' or
-     field('automap')<>'0' or field('menu')<>'1' or
-     instr(l_status,'frameSha256='||l_frame_sha)=0 then
-    raise_application_error(-20000,'presentation reconstruction mismatch '||l_status);
-  end if;
   step(0,0,1);
   if field('menu')<>'0' then raise_application_error(-20000,'menu-off mismatch');end if;
+  step(0,0,0,1);
+  if field('god')<>'1' or field('playerHealth')<>'100' or
+     rawtohex(utl_raw.substr(l_ticcmd,5,2))<>'0008' then
+    raise_application_error(-20000,'god-on mismatch '||l_status);end if;
+  step(0,0,0,1);
+  if field('god')<>'0' then raise_application_error(-20000,'god-off mismatch');end if;
+  step(0,0,0,3);
+  if field('noclip')<>'1' or rawtohex(utl_raw.substr(l_ticcmd,5,2))<>'0018' then
+    raise_application_error(-20000,'noclip-on mismatch '||l_status);end if;
+  step(0,0,0,3);
+  if field('noclip')<>'0' then raise_application_error(-20000,'noclip-off mismatch');end if;
+  step(0,0,0,4);
+  if field('fullmap')<>'1' or rawtohex(utl_raw.substr(l_ticcmd,5,2))<>'0020' then
+    raise_application_error(-20000,'fullmap-on mismatch '||l_status);end if;
+  step(0,0,0,4);
+  if field('fullmap')<>'0' then raise_application_error(-20000,'fullmap-off mismatch');end if;
+  step(0,0,0,2);
+  if field('ownedWeapons')<>'9' or field('ownedKeys')<>'6' or
+     field('armor')<>'200' or rawtohex(utl_raw.substr(l_ticcmd,5,2))<>'0010' then
+    raise_application_error(-20000,'all-items mismatch '||l_status);end if;
+  commit;
+  select count(*) into l_count from tic_commands where session_token=l_session
+    and lineage=l_lineage and cheat_code in('GOD','NOCLIP','FULLMAP','ALL');
+  if l_count<>7 then raise_application_error(-20000,'durable cheat rows='||l_count);end if;
 
-  dbms_output.put_line('PASS MOCHADOOM-PRESENTATION-CONTROLS commands=8' ||
-    ' pause=0 automap=0 menu=0 stateSha='||l_state_sha||' frameSha='||l_frame_sha);
+  l_status:=doom_mocha_dispose;
+  doom_mocha_bridge.reconstruct(l_session,l_lineage,l_status);
+  if instr(l_status,'replayedCommands=15')=0 or field('paused')<>'0' or
+     field('automap')<>'0' or field('menu')<>'0' or field('god')<>'0' or
+     field('noclip')<>'0' or field('fullmap')<>'0' or
+     field('ownedWeapons')<>'9' or field('ownedKeys')<>'6' or
+     instr(l_status,'frameSha256='||l_frame_sha)=0 then
+    raise_application_error(-20000,'control reconstruction mismatch '||l_status);
+  end if;
+
+  dbms_output.put_line('PASS MOCHADOOM-PRESENTATION-CONTROLS commands=15' ||
+    ' pause=0 automap=0 menu=0 cheats=7 stateSha='||l_state_sha||
+    ' frameSha='||l_frame_sha);
   dbms_lob.freetemporary(l_frame);
   cleanup;
 exception when others then cleanup;raise;

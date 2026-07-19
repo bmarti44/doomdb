@@ -23,9 +23,9 @@ authoritative record.
   the 2026-07-19 checkpoints added worker-admission self-healing, bounded
   eviction, the canonical presentation contract, collision-free key bindings,
   speculative skill-menu game allocation, and a byte-exact pre-warmed standby.
-  The complete eleven-gate Mocha core suite is green; P8 public workflow
-  replacement (especially the four verification cheats and full E1M1 route)
-  is the remaining selection work.
+  The complete eleven-gate Mocha core suite and the P8.2 direct AutoREST
+  workflow are green; the full E1M1 route and final P8.2 Playwright replacement
+  are the remaining selection work.
 - **Next:** P8 replacement Mocha fixtures (uninterrupted E1M1 completion
   replay, workflow coverage), P9 MODEL fire, P11 real S3 + Autonomous cloud
   deployment (needs credentials; local dry-runs exist), then the full
@@ -2400,8 +2400,9 @@ the clean-room engine unless it is needed to validate the new public contract.
   gates baseline. Initialize-only arming makes the claimed sequence
   identical to a cold claim by construction: a two-fresh-session 24-tic
   differential is byte-identical in every frame/state/payload SHA, repeated
-  save/load runs reproduce the historical `c60c0fc9…` state SHA, and the new
-  `standby-worker-gate` (now part of the 11-gate core suite) measures cold
+  pre-token-v2 save/load runs reproduced the historical `c60c0fc9…` state SHA,
+  while the inventory-complete token selected below now produces `2d91b991…`;
+  the `standby-worker-gate` (now part of the 11-gate core suite) measures cold
   ~17 s versus standby-claimed ~1.4 s with the exact canonical tic-zero
   frame. Browser measurements show 0.4–3.4 s confirm-to-first-paint when a
   standby is available; a fully occupied pool falls back to eviction plus
@@ -2583,6 +2584,19 @@ the clean-room engine unless it is needed to validate the new public contract.
 - Accept: Playwright plus direct API scenarios cover new game/skill, pause freeze,
   menu navigation, automap modes, each required cheat, save/load, rewind, replay,
   death/restart, and intermission.
+- Mocha direct-workflow checkpoint (2026-07-19): the existing public `cheat`
+  field now admits exactly `GOD`, `ALL`, `NOCLIP`, and `FULLMAP` for Mocha
+  sessions. The opcode occupies reviewed high bits of Doom's existing
+  `ticcmd_t.consistancy` word, so the append-only eight-byte command ledger,
+  save/load branches, and killed-worker reconstruction replay each toggle at
+  its exact tic without a second control channel. The transition token now
+  covers scalar armor plus weapon ownership, ammo, keys, powers, and cheat
+  flags; normal frame identities remain unchanged. The eleven-gate core suite
+  passes with seven cheat transitions and exact reconstruction, and a real
+  42-request generated-AutoREST workflow passes pause, automap/full-map,
+  GOD/ALL/NOCLIP, save/load branch equality, replay, and invalid-command
+  atomicity over raw DMF3. The remaining T8.2 slice is the Mocha Playwright
+  replacement for browser-visible menu/death/restart/intermission workflows.
 
 #### T8.3 Live-client playtest defect closure
 

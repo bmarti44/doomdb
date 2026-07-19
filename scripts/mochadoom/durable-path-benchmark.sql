@@ -48,7 +48,7 @@ begin
     l_started:=systimestamp;
     doom_mocha_bridge.step(l_session,l_lineage,l_generation,l_index-1,l_index,
       0,1,0,1,case when mod(l_index-1,8)=0 then 1 else 0 end,0,0,
-      0,0,0,l_frame,l_status,l_ticcmd,l_state_sha,l_frame_sha);
+      0,0,0,0,l_frame,l_status,l_ticcmd,l_state_sha,l_frame_sha);
     commit write immediate wait;
     if l_index>30 then
       l_values(l_index-30):=elapsed_us(systimestamp-l_started);

@@ -235,12 +235,15 @@ create or replace package body doom_api as
         config_number('UNIFIED_WORKER_SPLIT_USE_ENABLED',0)<>1) or
        coalesce(l_weapon,0) not between 0 and 9 or
        coalesce(l_pause,0) not in(0,1) or coalesce(l_automap,0) not in(0,1) or
-       coalesce(l_menu,'NONE') not in('NONE','OPTIONS') or l_cheat is not null then
+       coalesce(l_menu,'NONE') not in('NONE','OPTIONS') or
+       coalesce(l_cheat,'') not in('','GOD','ALL','NOCLIP','FULLMAP') then
       if p_async=1 then fail(c_bad_request,'command is outside retained submit controls');end if;
       return;
     end if;
     l_flags:=coalesce(l_pause,0)+coalesce(l_automap,0)*2+
-      case coalesce(l_menu,'NONE') when 'OPTIONS' then 4 else 0 end;
+      case coalesce(l_menu,'NONE') when 'OPTIONS' then 4 else 0 end+
+      case coalesce(l_cheat,'') when 'GOD' then 8 when 'ALL' then 16
+        when 'NOCLIP' then 24 when 'FULLMAP' then 32 else 0 end;
 
     select save_lineage,current_tic,last_command_seq
       into l_lineage,l_tic,l_expected_seq from game_sessions

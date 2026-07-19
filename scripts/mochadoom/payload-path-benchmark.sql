@@ -19,7 +19,7 @@ begin
   l_status:=doom_mocha_new_game(2,1,1);
   for l_index in 1..330 loop
     l_status:=doom_mocha_step_controls_payload(0,1,0,1,
-      case when mod(l_index-1,8)=0 then 1 else 0 end,0,0,0,0,0,
+      case when mod(l_index-1,8)=0 then 1 else 0 end,0,0,0,0,0,0,
       l_state_sha,l_payload);
     if l_status not like 'ok|%' then raise_application_error(-20000,l_status);end if;
     l_state_sha:=field(l_status,'stateSha256');

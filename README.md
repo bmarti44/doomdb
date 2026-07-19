@@ -22,7 +22,8 @@ What works today, all verified by repeatable gates:
 
 - **Playable game.** Title screen, WAD-native menus, skill selection, dynamic
   movement/turning/fire/use, doors and lifts, monsters, damage, authored audio
-  events, pause/automap/menu, save/load with lineage forking, and exact replay
+  events, pause/automap/menu, GOD/ALL/NOCLIP/FULLMAP verification cheats,
+  save/load with lineage forking, and exact replay
   — every displayed pixel selected inside Oracle, every input a database
   transaction.
 - **Determinism and recovery.** Frames and state carry SHA-256 identities; the
@@ -58,8 +59,9 @@ Key verified numbers (local two-core Oracle Free stack):
 
 What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 
-- **P8** — replace the remaining legacy-route fixtures with reviewed Mocha
-  equivalents (uninterrupted full-E1M1 completion replay, workflow coverage).
+- **P8** — finish the remaining reviewed Mocha fixtures (uninterrupted full-
+  E1M1 completion replay and browser-visible death/restart/intermission); the
+  42-request direct AutoREST workflow is green.
 - **P9** — the Oracle `MODEL`-clause title fire animation (T9.1).
 - **P11** — the real S3 + Autonomous Database deployment; blocked only on
   cloud credentials, local dry-runs exist.

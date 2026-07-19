@@ -11,7 +11,7 @@ create or replace package doom_mocha_bridge authid definer as
     p_expected_tic in number,p_command_seq in number,
     p_turn in number,p_forward in number,p_strafe in number,p_run in number,
     p_fire in number,p_use in number,p_weapon in number,p_pause in number,
-    p_automap in number,p_menu in number,p_frame in blob,
+    p_automap in number,p_menu in number,p_cheat in number,p_frame in blob,
     p_status out varchar2,p_ticcmd out raw,p_state_sha out varchar2,
     p_frame_sha out varchar2);
 end doom_mocha_bridge;
@@ -117,7 +117,7 @@ create or replace package body doom_mocha_bridge as
     p_expected_tic in number,p_command_seq in number,
     p_turn in number,p_forward in number,p_strafe in number,p_run in number,
     p_fire in number,p_use in number,p_weapon in number,p_pause in number,
-    p_automap in number,p_menu in number,p_frame in blob,
+    p_automap in number,p_menu in number,p_cheat in number,p_frame in blob,
     p_status out varchar2,p_ticcmd out raw,p_state_sha out varchar2,
     p_frame_sha out varchar2
   ) is
@@ -131,6 +131,7 @@ create or replace package body doom_mocha_bridge as
        p_strafe not between -1 and 1 or p_run not in(0,1) or
        p_fire not in(0,1) or p_use not in(0,1) or p_weapon not between 0 and 9 or
        p_pause not in(0,1) or p_automap not in(0,1) or p_menu not in(0,1) or
+       p_cheat not between 0 and 4 or
        p_frame is null then
       raise_application_error(c_invalid,'invalid normalized Mocha command');
     end if;
@@ -161,7 +162,7 @@ create or replace package body doom_mocha_bridge as
           and tic=l_db_tic;
     end if;
     p_status:=doom_mocha_step_controls_payload(p_turn,p_forward,p_strafe,p_run,
-      p_fire,p_use,p_weapon,p_pause,p_automap,p_menu,
+      p_fire,p_use,p_weapon,p_pause,p_automap,p_menu,p_cheat,
       l_previous_state_sha,p_frame);
     if p_status not like 'ok|%' then
       raise_application_error(c_invalid,substr(p_status,1,1900));
@@ -190,7 +191,9 @@ create or replace package body doom_mocha_bridge as
       automap_toggle,menu_action,cheat_code,command_sha)
     values(p_session,p_lineage,p_command_seq,l_tic,0,p_turn,p_forward,p_strafe,p_run,
       p_fire,p_use,p_weapon,p_pause,p_automap,
-      case p_menu when 1 then 'OPTIONS' else 'NONE' end,null,l_ticcmd_sha);
+      case p_menu when 1 then 'OPTIONS' else 'NONE' end,
+      case p_cheat when 1 then 'GOD' when 2 then 'ALL'
+        when 3 then 'NOCLIP' when 4 then 'FULLMAP' end,l_ticcmd_sha);
     for l_audio in (
       select event_tic,event_ordinal,sound_id,volume,separation
         from json_table(l_audio_json,'$[*]' columns(

@@ -251,6 +251,40 @@ docker exec "$container" bash -lc \
    DoomMochaIwadLoader 'jdbc:oracle:thin:@//localhost:1521/FREEPDB1' DOOM \
    '$tmp/freedoom1.wad' '$iwad_sha' '$revision'"
 
+# Retained OJVM workers keep engine classes live and can hold loadjava's class
+# replacement locks indefinitely. Stop them through the generation-fenced
+# coordinator before replacing the class graph; durable ledgers reconstruct
+# every affected game when it next submits a command.
+{
+  printf 'connect DOOM/"'
+  docker exec "$container" sh -c "tr -d '\\r\\n' < /run/secrets/doom_password"
+  printf '"@FREEPDB1\n'
+  printf '%s\n' 'whenever sqlerror exit failure rollback'
+  # A changed Java call signature can temporarily invalidate the coordinator
+  # before its package body is replaced below. Treat the stop call as best
+  # effort and make the running-job count the authoritative lock-release gate.
+  printf '%s\n' "begin execute immediate 'begin doom_unified_worker.request_stop_all; end;'; exception when others then null; end;" '/'
+} | docker exec -i "$container" "$java_home/bin/sqlplus" -s /nolog
+workers_stopped=0
+for _ in $(seq 1 30); do
+  running_workers="$(docker exec "$container" bash -lc \
+    "'$java_home/bin/sqlplus' -s / as sysdba <<'SQL'
+set heading off feedback off pages 0
+alter session set container=FREEPDB1;
+select count(*) from dba_scheduler_running_jobs
+ where owner='DOOM' and job_name like 'DOOM_UNIFIED_WORKER_%';
+SQL" | tail -n 1 | tr -d '[:space:]')"
+  if [[ "$running_workers" == 0 ]]; then
+    workers_stopped=1
+    break
+  fi
+  sleep 1
+done
+[[ "$workers_stopped" == 1 ]] || {
+  printf 'retained OJVM workers did not release class locks\n' >&2
+  exit 1
+}
+
 # The full resolver can detach from/close docker exec's controlling stream.
 # Launch it detached and rendezvous through status files so that behavior
 # cannot terminate this orchestration shell before verification runs.
@@ -307,6 +341,11 @@ done
   printf '%s\n' 'set heading off feedback off pages 0 lines 32767 serveroutput on'
   printf '%s\n' "merge into doom_config d using(select 'GAME_ENGINE' config_key,'MOCHA' text_value from dual)s on(d.config_key=s.config_key) when not matched then insert(config_key,text_value) values(s.config_key,s.text_value);"
   cat "$root/sql/sim/082_mochadoom_bridge.sql"
+  # Reinstall dependants after the Java call/bridge signatures. This ordering
+  # prevents a successful class replacement from leaving the live AutoREST
+  # package invalid until a separate full-schema deployment.
+  cat "$root/sql/sim/080_unified_worker.sql"
+  cat "$root/sql/rest/010_doom_api.sql"
   cat "$root/scripts/mochadoom/compile-hot-renderer.sql"
   printf '%s\n' 'select doom_mocha_probe from dual;'
   printf '%s\n' 'select doom_mocha_iwad_probe from dual;'

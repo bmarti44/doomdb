@@ -67,11 +67,12 @@ create or replace function doom_mocha_step_controls_payload(
   p_pause in number,
   p_automap in number,
   p_menu in number,
+  p_cheat in number,
   p_previous_state_sha in varchar2,
   p_output in blob
 ) return varchar2
 as language java
-name 'doomdb.mocha.DoomDbMochaAdapter.stepControlsPayloadSafe(int,int,int,int,int,int,int,int,int,int,java.lang.String,java.sql.Blob) return java.lang.String';
+name 'doomdb.mocha.DoomDbMochaAdapter.stepControlsPayloadSafe(int,int,int,int,int,int,int,int,int,int,int,java.lang.String,java.sql.Blob) return java.lang.String';
 /
 
 create or replace function doom_mocha_current_payload(

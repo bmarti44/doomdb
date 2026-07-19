@@ -199,12 +199,12 @@ public final class DoomDbMochaAdapter {
       int turn, int forward, int strafe, int run, int fire, int use,
       int weapon, int pause, int automap, int menu, Blob output) {
     return stepControlsFrameInternal(turn, forward, strafe, run, fire, use,
-        weapon, pause, automap, menu, output, true);
+        weapon, pause, automap, menu, 0, output, true);
   }
 
   private static String stepControlsFrameInternal(
       int turn, int forward, int strafe, int run, int fire, int use,
-      int weapon, int pause, int automap, int menu, Blob output,
+      int weapon, int pause, int automap, int menu, int cheat, Blob output,
       boolean writeRawFrame) {
     long started = System.nanoTime();
     try {
@@ -223,6 +223,7 @@ public final class DoomDbMochaAdapter {
       pause = clamp(pause, 0, 1);
       automap = clamp(automap, 0, 1);
       menu = clamp(menu, 0, 1);
+      cheat = clamp(cheat, 0, 4);
 
       if (turn == 0) {
         controlTurnHeld = 0;
@@ -240,7 +241,7 @@ public final class DoomDbMochaAdapter {
       if (pause == 1) {
         buttons = data.Defines.BT_SPECIAL | data.Defines.BTS_PAUSE;
       }
-      int presentationFlags = (automap << 1) | (menu << 2);
+      int controlFlags = (automap << 1) | (menu << 2) | (cheat << 3);
 
       int buffer = (engine.gametic / engine.getTicdup())
           % engine.netcmds[engine.consoleplayer].length;
@@ -250,9 +251,9 @@ public final class DoomDbMochaAdapter {
       // Public +1 is turn-right; vanilla represents right as a negative delta.
       command.angleturn = (short) (-turn * turnMagnitude);
       // Single-player consistency is otherwise unused. Persist presentation
-      // toggles here so the canonical eight-byte ticcmd ledger reconstructs
-      // automap/menu state across save/load and worker restarts.
-      command.consistancy = (short) presentationFlags;
+      // controls here so the canonical eight-byte ticcmd ledger reconstructs
+      // automap, menu, and cheat state across save/load and worker restarts.
+      command.consistancy = (short) controlFlags;
       command.chatchar = 0;
       command.buttons = (char) (buttons & 0xff);
       command.lookfly = 0;
@@ -260,7 +261,7 @@ public final class DoomDbMochaAdapter {
           command.pack(), doom.ticcmd_t.TICCMDLEN);
 
       long stageStarted = System.nanoTime();
-      applyPresentationFlags(presentationFlags);
+      applyControlFlags(controlFlags);
       DummySFX.beginTic(engine.gametic + 1L);
       engine.Ticker();
       engine.gametic++;
@@ -290,7 +291,7 @@ public final class DoomDbMochaAdapter {
   /** Apply normalized controls and return the existing gzip/DMF3 wire envelope. */
   public static synchronized String stepControlsPayloadSafe(
       int turn, int forward, int strafe, int run, int fire, int use,
-      int weapon, int pause, int automap, int menu,
+      int weapon, int pause, int automap, int menu, int cheat,
       String previousStateSha, Blob output) {
     long started = System.nanoTime();
     try {
@@ -303,7 +304,7 @@ public final class DoomDbMochaAdapter {
       // doubled the hottest OJVM-to-SecureFile boundary.
       String stepped = stepControlsFrameInternal(
           turn, forward, strafe, run, fire, use, weapon,
-          pause, automap, menu, output, false);
+          pause, automap, menu, cheat, output, false);
       if (!stepped.startsWith("ok|")) return stepped;
       String commandHex = statusField(stepped, "commandHex");
       String frameSha = statusField(stepped, "frameSha256");
@@ -583,7 +584,7 @@ public final class DoomDbMochaAdapter {
         command.lookfly = 0;
         controlTurnHeld = command.angleturn == 0
             ? 0 : controlTurnHeld + engine.getTicdup();
-        applyPresentationFlags(command.consistancy & 0x06);
+        applyControlFlags(command.consistancy & 0x3e);
         DummySFX.beginTic(engine.gametic + 1L);
         engine.Ticker();
         engine.gametic++;
@@ -756,6 +757,10 @@ public final class DoomDbMochaAdapter {
         : Integer.toString(weaponSprite.state.id);
     String flashState = flashSprite.state == null ? "NONE"
         : Integer.toString(flashSprite.state.id);
+    int weapons = 0;
+    for (boolean owned : player.weaponowned) if (owned) weapons++;
+    int keys = 0;
+    for (boolean owned : player.cards) if (owned) keys++;
     String playerState = player.mo == null ? "|player=missing"
         : "|playerX=" + player.mo.x + "|playerY=" + player.mo.y
             + "|playerZ=" + player.mo.z
@@ -775,7 +780,12 @@ public final class DoomDbMochaAdapter {
         + "|randomIndex=" + engine.random.getIndex()
         + "|paused=" + (engine.paused ? 1 : 0)
         + "|automap=" + (engine.automapactive ? 1 : 0)
-        + "|menu=" + (engine.menuactive ? 1 : 0) + playerState
+        + "|menu=" + (engine.menuactive ? 1 : 0)
+        + "|god=" + ((player.cheats & doom.player_t.CF_GODMODE) != 0 ? 1 : 0)
+        + "|noclip=" + ((player.cheats & doom.player_t.CF_NOCLIP) != 0 ? 1 : 0)
+        + "|fullmap=" + (player.powers[data.Defines.pw_allmap] != 0 ? 1 : 0)
+        + "|ownedWeapons=" + weapons + "|ownedKeys=" + keys
+        + "|armor=" + player.armorpoints[0] + playerState
         + "|width=" + engine.graphicSystem.getScreenWidth()
         + "|height=" + engine.graphicSystem.getScreenHeight()
         + "|frameBytes=" + pixels.length + "|frameSha256=" + frameSha;
@@ -801,8 +811,11 @@ public final class DoomDbMochaAdapter {
     return engine.gameskill.name() + '|' + engine.gameepisode + '|'
         + engine.gamemap + '|' + engine.gametic + '|' + engine.leveltime + '|'
         + engine.random.getIndex() + '|' + pose + '|' + player.health[0] + '|'
-        + player.armorpoints + '|' + player.readyweapon.name() + '|'
-        + player.pendingweapon.name() + '|' + player.viewz + '|' + lastAudioJson;
+        + player.armorpoints[0] + '|' + player.readyweapon.name() + '|'
+        + player.pendingweapon.name() + '|' + player.viewz + '|'
+        + player.cheats + '|' + Arrays.toString(player.weaponowned) + '|'
+        + Arrays.toString(player.ammo) + '|' + Arrays.toString(player.cards) + '|'
+        + Arrays.toString(player.powers) + '|' + lastAudioJson;
   }
 
   private static byte[] encodeDmf3(String stateSha, String frameSha)
@@ -845,7 +858,7 @@ public final class DoomDbMochaAdapter {
     return payload;
   }
 
-  private static void applyPresentationFlags(int flags) {
+  private static void applyControlFlags(int flags) {
     if ((flags & 0x02) != 0) {
       if (engine.automapactive) engine.autoMap.Stop();
       else engine.autoMap.Start();
@@ -853,6 +866,26 @@ public final class DoomDbMochaAdapter {
     if ((flags & 0x04) != 0) {
       if (engine.menuactive) engine.menu.ClearMenus();
       else engine.menu.StartControlPanel();
+    }
+    int cheat = (flags >>> 3) & 0x07;
+    doom.player_t player = engine.players[engine.consoleplayer];
+    if (cheat == 1) {
+      player.cheats ^= doom.player_t.CF_GODMODE;
+      if ((player.cheats & doom.player_t.CF_GODMODE) != 0) {
+        player.health[0] = 100;
+        if (player.mo != null) player.mo.health = 100;
+      }
+    } else if (cheat == 2) {
+      player.armorpoints[0] = 200;
+      player.armortype = 2;
+      Arrays.fill(player.weaponowned, true);
+      System.arraycopy(player.maxammo, 0, player.ammo, 0, player.ammo.length);
+      Arrays.fill(player.cards, true);
+    } else if (cheat == 3) {
+      player.cheats ^= doom.player_t.CF_NOCLIP;
+    } else if (cheat == 4) {
+      player.powers[data.Defines.pw_allmap] =
+          player.powers[data.Defines.pw_allmap] == 0 ? 1 : 0;
     }
   }
 

@@ -61,7 +61,7 @@ begin
   dbms_lob.createtemporary(l_frame,true,dbms_lob.call);
   for l_seq in 1..24 loop
     doom_mocha_bridge.step(l_session,l_lineage,l_generation,l_seq-1,l_seq,
-      0,0,0,0,1,0,0,0,0,0,l_frame,l_status,l_ticcmd,l_state_sha,l_frame_sha);
+      0,0,0,0,1,0,0,0,0,0,0,l_frame,l_status,l_ticcmd,l_state_sha,l_frame_sha);
   end loop;
   commit;
 

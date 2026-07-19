@@ -64,7 +64,7 @@ begin
     select generation into l_generation from doom_worker_control
       where worker_slot=3;
     doom_mocha_bridge.step(l_session,l_lineage,l_generation,0,1,
-      1,1,1,1,1,1,3,0,0,0,l_frame,l_status,l_ticcmd,l_state_sha,l_frame_sha);
+      1,1,1,1,1,1,3,0,0,0,0,l_frame,l_status,l_ticcmd,l_state_sha,l_frame_sha);
   end;
   if rawtohex(l_ticcmd)<>'3228FEC000000017' or
      dbms_lob.getlength(l_frame) not between 64142 and 68142 or

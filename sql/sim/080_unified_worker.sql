@@ -378,7 +378,7 @@ create or replace package body doom_unified_worker as
     l_error varchar2(4000);l_committed number:=0;
     l_turn number;l_forward number;l_strafe number;l_run number;l_fire number;
     l_use number;l_weapon number;l_flags number;l_pause number;
-    l_automap number;l_menu number;
+    l_automap number;l_menu number;l_cheat number;
     l_started timestamp with time zone:=systimestamp;
     l_stage timestamp with time zone;l_prepare_us number;l_finalize_us number;
     l_commit_us number;l_java_us number;l_ticker_us number;l_render_us number;l_codec_us number;
@@ -431,10 +431,11 @@ create or replace package body doom_unified_worker as
     l_fire:=byte_value(21);l_use:=byte_value(22);l_weapon:=byte_value(23);
     l_flags:=byte_value(24);l_pause:=bitand(l_flags,1);
     l_automap:=bitand(l_flags,2)/2;l_menu:=bitand(l_flags,4)/4;
+    l_cheat:=floor(l_flags/8);
     if l_turn not between -1 and 1 or l_forward not between -1 and 1 or
        l_strafe not between -1 and 1 or l_run not in(0,1) or
        l_fire not in(0,1) or l_use not in(0,1) or l_weapon not between 0 and 9 or
-       l_flags not between 0 and 7 then
+       l_cheat not between 0 and 4 or l_flags<>l_pause+l_automap*2+l_menu*4+l_cheat*8 then
       raise_application_error(c_invalid,'Mocha normalized command fence');
     end if;
     update doom_worker_request set request_status='PROCESSING',error_text=null
@@ -452,7 +453,7 @@ create or replace package body doom_unified_worker as
     l_prepare_us:=elapsed_us(l_started);l_stage:=systimestamp;
     doom_mocha_bridge.step(l_session,l_lineage,l_generation,l_expected_tic,
       l_expected_seq+1,l_turn,l_forward,l_strafe,l_run,l_fire,l_use,l_weapon,
-      l_pause,l_automap,l_menu,l_payload,l_result,l_ticcmd,l_state_sha,l_frame_sha);
+      l_pause,l_automap,l_menu,l_cheat,l_payload,l_result,l_ticcmd,l_state_sha,l_frame_sha);
     l_ticker_us:=status_number(l_result,'tickerMicros');
     l_render_us:=status_number(l_result,'renderMicros');
     l_codec_us:=status_number(l_result,'codecMicros');
