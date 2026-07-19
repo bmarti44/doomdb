@@ -63,8 +63,11 @@ function controls() {
 }
 const state = new PresentationState();
 const canvas = createDoomCanvas();
-const fireLabel = navigator.platform.startsWith('Mac') ?
-    'F/left-click fire' : 'F/Ctrl/left-click fire';
+const fireLabel = 'F/Ctrl/left-click fire';
+// macOS Dictation owns rapid double-Control presses outside fullscreen
+// Keyboard Lock, so tell macOS players where the clean Ctrl capture lives.
+const captureHint = navigator.platform.startsWith('Mac') ?
+    ' · Double-click: fullscreen Ctrl capture' : '';
 const shell = document.createElement('div');
 shell.dataset.doomShell = '';
 const touch = controls();
@@ -107,6 +110,46 @@ canvas.addEventListener('click', event => {
         return;
     void capturePointer();
 });
+const keyboard = navigator.keyboard;
+let keyboardCapturePending = false;
+const captureKeyboard = async () => {
+    if (state.loading || !menu.hidden || keyboard === undefined ||
+        !document.fullscreenEnabled || keyboardCapturePending ||
+        shell.dataset.keyboardCaptured !== undefined)
+        return;
+    keyboardCapturePending = true;
+    try {
+        if (document.fullscreenElement !== shell) {
+            await shell.requestFullscreen({ navigationUI: 'hide' });
+        }
+        await keyboard.lock([
+            'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'ArrowUp', 'ArrowDown',
+            'ArrowLeft', 'ArrowRight', 'ControlLeft', 'ControlRight', 'Space',
+            'Tab', 'Escape', 'KeyP', 'KeyM', 'Enter'
+        ]);
+        shell.dataset.keyboardCaptured = '';
+    }
+    catch (cause) {
+        console.warn('fullscreen keyboard capture was declined', cause);
+    }
+    finally {
+        keyboardCapturePending = false;
+    }
+};
+canvas.addEventListener('dblclick', event => {
+    if (!event.isTrusted)
+        return;
+    event.preventDefault();
+    // Entering fullscreen can drop an existing pointer lock; re-request it with
+    // the same trusted activation once the keyboard is captured.
+    void captureKeyboard().then(capturePointer);
+});
+document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement === shell)
+        return;
+    keyboard?.unlock();
+    delete shell.dataset.keyboardCaptured;
+});
 document.addEventListener('pointerlockchange', () => {
     const captured = document.pointerLockElement === canvas;
     if (captured)
@@ -116,7 +159,7 @@ document.addEventListener('pointerlockchange', () => {
     if (state.loading || !menu.hidden || restartReady)
         return;
     status.style.opacity = '1';
-    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\n${captured ? 'Mouse captured · Esc releases' : 'Click game to capture mouse'}`;
+    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\n${captured ? 'Mouse captured · Esc releases' : 'Click game to capture mouse'}${captureHint}`;
     window.setTimeout(() => { if (!restartReady)
         status.style.opacity = '0.35'; }, 1800);
 });
@@ -358,7 +401,7 @@ async function boot() {
     state.loading = false;
     state.setMode(frame.mode);
     await audio.consume(frame.audio);
-    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nClick game for mouse capture · 30 FPS pipeline warming up…`;
+    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nClick game for mouse capture${captureHint} · 30 FPS pipeline warming up…`;
     window.setTimeout(() => { status.style.opacity = '0.35'; }, 6000);
     let latest = {
         seq: 0, turn: 0, forward: 0, strafe: 0, run: 0, fire: 0, use: 0,
@@ -414,7 +457,7 @@ async function boot() {
     const startPresentation = () => {
         if (presentationTimer !== 0 || completed.size < presentationBuffer)
             return;
-        status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nDatabase pipeline active · ${document.pointerLockElement === canvas ? 'mouse captured' : 'click game to capture mouse'}`;
+        status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nDatabase pipeline active · ${document.pointerLockElement === canvas ? 'mouse captured' : 'click game to capture mouse'}${captureHint}`;
         presentationTimer = window.setTimeout(presentationLoop, 0);
     };
     // Live movement, USE, weapon selection, and every catalog fire mode now use

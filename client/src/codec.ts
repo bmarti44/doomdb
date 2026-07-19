@@ -3,6 +3,7 @@ export type AudioTuple = readonly [number, number, string, number, number];
 export type Frame = {
   tic: number;
   mode: string;
+  complete: 0 | 1;
   frameSha: string;
   indices: Uint8Array<ArrayBuffer>;
   audio: AudioTuple[];
@@ -97,6 +98,7 @@ function frameFrom(value: unknown): DecodedFrame {
   return {
     tic,
     mode: document.mode,
+    complete: document.complete as 0 | 1,
     frameSha: document.frame_sha,
     indices,
     audio: audioTuples(document.audio, tic),
@@ -158,8 +160,8 @@ function binaryFrameFrom(bytes: Uint8Array<ArrayBuffer>): DecodedFrame {
   for (let x = 0; x < 320; x += 1) {
     for (let y = 0; y < 200; y += 1) indices[y * 320 + x] = transportIndices[x * 200 + y] as number;
   }
-  return {tic, mode: modeByte === 0 ? 'game' : 'dead', frameSha, indices,
-    audio: audioTuples(audio, tic), transportIndices};
+  return {tic, mode: modeByte === 0 ? 'game' : 'dead', complete: complete as 0 | 1,
+    frameSha, indices, audio: audioTuples(audio, tic), transportIndices};
 }
 
 async function sha256(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
@@ -170,7 +172,8 @@ async function sha256(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
 export async function decodePayload(encoded: string): Promise<Frame> {
   const bytes = base64Bytes(encoded);
   let inflated: Uint8Array<ArrayBuffer>;
-  if (bytes.length >= 4 && /^(?:DMF3|DMF4)$/.test(ascii(bytes, 0, 4))) {
+  const raw = bytes.length >= 4 && /^(?:DMF3|DMF4)$/.test(ascii(bytes, 0, 4));
+  if (raw) {
     inflated = bytes;
   } else {
     try {
@@ -192,15 +195,20 @@ export async function decodePayload(encoded: string): Promise<Frame> {
     }
     decoded = frameFrom(document);
   }
-  const [canvasSha, transportSha] = await Promise.all([
-    sha256(decoded.indices), sha256(decoded.transportIndices)
-  ]);
-  if (decoded.frameSha !== canvasSha && decoded.frameSha !== transportSha) {
+  // Each producer has exactly one canonical frame_sha orientation. The raw
+  // binary envelope comes only from the Mocha adapter, which hashes its native
+  // row-major framebuffer. Every gzip-wrapped envelope (legacy JSON and the
+  // SQL retained worker's gzip DMF3) hashes the column-major transport bytes.
+  // Accepting either orientation for any payload would let a transposed frame
+  // validate.
+  const expectedSha = await sha256(raw ? decoded.indices : decoded.transportIndices);
+  if (decoded.frameSha !== expectedSha) {
     throw new TypeError('payload frame hash is invalid');
   }
   return {
     tic: decoded.tic,
     mode: decoded.mode,
+    complete: decoded.complete,
     frameSha: decoded.frameSha,
     indices: decoded.indices,
     audio: decoded.audio

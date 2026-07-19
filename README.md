@@ -199,12 +199,14 @@ to New Game and skill-selection menus before allocating a Mocha Doom game inside
 OJVM. Click or press Enter to begin; the game remains windowed.
 The visible menus are composed from the pinned Freedoom IWAD's original Doom
 patches served by Oracle; browser HTML supplies accessibility targets only.
-Controls are W/S or Up/Down to move, A/D or Left/Right to turn, F to fire,
-Space to use, Tab for the automap, Escape for the menu, and P to
+Controls are W/S or Up/Down to move, A/D or Left/Right to turn, F or Ctrl to
+fire, Space to use, Tab for the automap, Escape for the menu, and P to
 pause. Once gameplay starts, click the game to capture the cursor; horizontal
-mouse movement turns, left-click fires, and Escape releases the cursor. Ctrl
-also fires on Windows and Linux; it is intentionally not bound on macOS because
-the windowed browser cannot suppress the host's rapid-Control Dictation shortcut.
+mouse movement turns, left-click fires, and Escape releases the cursor. On
+macOS, rapid double-Control presses trigger the host's Dictation prompt in a
+windowed browser; double-click the game to enter fullscreen Keyboard Lock,
+which captures both Ctrl keys so firing never opens that prompt. Leaving
+fullscreen restores the windowed capture.
 
 Real credentials, wallets, private keys, environment files, WADs, generated
 classes/JARs, and Terraform variable files are ignored by

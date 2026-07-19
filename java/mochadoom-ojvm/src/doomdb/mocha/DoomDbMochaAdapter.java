@@ -822,6 +822,11 @@ public final class DoomDbMochaAdapter {
     payload[6] = (byte) (tic >>> 8);payload[7] = (byte) tic;
     doom.player_t player = engine.players[engine.consoleplayer];
     payload[8] = (byte) (player.health[0] <= 0 ? 1 : 0);
+    // Byte 9 is the level-completion flag: vanilla G_DoCompleted moves
+    // gamestate off GS_LEVEL once the exit tic commits, so intermission and
+    // finale frames report complete=1 while normal play reports 0.
+    payload[9] = (byte)
+        (engine.gamestate == defines.gamestate_t.GS_LEVEL ? 0 : 1);
     byte[] stateBytes = stateSha.getBytes(StandardCharsets.US_ASCII);
     byte[] frameBytes = frameSha.getBytes(StandardCharsets.US_ASCII);
     System.arraycopy(stateBytes, 0, payload, 10, 64);

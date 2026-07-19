@@ -5,7 +5,8 @@ export class PresentationState {
     visible = document.visibilityState === 'visible';
     setMode(value) {
         const normalized = value.toUpperCase();
-        if (normalized === 'GAME' || normalized === 'MENU' || normalized === 'AUTOMAP' || normalized === 'INTERMISSION') {
+        if (normalized === 'GAME' || normalized === 'DEAD' || normalized === 'MENU' ||
+            normalized === 'AUTOMAP' || normalized === 'INTERMISSION') {
             this.mode = normalized;
         }
     }

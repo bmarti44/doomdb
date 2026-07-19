@@ -2,14 +2,13 @@ const keyControls = {
     KeyW: 'forward', ArrowUp: 'forward', KeyS: 'backward', ArrowDown: 'backward',
     KeyA: 'turn-left', ArrowLeft: 'turn-left', KeyD: 'turn-right', ArrowRight: 'turn-right',
     KeyF: 'fire', Space: 'use', Tab: 'automap',
-    Escape: 'menu', KeyP: 'pause', KeyM: 'audio'
+    Escape: 'menu', KeyP: 'pause', KeyM: 'audio',
+    // Classic Ctrl-fire is bound everywhere. macOS reserves rapid double-Control
+    // presses for Dictation, which only fullscreen Keyboard Lock (double-click
+    // the game) can suppress; the windowed game still fires on Ctrl but cannot
+    // stop that host prompt itself.
+    ControlLeft: 'fire', ControlRight: 'fire'
 };
-// macOS reserves repeated Control presses for host accessibility shortcuts,
-// which a windowed browser cannot suppress. Keep classic Ctrl-fire elsewhere.
-if (!navigator.platform.startsWith('Mac')) {
-    keyControls.ControlLeft = 'fire';
-    keyControls.ControlRight = 'fire';
-}
 const held = new Set();
 function command(mouseTurn = 0, mouseFire = false) {
     return {

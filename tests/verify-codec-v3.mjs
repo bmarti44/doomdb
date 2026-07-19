@@ -15,10 +15,25 @@ audio.copy(envelope,140);transport.copy(envelope,140+audio.length);
 
 const decoded=await decodePayload(gzipSync(envelope,{level:1}).toString('base64'));
 assert.equal(decoded.tic,7);assert.equal(decoded.mode,'game');
+assert.equal(decoded.complete,0);
 assert.equal(decoded.frameSha,frameSha);assert.deepEqual(decoded.audio,[[7,0,'DSPISTOL',127,128]]);
 for(let x=0;x<320;x++)for(let y=0;y<200;y++)
   assert.equal(decoded.indices[y*320+x],transport[x*200+y]);
-const rawDmf3=await decodePayload(envelope.toString('base64'));
+
+// Each producer has one canonical frame_sha orientation: gzip-wrapped
+// envelopes hash the column-major transport bytes (legacy SQL contract) and
+// raw binary envelopes hash the row-major framebuffer (Mocha adapter). A raw
+// envelope carrying the transport-orientation hash must now be rejected.
+await assert.rejects(decodePayload(envelope.toString('base64')),
+  /frame hash is invalid/);
+const rowMajor=Buffer.alloc(320*200);
+for(let x=0;x<320;x++)for(let y=0;y<200;y++)
+  rowMajor[y*320+x]=transport[x*200+y];
+const rowMajorSha=createHash('sha256').update(rowMajor).digest('hex');
+const rawEnvelope=Buffer.from(envelope);
+rawEnvelope.write(rowMajorSha,74,'ascii');
+const rawDmf3=await decodePayload(rawEnvelope.toString('base64'));
+assert.equal(rawDmf3.frameSha,rowMajorSha);
 assert.deepEqual(rawDmf3.indices,decoded.indices);
 
 const packBits=bytes=>{const chunks=[];let offset=0;while(offset<bytes.length){
@@ -31,10 +46,10 @@ const packBits=bytes=>{const chunks=[];let offset=0;while(offset<bytes.length){
   chunks.push(Buffer.from([offset-start-1]),bytes.subarray(start,offset));
 }return Buffer.concat(chunks);};
 const encoded=packBits(transport),dmf4=Buffer.concat([
-  Buffer.from(envelope.subarray(0,140+audio.length)),encoded]);
+  Buffer.from(rawEnvelope.subarray(0,140+audio.length)),encoded]);
 dmf4.write('DMF4',0,'ascii');dmf4[8]=0;
 const rawDecoded=await decodePayload(dmf4.toString('base64'));
-assert.equal(rawDecoded.frameSha,frameSha);assert.deepEqual(rawDecoded.audio,decoded.audio);
+assert.equal(rawDecoded.frameSha,rowMajorSha);assert.deepEqual(rawDecoded.audio,decoded.audio);
 assert.deepEqual(rawDecoded.indices,decoded.indices);
 
 envelope[8]=2;

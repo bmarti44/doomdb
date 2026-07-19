@@ -1,4 +1,4 @@
-export type PresentationMode = 'GAME' | 'MENU' | 'AUTOMAP' | 'INTERMISSION';
+export type PresentationMode = 'GAME' | 'DEAD' | 'MENU' | 'AUTOMAP' | 'INTERMISSION';
 
 export class PresentationState {
   loading = true;
@@ -8,7 +8,8 @@ export class PresentationState {
 
   setMode(value: string): void {
     const normalized = value.toUpperCase();
-    if (normalized === 'GAME' || normalized === 'MENU' || normalized === 'AUTOMAP' || normalized === 'INTERMISSION') {
+    if (normalized === 'GAME' || normalized === 'DEAD' || normalized === 'MENU' ||
+        normalized === 'AUTOMAP' || normalized === 'INTERMISSION') {
       this.mode = normalized;
     }
   }
