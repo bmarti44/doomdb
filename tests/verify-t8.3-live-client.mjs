@@ -33,7 +33,7 @@ await page.addInitScript(() => {
 try {
   await page.goto(root, {waitUntil: 'domcontentloaded'});
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
-    ?.textContent?.includes('Enter for windowed'), null, {timeout: 30_000});
+    ?.textContent?.includes('press Enter to start'), null, {timeout: 30_000});
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
     ?.textContent === 'MAIN MENU');
@@ -49,13 +49,13 @@ try {
     const canvas = document.querySelector('canvas');
     canvas.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true}));
     const first = new KeyboardEvent('keydown',
-      {code: 'ControlLeft', bubbles: true, cancelable: true});
+      {code: 'KeyF', bubbles: true, cancelable: true});
     const repeated = new KeyboardEvent('keydown',
-      {code: 'ControlLeft', repeat: true, bubbles: true, cancelable: true});
+      {code: 'KeyF', repeat: true, bubbles: true, cancelable: true});
     const firstCancelled = !window.dispatchEvent(first);
     const repeatCancelled = !window.dispatchEvent(repeated);
     window.dispatchEvent(new KeyboardEvent('keyup',
-      {code: 'ControlLeft', bubbles: true, cancelable: true}));
+      {code: 'KeyF', bubbles: true, cancelable: true}));
     return {canvasFocused: document.activeElement === canvas, firstCancelled, repeatCancelled};
   });
   assert.deepEqual(keyboardCapture,
@@ -73,13 +73,13 @@ try {
   await page.waitForTimeout(180);
   await page.keyboard.up('KeyW');
   await page.waitForTimeout(300);
-  await page.keyboard.down('ControlLeft');
+  await page.keyboard.down('KeyF');
   const weaponHashes = [];
   for (let sample = 0; sample < 18; sample += 1) {
     weaponHashes.push(await hashWeapon());
     await page.waitForTimeout(24);
   }
-  await page.keyboard.up('ControlLeft');
+  await page.keyboard.up('KeyF');
   await page.waitForTimeout(600);
 
   await page.locator('canvas').click({position: {x: 160, y: 100}});

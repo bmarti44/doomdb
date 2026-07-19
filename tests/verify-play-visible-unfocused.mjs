@@ -18,7 +18,7 @@ page.on('request', request => {
 try {
   await page.goto(root, {waitUntil: 'domcontentloaded'});
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
-    ?.textContent?.includes('Enter for windowed'), null, {timeout: 30_000});
+    ?.textContent?.includes('press Enter to start'), null, {timeout: 30_000});
   assert.ok(!requests.some(path => path.endsWith('/NEW_GAME')),
     'title screen allocated a game before player confirmation');
   const titleColors = await page.evaluate(() => {

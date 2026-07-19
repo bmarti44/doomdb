@@ -9,9 +9,15 @@ type AudioToggle = () => void;
 const keyControls: Record<string, ControlName> = {
   KeyW: 'forward', ArrowUp: 'forward', KeyS: 'backward', ArrowDown: 'backward',
   KeyA: 'turn-left', ArrowLeft: 'turn-left', KeyD: 'turn-right', ArrowRight: 'turn-right',
-  ControlLeft: 'fire', ControlRight: 'fire', KeyF: 'fire', Space: 'use', Tab: 'automap',
+  KeyF: 'fire', Space: 'use', Tab: 'automap',
   Escape: 'menu', KeyP: 'pause', KeyM: 'audio'
 };
+// macOS reserves repeated Control presses for host accessibility shortcuts,
+// which a windowed browser cannot suppress. Keep classic Ctrl-fire elsewhere.
+if (!navigator.platform.startsWith('Mac')) {
+  keyControls.ControlLeft = 'fire';
+  keyControls.ControlRight = 'fire';
+}
 
 const held = new Set<ControlName>();
 function command(mouseTurn = 0, mouseFire = false): Command {
@@ -58,9 +64,8 @@ export function bindInput(canvas: HTMLCanvasElement,
   window.addEventListener('keydown', event => {
     const name = keyControls[event.code];
     if (name === undefined) return;
-    // A held key continues producing repeat events. Those repeats must also be
-    // cancelled or Control leaks to browser/OS accessibility shortcuts even
-    // though the first press was consumed by the game.
+    // A held key continues producing repeat events; cancel those as well as
+    // the initial press so browser shortcuts do not consume game controls.
     event.preventDefault();
     if (event.repeat) return;
     gesture();

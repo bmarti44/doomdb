@@ -196,16 +196,15 @@ docker compose restart ords
 
 Then visit <http://localhost:8080/play/>. The database-owned title screen leads
 to New Game and skill-selection menus before allocating a Mocha Doom game inside
-OJVM. Click on macOS Chrome to request fullscreen keyboard capture, or press
-Enter to remain windowed.
+OJVM. Click or press Enter to begin; the game remains windowed.
 The visible menus are composed from the pinned Freedoom IWAD's original Doom
 patches served by Oracle; browser HTML supplies accessibility targets only.
-Controls are W/S or Up/Down to move, A/D or Left/Right to turn, either Ctrl or
-F to fire, Space to use, Tab for the automap, Escape for the menu, and P to
+Controls are W/S or Up/Down to move, A/D or Left/Right to turn, F to fire,
+Space to use, Tab for the automap, Escape for the menu, and P to
 pause. Once gameplay starts, click the game to capture the cursor; horizontal
-mouse movement turns, left-click fires, and Escape releases the cursor. On
-macOS, F remains the fallback if fullscreen Keyboard Lock permission is declined
-or a system Dictation shortcut still owns Ctrl.
+mouse movement turns, left-click fires, and Escape releases the cursor. Ctrl
+also fires on Windows and Linux; it is intentionally not bound on macOS because
+the windowed browser cannot suppress the host's rapid-Control Dictation shortcut.
 
 Real credentials, wallets, private keys, environment files, WADs, generated
 classes/JARs, and Terraform variable files are ignored by

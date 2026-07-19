@@ -16,21 +16,15 @@ await page.route('**/doom_api/NEW_GAME', async route => {
 try {
   await page.goto(root, {waitUntil: 'domcontentloaded'});
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
-    ?.textContent?.includes('Enter for windowed'), null, {timeout: 30_000});
+    ?.textContent?.includes('press Enter to start'), null, {timeout: 30_000});
   assert.equal(newGameCalls, 0, 'title screen allocated a game');
 
   await page.locator('canvas').click({position: {x: 160, y: 100}});
   await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
     ?.textContent === 'MAIN MENU');
   assert.equal(newGameCalls, 0, 'main menu allocated a game');
-  await page.waitForTimeout(750);
-  const capture = await page.evaluate(() => ({
-    mac: navigator.platform.startsWith('Mac') && 'keyboard' in navigator,
-    fullscreen: document.fullscreenElement?.hasAttribute('data-doom-shell') ?? false,
-    locked: document.querySelector('[data-doom-shell]')
-      ?.hasAttribute('data-keyboard-captured') ?? false
-  }));
-  if (capture.mac) assert.deepEqual(capture, {mac: true, fullscreen: true, locked: true});
+  assert.equal(await page.evaluate(() => document.fullscreenElement), null,
+    'title click unexpectedly entered fullscreen');
 
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
@@ -50,7 +44,7 @@ try {
     ?.textContent?.includes('Game startup failed'));
   assert.equal(newGameCalls, 1);
   assert.deepEqual(newGameBody, {p_skill: 4});
-  process.stdout.write('PASS PLAY-MENU title=1 main=1 skill=4 keyboard-lock=1\n');
+  process.stdout.write('PASS PLAY-MENU title=1 main=1 skill=4 windowed=1\n');
 } finally {
   await browser.close();
 }

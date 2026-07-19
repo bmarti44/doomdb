@@ -67,7 +67,8 @@ function controls(): {element: HTMLElement; buttons: Map<ControlName, HTMLButton
 
 const state = new PresentationState();
 const canvas = createDoomCanvas();
-const fireLabel = 'F/Ctrl fire';
+const fireLabel = navigator.platform.startsWith('Mac') ?
+  'F/left-click fire' : 'F/Ctrl/left-click fire';
 const shell = document.createElement('div');
 shell.dataset.doomShell = '';
 const touch = controls();
@@ -82,35 +83,6 @@ shell.append(canvas, menu, touch.element, status);
 document.head.append(stylesheet());
 document.body.replaceChildren(shell);
 
-type KeyboardLock = {
-  lock(keys?: string[]): Promise<void>;
-  unlock(): void;
-};
-const keyboard = (navigator as Navigator & {keyboard?: KeyboardLock}).keyboard;
-let keyboardCapture: Promise<void> | null = null;
-const captureKeyboard = (): Promise<void> => {
-  if (!navigator.platform.startsWith('Mac') || keyboard === undefined ||
-      !document.fullscreenEnabled || shell.dataset.keyboardCaptured !== undefined) {
-    return Promise.resolve();
-  }
-  if (keyboardCapture !== null) return keyboardCapture;
-  keyboardCapture = (async () => {
-    try {
-      if (document.fullscreenElement !== shell) {
-        await shell.requestFullscreen({navigationUI: 'hide'});
-      }
-      await keyboard.lock([
-        'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'ArrowUp', 'ArrowDown',
-        'ArrowLeft', 'ArrowRight', 'ControlLeft', 'ControlRight', 'Space',
-        'Tab', 'Escape', 'KeyP', 'KeyM', 'Enter'
-      ]);
-      shell.dataset.keyboardCaptured = '';
-    } catch (cause) {
-      console.warn('fullscreen keyboard capture was declined', cause);
-    }
-  })().finally(() => { keyboardCapture = null; });
-  return keyboardCapture;
-};
 let pointerCapturePending = false;
 const capturePointer = async (): Promise<void> => {
   if (state.loading || !menu.hidden || pointerCapturePending ||
@@ -129,33 +101,22 @@ const capturePointer = async (): Promise<void> => {
     pointerCapturePending = false;
   }
 };
-// On macOS, only fullscreen Keyboard Lock can keep a host-level double-Control
-// Dictation shortcut from escaping Chrome. The capture-phase listener preserves
-// the trusted click whether the player hits the canvas or a menu button.
-shell.addEventListener('pointerdown', event => {
-  if (!event.isTrusted) return;
-  void captureKeyboard();
-}, {capture: true});
 // Run after createDoomCanvas's pointerdown focus handler. Requesting lock from
 // the ancestor capture phase can produce WrongDocumentError because the canvas
 // is not yet the active click target.
 canvas.addEventListener('click', event => {
   if (!event.isTrusted || (event instanceof PointerEvent && event.pointerType !== 'mouse')) return;
-  if (navigator.platform.startsWith('Mac') && keyboard !== undefined &&
-      document.fullscreenEnabled && document.fullscreenElement !== shell) {
-    void captureKeyboard().then(capturePointer);
-  } else {
-    void capturePointer();
-  }
-});
-document.addEventListener('fullscreenchange', () => {
-  if (document.fullscreenElement === shell) return;
-  keyboard?.unlock();
-  delete shell.dataset.keyboardCaptured;
+  void capturePointer();
 });
 document.addEventListener('pointerlockchange', () => {
-  if (document.pointerLockElement === canvas) shell.dataset.pointerCaptured = '';
+  const captured = document.pointerLockElement === canvas;
+  if (captured) shell.dataset.pointerCaptured = '';
   else delete shell.dataset.pointerCaptured;
+  if (state.loading || !menu.hidden || restartReady) return;
+  status.style.opacity = '1';
+  status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\n${
+    captured ? 'Mouse captured · Esc releases' : 'Click game to capture mouse'}`;
+  window.setTimeout(() => { if (!restartReady) status.style.opacity = '0.35'; }, 1800);
 });
 
 let restartReady = false;
@@ -369,7 +330,7 @@ async function boot(): Promise<void> {
     throw new TypeError('title screen asset is invalid');
   }
   blit(canvas, applyPalette(titleIndices, palette));
-  status.textContent = 'DoomDB · Mocha Doom inside Oracle\nClick for captured fullscreen · Enter for windowed';
+  status.textContent = 'DoomDB · Mocha Doom inside Oracle\nClick or press Enter to start';
   await awaitStart(audio);
   status.textContent = 'Loading authentic menu patches from Oracle…';
   const menuPatches = await loadMenuPatches();
@@ -435,7 +396,8 @@ async function boot(): Promise<void> {
   };
   const startPresentation = (): void => {
     if (presentationTimer !== 0 || completed.size < presentationBuffer) return;
-    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nDatabase pipeline active · click game to capture mouse`;
+    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nDatabase pipeline active · ${
+      document.pointerLockElement === canvas ? 'mouse captured' : 'click game to capture mouse'}`;
     presentationTimer = window.setTimeout(presentationLoop, 0);
   };
   // Live movement, USE, weapon selection, and every catalog fire mode now use
