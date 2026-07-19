@@ -22,7 +22,10 @@ authoritative record.
   requalified (two independent 300-frame routes, identical frame-chain SHA);
   the 2026-07-19 checkpoints added worker-admission self-healing, bounded
   eviction, the canonical presentation contract, collision-free key bindings,
-  and speculative skill-menu game allocation.
+  speculative skill-menu game allocation, and a byte-exact pre-warmed standby.
+  The complete eleven-gate Mocha core suite is green; P8 public workflow
+  replacement (especially the four verification cheats and full E1M1 route)
+  is the remaining selection work.
 - **Next:** P8 replacement Mocha fixtures (uninterrupted E1M1 completion
   replay, workflow coverage), P9 MODEL fire, P11 real S3 + Autonomous cloud
   deployment (needs credentials; local dry-runs exist), then the full
@@ -2522,6 +2525,15 @@ the clean-room engine unless it is needed to validate the new public contract.
   `PresentationState` accepts `DEAD`, and `Frame` exposes `complete`. The
   codec fixture asserts both the canonical acceptances and the cross-orientation
   rejection.
+- Core requalification (2026-07-19): the post-presentation eleven-gate suite
+  passes control-codec, initial-frame, replay, save/load, durable bridge/audio,
+  forced reconstruction, concurrent isolation, gameplay-defect, presentation-
+  control, and standby-worker checks. The state identity is the domain-separated
+  rolling transition token over the predecessor identity, exact packed ticcmd,
+  framebuffer identity, and deterministic engine material; the authoritative
+  ordered ticcmd ledger is the complete reconstruction source. This supersedes
+  T12.M2's earlier "state token open" checkpoint without selecting the rejected
+  lossy native save codec.
 
 ### P8 - Full E1M1 and presentation workflows
 
