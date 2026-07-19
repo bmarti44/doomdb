@@ -37,8 +37,13 @@ What works today, all verified by repeatable gates:
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is
   evicted (bounded, deterministic, durable-state reconstruct) so a new player
-  is never refused; the ten-gate Mocha regression suite passes from a fully
+  is never refused; the eleven-gate Mocha regression suite passes from a fully
   occupied pool.
+- **Fast new games.** A pre-warmed standby worker constructs the next Mocha
+  engine ahead of the claim, cutting a new game from ~17 s cold to ~1.4 s —
+  proven byte-exact with a cold construction (identical frame/state/payload
+  SHA chains). The skill menu additionally overlaps any remaining
+  construction with a speculative default-skill allocation.
 
 Key verified numbers (local two-core Oracle Free stack):
 
@@ -47,6 +52,7 @@ Key verified numbers (local two-core Oracle Free stack):
 | Engine step + render + BLOB (warm, p95) | 3.2–3.9 ms |
 | Durable tic with ledger + synchronous commit (p95) | ~20 ms |
 | Displayed FPS, two independent 300-frame routes | 30.75–32.05 |
+| New game, standby-claimed vs cold construction | ~1.4 s vs ~17 s |
 | Tic-zero frame SHA-256 | `a1c9b037…d3b5` |
 | IWAD BLOB (SecureFile, SHA-verified) | 28,795,076 bytes |
 

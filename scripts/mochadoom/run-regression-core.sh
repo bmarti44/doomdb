@@ -16,6 +16,7 @@ gates=(
   concurrent-session-gate.sql
   gameplay-defect-gate.sql
   presentation-controls-gate.sql
+  standby-worker-gate.sql
 )
 
 [[ -n "$container" ]] || { printf 'database container is not running\n' >&2; exit 1; }

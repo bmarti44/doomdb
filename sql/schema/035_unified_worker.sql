@@ -9,6 +9,9 @@ create table doom_worker_control (
   generation number(12) default 0 not null,
   ready number(1) default 0 not null,
   stop_requested number(1) default 0 not null,
+  -- A standby slot runs a target-less worker whose Mocha engine is already
+  -- constructed, so claiming it skips the 10-20 s cold construction.
+  standby number(1) default 0 not null,
   worker_sid number,
   heartbeat timestamp with time zone,
   last_error varchar2(4000),
@@ -16,7 +19,7 @@ create table doom_worker_control (
   constraint doom_worker_control_slot_ck check(worker_slot between 1 and 4),
   constraint doom_worker_control_target_uq unique(target_session),
   constraint doom_worker_control_bool_ck check(
-    ready in(0,1) and stop_requested in(0,1)),
+    ready in(0,1) and stop_requested in(0,1) and standby in(0,1)),
   constraint doom_worker_control_gen_ck check(generation>=0),
   constraint doom_worker_control_target_ck check(
     (target_session is null and target_lineage is null and state_map_sha is null) or

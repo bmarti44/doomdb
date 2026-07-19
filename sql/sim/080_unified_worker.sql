@@ -1172,6 +1172,8 @@ create or replace package body doom_unified_worker as
     l_processed pls_integer:=0;l_idle_seconds number;
     l_idle_started timestamp with time zone:=systimestamp;
     l_dequeued pls_integer;l_mocha boolean:=false;l_owned boolean:=false;
+    l_standby number;l_standby_state varchar2(4000);l_standby_stop number;
+    l_standby_deadline timestamp with time zone;l_standby_polls pls_integer:=0;
     no_messages exception;pragma exception_init(no_messages,-25228);
   begin
     require_enabled;l_limit:=pool_size;
@@ -1181,6 +1183,57 @@ create or replace package body doom_unified_worker as
     end if;
     if p_worker_slot<1 or p_worker_slot>l_limit then
       raise_application_error(c_invalid,'worker slot is outside configured pool');
+    end if;
+    -- Standby mode: a target-less worker constructs the Mocha engine before
+    -- any claim exists, so the eventual claim pays only lineage load and
+    -- InitNew instead of the 10-20 s cold construction.
+    select standby,target_session into l_standby,l_target
+      from doom_worker_control where worker_slot=p_worker_slot;
+    if l_standby=1 and l_target is null then
+      -- Arm with INITIALIZE only. The claim's own new_game then completes the
+      -- exact call sequence a cold claim runs (construct, medium InitNew,
+      -- first display, skill InitNew, display), so a standby-claimed engine
+      -- is byte-exact with a cold construction by sequence identity rather
+      -- than by trying to reset presentation state.
+      l_standby_state:=doom_mocha_initialize;
+      if l_standby_state not like 'ok|%' then
+        raise_application_error(c_invalid,'standby engine construction: '||
+          substr(l_standby_state,1,2000));
+      end if;
+      update doom_worker_control set worker_sid=sys_context('USERENV','SID'),
+        heartbeat=systimestamp
+        where worker_slot=p_worker_slot and target_session is null and standby=1;
+      commit;
+      audit_event(null,p_worker_slot,null,'STANDBY_WARM',null);
+      l_standby_deadline:=systimestamp+
+        numtodsinterval(l_idle_seconds,'SECOND');
+      loop
+        select target_session,stop_requested into l_target,l_standby_stop
+          from doom_worker_control where worker_slot=p_worker_slot;
+        exit when l_target is not null;
+        if l_standby_stop=1 or systimestamp>=l_standby_deadline then
+          -- Fence the flag clear before disposing so a claim that lands in
+          -- the same instant keeps its warm engine.
+          update doom_worker_control set standby=0,stop_requested=0,
+            worker_sid=null,heartbeat=systimestamp
+            where worker_slot=p_worker_slot and target_session is null;
+          if sql%rowcount=1 then
+            commit;
+            l_standby_state:=doom_mocha_dispose;
+            audit_event(null,p_worker_slot,null,'STANDBY_EXPIRED',null);
+            return;
+          end if;
+          rollback;
+        end if;
+        l_standby_polls:=l_standby_polls+1;
+        if mod(l_standby_polls,10)=0 then
+          update doom_worker_control set heartbeat=systimestamp
+            where worker_slot=p_worker_slot and standby=1;
+          commit;
+        end if;
+        dbms_session.sleep(.2);
+      end loop;
+      audit_event(null,p_worker_slot,null,'STANDBY_CLAIMED',l_target);
     end if;
     select generation,target_session,target_lineage,state_map_sha
       into l_generation,l_target,l_lineage,l_control_map
@@ -1195,6 +1248,11 @@ create or replace package body doom_unified_worker as
     end if;
     l_mocha:=mocha_lineage(l_target,l_lineage);
     l_map_sha:=state_map_sha(l_target,l_lineage);
+    if not l_mocha then
+      -- A standby-constructed Mocha engine is useless to a SQL-engine session.
+      begin l_standby_state:=doom_mocha_dispose;
+      exception when others then null;end;
+    end if;
     if l_control_map<>l_map_sha then
       raise_application_error(c_invalid,'worker state-map fence');
     end if;
@@ -1328,7 +1386,7 @@ create or replace package body doom_unified_worker as
   procedure start_worker(p_session in varchar2) is
     l_lineage varchar2(64);l_map_sha varchar2(64);
     l_slot number;l_running number;l_limit pls_integer;l_orphan_running number;
-    l_mocha boolean;l_victim number;
+    l_mocha boolean;l_victim number;l_standby number:=0;l_spare number;
     l_evict_deadline timestamp with time zone;
   begin
     require_enabled;l_limit:=pool_size;
@@ -1396,11 +1454,11 @@ create or replace package body doom_unified_worker as
       l_evict_deadline:=systimestamp+numtodsinterval(10,'SECOND');
       loop
         for candidate in (
-          select worker_slot from doom_worker_control
+          select worker_slot,standby from doom_worker_control
           where target_session is null and worker_slot<=l_limit
-          order by worker_slot for update skip locked
+          order by standby desc,worker_slot for update skip locked
         ) loop
-          l_slot:=candidate.worker_slot;exit;
+          l_slot:=candidate.worker_slot;l_standby:=candidate.standby;exit;
         end loop;
         if l_slot is null then
           -- A claim whose asynchronous job start was lost leaves a dead slot:
@@ -1458,19 +1516,26 @@ create or replace package body doom_unified_worker as
     end;
     select count(*) into l_running from user_scheduler_running_jobs
       where job_name='DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00');
-    if l_running<>0 then
+    if l_standby=1 and l_running=0 then
+      -- The standby job died without clearing its flag: cold-start instead.
+      l_standby:=0;
+    elsif l_standby=0 and l_running<>0 then
       raise_application_error(c_invalid,'worker slot is already running');
     end if;
     update doom_worker_control set target_session=p_session,
       target_lineage=l_lineage,state_map_sha=l_map_sha,ready=0,
-      stop_requested=0,last_error=null where worker_slot=l_slot;
+      stop_requested=0,standby=0,last_error=null where worker_slot=l_slot;
     commit;
     begin
       if not l_mocha then
         doom_render_worker.start_worker(l_slot,p_session,l_lineage,l_map_sha);
       end if;
-      dbms_scheduler.run_job(
-        'DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00'),false);
+      -- A live standby worker is already inside run_slot waiting for this
+      -- target; dispatching a second execution would only race it.
+      if l_standby=0 then
+        dbms_scheduler.run_job(
+          'DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00'),false);
+      end if;
     exception when others then
       if not l_mocha then
         begin doom_render_worker.request_stop(p_session);exception when others then null;end;
@@ -1479,6 +1544,39 @@ create or replace package body doom_unified_worker as
         state_map_sha=null where worker_slot=l_slot and ready=0
         and target_session=p_session;
       commit;raise;
+    end;
+    -- Best-effort: keep one constructed standby engine ahead of the next
+    -- claim. Bounded to a single slot, never on the gates' slot-3 harness,
+    -- and never allowed to fail or delay the caller's claim.
+    begin
+      select count(*) into l_spare from doom_worker_control
+        where standby=1 and worker_slot<=l_limit;
+      if l_spare=0 then
+        l_victim:=null;
+        for candidate in (
+          select worker_slot from doom_worker_control
+          where target_session is null and standby=0 and worker_slot<=l_limit
+            and worker_slot<>3
+          order by worker_slot desc for update skip locked
+        ) loop
+          l_victim:=candidate.worker_slot;exit;
+        end loop;
+        if l_victim is not null then
+          select count(*) into l_spare from user_scheduler_running_jobs
+            where job_name='DOOM_UNIFIED_WORKER_'||to_char(l_victim,'FM00');
+          if l_spare=0 then
+            update doom_worker_control set standby=1,stop_requested=0,
+              last_error=null,heartbeat=systimestamp where worker_slot=l_victim;
+            commit;
+            dbms_scheduler.run_job(
+              'DOOM_UNIFIED_WORKER_'||to_char(l_victim,'FM00'),false);
+          else
+            commit;
+          end if;
+        end if;
+      end if;
+    exception when others then
+      begin rollback;exception when others then null;end;
     end;
   exception when no_data_found then
     rollback;raise_application_error(c_invalid,'unknown worker session');
@@ -1502,7 +1600,8 @@ create or replace package body doom_unified_worker as
   procedure request_stop_all is
     pragma autonomous_transaction;
   begin
-    update doom_worker_control set stop_requested=1 where ready=1;
+    update doom_worker_control set stop_requested=1
+      where ready=1 or standby=1;
     update doom_render_worker_control set stop_requested=1
       where target_session is not null;
     commit;

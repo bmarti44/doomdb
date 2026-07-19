@@ -29,8 +29,10 @@ authoritative record.
   T12.1/T12.2 local-and-cloud 300-frame performance protocol, then P13
   multiplayer.
 - **Known cost:** cold Mocha engine construction in a fresh worker session is
-  ~10–20 s depending on host load; a pre-warmed standby-worker architecture is
-  the identified follow-up (see the T12.M5 checkpoint notes).
+  ~10–20 s depending on host load. The selected pre-warmed standby worker
+  (2026-07-19 checkpoint) reduces a standby-claimed new game to ~1.4 s,
+  byte-exact with a cold construction; the first game after a quiet stack and
+  a fully occupied pool still pay the cold cost.
 
 ## 0. Charter
 
@@ -2377,6 +2379,32 @@ the clean-room engine unless it is needed to validate the new public contract.
   worker that constructs the engine before it is claimed and only runs
   `InitNew` at claim time; it requires its own fencing/differential gates and
   remains open follow-up work.
+- Pre-warmed standby worker selection (2026-07-19): `doom_worker_control` now
+  carries a `standby` flag; a target-less Scheduler worker arms by running
+  the adapter's `initialize` only (construct, medium `InitNew`, first
+  display), then waits — heartbeating, honoring `stop_requested`, and
+  expiring on the idle timeout with a fenced flag clear so a simultaneous
+  claim keeps its warm engine. Claims prefer a standby slot (skipping the
+  redundant `RUN_JOB`), fall back cold if the standby job died, and each
+  successful claim best-effort arms at most one replacement standby on a free
+  slot other than the gates' slot-3 harness. Exactness was the hard
+  requirement: the first arming shape (full `new_game`) produced a third
+  `InitNew`/display whose leftover melt-wipe and border-redraw presentation
+  state diverged early frames from the canonical cold chain (caught as an
+  alternating save/load state SHA); adapter-side buffer surgery was rejected
+  because it would also change same-JVM reconstruct semantics that existing
+  gates baseline. Initialize-only arming makes the claimed sequence
+  identical to a cold claim by construction: a two-fresh-session 24-tic
+  differential is byte-identical in every frame/state/payload SHA, repeated
+  save/load runs reproduce the historical `c60c0fc9…` state SHA, and the new
+  `standby-worker-gate` (now part of the 11-gate core suite) measures cold
+  ~17 s versus standby-claimed ~1.4 s with the exact canonical tic-zero
+  frame. Browser measurements show 0.4–3.4 s confirm-to-first-paint when a
+  standby is available; a fully occupied pool falls back to eviction plus
+  cold construction. One same-JVM caveat is recorded: engine-class statics
+  survive `dispose`, so second constructions inside one session are not
+  byte-exact with first constructions — production never does this, and the
+  differential therefore compares fresh sessions.
 
 #### T12.M5 Gameplay and performance selection
 
