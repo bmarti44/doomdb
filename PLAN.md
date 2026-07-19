@@ -2275,11 +2275,13 @@ the clean-room engine unless it is needed to validate the new public contract.
   T12.M5 rather than blocking the playable cutover.
 - Browser lifecycle checkpoint (2026-07-18): `/play/` now fetches the
   database-owned Freedoom `TITLEPIC` and palette through generated AutoREST,
-  renders the real 320x200 indexed title, and waits for Enter/click before
-  allocating a game session. The canvas takes focus on click; both Ctrl keys
-  and F fire, including cancelled held-key repeats. Hidden tabs pause, but a
-  visible window can no longer freeze because browser focus was initially
-  elsewhere.
+  renders the real 320x200 indexed title, then follows title → main menu → New
+  Game → skill selection before allocating a session with the selected skill.
+  The canvas takes focus on click; macOS Chrome additionally requests fullscreen
+  Keyboard Lock so its double-Control Dictation shortcut cannot escape the
+  game. Both Ctrl keys and F fire, including cancelled held-key repeats. Hidden
+  tabs pause, but a visible window can no longer freeze because browser focus
+  was initially elsewhere.
 - Accept: the unmodified static client can start and freely play a new game only
   through generated AutoREST endpoints; killing and restarting the worker loses
   no accepted command and never returns another session's frame.

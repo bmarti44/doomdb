@@ -18,7 +18,7 @@ page.on('request', request => {
 try {
   await page.goto(root, {waitUntil: 'domcontentloaded'});
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
-    ?.textContent?.includes('Press Enter'), null, {timeout: 30_000});
+    ?.textContent?.includes('Enter for windowed'), null, {timeout: 30_000});
   assert.ok(!requests.some(path => path.endsWith('/NEW_GAME')),
     'title screen allocated a game before player confirmation');
   const titleColors = await page.evaluate(() => {
@@ -33,6 +33,16 @@ try {
     return colors.size;
   });
   assert.ok(titleColors >= 32, `title screen did not render (${titleColors} colors)`);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
+    ?.textContent === 'MAIN MENU');
+  assert.ok(!requests.some(path => path.endsWith('/NEW_GAME')),
+    'main menu allocated a game before New Game selection');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
+    ?.textContent === 'CHOOSE SKILL LEVEL');
+  assert.ok(!requests.some(path => path.endsWith('/NEW_GAME')),
+    'skill menu allocated a game before skill confirmation');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
     ?.textContent?.includes('pipeline active'), null, {timeout: 120_000});

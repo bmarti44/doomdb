@@ -194,11 +194,14 @@ docker compose wait db
 docker compose restart ords
 ```
 
-Then visit <http://localhost:8080/play/>. The database-owned title screen waits
-for Enter or a click before allocating a new Mocha Doom game inside OJVM.
+Then visit <http://localhost:8080/play/>. The database-owned title screen leads
+to New Game and skill-selection menus before allocating a Mocha Doom game inside
+OJVM. Click on macOS Chrome to request fullscreen keyboard capture, or press
+Enter to remain windowed.
 Controls are W/S or Up/Down to move, A/D or Left/Right to turn, either Ctrl or
 F to fire, Space to use, Tab for the automap, Escape for the menu, and P to
-pause. On macOS, F avoids any system Dictation shortcut assigned to Ctrl.
+pause. On macOS, F remains the fallback if fullscreen Keyboard Lock permission
+is declined or a system Dictation shortcut still owns Ctrl.
 
 Real credentials, wallets, private keys, environment files, WADs, generated
 classes/JARs, and Terraform variable files are ignored by

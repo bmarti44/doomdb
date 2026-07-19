@@ -16,7 +16,13 @@ await page.addInitScript(() => {
 try {
   await page.goto(root, {waitUntil: 'domcontentloaded'});
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
-    ?.textContent?.includes('Press Enter'), null, {timeout: 30_000});
+    ?.textContent?.includes('Enter for windowed'), null, {timeout: 30_000});
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
+    ?.textContent === 'MAIN MENU');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
+    ?.textContent === 'CHOOSE SKILL LEVEL');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
     ?.textContent?.includes('pipeline active'), null, {timeout: 120_000});

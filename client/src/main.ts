@@ -19,10 +19,17 @@ function stylesheet(): HTMLStyleElement {
     *{box-sizing:border-box}
     html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#000}
     body{display:grid;place-items:center}
-    [data-doom-shell]{width:100vw;height:100vh;display:grid;place-items:center}
+    [data-doom-shell]{position:relative;width:100vw;height:100vh;display:grid;place-items:center;background:#000}
     canvas[data-doom-canvas]{display:block;width:min(100vw,160vh);height:auto;max-width:100vw;max-height:100vh;image-rendering:pixelated;image-rendering:crisp-edges;background:#000;outline:0}
     canvas[data-doom-canvas]:focus-visible{outline:2px solid #d7b84b;outline-offset:2px}
     [data-doom-controls]{display:none}
+    [data-doom-menu]{position:absolute;z-index:3;left:50%;top:55%;width:min(92vw,430px);transform:translate(-50%,-50%);padding:18px 22px;background:#080000df;border:2px solid #8d251d;box-shadow:0 0 0 2px #1c0907,0 12px 40px #000;color:#ddd;font:700 18px/1.2 ui-monospace,monospace;text-align:center}
+    [data-doom-menu][hidden]{display:none}
+    [data-doom-menu] h2{margin:0 0 14px;color:#cf3b28;font:900 24px/1 ui-monospace,monospace;text-shadow:2px 2px #3d0905}
+    [data-doom-menu] button{display:block;width:100%;padding:7px 10px;border:0;background:transparent;color:#b9b9b9;font:inherit;text-align:left;cursor:pointer}
+    [data-doom-menu] button[data-selected]::before{content:'▶';display:inline-block;width:24px;color:#e33b22}
+    [data-doom-menu] button:not([data-selected])::before{content:'';display:inline-block;width:24px}
+    [data-doom-menu] button[data-selected]{color:#fff1cf;text-shadow:1px 1px #5b140d}
     [data-doom-status]{position:fixed;left:12px;top:12px;z-index:4;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.35 system-ui;white-space:pre-line;pointer-events:none}
     [data-doom-control]{position:relative;min-width:40px;min-height:40px;padding:0;border:1px solid #aaa;background:#171717;color:#fff;border-radius:7px;touch-action:none}
     [data-doom-control]::before{content:attr(data-icon);font:700 21px/1 system-ui}
@@ -63,12 +70,50 @@ const fireLabel = 'F/Ctrl fire';
 const shell = document.createElement('div');
 shell.dataset.doomShell = '';
 const touch = controls();
+const menu = document.createElement('section');
+menu.dataset.doomMenu = '';
+menu.hidden = true;
+menu.setAttribute('aria-live', 'polite');
 const status = document.createElement('div');
 status.dataset.doomStatus = '';
 status.textContent = 'Starting a new game inside Oracle…\nThe first frame currently takes about 10 seconds.';
-shell.append(canvas, touch.element, status);
+shell.append(canvas, menu, touch.element, status);
 document.head.append(stylesheet());
 document.body.replaceChildren(shell);
+
+type KeyboardLock = {
+  lock(keys?: string[]): Promise<void>;
+  unlock(): void;
+};
+const keyboard = (navigator as Navigator & {keyboard?: KeyboardLock}).keyboard;
+let capturePending = false;
+const captureKeyboard = async (): Promise<void> => {
+  if (!navigator.platform.startsWith('Mac') || keyboard === undefined ||
+      !document.fullscreenEnabled || capturePending || document.fullscreenElement === shell) return;
+  capturePending = true;
+  try {
+    await shell.requestFullscreen({navigationUI: 'hide'});
+    await keyboard.lock([
+      'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'ArrowUp', 'ArrowDown',
+      'ArrowLeft', 'ArrowRight', 'ControlLeft', 'ControlRight', 'Space',
+      'Tab', 'Escape', 'KeyP', 'KeyM', 'Enter'
+    ]);
+    shell.dataset.keyboardCaptured = '';
+  } catch (cause) {
+    console.warn('fullscreen keyboard capture was declined', cause);
+  } finally {
+    capturePending = false;
+  }
+};
+// On macOS, only fullscreen Keyboard Lock can keep a host-level double-Control
+// Dictation shortcut from escaping Chrome. The capture-phase listener preserves
+// the trusted click whether the player hits the canvas or a menu button.
+shell.addEventListener('pointerdown', () => { void captureKeyboard(); }, {capture: true});
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement === shell) return;
+  keyboard?.unlock();
+  delete shell.dataset.keyboardCaptured;
+});
 
 let restartReady = false;
 const armRestart = (message: string): void => {
@@ -110,6 +155,73 @@ function awaitStart(audio: AudioPresenter): Promise<void> {
   });
 }
 
+type MenuChoice<T> = {label: string; value: T};
+
+function chooseMenu<T>(heading: string, choices: readonly MenuChoice<T>[],
+                       initial = 0, allowBack = false): Promise<T | null> {
+  return new Promise(resolve => {
+    let selected = initial;
+    const title = document.createElement('h2');
+    title.textContent = heading;
+    const buttons = choices.map((choice, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = choice.label;
+      button.addEventListener('pointerenter', () => { selected = index; paint(); });
+      button.addEventListener('click', event => {
+        event.preventDefault();
+        finish(choice.value);
+      });
+      return button;
+    });
+    const paint = (): void => {
+      buttons.forEach((button, index) => {
+        if (index === selected) button.dataset.selected = '';
+        else delete button.dataset.selected;
+        button.setAttribute('aria-current', index === selected ? 'true' : 'false');
+      });
+    };
+    const keydown = (event: KeyboardEvent): void => {
+      if (event.code === 'ArrowUp' || event.code === 'KeyW') {
+        event.preventDefault();selected = (selected + choices.length - 1) % choices.length;paint();
+      } else if (event.code === 'ArrowDown' || event.code === 'KeyS') {
+        event.preventDefault();selected = (selected + 1) % choices.length;paint();
+      } else if (event.code === 'Enter' || event.code === 'Space') {
+        event.preventDefault();finish(choices[selected]!.value);
+      } else if (allowBack && event.code === 'Escape') {
+        event.preventDefault();finish(null);
+      }
+    };
+    const finish = (value: T | null): void => {
+      window.removeEventListener('keydown', keydown, {capture: true});
+      menu.hidden = true;
+      menu.replaceChildren();
+      resolve(value);
+    };
+    menu.replaceChildren(title, ...buttons);
+    menu.hidden = false;
+    paint();
+    window.addEventListener('keydown', keydown, {capture: true});
+  });
+}
+
+async function chooseSkill(): Promise<number> {
+  const skillChoices: readonly MenuChoice<number>[] = [
+    {label: "I'M TOO YOUNG TO DIE", value: 1},
+    {label: 'HEY, NOT TOO ROUGH', value: 2},
+    {label: 'HURT ME PLENTY', value: 3},
+    {label: 'ULTRA-VIOLENCE', value: 4},
+    {label: 'NIGHTMARE!', value: 5}
+  ];
+  for (;;) {
+    status.textContent = 'MAIN MENU\nArrow keys + Enter · click to select';
+    await chooseMenu('MAIN MENU', [{label: 'NEW GAME', value: 'NEW_GAME'}]);
+    status.textContent = 'NEW GAME\nChoose a skill level · Escape goes back';
+    const skill = await chooseMenu('CHOOSE SKILL LEVEL', skillChoices, 2, true);
+    if (skill !== null) return skill;
+  }
+}
+
 async function boot(): Promise<void> {
   const audio = new AudioPresenter();
   const [paletteAsset, titleAsset] = await Promise.all([
@@ -122,10 +234,11 @@ async function boot(): Promise<void> {
     throw new TypeError('title screen asset is invalid');
   }
   blit(canvas, applyPalette(titleIndices, palette));
-  status.textContent = 'DoomDB · Mocha Doom inside Oracle\nPress Enter or click to start';
+  status.textContent = 'DoomDB · Mocha Doom inside Oracle\nClick for captured fullscreen · Enter for windowed';
   await awaitStart(audio);
+  const skill = await chooseSkill();
   status.textContent = 'Starting a new game inside Oracle…\nPreparing the retained database worker.';
-  const game = await newGame();
+  const game = await newGame(skill);
   let frame = await decodePayload(game.payload);
   blit(canvas, applyPalette(frame.indices, palette));
   state.loading = false;
