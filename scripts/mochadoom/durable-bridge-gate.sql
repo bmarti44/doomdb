@@ -6,6 +6,8 @@ declare
   l_plain blob;
   l_status varchar2(4000);l_ticcmd raw(8);l_state_sha varchar2(64);
   l_frame_sha varchar2(64);l_audio_length number;l_audio varchar2(4000);
+  l_previous_engine varchar2(4000);
+  l_slot_deadline timestamp with time zone;l_slot_free number;
 
   procedure cleanup is
   begin
@@ -15,10 +17,31 @@ declare
     if l_session is not null then
       delete from game_sessions where session_token=l_session;
     end if;
+    update doom_config set text_value=coalesce(l_previous_engine,text_value)
+      where config_key='GAME_ENGINE';
     commit;
     begin l_status:=doom_mocha_dispose;exception when others then null;end;
   end;
 begin
+  -- This gate drives the bridge directly through its manual slot-3 harness.
+  -- A MOCHA selector would make NEW_GAME claim a real worker for the session,
+  -- colliding with that harness on the unique TARGET_SESSION constraint.
+  select text_value into l_previous_engine from doom_config
+    where config_key='GAME_ENGINE';
+  update doom_config set text_value='SQL' where config_key='GAME_ENGINE';commit;
+  -- Slot 3 is this gate's dedicated harness slot. A ready idle worker may
+  -- legitimately hold it under the 600-second retention; ask it to stop and
+  -- wait for the slot before claiming it manually.
+  update doom_worker_control set stop_requested=1
+    where worker_slot=3 and target_session is not null and ready=1;
+  commit;
+  l_slot_deadline:=systimestamp+numtodsinterval(15,'SECOND');
+  loop
+    select count(*) into l_slot_free from doom_worker_control
+      where worker_slot=3 and target_session is null;
+    exit when l_slot_free=1 or systimestamp>=l_slot_deadline;
+    dbms_session.sleep(.2);
+  end loop;
   doom_api.new_game(3,l_session,l_payload);
   select save_lineage into l_lineage from game_sessions
     where session_token=l_session;

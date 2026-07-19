@@ -8,6 +8,15 @@ const page = await browser.newPage({viewport: {width: 1280, height: 800}});
 try {
   await page.goto(root, {waitUntil: 'domcontentloaded'});
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
+    ?.textContent?.includes('press Enter to start'), null, {timeout: 30_000});
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
+    ?.textContent === 'MAIN MENU');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
+    ?.textContent === 'CHOOSE SKILL LEVEL');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[data-doom-status]')
     ?.textContent?.includes('pipeline active'), null, {timeout: 120_000});
 
   // Exhaust the bounded async retry budget after a session is live. This is

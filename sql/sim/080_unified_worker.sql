@@ -1171,7 +1171,7 @@ create or replace package body doom_unified_worker as
     l_failure varchar2(4000);l_limit pls_integer;l_idle_polls pls_integer:=0;
     l_processed pls_integer:=0;l_idle_seconds number;
     l_idle_started timestamp with time zone:=systimestamp;
-    l_dequeued pls_integer;l_mocha boolean:=false;
+    l_dequeued pls_integer;l_mocha boolean:=false;l_owned boolean:=false;
     no_messages exception;pragma exception_init(no_messages,-25228);
   begin
     require_enabled;l_limit:=pool_size;
@@ -1186,7 +1186,12 @@ create or replace package body doom_unified_worker as
       into l_generation,l_target,l_lineage,l_control_map
       from doom_worker_control where worker_slot=p_worker_slot for update;
     if l_target is null or l_lineage is null then
-      raise_application_error(c_invalid,'worker target is not configured');
+      -- A duplicate or delayed Scheduler execution can start after its claim
+      -- was released, stopped, or superseded. It owns nothing: exit without
+      -- touching the control row so a live owner is never clobbered.
+      commit;
+      audit_event(null,p_worker_slot,l_generation,'WORKER_STALE_START',null);
+      return;
     end if;
     l_mocha:=mocha_lineage(l_target,l_lineage);
     l_map_sha:=state_map_sha(l_target,l_lineage);
@@ -1198,6 +1203,7 @@ create or replace package body doom_unified_worker as
       stop_requested=0,worker_sid=sys_context('USERENV','SID'),
       heartbeat=systimestamp,last_error=null where worker_slot=p_worker_slot;
     commit;
+    l_owned:=true;
 
     load_and_warm(l_target,l_lineage,l_generation,l_map_sha);
     update doom_worker_control set ready=1,heartbeat=systimestamp
@@ -1205,7 +1211,11 @@ create or replace package body doom_unified_worker as
         and target_lineage=l_lineage and state_map_sha=l_map_sha
         and generation=l_generation and ready=0;
     if sql%rowcount<>1 then
-      raise_application_error(c_invalid,'worker ready fence');
+      -- Any change since the generation bump means a newer claim or execution
+      -- took the slot. The newer owner's row must survive untouched.
+      rollback;
+      audit_event(null,p_worker_slot,l_generation,'WORKER_SUPERSEDED',l_target);
+      return;
     end if;
     commit;
     audit_event(null,p_worker_slot,l_generation,'WORKER_READY',
@@ -1291,21 +1301,26 @@ create or replace package body doom_unified_worker as
     end if;
     update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
       target_session=null,target_lineage=null,state_map_sha=null,
-      heartbeat=systimestamp where worker_slot=p_worker_slot;
+      heartbeat=systimestamp
+      where worker_slot=p_worker_slot and generation=l_generation;
     commit;
     audit_event(null,p_worker_slot,l_generation,'WORKER_STOP',l_target);
   exception when others then
     l_failure:=substr(sqlerrm||' '||dbms_utility.format_error_backtrace,1,4000);
     begin
       rollback;
-      if not l_mocha then
-        begin doom_render_worker.request_stop(l_target);exception when others then null;end;
+      if l_owned then
+        if not l_mocha then
+          begin doom_render_worker.request_stop(l_target);exception when others then null;end;
+        end if;
+        -- Clear only this execution's own claim. A failure raised before the
+        -- generation bump, or after being superseded, owns no control row.
+        update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
+          target_session=null,target_lineage=null,state_map_sha=null,
+          last_error=l_failure,heartbeat=systimestamp
+          where worker_slot=p_worker_slot and generation=l_generation;
+        commit;
       end if;
-      update doom_worker_control set ready=0,stop_requested=0,worker_sid=null,
-        target_session=null,target_lineage=null,state_map_sha=null,
-        last_error=l_failure,heartbeat=systimestamp
-        where worker_slot=p_worker_slot;
-      commit;
       audit_event(null,p_worker_slot,l_generation,'WORKER_FATAL',l_failure);
     exception when others then null;end;
   end;
@@ -1313,7 +1328,8 @@ create or replace package body doom_unified_worker as
   procedure start_worker(p_session in varchar2) is
     l_lineage varchar2(64);l_map_sha varchar2(64);
     l_slot number;l_running number;l_limit pls_integer;l_orphan_running number;
-    l_mocha boolean;
+    l_mocha boolean;l_victim number;
+    l_evict_deadline timestamp with time zone;
   begin
     require_enabled;l_limit:=pool_size;
     if p_session is null or not regexp_like(p_session,'^[0-9a-f]{32}$') then
@@ -1377,12 +1393,64 @@ create or replace package body doom_unified_worker as
       end if;
     exception when no_data_found then
       l_slot:=null;
-      for candidate in (
-        select worker_slot from doom_worker_control
-        where target_session is null and worker_slot<=l_limit
-        order by worker_slot for update skip locked
-      ) loop
-        l_slot:=candidate.worker_slot;exit;
+      l_evict_deadline:=systimestamp+numtodsinterval(10,'SECOND');
+      loop
+        for candidate in (
+          select worker_slot from doom_worker_control
+          where target_session is null and worker_slot<=l_limit
+          order by worker_slot for update skip locked
+        ) loop
+          l_slot:=candidate.worker_slot;exit;
+        end loop;
+        if l_slot is null then
+          -- A claim whose asynchronous job start was lost leaves a dead slot:
+          -- target set, never ready, no Scheduler job, stale heartbeat. Without
+          -- takeover that slot is unusable until its target session expires.
+          for candidate in (
+            select c.worker_slot from doom_worker_control c
+            where c.worker_slot<=l_limit and c.target_session is not null
+              and c.ready=0 and (c.heartbeat is null or
+                c.heartbeat<systimestamp-numtodsinterval(60,'SECOND'))
+            order by c.worker_slot for update skip locked
+          ) loop
+            select count(*) into l_orphan_running
+              from user_scheduler_running_jobs
+              where job_name='DOOM_UNIFIED_WORKER_'||
+                to_char(candidate.worker_slot,'FM00');
+            if l_orphan_running=0 then
+              update doom_worker_request set request_status='FAILED',
+                error_text='dead worker claim reclaimed',completed_at=systimestamp
+                where worker_slot=candidate.worker_slot
+                  and request_status in('QUEUED','PROCESSING');
+              l_slot:=candidate.worker_slot;exit;
+            end if;
+          end loop;
+        end if;
+        exit when l_slot is not null or systimestamp>=l_evict_deadline;
+        -- Bounded deterministic eviction (T12.M4): every slot hosts a live
+        -- retained engine, so ask the least-recently-active ready worker to
+        -- stop and wait for its slot. Durable state makes this a reconstruct,
+        -- never a loss; an abandoned tab must not pin a slot for its whole
+        -- session lifetime while a new player is refused.
+        begin
+          select worker_slot into l_victim from (
+            select c.worker_slot,
+              (select max(r.completed_at) from doom_worker_request r
+                where r.worker_slot=c.worker_slot
+                  and r.request_status='COMMITTED') last_done
+            from doom_worker_control c
+            where c.worker_slot<=l_limit and c.target_session is not null
+              and c.ready=1 and c.stop_requested=0
+            order by last_done nulls first,c.worker_slot
+          ) where rownum=1;
+          update doom_worker_control set stop_requested=1
+            where worker_slot=l_victim and ready=1;
+        exception when no_data_found then null;
+        end;
+        -- Release the candidate row locks so the stopping worker can clear
+        -- its own control row.
+        commit;
+        dbms_session.sleep(.2);
       end loop;
       if l_slot is null then
         raise_application_error(c_capacity,'unified worker pool is full');
@@ -1641,11 +1709,14 @@ create or replace package body doom_worker_api as
   ) is
     l_heartbeat timestamp with time zone;
     l_deadline timestamp with time zone;
+    l_redispatch timestamp with time zone;
+    l_slot number;l_probe number;
   begin
     require_enabled;
     doom_unified_worker.start_worker(p_session);
     l_deadline:=systimestamp+
       numtodsinterval(config_number('UNIFIED_WORKER_WAIT_SECONDS'),'SECOND');
+    l_redispatch:=systimestamp+numtodsinterval(3,'SECOND');
     loop
       begin
         worker_status(p_session,p_generation,p_ready,p_state_map_sha,
@@ -1657,6 +1728,31 @@ create or replace package body doom_worker_api as
       if systimestamp>=l_deadline then
         p_generation:=null;p_ready:=0;p_state_map_sha:=null;
         p_error:='worker claim timeout';return;
+      end if;
+      if systimestamp>=l_redispatch then
+        -- The Scheduler can lose an asynchronous RUN_JOB dispatch entirely
+        -- (observed after virtual-clock stalls on the local host). Without
+        -- re-dispatch this loop burns the whole claim window on a worker
+        -- process that never started and the caller gets a timeout.
+        l_redispatch:=systimestamp+numtodsinterval(3,'SECOND');
+        begin
+          select worker_slot,ready into l_slot,l_probe
+            from doom_worker_control where target_session=p_session;
+          if l_probe=0 then
+            select count(*) into l_probe from user_scheduler_running_jobs
+              where job_name='DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00');
+            if l_probe=0 then
+              dbms_scheduler.run_job(
+                'DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00'),false);
+            end if;
+          end if;
+        exception when no_data_found then
+          -- The claim was released or reclaimed; rebuild it from scratch.
+          begin
+            doom_unified_worker.start_worker(p_session);
+          exception when others then null;end;
+        when others then null;
+        end;
       end if;
       dbms_session.sleep(.05);
     end loop;

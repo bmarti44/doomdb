@@ -2293,6 +2293,44 @@ the clean-room engine unless it is needed to validate the new public contract.
 - Accept: the unmodified static client can start and freely play a new game only
   through generated AutoREST endpoints; killing and restarting the worker loses
   no accepted command and never returns another session's frame.
+- Worker-admission hardening (2026-07-19): a live outage traced "shooting and
+  new games stopped working" to Oracle's Scheduler job coordinator silently
+  losing asynchronous `RUN_JOB` dispatches after host virtual-clock stalls
+  (`Time stalled`/`backward drift` in the alert log); `CLAIM` then burned its
+  whole 120 s window on a worker process that never started and public
+  `NEW_GAME` returned ORA-20702. Delayed duplicate dispatches also raced
+  `run_slot`, and the loser's unfenced cleanup clobbered the winner's control
+  row (the observed `worker ready fence`/`worker state-map fence` fatals).
+  `run_slot` now exits quietly on a stale start or when superseded, and both
+  its stop and failure cleanups are generation-fenced to the claim they own;
+  `claim` re-dispatches `RUN_JOB` every three seconds while the slot has no
+  running Scheduler job and rebuilds a released claim; `start_worker` reclaims
+  dead claims (target set, never ready, no running job, heartbeat older than
+  60 s) so a poisoned slot cannot block the pool until session expiry. The
+  operational remediation for a wedged coordinator is bouncing
+  `job_queue_processes` (now pinned to 8 in local initdb for slave headroom);
+  a full instance restart alone did not clear it. Three direct-bridge gates
+  (durable-bridge, durable-audio-ledger, presentation-controls) now pin
+  `GAME_ENGINE='SQL'` and restore it, because under the post-cutover `MOCHA`
+  default their `NEW_GAME` claims a real worker whose control row collides
+  with the manual slot-3 harness on the unique target-session constraint.
+- Bounded eviction (2026-07-19): when every slot hosts a ready worker,
+  `start_worker` now asks the least-recently-active ready worker (oldest
+  committed request, then slot order) to stop and waits up to ten seconds for
+  a slot instead of refusing the new player outright. Durable state makes the
+  evicted session a later reconstruct, never a loss; this closes the
+  refresh-a-few-tabs pool-exhaustion outage under the deliberate 600-second
+  idle retention and satisfies the T12.M4 bounded-memory eviction requirement.
+  A live five-session probe over public AutoREST confirmed the fifth `NEW_GAME`
+  evicts and succeeds in about 13 s while all four slots were ready.
+- macOS Ctrl-fire (2026-07-19): both Control keys are bound to fire on every
+  platform again. Because a windowed browser cannot suppress macOS's rapid
+  double-Control Dictation prompt, the client keeps the reviewed windowed
+  single-click mouse capture and adds an explicit double-click opt-in that
+  enters fullscreen Keyboard Lock (locking both Control keys and the gameplay
+  set) so Ctrl-fire never raises the Dictation prompt; leaving fullscreen
+  unlocks and returns to windowed capture. The status line advertises the
+  capture on macOS only.
 
 #### T12.M5 Gameplay and performance selection
 
@@ -2396,6 +2434,19 @@ the clean-room engine unless it is needed to validate the new public contract.
   for `frame_sha` instead of accepting either row-major or transport-major
   bytes; and reconcile the binary `dead` mode with `PresentationState` so death
   presentation cannot be silently discarded.
+- Presentation follow-up resolution (2026-07-19): the Mocha adapter now
+  populates DMF3 byte 9 from `gamestate` (1 once vanilla `G_DoCompleted` leaves
+  `GS_LEVEL`, 0 during play), matching the SQL retained producer that already
+  carried `liveComplete`; the tic-zero payload and every recorded mid-level
+  chain are byte-identical because the byte was previously always 0. The client
+  codec now enforces one canonical `frame_sha` orientation per producer format
+  instead of accepting either: raw DMF3/DMF4 (only the Mocha adapter emits it)
+  must hash the row-major framebuffer, while every gzip-wrapped envelope
+  (legacy JSON v1/v2 and the SQL retained worker's gzip DMF3) must hash the
+  column-major transport bytes, so a transposed frame can no longer validate.
+  `PresentationState` accepts `DEAD`, and `Frame` exposes `complete`. The
+  codec fixture asserts both the canonical acceptances and the cross-orientation
+  rejection.
 
 ### P8 - Full E1M1 and presentation workflows
 

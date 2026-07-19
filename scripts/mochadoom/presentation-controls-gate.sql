@@ -5,6 +5,8 @@ declare
   l_session varchar2(32);l_lineage varchar2(64);l_payload blob;l_frame blob;
   l_status varchar2(4000);l_ticcmd raw(8);l_state_sha varchar2(64);
   l_frame_sha varchar2(64);l_generation number;l_count number;l_seq number:=0;
+  l_previous_engine varchar2(4000);
+  l_slot_deadline timestamp with time zone;l_slot_free number;
 
   function field(p_name varchar2) return varchar2 is
     l_start pls_integer:=instr(l_status,'|'||p_name||'=');l_end pls_integer;
@@ -30,10 +32,31 @@ declare
       state_map_sha=null,ready=0,stop_requested=0,worker_sid=null
       where worker_slot=3 and target_session=l_session;
     if l_session is not null then delete from game_sessions where session_token=l_session;end if;
+    update doom_config set text_value=coalesce(l_previous_engine,text_value)
+      where config_key='GAME_ENGINE';
     commit;
     begin l_status:=doom_mocha_dispose;exception when others then null;end;
   end;
 begin
+  -- This gate drives the bridge directly through its manual slot-3 harness.
+  -- A MOCHA selector would make NEW_GAME claim a real worker for the session,
+  -- colliding with that harness on the unique TARGET_SESSION constraint.
+  select text_value into l_previous_engine from doom_config
+    where config_key='GAME_ENGINE';
+  update doom_config set text_value='SQL' where config_key='GAME_ENGINE';commit;
+  -- Slot 3 is this gate's dedicated harness slot. A ready idle worker may
+  -- legitimately hold it under the 600-second retention; ask it to stop and
+  -- wait for the slot before claiming it manually.
+  update doom_worker_control set stop_requested=1
+    where worker_slot=3 and target_session is not null and ready=1;
+  commit;
+  l_slot_deadline:=systimestamp+numtodsinterval(15,'SECOND');
+  loop
+    select count(*) into l_slot_free from doom_worker_control
+      where worker_slot=3 and target_session is null;
+    exit when l_slot_free=1 or systimestamp>=l_slot_deadline;
+    dbms_session.sleep(.2);
+  end loop;
   doom_api.new_game(3,l_session,l_payload);
   select save_lineage into l_lineage from game_sessions where session_token=l_session;
   doom_mocha_bridge.create_lineage(l_session,l_lineage,3,1,1);
