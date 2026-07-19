@@ -5,14 +5,14 @@ const keyControls = {
     Escape: 'menu', KeyP: 'pause', KeyM: 'audio'
 };
 const held = new Set();
-function command() {
+function command(mouseTurn = 0, mouseFire = false) {
     return {
         seq: 0,
-        turn: Number(held.has('turn-right')) - Number(held.has('turn-left')),
+        turn: Number(held.has('turn-right')) - Number(held.has('turn-left')) || mouseTurn,
         forward: Number(held.has('forward')) - Number(held.has('backward')),
         strafe: 0,
         run: 0,
-        fire: Number(held.has('fire')),
+        fire: Number(held.has('fire') || mouseFire),
         use: Number(held.has('use')),
         weapon: 0,
         pause: Number(held.has('pause')),
@@ -21,7 +21,18 @@ function command() {
         cheat: ''
     };
 }
-export function bindInput(controls, emit, toggleAudio, gesture) {
+export function bindInput(canvas, controls, emit, toggleAudio, gesture) {
+    let mouseTurn = 0;
+    let mouseFire = false;
+    let mouseTurnTimer = 0;
+    const currentCommand = () => command(mouseTurn, mouseFire);
+    const clearMouseTurn = () => {
+        mouseTurnTimer = 0;
+        if (mouseTurn === 0)
+            return;
+        mouseTurn = 0;
+        emit(currentCommand());
+    };
     const update = (name, down) => {
         if (name === 'audio') {
             if (down)
@@ -33,7 +44,7 @@ export function bindInput(controls, emit, toggleAudio, gesture) {
         else {
             held.delete(name);
         }
-        emit(command());
+        emit(currentCommand());
     };
     window.addEventListener('keydown', event => {
         const name = keyControls[event.code];
@@ -57,12 +68,55 @@ export function bindInput(controls, emit, toggleAudio, gesture) {
     }, { capture: true });
     const release = () => {
         held.clear();
-        emit(command());
+        mouseTurn = 0;
+        mouseFire = false;
+        window.clearTimeout(mouseTurnTimer);
+        mouseTurnTimer = 0;
+        emit(currentCommand());
     };
     window.addEventListener('blur', release);
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState !== 'visible')
             release();
+    });
+    // Pointer Lock reports relative movement even when the cursor reaches a
+    // screen edge. Convert each horizontal movement burst into a command pulse
+    // long enough for the 32 ms database-tic sampler to observe it.
+    document.addEventListener('mousemove', event => {
+        if (document.pointerLockElement !== canvas || event.movementX === 0)
+            return;
+        mouseTurn = Math.sign(event.movementX);
+        window.clearTimeout(mouseTurnTimer);
+        mouseTurnTimer = window.setTimeout(clearMouseTurn, 48);
+        emit(currentCommand());
+    });
+    canvas.addEventListener('mousedown', event => {
+        if (document.pointerLockElement !== canvas || event.button !== 0)
+            return;
+        event.preventDefault();
+        gesture();
+        mouseFire = true;
+        emit(currentCommand());
+    });
+    document.addEventListener('mouseup', event => {
+        if (event.button !== 0 || !mouseFire)
+            return;
+        event.preventDefault();
+        mouseFire = false;
+        emit(currentCommand());
+    });
+    canvas.addEventListener('contextmenu', event => {
+        if (document.pointerLockElement === canvas)
+            event.preventDefault();
+    });
+    document.addEventListener('pointerlockchange', () => {
+        if (document.pointerLockElement === canvas)
+            return;
+        mouseTurn = 0;
+        mouseFire = false;
+        window.clearTimeout(mouseTurnTimer);
+        mouseTurnTimer = 0;
+        emit(currentCommand());
     });
     for (const [name, button] of controls) {
         const finish = (event) => {

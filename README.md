@@ -202,8 +202,10 @@ The visible menus are composed from the pinned Freedoom IWAD's original Doom
 patches served by Oracle; browser HTML supplies accessibility targets only.
 Controls are W/S or Up/Down to move, A/D or Left/Right to turn, either Ctrl or
 F to fire, Space to use, Tab for the automap, Escape for the menu, and P to
-pause. On macOS, F remains the fallback if fullscreen Keyboard Lock permission
-is declined or a system Dictation shortcut still owns Ctrl.
+pause. Once gameplay starts, click the game to capture the cursor; horizontal
+mouse movement turns, left-click fires, and Escape releases the cursor. On
+macOS, F remains the fallback if fullscreen Keyboard Lock permission is declined
+or a system Dictation shortcut still owns Ctrl.
 
 Real credentials, wallets, private keys, environment files, WADs, generated
 classes/JARs, and Terraform variable files are ignored by

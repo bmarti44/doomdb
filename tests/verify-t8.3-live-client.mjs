@@ -5,6 +5,23 @@ const root = process.env.DOOM_PLAY_URL ?? 'http://localhost:8080/play/';
 const browser = await chromium.launch({headless: true});
 const page = await browser.newPage({viewport: {width: 1280, height: 800}});
 await page.addInitScript(() => {
+  // Chromium's macOS headless shell rejects the native primitive with
+  // WrongDocumentError. Keep the interaction and live pipeline real while
+  // substituting only the browser-owned lock state for this wiring gate.
+  let locked = null;
+  Object.defineProperty(document, 'pointerLockElement', {
+    configurable: true, get: () => locked
+  });
+  HTMLCanvasElement.prototype.requestPointerLock = function requestPointerLock() {
+    locked = this;
+    document.dispatchEvent(new Event('pointerlockchange'));
+    return Promise.resolve();
+  };
+  document.exitPointerLock = () => {
+    locked = null;
+    document.dispatchEvent(new Event('pointerlockchange'));
+  };
+  Object.defineProperty(navigator, 'platform', {configurable: true, value: 'Linux x86_64'});
   window.__doomTrace = [];
   for (const name of ['input', 'submit', 'decoded', 'present']) {
     addEventListener(`doom:${name}`, event => {
@@ -65,6 +82,21 @@ try {
   await page.keyboard.up('ControlLeft');
   await page.waitForTimeout(600);
 
+  await page.locator('canvas').click({position: {x: 160, y: 100}});
+  await page.waitForFunction(() => document.pointerLockElement ===
+    document.querySelector('canvas'), null, {timeout: 5_000});
+  const mouseTraceStart = await page.evaluate(() => window.__doomTrace.length);
+  await page.evaluate(() => {
+    const movement = new MouseEvent('mousemove', {bubbles: true});
+    Object.defineProperty(movement, 'movementX', {value: 80});
+    document.dispatchEvent(movement);
+  });
+  await page.waitForTimeout(70);
+  await page.locator('canvas').dispatchEvent('mousedown', {button: 0});
+  await page.waitForTimeout(100);
+  await page.locator('canvas').dispatchEvent('mouseup', {button: 0});
+  await page.waitForTimeout(100);
+
   const trace = await page.evaluate(() => window.__doomTrace);
   const movementInput = trace.find(row => row.name === 'input' && row.command.forward === 1);
   assert.ok(movementInput, 'W did not reach the thin-client command register');
@@ -83,9 +115,18 @@ try {
   assert.ok(latency.inputToSubmitMs <= 70, `input scheduling latency ${latency.inputToSubmitMs}`);
   assert.ok(latency.inputToPaintMs <= 250, `input-to-correlated-paint latency ${latency.inputToPaintMs}`);
   assert.ok(new Set(weaponHashes).size >= 2, 'FIRE produced no visible weapon animation');
+  const mouseTrace = trace.slice(mouseTraceStart);
+  assert.ok(mouseTrace.some(row => row.name === 'input' && row.command.turn !== 0),
+    'captured relative mouse movement did not reach the command register');
+  assert.ok(mouseTrace.some(row => row.name === 'input' && row.command.fire === 1),
+    'captured left mouse button did not reach the command register');
+  await page.keyboard.press('Escape');
+  await page.evaluate(() => document.exitPointerLock());
+  await page.waitForFunction(() => document.pointerLockElement === null);
 
   process.stdout.write(`PASS T8.3-LIVE-CLIENT ${JSON.stringify({latency,
-    weaponFrames:new Set(weaponHashes).size,presented:trace.filter(row=>row.name==='present').length})}\n`);
+    weaponFrames:new Set(weaponHashes).size,presented:trace.filter(row=>row.name==='present').length,
+    mouseCaptured:true})}\n`);
 } finally {
   await browser.close();
 }

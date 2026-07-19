@@ -87,33 +87,75 @@ type KeyboardLock = {
   unlock(): void;
 };
 const keyboard = (navigator as Navigator & {keyboard?: KeyboardLock}).keyboard;
-let capturePending = false;
-const captureKeyboard = async (): Promise<void> => {
+let keyboardCapture: Promise<void> | null = null;
+const captureKeyboard = (): Promise<void> => {
   if (!navigator.platform.startsWith('Mac') || keyboard === undefined ||
-      !document.fullscreenEnabled || capturePending || document.fullscreenElement === shell) return;
-  capturePending = true;
+      !document.fullscreenEnabled || shell.dataset.keyboardCaptured !== undefined) {
+    return Promise.resolve();
+  }
+  if (keyboardCapture !== null) return keyboardCapture;
+  keyboardCapture = (async () => {
+    try {
+      if (document.fullscreenElement !== shell) {
+        await shell.requestFullscreen({navigationUI: 'hide'});
+      }
+      await keyboard.lock([
+        'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'ArrowUp', 'ArrowDown',
+        'ArrowLeft', 'ArrowRight', 'ControlLeft', 'ControlRight', 'Space',
+        'Tab', 'Escape', 'KeyP', 'KeyM', 'Enter'
+      ]);
+      shell.dataset.keyboardCaptured = '';
+    } catch (cause) {
+      console.warn('fullscreen keyboard capture was declined', cause);
+    }
+  })().finally(() => { keyboardCapture = null; });
+  return keyboardCapture;
+};
+let pointerCapturePending = false;
+const capturePointer = async (): Promise<void> => {
+  if (state.loading || !menu.hidden || pointerCapturePending ||
+      document.pointerLockElement === canvas) return;
+  pointerCapturePending = true;
+  delete shell.dataset.pointerError;
   try {
-    await shell.requestFullscreen({navigationUI: 'hide'});
-    await keyboard.lock([
-      'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'ArrowUp', 'ArrowDown',
-      'ArrowLeft', 'ArrowRight', 'ControlLeft', 'ControlRight', 'Space',
-      'Tab', 'Escape', 'KeyP', 'KeyM', 'Enter'
-    ]);
-    shell.dataset.keyboardCaptured = '';
+    // Standard relative motion is portable across Chrome, Safari, and
+    // Firefox. Requesting optional raw input first can consume the one trusted
+    // activation when a browser or OS declines that mode, preventing fallback.
+    await canvas.requestPointerLock();
   } catch (cause) {
-    console.warn('fullscreen keyboard capture was declined', cause);
+    shell.dataset.pointerError = cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause);
+    console.warn('game mouse capture was declined', cause);
   } finally {
-    capturePending = false;
+    pointerCapturePending = false;
   }
 };
 // On macOS, only fullscreen Keyboard Lock can keep a host-level double-Control
 // Dictation shortcut from escaping Chrome. The capture-phase listener preserves
 // the trusted click whether the player hits the canvas or a menu button.
-shell.addEventListener('pointerdown', () => { void captureKeyboard(); }, {capture: true});
+shell.addEventListener('pointerdown', event => {
+  if (!event.isTrusted) return;
+  void captureKeyboard();
+}, {capture: true});
+// Run after createDoomCanvas's pointerdown focus handler. Requesting lock from
+// the ancestor capture phase can produce WrongDocumentError because the canvas
+// is not yet the active click target.
+canvas.addEventListener('click', event => {
+  if (!event.isTrusted || (event instanceof PointerEvent && event.pointerType !== 'mouse')) return;
+  if (navigator.platform.startsWith('Mac') && keyboard !== undefined &&
+      document.fullscreenEnabled && document.fullscreenElement !== shell) {
+    void captureKeyboard().then(capturePointer);
+  } else {
+    void capturePointer();
+  }
+});
 document.addEventListener('fullscreenchange', () => {
   if (document.fullscreenElement === shell) return;
   keyboard?.unlock();
   delete shell.dataset.keyboardCaptured;
+});
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement === canvas) shell.dataset.pointerCaptured = '';
+  else delete shell.dataset.pointerCaptured;
 });
 
 let restartReady = false;
@@ -341,7 +383,7 @@ async function boot(): Promise<void> {
   state.loading = false;
   state.setMode(frame.mode);
   await audio.consume(frame.audio);
-  status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\n30 FPS database pipeline warming up…`;
+  status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nClick game for mouse capture · 30 FPS pipeline warming up…`;
   window.setTimeout(() => { status.style.opacity = '0.35'; }, 6000);
 
   let latest: Command = {
@@ -393,7 +435,7 @@ async function boot(): Promise<void> {
   };
   const startPresentation = (): void => {
     if (presentationTimer !== 0 || completed.size < presentationBuffer) return;
-    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nDatabase pipeline active`;
+    status.textContent = `W/S move · A/D turn · ${fireLabel} · Space use\nDatabase pipeline active · click game to capture mouse`;
     presentationTimer = window.setTimeout(presentationLoop, 0);
   };
   // Live movement, USE, weapon selection, and every catalog fire mode now use
@@ -452,7 +494,7 @@ async function boot(): Promise<void> {
   const gesture = (): void => {
     void audio.enable();
   };
-  bindInput(touch.buttons, send, () => {
+  bindInput(canvas, touch.buttons, send, () => {
     state.muted = !state.muted;
     audio.setMuted(state.muted);
   }, gesture);
