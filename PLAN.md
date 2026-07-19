@@ -2576,6 +2576,21 @@ the clean-room engine unless it is needed to validate the new public contract.
   `b5a37ae70425b5f536936439ae999ec059fb0a9d6fcd3cc8913beade12e99581`.
   The remaining T8.1 slice replaces the accepted checkpoint-chain prefix with
   one uninterrupted public-command replay and freezes its intermediate frames.
+- Mocha no-cheat completion checkpoint (2026-07-19): an uninterrupted skill-1
+  public route now reaches E1M1 intermission at tic 762 without any cheat field,
+  direct state injection, or non-AutoREST game mutation. Its first 289 commands
+  are the pinned Cactaceae Freedoom 0.13 complevel-3 demo; a legal movement/use
+  suffix compensates for Mocha's movement-compatibility drift. The exit required
+  an explicit USE release/press because vanilla Doom consumes USE on its rising
+  edge. Two clean executions reproduced terminal state SHA
+  `268b9e62567b8f1d8591d61d63bf9f2d8aa84986fdb14374900be8d8043515a5`
+  and frame SHA
+  `7ad3d6e57913d2f2cca837b54a37d74bceeb5b56a52885735b2c5e8718b3f2fe`.
+  This closes the basic uninterrupted/no-cheat completion proof, but it does not
+  weaken the frozen T8.1 evaluator: its normal-skill-3 resource, representative-
+  combat, keyed-door, lift, secret, milestone, replay, and visual-review matrix
+  remains open. Replaying the same route at skill 3 ended in GAME at tic 762,
+  so that broader acceptance still needs its own authored route.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 

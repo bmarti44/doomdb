@@ -59,9 +59,10 @@ Key verified numbers (local two-core Oracle Free stack):
 
 What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 
-- **P8** — finish the uninterrupted, no-cheat full-E1M1 completion replay. The
-  46-request direct AutoREST workflow and desktop, mobile, authentic
-  intermission, and no-cheat death/restart Playwright workflows are green.
+- **P8** — finish the exhaustive normal-skill-3 E1M1 route (resources,
+  representative combat, keyed door, lift, secret, replay, and visual review).
+  A separate uninterrupted 762-command no-cheat route now completes E1M1
+  repeatably; direct AutoREST and all four T8.2 browser workflows are green.
 - **P9** — the Oracle `MODEL`-clause title fire animation (T9.1).
 - **P11** — the real S3 + Autonomous Database deployment; blocked only on
   cloud credentials, local dry-runs exist.

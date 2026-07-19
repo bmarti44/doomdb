@@ -36,13 +36,23 @@ for (const run of route.runs) {
   for (let index = 0; index < run.repeat; index += 1) commands.push(run.command);
 }
 assert.equal(commands.length, route.commandCount);
+if (route.constraints?.noCheats) {
+  assert.ok(commands.every(command => command.cheat === ''), 'route contains cheat');
+}
 const created = await post('new_game', {p_skill: route.skill});
 const session = value(created, 'p_session');
 let current = frame(created), sequence = 0;
+const milestones = new Map((route.accepted?.milestones ?? [])
+  .map(milestone => [milestone.tic, milestone]));
 for (const sourceCommand of commands) {
   const command = {...sourceCommand, seq: ++sequence};
   current = frame(await post('step', {p_session: session,
     p_commands: JSON.stringify({v: route.envelopeVersion ?? 1, commands: [command]})}));
+  const milestone = milestones.get(sequence);
+  if (milestone) {
+    assert.equal(current.stateSha, milestone.stateSha, `state milestone ${sequence}`);
+    assert.equal(current.frameSha, milestone.frameSha, `frame milestone ${sequence}`);
+  }
   if (sequence % 500 === 0) process.stderr.write(`tic ${sequence} ${current.mode}\n`);
   if (current.mode !== 'GAME') break;
 }

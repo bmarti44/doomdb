@@ -26,6 +26,12 @@ for (let index = 0, offset = 13; index < count; index += 1, offset += 4) {
     weapon: (buttons & 4) === 0 ? 0 : ((buttons >> 3) & 7) + 1,
     pause: 0, automap: 0, menu: 'NONE', cheat: ''});
 }
+for (const run of JSON.parse(process.env.DOOM_ROUTE_PATCH ?? '[]')) {
+  assert.ok(Number.isInteger(run.repeat) && run.repeat > 0, 'patch repeat');
+  for (let index = 0; index < run.repeat; index += 1) commands.push({turn: 0,
+    forward: 0, strafe: 0, run: 0, fire: 0, use: 0, weapon: 0, pause: 0,
+    automap: 0, menu: 'NONE', cheat: '', ...run.command});
+}
 const runs = [];
 for (const command of commands) {
   const previous = runs.at(-1);
@@ -34,12 +40,14 @@ for (const command of commands) {
 }
 const route = {schema: 1, map: 'E1M1', skill, envelopeVersion: 2,
   encoding: 'ordered v2 signed-axis command runs',
-  purpose: 'T8.2 no-cheat browser-visible death and new-game restart fixture',
+  purpose: process.env.DOOM_ROUTE_PURPOSE
+    ?? 'T8.2 no-cheat browser-visible death and new-game restart fixture',
+  ...(process.env.DOOM_ROUTE_NO_CHEATS === '1' ? {constraints: {noCheats: true}} : {}),
   source: {name: 'fde1m1-783.lmp',
     url: 'https://www.mediafire.com/file/4te2d29o3mpqxk7/fde1m1-783.zip/file',
     sha256: 'c8373065e1bfbccc69614f26b1ccfd0a5a8476b45797eb988f3ceecec3e37ac4',
     author: 'Cactaceae', recording: 'Freedoom 0.13.0 E1M1 -complevel 3',
-    sourceTics: count}, commandCount: count, runs, accepted};
+    sourceTics: count}, commandCount: commands.length, runs, accepted};
 fs.mkdirSync(new URL('../../artifacts/t8.2-live/', import.meta.url), {recursive: true});
 fs.writeFileSync(target, `${JSON.stringify(route, null, 2)}\n`);
-process.stdout.write(`WROTE ${target} (${count} commands, ${runs.length} runs)\n`);
+process.stdout.write(`WROTE ${target} (${commands.length} commands, ${runs.length} runs)\n`);
