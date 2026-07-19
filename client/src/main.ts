@@ -336,11 +336,17 @@ async function boot(): Promise<void> {
   const menuPatches = await loadMenuPatches();
   status.style.opacity = '0';
   const skill = await chooseSkill(titleIndices, palette, menuPatches);
+  // Mocha's authentic tic-0 framebuffer contains only the tiled border flat:
+  // vanilla Display() does not render the player view until gametic advances.
+  // Restore the last complete presentation while the retained worker starts.
+  blit(canvas, applyPalette(titleIndices, palette));
   status.style.opacity = '1';
   status.textContent = 'Starting a new game inside Oracle…\nPreparing the retained database worker.';
   const game = await newGame(skill);
   let frame = await decodePayload(game.payload);
-  blit(canvas, applyPalette(frame.indices, palette));
+  const initialPainted = frame.tic > 0;
+  if (initialPainted) blit(canvas, applyPalette(frame.indices, palette));
+  trace('initial', {tic: frame.tic, painted: initialPainted, frameSha: frame.frameSha});
   state.loading = false;
   state.setMode(frame.mode);
   await audio.consume(frame.audio);

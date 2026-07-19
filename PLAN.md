@@ -2384,6 +2384,18 @@ the clean-room engine unless it is needed to validate the new public contract.
 - Accept: 320x200 produces at least 30 unique displayed FPS with paint-gap p50
   and p95 no greater than 33.3 ms, deterministic replay/recovery remains green,
   and a human can freely complete the required E1M1 workflow through `/play/`.
+- Tic-zero presentation correction (2026-07-19): Mocha's canonical initial
+  payload intentionally contains vanilla Doom's GRNROCK border with an
+  unrendered black view because `Display()` does not draw the player view at
+  gametic zero. Keep that payload and its state/frame hashes unchanged, but do
+  not paint it in the thin client; retain TITLEPIC until the first correlated
+  post-tic frame. The live browser gate fingerprints the canvas at the initial
+  payload boundary and requires tic zero to remain unpainted.
+- Presentation follow-up: define and populate the DMF3/DMF4 `complete` byte or
+  remove it from the protocol; require one canonical framebuffer orientation
+  for `frame_sha` instead of accepting either row-major or transport-major
+  bytes; and reconcile the binary `dead` mode with `PresentationState` so death
+  presentation cannot be silently discarded.
 
 ### P8 - Full E1M1 and presentation workflows
 

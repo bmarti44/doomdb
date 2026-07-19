@@ -23,9 +23,19 @@ await page.addInitScript(() => {
   };
   Object.defineProperty(navigator, 'platform', {configurable: true, value: 'Linux x86_64'});
   window.__doomTrace = [];
-  for (const name of ['input', 'submit', 'decoded', 'present']) {
+  window.__doomCanvasFingerprint = () => {
+    const canvas = document.querySelector('canvas');
+    if (canvas === null) return null;
+    const bytes = canvas.getContext('2d').getImageData(0, 0, 320, 200).data;
+    let hash = 0x811c9dc5;
+    for (const byte of bytes) hash = Math.imul(hash ^ byte, 0x01000193) >>> 0;
+    return hash.toString(16).padStart(8, '0');
+  };
+  for (const name of ['initial', 'input', 'submit', 'decoded', 'present']) {
     addEventListener(`doom:${name}`, event => {
-      window.__doomTrace.push({name, ...event.detail});
+      const row = {name, ...event.detail};
+      if (name === 'initial') row.canvasFingerprint = window.__doomCanvasFingerprint();
+      window.__doomTrace.push(row);
     });
   }
 });
@@ -34,6 +44,7 @@ try {
   await page.goto(root, {waitUntil: 'domcontentloaded'});
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
     ?.textContent?.includes('press Enter to start'), null, {timeout: 30_000});
+  const titleFingerprint = await page.evaluate(() => window.__doomCanvasFingerprint());
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
     ?.textContent === 'MAIN MENU');
@@ -41,6 +52,13 @@ try {
   await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
     ?.textContent === 'CHOOSE SKILL LEVEL');
   await page.keyboard.press('Enter');
+  await page.waitForFunction(() => window.__doomTrace.some(row => row.name === 'initial'),
+    null, {timeout: 120_000});
+  const initial = await page.evaluate(() => window.__doomTrace.find(row => row.name === 'initial'));
+  assert.deepEqual({tic: initial.tic, painted: initial.painted,
+    canvasFingerprint: initial.canvasFingerprint},
+  {tic: 0, painted: false, canvasFingerprint: titleFingerprint},
+  'unrendered tic-0 border frame replaced the title presentation');
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
     ?.textContent?.includes('pipeline active'), null, {timeout: 120_000});
   await page.waitForTimeout(250);
@@ -126,7 +144,7 @@ try {
 
   process.stdout.write(`PASS T8.3-LIVE-CLIENT ${JSON.stringify({latency,
     weaponFrames:new Set(weaponHashes).size,presented:trace.filter(row=>row.name==='present').length,
-    mouseCaptured:true})}\n`);
+    mouseCaptured:true,ticZeroSuppressed:true})}\n`);
 } finally {
   await browser.close();
 }
