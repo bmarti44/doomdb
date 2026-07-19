@@ -9,14 +9,9 @@ type AudioToggle = () => void;
 const keyControls: Record<string, ControlName> = {
   KeyW: 'forward', ArrowUp: 'forward', KeyS: 'backward', ArrowDown: 'backward',
   KeyA: 'turn-left', ArrowLeft: 'turn-left', KeyD: 'turn-right', ArrowRight: 'turn-right',
-  KeyF: 'fire', Space: 'use', Tab: 'automap', Escape: 'menu', KeyP: 'pause', KeyM: 'audio'
+  ControlLeft: 'fire', ControlRight: 'fire', KeyF: 'fire', Space: 'use', Tab: 'automap',
+  Escape: 'menu', KeyP: 'pause', KeyM: 'audio'
 };
-// macOS may reserve a double-Control press for Dictation before the browser
-// can cancel it. Keep classic Doom's Ctrl binding elsewhere and use F on Mac.
-if (!navigator.platform.startsWith('Mac')) {
-  keyControls.ControlLeft = 'fire';
-  keyControls.ControlRight = 'fire';
-}
 
 const held = new Set<ControlName>();
 function command(): Command {

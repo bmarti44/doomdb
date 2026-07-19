@@ -55,7 +55,7 @@ function controls() {
 }
 const state = new PresentationState();
 const canvas = createDoomCanvas();
-const fireLabel = navigator.platform.startsWith('Mac') ? 'F fire' : 'F/Ctrl fire';
+const fireLabel = 'F/Ctrl fire';
 const shell = document.createElement('div');
 shell.dataset.doomShell = '';
 const touch = controls();
@@ -88,12 +88,40 @@ const trace = (name, detail) => {
         detail: { at: performance.now(), ...detail }
     }));
 };
+function awaitStart(audio) {
+    return new Promise(resolve => {
+        const finish = (event) => {
+            if (event instanceof KeyboardEvent && event.code !== 'Enter')
+                return;
+            event.preventDefault();
+            window.removeEventListener('keydown', finish, { capture: true });
+            canvas.removeEventListener('pointerdown', finish);
+            // The same trusted gesture unlocks audio. Startup remains valid when a
+            // browser declines audio permission; rendering must never wait on it.
+            void audio.enable().catch(cause => console.error('audio enable failed', cause));
+            resolve();
+        };
+        window.addEventListener('keydown', finish, { capture: true });
+        canvas.addEventListener('pointerdown', finish);
+    });
+}
 async function boot() {
     const audio = new AudioPresenter();
+    const [paletteAsset, titleAsset] = await Promise.all([
+        getAsset('PLAYPAL'), getAsset('TITLEPIC')
+    ]);
+    const palette = createPalette(decodeBytes(paletteAsset.payload));
+    const titleIndices = decodeBytes(titleAsset.payload);
+    if (titleAsset.mediaType !== 'application/x-doom-indexed' ||
+        titleIndices.length !== 320 * 200) {
+        throw new TypeError('title screen asset is invalid');
+    }
+    blit(canvas, applyPalette(titleIndices, palette));
+    status.textContent = 'DoomDB · Mocha Doom inside Oracle\nPress Enter or click to start';
+    await awaitStart(audio);
+    status.textContent = 'Starting a new game inside Oracle…\nPreparing the retained database worker.';
     const game = await newGame();
     let frame = await decodePayload(game.payload);
-    const paletteAsset = await getAsset('PLAYPAL');
-    const palette = createPalette(decodeBytes(paletteAsset.payload));
     blit(canvas, applyPalette(frame.indices, palette));
     state.loading = false;
     state.setMode(frame.mode);

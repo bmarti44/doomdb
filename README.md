@@ -194,9 +194,11 @@ docker compose wait db
 docker compose restart ords
 ```
 
-Then visit <http://localhost:8080/play/>. New games use Mocha Doom inside OJVM.
-Controls are W/S or Up/Down to move, A/D or Left/Right to turn, left Ctrl to
-fire, Space to use, Tab for the automap, Escape for the menu, and P to pause.
+Then visit <http://localhost:8080/play/>. The database-owned title screen waits
+for Enter or a click before allocating a new Mocha Doom game inside OJVM.
+Controls are W/S or Up/Down to move, A/D or Left/Right to turn, either Ctrl or
+F to fire, Space to use, Tab for the automap, Escape for the menu, and P to
+pause. On macOS, F avoids any system Dictation shortcut assigned to Ctrl.
 
 Real credentials, wallets, private keys, environment files, WADs, generated
 classes/JARs, and Terraform variable files are ignored by

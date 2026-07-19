@@ -103,7 +103,7 @@ create or replace package body doom_api as
     return l_text;
   end;
 
-  -- This bounded transport loop converts four or fewer SQL-aggregated chunks;
+  -- This bounded transport loop converts SQL-aggregated asset/response chunks;
   -- it never performs game, wall, object, or pixel decisions.
   function hex_blob(p_hex clob) return blob is
     l_blob blob;
@@ -1204,7 +1204,7 @@ create or replace package body doom_api as
   begin
     p_payload:=null;p_media_type:=null;
     if p_asset_name is null or
-       (p_asset_name not in('PLAYPAL','GENMIDI') and
+       (p_asset_name not in('PLAYPAL','TITLEPIC','GENMIDI') and
         not regexp_like(p_asset_name,'^DS[A-Z0-9]{1,6}$')) then
       fail(c_asset,'asset is not allowlisted');
     end if;
@@ -1216,6 +1216,16 @@ create or replace package body doom_api as
       l_hex:=replace(replace(l_hex,'<E>',''),'</E>','');
       l_blob:=hex_blob(l_hex);
       p_media_type:='application/octet-stream';
+    elsif p_asset_name='TITLEPIC' then
+      select xmlserialize(content xmlagg(xmlelement(e,
+        lpad(to_char(t.c,'FMXX'),2,'0')) order by t.y,t.x)
+        as clob no indent) into l_hex
+        from at t join doom_asset a on a.asset_id=t.a
+        where a.asset_kind='ui_patch' and a.asset_name='TITLEPIC';
+      l_hex:=replace(replace(l_hex,'<E>',''),'</E>','');
+      l_blob:=hex_blob(l_hex);
+      if dbms_lob.getlength(l_blob)<>320*200 then fail(c_asset,'title asset is invalid');end if;
+      p_media_type:='application/x-doom-indexed';
     else
       select b.encoded_bytes into l_blob
         from doom_asset a join doom_asset_blob b on b.asset_id=a.asset_id

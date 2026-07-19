@@ -2273,6 +2273,13 @@ the clean-room engine unless it is needed to validate the new public contract.
   deterministic 300-frame runs exceeded 30 displayed FPS, so the selector is
   now `MOCHA` for new `/play/` sessions. Full public workflow parity remains in
   T12.M5 rather than blocking the playable cutover.
+- Browser lifecycle checkpoint (2026-07-18): `/play/` now fetches the
+  database-owned Freedoom `TITLEPIC` and palette through generated AutoREST,
+  renders the real 320x200 indexed title, and waits for Enter/click before
+  allocating a game session. The canvas takes focus on click; both Ctrl keys
+  and F fire, including cancelled held-key repeats. Hidden tabs pause, but a
+  visible window can no longer freeze because browser focus was initially
+  elsewhere.
 - Accept: the unmodified static client can start and freely play a new game only
   through generated AutoREST endpoints; killing and restarting the worker loses
   no accepted command and never returns another session's frame.

@@ -18,6 +18,23 @@ page.on('request', request => {
 try {
   await page.goto(root, {waitUntil: 'domcontentloaded'});
   await page.waitForFunction(() => document.querySelector('[data-doom-status]')
+    ?.textContent?.includes('Press Enter'), null, {timeout: 30_000});
+  assert.ok(!requests.some(path => path.endsWith('/NEW_GAME')),
+    'title screen allocated a game before player confirmation');
+  const titleColors = await page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    const context = canvas?.getContext('2d');
+    if (context === null || context === undefined) return 0;
+    const pixels = context.getImageData(0, 0, 320, 200).data;
+    const colors = new Set();
+    for (let offset = 0; offset < pixels.length; offset += 4) {
+      colors.add(`${pixels[offset]},${pixels[offset + 1]},${pixels[offset + 2]}`);
+    }
+    return colors.size;
+  });
+  assert.ok(titleColors >= 32, `title screen did not render (${titleColors} colors)`);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('[data-doom-status]')
     ?.textContent?.includes('pipeline active'), null, {timeout: 120_000});
   assert.ok(requests.some(path => path.endsWith('/SUBMIT_STEP')),
     'visible unfocused page never submitted a gameplay tic');
