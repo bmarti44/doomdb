@@ -9,13 +9,18 @@ declare
   l_offset number:=1;
 begin
   with commands as (
-    select r.expected_tic,r.command_pack,
+    -- LOAD copies the canonical frame ledger into the new lineage while the
+    -- original normalized request remains under its source lineage. Follow
+    -- the copied request_id so an export includes the complete ancestry, not
+    -- only commands submitted after the latest LOAD branch.
+    select f.tic expected_tic,r.command_pack,
       to_number(rawtohex(utl_raw.substr(r.command_pack,24,1)),'XX') flags
-    from doom_worker_request r
-    where r.session_token='&&route_session'
-      and r.save_lineage='&&route_lineage'
+    from doom_mocha_frame_ledger f
+    join doom_worker_request r on r.request_id=f.request_id
+    where f.session_token='&&route_session'
+      and f.save_lineage='&&route_lineage'
       and r.request_status='COMMITTED'
-      and r.expected_tic between &&route_from_tic and &&route_to_tic-1
+      and f.tic between &&route_from_tic+1 and &&route_to_tic
   ), marked as (
     select c.*,case when lag(utl_raw.substr(command_pack,17,8))
       over(order by expected_tic)=utl_raw.substr(command_pack,17,8)
@@ -45,7 +50,8 @@ begin
         'weapon' value to_number(rawtohex(utl_raw.substr(command_pack,23,1)),'XX'),
         'pause' value bitand(flags,1),
         'automap' value bitand(flags,2)/2,
-        'menu' value case when bitand(flags,4)=4 then 'OPTIONS' else 'NONE' end
+        'menu' value case when bitand(flags,4)=4 then 'OPTIONS' else 'NONE' end,
+        'cheat' value ''
         returning clob) returning clob)
       order by first_tic returning clob) runs_json,
       sum(repeat_count) command_count from runs

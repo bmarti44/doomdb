@@ -23,9 +23,12 @@ assert.match(source, /player\.ammo\[ammotype_t\.am_shell\.ordinal\(\)\]/);
 assert.match(routeHelper, /route\.startSequence \?\? 0/);
 assert.match(routeHelper, /commands\[sequence - startSequence\]/);
 assert.match(routeHelper, /cheat: command\.cheat \?\? ''/);
+assert.match(routeHelper, /routePath === '-' \? 0 : routePath/);
 assert.match(routeHelper, /Never advance the local sequence without a correlated DMF3/);
 assert.match(clearanceHelper, /input === '-' \? 0 : input/);
-assert.match(lineageExporter, /r\.save_lineage='&&route_lineage'/);
-assert.match(lineageExporter, /r\.expected_tic between &&route_from_tic and &&route_to_tic-1/);
+assert.match(lineageExporter, /join doom_worker_request r on r\.request_id=f\.request_id/);
+assert.match(lineageExporter, /f\.save_lineage='&&route_lineage'/);
+assert.match(lineageExporter, /f\.tic between &&route_from_tic\+1 and &&route_to_tic/);
+assert.match(lineageExporter, /'cheat' value ''/);
 
 process.stdout.write('PASS MOCHADOOM-ROUTE-DIAGNOSTICS bounded actors, clearance, lineage export, safe tails\n');

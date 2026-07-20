@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const source = process.argv[2];
-if (!source) throw Error('usage: node public-route-probe.mjs route.json');
-const route = JSON.parse(fs.readFileSync(source, 'utf8'));
+if (!source) throw Error('usage: node public-route-probe.mjs route.json|-');
+const route = JSON.parse(fs.readFileSync(source === '-' ? 0 : source, 'utf8'));
 const base = process.env.DOOM_API_BASE ?? 'http://localhost:8080/ords/doom/doom_api/';
 const skill = Number(process.env.DOOM_ROUTE_SKILL_OVERRIDE ?? route.skill);
 const skipAccepted = process.env.DOOM_ROUTE_SKIP_ACCEPTED === '1';

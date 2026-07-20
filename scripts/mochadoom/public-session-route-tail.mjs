@@ -6,7 +6,7 @@ const [session, sequenceText, routePath, stopText = ''] = process.argv.slice(2);
 if (!/^[0-9a-f]{32}$/.test(session ?? '') || !/^\d+$/.test(sequenceText ?? '') || !routePath) {
   throw Error('usage: public-session-route-tail.mjs session last-sequence route.json [stop-sequence]');
 }
-const route = JSON.parse(fs.readFileSync(routePath, 'utf8'));
+const route = JSON.parse(fs.readFileSync(routePath === '-' ? 0 : routePath, 'utf8'));
 const commands = route.runs.flatMap(run => Array.from({length: run.repeat}, () => run.command));
 assert.equal(commands.length, route.commandCount);
 let sequence = Number(sequenceText);
