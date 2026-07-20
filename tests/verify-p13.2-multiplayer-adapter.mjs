@@ -20,6 +20,7 @@ assert.match(adapter, /engine\.gametic != beforeTic \+ 1/);
 assert.match(adapter, /engine\.leveltime != beforeLevelTime \+ 1/);
 assert.match(adapter, /inactive player command/);
 assert.match(adapter, /command\.consistancy = multiplayerConsistency\[player\]\[buffer\]/);
+assert.match(adapter, /multiplayerConsistency\[player\]\[consistencyBuffer\] = consistencyBefore\[player\]/);
 assert.match(adapter, /engine\.consoleplayer = savedConsole/);
 assert.match(adapter, /engine\.displayplayer = savedDisplay/);
 assert.match(adapter, /POV render mutated world/);

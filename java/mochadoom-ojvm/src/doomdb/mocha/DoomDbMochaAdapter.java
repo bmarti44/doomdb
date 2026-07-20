@@ -1138,16 +1138,24 @@ public final class DoomDbMochaAdapter {
   }
 
   private static void tickMultiplayerEngine() {
+    int consistencyBuffer = (engine.gametic / engine.getTicdup())
+        % engine.netcmds[0].length;
+    short[] consistencyBefore = new short[engine.playeringame.length];
+    for (int player = 0; player < engine.playeringame.length; player++) {
+      if (!engine.playeringame[player]) continue;
+      consistencyBefore[player] = engine.players[player].mo == null
+          ? (short) engine.random.getIndex()
+          : (short) engine.players[player].mo.x;
+    }
     DummySFX.beginTic(engine.gametic + 1L);
     engine.Ticker();
     if (multiplayerConsistency != null) {
-      int buffer = (engine.gametic / engine.getTicdup())
-          % engine.netcmds[0].length;
       for (int player = 0; player < engine.playeringame.length; player++) {
         if (!engine.playeringame[player]) continue;
-        multiplayerConsistency[player][buffer] = engine.players[player].mo == null
-            ? (short) engine.random.getIndex()
-            : (short) engine.players[player].mo.x;
+        // Doom writes this slot before G_Ticker moves the world. Sampling the
+        // player mobj after Ticker is one tic ahead and fails when BACKUPTICS
+        // first wraps; preserve the same pre-tick value in the adapter ring.
+        multiplayerConsistency[player][consistencyBuffer] = consistencyBefore[player];
       }
     }
     engine.gametic++;

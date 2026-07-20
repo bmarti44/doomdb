@@ -60,6 +60,11 @@ try {
     host.waitForFunction(() => /TIC [1-9][0-9]*/.test(document.querySelector('[data-hud]')?.textContent ?? ''), null, {timeout: 30000}),
     guest.waitForFunction(() => /TIC [1-9][0-9]*/.test(document.querySelector('[data-hud]')?.textContent ?? ''), null, {timeout: 30000})
   ]);
+  await guest.reload({waitUntil: 'domcontentloaded'});
+  await guest.locator('[data-game][data-active]').waitFor({state: 'visible', timeout: 30000});
+  await guest.waitForFunction(() => /TIC [1-9][0-9]*/.test(
+    document.querySelector('[data-hud]')?.textContent ?? ''), null, {timeout: 30000});
+  assert.match(guest.url(), new RegExp(`#resume=${match}$`));
   await host.keyboard.down('w');
   await host.waitForTimeout(350);
   await host.keyboard.up('w');
@@ -75,8 +80,18 @@ try {
   });
   const [hostSha, guestSha] = await Promise.all([bitmapSha(host), bitmapSha(guest)]);
   assert.notEqual(hostSha, guestSha, 'browser POV canvases collapsed');
-  const hostHud = await host.locator('[data-hud]').textContent();
-  const guestHud = await guest.locator('[data-hud]').textContent();
+  let hostHud = '';
+  let guestHud = '';
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    [hostHud, guestHud] = await Promise.all([
+      host.locator('[data-hud]').textContent(), guest.locator('[data-hud]').textContent()
+    ]);
+    const hostFrontier = Number((hostHud ?? '').match(/TIC (\d+)/)?.[1] ?? 0);
+    const guestFrontier = Number((guestHud ?? '').match(/TIC (\d+)/)?.[1] ?? 0);
+    if (hostFrontier >= 1 && guestFrontier >= 1 &&
+        Math.abs(hostFrontier - guestFrontier) <= 1) break;
+    await host.waitForTimeout(100);
+  }
   assert.match(hostHud ?? '', /PLAYER 1/);
   assert.match(guestHud ?? '', /PLAYER 2/);
   const hostTic = Number((hostHud ?? '').match(/TIC (\d+)/)?.[1] ?? 0);
@@ -84,7 +99,7 @@ try {
   assert.ok(hostTic >= 1 && guestTic >= 1);
   assert.ok(Math.abs(hostTic - guestTic) <= 1);
   process.stdout.write(
-    `PASS P13.3-MULTIPLAYER-CLIENT two browsers dynamic-input distinct-POVs hostTic=${hostTic} guestTic=${guestTic} (bearers redacted)\n`);
+    `PASS P13.3-MULTIPLAYER-CLIENT two browsers dynamic-input reconnect distinct-POVs hostTic=${hostTic} guestTic=${guestTic} (bearers redacted)\n`);
 } finally {
   await browser.close();
 }

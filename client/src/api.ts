@@ -224,7 +224,10 @@ export async function submitMatchStep(match: string, playerCapability: string,
                                       ticcmdHex: string): Promise<{
   accepted: number; membershipEpoch: number; generation: number;
 }> {
-  const document = await postAsync('submit_match_step', {
+  // A rejected late command is a normal lockstep resynchronization signal, not
+  // a transient transport failure. The client retries only after refreshing
+  // the authoritative frontier.
+  const document = await post('submit_match_step', {
     p_match: match, p_player_capability: playerCapability, p_tic: tic,
     p_command_seq: sequence, p_ticcmd_hex: ticcmdHex
   });

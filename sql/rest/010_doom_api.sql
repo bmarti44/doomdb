@@ -580,8 +580,10 @@ create or replace package body doom_api as
       fail(c_match_auth,'match unavailable');
     end if;
     l_slot:=player_capability_slot(p_match,p_player_capability);
-    update doom_match_member set last_seen_at=l_now
-      where match_id=p_match and player_slot=l_slot and member_state='ACTIVE'
+    update doom_match_member set member_state='ACTIVE',last_seen_at=l_now,
+      disconnected_at=null
+      where match_id=p_match and player_slot=l_slot
+        and member_state in('ACTIVE','DISCONNECTED')
         and membership_epoch=p_membership_epoch and generation=p_generation;
     if sql%rowcount<>1 then fail(c_match_auth,'match unavailable');end if;
     l_raw:=hextoraw(lower(p_ticcmd_hex));
@@ -636,8 +638,10 @@ create or replace package body doom_api as
       where match_id=p_match and membership_epoch=l_epoch
         and generation=l_generation;
     l_now:=utc_now;
-    update doom_match_member set last_seen_at=l_now
-      where match_id=p_match and player_slot=l_slot and member_state='ACTIVE'
+    update doom_match_member set member_state='ACTIVE',last_seen_at=l_now,
+      disconnected_at=null
+      where match_id=p_match and player_slot=l_slot
+        and member_state in('ACTIVE','DISCONNECTED')
         and membership_epoch=l_epoch and generation=l_generation;
     commit;
   exception when no_data_found then

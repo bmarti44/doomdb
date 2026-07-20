@@ -242,6 +242,18 @@ async function startGame(value, status) {
                     throw new Error('multiplayer submit fence changed');
                 }
                 submittedTic = target;
+            }).catch(async (cause) => {
+                // The worker may have durably supplied this slot's neutral command
+                // while a tab was suspended or reconnecting. Refresh instead of
+                // treating that expected late-submit rejection as a fatal error.
+                const refreshed = await matchStatus(value.match, value.playerCapability);
+                if (refreshed.state !== 'ACTIVE' ||
+                    refreshed.generation !== status.generation ||
+                    refreshed.membershipEpoch !== status.membershipEpoch)
+                    throw cause;
+                currentTic = Math.max(currentTic, refreshed.currentTic);
+                submittedTic = currentTic;
+                updateHud();
             }).catch(fail).finally(() => { submitting = false; });
         }
         if (!polling && submittedTic >= target) {

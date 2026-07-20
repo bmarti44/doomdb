@@ -23,6 +23,12 @@ correctness checkpoint, not final multiplayer acceptance or a 30 FPS claim.
 - The browser gate proves private-fragment joining, bearer removal from the URL,
   two active contexts, live keyboard input, synchronized tic 11, and distinct
   canvases. Output and cleanup paths redact capabilities.
+- A missing command is durably synthesized as neutral after 75 ms, an idle slot
+  transitions to `DISCONNECTED`, and the same capability resumes that slot.
+  The browser gate reloads one active player and reconverges at tic 23.
+- Tic 32 writes a native Mocha save directly into the durable checkpoint BLOB.
+  Its byte count, SHA-256, and state identity are verified in the same frontier
+  transaction.
 
 ## Measurements
 
@@ -41,8 +47,8 @@ cleanup runs in a separate Scheduler job.
 
 ## Remaining P13 gates
 
-Deadline-neutral commands, disconnect grace/reconnect, multiplayer checkpoints,
-exact worker reconstruction, fault injection, representative E1M1 co-op
+Bounded final-leave semantics, exact worker reconstruction, fault injection,
+representative E1M1 co-op
 mechanics, deathmatch selection, capacity/retention telemetry, the 300-frame
 two-browser run, and the 30-minute soak remain open. T12 performance follows
 P13; P11 cloud deployment remains the final milestone.

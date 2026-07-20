@@ -3004,8 +3004,11 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   world tic, writes two immutable POV payloads directly into persistent BLOB
   locators, and atomically commits its command/state/frame frontier. Live gates
   pass arbitrary arrival, one-tic advancement, POV separation, idempotency,
-  root determinism, fencing, and match isolation. Deadline-neutral synthesis,
-  checkpoint reconstruction, disconnect grace, and recovery remain open.
+  root determinism, fencing, and match isolation. A 75 ms deadline now records
+  a neutral command/bitmap for a missing peer, same-capability reconnect restores
+  a disconnected slot, and tic 32 writes a verified native Mocha checkpoint in
+  the frontier transaction. Restart reconstruction and bounded final leave
+  semantics remain open.
 
 #### T13.3 Co-op client, replay, and recovery
 

@@ -19,10 +19,11 @@ end doom_match_worker;
 
 create or replace package body doom_match_worker as
   c_error constant pls_integer:=-20731;
+  c_command_deadline_ms constant pls_integer:=75;
 
-  -- This bounded T13.2 slice advances complete two-player vectors only.
-  -- Deadline-neutral synthesis, durable checkpoints, and restart
-  -- reconstruction remain deferred and are not represented as working here.
+  -- This bounded T13.2 slice advances complete two-player vectors and fills a
+  -- missing peer with a durable neutral command after a fixed deadline.
+  -- Cadence checkpoints are durable; restart reconstruction remains deferred.
 
   function utc_now return timestamp with time zone is
   begin return localtimestamp at time zone 'UTC';end;
@@ -146,18 +147,25 @@ create or replace package body doom_match_worker as
     l_status varchar2(4000);l_state varchar2(64);l_command_sha varchar2(64);
     l_frame0 varchar2(64);l_frame1 varchar2(64);l_response0 varchar2(64);l_response1 varchar2(64);
     l_bytes0 number;l_bytes1 number;l_actual0 number;l_actual1 number;
-    l_count number;l_now timestamp with time zone:=utc_now;
-    l_b0 blob;l_b1 blob;l_event varchar2(64);
+    l_count number;l_neutral number;l_now timestamp with time zone:=utc_now;
+    l_deadline timestamp with time zone;
+    l_b0 blob;l_b1 blob;l_checkpoint blob;l_event varchar2(64);
+    l_checkpoint_status varchar2(4000);l_checkpoint_sha varchar2(64);
+    l_checkpoint_bytes number;l_checkpoint_actual number;
   begin
     select state_sha into l_previous from doom_match_tic
       where match_id=p_match and tic=p_tic-1 and generation=p_generation;
-    select count(*),lower(listagg(rawtohex(ticcmd_raw),'') within group(order by player_slot))
-      into l_count,l_vector_hex from doom_match_command
+    select count(*),lower(listagg(rawtohex(ticcmd_raw),'') within group(order by player_slot)),
+      coalesce(sum(case when command_source like 'NEUTRAL_%'
+        then power(2,player_slot) else 0 end),0),
+      min(submitted_at)+numtodsinterval(c_command_deadline_ms/1000,'SECOND')
+      into l_count,l_vector_hex,l_neutral,l_deadline from doom_match_command
       where match_id=p_match and tic=p_tic and membership_epoch=p_epoch
         and generation=p_generation and player_slot in(0,1);
     if l_count<>2 or length(l_vector_hex)<>32 then
       raise_application_error(c_error,'complete two-player vector required');
     end if;
+    if l_deadline>l_now then l_deadline:=l_now;end if;
     l_vector_hex:=l_vector_hex||rpad('00',32,'0');
     insert into doom_match_frame(match_id,tic,player_slot,membership_epoch,
       generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
@@ -199,8 +207,30 @@ create or replace package body doom_match_worker as
     insert into doom_match_tic(match_id,tic,membership_epoch,generation,
       membership_bitmap,neutral_bitmap,command_vector,command_sha,
       previous_state_sha,state_sha,event_sha,deadline_at,committed_at)
-    values(p_match,p_tic,p_epoch,p_generation,hextoraw('03'),hextoraw('00'),
-      hextoraw(l_applied_hex),l_command_sha,l_previous,l_state,l_event,l_now,l_now);
+    values(p_match,p_tic,p_epoch,p_generation,hextoraw('03'),
+      hextoraw(lpad(to_char(l_neutral,'fmxx'),2,'0')),
+      hextoraw(l_applied_hex),l_command_sha,l_previous,l_state,l_event,l_deadline,l_now);
+    if mod(p_tic,32)=0 then
+      insert into doom_match_checkpoint(match_id,tic,membership_epoch,generation,
+        membership_bitmap,command_sha,state_sha,checkpoint_sha,
+        checkpoint_bytes,checkpoint_blob,created_at)
+      values(p_match,p_tic,p_epoch,p_generation,hextoraw('03'),l_command_sha,
+        l_state,rpad('0',64,'0'),1,empty_blob(),l_now)
+      returning checkpoint_blob into l_checkpoint;
+      l_checkpoint_status:=doom_mocha_save(l_checkpoint);
+      if substr(l_checkpoint_status,1,3)<>'ok|' then
+        raise_application_error(c_error,substr(l_checkpoint_status,1,1800));
+      end if;
+      l_checkpoint_sha:=status_field(l_checkpoint_status,'checkpointSha256');
+      l_checkpoint_bytes:=to_number(status_field(l_checkpoint_status,'checkpointBytes'));
+      select dbms_lob.getlength(checkpoint_blob) into l_checkpoint_actual
+        from doom_match_checkpoint where match_id=p_match and tic=p_tic;
+      if l_checkpoint_actual<>l_checkpoint_bytes then
+        raise_application_error(c_error,'checkpoint locator length mismatch');
+      end if;
+      update doom_match_checkpoint set checkpoint_sha=l_checkpoint_sha,
+        checkpoint_bytes=l_checkpoint_bytes where match_id=p_match and tic=p_tic;
+    end if;
     update doom_match set current_tic=p_tic,last_activity_at=l_now
       where match_id=p_match and match_state='ACTIVE' and generation=p_generation
         and membership_epoch=p_epoch and current_tic=p_tic-1;
@@ -210,6 +240,66 @@ create or replace package body doom_match_worker as
         and generation=p_generation and membership_epoch=p_epoch
         and request_status='PROCESSING' and requested_tic=p_tic;
     if sql%rowcount<>1 then raise_application_error(c_error,'step control fence');end if;
+    commit;
+  end;
+
+  procedure fill_deadline(
+    p_match varchar2,p_generation number,p_epoch number
+  ) is
+    l_tic number;l_count number;l_slot number;l_seq number;l_sha varchar2(64);
+    l_first timestamp with time zone;l_now timestamp with time zone:=utc_now;
+    l_neutral raw(8):=hextoraw('0000000000000000');
+  begin
+    select current_tic+1 into l_tic from doom_match where match_id=p_match
+      and match_state='ACTIVE' and generation=p_generation
+      and membership_epoch=p_epoch;
+    select count(*),min(submitted_at) into l_count,l_first
+      from doom_match_command where match_id=p_match and tic=l_tic
+      and generation=p_generation and membership_epoch=p_epoch;
+    if l_count<>1 or l_first+numtodsinterval(c_command_deadline_ms/1000,'SECOND')>l_now then
+      return;
+    end if;
+    -- Serialize with submit_command, then repeat every predicate under lock.
+    select current_tic+1 into l_tic from doom_match where match_id=p_match
+      and match_state='ACTIVE' and generation=p_generation
+      and membership_epoch=p_epoch for update;
+    select count(*),min(submitted_at) into l_count,l_first
+      from doom_match_command where match_id=p_match and tic=l_tic
+      and generation=p_generation and membership_epoch=p_epoch;
+    if l_count<>1 or l_first+numtodsinterval(c_command_deadline_ms/1000,'SECOND')>l_now then
+      rollback;return;
+    end if;
+    select case when min(player_slot)=0 then 1 else 0 end into l_slot
+      from doom_match_command where match_id=p_match and tic=l_tic
+      and generation=p_generation and membership_epoch=p_epoch;
+    select coalesce(max(command_seq),0)+1 into l_seq from doom_match_command
+      where match_id=p_match and player_slot=l_slot;
+    l_sha:=sha_raw(l_neutral);
+    insert into doom_match_command(match_id,tic,player_slot,command_seq,
+      membership_epoch,generation,command_source,ticcmd_raw,command_sha,
+      submitted_at,accepted_at)
+    values(p_match,l_tic,l_slot,l_seq,p_epoch,p_generation,
+      'NEUTRAL_DEADLINE',l_neutral,l_sha,l_now,l_now);
+    update doom_match_worker_control set request_status='QUEUED',
+      requested_tic=l_tic,heartbeat=l_now where match_id=p_match
+      and generation=p_generation and membership_epoch=p_epoch
+      and worker_status='READY' and request_status='IDLE';
+    if sql%rowcount<>1 then
+      raise_application_error(c_error,'deadline worker is not ready');
+    end if;
+    commit;
+  exception when no_data_found then rollback;
+  end;
+
+  procedure mark_disconnected(
+    p_match varchar2,p_generation number,p_epoch number
+  ) is
+    l_now timestamp with time zone:=utc_now;
+  begin
+    update doom_match_member set member_state='DISCONNECTED',
+      disconnected_at=l_now where match_id=p_match and generation=p_generation
+      and membership_epoch=p_epoch and member_state='ACTIVE'
+      and last_seen_at<l_now-interval '3' second;
     commit;
   end;
 
@@ -235,8 +325,10 @@ create or replace package body doom_match_worker as
         else rollback;end if;
         l_idle:=0;
       else
+        fill_deadline(p_match,l_generation,l_epoch);
         dbms_session.sleep(.01);l_idle:=l_idle+1;
         if mod(l_idle,100)=0 then
+          mark_disconnected(p_match,l_generation,l_epoch);
           update doom_match_worker_control set
             heartbeat=(localtimestamp at time zone 'UTC')
             where match_id=p_match and generation=l_generation;

@@ -11,7 +11,7 @@ declare
   epoch2_ number;generation2_ number;accepted_ number;ready_ number;
   payload0_ blob;payload1_ blob;count_ number;vector_ varchar2(64);
   frame0_ varchar2(64);frame1_ varchar2(64);root1_ varchar2(64);
-  root2_ varchar2(64);job_ varchar2(64);
+  root2_ varchar2(64);job_ varchar2(64);worker_error_ varchar2(2000);
 
   procedure status_(match_id_ varchar2,capability_ varchar2) is
   begin
@@ -103,6 +103,71 @@ begin
   select current_tic into tic_ from doom_match where match_id=match1_;
   if tic_<>1 then raise_application_error(-20000,'duplicate advanced world');end if;
 
+  -- A missing peer is decided deterministically after the fixed deadline and
+  -- recorded as neutral input; the active player cannot deadlock the match.
+  doom_match_worker.submit_command(match1_,0,epoch1_,generation1_,2,2,
+    hextoraw('0800000000000000'),accepted_);
+  for poll_ in 1..1000 loop
+    doom_match_worker.poll_frame(match1_,0,epoch1_,generation1_,2,ready_,payload0_);
+    exit when ready_=1;dbms_session.sleep(.01);
+  end loop;
+  if ready_<>1 then raise_application_error(-20000,'deadline frame timeout');end if;
+  select count(*) into count_ from doom_match_command where match_id=match1_
+    and tic=2 and player_slot=1 and command_source='NEUTRAL_DEADLINE'
+    and ticcmd_raw=hextoraw('0000000000000000');
+  if count_<>1 then raise_application_error(-20000,'neutral deadline absent');end if;
+  select lower(rawtohex(neutral_bitmap)) into vector_ from doom_match_tic
+    where match_id=match1_ and tic=2;
+  if vector_<>'02' then raise_application_error(-20000,'neutral bitmap mismatch');end if;
+
+  -- Presence is observational, not part of engine state. An idle member moves
+  -- to DISCONNECTED and the same capability resumes the same slot/frontier.
+  update doom_match_member set last_seen_at=systimestamp-interval '5' second
+    where match_id=match1_ and player_slot=1;
+  commit;
+  for poll_ in 1..300 loop
+    select member_state into state_ from doom_match_member
+      where match_id=match1_ and player_slot=1;
+    exit when state_='DISCONNECTED';dbms_session.sleep(.01);
+  end loop;
+  if state_<>'DISCONNECTED' then
+    raise_application_error(-20000,'disconnect grace not observed');
+  end if;
+  doom_api.poll_match_frame(match1_,p11_,2,0,ready_,tic_,payload1_);
+  select member_state into state_ from doom_match_member
+    where match_id=match1_ and player_slot=1;
+  if state_<>'ACTIVE' or ready_<>1 or tic_<>2 then
+    raise_application_error(-20000,'same-slot reconnect failed');
+  end if;
+
+  -- Cadence checkpoints are native Mocha saves written directly to a durable
+  -- locator in the same transaction as the selected tic frontier.
+  for target_ in 3..32 loop
+    doom_match_worker.submit_command(match1_,0,epoch1_,generation1_,target_,target_,
+      hextoraw('0800000000000000'),accepted_);
+    doom_match_worker.submit_command(match1_,1,epoch1_,generation1_,target_,target_,
+      hextoraw('0000000000000000'),accepted_);
+    for poll_ in 1..1000 loop
+      doom_match_worker.poll_frame(match1_,0,epoch1_,generation1_,target_,ready_,payload0_);
+      exit when ready_=1;dbms_session.sleep(.01);
+    end loop;
+    if ready_<>1 then
+      select last_error into worker_error_ from doom_match_worker_control
+        where match_id=match1_;
+      raise_application_error(-20000,'checkpoint route timeout tic='||target_||
+        ' worker='||worker_error_);
+    end if;
+  end loop;
+  select count(*) into count_ from doom_match_checkpoint checkpoint_
+    join doom_match_tic tic_ on tic_.match_id=checkpoint_.match_id
+      and tic_.tic=checkpoint_.tic
+    where checkpoint_.match_id=match1_ and checkpoint_.tic=32
+      and checkpoint_.state_sha=tic_.state_sha
+      and checkpoint_.checkpoint_bytes=dbms_lob.getlength(checkpoint_.checkpoint_blob)
+      and checkpoint_.checkpoint_bytes>1000
+      and regexp_like(checkpoint_.checkpoint_sha,'^[0-9a-f]{64}$');
+  if count_<>1 then raise_application_error(-20000,'tic32 checkpoint absent');end if;
+
   start_('WORKER_B',match2_,host2_,join2_,p20_,p21_,epoch2_,generation2_);
   select previous_state_sha into root1_ from doom_match_tic
     where match_id=match1_ and tic=0;
@@ -118,7 +183,7 @@ begin
 
   cleanup_(match2_);cleanup_(match1_);
   dbms_output.put_line('PASS P13.2-RETAINED-MATCH-WORKER real-start/'||
-    'arbitrary-arrival/one-tic/two-POV/idempotency/root/isolation');
+    'arbitrary-arrival/one-tic/two-POV/idempotency/neutral-deadline/reconnect/checkpoint/root/isolation');
 exception when others then
   rollback;cleanup_(match2_);cleanup_(match1_);raise;
 end;
