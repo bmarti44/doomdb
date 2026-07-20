@@ -340,6 +340,7 @@ done
   printf '%s\n' 'whenever sqlerror exit failure rollback'
   printf '%s\n' 'set heading off feedback off pages 0 lines 32767 serveroutput on'
   printf '%s\n' "merge into doom_config d using(select 'GAME_ENGINE' config_key,'MOCHA' text_value from dual)s on(d.config_key=s.config_key) when not matched then insert(config_key,text_value) values(s.config_key,s.text_value);"
+  cat "$root/sql/schema/040_route_diagnostics.sql"
   # Command envelope v2 uses the already-packed signed axis bytes for exact
   # mouse/demo input. Preserve v1's -1/0/+1 behavior while widening storage.
   printf '%s\n' 'alter table tic_commands drop constraint tic_commands_axis_ck;'

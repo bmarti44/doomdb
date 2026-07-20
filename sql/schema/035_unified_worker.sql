@@ -15,11 +15,18 @@ create table doom_worker_control (
   worker_sid number,
   heartbeat timestamp with time zone,
   last_error varchar2(4000),
+  -- Disabled in production. Route authors can opt one claimed slot into a
+  -- single-row, non-public status mirror instead of reconstructing thousands
+  -- of commands in a second OJVM session after every exploratory tic.
+  route_diagnostics number(1) default 0 not null,
+  route_status_tic number(12),
+  route_status varchar2(4000),
   constraint doom_worker_control_pk primary key(worker_slot),
   constraint doom_worker_control_slot_ck check(worker_slot between 1 and 4),
   constraint doom_worker_control_target_uq unique(target_session),
   constraint doom_worker_control_bool_ck check(
-    ready in(0,1) and stop_requested in(0,1) and standby in(0,1)),
+    ready in(0,1) and stop_requested in(0,1) and standby in(0,1) and
+    route_diagnostics in(0,1)),
   constraint doom_worker_control_gen_ck check(generation>=0),
   constraint doom_worker_control_target_ck check(
     (target_session is null and target_lineage is null and state_map_sha is null) or

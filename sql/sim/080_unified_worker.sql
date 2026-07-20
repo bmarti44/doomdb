@@ -371,7 +371,8 @@ create or replace package body doom_unified_worker as
     l_version number;l_count number;l_bytes number;l_command_sha varchar2(64);
     l_command raw(2000);l_async number;l_status varchar2(16);
     l_target varchar2(32);l_target_lineage varchar2(64);l_control_sha varchar2(64);
-    l_control_generation number;l_ready number;l_db_lineage varchar2(64);
+    l_control_generation number;l_ready number;l_route_diagnostics number;
+    l_db_lineage varchar2(64);
     l_db_tic number;l_db_seq number;l_result varchar2(4000);l_ticcmd raw(8);
     l_state_sha varchar2(64);l_frame_sha varchar2(64);l_payload blob;
     l_delta blob;l_response_bytes number;l_response_sha varchar2(64);
@@ -411,8 +412,10 @@ create or replace package body doom_unified_worker as
          l_command_sha then
       raise_application_error(c_invalid,'Mocha request envelope fence');
     end if;
-    select target_session,target_lineage,state_map_sha,generation,ready
-      into l_target,l_target_lineage,l_control_sha,l_control_generation,l_ready
+    select target_session,target_lineage,state_map_sha,generation,ready,
+      route_diagnostics
+      into l_target,l_target_lineage,l_control_sha,l_control_generation,l_ready,
+        l_route_diagnostics
       from doom_worker_control where worker_slot=p_slot for update;
     if l_target<>l_session or l_target_lineage<>l_lineage or l_ready<>1 or
        l_generation<>l_control_generation or l_generation<>p_worker_generation or
@@ -486,6 +489,14 @@ create or replace package body doom_unified_worker as
       render_us=l_render_us,codec_us=l_codec_us,
       blob_us=l_blob_us,finalize_us=greatest(l_finalize_us,0)
       where request_id=p_request;
+    if l_route_diagnostics=1 then
+      update doom_worker_control set route_status_tic=l_expected_tic+1,
+        route_status=l_result where worker_slot=p_slot
+          and target_session=l_session and generation=l_generation;
+      if sql%rowcount<>1 then
+        raise_application_error(c_invalid,'route diagnostic generation fence');
+      end if;
+    end if;
     if mod(l_expected_tic+1,32)=0 then
       update doom_worker_control set heartbeat=systimestamp
         where worker_slot=p_slot and generation=l_generation and ready=1;
@@ -1260,7 +1271,8 @@ create or replace package body doom_unified_worker as
     l_generation:=l_generation+1;
     update doom_worker_control set generation=l_generation,ready=0,
       stop_requested=0,worker_sid=sys_context('USERENV','SID'),
-      heartbeat=systimestamp,last_error=null where worker_slot=p_worker_slot;
+      heartbeat=systimestamp,last_error=null,route_diagnostics=0,
+      route_status_tic=null,route_status=null where worker_slot=p_worker_slot;
     commit;
     l_owned:=true;
 
