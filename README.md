@@ -38,12 +38,12 @@ What works today, all verified by repeatable gates:
   intermission at tic 13,272 with the expected combat, resources, keyed door,
   lift, secret, and exit interactions. A fresh Oracle session replayed every
   command with 13,272/13,272 exact state, frame, and response hashes.
-- **Multiplayer foundation.** One retained Mocha engine now consumes an ordered
-  two-player command vector, advances the world once, and renders immutable,
-  distinct POVs. Damage, frag attribution, death, and reborn are verified. The
-  normalized match/member/command/tic/frame/checkpoint schema is installed and
-  its live fence/cascade tests pass; the AutoREST lobby lifecycle is the active
-  implementation slice.
+- **Playable multiplayer checkpoint.** `/play/multiplayer` now lets two browser
+  sessions privately create, join, ready, and play one database-authoritative
+  co-op world through generated AutoREST. The engine advances once per ordered
+  command vector and returns distinct player POVs; a live two-browser gate
+  reached synchronized tic 11 with dynamic keyboard input. Replay/recovery,
+  route coverage, and the 300-frame multiplayer FPS gate remain in progress.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is
@@ -97,6 +97,11 @@ the [2026-07-19 outage triage](reports/task-T12.M-triage-2026-07-19.md),
 and [reports/](reports/).
 
 ## Reviewed database output
+
+The selected Mocha-in-OJVM engine reached the authentic E1M1 intermission at
+tic 13,272; this exact frame was reproduced by the fresh-session replay:
+
+![Mocha Doom E1M1 skill-3 intermission from Oracle](artifacts/t8.1-live/mocha-skill3-intermission.png)
 
 These 320×200 frames are frozen goldens from the previous Oracle SQL renderer,
 which remains the independent visual oracle during migration.

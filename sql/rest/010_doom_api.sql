@@ -10,6 +10,70 @@ alter session set time_zone='UTC';
 -- DOOM_API is deliberately the whole dynamic HTTP surface.  Helpers remain in
 -- the body because object AutoREST publishes every member of the specification.
 create or replace package doom_api authid definer as
+  procedure create_match(
+    p_game_mode         in  varchar2,
+    p_skill             in  number,
+    p_episode           in  number,
+    p_map               in  number,
+    p_display_name      in  varchar2,
+    p_match             out varchar2,
+    p_host_capability   out varchar2,
+    p_join_capability   out varchar2,
+    p_player_capability out varchar2);
+
+  procedure join_match(
+    p_match             in     varchar2,
+    p_join_capability   in     varchar2,
+    p_display_name      in     varchar2,
+    p_player_capability in out varchar2,
+    p_player_slot       out    number);
+
+  procedure ready_match(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_ready             in  number,
+    p_match_state       out varchar2);
+
+  procedure match_status(
+    p_match             in  varchar2,
+    p_capability        in  varchar2,
+    p_match_state       out varchar2,
+    p_game_mode         out varchar2,
+    p_skill             out number,
+    p_episode           out number,
+    p_map               out number,
+    p_max_players       out number,
+    p_member_count      out number,
+    p_ready_count       out number,
+    p_requester_slot    out number,
+    p_membership_epoch  out number,
+    p_generation        out number,
+    p_current_tic       out number);
+
+  procedure submit_match_step(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_tic               in  number,
+    p_command_seq       in  number,
+    p_ticcmd_hex        in  varchar2,
+    p_accepted          out number,
+    p_membership_epoch  out number,
+    p_generation        out number);
+
+  procedure poll_match_frame(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_tic               in  number,
+    p_wait_ms           in  number,
+    p_ready             out number,
+    p_current_tic       out number,
+    p_payload           out blob);
+
+  procedure leave_match(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_match_state       out varchar2);
+
   procedure new_game(
     p_skill       in  number,
     p_session     out varchar2,
@@ -64,6 +128,7 @@ create or replace package body doom_api as
   c_capacity    constant pls_integer := -20702;
   c_session     constant pls_integer := -20703;
   c_asset       constant pls_integer := -20704;
+  c_match_auth  constant pls_integer := -20713;
 
   procedure fail(p_code pls_integer, p_message varchar2) is
   begin
@@ -159,6 +224,494 @@ create or replace package body doom_api as
     return l_value;
   exception when no_data_found then return p_default;
   end;
+
+  function new_capability return varchar2 is
+  begin
+    return lower(rawtohex(dbms_crypto.randombytes(32)));
+  end;
+
+  function capability_hash(
+    p_salt raw,p_capability varchar2
+  ) return varchar2 is
+  begin
+    if p_capability is null or
+       not regexp_like(p_capability,'^[0-9a-f]{64}$') then return null;end if;
+    return lower(rawtohex(dbms_crypto.hash(
+      utl_raw.concat(p_salt,hextoraw(p_capability)),
+      dbms_crypto.hash_sh256)));
+  exception when others then return null;
+  end;
+
+  procedure require_match_shape(p_match varchar2) is
+  begin
+    if p_match is null or not regexp_like(p_match,'^[0-9a-f]{32}$') then
+      fail(c_match_auth,'match unavailable');
+    end if;
+  end;
+
+  procedure require_display_name(p_name varchar2) is
+  begin
+    if p_name is null or lengthb(p_name)>32 or p_name<>trim(p_name) or
+       regexp_like(p_name,'[[:cntrl:]]') then
+      fail(c_bad_request,'display name is invalid');
+    end if;
+  end;
+
+  function player_capability_slot(
+    p_match varchar2,p_capability varchar2,p_include_left number default 0
+  ) return number is
+  begin
+    if p_capability is not null and
+       regexp_like(p_capability,'^[0-9a-f]{64}$') then
+      for member_ in (
+        select player_slot,member_state,capability_salt,capability_hash
+        from doom_match_member where match_id=p_match order by player_slot
+      ) loop
+        if capability_hash(member_.capability_salt,p_capability)=
+             member_.capability_hash and
+           (p_include_left=1 or member_.member_state<>'LEFT') then
+          return member_.player_slot;
+        end if;
+      end loop;
+    end if;
+    fail(c_match_auth,'match unavailable');
+    return null;
+  end;
+
+  function any_capability_slot(
+    p_match varchar2,p_capability varchar2,
+    p_host_salt raw,p_host_hash varchar2
+  ) return number is
+  begin
+    if capability_hash(p_host_salt,p_capability)=p_host_hash then return -1;end if;
+    return player_capability_slot(p_match,p_capability);
+  end;
+
+  procedure create_match(
+    p_game_mode in varchar2,p_skill in number,p_episode in number,
+    p_map in number,p_display_name in varchar2,p_match out varchar2,
+    p_host_capability out varchar2,p_join_capability out varchar2,
+    p_player_capability out varchar2
+  ) is
+    l_now timestamp with time zone:=utc_now;
+    l_host_salt raw(32);l_join_salt raw(32);l_player_salt raw(32);
+    l_host_hash varchar2(64);l_join_hash varchar2(64);l_player_hash varchar2(64);
+    l_recent number;l_open number;l_lock number;
+  begin
+    p_match:=null;p_host_capability:=null;p_join_capability:=null;
+    p_player_capability:=null;
+    if p_game_mode is null or upper(p_game_mode)<>'COOP' then
+      fail(c_bad_request,'only COOP matches are currently available');
+    end if;
+    if p_skill is null or p_skill<>trunc(p_skill) or p_skill not between 1 and 5 or
+       p_episode is null or p_episode<>trunc(p_episode) or
+       p_episode not between 1 and 9 or p_map is null or p_map<>trunc(p_map) or
+       p_map not between 1 and 99 then
+      fail(c_bad_request,'invalid match map selection');
+    end if;
+    require_display_name(p_display_name);
+
+    -- Serialize the bounded global create check on an existing immutable
+    -- configuration row. AutoREST supplies no trustworthy client address, so
+    -- v1 uses a deliberately small global burst/open-lobby limit.
+    select number_value into l_lock from doom_config
+      where config_key='MAX_ACTIVE_SESSIONS' for update;
+    select count(*) into l_recent from doom_match
+      where created_at>l_now-interval '1' minute;
+    select count(*) into l_open from doom_match
+      where match_state in('LOBBY','ACTIVE') and expires_at>l_now;
+    if l_recent>=16 or l_open>=32 then
+      fail(c_capacity,'match capacity reached');
+    end if;
+
+    p_match:=lower(rawtohex(dbms_crypto.randombytes(16)));
+    p_host_capability:=new_capability;
+    p_join_capability:=new_capability;
+    p_player_capability:=new_capability;
+    l_host_salt:=dbms_crypto.randombytes(32);
+    l_join_salt:=dbms_crypto.randombytes(32);
+    l_player_salt:=dbms_crypto.randombytes(32);
+    l_host_hash:=capability_hash(l_host_salt,p_host_capability);
+    l_join_hash:=capability_hash(l_join_salt,p_join_capability);
+    l_player_hash:=capability_hash(l_player_salt,p_player_capability);
+    insert into doom_match(
+      match_id,match_state,game_mode,skill,episode,map,max_players,
+      membership_epoch,generation,current_tic,
+      host_capability_salt,host_capability_hash,
+      join_capability_salt,join_capability_hash,
+      created_at,last_activity_at,expires_at)
+    values(p_match,'LOBBY','COOP',p_skill,p_episode,p_map,2,1,0,0,
+      l_host_salt,l_host_hash,l_join_salt,l_join_hash,
+      l_now,l_now,l_now+interval '20' minute);
+    insert into doom_match_member(
+      match_id,player_slot,member_state,membership_epoch,generation,
+      capability_epoch,capability_salt,capability_hash,display_name,
+      joined_at,last_seen_at)
+    values(p_match,0,'JOINED',1,0,1,l_player_salt,l_player_hash,
+      p_display_name,l_now,l_now);
+    commit;
+  exception when others then
+    declare l_code pls_integer:=sqlcode;l_message varchar2(1800):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_match:=null;p_host_capability:=null;p_join_capability:=null;
+      p_player_capability:=null;
+      if l_code between -20999 and -20000 then
+        raise_application_error(l_code,l_message);
+      end if;
+      raise_application_error(c_capacity,'match creation failed');
+    end;
+  end;
+
+  procedure join_match(
+    p_match in varchar2,p_join_capability in varchar2,
+    p_display_name in varchar2,p_player_capability in out varchar2,
+    p_player_slot out number
+  ) is
+    l_state varchar2(16);l_join_salt raw(32);l_join_hash varchar2(64);
+    l_expiry timestamp with time zone;l_now timestamp with time zone:=utc_now;
+    l_max number;l_epoch number;l_generation number;l_slot number;l_count number;
+    l_player_salt raw(32);l_player_hash varchar2(64);
+    l_player_token varchar2(64):=p_player_capability;
+  begin
+    p_player_slot:=null;require_match_shape(p_match);
+    require_display_name(p_display_name);
+    select match_state,join_capability_salt,join_capability_hash,expires_at,
+           max_players,membership_epoch,generation
+      into l_state,l_join_salt,l_join_hash,l_expiry,l_max,l_epoch,l_generation
+      from doom_match where match_id=p_match for update;
+    if l_expiry<=l_now or l_state<>'LOBBY' or
+       capability_hash(l_join_salt,p_join_capability)<>l_join_hash then
+      fail(c_match_auth,'match unavailable');
+    end if;
+
+    -- Supplying the previously returned player capability makes JOIN a safe
+    -- retry/reconnect without ever persisting or reproducing bearer plaintext.
+    if l_player_token is not null then
+      l_slot:=player_capability_slot(p_match,l_player_token);
+      select member_state into l_state from doom_match_member
+        where match_id=p_match and player_slot=l_slot;
+      if l_state='LEFT' then fail(c_match_auth,'match unavailable');end if;
+      update doom_match_member set last_seen_at=l_now
+        where match_id=p_match and player_slot=l_slot;
+      update doom_match set last_activity_at=l_now where match_id=p_match;
+      p_player_slot:=l_slot;commit;return;
+    end if;
+
+    select min(slot_) into l_slot from (
+      select level slot_ from dual connect by level<=l_max-1
+    ) slots where not exists(
+      select 1 from doom_match_member member_
+      where member_.match_id=p_match and member_.player_slot=slots.slot_
+        and member_.member_state<>'LEFT');
+    if l_slot is null then fail(c_capacity,'match capacity reached');end if;
+    l_epoch:=l_epoch+1;
+    update doom_match set membership_epoch=l_epoch,last_activity_at=l_now
+      where match_id=p_match and membership_epoch=l_epoch-1 and generation=l_generation;
+    if sql%rowcount<>1 then fail(c_match_auth,'match unavailable');end if;
+    update doom_match_member set membership_epoch=l_epoch where match_id=p_match;
+    p_player_capability:=new_capability;
+    l_player_salt:=dbms_crypto.randombytes(32);
+    l_player_hash:=capability_hash(l_player_salt,p_player_capability);
+    update doom_match_member set member_state='JOINED',membership_epoch=l_epoch,
+      generation=l_generation,capability_epoch=capability_epoch+1,
+      capability_salt=l_player_salt,
+      capability_hash=l_player_hash,
+      display_name=p_display_name,joined_at=l_now,last_seen_at=l_now,
+      ready_at=null,disconnected_at=null,leave_tic=null
+      where match_id=p_match and player_slot=l_slot and member_state='LEFT';
+    l_count:=sql%rowcount;
+    if l_count=0 then
+      insert into doom_match_member(
+        match_id,player_slot,member_state,membership_epoch,generation,
+        capability_epoch,capability_salt,capability_hash,display_name,
+        joined_at,last_seen_at)
+      values(p_match,l_slot,'JOINED',l_epoch,l_generation,1,l_player_salt,
+        l_player_hash,
+        p_display_name,l_now,l_now);
+    end if;
+    p_player_slot:=l_slot;commit;
+  exception when no_data_found then
+    rollback;p_player_capability:=null;p_player_slot:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;l_message varchar2(1800):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_player_slot:=null;
+      if l_player_token is null then p_player_capability:=null;end if;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      end if;
+      if l_code between -20999 and -20000 then
+        raise_application_error(l_code,l_message);
+      end if;
+      raise_application_error(c_match_auth,'match unavailable');
+    end;
+  end;
+
+  procedure ready_match(
+    p_match in varchar2,p_player_capability in varchar2,p_ready in number,
+    p_match_state out varchar2
+  ) is
+    l_state varchar2(16);l_expiry timestamp with time zone;l_now timestamp with time zone:=utc_now;
+    l_max number;l_slot number;l_members number;l_ready number;
+  begin
+    p_match_state:=null;require_match_shape(p_match);
+    if p_ready is null or p_ready<>trunc(p_ready) or p_ready not in(0,1) then
+      fail(c_bad_request,'ready flag must be 0 or 1');
+    end if;
+    select match_state,expires_at,max_players into l_state,l_expiry,l_max
+      from doom_match where match_id=p_match for update;
+    if l_expiry<=l_now or l_state<>'LOBBY' then
+      fail(c_match_auth,'match unavailable');
+    end if;
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    select count(*) into l_members from doom_match_member
+      where match_id=p_match and member_state in('JOINED','READY');
+    if p_ready=1 and l_members<>l_max then
+      fail(c_bad_request,'all player slots must be joined before ready');
+    end if;
+    update doom_match_member set
+      member_state=case p_ready when 1 then 'READY' else 'JOINED' end,
+      ready_at=case p_ready when 1 then l_now else null end,last_seen_at=l_now
+      where match_id=p_match and player_slot=l_slot
+        and member_state in('JOINED','READY');
+    if sql%rowcount<>1 then fail(c_match_auth,'match unavailable');end if;
+    select count(*) into l_ready from doom_match_member
+      where match_id=p_match and member_state='READY';
+    update doom_match set last_activity_at=l_now where match_id=p_match;
+    if l_members=l_max and l_ready=l_max then
+      -- Commit READY membership before Scheduler creates its retained session.
+      -- START_READY returns ACTIVE only after real Java tic-zero payloads and
+      -- their hashes/frontier are committed atomically.
+      commit;
+      doom_match_worker.start_ready(p_match,30000,p_match_state);
+    else
+      p_match_state:='LOBBY';commit;
+    end if;
+  exception when no_data_found then
+    rollback;p_match_state:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;l_message varchar2(1800):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_match_state:=null;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      end if;
+      if l_code between -20999 and -20000 then
+        raise_application_error(l_code,l_message);
+      end if;
+      raise_application_error(c_match_auth,'match unavailable');
+    end;
+  end;
+
+  procedure match_status(
+    p_match in varchar2,p_capability in varchar2,p_match_state out varchar2,
+    p_game_mode out varchar2,p_skill out number,p_episode out number,
+    p_map out number,p_max_players out number,p_member_count out number,
+    p_ready_count out number,p_requester_slot out number,
+    p_membership_epoch out number,p_generation out number,p_current_tic out number
+  ) is
+    l_state varchar2(16);l_expiry timestamp with time zone;
+    l_host_salt raw(32);l_host_hash varchar2(64);
+  begin
+    p_match_state:=null;p_game_mode:=null;p_skill:=null;p_episode:=null;
+    p_map:=null;p_max_players:=null;p_member_count:=null;p_ready_count:=null;
+    p_requester_slot:=null;p_membership_epoch:=null;p_generation:=null;
+    p_current_tic:=null;require_match_shape(p_match);
+    select match_state,game_mode,skill,episode,map,max_players,
+           membership_epoch,generation,current_tic,expires_at,
+           host_capability_salt,host_capability_hash
+      into l_state,p_game_mode,p_skill,p_episode,p_map,p_max_players,
+           p_membership_epoch,p_generation,p_current_tic,l_expiry,
+           l_host_salt,l_host_hash
+      from doom_match where match_id=p_match;
+    if l_expiry<=utc_now then fail(c_match_auth,'match unavailable');end if;
+    p_requester_slot:=any_capability_slot(
+      p_match,p_capability,l_host_salt,l_host_hash);
+    select count(*),count(case when member_state='READY' then 1 end)
+      into p_member_count,p_ready_count from doom_match_member
+      where match_id=p_match and member_state<>'LEFT';
+    p_match_state:=l_state;
+    if l_state='LOBBY' and p_member_count=p_max_players and
+       p_ready_count=p_max_players then
+      begin
+        select case worker_status when 'STARTING' then 'STARTING'
+                 when 'FAILED' then 'READY_TO_START' else 'READY_TO_START' end
+          into p_match_state from doom_match_worker_control where match_id=p_match;
+      exception when no_data_found then p_match_state:='READY_TO_START';end;
+    end if;
+  exception when no_data_found then
+    p_match_state:=null;raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;l_message varchar2(1800):=substr(sqlerrm,1,1800);
+    begin
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      end if;
+      if l_code between -20999 and -20000 then
+        raise_application_error(l_code,l_message);
+      end if;
+      raise_application_error(c_match_auth,'match unavailable');
+    end;
+  end;
+
+  procedure submit_match_step(
+    p_match in varchar2,p_player_capability in varchar2,p_tic in number,
+    p_command_seq in number,p_ticcmd_hex in varchar2,p_accepted out number,
+    p_membership_epoch out number,p_generation out number
+  ) is
+    l_slot number;l_state varchar2(16);l_expiry timestamp with time zone;
+    l_now timestamp with time zone:=utc_now;l_raw raw(8);
+  begin
+    p_accepted:=0;p_membership_epoch:=null;p_generation:=null;
+    require_match_shape(p_match);
+    if p_tic is null or p_tic<>trunc(p_tic) or p_tic<1 or
+       p_command_seq is null or p_command_seq<>trunc(p_command_seq) or
+       p_command_seq<1 or p_ticcmd_hex is null or
+       not regexp_like(p_ticcmd_hex,'^[0-9a-fA-F]{16}$') or
+       substr(lower(p_ticcmd_hex),9,6)<>'000000' then
+      fail(c_bad_request,'invalid match command');
+    end if;
+    select match_state,expires_at,membership_epoch,generation
+      into l_state,l_expiry,p_membership_epoch,p_generation
+      from doom_match where match_id=p_match;
+    if l_state<>'ACTIVE' or l_expiry<=l_now or p_generation<1 then
+      fail(c_match_auth,'match unavailable');
+    end if;
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    update doom_match_member set last_seen_at=l_now
+      where match_id=p_match and player_slot=l_slot and member_state='ACTIVE'
+        and membership_epoch=p_membership_epoch and generation=p_generation;
+    if sql%rowcount<>1 then fail(c_match_auth,'match unavailable');end if;
+    l_raw:=hextoraw(lower(p_ticcmd_hex));
+    doom_match_worker.submit_command(p_match,l_slot,p_membership_epoch,
+      p_generation,p_tic,p_command_seq,l_raw,p_accepted);
+  exception when no_data_found then
+    rollback;p_accepted:=0;p_membership_epoch:=null;p_generation:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;
+    begin
+      rollback;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      elsif l_code between -20999 and -20000 then
+        raise_application_error(c_bad_request,'match command rejected');
+      end if;
+      raise_application_error(c_bad_request,'match command rejected');
+    end;
+  end;
+
+  procedure poll_match_frame(
+    p_match in varchar2,p_player_capability in varchar2,p_tic in number,
+    p_wait_ms in number,p_ready out number,p_current_tic out number,
+    p_payload out blob
+  ) is
+    l_slot number;l_state varchar2(16);l_expiry timestamp with time zone;
+    l_epoch number;l_generation number;l_wait number;
+    l_deadline timestamp with time zone;l_now timestamp with time zone:=utc_now;
+  begin
+    p_ready:=0;p_current_tic:=null;p_payload:=null;require_match_shape(p_match);
+    if p_tic is null or p_tic<>trunc(p_tic) or p_tic<0 or
+       p_wait_ms is null or p_wait_ms<>trunc(p_wait_ms) or
+       p_wait_ms not between 0 and 1000 then
+      fail(c_bad_request,'invalid match poll');
+    end if;
+    select match_state,expires_at,membership_epoch,generation,current_tic
+      into l_state,l_expiry,l_epoch,l_generation,p_current_tic
+      from doom_match where match_id=p_match;
+    if l_state<>'ACTIVE' or l_expiry<=l_now or l_generation<1 then
+      fail(c_match_auth,'match unavailable');
+    end if;
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    l_deadline:=systimestamp+numtodsinterval(p_wait_ms/1000,'SECOND');
+    loop
+      doom_match_worker.poll_frame(p_match,l_slot,l_epoch,l_generation,p_tic,
+        p_ready,p_payload);
+      exit when p_ready=1 or systimestamp>=l_deadline;
+      dbms_session.sleep(.01);
+    end loop;
+    select current_tic into p_current_tic from doom_match
+      where match_id=p_match and membership_epoch=l_epoch
+        and generation=l_generation;
+    l_now:=utc_now;
+    update doom_match_member set last_seen_at=l_now
+      where match_id=p_match and player_slot=l_slot and member_state='ACTIVE'
+        and membership_epoch=l_epoch and generation=l_generation;
+    commit;
+  exception when no_data_found then
+    rollback;p_ready:=0;p_current_tic:=null;p_payload:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;
+    begin
+      rollback;p_ready:=0;p_current_tic:=null;p_payload:=null;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      elsif l_code between -20999 and -20000 then
+        raise_application_error(c_bad_request,'match poll rejected');
+      end if;
+      raise_application_error(c_bad_request,'match poll rejected');
+    end;
+  end;
+
+  procedure leave_match(
+    p_match in varchar2,p_player_capability in varchar2,
+    p_match_state out varchar2
+  ) is
+    l_state varchar2(16);l_expiry timestamp with time zone;
+    l_epoch number;l_generation number;l_slot number;
+    l_member_state varchar2(16);l_now timestamp with time zone:=utc_now;
+  begin
+    p_match_state:=null;require_match_shape(p_match);
+    select match_state,expires_at,membership_epoch,generation
+      into l_state,l_expiry,l_epoch,l_generation
+      from doom_match where match_id=p_match for update;
+    if l_expiry<=l_now or l_state not in('LOBBY','CANCELLED') then
+      fail(c_match_auth,'match unavailable');
+    end if;
+    l_slot:=player_capability_slot(p_match,p_player_capability,1);
+    select member_state into l_member_state from doom_match_member
+      where match_id=p_match and player_slot=l_slot;
+    if l_member_state='LEFT' then
+      p_match_state:=l_state;commit;return;
+    end if;
+    if l_slot=0 then
+      update doom_match_member set member_state='LEFT',leave_tic=0,
+        last_seen_at=l_now where match_id=p_match;
+      update doom_match set match_state='CANCELLED',finished_at=l_now,
+        last_activity_at=l_now where match_id=p_match;
+      p_match_state:='CANCELLED';
+    else
+      l_epoch:=l_epoch+1;
+      update doom_match set membership_epoch=l_epoch,last_activity_at=l_now
+        where match_id=p_match and membership_epoch=l_epoch-1
+          and generation=l_generation;
+      if sql%rowcount<>1 then fail(c_match_auth,'match unavailable');end if;
+      update doom_match_member set membership_epoch=l_epoch where match_id=p_match;
+      update doom_match_member set member_state='LEFT',leave_tic=0,
+        last_seen_at=l_now where match_id=p_match and player_slot=l_slot;
+      p_match_state:='LOBBY';
+    end if;
+    commit;
+  exception when no_data_found then
+    rollback;p_match_state:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;l_message varchar2(1800):=substr(sqlerrm,1,1800);
+    begin
+      rollback;p_match_state:=null;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      end if;
+      if l_code between -20999 and -20000 then
+        raise_application_error(l_code,l_message);
+      end if;
+      raise_application_error(c_match_auth,'match unavailable');
+    end;
+  end;
+
 
   function byte_hex(p_value number) return varchar2 is
   begin
@@ -679,9 +1232,9 @@ create or replace package body doom_api as
     end if;
 
     l_now:=utc_now;
-    delete from game_sessions where session_token in (
-      select session_token from game_sessions where expires_at<=l_now
-      order by expires_at fetch first 8 rows only);
+    -- Expired lineages can own hundreds of thousands of LOB-backed rows.
+    -- Request-time cascade deletion made NEW_GAME block for minutes; the
+    -- bounded retention worker owns cleanup outside this latency path.
     select number_value into l_limit from doom_config
       where config_key='MAX_ACTIVE_SESSIONS';
     select number_value into l_ttl from doom_config

@@ -902,6 +902,201 @@ public final class DoomDbMochaAdapter {
     }
   }
 
+  /**
+   * Initialize one production retained multiplayer world and emit tic-zero
+   * payloads into caller-owned locators. The returned state identity is shared
+   * by every POV; frame and response identities remain player-specific.
+   */
+  public static synchronized String multiplayerNewGamePayloadsSafe(
+      int activePlayers, int deathmatch, int skill, int episode, int map,
+      Blob output0, Blob output1, Blob output2, Blob output3) {
+    try {
+      initializeMultiplayerEngine(
+          activePlayers, deathmatch, skill, episode, map);
+      String membership = multiplayerMembership(activePlayers);
+      String stateSha = hashAscii("MULTI_INITIAL|" + membership + "|"
+          + multiplayerStateSha(activePlayers));
+      return renderMultiplayerPayloads(
+          "multiplayer-new-game", activePlayers, membership, stateSha,
+          new Blob[] {output0, output1, output2, output3});
+    } catch (Throwable failure) {
+      disposeSafe();
+      return failure("multiplayer-new-game", failure);
+    }
+  }
+
+  /**
+   * Apply one canonical four-slot ticcmd vector, advance the shared world once,
+   * then emit an immutable payload for each active POV. Inactive slots must be
+   * all zero and client-supplied consistency words are ignored in favor of the
+   * worker's retained consistency ring.
+   */
+  public static synchronized String multiplayerStepPayloadsSafe(
+      int activePlayers, String commandVectorHex, String previousStateSha,
+      Blob output0, Blob output1, Blob output2, Blob output3) {
+    try {
+      requireMultiplayerEngine(activePlayers);
+      if (previousStateSha == null
+          || !previousStateSha.matches("[0-9a-f]{64}")) {
+        throw new IllegalArgumentException("previous state SHA required");
+      }
+      byte[] requested = parseHex(commandVectorHex, 32);
+      byte[] applied = new byte[32];
+      for (int player = 0; player < 4; player++) {
+        int offset = player * doom.ticcmd_t.TICCMDLEN;
+        if (player >= activePlayers) {
+          for (int index = 0; index < doom.ticcmd_t.TICCMDLEN; index++) {
+            if (requested[offset + index] != 0) {
+              throw new IllegalArgumentException(
+                  "inactive player command " + player);
+            }
+          }
+          continue;
+        }
+        int buffer = (engine.gametic / engine.getTicdup())
+            % engine.netcmds[player].length;
+        doom.ticcmd_t command = engine.netcmds[player][buffer];
+        command.unpack(requested, offset);
+        command.consistancy = multiplayerConsistency[player][buffer];
+        command.chatchar = 0;
+        command.lookfly = 0;
+        command.pack(applied, offset);
+      }
+      int beforeTic = engine.gametic;
+      int beforeLevelTime = engine.leveltime;
+      tickMultiplayerEngine();
+      if (engine.gametic != beforeTic + 1
+          || engine.leveltime != beforeLevelTime + 1) {
+        throw new IllegalStateException("multiplayer world did not advance once");
+      }
+      String membership = multiplayerMembership(activePlayers);
+      String commandHex = hex(applied);
+      String stateSha = hashAscii(previousStateSha + '|' + membership + '|'
+          + commandHex + '|' + multiplayerStateSha(activePlayers));
+      return renderMultiplayerPayloads(
+          "multiplayer-step", activePlayers, membership, stateSha,
+          new Blob[] {output0, output1, output2, output3})
+          + "|commandVector=" + commandHex;
+    } catch (Throwable failure) {
+      disposeSafe();
+      return failure("multiplayer-step", failure);
+    }
+  }
+
+  private static void initializeMultiplayerEngine(
+      int activePlayers, int deathmatch, int skill, int episode, int map)
+      throws Exception {
+    if (activePlayers < 2 || activePlayers > 4) {
+      throw new IllegalArgumentException("active players " + activePlayers);
+    }
+    if (deathmatch != 0 && deathmatch != 1) {
+      throw new IllegalArgumentException("deathmatch flag " + deathmatch);
+    }
+    if (skill < 1 || skill > 5 || episode < 1 || episode > 9
+        || map < 1 || map > 99) {
+      throw new IllegalArgumentException("invalid multiplayer map selection");
+    }
+    disposeSafe();
+    String initialized = initializeSafe();
+    if (!initialized.startsWith("ok|")) {
+      throw new IllegalStateException(initialized);
+    }
+    Arrays.fill(engine.playeringame, false);
+    for (int player = 0; player < activePlayers; player++) {
+      engine.playeringame[player] = true;
+    }
+    engine.consoleplayer = 0;
+    engine.displayplayer = 0;
+    engine.netgame = activePlayers > 1;
+    engine.deathmatch = deathmatch != 0;
+    engine.InitNew(skill_t.values()[skill - 1], episode, map);
+    engine.singletics = true;
+    controlTurnHeld = 0;
+    DummySFX.clearEvents();
+    lastAudioJson = "[]";
+    multiplayerConsistency = new short[engine.playeringame.length]
+        [engine.netcmds[0].length];
+  }
+
+  private static void requireMultiplayerEngine(int activePlayers) {
+    if (engine == null || multiplayerConsistency == null
+        || activePlayers < 2 || activePlayers > 4 || !engine.netgame) {
+      throw new IllegalStateException("multiplayer engine not initialized");
+    }
+    for (int player = 0; player < engine.playeringame.length; player++) {
+      if (engine.playeringame[player] != (player < activePlayers)) {
+        throw new IllegalStateException("multiplayer membership mismatch");
+      }
+    }
+  }
+
+  private static String renderMultiplayerPayloads(
+      String state, int activePlayers, String membership, String stateSha,
+      Blob[] outputs) throws Exception {
+    String beforeRender = multiplayerStateSha(activePlayers);
+    int savedConsole = engine.consoleplayer;
+    int savedDisplay = engine.displayplayer;
+    StringBuilder result = new StringBuilder("ok|state=").append(state)
+        .append("|tic=").append(engine.gametic)
+        .append("|levelTime=").append(engine.leveltime)
+        .append("|membership=").append(membership)
+        .append("|stateSha256=").append(stateSha);
+    try {
+      for (int player = 0; player < activePlayers; player++) {
+        Blob output = outputs[player];
+        if (output == null) {
+          throw new IllegalArgumentException("POV output " + player);
+        }
+        engine.consoleplayer = player;
+        engine.displayplayer = player;
+        engine.Display();
+        String frameSha = currentFrameSha();
+        byte[] payload = encodeDmf3(stateSha, frameSha);
+        writeBlob(output, payload);
+        result.append("|pov").append(player).append("FrameSha=")
+            .append(frameSha).append("|pov").append(player)
+            .append("ResponseSha=").append(hex(
+                MessageDigest.getInstance("SHA-256").digest(payload)))
+            .append("|pov").append(player).append("Bytes=")
+            .append(payload.length);
+        if (!beforeRender.equals(multiplayerStateSha(activePlayers))) {
+          throw new IllegalStateException(
+              "POV render mutated world player=" + player);
+        }
+      }
+    } finally {
+      engine.consoleplayer = savedConsole;
+      engine.displayplayer = savedDisplay;
+    }
+    return result.toString();
+  }
+
+  private static String multiplayerMembership(int activePlayers) {
+    StringBuilder result = new StringBuilder(4);
+    for (int player = 0; player < 4; player++) {
+      result.append(player < activePlayers ? '1' : '0');
+    }
+    return result.toString();
+  }
+
+  private static byte[] parseHex(String value, int expectedBytes) {
+    if (value == null || value.length() != expectedBytes * 2
+        || !value.matches("[0-9a-f]+")) {
+      throw new IllegalArgumentException("command vector shape");
+    }
+    byte[] result = new byte[expectedBytes];
+    for (int index = 0; index < expectedBytes; index++) {
+      result[index] = (byte) Integer.parseInt(
+          value.substring(index * 2, index * 2 + 2), 16);
+    }
+    return result;
+  }
+
+  private static String hashAscii(String value) throws Exception {
+    return hex(MessageDigest.getInstance("SHA-256").digest(
+        value.getBytes(StandardCharsets.US_ASCII)));
+  }
+
   private static void initializeMultiplayerProbe(int activePlayers)
       throws Exception {
     disposeSafe();

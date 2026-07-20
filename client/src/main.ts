@@ -33,6 +33,8 @@ function stylesheet(): HTMLStyleElement {
     [data-doom-menu] button[data-selected]{color:#fff1cf;text-shadow:1px 1px #5b140d}
     [data-doom-status]{position:fixed;left:12px;top:12px;z-index:4;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.35 system-ui;white-space:pre-line;pointer-events:none}
     [data-doom-fullscreen]{position:fixed;right:12px;top:12px;z-index:5;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.2 system-ui;cursor:pointer}
+    [data-doom-coop]{position:fixed;right:12px;top:54px;z-index:5;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.2 system-ui;text-decoration:none}
+    [data-doom-coop]:hover,[data-doom-coop]:focus-visible{border-color:#d7b84b;color:#fff}
     [data-doom-fullscreen]:hover,[data-doom-fullscreen]:focus-visible{border-color:#d7b84b;color:#fff}
     [data-doom-control]{position:relative;min-width:40px;min-height:40px;padding:0;border:1px solid #aaa;background:#171717;color:#fff;border-radius:7px;touch-action:none}
     [data-doom-control]::before{content:attr(data-icon);font:700 21px/1 system-ui}
@@ -91,7 +93,11 @@ fullscreen.textContent = '⛶ Fullscreen';
 fullscreen.setAttribute('aria-label', 'Enter fullscreen');
 fullscreen.setAttribute('aria-pressed', 'false');
 fullscreen.hidden = !document.fullscreenEnabled;
-shell.append(canvas, menu, touch.element, status, fullscreen);
+const coop = document.createElement('a');
+coop.dataset.doomCoop = '';
+coop.href = '/play/multiplayer';
+coop.textContent = '2-player co-op';
+shell.append(canvas, menu, touch.element, status, fullscreen, coop);
 document.head.append(stylesheet());
 document.body.replaceChildren(shell);
 

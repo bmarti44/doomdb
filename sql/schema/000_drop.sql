@@ -8,6 +8,7 @@ declare
   end;
 begin
   begin dbms_scheduler.drop_job('DOOM_UNIFIED_WORKER_JOB',true); exception when others then null; end;
+  begin dbms_scheduler.drop_job('DOOM_EXPIRED_SESSION_PURGE',true); exception when others then null; end;
   for l_slot in 1..4 loop
     begin
       dbms_scheduler.drop_job(
@@ -30,7 +31,9 @@ begin
   drop_object('drop property graph doom_sector_graph', -42421);
   drop_object('drop package doom_worker_api', -4043);
   drop_object('drop package doom_mocha_bridge', -4043);
+  drop_object('drop package doom_match_worker', -4043);
   drop_object('drop package doom_unified_worker', -4043);
+  drop_object('drop package doom_session_cleanup', -4043);
   drop_object('drop package doom_render_worker', -4043);
   drop_object('drop package doom_unified_delta_apply', -4043);
   drop_object('drop function doom_unified_recover_sql_renderer', -4043);
@@ -129,7 +132,7 @@ begin
         'FRAME_SPRITE','FRAME_WALL','FRAME_SECTOR_INTERVAL','FRAME_PORTAL_HIT',
         'FRAME_R1_HIT','FRAME_RENDER_SEG_BOUND','FRAME_COLUMN',
         'REPLAY_CURSORS','HISTORY_HEADS','SAVE_SLOTS','STATE_HISTORY','STEP_RESPONSES','AUDIO_EVENTS','GAME_EVENTS',
-        'DOOM_MATCH_CHECKPOINT','DOOM_MATCH_FRAME','DOOM_MATCH_COMMAND','DOOM_MATCH_TIC','DOOM_MATCH_MEMBER','DOOM_MATCH',
+        'DOOM_MATCH_WORKER_CONTROL','DOOM_MATCH_CHECKPOINT','DOOM_MATCH_FRAME','DOOM_MATCH_COMMAND','DOOM_MATCH_TIC','DOOM_MATCH_MEMBER','DOOM_MATCH',
         'DOOM_MOCHA_COMMAND','DOOM_MOCHA_LINEAGE','DOOM_WORKER_AUDIT','DOOM_WORKER_RESULT','DOOM_WORKER_REQUEST','DOOM_WORKER_CONTROL',
         'TIC_COMMANDS','ACTIVE_SWITCHES','ACTIVE_MOVERS','LINE_STATE','SECTOR_STATE',
         'MOBJS','PLAYERS','GAME_SESSIONS','DOOM_BLOCK_LINE','DOOM_BLOCK_CELL',

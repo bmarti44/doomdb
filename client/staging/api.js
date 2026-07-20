@@ -101,3 +101,92 @@ export async function getAsset(name) {
         mediaType: stringField(document, 'p_media_type')
     };
 }
+function numberField(document, name) {
+    const value = document[name];
+    if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
+        throw new TypeError(`${name} response field is invalid`);
+    }
+    return value;
+}
+function capabilityField(document, name) {
+    const value = stringField(document, name);
+    if (!/^[0-9a-f]{64}$/.test(value)) {
+        throw new TypeError(`${name} response field is invalid`);
+    }
+    return value;
+}
+export async function createMatch(displayName, skill = 3) {
+    const document = await post('create_match', {
+        p_game_mode: 'COOP', p_skill: skill, p_episode: 1, p_map: 1,
+        p_display_name: displayName
+    });
+    const match = stringField(document, 'p_match');
+    if (!/^[0-9a-f]{32}$/.test(match))
+        throw new TypeError('match response is invalid');
+    return {
+        match,
+        hostCapability: capabilityField(document, 'p_host_capability'),
+        joinCapability: capabilityField(document, 'p_join_capability'),
+        playerCapability: capabilityField(document, 'p_player_capability')
+    };
+}
+export async function joinMatch(match, joinCapability, displayName, playerCapability = null) {
+    const document = await post('join_match', {
+        p_match: match, p_join_capability: joinCapability,
+        p_display_name: displayName, p_player_capability: playerCapability
+    });
+    return {
+        playerCapability: capabilityField(document, 'p_player_capability'),
+        playerSlot: numberField(document, 'p_player_slot')
+    };
+}
+export async function readyMatch(match, playerCapability, ready) {
+    const document = await post('ready_match', {
+        p_match: match, p_player_capability: playerCapability,
+        p_ready: ready ? 1 : 0
+    });
+    return stringField(document, 'p_match_state');
+}
+export async function matchStatus(match, capability) {
+    const document = await post('match_status', {
+        p_match: match, p_capability: capability
+    });
+    return {
+        state: stringField(document, 'p_match_state'),
+        mode: stringField(document, 'p_game_mode'),
+        skill: numberField(document, 'p_skill'),
+        episode: numberField(document, 'p_episode'),
+        map: numberField(document, 'p_map'),
+        maxPlayers: numberField(document, 'p_max_players'),
+        memberCount: numberField(document, 'p_member_count'),
+        readyCount: numberField(document, 'p_ready_count'),
+        requesterSlot: numberField(document, 'p_requester_slot'),
+        membershipEpoch: numberField(document, 'p_membership_epoch'),
+        generation: numberField(document, 'p_generation'),
+        currentTic: numberField(document, 'p_current_tic')
+    };
+}
+export async function submitMatchStep(match, playerCapability, tic, sequence, ticcmdHex) {
+    const document = await postAsync('submit_match_step', {
+        p_match: match, p_player_capability: playerCapability, p_tic: tic,
+        p_command_seq: sequence, p_ticcmd_hex: ticcmdHex
+    });
+    return {
+        accepted: numberField(document, 'p_accepted'),
+        membershipEpoch: numberField(document, 'p_membership_epoch'),
+        generation: numberField(document, 'p_generation')
+    };
+}
+export async function pollMatchFrame(match, playerCapability, tic, waitMilliseconds = 1000) {
+    const document = await postAsync('poll_match_frame', {
+        p_match: match, p_player_capability: playerCapability,
+        p_tic: tic, p_wait_ms: waitMilliseconds
+    });
+    const ready = numberField(document, 'p_ready');
+    if (ready !== 0 && ready !== 1)
+        throw new TypeError('p_ready response field is invalid');
+    return {
+        currentTic: numberField(document, 'p_current_tic'),
+        payload: ready === 1 ? stringField(document, 'p_payload') : null
+    };
+}

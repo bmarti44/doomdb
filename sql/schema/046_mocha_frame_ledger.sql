@@ -31,3 +31,9 @@ create table doom_mocha_frame_ledger (
     regexp_like(frame_sha,'^[0-9a-f]{64}$') and
     regexp_like(response_sha,'^[0-9a-f]{64}$'))
 );
+
+-- Required for bounded lineage deletion. Without this child-FK index, every
+-- DOOM_WORKER_RESULT row removed by an expired session scans the entire frame
+-- ledger, making a long played route block NEW_GAME for many minutes.
+create index doom_mocha_frame_ledger_result_ix
+  on doom_mocha_frame_ledger(request_id);

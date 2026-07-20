@@ -2972,6 +2972,12 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
 - Accept: two browser contexts create/join/ready/start entirely through AutoREST;
   authorization, enumeration, race, retry, expiry, reconnect, leave, rate-limit,
   and cleanup tests pass without secret-bearing output or table exposure.
+- Implementation checkpoint (2026-07-20): all seven generated AutoREST
+  procedures are implemented. Capabilities are independently salted and hashed,
+  error shapes do not enumerate matches, and generation/membership bounds are
+  enforced. Direct HTTP gates pass lifecycle, arbitrary command arrival,
+  per-player polling, retry, and authorization with bearer material redacted.
+  Expiry/reconnect/rate-limit breadth remains open.
 
 #### T13.2 Deterministic lockstep and retained match worker
 
@@ -2993,6 +2999,13 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
 - Accept: randomized arrival order, duplicate/out-of-order HTTP, missing input,
   reconnect/leave, simultaneous use/fire, and contention reproduce a direct
   ordered command/state/event/frame chain with no cross-match visibility.
+- Implementation checkpoint (2026-07-20): one private Scheduler session owns a
+  two-player engine, accepts a complete ordered four-slot vector, advances one
+  world tic, writes two immutable POV payloads directly into persistent BLOB
+  locators, and atomically commits its command/state/frame frontier. Live gates
+  pass arbitrary arrival, one-tic advancement, POV separation, idempotency,
+  root determinism, fencing, and match isolation. Deadline-neutral synthesis,
+  checkpoint reconstruction, disconnect grace, and recovery remain open.
 
 #### T13.3 Co-op client, replay, and recovery
 
@@ -3010,6 +3023,12 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   cover damage, death/respawn, pickup contention, door/lift/use, reconnect, and
   exit. Kill the worker mid-fight and ORDS mid-poll; fenced reconstruction must
   resume both clients with the same final chains as an uninterrupted twin.
+- Browser checkpoint (2026-07-20): `/play/multiplayer` creates a private match,
+  carries the join capability only in the URL fragment, removes it after join,
+  keeps each player capability in session storage, captures dynamic input, and
+  displays only that player's Oracle frame. A real two-context Playwright gate
+  reached synchronized tic 11 and proved distinct POVs without bearer output.
+  Route/replay/recovery and the 300-frame FPS gate remain open.
 
 #### T13.4 Deathmatch and player-count expansion
 

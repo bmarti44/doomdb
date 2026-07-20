@@ -163,7 +163,8 @@ create table doom_match_frame (
   constraint doom_match_frame_member_fk foreign key(match_id,player_slot)
     references doom_match_member(match_id,player_slot) on delete cascade,
   constraint doom_match_frame_tic_fk foreign key(match_id,tic)
-    references doom_match_tic(match_id,tic) on delete cascade,
+    references doom_match_tic(match_id,tic) on delete cascade
+    deferrable initially deferred,
   constraint doom_match_frame_fence_ck check(
     tic>=0 and player_slot between 0 and 3 and
     membership_epoch>0 and generation>0 and response_bytes>0),

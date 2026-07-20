@@ -104,6 +104,8 @@ create table replay_cursors (
     regexp_like(frame_sha,'^[0-9a-f]{64}$'))
 );
 
+create index replay_cursors_session_ix on replay_cursors(session_token);
+
 create table history_heads (
   session_token varchar2(32) not null,
   lineage varchar2(64) not null,

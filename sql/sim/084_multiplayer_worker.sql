@@ -1,0 +1,396 @@
+whenever sqlerror exit failure rollback
+set define off
+
+create or replace package doom_match_worker authid definer as
+  procedure start_ready(
+    p_match in varchar2,p_wait_ms in number,p_match_state out varchar2);
+  procedure submit_command(
+    p_match in varchar2,p_player_slot in number,p_membership_epoch in number,
+    p_generation in number,p_tic in number,p_command_seq in number,
+    p_ticcmd_raw in raw,p_accepted out number);
+  procedure poll_frame(
+    p_match in varchar2,p_player_slot in number,p_membership_epoch in number,
+    p_generation in number,p_tic in number,p_ready out number,
+    p_payload out blob);
+  procedure stop_match(p_match in varchar2,p_generation in number);
+  procedure run_match(p_match in varchar2);
+end doom_match_worker;
+/
+
+create or replace package body doom_match_worker as
+  c_error constant pls_integer:=-20731;
+
+  -- This bounded T13.2 slice advances complete two-player vectors only.
+  -- Deadline-neutral synthesis, durable checkpoints, and restart
+  -- reconstruction remain deferred and are not represented as working here.
+
+  function utc_now return timestamp with time zone is
+  begin return localtimestamp at time zone 'UTC';end;
+
+  function status_field(p_status varchar2,p_name varchar2) return varchar2 is
+    l_marker varchar2(128):='|'||p_name||'=';l_start pls_integer;l_end pls_integer;
+  begin
+    l_start:=instr(p_status,l_marker);
+    if l_start=0 then raise_application_error(c_error,'worker status missing '||p_name);end if;
+    l_start:=l_start+length(l_marker);l_end:=instr(p_status,'|',l_start);
+    if l_end=0 then l_end:=length(p_status)+1;end if;
+    return substr(p_status,l_start,l_end-l_start);
+  end;
+
+  function sha_raw(p_raw raw) return varchar2 is
+  begin
+    return lower(rawtohex(dbms_crypto.hash(p_raw,dbms_crypto.hash_sh256)));
+  end;
+
+  procedure copy_blob(p_source blob,p_target out blob) is
+  begin
+    dbms_lob.createtemporary(p_target,true,dbms_lob.call);
+    dbms_lob.copy(p_target,p_source,dbms_lob.getlength(p_source));
+  end;
+
+  procedure fail_control(p_match varchar2,p_error varchar2) is
+  begin
+    rollback;
+    update doom_match_worker_control set worker_status='FAILED',
+      request_status='FAILED',heartbeat=(localtimestamp at time zone 'UTC'),
+      last_error=substr(p_error,1,2000)
+      where match_id=p_match;
+    commit;
+  end;
+
+  procedure publish_initial(p_match varchar2,p_generation number) is
+    l_skill number;l_episode number;l_map number;l_mode varchar2(16);
+    l_epoch number;l_players number;l_status varchar2(4000);l_now timestamp with time zone:=utc_now;
+    l_b0 blob;l_b1 blob;l_state varchar2(64);l_frame0 varchar2(64);l_frame1 varchar2(64);
+    l_response0 varchar2(64);l_response1 varchar2(64);l_bytes0 number;l_bytes1 number;
+    l_actual0 number;l_actual1 number;
+    l_vector raw(32):=hextoraw(rpad('00',64,'0'));l_command_sha varchar2(64);
+    l_previous varchar2(64);l_event varchar2(64);
+  begin
+    select skill,episode,map,game_mode,membership_epoch,max_players
+      into l_skill,l_episode,l_map,l_mode,l_epoch,l_players
+      from doom_match where match_id=p_match and match_state='LOBBY'
+        and generation=0 for update;
+    if l_players<>2 then raise_application_error(c_error,'two-player worker required');end if;
+    select count(*) into l_players from doom_match_member where match_id=p_match
+      and member_state='READY' and membership_epoch=l_epoch;
+    if l_players<>2 then raise_application_error(c_error,'membership is not ready');end if;
+
+    insert into doom_match_frame(match_id,tic,player_slot,membership_epoch,
+      generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
+    values(p_match,0,0,l_epoch,p_generation,rpad('0',64,'0'),rpad('0',64,'0'),
+      1,empty_blob(),l_now) returning response_blob into l_b0;
+    insert into doom_match_frame(match_id,tic,player_slot,membership_epoch,
+      generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
+    values(p_match,0,1,l_epoch,p_generation,rpad('0',64,'0'),rpad('0',64,'0'),
+      1,empty_blob(),l_now) returning response_blob into l_b1;
+    l_status:=doom_mocha_multiplayer_new_game(2,
+      case l_mode when 'DEATHMATCH' then 1 else 0 end,
+      l_skill,l_episode,l_map,l_b0,l_b1,null,null);
+    if substr(l_status,1,3)<>'ok|' then
+      raise_application_error(c_error,substr(l_status,1,1800));
+    end if;
+    if to_number(status_field(l_status,'tic'))<>0 then
+      raise_application_error(c_error,'initial tic is not zero');
+    end if;
+    l_state:=status_field(l_status,'stateSha256');
+    l_frame0:=status_field(l_status,'pov0FrameSha');
+    l_frame1:=status_field(l_status,'pov1FrameSha');
+    l_response0:=status_field(l_status,'pov0ResponseSha');
+    l_response1:=status_field(l_status,'pov1ResponseSha');
+    l_bytes0:=to_number(status_field(l_status,'pov0Bytes'));
+    l_bytes1:=to_number(status_field(l_status,'pov1Bytes'));
+    -- OJVM mutates the persistent LOBs directly. Refresh their lengths from
+    -- SQL because the PL/SQL locator metadata can remain stale after Java.
+    select max(case player_slot when 0 then dbms_lob.getlength(response_blob) end),
+           max(case player_slot when 1 then dbms_lob.getlength(response_blob) end)
+      into l_actual0,l_actual1 from doom_match_frame
+      where match_id=p_match and tic=0;
+    if l_actual0<>l_bytes0 or l_actual1<>l_bytes1 then
+      raise_application_error(c_error,'initial locator length mismatch');
+    end if;
+    update doom_match_frame set frame_sha=l_frame0,response_sha=l_response0,
+      response_bytes=l_bytes0 where match_id=p_match and tic=0 and player_slot=0;
+    update doom_match_frame set frame_sha=l_frame1,response_sha=l_response1,
+      response_bytes=l_bytes1 where match_id=p_match and tic=0 and player_slot=1;
+    l_command_sha:=sha_raw(l_vector);
+    -- Match identifiers are transport metadata, not engine state. Identical
+    -- engine configuration and membership must produce the same root.
+    select lower(standard_hash('MULTI_ROOT|'||l_mode||'|'||l_skill||'|'||
+      l_episode||'|'||l_map||'|PLAYERS=2|MEMBERSHIP=03','SHA256'))
+      into l_previous from dual;
+    select lower(standard_hash('[]','SHA256')) into l_event from dual;
+    insert into doom_match_tic(match_id,tic,membership_epoch,generation,
+      membership_bitmap,neutral_bitmap,command_vector,command_sha,
+      previous_state_sha,state_sha,event_sha,deadline_at,committed_at)
+    values(p_match,0,l_epoch,p_generation,hextoraw('03'),hextoraw('00'),
+      l_vector,l_command_sha,l_previous,l_state,l_event,l_now,l_now);
+    update doom_match_member set member_state='ACTIVE',generation=p_generation,
+      last_seen_at=l_now where match_id=p_match and membership_epoch=l_epoch;
+    update doom_match set match_state='ACTIVE',generation=p_generation,
+      current_tic=0,started_at=l_now,last_activity_at=l_now
+      where match_id=p_match and membership_epoch=l_epoch and generation=0;
+    if sql%rowcount<>1 then raise_application_error(c_error,'initial frontier fence');end if;
+    update doom_match_worker_control set worker_status='READY',
+      request_status='IDLE',worker_sid=sys_context('USERENV','SID'),
+      heartbeat=l_now,last_error=null where match_id=p_match
+        and generation=p_generation and membership_epoch=l_epoch;
+    if sql%rowcount<>1 then raise_application_error(c_error,'initial control fence');end if;
+    commit;
+  end;
+
+  procedure process_step(
+    p_match varchar2,p_generation number,p_epoch number,p_tic number
+  ) is
+    l_previous varchar2(64);l_vector_hex varchar2(64);l_applied_hex varchar2(64);
+    l_status varchar2(4000);l_state varchar2(64);l_command_sha varchar2(64);
+    l_frame0 varchar2(64);l_frame1 varchar2(64);l_response0 varchar2(64);l_response1 varchar2(64);
+    l_bytes0 number;l_bytes1 number;l_actual0 number;l_actual1 number;
+    l_count number;l_now timestamp with time zone:=utc_now;
+    l_b0 blob;l_b1 blob;l_event varchar2(64);
+  begin
+    select state_sha into l_previous from doom_match_tic
+      where match_id=p_match and tic=p_tic-1 and generation=p_generation;
+    select count(*),lower(listagg(rawtohex(ticcmd_raw),'') within group(order by player_slot))
+      into l_count,l_vector_hex from doom_match_command
+      where match_id=p_match and tic=p_tic and membership_epoch=p_epoch
+        and generation=p_generation and player_slot in(0,1);
+    if l_count<>2 or length(l_vector_hex)<>32 then
+      raise_application_error(c_error,'complete two-player vector required');
+    end if;
+    l_vector_hex:=l_vector_hex||rpad('00',32,'0');
+    insert into doom_match_frame(match_id,tic,player_slot,membership_epoch,
+      generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
+    values(p_match,p_tic,0,p_epoch,p_generation,rpad('0',64,'0'),
+      rpad('0',64,'0'),1,empty_blob(),l_now) returning response_blob into l_b0;
+    insert into doom_match_frame(match_id,tic,player_slot,membership_epoch,
+      generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
+    values(p_match,p_tic,1,p_epoch,p_generation,rpad('0',64,'0'),
+      rpad('0',64,'0'),1,empty_blob(),l_now) returning response_blob into l_b1;
+    l_status:=doom_mocha_multiplayer_step(
+      2,l_vector_hex,l_previous,l_b0,l_b1,null,null);
+    if substr(l_status,1,3)<>'ok|' then
+      raise_application_error(c_error,substr(l_status,1,1800));
+    end if;
+    if to_number(status_field(l_status,'tic'))<>p_tic then
+      raise_application_error(c_error,'worker tic mismatch');
+    end if;
+    l_state:=status_field(l_status,'stateSha256');
+    l_applied_hex:=status_field(l_status,'commandVector');
+    l_frame0:=status_field(l_status,'pov0FrameSha');
+    l_frame1:=status_field(l_status,'pov1FrameSha');
+    l_response0:=status_field(l_status,'pov0ResponseSha');
+    l_response1:=status_field(l_status,'pov1ResponseSha');
+    l_bytes0:=to_number(status_field(l_status,'pov0Bytes'));
+    l_bytes1:=to_number(status_field(l_status,'pov1Bytes'));
+    select max(case player_slot when 0 then dbms_lob.getlength(response_blob) end),
+           max(case player_slot when 1 then dbms_lob.getlength(response_blob) end)
+      into l_actual0,l_actual1 from doom_match_frame
+      where match_id=p_match and tic=p_tic;
+    if l_actual0<>l_bytes0 or l_actual1<>l_bytes1 then
+      raise_application_error(c_error,'step locator length mismatch');
+    end if;
+    update doom_match_frame set frame_sha=l_frame0,response_sha=l_response0,
+      response_bytes=l_bytes0 where match_id=p_match and tic=p_tic and player_slot=0;
+    update doom_match_frame set frame_sha=l_frame1,response_sha=l_response1,
+      response_bytes=l_bytes1 where match_id=p_match and tic=p_tic and player_slot=1;
+    l_command_sha:=sha_raw(hextoraw(l_applied_hex));
+    select lower(standard_hash('[]','SHA256')) into l_event from dual;
+    insert into doom_match_tic(match_id,tic,membership_epoch,generation,
+      membership_bitmap,neutral_bitmap,command_vector,command_sha,
+      previous_state_sha,state_sha,event_sha,deadline_at,committed_at)
+    values(p_match,p_tic,p_epoch,p_generation,hextoraw('03'),hextoraw('00'),
+      hextoraw(l_applied_hex),l_command_sha,l_previous,l_state,l_event,l_now,l_now);
+    update doom_match set current_tic=p_tic,last_activity_at=l_now
+      where match_id=p_match and match_state='ACTIVE' and generation=p_generation
+        and membership_epoch=p_epoch and current_tic=p_tic-1;
+    if sql%rowcount<>1 then raise_application_error(c_error,'step frontier fence');end if;
+    update doom_match_worker_control set request_status='IDLE',requested_tic=null,
+      heartbeat=l_now,last_error=null where match_id=p_match
+        and generation=p_generation and membership_epoch=p_epoch
+        and request_status='PROCESSING' and requested_tic=p_tic;
+    if sql%rowcount<>1 then raise_application_error(c_error,'step control fence');end if;
+    commit;
+  end;
+
+  procedure run_match(p_match in varchar2) is
+    l_generation number;l_epoch number;l_status varchar2(16);l_request varchar2(16);
+    l_tic number;l_stop number;l_idle number:=0;l_dispose varchar2(4000);
+  begin
+    select generation,membership_epoch into l_generation,l_epoch
+      from doom_match_worker_control where match_id=p_match;
+    publish_initial(p_match,l_generation);
+    loop
+      select worker_status,request_status,requested_tic,stop_requested
+        into l_status,l_request,l_tic,l_stop from doom_match_worker_control
+        where match_id=p_match and generation=l_generation;
+      exit when l_stop=1 or l_status<>'READY';
+      if l_request='QUEUED' then
+        update doom_match_worker_control set request_status='PROCESSING',
+          heartbeat=(localtimestamp at time zone 'UTC')
+          where match_id=p_match and generation=l_generation
+          and membership_epoch=l_epoch and request_status='QUEUED'
+          and requested_tic=l_tic;
+        if sql%rowcount=1 then commit;process_step(p_match,l_generation,l_epoch,l_tic);
+        else rollback;end if;
+        l_idle:=0;
+      else
+        dbms_session.sleep(.01);l_idle:=l_idle+1;
+        if mod(l_idle,100)=0 then
+          update doom_match_worker_control set
+            heartbeat=(localtimestamp at time zone 'UTC')
+            where match_id=p_match and generation=l_generation;
+          commit;
+        end if;
+      end if;
+    end loop;
+    l_dispose:=doom_mocha_dispose;
+    update doom_match_worker_control set worker_status='STOPPED',
+      heartbeat=(localtimestamp at time zone 'UTC')
+      where match_id=p_match and generation=l_generation;
+    commit;
+  exception when others then
+    declare l_error varchar2(2000):=sqlerrm;l_ignored varchar2(4000);
+    begin
+      begin l_ignored:=doom_mocha_dispose;exception when others then null;end;
+      fail_control(p_match,l_error);
+    end;
+  end;
+
+  procedure start_ready(
+    p_match in varchar2,p_wait_ms in number,p_match_state out varchar2
+  ) is
+    l_state varchar2(16);l_epoch number;l_generation number;l_count number;
+    l_job varchar2(64):='DOOM_MATCH_'||upper(p_match);l_wait number;
+    l_dummy number;l_worker_error varchar2(2000);
+  begin
+    p_match_state:=null;l_wait:=least(greatest(coalesce(p_wait_ms,30000),0),60000);
+    select number_value into l_dummy from doom_config
+      where config_key='MAX_ACTIVE_SESSIONS' for update;
+    select match_state,membership_epoch,generation into l_state,l_epoch,l_generation
+      from doom_match where match_id=p_match for update;
+    if l_state='ACTIVE' and l_generation>0 then p_match_state:='ACTIVE';commit;return;end if;
+    if l_state<>'LOBBY' or l_generation<>0 then
+      raise_application_error(c_error,'match is not startable');
+    end if;
+    select count(*) into l_count from doom_match_member where match_id=p_match
+      and member_state='READY' and membership_epoch=l_epoch;
+    if l_count<>2 then raise_application_error(c_error,'membership is not ready');end if;
+    select count(*) into l_count from doom_match_worker_control
+      where worker_status in('STARTING','READY');
+    if l_count>=4 then raise_application_error(-20702,'match worker capacity reached');end if;
+    delete from doom_match_worker_control where match_id=p_match
+      and worker_status in('FAILED','STOPPED');
+    begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
+    insert into doom_match_worker_control(match_id,generation,membership_epoch,
+      job_name,worker_status,request_status,heartbeat)
+    values(p_match,1,l_epoch,l_job,'STARTING','IDLE',
+      (localtimestamp at time zone 'UTC'));
+    commit;
+    dbms_scheduler.create_job(job_name=>l_job,job_type=>'STORED_PROCEDURE',
+      job_action=>'DOOM_MATCH_WORKER.RUN_MATCH',number_of_arguments=>1,
+      enabled=>false,auto_drop=>false);
+    dbms_scheduler.set_job_argument_value(l_job,1,p_match);
+    dbms_scheduler.enable(l_job);
+    for poll_ in 1..ceil(l_wait/20) loop
+      begin
+        select worker_status,last_error into l_state,l_worker_error
+          from doom_match_worker_control
+          where match_id=p_match;
+        if l_state='READY' then p_match_state:='ACTIVE';return;
+        elsif l_state='FAILED' then
+          raise_application_error(c_error,'match worker failed: '||l_worker_error);
+        end if;
+      exception when no_data_found then
+        raise_application_error(c_error,'match worker disappeared');
+      end;
+      dbms_session.sleep(.02);
+    end loop;
+    p_match_state:='STARTING';
+  exception when others then
+    if sqlcode between -20999 and -20000 then raise;end if;
+    raise_application_error(c_error,'match worker start failed');
+  end;
+
+  procedure submit_command(
+    p_match in varchar2,p_player_slot in number,p_membership_epoch in number,
+    p_generation in number,p_tic in number,p_command_seq in number,
+    p_ticcmd_raw in raw,p_accepted out number
+  ) is
+    l_current number;l_state varchar2(16);l_count number;l_existing raw(8);
+    l_existing_seq number;l_seq_frontier number;
+    l_now timestamp with time zone:=utc_now;l_sha varchar2(64);
+  begin
+    p_accepted:=0;
+    if p_player_slot not between 0 and 1 or p_ticcmd_raw is null or
+       utl_raw.length(p_ticcmd_raw)<>8 or p_tic is null or p_command_seq is null then
+      raise_application_error(c_error,'invalid match command');
+    end if;
+    select match_state,current_tic into l_state,l_current from doom_match
+      where match_id=p_match and membership_epoch=p_membership_epoch
+        and generation=p_generation for update;
+    begin
+      select ticcmd_raw,command_seq into l_existing,l_existing_seq
+        from doom_match_command
+        where match_id=p_match and tic=p_tic and player_slot=p_player_slot;
+      if l_existing<>p_ticcmd_raw or l_existing_seq<>p_command_seq then
+        raise_application_error(c_error,'duplicate mismatch');
+      end if;
+      p_accepted:=1;commit;return;
+    exception when no_data_found then null;end;
+    if l_state<>'ACTIVE' or p_tic<>l_current+1 then
+      raise_application_error(c_error,'command frontier mismatch');
+    end if;
+    select coalesce(max(command_seq),0) into l_seq_frontier
+      from doom_match_command
+      where match_id=p_match and player_slot=p_player_slot;
+    if p_command_seq<>l_seq_frontier+1 then
+      raise_application_error(c_error,'command sequence mismatch');
+    end if;
+    l_sha:=sha_raw(p_ticcmd_raw);
+    insert into doom_match_command(match_id,tic,player_slot,command_seq,
+      membership_epoch,generation,command_source,ticcmd_raw,command_sha,
+      submitted_at,accepted_at)
+    values(p_match,p_tic,p_player_slot,p_command_seq,p_membership_epoch,
+      p_generation,'SUBMITTED',p_ticcmd_raw,l_sha,l_now,l_now);
+    select count(*) into l_count from doom_match_command where match_id=p_match
+      and tic=p_tic and membership_epoch=p_membership_epoch
+      and generation=p_generation and player_slot in(0,1);
+    if l_count=2 then
+      update doom_match_worker_control set request_status='QUEUED',
+        requested_tic=p_tic,heartbeat=l_now where match_id=p_match
+        and generation=p_generation and membership_epoch=p_membership_epoch
+        and worker_status='READY' and request_status='IDLE';
+      if sql%rowcount<>1 then raise_application_error(c_error,'worker is not ready');end if;
+    end if;
+    p_accepted:=1;commit;
+  exception when no_data_found then rollback;raise_application_error(c_error,'match unavailable');
+  end;
+
+  procedure poll_frame(
+    p_match in varchar2,p_player_slot in number,p_membership_epoch in number,
+    p_generation in number,p_tic in number,p_ready out number,p_payload out blob
+  ) is
+    l_blob blob;l_count number;
+  begin
+    p_ready:=0;p_payload:=null;
+    select count(*) into l_count from doom_match where match_id=p_match
+      and membership_epoch=p_membership_epoch and generation=p_generation;
+    if l_count<>1 then raise_application_error(c_error,'match unavailable');end if;
+    begin
+      select response_blob into l_blob from doom_match_frame where match_id=p_match
+        and tic=p_tic and player_slot=p_player_slot
+        and membership_epoch=p_membership_epoch and generation=p_generation;
+      copy_blob(l_blob,p_payload);p_ready:=1;
+    exception when no_data_found then null;end;
+  end;
+
+  procedure stop_match(p_match in varchar2,p_generation in number) is
+  begin
+    update doom_match_worker_control set stop_requested=1,
+      heartbeat=(localtimestamp at time zone 'UTC')
+      where match_id=p_match and generation=p_generation;
+    commit;
+  end;
+end doom_match_worker;
+/

@@ -78,6 +78,26 @@ function stringField(document: RestDocument, name: string): string {
 
 export type NewGameResult = {session: string; payload: string};
 export type AssetResult = {payload: string; mediaType: string};
+export type MatchCredentials = {
+  match: string;
+  hostCapability: string;
+  joinCapability: string;
+  playerCapability: string;
+};
+export type MatchStatus = {
+  state: string;
+  mode: string;
+  skill: number;
+  episode: number;
+  map: number;
+  maxPlayers: number;
+  memberCount: number;
+  readyCount: number;
+  requesterSlot: number;
+  membershipEpoch: number;
+  generation: number;
+  currentTic: number;
+};
 
 export async function newGame(skill = 3): Promise<NewGameResult> {
   const document = await post('new_game', {p_skill: skill});
@@ -121,5 +141,112 @@ export async function getAsset(name: string): Promise<AssetResult> {
   return {
     payload: stringField(document, 'p_payload'),
     mediaType: stringField(document, 'p_media_type')
+  };
+}
+
+function numberField(document: RestDocument, name: string): number {
+  const value = document[name];
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
+    throw new TypeError(`${name} response field is invalid`);
+  }
+  return value;
+}
+
+function capabilityField(document: RestDocument, name: string): string {
+  const value = stringField(document, name);
+  if (!/^[0-9a-f]{64}$/.test(value)) {
+    throw new TypeError(`${name} response field is invalid`);
+  }
+  return value;
+}
+
+export async function createMatch(displayName: string, skill = 3): Promise<MatchCredentials> {
+  const document = await post('create_match', {
+    p_game_mode: 'COOP', p_skill: skill, p_episode: 1, p_map: 1,
+    p_display_name: displayName
+  });
+  const match = stringField(document, 'p_match');
+  if (!/^[0-9a-f]{32}$/.test(match)) throw new TypeError('match response is invalid');
+  return {
+    match,
+    hostCapability: capabilityField(document, 'p_host_capability'),
+    joinCapability: capabilityField(document, 'p_join_capability'),
+    playerCapability: capabilityField(document, 'p_player_capability')
+  };
+}
+
+export async function joinMatch(match: string, joinCapability: string,
+                                displayName: string,
+                                playerCapability: string | null = null): Promise<{
+  playerCapability: string; playerSlot: number;
+}> {
+  const document = await post('join_match', {
+    p_match: match, p_join_capability: joinCapability,
+    p_display_name: displayName, p_player_capability: playerCapability
+  });
+  return {
+    playerCapability: capabilityField(document, 'p_player_capability'),
+    playerSlot: numberField(document, 'p_player_slot')
+  };
+}
+
+export async function readyMatch(match: string, playerCapability: string,
+                                 ready: boolean): Promise<string> {
+  const document = await post('ready_match', {
+    p_match: match, p_player_capability: playerCapability,
+    p_ready: ready ? 1 : 0
+  });
+  return stringField(document, 'p_match_state');
+}
+
+export async function matchStatus(match: string, capability: string): Promise<MatchStatus> {
+  const document = await post('match_status', {
+    p_match: match, p_capability: capability
+  });
+  return {
+    state: stringField(document, 'p_match_state'),
+    mode: stringField(document, 'p_game_mode'),
+    skill: numberField(document, 'p_skill'),
+    episode: numberField(document, 'p_episode'),
+    map: numberField(document, 'p_map'),
+    maxPlayers: numberField(document, 'p_max_players'),
+    memberCount: numberField(document, 'p_member_count'),
+    readyCount: numberField(document, 'p_ready_count'),
+    requesterSlot: numberField(document, 'p_requester_slot'),
+    membershipEpoch: numberField(document, 'p_membership_epoch'),
+    generation: numberField(document, 'p_generation'),
+    currentTic: numberField(document, 'p_current_tic')
+  };
+}
+
+export async function submitMatchStep(match: string, playerCapability: string,
+                                      tic: number, sequence: number,
+                                      ticcmdHex: string): Promise<{
+  accepted: number; membershipEpoch: number; generation: number;
+}> {
+  const document = await postAsync('submit_match_step', {
+    p_match: match, p_player_capability: playerCapability, p_tic: tic,
+    p_command_seq: sequence, p_ticcmd_hex: ticcmdHex
+  });
+  return {
+    accepted: numberField(document, 'p_accepted'),
+    membershipEpoch: numberField(document, 'p_membership_epoch'),
+    generation: numberField(document, 'p_generation')
+  };
+}
+
+export async function pollMatchFrame(match: string, playerCapability: string,
+                                     tic: number, waitMilliseconds = 1000): Promise<{
+  currentTic: number; payload: string | null;
+}> {
+  const document = await postAsync('poll_match_frame', {
+    p_match: match, p_player_capability: playerCapability,
+    p_tic: tic, p_wait_ms: waitMilliseconds
+  });
+  const ready = numberField(document, 'p_ready');
+  if (ready !== 0 && ready !== 1) throw new TypeError('p_ready response field is invalid');
+  return {
+    currentTic: numberField(document, 'p_current_tic'),
+    payload: ready === 1 ? stringField(document, 'p_payload') : null
   };
 }
