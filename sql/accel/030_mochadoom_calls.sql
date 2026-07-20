@@ -182,6 +182,15 @@ as language java
 name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerStepPayloadsSafe(int,java.lang.String,java.lang.String,java.sql.Blob,java.sql.Blob,java.sql.Blob,java.sql.Blob) return java.lang.String';
 /
 
+create or replace function doom_mocha_multiplayer_reconstruct(
+  p_active_players in number,p_deathmatch in number,p_skill in number,
+  p_episode in number,p_map in number,p_command_stream in blob,
+  p_initial_state_sha in varchar2,p_expected_state_sha in varchar2,
+  p_output0 in blob,p_output1 in blob,p_output2 in blob,p_output3 in blob
+) return varchar2 as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerReconstructPayloadsSafe(int,int,int,int,int,java.sql.Blob,java.lang.String,java.lang.String,java.sql.Blob,java.sql.Blob,java.sql.Blob,java.sql.Blob) return java.lang.String';
+/
+
 -- Migration decoder for database-side gates: selected Mocha frames are raw
 -- DMF3, while the preserved SQL renderer and older ledgers remain gzip.
 create or replace function doom_mocha_payload_plain(p_payload in blob)

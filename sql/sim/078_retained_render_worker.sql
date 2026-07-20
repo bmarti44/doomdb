@@ -114,12 +114,13 @@ create or replace package body doom_render_worker as
     l_response_bytes number;l_response_sha varchar2(64);l_pack_sha varchar2(64);
     l_render_us number;l_started timestamp with time zone;l_status varchar2(24);
     l_deadline timestamp with time zone;l_error varchar2(4000);l_pending number:=0;
+    l_pack_offset pls_integer:=c_payload_prefix+1;
   begin
     if utl_raw.length(p_payload)<=c_payload_prefix then
       raise_application_error(c_invalid,'short render task envelope');end if;
     l_request:=utl_raw.cast_to_varchar2(utl_raw.substr(p_payload,1,32));
     l_state_sha:=utl_raw.cast_to_varchar2(utl_raw.substr(p_payload,33,64));
-    l_pack:=utl_raw.substr(p_payload,c_payload_prefix+1);
+    l_pack:=utl_raw.substr(p_payload,l_pack_offset);
     select generation,expected_tic+1,expected_command_seq+1 into
       l_sim_generation,l_expected_tic,l_expected_seq
       from doom_worker_request where request_id=l_request and worker_slot=p_slot

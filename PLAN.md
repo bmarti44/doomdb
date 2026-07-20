@@ -3007,8 +3007,10 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   root determinism, fencing, and match isolation. A 75 ms deadline now records
   a neutral command/bitmap for a missing peer, same-capability reconnect restores
   a disconnected slot, and tic 32 writes a verified native Mocha checkpoint in
-  the frontier transaction. Restart reconstruction and bounded final leave
-  semantics remain open.
+  the frontier transaction. A fresh OJVM session also replayed all 32 ordered
+  vectors with the original per-tic POV cadence and reproduced the exact final
+  state SHA and both frame hashes. Automatic generation-bumped restart wiring
+  and bounded final leave semantics remain open.
 
 #### T13.3 Co-op client, replay, and recovery
 

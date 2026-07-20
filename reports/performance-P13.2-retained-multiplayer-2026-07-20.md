@@ -29,6 +29,13 @@ correctness checkpoint, not final multiplayer acceptance or a 30 FPS claim.
 - Tic 32 writes a native Mocha save directly into the durable checkpoint BLOB.
   Its byte count, SHA-256, and state identity are verified in the same frontier
   transaction.
+- Native save/load was explicitly rejected for recovery because it restored the
+  world but not the exact POV hashes. A fresh OJVM session instead replayed all
+  32 durable ordered vectors with the production render cadence and reproduced
+  the exact final state SHA and both player frame hashes.
+- A clean-volume bootstrap exposed and fixed missing Mocha teardown tables,
+  stale finalizer object names, and a missing OJVM renderer-call deployment
+  step. The corrected finalizer reports zero invalid runtime objects.
 
 ## Measurements
 

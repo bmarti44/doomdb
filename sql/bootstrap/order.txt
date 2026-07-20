@@ -32,6 +32,7 @@ sql/accel/013_sector_runtime_static.sql
 sql/accel/014_imp_fireball_asset.sql
 sql/accel/015_renderer_asset_pack.sql
 sql/accel/019_ojvm_unified_worker_calls.sql
+sql/accel/020_ojvm_renderer_calls.sql
 sql/accel/030_mochadoom_calls.sql
 sql/render/r1/010_rays_intersections.sql
 sql/render/r1/020_pixels.sql

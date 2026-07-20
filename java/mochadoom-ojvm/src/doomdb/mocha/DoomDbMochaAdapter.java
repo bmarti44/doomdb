@@ -983,6 +983,69 @@ public final class DoomDbMochaAdapter {
     }
   }
 
+  /** Rebuild a multiplayer world from its canonical ordered vector ledger. */
+  public static synchronized String multiplayerReconstructPayloadsSafe(
+      int activePlayers, int deathmatch, int skill, int episode, int map,
+      Blob commandStream, String initialStateSha, String expectedStateSha,
+      Blob output0, Blob output1, Blob output2, Blob output3) {
+    try {
+      if (commandStream == null || initialStateSha == null || expectedStateSha == null
+          || !initialStateSha.matches("[0-9a-f]{64}")
+          || !expectedStateSha.matches("[0-9a-f]{64}")) {
+        throw new IllegalArgumentException("multiplayer reconstruction inputs");
+      }
+      byte[] vectors = readBlob(commandStream, 32L * 1024L * 1024L);
+      if (vectors.length % 32 != 0) {
+        throw new IllegalArgumentException("command vector stream length " + vectors.length);
+      }
+      initializeMultiplayerEngine(activePlayers, deathmatch, skill, episode, map);
+      String membership = multiplayerMembership(activePlayers);
+      String stateSha = initialStateSha;
+      byte[] applied = new byte[32];
+      int vectorCount = vectors.length / 32;
+      for (int vector = 0; vector < vectorCount; vector++) {
+        Arrays.fill(applied, (byte) 0);
+        for (int player = 0; player < activePlayers; player++) {
+          int offset = vector * 32 + player * doom.ticcmd_t.TICCMDLEN;
+          int buffer = (engine.gametic / engine.getTicdup())
+              % engine.netcmds[player].length;
+          doom.ticcmd_t command = engine.netcmds[player][buffer];
+          command.unpack(vectors, offset);
+          command.consistancy = multiplayerConsistency[player][buffer];
+          command.chatchar = 0;
+          command.lookfly = 0;
+          command.pack(applied, player * doom.ticcmd_t.TICCMDLEN);
+        }
+        tickMultiplayerEngine();
+        stateSha = hashAscii(stateSha + '|' + membership + '|'
+            + hex(applied) + '|' + multiplayerStateSha(activePlayers));
+        if (vector + 1 < vectorCount) {
+          int savedConsole = engine.consoleplayer;
+          int savedDisplay = engine.displayplayer;
+          try {
+            for (int player = 0; player < activePlayers; player++) {
+              engine.consoleplayer = player;
+              engine.displayplayer = player;
+              engine.Display();
+            }
+          } finally {
+            engine.consoleplayer = savedConsole;
+            engine.displayplayer = savedDisplay;
+          }
+        }
+      }
+      if (!stateSha.equals(expectedStateSha)) {
+        throw new IllegalStateException("reconstruction state mismatch actual=" + stateSha);
+      }
+      return renderMultiplayerPayloads("multiplayer-reconstructed", activePlayers,
+          membership, stateSha, new Blob[] {output0, output1, output2, output3})
+          + "|replayedVectors=" + vectorCount;
+    } catch (Throwable failure) {
+      disposeSafe();
+      return failure("multiplayer-reconstruct", failure);
+    }
+  }
+
   private static void initializeMultiplayerEngine(
       int activePlayers, int deathmatch, int skill, int episode, int map)
       throws Exception {

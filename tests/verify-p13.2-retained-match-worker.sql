@@ -12,6 +12,8 @@ declare
   payload0_ blob;payload1_ blob;count_ number;vector_ varchar2(64);
   frame0_ varchar2(64);frame1_ varchar2(64);root1_ varchar2(64);
   root2_ varchar2(64);job_ varchar2(64);worker_error_ varchar2(2000);
+  stream_ blob;adapter_status_ varchar2(4000);discard_ varchar2(4000);
+  final_state_ varchar2(64);
 
   procedure status_(match_id_ varchar2,capability_ varchar2) is
   begin
@@ -44,6 +46,12 @@ declare
     doom_api.ready_match(match_,p0_,1,state_);
     if state_<>'LOBBY' then raise_application_error(-20000,'premature start');end if;
     doom_api.ready_match(match_,p1_,1,state_);
+    if state_='STARTING' then
+      for poll_ in 1..1200 loop
+        status_(match_,host_);
+        exit when state_='ACTIVE';dbms_session.sleep(.1);
+      end loop;
+    end if;
     if state_<>'ACTIVE' then raise_application_error(-20000,'real start failed '||state_);end if;
     status_(match_,host_);epoch_:=epoch1_;generation_:=generation1_;
     if state_<>'ACTIVE' or generation_<>1 or tic_<>0 then
@@ -168,6 +176,33 @@ begin
       and regexp_like(checkpoint_.checkpoint_sha,'^[0-9a-f]{64}$');
   if count_<>1 then raise_application_error(-20000,'tic32 checkpoint absent');end if;
 
+  -- A fresh session-private engine rebuilt only from the ordered durable
+  -- vectors must reproduce the selected state and both POV hashes exactly.
+  select state_sha into root1_ from doom_match_tic
+    where match_id=match1_ and tic=0;
+  select state_sha into final_state_ from doom_match_tic
+    where match_id=match1_ and tic=32;
+  select frame_sha into frame0_ from doom_match_frame
+    where match_id=match1_ and tic=32 and player_slot=0;
+  select frame_sha into frame1_ from doom_match_frame
+    where match_id=match1_ and tic=32 and player_slot=1;
+  dbms_lob.createtemporary(stream_,true,dbms_lob.call);
+  for vector_ in (select command_vector from doom_match_tic
+    where match_id=match1_ and tic between 1 and 32 order by tic) loop
+    dbms_lob.writeappend(stream_,32,vector_.command_vector);
+  end loop;
+  dbms_lob.createtemporary(payload0_,true,dbms_lob.call);
+  dbms_lob.createtemporary(payload1_,true,dbms_lob.call);
+  adapter_status_:=doom_mocha_multiplayer_reconstruct(2,0,3,1,1,stream_,
+    root1_,final_state_,payload0_,payload1_,null,null);
+  if substr(adapter_status_,1,3)<>'ok|' or
+     regexp_substr(adapter_status_,'\|pov0FrameSha=([0-9a-f]{64})',1,1,null,1)<>frame0_ or
+     regexp_substr(adapter_status_,'\|pov1FrameSha=([0-9a-f]{64})',1,1,null,1)<>frame1_ then
+    raise_application_error(-20000,'ledger reconstruction mismatch '||
+      substr(adapter_status_,1,1200));
+  end if;
+  discard_:=doom_mocha_dispose;
+
   start_('WORKER_B',match2_,host2_,join2_,p20_,p21_,epoch2_,generation2_);
   select previous_state_sha into root1_ from doom_match_tic
     where match_id=match1_ and tic=0;
@@ -183,7 +218,7 @@ begin
 
   cleanup_(match2_);cleanup_(match1_);
   dbms_output.put_line('PASS P13.2-RETAINED-MATCH-WORKER real-start/'||
-    'arbitrary-arrival/one-tic/two-POV/idempotency/neutral-deadline/reconnect/checkpoint/root/isolation');
+    'arbitrary-arrival/one-tic/two-POV/idempotency/neutral-deadline/reconnect/checkpoint/ledger-reconstruct/root/isolation');
 exception when others then
   rollback;cleanup_(match2_);cleanup_(match1_);raise;
 end;

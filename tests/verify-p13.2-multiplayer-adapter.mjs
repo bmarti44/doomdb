@@ -8,7 +8,8 @@ const calls = fs.readFileSync(new URL(
   '../sql/accel/030_mochadoom_calls.sql', import.meta.url), 'utf8');
 
 for (const entrypoint of [
-  'multiplayerNewGamePayloadsSafe', 'multiplayerStepPayloadsSafe'
+  'multiplayerNewGamePayloadsSafe', 'multiplayerStepPayloadsSafe',
+  'multiplayerReconstructPayloadsSafe'
 ]) {
   assert.match(adapter, new RegExp(`public static synchronized String ${entrypoint}\\(`));
   const body = adapter.slice(adapter.indexOf(entrypoint),
@@ -28,6 +29,7 @@ assert.match(adapter, /MULTI_INITIAL/);
 assert.match(adapter, /previousStateSha \+ '\|' \+ membership/);
 assert.match(calls, /create or replace function doom_mocha_multiplayer_new_game/i);
 assert.match(calls, /create or replace function doom_mocha_multiplayer_step/i);
+assert.match(calls, /create or replace function doom_mocha_multiplayer_reconstruct/i);
 
 process.stdout.write(
   'PASS P13.2-MULTIPLAYER-ADAPTER-SOURCE one world tic, ordered vector, immutable POVs, catch-all\n');

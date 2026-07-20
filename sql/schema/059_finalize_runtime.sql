@@ -5,8 +5,7 @@ whenever sqlerror exit failure rollback
 -- so a clean bootstrap finishes with no INVALID objects.
 alter trigger doom_game_events_bir compile;
 alter procedure doom_renderer_delta_fill compile;
-alter procedure doom_renderer_json_snapshot_fill compile;
-alter view doom_r2_staged_sample_rows compile;
+alter procedure doom_renderer_snapshot_fill compile;
 alter package doom_unified_worker compile body;
 
 declare

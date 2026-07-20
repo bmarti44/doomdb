@@ -51,6 +51,7 @@ begin
   drop_object('drop function doom_unified_actor_last_error', -4043);
   drop_object('drop function doom_retained_render_recovery_status', -4043);
   drop_object('drop procedure doom_renderer_snapshot_fill', -4043);
+  drop_object('drop procedure doom_renderer_delta_fill', -4043);
   drop_object('drop package doom_api', -4043);
   drop_object('drop function doom_r2_staged_masked_pixels', -4043);
   drop_object('drop function doom_r2_staged_masked_candidates', -4043);
@@ -101,6 +102,11 @@ begin
   drop_object('drop function doom_mocha_dispose', -4043);
   drop_object('drop function doom_mocha_benchmark', -4043);
   drop_object('drop function doom_mocha_probe', -4043);
+  drop_object('drop function doom_mocha_multiplayer_probe', -4043);
+  drop_object('drop function doom_mocha_multiplayer_benchmark', -4043);
+  drop_object('drop function doom_mocha_multiplayer_new_game', -4043);
+  drop_object('drop function doom_mocha_multiplayer_step', -4043);
+  drop_object('drop function doom_mocha_multiplayer_reconstruct', -4043);
   drop_object('drop view doom_r2_masked_candidate_rows', -942);
   drop_object('drop view doom_api_presentation_rows', -942);
   drop_object('drop view doom_r2_staged_masked_candidate_rows', -942);
@@ -133,6 +139,7 @@ begin
         'FRAME_R1_HIT','FRAME_RENDER_SEG_BOUND','FRAME_COLUMN',
         'REPLAY_CURSORS','HISTORY_HEADS','SAVE_SLOTS','STATE_HISTORY','STEP_RESPONSES','AUDIO_EVENTS','GAME_EVENTS',
         'DOOM_MATCH_WORKER_CONTROL','DOOM_MATCH_CHECKPOINT','DOOM_MATCH_FRAME','DOOM_MATCH_COMMAND','DOOM_MATCH_TIC','DOOM_MATCH_MEMBER','DOOM_MATCH',
+        'DOOM_MOCHA_FRAME_LEDGER','DOOM_MOCHA_INITIAL_FRAME','DOOM_MOCHA_SAVE_SLOT','DOOM_MOCHA_FRAME_CACHE',
         'DOOM_MOCHA_COMMAND','DOOM_MOCHA_LINEAGE','DOOM_WORKER_AUDIT','DOOM_WORKER_RESULT','DOOM_WORKER_REQUEST','DOOM_WORKER_CONTROL',
         'TIC_COMMANDS','ACTIVE_SWITCHES','ACTIVE_MOVERS','LINE_STATE','SECTOR_STATE',
         'MOBJS','PLAYERS','GAME_SESSIONS','DOOM_BLOCK_LINE','DOOM_BLOCK_CELL',
