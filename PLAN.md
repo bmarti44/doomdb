@@ -2594,6 +2594,19 @@ the clean-room engine unless it is needed to validate the new public contract.
   combat, keyed-door, lift, secret, milestone, replay, and visual-review matrix
   remains open. Replaying the same route at skill 3 ended in GAME at tic 762,
   so that broader acceptance still needs its own authored route.
+- Skill-3 route-authoring diagnostic checkpoint (2026-07-20): the retained
+  engine status now exposes a bounded, distance-ordered `nearby` field for at
+  most 24 pickups, shootable actors/barrels, and missiles within 1,024 map
+  units. It is read-only, excluded from canonical state material and public
+  payloads, and has a defensive 8,192-thinker traversal ceiling. This isolated
+  the route's false 32-unit portal at linedef 550 (a 160-unit floor jump), the
+  immediate shotgunner/projectile lanes at tic 4,092, and the actual shotgun
+  drop. A save/load authoring branch now owns the shotgun at tic 4,397 with
+  18 HP and state SHA
+  `1d4814cea4bba63af4dea15fc94c302df3a5aa423d4dadee64d51f3140bcd09f`.
+  That branch is navigation evidence only: it used public save/load while being
+  authored and does not replace the required fresh uninterrupted AutoREST
+  replay or any T8.1 acceptance gate.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 

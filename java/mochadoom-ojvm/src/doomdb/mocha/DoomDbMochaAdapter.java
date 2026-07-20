@@ -16,6 +16,7 @@ package doomdb.mocha;
 import data.Tables;
 import defines.skill_t;
 import doom.DoomMain;
+import doom.thinker_t;
 import java.awt.GraphicsEnvironment;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -29,11 +30,15 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.zip.CRC32;
 import mochadoom.Engine;
+import p.mobj_t;
 import savegame.IDoomSaveGame;
 import savegame.IDoomSaveGameHeader;
 import savegame.VanillaDSG;
@@ -789,9 +794,51 @@ public final class DoomDbMochaAdapter {
         + "|fullmap=" + (player.powers[data.Defines.pw_allmap] != 0 ? 1 : 0)
         + "|ownedWeapons=" + weapons + "|ownedKeys=" + keys
         + "|armor=" + player.armorpoints[0] + playerState
+        + "|nearby=" + nearbyMobjs(player)
         + "|width=" + engine.graphicSystem.getScreenWidth()
         + "|height=" + engine.graphicSystem.getScreenHeight()
         + "|frameBytes=" + pixels.length + "|frameSha256=" + frameSha;
+  }
+
+  /** Compact, read-only route-authoring diagnostics ordered by player distance. */
+  private static String nearbyMobjs(doom.player_t player) {
+    if (player.mo == null) return "NONE";
+    final int playerX = player.mo.x;
+    final int playerY = player.mo.y;
+    ArrayList<mobj_t> nearby = new ArrayList<mobj_t>();
+    thinker_t cap = engine.actions.getThinkerCap();
+    int examined = 0;
+    for (thinker_t thinker = cap.next; thinker != null && thinker != cap;
+         thinker = thinker.next) {
+      if (++examined > 8192) break;
+      if (!(thinker instanceof mobj_t)) continue;
+      mobj_t mobj = (mobj_t) thinker;
+      if (mobj == player.mo || mobj.type == null) continue;
+      if ((mobj.flags & (mobj_t.MF_SPECIAL | mobj_t.MF_SHOOTABLE
+          | mobj_t.MF_MISSILE)) == 0) continue;
+      long dx = ((long) mobj.x - playerX) >> 16;
+      long dy = ((long) mobj.y - playerY) >> 16;
+      if (dx * dx + dy * dy <= 1024L * 1024L) nearby.add(mobj);
+    }
+    Collections.sort(nearby, new Comparator<mobj_t>() {
+      public int compare(mobj_t left, mobj_t right) {
+        long ldx = ((long) left.x - playerX) >> 16;
+        long ldy = ((long) left.y - playerY) >> 16;
+        long rdx = ((long) right.x - playerX) >> 16;
+        long rdy = ((long) right.y - playerY) >> 16;
+        return Long.compare(ldx * ldx + ldy * ldy, rdx * rdx + rdy * rdy);
+      }
+    });
+    StringBuilder result = new StringBuilder();
+    int count = Math.min(24, nearby.size());
+    for (int index = 0; index < count; index++) {
+      mobj_t mobj = nearby.get(index);
+      if (index > 0) result.append(';');
+      result.append(mobj.type.name()).append('@')
+          .append(mobj.x >> 16).append(',').append(mobj.y >> 16)
+          .append(',').append(mobj.z >> 16).append(',').append(mobj.health);
+    }
+    return result.length() == 0 ? "NONE" : result.toString();
   }
 
   private static String currentFrameSha() throws Exception {
