@@ -2661,6 +2661,20 @@ the clean-room engine unless it is needed to validate the new public contract.
   dodged and the lift wall consumes upward auto-aim. Resource acquisition or
   pre-alert timing must make that crossing survivable before it joins the
   candidate route.
+- Skill-3 resource checkpoint (2026-07-20): the wall-bounded resource detour
+  from the sergeant checkpoint is now solved and independently replayed. The
+  183-command suffix first clears linedef 619's south endpoint, then collects
+  the health bonus at `(576,-352)` and all three armor bonuses along
+  `y=-800`. It ends alive at tic 9,879 with 6 HP, 3 armor, state SHA
+  `2b944b64ff8070979410a7f6c3f874306d89a31432d10e80051f45416e9ef8a6`,
+  and frame SHA
+  `eff53d27ba0a6a3bc01723bdb8b8d92d2392e703447dfe3f243204b28ad5fb61`.
+  Slot 91 and
+  `artifacts/t8.1-live/mocha-skill3-resource-prefix-9879.json` preserve the
+  exact result; a fresh slot-92 reconstruction reproduced both hashes, and
+  the full 9,879-command export retains byte-identical 9,696-command ancestry.
+  The remaining immediate gate is proving that this added health/armor
+  survives the fixed upper-shotgunner attack while sector 103 lowers.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 
