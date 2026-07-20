@@ -2646,6 +2646,21 @@ the clean-room engine unless it is needed to validate the new public contract.
   are byte-for-byte equal to the independently replayed prefix. This remains
   authoring evidence until the complete route reaches intermission and the
   entire 9,223-plus command stream passes a fresh uninterrupted replay.
+- Skill-3 hitscan checkpoint (2026-07-20): the authoring lineage now extends
+  that prefix to 9,696 cheat-free public commands in
+  `artifacts/t8.1-live/mocha-skill3-sergeant-prefix-9696.json`. The added
+  branch returns from the sector-98 lift, kills the portal-320 sergeant from
+  repeatable pillar cover, and remains alive at 5 HP with state SHA
+  `2d394e4049d608bc2e1402e31709472b048bb338280e656075bdefe687c282d7`
+  and frame SHA
+  `4efb6b134ab28bd5d2e6f0c2fbb46f5cea0ce9edc70ced9dd2ad0b0d5c523ec2`.
+  Slot 92 preserves the exact pose. A fresh slot-93 reconstruction and public
+  replay reproduced both hashes. The next lift approach exposed a separate
+  fixed-tic upper shotgunner lane; failed standing-wait, movement-dodge, and
+  below-floor return-fire variants are rejected because the hitscan cannot be
+  dodged and the lift wall consumes upward auto-aim. Resource acquisition or
+  pre-alert timing must make that crossing survivable before it joins the
+  candidate route.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 
