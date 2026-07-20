@@ -2612,6 +2612,25 @@ the clean-room engine unless it is needed to validate the new public contract.
   That branch is navigation evidence only: it used public save/load while being
   authored and does not replace the required fresh uninterrupted AutoREST
   replay or any T8.1 acceptance gate.
+- Long-route replay and engine-hardening checkpoint (2026-07-19): the lineage
+  exporter now follows each frame-ledger request back to its original worker
+  command and emits large routes as aligned base64, so a complete 6,336-command
+  save/load branch replayed through public AutoREST with exact terminal state
+  SHA `68de10756199650d18572616912d96e918a5d5eec3506822d5c8a485a138d5c6`
+  and frame SHA
+  `0cc39549ed4989ae93af34113b62a179426b8e8267a2bd1d20ed593b888e16ad`.
+  A fresh clean replay then reached a safe tic-7,953 checkpoint with state SHA
+  `9c621f1dd7521bcba28e390a8c271db23c113c02fc663ceb31003722fdde6e78`.
+  The next combat branch deterministically fenced its worker after tic 8,006:
+  `AbstractDoomAudio.AdjustSoundParams` indexed `finesine` with upper unsigned
+  angle bits. Overlay `0007-audio-fine-angle-mask.patch` constrains the lookup
+  to `FINEMASK`; after deployment and reconstruction, the exact failing branch
+  advanced through tic 8,048 in GAME mode with state SHA
+  `508f2d9af8393f9b983b05278f6e952c321f44b88a56e529508b418be726eabd`
+  and frame SHA
+  `ce31d6dd25fb2d8df0f02029db40b7132dfb1a385a89eb6d312ca2108f52c01a`.
+  These are route-authoring and crash-recovery evidence only; the required
+  uninterrupted normal-skill-3 completion, milestones, and replay remain open.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 

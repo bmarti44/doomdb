@@ -40,6 +40,11 @@ What works today, all verified by repeatable gates:
   evicted (bounded, deterministic, durable-state reconstruct) so a new player
   is never refused; the eleven-gate Mocha regression suite passes from a fully
   occupied pool.
+- **Long-route hardening.** A complete 6,336-command save/load lineage export
+  now replays byte-exactly through public AutoREST. That route exposed an
+  unsigned fine-angle audio lookup after tic 8,006; the clean-room overlay now
+  masks the cyclic lookup exactly like vanilla Doom, and the formerly failing
+  branch advances normally through tic 8,048 after worker reconstruction.
 - **Fast new games.** A pre-warmed standby worker constructs the next Mocha
   engine ahead of the claim, cutting a new game from ~17 s cold to ~1.4 s —
   proven byte-exact with a cold construction (identical frame/state/payload
@@ -66,7 +71,9 @@ What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 - **P8** — finish the exhaustive normal-skill-3 E1M1 route (resources,
   representative combat, keyed door, lift, secret, replay, and visual review).
   A separate uninterrupted 762-command no-cheat route now completes E1M1
-  repeatably; direct AutoREST and all four T8.2 browser workflows are green.
+  repeatably; direct AutoREST and all four T8.2 browser workflows are green. A
+  byte-exact 6,336-command prefix and a safe tic-7,953 authoring checkpoint are
+  also verified, but neither weakens the uninterrupted skill-3 acceptance gate.
 - **P9 is complete** — the Oracle `MODEL`-clause title fire animation passed
   two independent full-size database runs, deterministic checks, mutation
   checks, and visual review.
