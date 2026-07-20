@@ -2604,6 +2604,11 @@ the clean-room engine unless it is needed to validate the new public contract.
   drop. A save/load authoring branch now owns the shotgun at tic 4,397 with
   18 HP and state SHA
   `1d4814cea4bba63af4dea15fc94c302df3a5aa423d4dadee64d51f3140bcd09f`.
+  The 173 normalized public commands from the tic-4,224 slot-93 checkpoint to
+  that pickup remain in Oracle's durable request ledger; exporting and replaying
+  them after a later save/load sequence gap reproduced both that exact state SHA
+  and frame SHA
+  `79ecae9d8a485f0ca90a515113157102c07bf279fe7b295924eb2815001332ee`.
   That branch is navigation evidence only: it used public save/load while being
   authored and does not replace the required fresh uninterrupted AutoREST
   replay or any T8.1 acceptance gate.

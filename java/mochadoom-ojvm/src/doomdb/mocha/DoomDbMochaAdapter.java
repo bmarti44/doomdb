@@ -14,6 +14,7 @@
 package doomdb.mocha;
 
 import data.Tables;
+import defines.ammotype_t;
 import defines.skill_t;
 import doom.DoomMain;
 import doom.thinker_t;
@@ -793,7 +794,12 @@ public final class DoomDbMochaAdapter {
         + "|noclip=" + ((player.cheats & doom.player_t.CF_NOCLIP) != 0 ? 1 : 0)
         + "|fullmap=" + (player.powers[data.Defines.pw_allmap] != 0 ? 1 : 0)
         + "|ownedWeapons=" + weapons + "|ownedKeys=" + keys
-        + "|armor=" + player.armorpoints[0] + playerState
+        + "|armor=" + player.armorpoints[0]
+        + "|ammo=" + player.ammo[ammotype_t.am_clip.ordinal()] + ','
+            + player.ammo[ammotype_t.am_shell.ordinal()] + ','
+            + player.ammo[ammotype_t.am_cell.ordinal()] + ','
+            + player.ammo[ammotype_t.am_misl.ordinal()]
+        + playerState
         + "|nearby=" + nearbyMobjs(player)
         + "|width=" + engine.graphicSystem.getScreenWidth()
         + "|height=" + engine.graphicSystem.getScreenHeight()

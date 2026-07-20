@@ -10,8 +10,13 @@ const route = JSON.parse(fs.readFileSync(routePath, 'utf8'));
 const commands = route.runs.flatMap(run => Array.from({length: run.repeat}, () => run.command));
 assert.equal(commands.length, route.commandCount);
 let sequence = Number(sequenceText);
-const stop = stopText ? Number(stopText) : commands.length;
-assert.ok(Number.isInteger(stop) && stop >= sequence && stop <= commands.length);
+const startSequence = route.startSequence ?? 0;
+assert.ok(Number.isInteger(startSequence) && startSequence >= 0);
+const routeEnd = startSequence + commands.length;
+const stop = stopText ? Number(stopText) : routeEnd;
+assert.ok(Number.isInteger(stop) && stop >= sequence && stop <= routeEnd);
+assert.ok(sequence >= startSequence,
+  `last sequence ${sequence} precedes route start ${startSequence}`);
 const base = process.env.DOOM_API_BASE ?? 'http://localhost:8080/ords/doom/doom_api/';
 const value = (document, key) => document[key] ?? document[key.toUpperCase()]
   ?? document.items?.[0]?.[key] ?? document.items?.[0]?.[key.toUpperCase()];
@@ -28,7 +33,12 @@ async function post(body) {
         // commit. Never advance the local sequence without a correlated DMF3
         // response; the caller can inspect the durable frontier before retrying.
         if (response.status === 555) {
-          throw Error(`555 ${await response.text()}`);
+          const body = await response.text();
+          const reason = response.headers.get('error-reason')
+            ?? body.replace(/data:[^;"']+;base64,[A-Za-z0-9+/=]+/g, '[embedded data]')
+              .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+              .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 2000);
+          throw Error(`555 ${reason}`);
         }
         if (!response.ok) throw Error(`${response.status} ${await response.text()}`);
         return response.json();
@@ -44,7 +54,8 @@ let current;
 while (sequence < stop) {
   // The retained Mocha worker intentionally accepts one exact ticcmd per
   // request. Keep this helper aligned with that public contract.
-  const batch = [{seq: sequence + 1, ...commands[sequence]}];
+  const command = commands[sequence - startSequence];
+  const batch = [{seq: sequence + 1, ...command, cheat: command.cheat ?? ''}];
   const document = await post({p_session: session,
     p_commands: JSON.stringify({v: route.envelopeVersion ?? 2, commands: batch})});
   const payload = Buffer.from(value(document, 'p_payload'), 'base64');

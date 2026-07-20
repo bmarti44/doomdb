@@ -2,11 +2,11 @@
 import fs from 'node:fs';
 
 const [input, startXText, startYText, goalXText, goalYText] = process.argv.slice(2);
-if (!input) throw Error('usage: debug-clearance-route.mjs lines.txt start-x start-y goal-x goal-y');
+if (!input) throw Error('usage: debug-clearance-route.mjs lines.txt|- start-x start-y goal-x goal-y');
 const [startX, startY, goalX, goalY] = [startXText, startYText, goalXText, goalYText].map(Number);
 if (![startX, startY, goalX, goalY].every(Number.isFinite)) throw Error('finite coordinates required');
 
-const lines = fs.readFileSync(input, 'utf8').trim().split('\n').map(row => {
+const lines = fs.readFileSync(input === '-' ? 0 : input, 'utf8').trim().split('\n').map(row => {
   const [id, flags, left, right, x1, y1, x2, y2, special, tag,
     leftFloor, leftCeiling, rightFloor, rightCeiling] = row.split('|');
   return {id: Number(id), flags: Number(flags), left, right: Number(right),
