@@ -26,6 +26,9 @@ create table doom_match_worker_control (
   worker_sid number,
   heartbeat timestamp with time zone,
   last_error varchar2(2000),
+  route_diagnostics number(1) default 0 not null,
+  route_status_tic number(12),
+  route_status varchar2(4000),
   stop_requested number(1) default 0 not null,
   constraint doom_match_worker_control_pk primary key(match_id),
   constraint doom_match_worker_control_match_fk foreign key(match_id)
@@ -37,7 +40,7 @@ create table doom_match_worker_control (
   constraint doom_match_worker_control_status_ck check(
     worker_status in('STARTING','READY','FAILED','STOPPED') and
     request_status in('IDLE','QUEUED','PROCESSING','FAILED') and
-    stop_requested in(0,1))
+    stop_requested in(0,1) and route_diagnostics in(0,1))
 );
 
 create index doom_match_worker_request_ix on doom_match_worker_control(

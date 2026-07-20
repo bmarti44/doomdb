@@ -5,15 +5,24 @@ const worker = fs.readFileSync(new URL(
   '../sql/sim/084_multiplayer_worker.sql', import.meta.url), 'utf8');
 const schema = fs.readFileSync(new URL(
   '../sql/schema/048_multiplayer_worker.sql', import.meta.url), 'utf8');
+const routeSchema = fs.readFileSync(new URL(
+  '../sql/schema/049_multiplayer_route_diagnostics.sql', import.meta.url), 'utf8');
 const api = fs.readFileSync(new URL(
   '../sql/rest/010_doom_api.sql', import.meta.url), 'utf8');
 const adapter = fs.readFileSync(new URL(
   '../java/mochadoom-ojvm/src/doomdb/mocha/DoomDbMochaAdapter.java', import.meta.url), 'utf8');
 const deploy = fs.readFileSync(new URL(
   '../scripts/mochadoom/deploy-ojvm-spike.sh', import.meta.url), 'utf8');
+const coopRoute = fs.readFileSync(new URL(
+  '../scripts/mochadoom/build-p13-coop-route-gate.mjs', import.meta.url), 'utf8');
 
 assert.match(schema, /create table doom_match_worker_control/);
 assert.match(schema, /deferrable initially deferred/);
+assert.match(schema, /route_status_tic number\(12\)/);
+assert.match(schema, /route_status varchar2\(4000\)/);
+assert.match(routeSchema, /user_tab_columns/);
+assert.match(routeSchema, /create table doom_match_route_trace/);
+assert.match(coopRoute, /P13\.3 diag=/);
 assert.match(worker, /job_type=>'STORED_PROCEDURE'/);
 assert.match(worker, /job_action=>'DOOM_MATCH_WORKER\.RUN_MATCH'/);
 assert.match(worker, /returning response_blob into l_b0/);
@@ -22,6 +31,9 @@ assert.match(worker, /complete two-player vector required/);
 assert.match(worker, /listagg\(rawtohex\(ticcmd_raw\),''\) within group\(order by player_slot\)/);
 assert.match(worker, /current_tic=p_tic-1/);
 assert.match(worker, /request_status='PROCESSING' and requested_tic=p_tic/);
+assert.match(worker, /l_route_status:=status_field\(l_status,'routeDiag'\)/);
+assert.match(worker, /route_status=case when l_route_diagnostics=1 then l_route_status/);
+assert.match(worker, /insert into doom_match_route_trace/);
 assert.match(worker, /l_existing<>p_ticcmd_raw or l_existing_seq<>p_command_seq/);
 assert.match(worker, /p_command_seq<>l_seq_frontier\+1/);
 assert.match(worker, /c_command_deadline_ms constant pls_integer:=75/);

@@ -496,6 +496,8 @@ create or replace package body doom_unified_worker as
       if sql%rowcount<>1 then
         raise_application_error(c_invalid,'route diagnostic generation fence');
       end if;
+      insert into doom_route_trace(session_token,tic,route_status)
+        values(l_session,l_expected_tic+1,l_result);
     end if;
     if mod(l_expected_tic+1,32)=0 then
       update doom_worker_control set heartbeat=systimestamp

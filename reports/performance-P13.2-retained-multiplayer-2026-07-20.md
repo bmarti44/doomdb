@@ -57,12 +57,29 @@ foreign key lacked an index and LOB removal ran on the request path. Request
 purging is removed, both cascade foreign-key paths are indexed, and bounded
 cleanup runs in a separate Scheduler job.
 
+## Co-op route evidence
+
+Active guest leave is now fixed to an exact future tic and reconstructs the
+one-player frontier exactly. Long-route testing also found and fixed the
+vanilla consistency-ring edge at rebirth: the adapter now copies Doom's actual
+post-`DoReborn` ring word, and the formerly failing skill-3 prefix advances
+through tic 4,200.
+
+The accepted solo routes are not valid open-loop co-op routes. Player 0 plus a
+neutral player 1, mirrored commands, and player 1 leaving at tic 1 all advance
+without worker/codec errors but miss the authentic exit. At the end of the
+762-tic skill-1 stream player 0 remains alive and equipped but is against
+different geometry. Private opt-in trace tables now retain each player's
+per-tic pose/state for paired route authoring; they perform no inserts when the
+diagnostic flag is off.
+
 ## Remaining P13 gates
 
-Bounded final-leave semantics, broader fault injection, representative E1M1 co-op
-mechanics, deathmatch selection, capacity/retention telemetry, the 300-frame
-two-browser run, and the 30-minute soak remain open. T12 performance follows
-P13; P11 cloud deployment remains the final milestone.
+The authentic two-slot E1M1 exit/intermission route, its exact recovery and
+worker-loss seam, broader co-op interaction fixtures, deathmatch selection,
+capacity telemetry, the 300-frame two-browser run, and the 30-minute soak remain
+open. T12 performance follows P13; P11 cloud deployment remains the final
+milestone.
 
 ## Storage incident and retention response
 

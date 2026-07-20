@@ -225,10 +225,11 @@ create or replace package body doom_match_worker as
     p_match varchar2,p_generation number,p_epoch number,p_tic number
   ) is
     l_previous varchar2(64);l_vector_hex varchar2(64);l_applied_hex varchar2(64);
-    l_status varchar2(4000);l_state varchar2(64);l_command_sha varchar2(64);
+    l_status varchar2(4000);l_route_status varchar2(4000);
+    l_state varchar2(64);l_command_sha varchar2(64);
     l_frame0 varchar2(64);l_frame1 varchar2(64);l_response0 varchar2(64);l_response1 varchar2(64);
     l_bytes0 number;l_bytes1 number;l_actual0 number;l_actual1 number;
-    l_count number;l_neutral number;l_membership number;
+    l_count number;l_neutral number;l_membership number;l_route_diagnostics number;
     l_now timestamp with time zone:=utc_now;
     l_deadline timestamp with time zone;
     l_b0 blob;l_b1 blob;l_checkpoint blob;l_event varchar2(64);
@@ -237,6 +238,9 @@ create or replace package body doom_match_worker as
   begin
     select state_sha into l_previous from doom_match_tic
       where match_id=p_match and tic=p_tic-1 and generation=p_generation;
+    select route_diagnostics into l_route_diagnostics
+      from doom_match_worker_control where match_id=p_match
+        and generation=p_generation and membership_epoch=p_epoch;
     select count(*),lower(listagg(rawtohex(ticcmd_raw),'') within group(order by player_slot)),
       coalesce(sum(case when command_source like 'NEUTRAL_%'
         then power(2,player_slot) else 0 end),0),
@@ -278,6 +282,7 @@ create or replace package body doom_match_worker as
       raise_application_error(c_error,'worker tic mismatch');
     end if;
     l_state:=status_field(l_status,'stateSha256');
+    l_route_status:=status_field(l_status,'routeDiag');
     l_applied_hex:=status_field(l_status,'commandVector');
     l_frame0:=status_field(l_status,'pov0FrameSha');
     if bitand(l_membership,2)=2 then
@@ -349,8 +354,15 @@ create or replace package body doom_match_worker as
       where match_id=p_match and match_state='ACTIVE' and generation=p_generation
         and membership_epoch=p_epoch and current_tic=p_tic-1;
     if sql%rowcount<>1 then raise_application_error(c_error,'step frontier fence');end if;
+    if l_route_diagnostics=1 then
+      insert into doom_match_route_trace(match_id,tic,route_status)
+        values(p_match,p_tic,l_route_status);
+    end if;
     update doom_match_worker_control set request_status='IDLE',requested_tic=null,
-      heartbeat=l_now,last_error=null where match_id=p_match
+      heartbeat=l_now,last_error=null,
+      route_status_tic=case when l_route_diagnostics=1 then p_tic else route_status_tic end,
+      route_status=case when l_route_diagnostics=1 then l_route_status else route_status end
+      where match_id=p_match
         and generation=p_generation and membership_epoch=p_epoch
         and request_status='PROCESSING' and requested_tic=p_tic;
     if sql%rowcount<>1 then raise_application_error(c_error,'step control fence');end if;

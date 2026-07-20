@@ -6,6 +6,8 @@ const adapter = fs.readFileSync(new URL(
   import.meta.url), 'utf8');
 const calls = fs.readFileSync(new URL(
   '../sql/accel/030_mochadoom_calls.sql', import.meta.url), 'utf8');
+const consistencyPatch = fs.readFileSync(new URL(
+  '../patches/mochadoom/0008-ojvm-consistency-ring.patch', import.meta.url), 'utf8');
 
 for (const entrypoint of [
   'multiplayerNewGamePayloadsSafe', 'multiplayerStepPayloadsSafe',
@@ -21,7 +23,10 @@ assert.match(adapter, /engine\.gametic != beforeTic \+ 1/);
 assert.match(adapter, /engine\.leveltime != beforeLevelTime \+ 1/);
 assert.match(adapter, /inactive player command/);
 assert.match(adapter, /command\.consistancy = multiplayerConsistency\[player\]\[buffer\]/);
-assert.match(adapter, /multiplayerConsistency\[player\]\[consistencyBuffer\] = consistencyBefore\[player\]/);
+assert.match(adapter, /engine\.doomdbConsistency\(player, consistencyBuffer\)/);
+assert.match(consistencyPatch, /public short doomdbConsistency/);
+assert.match(adapter, /\|routeDiag=/);
+assert.match(adapter, /private static String multiplayerRouteDiagnostic/);
 assert.match(adapter, /engine\.consoleplayer = savedConsole/);
 assert.match(adapter, /engine\.displayplayer = savedDisplay/);
 assert.match(adapter, /POV render mutated world/);

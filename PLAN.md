@@ -3043,6 +3043,21 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   displays only that player's Oracle frame. A real two-context Playwright gate
   reached synchronized tic 11 and proved distinct POVs without bearer output.
   Route/replay/recovery and the 300-frame FPS gate remain open.
+- Co-op route checkpoint (2026-07-20): the retained adapter now mirrors Doom's
+  exact internal consistency word after each world tick, including the reborn
+  case where `DoReborn` replaces the player mobj before vanilla records the
+  ring. The formerly failing neutral-peer skill-3 prefix passes through tic
+  4,200. Full control runs also prove that neither a stationary peer nor a peer
+  leaving at tic 1 makes an accepted solo command stream reach the co-op exit:
+  the 762-tic skill-1 and 13,272-tic skill-3 streams leave player 0 alive but
+  against different map geometry. This is authentic netgame route divergence,
+  not a frame-complete, worker, or codec defect. Private per-tic single-player
+  and match trace tables now record pose/state only when an internal authoring
+  flag is enabled; the default path performs no trace insert or diagnostic
+  control update. Compare the paired 762-tic traces, author and freeze a true
+  two-slot correction/replacement route, then require authentic intermission,
+  meaningful non-neutral input from both players, exact fresh reconstruction,
+  a worker-loss seam, and two-browser replay before T13.3 closes.
 
 #### T13.4 Deathmatch and player-count expansion
 

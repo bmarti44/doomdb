@@ -1154,6 +1154,36 @@ public final class DoomDbMochaAdapter {
       engine.consoleplayer = savedConsole;
       engine.displayplayer = savedDisplay;
     }
+    result.append("|routeDiag=").append(multiplayerRouteDiagnostic(activePlayers));
+    return result.toString();
+  }
+
+  /** Private, read-only state for authoring real netgame routes. */
+  private static String multiplayerRouteDiagnostic(int activePlayers) {
+    StringBuilder result = new StringBuilder();
+    for (int slot = 0; slot < activePlayers; slot++) {
+      doom.player_t player = engine.players[slot];
+      if (slot > 0) result.append(';');
+      result.append('p').append(slot).append(',').append(player.playerstate)
+          .append(',').append(player.health[0]).append(',')
+          .append(player.armorpoints[0]).append(',').append(player.killcount)
+          .append(',').append(player.itemcount).append(',')
+          .append(player.secretcount).append(',');
+      if (player.mo == null) result.append("missing");
+      else result.append(player.mo.x).append(',').append(player.mo.y).append(',')
+          .append(player.mo.z).append(',')
+          .append(Long.toUnsignedString(player.mo.angle));
+      result.append(',').append(player.ammo[ammotype_t.am_clip.ordinal()])
+          .append(',').append(player.ammo[ammotype_t.am_shell.ordinal()])
+          .append(',').append(player.ammo[ammotype_t.am_cell.ordinal()])
+          .append(',').append(player.ammo[ammotype_t.am_misl.ordinal()])
+          .append(',');
+      int keys = 0;
+      for (int key = 0; key < player.cards.length; key++) {
+        if (player.cards[key]) keys |= 1 << key;
+      }
+      result.append(keys);
+    }
     return result.toString();
   }
 
@@ -1231,22 +1261,15 @@ public final class DoomDbMochaAdapter {
   private static void tickMultiplayerEngine() {
     int consistencyBuffer = (engine.gametic / engine.getTicdup())
         % engine.netcmds[0].length;
-    short[] consistencyBefore = new short[engine.playeringame.length];
-    for (int player = 0; player < engine.playeringame.length; player++) {
-      if (!engine.playeringame[player]) continue;
-      consistencyBefore[player] = engine.players[player].mo == null
-          ? (short) engine.random.getIndex()
-          : (short) engine.players[player].mo.x;
-    }
     DummySFX.beginTic(engine.gametic + 1L);
     engine.Ticker();
     if (multiplayerConsistency != null) {
       for (int player = 0; player < engine.playeringame.length; player++) {
         if (!engine.playeringame[player]) continue;
-        // Doom writes this slot before G_Ticker moves the world. Sampling the
-        // player mobj after Ticker is one tic ahead and fails when BACKUPTICS
-        // first wraps; preserve the same pre-tick value in the adapter ring.
-        multiplayerConsistency[player][consistencyBuffer] = consistencyBefore[player];
+        // Mirror Doom's actual ring word. Usually this is the pre-tick mobj X;
+        // on a reborn tic DoReborn replaces the mobj before Doom writes it.
+        multiplayerConsistency[player][consistencyBuffer] =
+            engine.doomdbConsistency(player, consistencyBuffer);
       }
     }
     engine.gametic++;

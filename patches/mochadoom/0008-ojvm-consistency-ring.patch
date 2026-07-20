@@ -1,0 +1,19 @@
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -1531,6 +1531,15 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         }
+     }
+
++    /**
++     * DoomDB's retained transport mirrors the exact consistency word G_Ticker
++     * selected. Reading the player mobj outside G_Ticker is not equivalent on
++     * a reborn tic because DoReborn changes the spawn before the ring write.
++     */
++    public short doomdbConsistency(int player, int buffer) {
++        return consistancy[player][buffer];
++    }
++
+     //
+     // PLAYER STRUCTURE FUNCTIONS
+     // also see P_SpawnPlayer in P_Things

@@ -16,6 +16,8 @@ const worker = fs.readFileSync(new URL(
   '../sql/sim/080_unified_worker.sql', import.meta.url), 'utf8');
 const liveStatus = fs.readFileSync(new URL(
   '../scripts/mochadoom/debug-live-route-status.sql', import.meta.url), 'utf8');
+const traceSchema = fs.readFileSync(new URL(
+  '../sql/schema/049_multiplayer_route_diagnostics.sql', import.meta.url), 'utf8');
 
 assert.match(source, /\|nearby=" \+ nearbyMobjs\(player\)/);
 assert.match(source, /1024L \* 1024L/);
@@ -42,6 +44,8 @@ assert.match(lineageExporter, /dbms_lob\.substr\(l_json,18000,l_offset\)/);
 assert.match(audioPatch, /finesine\[\(int\) angle & FINEMASK\]/);
 assert.match(worker, /if l_route_diagnostics=1 then/);
 assert.match(worker, /route_status=l_result/);
+assert.match(worker, /insert into doom_route_trace/);
+assert.match(traceSchema, /create table doom_route_trace/);
 assert.match(liveStatus, /where target_session='&&route_session'/);
 
 process.stdout.write('PASS MOCHADOOM-ROUTE-DIAGNOSTICS bounded actors, clearance, lineage export, safe tails\n');
