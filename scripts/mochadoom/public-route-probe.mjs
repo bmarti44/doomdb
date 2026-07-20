@@ -3,7 +3,10 @@ import fs from 'node:fs';
 
 const source = process.argv[2];
 if (!source) throw Error('usage: node public-route-probe.mjs route.json|-');
-const route = JSON.parse(fs.readFileSync(source === '-' ? 0 : source, 'utf8'));
+const routeText = fs.readFileSync(source === '-' ? 0 : source, 'utf8');
+const route = JSON.parse(routeText.startsWith('BASE64:')
+  ? Buffer.from(routeText.slice(7).replace(/\s/g, ''), 'base64').toString()
+  : routeText);
 const base = process.env.DOOM_API_BASE ?? 'http://localhost:8080/ords/doom/doom_api/';
 const skill = Number(process.env.DOOM_ROUTE_SKILL_OVERRIDE ?? route.skill);
 const skipAccepted = process.env.DOOM_ROUTE_SKIP_ACCEPTED === '1';
@@ -43,7 +46,7 @@ for (const run of route.runs) {
 }
 assert.equal(commands.length, route.commandCount);
 if (route.constraints?.noCheats) {
-  assert.ok(commands.every(command => command.cheat === ''), 'route contains cheat');
+  assert.ok(commands.every(command => (command.cheat ?? '') === ''), 'route contains cheat');
 }
 const created = await post('new_game', {p_skill: skill});
 const session = value(created, 'p_session');

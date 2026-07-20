@@ -62,9 +62,14 @@ begin
     'commandCount' value command_count,
     'runs' value runs_json format json returning clob) returning clob)
     into l_json from route;
+  dbms_output.put_line('BASE64:');
   while l_offset<=dbms_lob.getlength(l_json) loop
-    dbms_output.put_line(dbms_lob.substr(l_json,30000,l_offset));
-    l_offset:=l_offset+30000;
+    -- SQL*Plus/DBMS_OUTPUT inserts a newline between chunks. Base64 each
+    -- independently aligned 18,000-byte slice so those newlines are harmless
+    -- even when the source boundary falls inside a JSON string token.
+    dbms_output.put_line(utl_raw.cast_to_varchar2(utl_encode.base64_encode(
+      utl_raw.cast_to_raw(dbms_lob.substr(l_json,18000,l_offset)))));
+    l_offset:=l_offset+18000;
   end loop;
 end;
 /
