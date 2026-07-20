@@ -58,26 +58,28 @@
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">Mocha Doom in OJVM<br><span>live selection green</span></p>
-      <p class="muted">New /play/ sessions now run the pinned Mocha engine inside Oracle. Dynamic play, authored audio, verification cheats, save/load, exact replay, deterministic 320×200 frames, native compilation, and the local 30 FPS gate are green.</p>
+      <p class="big">Database multiplayer<br><span>implementation active</span></p>
+      <p class="muted">Single-player, an authentic 13,272-tic skill-3 E1M1 route, exact replay, and the local 30 FPS gate are green. One retained Mocha world now advances two players together and renders a distinct immutable POV for each.</p>
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
-      <p><strong>P12.M — active</strong><br><span class="muted">headless engine, persistence, worker, AutoREST, and 30 FPS migration</span></p>
+      <p><strong>P13 — active</strong><br><span class="muted">capability-secured lobby, lockstep worker, co-op client, replay, and recovery</span></p>
       <p><strong>Legacy oracle preserved</strong><br><span class="muted">P0–P7 complete · independently executable SQL differential oracle</span></p>
       <div class="links"><a href="/health.txt">static health</a><a href="/ords/">ORDS</a></div>
     </article>
   </section>
 
   <section class="panel" aria-label="current route status">
-    <h2>Live implementation status · July 19, 2026</h2>
+    <h2>Live implementation status · July 20, 2026</h2>
+    <p><strong>Multiplayer:</strong> the engine-level feasibility gate is green. A single authoritative Mocha engine consumes two distinct ordered commands in one world tic and renders two stable POVs without mutating state between views. Shared damage, frag attribution, death, and reborn pass. The six-table match schema is installed with validated capability, membership, generation, slot, sequence, frame, checkpoint, and cascade fences; the AutoREST lobby lifecycle is the active slice.</p>
+    <p class="muted"><strong>Multiplayer performance:</strong> over 300 samples, total one-world-tic plus all POVs measured 3.396 ms p95 for one player, 5.670 ms for two, 4.919 ms for three, and 7.933 ms for four. This proves engine feasibility only; the complete two-browser persistence/AutoREST/decode/paint gate is still required before claiming multiplayer 30 FPS.</p>
+    <p><strong>Skill-3 E1M1 — complete:</strong> an authentic no-cheat run reaches intermission at tic 13,272. A fresh Oracle session replayed all 13,272 commands with zero state, frame, or response SHA mismatches. The accepted route, terminal intermission image, and repeatability ledger are frozen in the repository.</p>
     <p><strong>Engine:</strong> all 442 pinned upstream sources plus the DoomDB adapter compile to 822 classes; the schema reports 852 valid Java classes including 30 preserved legacy helpers. Oracle verifies the 28,795,076-byte Freedoom IWAD by SHA-256 before constructing E1M1. The engine has no desktop loop, external configuration files, privileged logger setup, or host WAD file; all 18 upstream process-exit sites are fenced into catchable OJVM errors.</p>
     <p class="muted"><strong>Bounded bridge:</strong> dynamic <code>ticcmd_t</code> input advances exactly one tic and renders a deterministic 320×200 indexed framebuffer. Tic zero hashes to <code>a1c9b037…d3b5</code>; a caller-owned Oracle BLOB receives all 64,000 pixels in 1.431 ms. A pre-warmed standby worker constructs the next engine ahead of the claim — a new game drops from ~17 s cold to ~1.4 s, byte-exact with a cold construction — and the skill menu overlaps any remaining construction with a speculative default-skill allocation.</p>
     <p><strong>Performance:</strong> raw binary DMF3 keeps compression outside OJVM, ORDS uses a fixed six-connection pool, and asynchronous submission no longer probes the synchronous response queue. Two consecutive warm moving/combat runs passed at 30.75 and 32.05 FPS with 300 unique frames and paint-gap p95 below 32.1 ms.</p>
     <p><strong>Recovery and admission (hardened July 19):</strong> exact command reconstruction, save/load lineage forking, frame replay, duplicate/AQ, concurrent sessions, forced worker restart, and GOD/ALL/NOCLIP/FULLMAP reconstruction all pass. Worker claims self-heal lost Scheduler dispatches, dead claims are reclaimed, and a full pool deterministically evicts its least-recently-active idle worker instead of refusing a new player. The eleven-gate Mocha suite, a 46-request direct AutoREST workflow, and desktop/mobile/intermission/death-restart Playwright workflows are green.</p>
     <p class="muted"><strong>Presentation contract (July 19):</strong> the DMF3 <code>complete</code> byte is populated from vanilla <code>gamestate</code>, each producer format has exactly one canonical <code>frame_sha</code> orientation (a transposed frame can no longer validate), and death presentation is no longer silently discarded. Tab opens Doom's menu, M opens the automap, and Escape exits pointer capture or fullscreen without becoming a game command. Ctrl fires on every platform; the dedicated fullscreen button is the sole fullscreen entry and opts into Keyboard Lock on supported browsers.</p>
-    <p class="muted"><strong>Signed input and terminal workflows (July 19):</strong> Mocha's v2 command envelope preserves signed mouse/demo axes while v1 remains frozen. Public AutoREST browser routes reproduce exact intermission and no-cheat death frames; death restart creates a fresh same-skill session with byte-identical canonical spawn. The broader skill-3 route matrix remains open in P8.</p>
-    <p class="muted"><strong>No-cheat E1M1 checkpoint (July 19):</strong> an uninterrupted 762-command public AutoREST route now completes E1M1 twice with exact terminal state/frame identities and no cheat field. P8 still retains its broader normal-skill-3 resource, combat, keyed-door, lift, secret, replay, and visual-review matrix.</p>
+    <p class="muted"><strong>Signed input and terminal workflows (July 19):</strong> Mocha's v2 command envelope preserves signed mouse/demo axes while v1 remains frozen. Public AutoREST browser routes reproduce exact intermission and no-cheat death frames; death restart creates a fresh same-skill session with byte-identical canonical spawn.</p>
     <p class="muted"><strong>Long-route hardening (July 19):</strong> a complete 6,336-command save/load lineage export replays byte-exactly through public AutoREST. It exposed a deterministic cyclic fine-angle audio lookup at tic 8,006; the clean-room overlay now masks that lookup to vanilla's fine-angle domain, and the reconstructed branch advances normally through tic 8,048. A safe tic-7,953 authoring checkpoint is verified, while the uninterrupted skill-3 completion gate remains open.</p>
     <p class="muted"><strong>Oracle MODEL fire — complete (July 19):</strong> two independent full 150×160×96 ordered cellular executions produced the same 604,369 canonical RLE rows, all 150 frame hashes, and exact animation SHA <code>b1eac353…e4ba</code>. The operation spills heavily to TEMP and is intentionally an offline capability artifact, not part of gameplay.</p>
     <p class="muted"><strong>Current play page:</strong> new <code>/play/</code> games use Mocha Doom in OJVM through the same generated AutoREST endpoints. Reload any tab opened before cutover to start a Mocha session.</p>
@@ -201,12 +203,12 @@
     <article class="panel phase done"><b>P6</b><span>Simulation</span><p class="muted">tic, movement, machines, history, replay</p></article>
     <article class="panel phase done"><b>P7</b><span>Gameplay</span><p class="muted">weapons, monsters, pickups, audio</p></article>
     <article class="panel phase done"><b>T12.M4</b><span>AutoREST cutover</span><p class="muted">worker, recovery, persistence, and controls green</p></article>
-    <article class="panel phase active"><b>T12.M5</b><span>Mocha selection</span><p class="muted">11-gate core + direct and 4-browser P8.2 workflows green</p></article>
-    <article class="panel phase next"><b>P8</b><span>Full route matrix</span><p class="muted">basic no-cheat completion green · exhaustive skill-3 route open</p></article>
+    <article class="panel phase done"><b>T12.M5</b><span>Mocha selection</span><p class="muted">11-gate core + direct and 4-browser workflows green</p></article>
+    <article class="panel phase done"><b>P8</b><span>Full route matrix</span><p class="muted">13,272 tics · exact fresh-session replay</p></article>
     <article class="panel phase done"><b>P9</b><span>MODEL fire</span><p class="muted">two full deterministic Oracle runs + visual review</p></article>
-    <article class="panel phase next"><b>P11</b><span>Cloud</span><p class="muted">S3 + Autonomous Database · awaiting credentials</p></article>
-    <article class="panel phase next"><b>T12</b><span>Final performance</span><p class="muted">local and cloud 300-frame protocol</p></article>
-    <article class="panel phase next"><b>P13</b><span>Multiplayer</span><p class="muted">database-authoritative lockstep · planned</p></article>
+    <article class="panel phase active"><b>P13</b><span>Multiplayer</span><p class="muted">engine + schema green · AutoREST lifecycle active</p></article>
+    <article class="panel phase next"><b>T12</b><span>Performance reverify</span><p class="muted">finished single + multiplayer build · local 300-frame protocol</p></article>
+    <article class="panel phase next"><b>P11</b><span>Cloud · final</span><p class="muted">real S3 + Autonomous Database after local acceptance</p></article>
   </section>
   <footer><a href="/play/">Open the Mocha Doom playable client</a> · Oracle/ORDS/AutoREST only · no credentials or evaluator data are exposed to the browser.</footer>
 </main>

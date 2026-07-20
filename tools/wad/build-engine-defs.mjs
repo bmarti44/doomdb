@@ -76,7 +76,7 @@ for (const id of placed) {
     states.push(state(row.painState,4,row.seeState,'APPLY_PAIN_REACTION',prefix,'G','ALL','DSPOPAIN'));
     states.push(state(row.deathState,-1,null,'CORPSE_TERMINAL',prefix,id===58||id===3002?'N':id===9?'L':id===3001?'M':'L','0',spec.deathSound));
   }
-  if (id===2035) { row.health=20; row.deathState='THING_2035_DEATH'; states.push(state(row.deathState,-1,null,'EXPLODE_AND_DAMAGE_RADIUS','BAR1','B','0','DSBAREXP')); }
+  if (id===2035) { row.radius=10; row.height=42; row.health=20; row.deathState='THING_2035_DEATH'; states.push(state(row.deathState,-1,null,'EXPLODE_AND_DAMAGE_RADIUS','BAR1','B','0','DSBAREXP')); }
   thingTypes.push(row);
 }
 

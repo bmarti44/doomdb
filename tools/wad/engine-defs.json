@@ -481,6 +481,8 @@
         "plan-contract",
         "doomwiki-behavior"
       ],
+      "radius": 10,
+      "height": 42,
       "health": 20,
       "deathState": "THING_2035_DEATH"
     },

@@ -24,16 +24,17 @@ authoritative record.
   eviction, the canonical presentation contract, collision-free key bindings,
   speculative skill-menu game allocation, and a byte-exact pre-warmed standby.
   The complete eleven-gate Mocha core suite, the P8.2 direct AutoREST workflow,
-  and all four P8.2 browser workflows are green. A repeatable 762-command
-  no-cheat route completes E1M1; the broader normal-skill-3 resource/combat/
-  key/lift/secret matrix remains open. P9 is complete: two independent
+  and all four P8.2 browser workflows are green. The complete uninterrupted
+  no-cheat skill-3 E1M1 command stream and its fresh-session replay reach
+  authentic intermission with all 13,272 state/frame/response identities exact;
+  P8.1 is complete. P9 is complete: two independent
   full-size Oracle MODEL runs produced the same 604,369 RLE rows, all 150
   frame hashes, and canonical animation SHA.
-- **Next:** finish the exhaustive P8.1 skill-3 route; then P11 real S3 +
-  Autonomous cloud deployment (needs
-  credentials; local dry-runs exist), followed by the full
-  T12.1/T12.2 local-and-cloud 300-frame performance protocol, then P13
-  multiplayer.
+- **Next:** implement P13 multiplayer; re-verify the finished single-player +
+  multiplayer build with
+  the full T12.1/T12.2 300-frame performance protocol; then run P11 real S3 +
+  Autonomous cloud deployment as the final gate (credentials are required;
+  local dry-runs exist).
 - **Known cost:** cold Mocha engine construction in a fresh worker session is
   ~10–20 s depending on host load. The selected pre-warmed standby worker
   (2026-07-19 checkpoint) reduces a standby-claimed new game to ~1.4 s,
@@ -831,9 +832,12 @@ it does not claim a minimum FPS.
 ## 7. Execution phases and task cards
 
 Execution order is P0-P7, the completed local T12.0 acceleration evidence, the
-active P12.M Mocha Doom migration, P8-P11 against the selected engine, then the
-full local-and-cloud T12.1/T12.2 protocol. Earlier T12.0 evidence may guide the
-migration but may not relax or replace the final 300-frame local/cloud evidence.
+active P12.M Mocha Doom migration, P8-P10 against the selected engine, P13
+multiplayer, the full T12.1/T12.2 performance re-verification against that
+finished architecture, and finally P11 S3 + Autonomous Database deployment.
+Phase numbers are stable contract identifiers, not execution priority. Earlier
+T12.0 evidence may guide the migration but may not relax or replace the final
+300-frame local/cloud evidence.
 
 ### P0 - Contract and evaluator foundation
 
@@ -2675,6 +2679,25 @@ the clean-room engine unless it is needed to validate the new public contract.
   the full 9,879-command export retains byte-identical 9,696-command ancestry.
   The remaining immediate gate is proving that this added health/armor
   survives the fixed upper-shotgunner attack while sector 103 lowers.
+- Skill-3 completion checkpoint (2026-07-20): the full database-ledger command
+  stream now reaches authentic E1M1 intermission at tic 13,272 through only
+  generated AutoREST `NEW_GAME`/`STEP` commands and an empty cheat field. The
+  route survives the upper lift, acquires the blue key and shotgun, opens the
+  final thin manual door with a single centered use edge, defeats the last
+  exit-room shotgunner, and activates linedef 407 through vanilla's use ray.
+  It ends alive with 9 HP, 17/29 kills, 19/49 items, 1/4 secrets, and terminal
+  state/frame SHAs
+  `2dee7fcc7d54586bd91714341186299ac19c5c70cd9c1b53f55dbf4ae9172369` /
+  `7ad3d6e57913d2f2cca837b54a37d74bceeb5b56a52885735b2c5e8718b3f2fe`.
+  The authoring lineage contains one canonical frame-ledger row for every tic
+  1..13,272 and exports to 1,152 normalized command runs. A brand-new skill-3
+  session replayed that exact stream to the same intermission identity with
+  13,272/13,272 exact state, frame, and response hashes and zero mismatches.
+  The normalized accepted script, machine-readable lineage comparison, and
+  reviewed terminal frame are frozen under `artifacts/t8.1-live/` as
+  `mocha-e1m1-skill3-route.json`, `mocha-skill3-repeatability.json`, and
+  `mocha-skill3-intermission.png`. This closes T8.1 without promoting any
+  save/load authoring branch as acceptance evidence.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 
@@ -2805,7 +2828,11 @@ the clean-room engine unless it is needed to validate the new public contract.
 - Accept: capability matrix core rows all green; production artifact/schema audit
   clean; repeated run has identical correctness hashes.
 
-### P11 - Required S3 + Autonomous Database deployment
+### P11 - Required S3 + Autonomous Database deployment (final execution gate)
+
+P11 runs only after P13 and the post-multiplayer T12.1/T12.2 re-verification.
+It deploys and verifies the finished architecture; it is not an intermediate
+dependency for multiplayer implementation or local performance work.
 
 #### T11.1 Cloud database deployment
 
@@ -2827,7 +2854,12 @@ the clean-room engine unless it is needed to validate the new public contract.
   new-game, STEP, asset, canvas, audio, save/load, replay, and completion-smoke
   tests. No non-S3/non-Oracle runtime dependency appears in the network log.
 
-### P12 - Final golden-preserving local and cloud performance work
+### P12 - Post-multiplayer golden-preserving performance re-verification
+
+Run P12 after P13 so the measured build includes the selected multiplayer
+architecture and its single-player compatibility path. Complete the local
+protocol first; retain the identical managed-ORDS protocol for the final P11
+deployment gate.
 
 #### T12.1 Baseline and cursor hygiene
 
@@ -2860,8 +2892,9 @@ the clean-room engine unless it is needed to validate the new public contract.
 
 ### P13 - Database-authoritative multiplayer
 
-P13 is restored as a planned workstream after the P0-P12 single-player/local
-performance gates are green. It reuses Oracle DB + generated ORDS AutoREST +
+P13 is the next planned workstream after the P8-P10 single-player/local
+correctness gates are green and before P12 performance re-verification. It
+reuses Oracle DB + generated ORDS AutoREST +
 the static browser. It may not add peer-to-peer traffic, WebSockets, an ORDS
 game loop, or an external relay/game server. Mocha Doom already contains
 vanilla four-player state (`MAXPLAYERS=4`, per-player `netcmds`, co-op and
@@ -2895,6 +2928,31 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   timeout. Spectators, host transfer, public matchmaking, and bots are deferred.
 - Accept: bootstrap/drop, constraints/cascades, fence mutations, exact adapter
   hashes, recorded 1/2/4-POV timings, and unchanged single-player hashes.
+- Adapter feasibility checkpoint (2026-07-20): the internal-only OJVM probe now
+  initializes two active co-op slots in one engine, consumes two distinct
+  ordered ticcmds in exactly one world/level tic, renders two deterministic
+  distinct POVs without changing the fenced state fingerprint, and proves
+  shared damage, player-0 frag attribution, death, and player-1 reborn. Two
+  clean initializations returned byte-identical evidence; POV hashes are
+  `44c4422bda405eb4cdff0c2f4d84d913e2801dd0b53b8cc30ebc8b8bad686651`
+  and
+  `9f55a44b95a35841a1d1e8e341a2c49de8f165ababaa563a99cb7e607eb94ae2`.
+  The pinned 300-sample benchmark measured total p50/p95/max of
+  2.515/3.396/8.257 ms for one POV, 3.228/5.670/41.936 ms for two,
+  3.699/4.919/6.565 ms for three, and 5.575/7.933/35.886 ms for four.
+  Four-POV render p95 was at most 1.249 ms per POV, codec p95 at most 0.728 ms,
+  and BLOB p95 at most 0.036 ms. This clears the engine-level dual-30-FPS
+  feasibility gate with margin and permits the normalized schema/lifecycle
+  slice; it does not claim end-to-end multiplayer FPS before persistence,
+  AutoREST, browser decode/paint, replay, and recovery are measured.
+- Schema checkpoint (2026-07-20): `doom_match`, `doom_match_member`,
+  `doom_match_command`, `doom_match_tic`, `doom_match_frame`, and
+  `doom_match_checkpoint` are installed through the normal bootstrap order.
+  Their validated constraints cover lifecycle states, salted capability hashes,
+  membership/generation/slot/sequence fences, bounded command vectors, immutable
+  per-player frames, checkpoints, and cascading cleanup. Both the deterministic
+  source gate and a live Oracle fixture/cascade gate pass; the tables remain
+  private and contain no fixture rows. The lifecycle API is the active slice.
 
 #### T13.1 Lobby, capabilities, and AutoREST lifecycle
 
@@ -2967,7 +3025,7 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   browser to show 300 unique frames at >=30 FPS with paint-gap p50/p95 <=33.3 ms
   and input-to-own-frame p95 <=250 ms while single-player remains green.
 
-#### T13.5 Operations, cloud, and final gate
+#### T13.5 Operations and local multiplayer gate
 
 - Report bounded lobby/active/finished counts, worker occupancy, command lead/
   misses/late rejects, per-player submit/poll latency, match tick rate, per-POV
@@ -2975,13 +3033,15 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
 - Admission control uses measured worker, Java/shared-pool, SecureFile/redo,
   ORDS, and bandwidth budgets. Full capacity returns a retryable error and never
   evicts a match. Purge uses an explicit replay-safe retention policy.
-- Repeat security, correctness, recovery, and selected-player performance on
-  managed ORDS/Autonomous Database and the real S3 client. Cloud capacity may
-  reduce admitted matches/player count but never deterministic semantics.
-- Accept: two consecutive local and cloud matches at the selected modes/cap pass
-  exact replay/recovery and per-client performance; a 30-minute soak has bounded
+- Package the same security, correctness, recovery, and selected-player
+  performance protocol for later execution through P11 managed ORDS/Autonomous
+  Database and the real S3 client. Cloud capacity may reduce admitted matches/
+  player count but never deterministic semantics.
+- Accept locally: two consecutive matches at the selected modes/cap pass exact
+  replay/recovery and per-client performance; a 30-minute soak has bounded
   storage/memory, no worker/session leak, unexplained neutral command, capability
-  exposure, or cross-match data. Only then mark multiplayer selected.
+  exposure, or cross-match data. P11 repeats this packaged protocol in cloud;
+  only then may final project acceptance be marked complete.
 
 ## 8. Final acceptance matrix
 

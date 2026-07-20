@@ -56,6 +56,7 @@ public final class DoomDbMochaAdapter {
   private static DoomMain<?, ?> engine;
   private static int controlTurnHeld;
   private static String lastAudioJson = "[]";
+  private static short[][] multiplayerConsistency;
 
   private DoomDbMochaAdapter() {}
 
@@ -411,6 +412,7 @@ public final class DoomDbMochaAdapter {
       engine = null;
       controlTurnHeld = 0;
       lastAudioJson = "[]";
+      multiplayerConsistency = null;
       Engine.releaseHeadless();
       InputStreamSugar.clearInjectedResource();
       return "ok|state=disposed";
@@ -418,6 +420,7 @@ public final class DoomDbMochaAdapter {
       engine = null;
       controlTurnHeld = 0;
       lastAudioJson = "[]";
+      multiplayerConsistency = null;
       return failure("dispose", failure);
     }
   }
@@ -685,6 +688,308 @@ public final class DoomDbMochaAdapter {
     }
   }
 
+  /**
+   * Disposable two-player feasibility proof for database-supplied ticcmd
+   * vectors. This never shares the production retained engine: OJVM statics
+   * are session-private and the probe always disposes its engine before return.
+   */
+  public static synchronized String multiplayerProbeSafe() {
+    try {
+      initializeMultiplayerProbe(2);
+      if (!engine.netgame || engine.deathmatch
+          || !engine.playeringame[0] || !engine.playeringame[1]) {
+        throw new IllegalStateException("two-player membership not active");
+      }
+      if (engine.players[0].mo == null || engine.players[1].mo == null) {
+        throw new IllegalStateException("two-player spawn missing");
+      }
+      int playerMobjs = activePlayerMobjCount();
+      if (playerMobjs != 2) {
+        throw new IllegalStateException("player mobj count " + playerMobjs);
+      }
+
+      // Face the authored E1M1 co-op starts toward one another. This makes the
+      // two immutable POV renders exercise player-sprite projection rather
+      // than merely producing different wall views.
+      engine.players[0].mo.angle = data.Tables.ANG90;
+      engine.players[1].mo.angle = data.Tables.ANG270;
+      int beforeTic = engine.gametic;
+      int beforeLevelTime = engine.leveltime;
+      byte[] command0 = setMultiplayerCommand(0, 8, 0, 0, 0);
+      byte[] command1 = setMultiplayerCommand(1, 0, -8, 256, 0);
+      if (Arrays.equals(command0, command1)) {
+        throw new IllegalStateException("ordered player commands collapsed");
+      }
+      tickMultiplayerEngine();
+      int ticDelta = engine.gametic - beforeTic;
+      int levelTimeDelta = engine.leveltime - beforeLevelTime;
+      if (ticDelta != 1 || levelTimeDelta != 1) {
+        throw new IllegalStateException("vector advanced world " + ticDelta
+            + "/" + levelTimeDelta + " times");
+      }
+      if (!Arrays.equals(command0, engine.players[0].cmd.pack())
+          || !Arrays.equals(command1, engine.players[1].cmd.pack())) {
+        throw new IllegalStateException("executed command vector mismatch");
+      }
+
+      String beforeRender = multiplayerStateSha(2);
+      int savedDisplay = engine.displayplayer;
+      String frame0;
+      String frame1;
+      int visible0;
+      int visible1;
+      try {
+        engine.displayplayer = 0;
+        engine.Display();
+        frame0 = currentFrameSha();
+        visible0 = engine.sceneRenderer.getVisSpriteManager().getNumVisSprites();
+        if (!beforeRender.equals(multiplayerStateSha(2))) {
+          throw new IllegalStateException("player 0 render mutated world");
+        }
+        engine.displayplayer = 1;
+        engine.Display();
+        frame1 = currentFrameSha();
+        visible1 = engine.sceneRenderer.getVisSpriteManager().getNumVisSprites();
+        if (!beforeRender.equals(multiplayerStateSha(2))) {
+          throw new IllegalStateException("player 1 render mutated world");
+        }
+      } finally {
+        engine.displayplayer = savedDisplay;
+      }
+      if (frame0.equals(frame1)) {
+        throw new IllegalStateException("two POV frames are identical");
+      }
+      if (visible0 < 1 || visible1 < 1) {
+        throw new IllegalStateException("mutual sprite projection missing");
+      }
+
+      // Exercise shared combat ownership directly after the command/render
+      // proof. DamageMobj is the same vanilla path used by hitscan/projectiles;
+      // the source player must receive the frag and the victim must respawn in
+      // the same authoritative engine.
+      int fragBefore = engine.players[0].frags[1];
+      engine.actions.DamageMobj(engine.players[1].mo, engine.players[0].mo,
+          engine.players[0].mo, 10000);
+      boolean dead = engine.players[1].health[0] == 0
+          && engine.players[1].playerstate == data.Defines.PST_DEAD;
+      int fragDelta = engine.players[0].frags[1] - fragBefore;
+      if (!dead || fragDelta != 1) {
+        throw new IllegalStateException("shared player damage/death failed");
+      }
+      setMultiplayerCommand(0, 0, 0, 0, 0);
+      setMultiplayerCommand(1, 0, 0, 0, data.Defines.BT_USE);
+      tickMultiplayerEngine();
+      setMultiplayerCommand(0, 0, 0, 0, 0);
+      setMultiplayerCommand(1, 0, 0, 0, 0);
+      tickMultiplayerEngine();
+      boolean reborn = engine.players[1].mo != null
+          && engine.players[1].health[0] > 0
+          && engine.players[1].playerstate == data.Defines.PST_LIVE;
+      if (!reborn) throw new IllegalStateException("co-op reborn failed");
+
+      return "ok|state=multiplayer-probed|membership=1100|netgame=1"
+          + "|deathmatch=0|playerMobjs=" + playerMobjs + "|ticDelta=" + ticDelta
+          + "|levelTimeDelta=" + levelTimeDelta
+          + "|command0=" + hex(command0) + "|command1=" + hex(command1)
+          + "|pov0Sha=" + frame0 + "|pov1Sha=" + frame1
+          + "|pov0VisibleSprites=" + visible0
+          + "|pov1VisibleSprites=" + visible1
+          + "|renderStateSha=" + beforeRender
+          + "|damage=10000|dead=1|fragDelta=" + fragDelta + "|reborn=1";
+    } catch (Throwable failure) {
+      return failure("multiplayer-probe", failure);
+    } finally {
+      disposeSafe();
+    }
+  }
+
+  /** Benchmark one authoritative tic followed by one immutable POV per player. */
+  public static synchronized String multiplayerBenchmarkSafe(
+      int activePlayers, int samples, int warmups, Blob output) {
+    try {
+      activePlayers = clamp(activePlayers, 1, 4);
+      samples = clamp(samples, 1, 2000);
+      warmups = clamp(warmups, 0, 500);
+      if (output == null) throw new IllegalArgumentException("output BLOB required");
+      initializeMultiplayerProbe(activePlayers);
+      long[] tickerMicros = new long[samples];
+      long[][] renderMicros = new long[activePlayers][samples];
+      long[][] codecMicros = new long[activePlayers][samples];
+      long[][] blobMicros = new long[activePlayers][samples];
+      long[] totalMicros = new long[samples];
+      @SuppressWarnings("unchecked")
+      Set<String>[] hashes = new Set[activePlayers];
+      for (int player = 0; player < activePlayers; player++) {
+        hashes[player] = new HashSet<String>();
+      }
+
+      for (int index = -warmups; index < samples; index++) {
+        long totalStarted = System.nanoTime();
+        for (int player = 0; player < activePlayers; player++) {
+          setMultiplayerCommand(player, 0, 0,
+              player % 2 == 0 ? 256 : -256, 0);
+        }
+        long stageStarted = System.nanoTime();
+        tickMultiplayerEngine();
+        long ticker = (System.nanoTime() - stageStarted) / 1000L;
+        String stateBeforeRender = multiplayerStateSha(activePlayers);
+        int savedDisplay = engine.displayplayer;
+        try {
+          for (int player = 0; player < activePlayers; player++) {
+            engine.displayplayer = player;
+            stageStarted = System.nanoTime();
+            engine.Display();
+            long render = (System.nanoTime() - stageStarted) / 1000L;
+            stageStarted = System.nanoTime();
+            byte[] frame = currentFrame();
+            String frameSha = hex(
+                MessageDigest.getInstance("SHA-256").digest(frame));
+            long codec = (System.nanoTime() - stageStarted) / 1000L;
+            stageStarted = System.nanoTime();
+            writeBlob(output, frame);
+            long blob = (System.nanoTime() - stageStarted) / 1000L;
+            if (!stateBeforeRender.equals(multiplayerStateSha(activePlayers))) {
+              throw new IllegalStateException("POV render mutated world player="
+                  + player);
+            }
+            if (index >= 0) {
+              renderMicros[player][index] = render;
+              codecMicros[player][index] = codec;
+              blobMicros[player][index] = blob;
+              hashes[player].add(frameSha);
+            }
+          }
+        } finally {
+          engine.displayplayer = savedDisplay;
+        }
+        if (index >= 0) {
+          tickerMicros[index] = ticker;
+          totalMicros[index] = (System.nanoTime() - totalStarted) / 1000L;
+        }
+      }
+      Arrays.sort(tickerMicros);
+      Arrays.sort(totalMicros);
+      StringBuilder result = new StringBuilder("ok|state=multiplayer-benchmarked")
+          .append("|players=").append(activePlayers)
+          .append("|samples=").append(samples)
+          .append("|warmups=").append(warmups)
+          .append("|tickerP50Micros=").append(percentile(tickerMicros, 50))
+          .append("|tickerP95Micros=").append(percentile(tickerMicros, 95));
+      for (int player = 0; player < activePlayers; player++) {
+        Arrays.sort(renderMicros[player]);
+        Arrays.sort(codecMicros[player]);
+        Arrays.sort(blobMicros[player]);
+        result.append("|pov").append(player).append("UniqueFrames=")
+            .append(hashes[player].size())
+            .append("|pov").append(player).append("RenderP50Micros=")
+            .append(percentile(renderMicros[player], 50))
+            .append("|pov").append(player).append("RenderP95Micros=")
+            .append(percentile(renderMicros[player], 95))
+            .append("|pov").append(player).append("CodecP95Micros=")
+            .append(percentile(codecMicros[player], 95))
+            .append("|pov").append(player).append("BlobP95Micros=")
+            .append(percentile(blobMicros[player], 95));
+      }
+      return result.append("|totalP50Micros=")
+          .append(percentile(totalMicros, 50))
+          .append("|totalP95Micros=").append(percentile(totalMicros, 95))
+          .append("|totalMaxMicros=").append(totalMicros[totalMicros.length - 1])
+          .toString();
+    } catch (Throwable failure) {
+      return failure("multiplayer-benchmark", failure);
+    } finally {
+      disposeSafe();
+    }
+  }
+
+  private static void initializeMultiplayerProbe(int activePlayers)
+      throws Exception {
+    disposeSafe();
+    String initialized = initializeSafe();
+    if (!initialized.startsWith("ok|")) {
+      throw new IllegalStateException(initialized);
+    }
+    Arrays.fill(engine.playeringame, false);
+    for (int player = 0; player < activePlayers; player++) {
+      engine.playeringame[player] = true;
+    }
+    engine.consoleplayer = 0;
+    engine.displayplayer = 0;
+    engine.netgame = activePlayers > 1;
+    engine.deathmatch = false;
+    engine.InitNew(skill_t.sk_medium, 1, 1);
+    engine.singletics = true;
+    controlTurnHeld = 0;
+    DummySFX.clearEvents();
+    lastAudioJson = "[]";
+    multiplayerConsistency = new short[engine.playeringame.length]
+        [engine.netcmds[0].length];
+  }
+
+  private static byte[] setMultiplayerCommand(
+      int player, int forward, int side, int turn, int buttons) {
+    int buffer = (engine.gametic / engine.getTicdup())
+        % engine.netcmds[player].length;
+    doom.ticcmd_t command = engine.netcmds[player][buffer];
+    command.forwardmove = (byte) clamp(forward, -127, 127);
+    command.sidemove = (byte) clamp(side, -127, 127);
+    command.angleturn = (short) clamp(turn, Short.MIN_VALUE, Short.MAX_VALUE);
+    command.consistancy = multiplayerConsistency == null ? 0
+        : multiplayerConsistency[player][buffer];
+    command.chatchar = 0;
+    command.buttons = (char) (buttons & 0xff);
+    command.lookfly = 0;
+    return Arrays.copyOf(command.pack(), doom.ticcmd_t.TICCMDLEN);
+  }
+
+  private static void tickMultiplayerEngine() {
+    DummySFX.beginTic(engine.gametic + 1L);
+    engine.Ticker();
+    if (multiplayerConsistency != null) {
+      int buffer = (engine.gametic / engine.getTicdup())
+          % engine.netcmds[0].length;
+      for (int player = 0; player < engine.playeringame.length; player++) {
+        if (!engine.playeringame[player]) continue;
+        multiplayerConsistency[player][buffer] = engine.players[player].mo == null
+            ? (short) engine.random.getIndex()
+            : (short) engine.players[player].mo.x;
+      }
+    }
+    engine.gametic++;
+    lastAudioJson = DummySFX.drainEvents(engine.gametic);
+  }
+
+  private static String multiplayerStateSha(int activePlayers)
+      throws Exception {
+    StringBuilder state = new StringBuilder()
+        .append(engine.gametic).append('|').append(engine.leveltime).append('|')
+        .append(engine.random.getIndex()).append('|')
+        .append(engine.netgame).append('|').append(engine.deathmatch);
+    for (int player = 0; player < activePlayers; player++) {
+      doom.player_t value = engine.players[player];
+      state.append('|').append(player).append(':').append(value.playerstate)
+          .append(':').append(value.health[0]).append(':')
+          .append(Arrays.toString(value.frags));
+      if (value.mo == null) state.append(":missing");
+      else state.append(':').append(value.mo.x).append(',').append(value.mo.y)
+          .append(',').append(value.mo.z).append(',')
+          .append(Long.toUnsignedString(value.mo.angle)).append(',')
+          .append(value.mo.health);
+    }
+    return hex(MessageDigest.getInstance("SHA-256").digest(
+        state.toString().getBytes(StandardCharsets.US_ASCII)));
+  }
+
+  private static int activePlayerMobjCount() {
+    int count = 0;
+    thinker_t cap = engine.actions.getThinkerCap();
+    for (thinker_t thinker = cap.next; thinker != null && thinker != cap;
+         thinker = thinker.next) {
+      if (thinker instanceof mobj_t && ((mobj_t) thinker).player != null) count++;
+    }
+    return count;
+  }
+
   private static byte[] loadIwadBytes() throws Exception {
     Connection connection =
         DriverManager.getConnection("jdbc:default:connection:");
@@ -794,6 +1099,9 @@ public final class DoomDbMochaAdapter {
         + "|noclip=" + ((player.cheats & doom.player_t.CF_NOCLIP) != 0 ? 1 : 0)
         + "|fullmap=" + (player.powers[data.Defines.pw_allmap] != 0 ? 1 : 0)
         + "|ownedWeapons=" + weapons + "|ownedKeys=" + keys
+        + "|kills=" + player.killcount + '/' + engine.totalkills
+        + "|items=" + player.itemcount + '/' + engine.totalitems
+        + "|secrets=" + player.secretcount + '/' + engine.totalsecret
         + "|armor=" + player.armorpoints[0]
         + "|ammo=" + player.ammo[ammotype_t.am_clip.ordinal()] + ','
             + player.ammo[ammotype_t.am_shell.ordinal()] + ','

@@ -134,6 +134,24 @@ as language java
 name 'doomdb.mocha.DoomDbMochaAdapter.benchmarkSafe(int,int,int,int,int,int) return java.lang.String';
 /
 
+-- Internal P13 feasibility surfaces. They are deliberately absent from
+-- DOOM_API, so the disposable probe and benchmark cannot become public
+-- AutoREST contracts before the match schema and capability fences exist.
+create or replace function doom_mocha_multiplayer_probe return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerProbeSafe() return java.lang.String';
+/
+
+create or replace function doom_mocha_multiplayer_benchmark(
+  p_active_players in number,
+  p_samples in number,
+  p_warmups in number,
+  p_output in blob
+) return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerBenchmarkSafe(int,int,int,java.sql.Blob) return java.lang.String';
+/
+
 -- Migration decoder for database-side gates: selected Mocha frames are raw
 -- DMF3, while the preserved SQL renderer and older ledgers remain gzip.
 create or replace function doom_mocha_payload_plain(p_payload in blob)

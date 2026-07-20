@@ -8,7 +8,7 @@ create table doom_engine_source (
 
 -- Render profiles keep resolution-dependent axes explicit.  The reviewed
 -- canonical profile remains 320x200; larger profiles require their own future
--- evaluator/goldens rather than changing this selected profile in place.
+-- independently reviewed evidence rather than changing this profile in place.
 create table doom_render_profile (
   profile_id varchar2(32) not null,
   width number(5) not null,

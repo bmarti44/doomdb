@@ -17,6 +17,7 @@ sql/schema/043_mocha_frame_cache.sql
 sql/schema/044_mocha_save_slot.sql
 sql/schema/045_mocha_initial_frame.sql
 sql/schema/046_mocha_frame_ledger.sql
+sql/schema/047_multiplayer.sql
 sql/schema/050_config.sql
 sql/engine/005_render_axes.sql
 sql/engine/010_engine_defs.sql

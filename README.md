@@ -10,8 +10,8 @@ client at <http://localhost:8080/play/> while the Compose stack is running.
 
 ## Current status
 
-The active implementation path is **P12.M: Mocha Doom inside Oracle's JVM**,
-and it is playable end to end on the local stack. New `/play/` sessions run the
+The active implementation path is **P13: database-authoritative multiplayer**.
+Single-player is playable end to end on the local stack. New `/play/` sessions run the
 pinned GPLv3 `AXDOOMER/mochadoom` engine (commit `c0af1322…abe93`) as Java
 schema objects inside OJVM, owned by a long-lived Scheduler worker session and
 reached only through generated ORDS AutoREST. The previous clean-room SQL/PLSQL
@@ -34,6 +34,16 @@ What works today, all verified by repeatable gates:
   HTTP/browser pipeline hold 30–32 displayed FPS with paint-gap p95 ≤ 33.3 ms
   and 300/300 unique frames (frame-chain SHA `a1888c88…4be900` reproduced
   across independent runs).
+- **Full skill-3 route.** An authentic, no-cheat E1M1 run reaches the
+  intermission at tic 13,272 with the expected combat, resources, keyed door,
+  lift, secret, and exit interactions. A fresh Oracle session replayed every
+  command with 13,272/13,272 exact state, frame, and response hashes.
+- **Multiplayer foundation.** One retained Mocha engine now consumes an ordered
+  two-player command vector, advances the world once, and renders immutable,
+  distinct POVs. Damage, frag attribution, death, and reborn are verified. The
+  normalized match/member/command/tic/frame/checkpoint schema is installed and
+  its live fence/cascade tests pass; the AutoREST lobby lifecycle is the active
+  implementation slice.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is
@@ -68,21 +78,17 @@ Key verified numbers (local two-core Oracle Free stack):
 
 What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 
-- **P8** — finish the exhaustive normal-skill-3 E1M1 route (resources,
-  representative combat, keyed door, lift, secret, replay, and visual review).
-  A separate uninterrupted 762-command no-cheat route now completes E1M1
-  repeatably; direct AutoREST and all four T8.2 browser workflows are green. A
-  byte-exact 6,336-command prefix and a safe tic-7,953 authoring checkpoint are
-  also verified, but neither weakens the uninterrupted skill-3 acceptance gate.
+- **P13** — finish the capability-secured AutoREST lobby, deterministic retained
+  match worker, two-browser co-op client, replay/recovery, deathmatch expansion,
+  and local multiplayer soak/performance gates.
 - **P9 is complete** — the Oracle `MODEL`-clause title fire animation passed
   two independent full-size database runs, deterministic checks, mutation
   checks, and visual review.
-- **P11** — the real S3 + Autonomous Database deployment; blocked only on
-  cloud credentials, local dry-runs exist.
-- **T12.1/T12.2** — the final golden-preserving local *and cloud* 300-frame
-  performance protocol (the local 30 FPS evidence does not substitute for it).
-- **P13** — database-authoritative multiplayer, planned after the
-  single-player matrix is fully green.
+- **T12.1/T12.2** — after multiplayer, rerun the full golden-preserving local
+  300-frame performance protocol against the finished architecture.
+- **P11 (last)** — only after those local gates, deploy the static client to real
+  S3 and the database/AutoREST surface to Autonomous Database, then repeat the
+  packaged correctness, security, recovery, and performance protocol in cloud.
 
 Full measurements, rejected alternatives, and acceptance gates are maintained
 in [PLAN.md](PLAN.md), the
@@ -116,16 +122,16 @@ database-rendered intermission frame:
 
 ```text
 static browser client
-        │ generated AutoREST: NEW_GAME / SUBMIT_STEP / POLL_FRAME
+        │ generated AutoREST: single-player + capability-secured match API
         ▼
 ORDS connection pool
         ▼
 Oracle Database
   durable commands, checkpoints, hashes, events, and response BLOBs
         ▼
-  retained Scheduler session + AQ generation fence
+  retained Scheduler session per game/match + AQ generation fence
         ▼
-  headless Mocha Doom in OJVM → indexed frame → response codec
+  one authoritative headless Mocha world → per-player indexed frames
 ```
 
 ORDS resets request-session PL/SQL and Java state after every request, so a

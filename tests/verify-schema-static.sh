@@ -8,7 +8,7 @@ check() { "$@"; passed=$((passed + 1)); }
 check bash -n "$root/scripts/bootstrap.sh"
 check bash -n "$root/scripts/load_seed.sh"
 check test -x "$root/scripts/load_seed.sh"
-check test "$(node "$root/tools/wad/seed-load-order.mjs" | wc -l | tr -d ' ')" = 537
+check test "$(node "$root/tools/wad/seed-load-order.mjs" | wc -l | tr -d ' ')" = 541
 check grep -qx '@seed-manifest' "$root/sql/bootstrap/order.txt"
 check grep -qx 'sql/schema/055_finalize_seed.sql' "$root/sql/bootstrap/order.txt"
 check grep -q 'constraint at_asset_fk foreign key (a)' "$root/sql/schema/055_finalize_seed.sql"

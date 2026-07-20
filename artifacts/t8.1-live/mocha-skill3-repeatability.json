@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "kind": "doomdb-t8.1-mocha-skill3-repeatability",
+  "skill": 3,
+  "commandCount": 13272,
+  "normalizedRuns": 1152,
+  "authoringSession": "83414d2dd0d7574e2917fa120838a397",
+  "authoringLineage": "dab534a7c7abbe467f59bc68679dde4ad2fa7e4a866c98c2fc9ac367aecde39a",
+  "replaySession": "1c8f6855397bbe7bb5071901088ce43f",
+  "replayLineage": "335d5a6d4cac49867924b86b8af63a11abc3f9df12ac3e46f79076c38640ea86",
+  "exactStateFrameResponsePairs": 13272,
+  "mismatches": 0,
+  "terminalMode": "INTERMISSION",
+  "terminalStateSha": "2dee7fcc7d54586bd91714341186299ac19c5c70cd9c1b53f55dbf4ae9172369",
+  "terminalFrameSha": "7ad3d6e57913d2f2cca837b54a37d74bceeb5b56a52885735b2c5e8718b3f2fe",
+  "routeArtifactSha256": "cc4ad42d7f6663cf3197d67c5a8ba8a73da69e239d1536cbe71fb8633e4364c9",
+  "intermissionPngSha256": "fa0adcdfdb5fcf6fd7cd400e48455b5e4578984ecfe4eb030bea870f1aaa90a4",
+  "constraints": {
+    "generatedAutoRestOnly": true,
+    "noCheats": true,
+    "freshSessionReplay": true,
+    "noSaveLoadDuringReplay": true
+  }
+}
