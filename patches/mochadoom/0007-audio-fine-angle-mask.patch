@@ -1,0 +1,26 @@
+diff --git a/src/s/AbstractDoomAudio.java b/src/s/AbstractDoomAudio.java
+--- a/src/s/AbstractDoomAudio.java
++++ b/src/s/AbstractDoomAudio.java
+@@ -3,6 +3,7 @@ package s;
+ import data.Defines;
+ import static data.Tables.ANGLETOFINESHIFT;
+ import static data.Tables.BITS32;
++import static data.Tables.FINEMASK;
+ import static data.Tables.finesine;
+ import data.musicinfo_t;
+ import data.sfxinfo_t;
+@@ -751,7 +752,13 @@ public class AbstractDoomAudio implements IDoomSound{
+ 		angle >>= ANGLETOFINESHIFT;
+ 
+ 		// stereo separation
+-		vps.sep = 128 - (FixedMul(S_STEREO_SWING,finesine[(int) angle])>>FRACBITS);
++		// PointToAngle is unsigned-domain engine state carried in a Java long.
++		// Keep the lookup in vanilla's cyclic fine-angle domain even if an
++		// origin/listener edge case leaves upper bits set. Without the mask a
++		// monster wake-up can terminate the retained OJVM engine with an array
++		// bounds failure while the corresponding simulation state is valid.
++		vps.sep = 128 - (FixedMul(S_STEREO_SWING,
++				finesine[(int) angle & FINEMASK])>>FRACBITS);
+ 
+ 		// volume calculation
+ 		if (approx_dist < S_CLOSE_DIST)

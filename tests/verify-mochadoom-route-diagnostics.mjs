@@ -10,6 +10,8 @@ const clearanceHelper = fs.readFileSync(new URL(
   '../scripts/mochadoom/debug-clearance-route.mjs', import.meta.url), 'utf8');
 const lineageExporter = fs.readFileSync(new URL(
   '../scripts/mochadoom/debug-export-lineage-route.sql', import.meta.url), 'utf8');
+const audioPatch = fs.readFileSync(new URL(
+  '../patches/mochadoom/0007-audio-fine-angle-mask.patch', import.meta.url), 'utf8');
 
 assert.match(source, /\|nearby=" \+ nearbyMobjs\(player\)/);
 assert.match(source, /1024L \* 1024L/);
@@ -33,5 +35,6 @@ assert.match(lineageExporter, /f\.tic between &&route_from_tic\+1 and &&route_to
 assert.match(lineageExporter, /'cheat' value ''/);
 assert.match(lineageExporter, /dbms_output\.put_line\('BASE64:'\)/);
 assert.match(lineageExporter, /dbms_lob\.substr\(l_json,18000,l_offset\)/);
+assert.match(audioPatch, /finesine\[\(int\) angle & FINEMASK\]/);
 
 process.stdout.write('PASS MOCHADOOM-ROUTE-DIAGNOSTICS bounded actors, clearance, lineage export, safe tails\n');
