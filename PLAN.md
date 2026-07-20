@@ -3068,6 +3068,13 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   storage/memory, no worker/session leak, unexplained neutral command, capability
   exposure, or cross-match data. P11 repeats this packaged protocol in cloud;
   only then may final project acceptance be marked complete.
+- Retention checkpoint (2026-07-20): the local stress history reached Oracle
+  Free's 12 GB hard cap and proved that single-player-only cleanup was
+  insufficient. The off-request Scheduler purge now runs every minute in
+  bounded batches for both expired game sessions and expired matches, stopping
+  and dropping retained match jobs before cascading their LOB-backed history.
+  Static and live expired-match gates pass. A bounded active-history/ring policy
+  remains required before the 30-minute soak can close this task.
 
 ## 8. Final acceptance matrix
 

@@ -63,3 +63,14 @@ Bounded final-leave semantics, broader fault injection, representative E1M1 co-o
 mechanics, deathmatch selection, capacity/retention telemetry, the 300-frame
 two-browser run, and the 30-minute soak remain open. T12 performance follows
 P13; P11 cloud deployment remains the final milestone.
+
+## Storage incident and retention response
+
+Accumulated development lineages autoextended the local PDB beyond Oracle
+Free's 12 GB limit. The cap is enforced when the PDB opens, so the disposable
+local volume had to be rebuilt from source. That clean bootstrap exposed the
+deployment-order defects listed above. Cleanup now runs every minute in bounded
+batches and covers expired multiplayer matches as well as single-player
+sessions, stopping their Scheduler owners before cascade deletion. This prevents
+abandoned matches from being retained indefinitely; active-history bounding is
+still required for the soak gate.
