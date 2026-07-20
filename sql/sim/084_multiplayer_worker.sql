@@ -22,6 +22,7 @@ end doom_match_worker;
 create or replace package body doom_match_worker as
   c_error constant pls_integer:=-20731;
   c_command_deadline_ms constant pls_integer:=75;
+  c_initial_command_deadline_ms constant pls_integer:=500;
   c_frame_retention_tics constant pls_integer:=128;
 
   -- This bounded T13.2 slice advances complete two-player vectors and fills a
@@ -150,7 +151,7 @@ create or replace package body doom_match_worker as
     l_expected_frame0 varchar2(64);l_expected_frame1 varchar2(64);
     l_actual_frame0 varchar2(64);l_actual_frame1 varchar2(64);
     l_stream blob;l_b0 blob;l_b1 blob;l_now timestamp with time zone:=utc_now;
-    l_count number;
+    l_count number;l_membership number;
   begin
     select skill,episode,map,case game_mode when 'DEATHMATCH' then 1 else 0 end,
       membership_epoch,generation,current_tic
@@ -163,16 +164,21 @@ create or replace package body doom_match_worker as
       where match_id=p_match and tic=0;
     select state_sha into l_expected_state from doom_match_tic
       where match_id=p_match and tic=l_tic;
+    select to_number(rawtohex(membership_bitmap),'xx') into l_membership
+      from doom_match_tic where match_id=p_match and tic=l_tic;
     select frame_sha,response_blob into l_expected_frame0,l_b0
       from doom_match_frame where match_id=p_match and tic=l_tic and player_slot=0
       for update;
-    select frame_sha,response_blob into l_expected_frame1,l_b1
-      from doom_match_frame where match_id=p_match and tic=l_tic and player_slot=1
-      for update;
+    if bitand(l_membership,2)=2 then
+      select frame_sha,response_blob into l_expected_frame1,l_b1
+        from doom_match_frame where match_id=p_match and tic=l_tic and player_slot=1
+        for update;
+    end if;
     dbms_lob.createtemporary(l_stream,true,dbms_lob.call);
-    for vector_ in (select command_vector from doom_match_tic
+    for vector_ in (select membership_bitmap,command_vector from doom_match_tic
       where match_id=p_match and tic between 1 and l_tic order by tic) loop
-      dbms_lob.writeappend(l_stream,32,vector_.command_vector);
+      dbms_lob.writeappend(l_stream,33,
+        utl_raw.concat(vector_.membership_bitmap,vector_.command_vector));
     end loop;
     l_status:=doom_mocha_multiplayer_reconstruct(2,l_deathmatch,l_skill,
       l_episode,l_map,l_stream,l_initial_state,l_expected_state,
@@ -181,8 +187,11 @@ create or replace package body doom_match_worker as
       raise_application_error(c_error,substr(l_status,1,1800));
     end if;
     l_actual_frame0:=status_field(l_status,'pov0FrameSha');
-    l_actual_frame1:=status_field(l_status,'pov1FrameSha');
-    if l_actual_frame0<>l_expected_frame0 or l_actual_frame1<>l_expected_frame1 then
+    if bitand(l_membership,2)=2 then
+      l_actual_frame1:=status_field(l_status,'pov1FrameSha');
+    end if;
+    if l_actual_frame0<>l_expected_frame0 or
+       (bitand(l_membership,2)=2 and l_actual_frame1<>l_expected_frame1) then
       raise_application_error(c_error,'recovery POV mismatch');
     end if;
     update doom_match_frame set generation=p_generation
@@ -195,7 +204,7 @@ create or replace package body doom_match_worker as
       where match_id=p_match and tic=l_tic+1 and generation=l_old_generation;
     update doom_match_member set generation=p_generation
       where match_id=p_match and membership_epoch=l_epoch
-        and member_state in('ACTIVE','DISCONNECTED');
+        and member_state in('ACTIVE','DISCONNECTED','LEFT');
     update doom_match set generation=p_generation,last_activity_at=l_now
       where match_id=p_match and generation=l_old_generation
         and membership_epoch=l_epoch and current_tic=l_tic;
@@ -219,7 +228,8 @@ create or replace package body doom_match_worker as
     l_status varchar2(4000);l_state varchar2(64);l_command_sha varchar2(64);
     l_frame0 varchar2(64);l_frame1 varchar2(64);l_response0 varchar2(64);l_response1 varchar2(64);
     l_bytes0 number;l_bytes1 number;l_actual0 number;l_actual1 number;
-    l_count number;l_neutral number;l_now timestamp with time zone:=utc_now;
+    l_count number;l_neutral number;l_membership number;
+    l_now timestamp with time zone:=utc_now;
     l_deadline timestamp with time zone;
     l_b0 blob;l_b1 blob;l_checkpoint blob;l_event varchar2(64);
     l_checkpoint_status varchar2(4000);l_checkpoint_sha varchar2(64);
@@ -230,12 +240,22 @@ create or replace package body doom_match_worker as
     select count(*),lower(listagg(rawtohex(ticcmd_raw),'') within group(order by player_slot)),
       coalesce(sum(case when command_source like 'NEUTRAL_%'
         then power(2,player_slot) else 0 end),0),
-      min(submitted_at)+numtodsinterval(c_command_deadline_ms/1000,'SECOND')
+      min(submitted_at)+numtodsinterval(
+        case when p_tic=1 then c_initial_command_deadline_ms
+             else c_command_deadline_ms end/1000,'SECOND')
       into l_count,l_vector_hex,l_neutral,l_deadline from doom_match_command
       where match_id=p_match and tic=p_tic and membership_epoch=p_epoch
         and generation=p_generation and player_slot in(0,1);
     if l_count<>2 or length(l_vector_hex)<>32 then
       raise_application_error(c_error,'complete two-player vector required');
+    end if;
+    select coalesce(sum(case when member_state<>'LEFT' or leave_tic is null
+      or leave_tic>p_tic then power(2,player_slot) else 0 end),0)
+      into l_membership from doom_match_member where match_id=p_match
+        and player_slot in(0,1) and membership_epoch=p_epoch
+        and generation=p_generation;
+    if bitand(l_membership,1)<>1 then
+      raise_application_error(c_error,'host membership is not active');
     end if;
     if l_deadline>l_now then l_deadline:=l_now;end if;
     l_vector_hex:=l_vector_hex||rpad('00',32,'0');
@@ -243,12 +263,14 @@ create or replace package body doom_match_worker as
       generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
     values(p_match,p_tic,0,p_epoch,p_generation,rpad('0',64,'0'),
       rpad('0',64,'0'),1,empty_blob(),l_now) returning response_blob into l_b0;
-    insert into doom_match_frame(match_id,tic,player_slot,membership_epoch,
-      generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
-    values(p_match,p_tic,1,p_epoch,p_generation,rpad('0',64,'0'),
-      rpad('0',64,'0'),1,empty_blob(),l_now) returning response_blob into l_b1;
+    if bitand(l_membership,2)=2 then
+      insert into doom_match_frame(match_id,tic,player_slot,membership_epoch,
+        generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
+      values(p_match,p_tic,1,p_epoch,p_generation,rpad('0',64,'0'),
+        rpad('0',64,'0'),1,empty_blob(),l_now) returning response_blob into l_b1;
+    end if;
     l_status:=doom_mocha_multiplayer_step(
-      2,l_vector_hex,l_previous,l_b0,l_b1,null,null);
+      2,l_membership,l_vector_hex,l_previous,l_b0,l_b1,null,null);
     if substr(l_status,1,3)<>'ok|' then
       raise_application_error(c_error,substr(l_status,1,1800));
     end if;
@@ -258,35 +280,46 @@ create or replace package body doom_match_worker as
     l_state:=status_field(l_status,'stateSha256');
     l_applied_hex:=status_field(l_status,'commandVector');
     l_frame0:=status_field(l_status,'pov0FrameSha');
-    l_frame1:=status_field(l_status,'pov1FrameSha');
+    if bitand(l_membership,2)=2 then
+      l_frame1:=status_field(l_status,'pov1FrameSha');
+    end if;
     l_response0:=status_field(l_status,'pov0ResponseSha');
-    l_response1:=status_field(l_status,'pov1ResponseSha');
+    if bitand(l_membership,2)=2 then
+      l_response1:=status_field(l_status,'pov1ResponseSha');
+    end if;
     l_bytes0:=to_number(status_field(l_status,'pov0Bytes'));
-    l_bytes1:=to_number(status_field(l_status,'pov1Bytes'));
+    if bitand(l_membership,2)=2 then
+      l_bytes1:=to_number(status_field(l_status,'pov1Bytes'));
+    end if;
     select max(case player_slot when 0 then dbms_lob.getlength(response_blob) end),
            max(case player_slot when 1 then dbms_lob.getlength(response_blob) end)
       into l_actual0,l_actual1 from doom_match_frame
       where match_id=p_match and tic=p_tic;
-    if l_actual0<>l_bytes0 or l_actual1<>l_bytes1 then
+    if l_actual0<>l_bytes0 or
+       (bitand(l_membership,2)=2 and l_actual1<>l_bytes1) then
       raise_application_error(c_error,'step locator length mismatch');
     end if;
     update doom_match_frame set frame_sha=l_frame0,response_sha=l_response0,
       response_bytes=l_bytes0 where match_id=p_match and tic=p_tic and player_slot=0;
-    update doom_match_frame set frame_sha=l_frame1,response_sha=l_response1,
-      response_bytes=l_bytes1 where match_id=p_match and tic=p_tic and player_slot=1;
+    if bitand(l_membership,2)=2 then
+      update doom_match_frame set frame_sha=l_frame1,response_sha=l_response1,
+        response_bytes=l_bytes1 where match_id=p_match and tic=p_tic and player_slot=1;
+    end if;
     l_command_sha:=sha_raw(hextoraw(l_applied_hex));
     select lower(standard_hash('[]','SHA256')) into l_event from dual;
     insert into doom_match_tic(match_id,tic,membership_epoch,generation,
       membership_bitmap,neutral_bitmap,command_vector,command_sha,
       previous_state_sha,state_sha,event_sha,deadline_at,committed_at)
-    values(p_match,p_tic,p_epoch,p_generation,hextoraw('03'),
+    values(p_match,p_tic,p_epoch,p_generation,
+      hextoraw(lpad(to_char(l_membership,'fmxx'),2,'0')),
       hextoraw(lpad(to_char(l_neutral,'fmxx'),2,'0')),
       hextoraw(l_applied_hex),l_command_sha,l_previous,l_state,l_event,l_deadline,l_now);
     if mod(p_tic,32)=0 then
       insert into doom_match_checkpoint(match_id,tic,membership_epoch,generation,
         membership_bitmap,command_sha,state_sha,checkpoint_sha,
         checkpoint_bytes,checkpoint_blob,created_at)
-      values(p_match,p_tic,p_epoch,p_generation,hextoraw('03'),l_command_sha,
+      values(p_match,p_tic,p_epoch,p_generation,
+        hextoraw(lpad(to_char(l_membership,'fmxx'),2,'0')),l_command_sha,
         l_state,rpad('0',64,'0'),1,empty_blob(),l_now)
       returning checkpoint_blob into l_checkpoint;
       l_checkpoint_status:=doom_mocha_save(l_checkpoint);
@@ -330,6 +363,7 @@ create or replace package body doom_match_worker as
     l_tic number;l_count number;l_slot number;l_seq number;l_sha varchar2(64);
     l_first timestamp with time zone;l_now timestamp with time zone:=utc_now;
     l_neutral raw(8):=hextoraw('0000000000000000');
+    l_member_state varchar2(16);l_leave_tic number;l_source varchar2(16);
   begin
     select current_tic+1 into l_tic from doom_match where match_id=p_match
       and match_state='ACTIVE' and generation=p_generation
@@ -337,9 +371,20 @@ create or replace package body doom_match_worker as
     select count(*),min(submitted_at) into l_count,l_first
       from doom_match_command where match_id=p_match and tic=l_tic
       and generation=p_generation and membership_epoch=p_epoch;
-    if l_count<>1 or l_first+numtodsinterval(c_command_deadline_ms/1000,'SECOND')>l_now then
-      return;
-    end if;
+    if l_count<>1 then return;end if;
+    select case when min(player_slot)=0 then 1 else 0 end into l_slot
+      from doom_match_command where match_id=p_match and tic=l_tic
+      and generation=p_generation and membership_epoch=p_epoch;
+    select member_state,leave_tic into l_member_state,l_leave_tic
+      from doom_match_member where match_id=p_match and player_slot=l_slot
+      and generation=p_generation and membership_epoch=p_epoch;
+    if l_member_state='LEFT' and l_leave_tic<=l_tic then
+      l_source:='NEUTRAL_LEFT';
+    elsif l_first+numtodsinterval(case when l_tic=1
+      then c_initial_command_deadline_ms else c_command_deadline_ms end/1000,
+      'SECOND')<=l_now then
+      l_source:='NEUTRAL_DEADLINE';
+    else return;end if;
     -- Serialize with submit_command, then repeat every predicate under lock.
     select current_tic+1 into l_tic from doom_match where match_id=p_match
       and match_state='ACTIVE' and generation=p_generation
@@ -347,12 +392,20 @@ create or replace package body doom_match_worker as
     select count(*),min(submitted_at) into l_count,l_first
       from doom_match_command where match_id=p_match and tic=l_tic
       and generation=p_generation and membership_epoch=p_epoch;
-    if l_count<>1 or l_first+numtodsinterval(c_command_deadline_ms/1000,'SECOND')>l_now then
-      rollback;return;
-    end if;
+    if l_count<>1 then rollback;return;end if;
     select case when min(player_slot)=0 then 1 else 0 end into l_slot
       from doom_match_command where match_id=p_match and tic=l_tic
       and generation=p_generation and membership_epoch=p_epoch;
+    select member_state,leave_tic into l_member_state,l_leave_tic
+      from doom_match_member where match_id=p_match and player_slot=l_slot
+      and generation=p_generation and membership_epoch=p_epoch;
+    if l_member_state='LEFT' and l_leave_tic<=l_tic then
+      l_source:='NEUTRAL_LEFT';
+    elsif l_first+numtodsinterval(case when l_tic=1
+      then c_initial_command_deadline_ms else c_command_deadline_ms end/1000,
+      'SECOND')<=l_now then
+      l_source:='NEUTRAL_DEADLINE';
+    else rollback;return;end if;
     select coalesce(max(command_seq),0)+1 into l_seq from doom_match_command
       where match_id=p_match and player_slot=l_slot;
     l_sha:=sha_raw(l_neutral);
@@ -360,7 +413,7 @@ create or replace package body doom_match_worker as
       membership_epoch,generation,command_source,ticcmd_raw,command_sha,
       submitted_at,accepted_at)
     values(p_match,l_tic,l_slot,l_seq,p_epoch,p_generation,
-      'NEUTRAL_DEADLINE',l_neutral,l_sha,l_now,l_now);
+      l_source,l_neutral,l_sha,l_now,l_now);
     update doom_match_worker_control set request_status='QUEUED',
       requested_tic=l_tic,heartbeat=l_now where match_id=p_match
       and generation=p_generation and membership_epoch=p_epoch
@@ -377,6 +430,13 @@ create or replace package body doom_match_worker as
   ) is
     l_now timestamp with time zone:=utc_now;
   begin
+    update doom_match_member member_ set member_state='LEFT',
+      leave_tic=(select current_tic+1 from doom_match
+        where match_id=p_match and generation=p_generation
+          and membership_epoch=p_epoch),last_seen_at=l_now
+      where match_id=p_match and generation=p_generation
+      and membership_epoch=p_epoch and member_state='DISCONNECTED'
+      and disconnected_at<l_now-interval '10' second;
     update doom_match_member set member_state='DISCONNECTED',
       disconnected_at=l_now where match_id=p_match and generation=p_generation
       and membership_epoch=p_epoch and member_state='ACTIVE'
@@ -560,6 +620,13 @@ create or replace package body doom_match_worker as
     if l_state<>'ACTIVE' or p_tic<>l_current+1 then
       raise_application_error(c_error,'command frontier mismatch');
     end if;
+    select count(*) into l_count from doom_match_member where match_id=p_match
+      and player_slot=p_player_slot and membership_epoch=p_membership_epoch
+      and generation=p_generation and member_state in('ACTIVE','DISCONNECTED');
+    if l_count<>1 then raise_application_error(c_error,'inactive match member');end if;
+    update doom_match_member set member_state='ACTIVE',last_seen_at=l_now,
+      disconnected_at=null where match_id=p_match and player_slot=p_player_slot
+      and membership_epoch=p_membership_epoch and generation=p_generation;
     select coalesce(max(command_seq),0) into l_seq_frontier
       from doom_match_command
       where match_id=p_match and player_slot=p_player_slot;

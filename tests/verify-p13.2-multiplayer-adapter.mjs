@@ -29,6 +29,9 @@ assert.match(adapter, /MULTI_INITIAL/);
 assert.match(adapter, /previousStateSha \+ '\|' \+ membership/);
 assert.match(calls, /create or replace function doom_mocha_multiplayer_new_game/i);
 assert.match(calls, /create or replace function doom_mocha_multiplayer_step/i);
+assert.match(calls, /p_membership_bitmap in number/i);
+assert.match(adapter, /applyMultiplayerMembership\(activePlayers, membershipMask\)/);
+assert.match(adapter, /vectors\.length % 33/);
 assert.match(calls, /create or replace function doom_mocha_multiplayer_reconstruct/i);
 
 process.stdout.write(

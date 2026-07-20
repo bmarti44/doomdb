@@ -932,10 +932,12 @@ public final class DoomDbMochaAdapter {
    * worker's retained consistency ring.
    */
   public static synchronized String multiplayerStepPayloadsSafe(
-      int activePlayers, String commandVectorHex, String previousStateSha,
+      int activePlayers, int membershipMask, String commandVectorHex,
+      String previousStateSha,
       Blob output0, Blob output1, Blob output2, Blob output3) {
     try {
       requireMultiplayerEngine(activePlayers);
+      applyMultiplayerMembership(activePlayers, membershipMask);
       if (previousStateSha == null
           || !previousStateSha.matches("[0-9a-f]{64}")) {
         throw new IllegalArgumentException("previous state SHA required");
@@ -944,7 +946,7 @@ public final class DoomDbMochaAdapter {
       byte[] applied = new byte[32];
       for (int player = 0; player < 4; player++) {
         int offset = player * doom.ticcmd_t.TICCMDLEN;
-        if (player >= activePlayers) {
+        if (player >= activePlayers || !engine.playeringame[player]) {
           for (int index = 0; index < doom.ticcmd_t.TICCMDLEN; index++) {
             if (requested[offset + index] != 0) {
               throw new IllegalArgumentException(
@@ -969,7 +971,7 @@ public final class DoomDbMochaAdapter {
           || engine.leveltime != beforeLevelTime + 1) {
         throw new IllegalStateException("multiplayer world did not advance once");
       }
-      String membership = multiplayerMembership(activePlayers);
+      String membership = multiplayerMembership(activePlayers, membershipMask);
       String commandHex = hex(applied);
       String stateSha = hashAscii(previousStateSha + '|' + membership + '|'
           + commandHex + '|' + multiplayerStateSha(activePlayers));
@@ -999,18 +1001,23 @@ public final class DoomDbMochaAdapter {
       // one canonical empty stream here.
       byte[] vectors = commandStream.length() == 0L
           ? new byte[0] : readBlob(commandStream, 32L * 1024L * 1024L);
-      if (vectors.length % 32 != 0) {
+      if (vectors.length % 33 != 0) {
         throw new IllegalArgumentException("command vector stream length " + vectors.length);
       }
       initializeMultiplayerEngine(activePlayers, deathmatch, skill, episode, map);
       String membership = multiplayerMembership(activePlayers);
       String stateSha = initialStateSha;
       byte[] applied = new byte[32];
-      int vectorCount = vectors.length / 32;
+      int vectorCount = vectors.length / 33;
       for (int vector = 0; vector < vectorCount; vector++) {
+        int recordOffset = vector * 33;
+        int membershipMask = vectors[recordOffset] & 0xff;
+        applyMultiplayerMembership(activePlayers, membershipMask);
+        membership = multiplayerMembership(activePlayers, membershipMask);
         Arrays.fill(applied, (byte) 0);
         for (int player = 0; player < activePlayers; player++) {
-          int offset = vector * 32 + player * doom.ticcmd_t.TICCMDLEN;
+          int offset = recordOffset + 1 + player * doom.ticcmd_t.TICCMDLEN;
+          if (!engine.playeringame[player]) continue;
           int buffer = (engine.gametic / engine.getTicdup())
               % engine.netcmds[player].length;
           doom.ticcmd_t command = engine.netcmds[player][buffer];
@@ -1028,6 +1035,7 @@ public final class DoomDbMochaAdapter {
           int savedDisplay = engine.displayplayer;
           try {
             for (int player = 0; player < activePlayers; player++) {
+              if (!engine.playeringame[player]) continue;
               engine.consoleplayer = player;
               engine.displayplayer = player;
               engine.Display();
@@ -1090,10 +1098,20 @@ public final class DoomDbMochaAdapter {
         || activePlayers < 2 || activePlayers > 4 || !engine.netgame) {
       throw new IllegalStateException("multiplayer engine not initialized");
     }
+    for (int player = activePlayers; player < engine.playeringame.length; player++) {
+      if (engine.playeringame[player]) throw new IllegalStateException(
+          "multiplayer allocation mismatch");
+    }
+  }
+
+  private static void applyMultiplayerMembership(int activePlayers, int mask) {
+    int allowed = (1 << activePlayers) - 1;
+    if ((mask & 1) == 0 || (mask & ~allowed) != 0) {
+      throw new IllegalArgumentException("multiplayer membership mask " + mask);
+    }
     for (int player = 0; player < engine.playeringame.length; player++) {
-      if (engine.playeringame[player] != (player < activePlayers)) {
-        throw new IllegalStateException("multiplayer membership mismatch");
-      }
+      engine.playeringame[player] = player < activePlayers
+          && (mask & (1 << player)) != 0;
     }
   }
 
@@ -1110,6 +1128,7 @@ public final class DoomDbMochaAdapter {
         .append("|stateSha256=").append(stateSha);
     try {
       for (int player = 0; player < activePlayers; player++) {
+        if (!engine.playeringame[player]) continue;
         Blob output = outputs[player];
         if (output == null) {
           throw new IllegalArgumentException("POV output " + player);
@@ -1139,9 +1158,14 @@ public final class DoomDbMochaAdapter {
   }
 
   private static String multiplayerMembership(int activePlayers) {
+    return multiplayerMembership(activePlayers, (1 << activePlayers) - 1);
+  }
+
+  private static String multiplayerMembership(int activePlayers, int mask) {
     StringBuilder result = new StringBuilder(4);
     for (int player = 0; player < 4; player++) {
-      result.append(player < activePlayers ? '1' : '0');
+      result.append(player < activePlayers && (mask & (1 << player)) != 0
+          ? '1' : '0');
     }
     return result.toString();
   }

@@ -171,6 +171,7 @@ name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerNewGamePayloadsSafe(int,int,int
 
 create or replace function doom_mocha_multiplayer_step(
   p_active_players in number,
+  p_membership_bitmap in number,
   p_command_vector_hex in varchar2,
   p_previous_state_sha in varchar2,
   p_output0 in blob,
@@ -179,7 +180,7 @@ create or replace function doom_mocha_multiplayer_step(
   p_output3 in blob
 ) return varchar2
 as language java
-name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerStepPayloadsSafe(int,java.lang.String,java.lang.String,java.sql.Blob,java.sql.Blob,java.sql.Blob,java.sql.Blob) return java.lang.String';
+name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerStepPayloadsSafe(int,int,java.lang.String,java.lang.String,java.sql.Blob,java.sql.Blob,java.sql.Blob,java.sql.Blob) return java.lang.String';
 /
 
 create or replace function doom_mocha_multiplayer_reconstruct(

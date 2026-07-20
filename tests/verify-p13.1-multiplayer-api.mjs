@@ -36,6 +36,9 @@ assert.doesNotMatch(lifecycle,
   /insert into [^(]+\([^)]*(?:capability_token|host_token|join_token|player_token)/is);
 assert.doesNotMatch(lifecycle, /dbms_output|insert into doom_worker|doom_mocha_/i);
 assert.match(httpSmoke, /two clients create\/join\/retry\/one-ready\/status\/leave/);
+assert.match(api, /if l_state='ACTIVE' then/);
+assert.match(api, /command_source='NEUTRAL_LEFT'/);
+assert.match(api, /doom_match_worker\.stop_match\(p_match,l_generation\)/);
 assert.match(httpSmoke, /Never include a response body in failures/);
 assert.doesNotMatch(httpSmoke, /console\.(?:log|error)\([^)]*(?:capability|created|joined)/i);
 

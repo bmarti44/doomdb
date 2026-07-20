@@ -35,7 +35,7 @@ begin
   -- Vanilla tic zero intentionally contains only the shared border/back screen;
   -- distinct world POVs begin with the first advanced gameplay tic.
 
-  stepped_:=doom_mocha_multiplayer_step(2,
+  stepped_:=doom_mocha_multiplayer_step(2,3,
     '08000000000000000008010000000000'||rpad('0',32,'0'),
     state0_,out0_,out1_,out2_,out3_);
   if stepped_ not like 'ok|%' then raise_application_error(-20000,stepped_);end if;

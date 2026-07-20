@@ -680,12 +680,14 @@ create or replace package body doom_api as
     l_state varchar2(16);l_expiry timestamp with time zone;
     l_epoch number;l_generation number;l_slot number;
     l_member_state varchar2(16);l_now timestamp with time zone:=utc_now;
+    l_current number;l_leave_tic number;l_request_status varchar2(16);
+    l_requested_tic number;
   begin
     p_match_state:=null;require_match_shape(p_match);
     select match_state,expires_at,membership_epoch,generation
       into l_state,l_expiry,l_epoch,l_generation
       from doom_match where match_id=p_match for update;
-    if l_expiry<=l_now or l_state not in('LOBBY','CANCELLED') then
+    if l_expiry<=l_now or l_state not in('LOBBY','CANCELLED','ACTIVE','FINISHED') then
       fail(c_match_auth,'match unavailable');
     end if;
     l_slot:=player_capability_slot(p_match,p_player_capability,1);
@@ -693,6 +695,35 @@ create or replace package body doom_api as
       where match_id=p_match and player_slot=l_slot;
     if l_member_state='LEFT' then
       p_match_state:=l_state;commit;return;
+    end if;
+    if l_state='FINISHED' then fail(c_match_auth,'match unavailable');end if;
+    if l_state='ACTIVE' then
+      select current_tic into l_current from doom_match where match_id=p_match;
+      if l_slot=0 then
+        update doom_match_member set member_state='LEFT',
+          leave_tic=l_current+1,last_seen_at=l_now where match_id=p_match;
+        update doom_match set match_state='FINISHED',finished_at=l_now,
+          last_activity_at=l_now where match_id=p_match;
+        commit;doom_match_worker.stop_match(p_match,l_generation);
+        p_match_state:='FINISHED';return;
+      end if;
+      select request_status,requested_tic into l_request_status,l_requested_tic
+        from doom_match_worker_control where match_id=p_match
+          and generation=l_generation for update;
+      l_leave_tic:=case when l_request_status='PROCESSING' and
+        l_requested_tic=l_current+1 then l_current+2 else l_current+1 end;
+      update doom_match_member set member_state='LEFT',leave_tic=l_leave_tic,
+        last_seen_at=l_now where match_id=p_match and player_slot=l_slot;
+      if l_leave_tic=l_current+1 then
+        update doom_match_command set command_source='NEUTRAL_LEFT',
+          ticcmd_raw=hextoraw('0000000000000000'),
+          command_sha=lower(rawtohex(dbms_crypto.hash(
+            hextoraw('0000000000000000'),dbms_crypto.hash_sh256))),
+          accepted_at=l_now where match_id=p_match and player_slot=l_slot
+            and tic=l_leave_tic and generation=l_generation;
+      end if;
+      update doom_match set last_activity_at=l_now where match_id=p_match;
+      commit;p_match_state:='ACTIVE';return;
     end if;
     if l_slot=0 then
       update doom_match_member set member_state='LEFT',leave_tic=0,

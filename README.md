@@ -44,7 +44,10 @@ What works today, all verified by repeatable gates:
   command vector and returns distinct player POVs; a live two-browser gate
   reached synchronized tic 24 with dynamic input and reload/reconnect. Forced
   worker loss now reconstructs the exact state/POV chain in a replacement
-  generation and preserves accepted partial input. Route coverage and the
+  generation and preserves accepted partial input. Guest leave is recorded at
+  an exact tic as `NEUTRAL_LEFT`; the membership bitmap becomes one-player,
+  only the surviving POV is rendered, and that frontier reconstructs exactly.
+  Route coverage and the
   300-frame multiplayer FPS gate remain in progress.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;

@@ -3012,7 +3012,14 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   state SHA and both frame hashes. Public polling now detects a failed/stale
   owner, launches a replacement generation, preserves an accepted partial
   next-tic command, republishes identical selected POVs, and advances normally
-  after the seam. Bounded final leave semantics remain open.
+  after the seam. Active guest leave is now fixed to an exact future tic: the
+  durable vector records `NEUTRAL_LEFT`, membership changes from `03` to `01`,
+  the retired POV is no longer rendered, and reconstruction reproduces the
+  one-POV frontier. Idle members transition ACTIVE → DISCONNECTED after three
+  seconds and to the same terminal LEFT boundary after ten more; the host can
+  explicitly finish the match idempotently. Tic 1 alone uses a 500 ms cold
+  generated-procedure allowance, while every warm missing-peer deadline remains
+  75 ms. Bounded final leave semantics are closed.
 
 #### T13.3 Co-op client, replay, and recovery
 

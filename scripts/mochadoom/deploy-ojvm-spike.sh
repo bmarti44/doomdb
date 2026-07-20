@@ -264,6 +264,17 @@ docker exec "$container" bash -lc \
   # before its package body is replaced below. Treat the stop call as best
   # effort and make the running-job count the authoritative lock-release gate.
   printf '%s\n' "begin execute immediate 'begin doom_unified_worker.request_stop_all; end;'; exception when others then null; end;" '/'
+  cat <<'SQL'
+begin
+  execute immediate q'~begin
+    for r in (select match_id,generation from doom_match_worker_control) loop
+      doom_match_worker.stop_match(r.match_id,r.generation);
+    end loop;
+  end;~';
+exception when others then null;
+end;
+/
+SQL
 } | docker exec -i "$container" "$java_home/bin/sqlplus" -s /nolog
 workers_stopped=0
 for _ in $(seq 1 30); do
@@ -272,7 +283,8 @@ for _ in $(seq 1 30); do
 set heading off feedback off pages 0
 alter session set container=FREEPDB1;
 select count(*) from dba_scheduler_running_jobs
- where owner='DOOM' and job_name like 'DOOM_UNIFIED_WORKER_%';
+ where owner='DOOM' and (job_name like 'DOOM_UNIFIED_WORKER_%'
+   or job_name like 'DOOM_MATCH_%');
 SQL" | tail -n 1 | tr -d '[:space:]')"
   if [[ "$running_workers" == 0 ]]; then
     workers_stopped=1

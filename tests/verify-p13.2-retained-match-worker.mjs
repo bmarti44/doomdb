@@ -9,6 +9,8 @@ const api = fs.readFileSync(new URL(
   '../sql/rest/010_doom_api.sql', import.meta.url), 'utf8');
 const adapter = fs.readFileSync(new URL(
   '../java/mochadoom-ojvm/src/doomdb/mocha/DoomDbMochaAdapter.java', import.meta.url), 'utf8');
+const deploy = fs.readFileSync(new URL(
+  '../scripts/mochadoom/deploy-ojvm-spike.sh', import.meta.url), 'utf8');
 
 assert.match(schema, /create table doom_match_worker_control/);
 assert.match(schema, /deferrable initially deferred/);
@@ -23,10 +25,16 @@ assert.match(worker, /request_status='PROCESSING' and requested_tic=p_tic/);
 assert.match(worker, /l_existing<>p_ticcmd_raw or l_existing_seq<>p_command_seq/);
 assert.match(worker, /p_command_seq<>l_seq_frontier\+1/);
 assert.match(worker, /c_command_deadline_ms constant pls_integer:=75/);
+assert.match(worker, /c_initial_command_deadline_ms constant pls_integer:=500/);
 assert.match(worker, /c_frame_retention_tics constant pls_integer:=128/);
 assert.match(worker, /delete from doom_match_frame where match_id=p_match and tic<>0/);
 assert.match(worker, /delete from doom_match_checkpoint where match_id=p_match/);
 assert.match(worker, /'NEUTRAL_DEADLINE'/);
+assert.match(worker, /'NEUTRAL_LEFT'/);
+assert.match(worker, /disconnected_at<l_now-interval '10' second/);
+assert.match(worker, /leave_tic=\(select current_tic\+1/);
+assert.match(worker, /doom_mocha_multiplayer_step\(\s*2,l_membership/);
+assert.match(worker, /utl_raw\.concat\(vector_\.membership_bitmap,vector_\.command_vector\)/);
 assert.match(worker, /fill_deadline\(p_match,l_generation,l_epoch\)/);
 assert.match(worker, /hextoraw\(lpad\(to_char\(l_neutral,'fmxx'\),2,'0'\)\)/);
 assert.match(worker, /member_state='DISCONNECTED'/);
@@ -39,6 +47,8 @@ assert.match(worker, /procedure recover_match\(/);
 assert.match(worker, /doom_mocha_multiplayer_reconstruct/);
 assert.match(adapter, /commandStream\.length\(\) == 0L\s*\? new byte\[0\]/,
   'tic-zero recovery must accept its canonical empty command ledger');
+assert.match(deploy, /doom_match_worker\.stop_match/);
+assert.match(deploy, /job_name like 'DOOM_MATCH_%'/);
 assert.match(worker, /recovery POV mismatch/);
 assert.match(worker, /generation=l_new/);
 assert.match(worker, /match_state='ACTIVE' then reconstruct_existing/);

@@ -178,6 +178,11 @@ begin
 
   -- A fresh session-private engine rebuilt only from the ordered durable
   -- vectors must reproduce the selected state and both POV hashes exactly.
+  -- Stop the retained owner first: this intentionally cold diagnostic can run
+  -- longer than the real client's disconnect grace and is not presence input.
+  select job_name into job_ from doom_match_worker_control where match_id=match1_;
+  begin dbms_scheduler.stop_job(job_,true);exception when others then null;end;
+  begin dbms_scheduler.drop_job(job_,true);exception when others then null;end;
   select state_sha into root1_ from doom_match_tic
     where match_id=match1_ and tic=0;
   select state_sha into final_state_ from doom_match_tic
@@ -187,9 +192,10 @@ begin
   select frame_sha into frame1_ from doom_match_frame
     where match_id=match1_ and tic=32 and player_slot=1;
   dbms_lob.createtemporary(stream_,true,dbms_lob.call);
-  for vector_ in (select command_vector from doom_match_tic
+  for vector_ in (select membership_bitmap,command_vector from doom_match_tic
     where match_id=match1_ and tic between 1 and 32 order by tic) loop
-    dbms_lob.writeappend(stream_,32,vector_.command_vector);
+    dbms_lob.writeappend(stream_,33,
+      utl_raw.concat(vector_.membership_bitmap,vector_.command_vector));
   end loop;
   dbms_lob.createtemporary(payload0_,true,dbms_lob.call);
   dbms_lob.createtemporary(payload1_,true,dbms_lob.call);
