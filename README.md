@@ -58,6 +58,10 @@ What works today, all verified by repeatable gates:
   SPFILE is rebuilt with a 256 MiB Java-pool floor; the lifecycle and retained
   match HTTP gates pass after a real container recreation, including exact
   generation recovery and tic-zero reconstruction.
+- **Bounded active multiplayer storage.** Each live match keeps tic zero and a
+  128-tic response ring (two 64 KB POVs per tic) plus its latest two native
+  checkpoints. The compact ordered command/state ledger stays complete for
+  exact replay; a live 160-tic gate proved the BLOB counts stop growing.
 - **Long-route hardening.** A complete 6,336-command save/load lineage export
   now replays byte-exactly through public AutoREST. That route exposed an
   unsigned fine-angle audio lookup after tic 8,006; the clean-room overlay now

@@ -3073,8 +3073,12 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   insufficient. The off-request Scheduler purge now runs every minute in
   bounded batches for both expired game sessions and expired matches, stopping
   and dropping retained match jobs before cascading their LOB-backed history.
-  Static and live expired-match gates pass. A bounded active-history/ring policy
-  remains required before the 30-minute soak can close this task.
+  Static and live expired-match gates pass. Active matches now retain tic zero
+  plus a 128-tic two-POV response-BLOB ring and the latest two native
+  checkpoints, while preserving the complete compact command/state vector
+  ledger required for exact replay. A live 160-tic gate held exactly 258 frame
+  BLOBs, two checkpoints, 161 state rows, and 320 ordered commands. The
+  30-minute resource/session soak remains open.
 - Fresh-stack checkpoint (2026-07-20): the empty-config ORDS path now copies
   Jetty configuration into its writable volume, replaces the bundled repository,
   and republishes the allowlisted AutoREST schema/package/view after installation.

@@ -22,6 +22,7 @@ end doom_match_worker;
 create or replace package body doom_match_worker as
   c_error constant pls_integer:=-20731;
   c_command_deadline_ms constant pls_integer:=75;
+  c_frame_retention_tics constant pls_integer:=128;
 
   -- This bounded T13.2 slice advances complete two-player vectors and fills a
   -- missing peer with a durable neutral command after a fixed deadline.
@@ -301,7 +302,16 @@ create or replace package body doom_match_worker as
       end if;
       update doom_match_checkpoint set checkpoint_sha=l_checkpoint_sha,
         checkpoint_bytes=l_checkpoint_bytes where match_id=p_match and tic=p_tic;
+      -- Two native checkpoints are sufficient for operational inspection. The
+      -- compact per-tic vector ledger remains complete for exact replay.
+      delete from doom_match_checkpoint where match_id=p_match
+        and tic<p_tic-32;
     end if;
+    -- Response BLOBs dominate storage (~128 KiB/tic for two POVs). Retain tic
+    -- zero plus a bounded late-poll window; exact restart uses command vectors
+    -- and the selected frontier frames, not historical response BLOBs.
+    delete from doom_match_frame where match_id=p_match and tic<>0
+      and tic<p_tic-c_frame_retention_tics+1;
     update doom_match set current_tic=p_tic,last_activity_at=l_now
       where match_id=p_match and match_state='ACTIVE' and generation=p_generation
         and membership_epoch=p_epoch and current_tic=p_tic-1;
