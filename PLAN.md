@@ -2631,6 +2631,21 @@ the clean-room engine unless it is needed to validate the new public contract.
   `ce31d6dd25fb2d8df0f02029db40b7132dfb1a385a89eb6d312ca2108f52c01a`.
   These are route-authoring and crash-recovery evidence only; the required
   uninterrupted normal-skill-3 completion, milestones, and replay remain open.
+- Skill-3 lift checkpoint (2026-07-20): the no-cheat authoring lineage now
+  extends the verified 6,336-command prefix to tic 9,223 and preserves all
+  9,223 public commands in
+  `artifacts/t8.1-live/mocha-skill3-lift-prefix-9223.json`. The added branch
+  survives the lower-area combat route, collects another health bonus, calls
+  linedef 594's tagged down-wait-up platform from the pit, enters it while
+  lowered, rides sector 98 back up, and exits alive into sector 150. Slot 94
+  pins the resulting 5-HP pose at approximately `(77,329)` with state SHA
+  `0e5bdddcdc0a42047a984f0cb458e75f2546ce3f8d957650dd10bde716ca22f8`
+  and frame SHA
+  `8ee1dc8772e6ee45a01381d2e18d39f2ef0b3bed2266719f8494ac08851b2823`.
+  The exported route is structurally cheat-free and its first 6,336 commands
+  are byte-for-byte equal to the independently replayed prefix. This remains
+  authoring evidence until the complete route reaches intermission and the
+  entire 9,223-plus command stream passes a fresh uninterrupted replay.
 
 #### T8.2 Menu, pause, automap, cheats, save/load workflows
 
