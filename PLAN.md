@@ -3075,6 +3075,14 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   and dropping retained match jobs before cascading their LOB-backed history.
   Static and live expired-match gates pass. A bounded active-history/ring policy
   remains required before the 30-minute soak can close this task.
+- Fresh-stack checkpoint (2026-07-20): the empty-config ORDS path now copies
+  Jetty configuration into its writable volume, replaces the bundled repository,
+  and republishes the allowlisted AutoREST schema/package/view after installation.
+  The persisted SPFILE target is rebuilt with balanced 256/256/256 MiB
+  shared/Java/buffer floors; this corrects the measured 128 MiB Java-pool
+  exhaustion during concurrent retained-match initialization. Static ownership,
+  lifecycle HTTP, full retained-worker, neutral deadline, checkpoint, exact
+  replay, and public generation-recovery gates pass on the recreated stack.
 
 ## 8. Final acceptance matrix
 

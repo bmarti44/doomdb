@@ -52,6 +52,12 @@ What works today, all verified by repeatable gates:
   evicted (bounded, deterministic, durable-state reconstruct) so a new player
   is never refused; the eleven-gate Mocha regression suite passes from a fully
   occupied pool.
+- **Fresh-stack multiplayer hardening (2026-07-20).** Empty ORDS config volumes
+  now install cleanly, republish the allowlisted AutoREST API after repository
+  replacement, and preserve the fixed six-session pool. Oracle's persisted
+  SPFILE is rebuilt with a 256 MiB Java-pool floor; the lifecycle and retained
+  match HTTP gates pass after a real container recreation, including exact
+  generation recovery and tic-zero reconstruction.
 - **Long-route hardening.** A complete 6,336-command save/load lineage export
   now replays byte-exactly through public AutoREST. That route exposed an
   unsigned fine-angle audio lookup after tic 8,006; the clean-room overlay now

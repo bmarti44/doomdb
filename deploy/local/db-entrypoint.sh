@@ -19,12 +19,27 @@ sed -i \
 # relational working set. Oracle Free may rebalance above these floors inside
 # its fixed 1 GiB SGA as classes and game ledgers become hot.
 printf '%s\n' \
-  'shared_pool_size=320m' \
-  'java_pool_size=128m' \
-  'db_cache_size=320m' >>/tmp/doomdb-init.ora
+  'shared_pool_size=256m' \
+  'java_pool_size=256m' \
+  'db_cache_size=256m' >>/tmp/doomdb-init.ora
 
-rm -f "${ORACLE_HOME}/dbs/spfileFREE.ora"
-printf "create spfile='%s/dbs/spfileFREE.ora' from pfile='/tmp/doomdb-init.ora';\nexit\n" \
-  "${ORACLE_HOME}" | sqlplus -s / as sysdba
+spfile_path="${ORACLE_HOME}/dbs/spfileFREE.ora"
+# On initialized volumes this is a symlink into /opt/oracle/oradata/dbconfig.
+# Replacing only the symlink creates an orphan DB-home file which the vendor
+# entrypoint discards when it restores the persistent link.
+persisted_spfile="${ORACLE_BASE}/oradata/dbconfig/${ORACLE_SID}/spfile${ORACLE_SID}.ora"
+if [[ -e "${persisted_spfile}" ]]; then
+  spfile_target="${persisted_spfile}"
+  rm -f "${spfile_target}"
+elif [[ -L "${spfile_path}" && -e "${spfile_path}" ]]; then
+  spfile_target=$(readlink -f "${spfile_path}")
+  rm -f "${spfile_target}"
+else
+  spfile_target="${spfile_path}"
+  rm -f "${spfile_target}"
+fi
+printf "create spfile='%s' from pfile='/tmp/doomdb-init.ora';\nexit\n" \
+  "${spfile_target}" | sqlplus -s / as sysdba
+unset spfile_path persisted_spfile spfile_target
 
 exec /opt/oracle/container-entrypoint.sh

@@ -4,7 +4,9 @@ The stack runs the pinned Oracle Free and ORDS images from `versions.lock`.
 Oracle is constrained to exactly two CPUs and 4 GiB. The database entrypoint
 regenerates the vendor SPFILE with `sga_target=1024m`,
 `pga_aggregate_target=256m`, and OJVM-aware shared/Java/buffer-cache floors
-of 320/128/320 MiB before handing control back to the vendor entrypoint. Oracle
+of 256/256/256 MiB before handing control back to the vendor entrypoint. The
+Java floor leaves verified headroom above the roughly 117 MiB shared Mocha
+class graph when two retained match sessions initialize concurrently. Oracle
 Free rebalances above those floors as the OJVM classes, shared cursors, and game
 ledgers become hot; the explicit buffer-cache request protects the per-tic
 ledger and frontier working set without hard-coding one observed component
@@ -19,6 +21,8 @@ settings contain no credential and are persisted with the database volume.
 On the first run with an empty ORDS configuration volume, the wrapper removes
 the ORDS repository bundled in Oracle Free through the supported ORDS CLI; the
 official ORDS entrypoint then installs the pinned version and persists its pool.
+The post-install hook republishes the allowlisted Doom API objects, because the
+supported repository replacement also removes their prior AutoREST metadata.
 
 Create local secrets without placing credentials in Compose environment values:
 

@@ -994,7 +994,11 @@ public final class DoomDbMochaAdapter {
           || !expectedStateSha.matches("[0-9a-f]{64}")) {
         throw new IllegalArgumentException("multiplayer reconstruction inputs");
       }
-      byte[] vectors = readBlob(commandStream, 32L * 1024L * 1024L);
+      // Tic-zero recovery has no command vectors yet. Keep readBlob's strict
+      // non-empty contract for assets, saves, and frames while accepting the
+      // one canonical empty stream here.
+      byte[] vectors = commandStream.length() == 0L
+          ? new byte[0] : readBlob(commandStream, 32L * 1024L * 1024L);
       if (vectors.length % 32 != 0) {
         throw new IllegalArgumentException("command vector stream length " + vectors.length);
       }

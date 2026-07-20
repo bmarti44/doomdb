@@ -46,8 +46,10 @@ services:
       DBSERVICENAME: FREEPDB1
       DB_WAIT_RETRY: "60"
       ORACLE_PASSWORD_FILE: /run/secrets/oracle_password
+      DOOMDB_APP_PASSWORD_FILE: /run/secrets/doom_password
     secrets:
       - oracle_password
+      - doom_password
     depends_on:
       db:
         condition: service_healthy
@@ -55,8 +57,9 @@ services:
       - ords-config:/etc/ords/config
       - ./deploy/local/ords-entrypoint.sh:/doomdb/ords-entrypoint.sh:ro
       - ./deploy/local/ords-entrypoint.d:/ords-entrypoint.d:ro
+      - ./sql/rest/020_ords_enable.sql:/doomdb/020_ords_enable.sql:ro
       - ./client/dist:/var/www/doomdb:ro
-      - ./deploy/local/jetty-gzip.xml:/etc/ords/config/global/standalone/etc/jetty-gzip.xml:ro
+      - ./deploy/local/jetty-gzip.xml:/doomdb/jetty-gzip.xml:ro
     ports:
       - "${DOOMDB_HTTP_PORT:-8080}:8080"
     healthcheck:

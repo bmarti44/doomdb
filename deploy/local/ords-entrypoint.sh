@@ -15,6 +15,13 @@ fi
 export ORACLE_PWD
 unset ORACLE_PASSWORD_FILE secret_file
 
+# Do not bind-mount a child directly into the initially empty config volume:
+# Docker creates its parent directories as root, while ORDS runs as oracle and
+# must create global/settings.xml on first install.
+mkdir -p /etc/ords/config/global/standalone/etc
+cp /doomdb/jetty-gzip.xml \
+  /etc/ords/config/global/standalone/etc/jetty-gzip.xml
+
 # Oracle Free contains an ORDS repository, while a new ORDS config volume is
 # empty. The official image treats that same-version combination as already
 # installed and cannot create a connection pool. On the first run only, remove

@@ -46,7 +46,19 @@ const active = await request('READY_MATCH', {
   p_match: created.p_match, p_player_capability: joined.p_player_capability,
   p_ready: 1
 });
-assert.equal(active.p_match_state, 'ACTIVE');
+assert.ok(['ACTIVE', 'STARTING'].includes(active.p_match_state));
+if (active.p_match_state === 'STARTING') {
+  let state = 'STARTING';
+  for (let attempt = 0; attempt < 180 && state === 'STARTING'; attempt += 1) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const status = await request('MATCH_STATUS', {
+      p_match: created.p_match,
+      p_capability: created.p_player_capability
+    });
+    state = status.p_match_state;
+  }
+  assert.equal(state, 'ACTIVE', 'cold OJVM match worker did not become active');
+}
 
 const initial0 = await poll(created.p_match, created.p_player_capability, 0);
 const initial1 = await poll(created.p_match, joined.p_player_capability, 0);
@@ -55,22 +67,20 @@ assert.equal(Buffer.from(initial0.p_payload, 'base64').subarray(0, 4).toString()
 assert.equal(initial0.p_payload, initial1.p_payload,
   'authentic tic-zero border payload is shared');
 
-const guestSubmit = await request('SUBMIT_MATCH_STEP', {
-  p_match: created.p_match, p_player_capability: joined.p_player_capability,
-  p_tic: 1, p_command_seq: 1, p_ticcmd_hex: '00f8000000000000'
-});
+// Submit both independent keyboard-state commands concurrently, as the real
+// two-browser client does. A sequential HTTP poll here can exceed the bounded
+// 75 ms missing-peer deadline and correctly cause a neutral substitution.
+const [guestSubmit, hostSubmit] = await Promise.all([
+  request('SUBMIT_MATCH_STEP', {
+    p_match: created.p_match, p_player_capability: joined.p_player_capability,
+    p_tic: 1, p_command_seq: 1, p_ticcmd_hex: '00f8000000000000'
+  }),
+  request('SUBMIT_MATCH_STEP', {
+    p_match: created.p_match, p_player_capability: created.p_player_capability,
+    p_tic: 1, p_command_seq: 1, p_ticcmd_hex: '0800000000000000'
+  })
+]);
 assert.equal(guestSubmit.p_accepted, 1);
-const pending = await request('POLL_MATCH_FRAME', {
-  p_match: created.p_match, p_player_capability: created.p_player_capability,
-  p_tic: 1, p_wait_ms: 0
-});
-assert.equal(pending.p_ready, 0);
-assert.equal(pending.p_current_tic, 0);
-
-const hostSubmit = await request('SUBMIT_MATCH_STEP', {
-  p_match: created.p_match, p_player_capability: created.p_player_capability,
-  p_tic: 1, p_command_seq: 1, p_ticcmd_hex: '0800000000000000'
-});
 assert.equal(hostSubmit.p_accepted, 1);
 assert.equal(hostSubmit.p_membership_epoch, guestSubmit.p_membership_epoch);
 assert.equal(hostSubmit.p_generation, guestSubmit.p_generation);

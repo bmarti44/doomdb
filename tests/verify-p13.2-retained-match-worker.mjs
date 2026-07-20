@@ -7,6 +7,8 @@ const schema = fs.readFileSync(new URL(
   '../sql/schema/048_multiplayer_worker.sql', import.meta.url), 'utf8');
 const api = fs.readFileSync(new URL(
   '../sql/rest/010_doom_api.sql', import.meta.url), 'utf8');
+const adapter = fs.readFileSync(new URL(
+  '../java/mochadoom-ojvm/src/doomdb/mocha/DoomDbMochaAdapter.java', import.meta.url), 'utf8');
 
 assert.match(schema, /create table doom_match_worker_control/);
 assert.match(schema, /deferrable initially deferred/);
@@ -32,6 +34,8 @@ assert.match(worker, /l_checkpoint_status:=doom_mocha_save\(l_checkpoint\)/);
 assert.match(worker, /checkpoint locator length mismatch/);
 assert.match(worker, /procedure recover_match\(/);
 assert.match(worker, /doom_mocha_multiplayer_reconstruct/);
+assert.match(adapter, /commandStream\.length\(\) == 0L\s*\? new byte\[0\]/,
+  'tic-zero recovery must accept its canonical empty command ledger');
 assert.match(worker, /recovery POV mismatch/);
 assert.match(worker, /generation=l_new/);
 assert.match(worker, /match_state='ACTIVE' then reconstruct_existing/);

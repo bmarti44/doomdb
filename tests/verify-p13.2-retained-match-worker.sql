@@ -256,6 +256,17 @@ begin
   if count_<>1 then raise_application_error(-20000,'partial recovery command lost');end if;
 
   start_('WORKER_B',match2_,host2_,join2_,p20_,p21_,epoch2_,generation2_);
+  -- A worker may disappear before the first command. Tic zero therefore has a
+  -- canonical empty vector stream and must still reconstruct both POVs.
+  select job_name into job_ from doom_match_worker_control where match_id=match2_;
+  begin dbms_scheduler.stop_job(job_,true);exception when others then null;end;
+  begin dbms_scheduler.drop_job(job_,true);exception when others then null;end;
+  doom_match_worker.recover_match(match2_,180000,state_);
+  select match_state,generation,current_tic into state_,generation2_,tic_
+    from doom_match where match_id=match2_;
+  if state_<>'ACTIVE' or generation2_<>2 or tic_<>0 then
+    raise_application_error(-20000,'tic-zero recovery did not publish');
+  end if;
   select previous_state_sha into root1_ from doom_match_tic
     where match_id=match1_ and tic=0;
   select previous_state_sha into root2_ from doom_match_tic
@@ -270,7 +281,7 @@ begin
 
   cleanup_(match2_);cleanup_(match1_);
   dbms_output.put_line('PASS P13.2-RETAINED-MATCH-WORKER real-start/'||
-    'arbitrary-arrival/one-tic/two-POV/idempotency/neutral-deadline/reconnect/checkpoint/ledger-reconstruct/generation-recovery/public-recovery/root/isolation');
+    'arbitrary-arrival/one-tic/two-POV/idempotency/neutral-deadline/reconnect/checkpoint/ledger-reconstruct/generation-recovery/public-recovery/tic-zero-recovery/root/isolation');
 exception when others then
   rollback;cleanup_(match2_);cleanup_(match1_);raise;
 end;
