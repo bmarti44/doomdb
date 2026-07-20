@@ -26,6 +26,8 @@ assert.match(lifecycle, /l_recent>=16 or l_open>=32/);
 assert.match(lifecycle, /interval '20' minute/);
 assert.match(lifecycle, /membership_epoch=l_epoch/);
 assert.match(lifecycle, /doom_match_worker\.start_ready\(p_match,30000,p_match_state\)/);
+assert.match(lifecycle, /doom_match_worker\.recover_match\(p_match,0,l_recovery_state\)/);
+assert.match(lifecycle, /l_worker_heartbeat<utc_now-interval '5' second/);
 assert.match(lifecycle, /returns ACTIVE only after real Java tic-zero payloads/);
 assert.match(lifecycle, /Supplying the previously returned player capability/);
 assert.doesNotMatch(specification, /function new_capability|function capability_hash|require_match_shape/);

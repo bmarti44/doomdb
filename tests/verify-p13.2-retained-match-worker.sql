@@ -203,6 +203,58 @@ begin
   end if;
   discard_:=doom_mocha_dispose;
 
+  doom_match_worker.recover_match(match1_,180000,state_);
+  if state_<>'ACTIVE' then raise_application_error(-20000,'recovery did not publish');end if;
+  status_(match1_,host1_);
+  if generation1_<>2 or tic_<>32 then
+    raise_application_error(-20000,'recovery generation/frontier mismatch');
+  end if;
+  select min(frame_sha),max(frame_sha) into root1_,root2_
+    from doom_match_frame where match_id=match1_ and tic=32;
+  if root1_<>least(frame0_,frame1_) or root2_<>greatest(frame0_,frame1_) then
+    raise_application_error(-20000,'recovery changed selected POVs');
+  end if;
+  doom_match_worker.submit_command(match1_,0,epoch1_,generation1_,33,33,
+    hextoraw('0800000000000000'),accepted_);
+  doom_match_worker.submit_command(match1_,1,epoch1_,generation1_,33,33,
+    hextoraw('0000000000000000'),accepted_);
+  for poll_ in 1..1000 loop
+    doom_match_worker.poll_frame(match1_,0,epoch1_,generation1_,33,ready_,payload0_);
+    exit when ready_=1;dbms_session.sleep(.01);
+  end loop;
+  if ready_<>1 then
+    select last_error into worker_error_ from doom_match_worker_control
+      where match_id=match1_;
+    raise_application_error(-20000,'post-recovery tic timeout worker='||worker_error_);
+  end if;
+
+  -- Public polling detects a dead/stale owner, starts a fenced generation, and
+  -- preserves the already-durable partial next-tic command across the seam.
+  select job_name into job_ from doom_match_worker_control where match_id=match1_;
+  begin dbms_scheduler.stop_job(job_,true);exception when others then null;end;
+  begin dbms_scheduler.drop_job(job_,true);exception when others then null;end;
+  update doom_match_worker_control set heartbeat=systimestamp-interval '10' second
+    where match_id=match1_ and generation=generation1_;
+  commit;
+  doom_api.submit_match_step(match1_,p10_,34,34,'0800000000000000',
+    accepted_,epoch1_,generation1_);
+  doom_api.poll_match_frame(match1_,p10_,34,0,ready_,tic_,payload0_);
+  for poll_ in 1..1800 loop
+    status_(match1_,host1_);
+    exit when generation1_=3 and state_='ACTIVE';dbms_session.sleep(.1);
+  end loop;
+  if generation1_<>3 or state_<>'ACTIVE' then
+    raise_application_error(-20000,'public recovery did not publish');
+  end if;
+  for poll_ in 1..1000 loop
+    doom_api.poll_match_frame(match1_,p10_,34,100,ready_,tic_,payload0_);
+    exit when ready_=1;dbms_session.sleep(.01);
+  end loop;
+  if ready_<>1 or tic_<>34 then raise_application_error(-20000,'public recovery frame timeout');end if;
+  select count(*) into count_ from doom_match_command where match_id=match1_
+    and tic=34 and player_slot=0 and command_source='SUBMITTED' and generation=3;
+  if count_<>1 then raise_application_error(-20000,'partial recovery command lost');end if;
+
   start_('WORKER_B',match2_,host2_,join2_,p20_,p21_,epoch2_,generation2_);
   select previous_state_sha into root1_ from doom_match_tic
     where match_id=match1_ and tic=0;
@@ -218,7 +270,7 @@ begin
 
   cleanup_(match2_);cleanup_(match1_);
   dbms_output.put_line('PASS P13.2-RETAINED-MATCH-WORKER real-start/'||
-    'arbitrary-arrival/one-tic/two-POV/idempotency/neutral-deadline/reconnect/checkpoint/ledger-reconstruct/root/isolation');
+    'arbitrary-arrival/one-tic/two-POV/idempotency/neutral-deadline/reconnect/checkpoint/ledger-reconstruct/generation-recovery/public-recovery/root/isolation');
 exception when others then
   rollback;cleanup_(match2_);cleanup_(match1_);raise;
 end;

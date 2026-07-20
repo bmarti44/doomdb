@@ -4,6 +4,8 @@ set define off
 create or replace package doom_match_worker authid definer as
   procedure start_ready(
     p_match in varchar2,p_wait_ms in number,p_match_state out varchar2);
+  procedure recover_match(
+    p_match in varchar2,p_wait_ms in number,p_match_state out varchar2);
   procedure submit_command(
     p_match in varchar2,p_player_slot in number,p_membership_epoch in number,
     p_generation in number,p_tic in number,p_command_seq in number,
@@ -137,6 +139,75 @@ create or replace package body doom_match_worker as
       heartbeat=l_now,last_error=null where match_id=p_match
         and generation=p_generation and membership_epoch=l_epoch;
     if sql%rowcount<>1 then raise_application_error(c_error,'initial control fence');end if;
+    commit;
+  end;
+
+  procedure reconstruct_existing(p_match varchar2,p_generation number) is
+    l_skill number;l_episode number;l_map number;l_deathmatch number;
+    l_epoch number;l_old_generation number;l_tic number;l_status varchar2(4000);
+    l_initial_state varchar2(64);l_expected_state varchar2(64);
+    l_expected_frame0 varchar2(64);l_expected_frame1 varchar2(64);
+    l_actual_frame0 varchar2(64);l_actual_frame1 varchar2(64);
+    l_stream blob;l_b0 blob;l_b1 blob;l_now timestamp with time zone:=utc_now;
+    l_count number;
+  begin
+    select skill,episode,map,case game_mode when 'DEATHMATCH' then 1 else 0 end,
+      membership_epoch,generation,current_tic
+      into l_skill,l_episode,l_map,l_deathmatch,l_epoch,l_old_generation,l_tic
+      from doom_match where match_id=p_match and match_state='ACTIVE' for update;
+    if p_generation<>l_old_generation+1 then
+      raise_application_error(c_error,'recovery generation fence');
+    end if;
+    select state_sha into l_initial_state from doom_match_tic
+      where match_id=p_match and tic=0;
+    select state_sha into l_expected_state from doom_match_tic
+      where match_id=p_match and tic=l_tic;
+    select frame_sha,response_blob into l_expected_frame0,l_b0
+      from doom_match_frame where match_id=p_match and tic=l_tic and player_slot=0
+      for update;
+    select frame_sha,response_blob into l_expected_frame1,l_b1
+      from doom_match_frame where match_id=p_match and tic=l_tic and player_slot=1
+      for update;
+    dbms_lob.createtemporary(l_stream,true,dbms_lob.call);
+    for vector_ in (select command_vector from doom_match_tic
+      where match_id=p_match and tic between 1 and l_tic order by tic) loop
+      dbms_lob.writeappend(l_stream,32,vector_.command_vector);
+    end loop;
+    l_status:=doom_mocha_multiplayer_reconstruct(2,l_deathmatch,l_skill,
+      l_episode,l_map,l_stream,l_initial_state,l_expected_state,
+      l_b0,l_b1,null,null);
+    if substr(l_status,1,3)<>'ok|' then
+      raise_application_error(c_error,substr(l_status,1,1800));
+    end if;
+    l_actual_frame0:=status_field(l_status,'pov0FrameSha');
+    l_actual_frame1:=status_field(l_status,'pov1FrameSha');
+    if l_actual_frame0<>l_expected_frame0 or l_actual_frame1<>l_expected_frame1 then
+      raise_application_error(c_error,'recovery POV mismatch');
+    end if;
+    update doom_match_frame set generation=p_generation
+      where match_id=p_match and tic=l_tic;
+    update doom_match_tic set generation=p_generation
+      where match_id=p_match and tic=l_tic and generation=l_old_generation;
+    update doom_match_checkpoint set generation=p_generation
+      where match_id=p_match and tic=l_tic and generation=l_old_generation;
+    update doom_match_command set generation=p_generation
+      where match_id=p_match and tic=l_tic+1 and generation=l_old_generation;
+    update doom_match_member set generation=p_generation
+      where match_id=p_match and membership_epoch=l_epoch
+        and member_state in('ACTIVE','DISCONNECTED');
+    update doom_match set generation=p_generation,last_activity_at=l_now
+      where match_id=p_match and generation=l_old_generation
+        and membership_epoch=l_epoch and current_tic=l_tic;
+    if sql%rowcount<>1 then raise_application_error(c_error,'recovery publish fence');end if;
+    select count(*) into l_count from doom_match_command where match_id=p_match
+      and tic=l_tic+1 and generation=p_generation and membership_epoch=l_epoch;
+    update doom_match_worker_control set worker_status='READY',
+      request_status=case when l_count=2 then 'QUEUED' else 'IDLE' end,
+      requested_tic=case when l_count=2 then l_tic+1 else null end,
+      worker_sid=sys_context('USERENV','SID'),heartbeat=l_now,last_error=null
+      where match_id=p_match and generation=p_generation
+        and membership_epoch=l_epoch and worker_status='STARTING';
+    if sql%rowcount<>1 then raise_application_error(c_error,'recovery control fence');end if;
     commit;
   end;
 
@@ -306,10 +377,14 @@ create or replace package body doom_match_worker as
   procedure run_match(p_match in varchar2) is
     l_generation number;l_epoch number;l_status varchar2(16);l_request varchar2(16);
     l_tic number;l_stop number;l_idle number:=0;l_dispose varchar2(4000);
+    l_match_state varchar2(16);
   begin
     select generation,membership_epoch into l_generation,l_epoch
       from doom_match_worker_control where match_id=p_match;
-    publish_initial(p_match,l_generation);
+    select match_state into l_match_state from doom_match where match_id=p_match;
+    if l_match_state='LOBBY' then publish_initial(p_match,l_generation);
+    elsif l_match_state='ACTIVE' then reconstruct_existing(p_match,l_generation);
+    else raise_application_error(c_error,'match is not recoverable');end if;
     loop
       select worker_status,request_status,requested_tic,stop_requested
         into l_status,l_request,l_tic,l_stop from doom_match_worker_control
@@ -347,6 +422,48 @@ create or replace package body doom_match_worker as
       begin l_ignored:=doom_mocha_dispose;exception when others then null;end;
       fail_control(p_match,l_error);
     end;
+  end;
+
+  procedure recover_match(
+    p_match in varchar2,p_wait_ms in number,p_match_state out varchar2
+  ) is
+    l_state varchar2(16);l_epoch number;l_generation number;l_new number;
+    l_job varchar2(64):='DOOM_MATCH_'||upper(p_match);l_wait number;
+    l_error varchar2(2000);l_now timestamp with time zone:=utc_now;
+  begin
+    p_match_state:=null;l_wait:=least(greatest(coalesce(p_wait_ms,30000),0),180000);
+    select match_state,membership_epoch,generation
+      into l_state,l_epoch,l_generation from doom_match
+      where match_id=p_match for update;
+    if l_state<>'ACTIVE' or l_generation<1 then
+      raise_application_error(c_error,'match is not recoverable');
+    end if;
+    l_new:=l_generation+1;commit;
+    begin dbms_scheduler.stop_job(l_job,true);exception when others then null;end;
+    begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
+    update doom_match_worker_control set generation=l_new,
+      membership_epoch=l_epoch,worker_status='STARTING',request_status='IDLE',
+      requested_tic=null,worker_sid=null,heartbeat=l_now,last_error=null,
+      stop_requested=0 where match_id=p_match and generation=l_generation;
+    if sql%rowcount<>1 then raise_application_error(c_error,'recovery claim fence');end if;
+    commit;
+    dbms_scheduler.create_job(job_name=>l_job,job_type=>'STORED_PROCEDURE',
+      job_action=>'DOOM_MATCH_WORKER.RUN_MATCH',number_of_arguments=>1,
+      enabled=>false,auto_drop=>false);
+    dbms_scheduler.set_job_argument_value(l_job,1,p_match);
+    dbms_scheduler.enable(l_job);
+    for poll_ in 1..ceil(l_wait/20) loop
+      select worker_status,last_error into l_state,l_error
+        from doom_match_worker_control where match_id=p_match and generation=l_new;
+      if l_state='READY' then p_match_state:='ACTIVE';return;
+      elsif l_state='FAILED' then
+        raise_application_error(c_error,'match recovery failed: '||l_error);
+      end if;
+      dbms_session.sleep(.02);
+    end loop;
+    p_match_state:='STARTING';
+  exception when no_data_found then
+    rollback;raise_application_error(c_error,'match unavailable');
   end;
 
   procedure start_ready(

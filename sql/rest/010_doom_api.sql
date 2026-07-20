@@ -613,6 +613,8 @@ create or replace package body doom_api as
     l_slot number;l_state varchar2(16);l_expiry timestamp with time zone;
     l_epoch number;l_generation number;l_wait number;
     l_deadline timestamp with time zone;l_now timestamp with time zone:=utc_now;
+    l_worker_status varchar2(16);l_worker_heartbeat timestamp with time zone;
+    l_recovery_state varchar2(16);
   begin
     p_ready:=0;p_current_tic:=null;p_payload:=null;require_match_shape(p_match);
     if p_tic is null or p_tic<>trunc(p_tic) or p_tic<0 or
@@ -634,6 +636,17 @@ create or replace package body doom_api as
       exit when p_ready=1 or systimestamp>=l_deadline;
       dbms_session.sleep(.01);
     end loop;
+    if p_ready=0 then
+      begin
+        select worker_status,heartbeat into l_worker_status,l_worker_heartbeat
+          from doom_match_worker_control where match_id=p_match;
+        if l_worker_status in('FAILED','STOPPED') or
+           (l_worker_status='READY' and
+            l_worker_heartbeat<utc_now-interval '5' second) then
+          doom_match_worker.recover_match(p_match,0,l_recovery_state);
+        end if;
+      exception when no_data_found then null;end;
+    end if;
     select current_tic into p_current_tic from doom_match
       where match_id=p_match and membership_epoch=l_epoch
         and generation=l_generation;

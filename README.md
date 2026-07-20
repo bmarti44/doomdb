@@ -42,8 +42,10 @@ What works today, all verified by repeatable gates:
   sessions privately create, join, ready, and play one database-authoritative
   co-op world through generated AutoREST. The engine advances once per ordered
   command vector and returns distinct player POVs; a live two-browser gate
-  reached synchronized tic 11 with dynamic keyboard input. Replay/recovery,
-  route coverage, and the 300-frame multiplayer FPS gate remain in progress.
+  reached synchronized tic 24 with dynamic input and reload/reconnect. Forced
+  worker loss now reconstructs the exact state/POV chain in a replacement
+  generation and preserves accepted partial input. Route coverage and the
+  300-frame multiplayer FPS gate remain in progress.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is

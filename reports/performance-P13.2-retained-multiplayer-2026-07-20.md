@@ -36,6 +36,11 @@ correctness checkpoint, not final multiplayer acceptance or a 30 FPS claim.
 - A clean-volume bootstrap exposed and fixed missing Mocha teardown tables,
   stale finalizer object names, and a missing OJVM renderer-call deployment
   step. The corrected finalizer reports zero invalid runtime objects.
+- Recovery is wired into the public poll path. A forced Scheduler loss after
+  tic 33 was detected from its stale heartbeat; a replacement generation
+  replayed the ledger, migrated the accepted partial tic-34 command, published
+  the same selected POVs, recorded the missing peer as neutral, and returned
+  the tic-34 frame through `DOOM_API`.
 
 ## Measurements
 
@@ -54,8 +59,7 @@ cleanup runs in a separate Scheduler job.
 
 ## Remaining P13 gates
 
-Bounded final-leave semantics, exact worker reconstruction, fault injection,
-representative E1M1 co-op
+Bounded final-leave semantics, broader fault injection, representative E1M1 co-op
 mechanics, deathmatch selection, capacity/retention telemetry, the 300-frame
 two-browser run, and the 30-minute soak remain open. T12 performance follows
 P13; P11 cloud deployment remains the final milestone.

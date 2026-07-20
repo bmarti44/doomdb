@@ -3009,8 +3009,10 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   a disconnected slot, and tic 32 writes a verified native Mocha checkpoint in
   the frontier transaction. A fresh OJVM session also replayed all 32 ordered
   vectors with the original per-tic POV cadence and reproduced the exact final
-  state SHA and both frame hashes. Automatic generation-bumped restart wiring
-  and bounded final leave semantics remain open.
+  state SHA and both frame hashes. Public polling now detects a failed/stale
+  owner, launches a replacement generation, preserves an accepted partial
+  next-tic command, republishes identical selected POVs, and advances normally
+  after the seam. Bounded final leave semantics remain open.
 
 #### T13.3 Co-op client, replay, and recovery
 
