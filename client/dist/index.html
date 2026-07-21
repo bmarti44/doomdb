@@ -63,7 +63,7 @@
     </article>
     <article class="panel">
       <h2>Canonical acceptance</h2>
-      <p><strong>P13 — active</strong><br><span class="muted">two-browser play + exact recovery green · authentic co-op exit and soak next</span></p>
+      <p><strong>P13 — active</strong><br><span class="muted">authentic co-op exit + exact recovery green · fixtures, FPS, and soak next</span></p>
       <p><strong>Legacy oracle preserved</strong><br><span class="muted">P0–P7 complete · independently executable SQL differential oracle</span></p>
       <div class="links"><a href="/health.txt">static health</a><a href="/ords/">ORDS</a></div>
     </article>
@@ -71,7 +71,7 @@
 
   <section class="panel" aria-label="current route status">
     <h2>Live implementation status · July 20, 2026</h2>
-    <p><strong>Multiplayer:</strong> two independent browsers now create, join, ready, submit live input, and receive distinct POVs from one Oracle-owned world; the live gate reaches synchronized tic 24. Guest leave is fixed to an exact tic with a durable neutral command, a one-player membership bitmap, one surviving POV, and exact reconstruction. A reborn-boundary consistency defect found after tic 4,082 is fixed by mirroring Doom's exact internal ring. Accepted solo routes do not follow identical geometry under authentic netgame rules, so an opt-in private per-tic pose trace is now driving the co-op-specific exit route; it is disabled during normal play and measurement. Capabilities remain private in URL fragments/session storage and are redacted from test output.</p>
+    <p><strong>Multiplayer:</strong> two independent browsers create, join, ready, submit live input, and receive distinct POVs from one Oracle-owned world; the live gate reaches synchronized tic 24. The frozen two-slot E1M1 route now reaches authentic intermission at tic 762 with membership <code>03</code>, eight applied player-1 movement tics, and exact fresh-session reconstruction of the terminal state and both POV hashes. Guest leave, reborn consistency, signed command replay, and generation recovery are independently green. Private authoring traces are disabled during normal play and measurement; capabilities remain redacted.</p>
     <p class="muted"><strong>Multiplayer performance:</strong> the engine's complete two-POV world-tic/render/codec path measured 5.670 ms p95. Full 300-frame browser performance, replay/recovery, and soak gates remain open, so no end-to-end multiplayer FPS is claimed yet.</p>
     <p><strong>Skill-3 E1M1 — complete:</strong> an authentic no-cheat run reaches intermission at tic 13,272. A fresh Oracle session replayed all 13,272 commands with zero state, frame, or response SHA mismatches. The accepted route, terminal intermission image, and repeatability ledger are frozen in the repository.</p>
     <p><strong>Engine:</strong> all 442 pinned upstream sources plus the DoomDB adapter compile to 823 classes. Oracle verifies the 28,795,076-byte Freedoom IWAD by SHA-256 before constructing E1M1. The engine has no desktop loop, external configuration files, privileged logger setup, or host WAD file; all 18 upstream process-exit sites are fenced into catchable OJVM errors.</p>
@@ -208,7 +208,7 @@
     <article class="panel phase done"><b>T12.M5</b><span>Mocha selection</span><p class="muted">11-gate core + direct and 4-browser workflows green</p></article>
     <article class="panel phase done"><b>P8</b><span>Full route matrix</span><p class="muted">13,272 tics · exact fresh-session replay</p></article>
     <article class="panel phase done"><b>P9</b><span>MODEL fire</span><p class="muted">two full deterministic Oracle runs + visual review</p></article>
-    <article class="panel phase active"><b>P13</b><span>Multiplayer</span><p class="muted">play + recovery green · authentic exit route/soak active</p></article>
+    <article class="panel phase active"><b>P13</b><span>Multiplayer</span><p class="muted">authentic exit/replay green · fixtures, FPS, soak active</p></article>
     <article class="panel phase next"><b>T12</b><span>Performance reverify</span><p class="muted">finished single + multiplayer build · local 300-frame protocol</p></article>
     <article class="panel phase next"><b>P11</b><span>Cloud · final</span><p class="muted">real S3 + Autonomous Database after local acceptance</p></article>
   </section>

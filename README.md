@@ -49,12 +49,12 @@ What works today, all verified by repeatable gates:
   only the surviving POV is rendered, and that frontier reconstructs exactly.
   The exact internal vanilla consistency ring now survives reborn boundaries;
   a formerly failing 4,082-tic route prefix advances beyond tic 4,200. The
-  accepted single-player E1M1 command streams do not transfer unchanged to
-  co-op: both the 762-tic skill-1 line and the full 13,272-tic skill-3 line
-  leave a healthy player against different geometry instead of reaching the
-  exit. Private, opt-in per-tic pose traces now isolate that first netgame
-  divergence without adding work to normal gameplay. The authored co-op exit,
-  300-frame multiplayer FPS gate, and soak remain in progress.
+  co-op because the solo demo depends on damage knockback. The frozen two-slot
+  correction route now reaches authentic E1M1 intermission at tic 762 with
+  membership `03`, eight applied player-1 movement tics, and exact fresh-session
+  reconstruction of the terminal state and both POV hashes. Private traces are
+  opt-in and add no work to normal gameplay. The full browser-route recovery,
+  300-frame multiplayer FPS gate, interaction fixtures, and soak remain open.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is

@@ -958,17 +958,16 @@ public final class DoomDbMochaAdapter {
         int buffer = (engine.gametic / engine.getTicdup())
             % engine.netcmds[player].length;
         doom.ticcmd_t command = engine.netcmds[player][buffer];
-        command.unpack(requested, offset);
-        command.consistancy = multiplayerConsistency[player][buffer];
-        command.chatchar = 0;
-        command.lookfly = 0;
+        decodeMultiplayerCommand(command, requested, offset,
+            multiplayerConsistency[player][buffer]);
         command.pack(applied, offset);
       }
       int beforeTic = engine.gametic;
       int beforeLevelTime = engine.leveltime;
       tickMultiplayerEngine();
       if (engine.gametic != beforeTic + 1
-          || engine.leveltime != beforeLevelTime + 1) {
+          || (engine.leveltime != beforeLevelTime + 1
+              && engine.gamestate != defines.gamestate_t.GS_INTERMISSION)) {
         throw new IllegalStateException("multiplayer world did not advance once");
       }
       String membership = multiplayerMembership(activePlayers, membershipMask);
@@ -1021,10 +1020,8 @@ public final class DoomDbMochaAdapter {
           int buffer = (engine.gametic / engine.getTicdup())
               % engine.netcmds[player].length;
           doom.ticcmd_t command = engine.netcmds[player][buffer];
-          command.unpack(vectors, offset);
-          command.consistancy = multiplayerConsistency[player][buffer];
-          command.chatchar = 0;
-          command.lookfly = 0;
+          decodeMultiplayerCommand(command, vectors, offset,
+              multiplayerConsistency[player][buffer]);
           command.pack(applied, player * doom.ticcmd_t.TICCMDLEN);
         }
         tickMultiplayerEngine();
@@ -1274,6 +1271,21 @@ public final class DoomDbMochaAdapter {
     }
     engine.gametic++;
     lastAudioJson = DummySFX.drainEvents(engine.gametic);
+  }
+
+  /** Decode canonical network-order ticcmd bytes without upstream sign drift. */
+  private static void decodeMultiplayerCommand(
+      doom.ticcmd_t command, byte[] source, int offset, short consistency) {
+    // Upstream ticcmd_t.unpack sign-extends the low byte of both shorts
+    // (FEC0 becomes FFC0), so it cannot consume the durable vector ledger.
+    command.forwardmove = source[offset];
+    command.sidemove = source[offset + 1];
+    command.angleturn = (short) (((source[offset + 2] & 0xff) << 8)
+        | (source[offset + 3] & 0xff));
+    command.consistancy = consistency;
+    command.chatchar = 0;
+    command.buttons = (char) (source[offset + 7] & 0xff);
+    command.lookfly = 0;
   }
 
   private static String multiplayerStateSha(int activePlayers)

@@ -15,6 +15,8 @@ const deploy = fs.readFileSync(new URL(
   '../scripts/mochadoom/deploy-ojvm-spike.sh', import.meta.url), 'utf8');
 const coopRoute = fs.readFileSync(new URL(
   '../scripts/mochadoom/build-p13-coop-route-gate.mjs', import.meta.url), 'utf8');
+const coopGolden = JSON.parse(fs.readFileSync(new URL(
+  '../artifacts/p13.3-coop-e1m1-route.json', import.meta.url), 'utf8'));
 
 assert.match(schema, /create table doom_match_worker_control/);
 assert.match(schema, /deferrable initially deferred/);
@@ -23,6 +25,16 @@ assert.match(schema, /route_status varchar2\(4000\)/);
 assert.match(routeSchema, /user_tab_columns/);
 assert.match(routeSchema, /create table doom_match_route_trace/);
 assert.match(coopRoute, /P13\.3 diag=/);
+assert.match(coopRoute, /--guest-spawn-clear/);
+assert.match(coopRoute, /--guest-strafe=/);
+assert.match(coopRoute, /00E8000000000000/);
+assert.match(coopRoute, /turnHeld < 6 \? 320/);
+assert.equal(coopGolden.accepted.mode, 'INTERMISSION');
+assert.equal(coopGolden.accepted.membershipHex, '03');
+assert.equal(coopGolden.accepted.guestNonNeutralTics, 8);
+assert.equal(coopGolden.accepted.freshReconstructionExact, true);
+assert.ok(coopGolden.accepted.player1TerminalY - coopGolden.accepted.player1StartY
+  >= 65536, 'player 1 input must change retained world state');
 assert.match(worker, /job_type=>'STORED_PROCEDURE'/);
 assert.match(worker, /job_action=>'DOOM_MATCH_WORKER\.RUN_MATCH'/);
 assert.match(worker, /returning response_blob into l_b0/);

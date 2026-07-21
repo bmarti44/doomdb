@@ -21,8 +21,14 @@ for (const entrypoint of [
 }
 assert.match(adapter, /engine\.gametic != beforeTic \+ 1/);
 assert.match(adapter, /engine\.leveltime != beforeLevelTime \+ 1/);
+assert.match(adapter, /engine\.gamestate != defines\.gamestate_t\.GS_INTERMISSION/);
 assert.match(adapter, /inactive player command/);
-assert.match(adapter, /command\.consistancy = multiplayerConsistency\[player\]\[buffer\]/);
+assert.match(adapter, /decodeMultiplayerCommand\(command, requested, offset,/);
+assert.match(adapter, /command\.consistancy = consistency/);
+assert.match(adapter, /private static void decodeMultiplayerCommand/);
+assert.match(adapter, /command\.angleturn = \(short\) \(\(\(source\[offset \+ 2\]/);
+assert.doesNotMatch(adapter, /command\.unpack\(requested, offset\)/);
+assert.doesNotMatch(adapter, /command\.unpack\(vectors, offset\)/);
 assert.match(adapter, /engine\.doomdbConsistency\(player, consistencyBuffer\)/);
 assert.match(consistencyPatch, /public short doomdbConsistency/);
 assert.match(adapter, /\|routeDiag=/);

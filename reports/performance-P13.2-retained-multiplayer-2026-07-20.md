@@ -65,18 +65,18 @@ vanilla consistency-ring edge at rebirth: the adapter now copies Doom's actual
 post-`DoReborn` ring word, and the formerly failing skill-3 prefix advances
 through tic 4,200.
 
-The accepted solo routes are not valid open-loop co-op routes. Player 0 plus a
-neutral player 1, mirrored commands, and player 1 leaving at tic 1 all advance
-without worker/codec errors but miss the authentic exit. At the end of the
-762-tic skill-1 stream player 0 remains alive and equipped but is against
-different geometry. Private opt-in trace tables now retain each player's
-per-tic pose/state for paired route authoring; they perform no inserts when the
-diagnostic flag is off.
+The solo route initially diverged because the harness packed held turns too
+quickly and multiplayer used upstream's lossy short decoder. After both fixes,
+poses match through tic 75. The remaining authentic difference is solo-only
+damage knockback. A bounded movement correction plus eight late player-1 strafe
+tics now reaches intermission at tic 762 with membership `03`; fresh replay
+reproduces state SHA `dd7c3f04…1b59b7` and both terminal POV hashes. Private
+trace tables perform no inserts when their diagnostic flag is off.
 
 ## Remaining P13 gates
 
-The authentic two-slot E1M1 exit/intermission route, its exact recovery and
-worker-loss seam, broader co-op interaction fixtures, deathmatch selection,
+The full-route worker-loss/browser seam, broader co-op interaction fixtures,
+deathmatch selection,
 capacity telemetry, the 300-frame two-browser run, and the 30-minute soak remain
 open. T12 performance follows P13; P11 cloud deployment remains the final
 milestone.

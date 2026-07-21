@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "engineRevision": "c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93",
+  "iwadSha256": "7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d",
+  "map": "E1M1",
+  "skill": 1,
+  "commandCount": 762,
+  "baseRoute": {
+    "path": "artifacts/t8.1-live/mocha-e1m1-no-cheat-route.json",
+    "sha256": "69753ce65aef2893086f5e033546a4ad28fc6b6e82f88b96c8ba09e6a72b9c1f"
+  },
+  "player0Transforms": [
+    {"axis": "side", "firstTic": 78, "lastTic": 90, "delta": 1},
+    {"axis": "forward", "firstTic": 78, "lastTic": 82, "delta": -1}
+  ],
+  "player1Runs": [
+    {"firstTic": 1, "lastTic": 699, "ticcmdHex": "0000000000000000"},
+    {"firstTic": 700, "lastTic": 707, "ticcmdHex": "00E8000000000000"},
+    {"firstTic": 708, "lastTic": 762, "ticcmdHex": "0000000000000000"}
+  ],
+  "accepted": {
+    "tic": 762,
+    "mode": "INTERMISSION",
+    "membershipHex": "03",
+    "guestNonNeutralTics": 8,
+    "stateSha256": "dd7c3f04e66ffdee72f303a442a95d354603aaa4638ac63d9d2956971f1b59b7",
+    "player0FrameSha256": "80a7b9a9595b20c559db10ca56111b3ece49315c7fad4662b24f8a80785e2f24",
+    "player1FrameSha256": "57844ee62d6f57d983b9330464edb14cfbe8f0cb739805c8cf7c21150ec8c376",
+    "player1StartY": 19922944,
+    "player1TerminalY": 24080643,
+    "freshReconstructionExact": true
+  }
+}
