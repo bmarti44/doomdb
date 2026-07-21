@@ -300,8 +300,8 @@ create or replace package body doom_api as
   begin
     p_match:=null;p_host_capability:=null;p_join_capability:=null;
     p_player_capability:=null;
-    if p_game_mode is null or upper(p_game_mode)<>'COOP' then
-      fail(c_bad_request,'only COOP matches are currently available');
+    if p_game_mode is null or upper(p_game_mode) not in('COOP','DEATHMATCH') then
+      fail(c_bad_request,'invalid match mode');
     end if;
     if p_skill is null or p_skill<>trunc(p_skill) or p_skill not between 1 and 5 or
        p_episode is null or p_episode<>trunc(p_episode) or
@@ -340,7 +340,7 @@ create or replace package body doom_api as
       host_capability_salt,host_capability_hash,
       join_capability_salt,join_capability_hash,
       created_at,last_activity_at,expires_at)
-    values(p_match,'LOBBY','COOP',p_skill,p_episode,p_map,2,1,0,0,
+    values(p_match,'LOBBY',upper(p_game_mode),p_skill,p_episode,p_map,2,1,0,0,
       l_host_salt,l_host_hash,l_join_salt,l_join_hash,
       l_now,l_now,l_now+interval '20' minute);
     insert into doom_match_member(

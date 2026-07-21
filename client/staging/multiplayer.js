@@ -32,8 +32,9 @@ main.innerHTML = `
     <div class="forms">
       <form data-create><h2>Create match</h2>
         <label>Name <input name="name" maxlength="32" value="Player 1" required></label>
+        <label>Mode <select name="mode"><option value="COOP" selected>Co-op</option><option value="DEATHMATCH">Deathmatch</option></select></label>
         <label>Skill <select name="skill"><option value="1">I'm too young to die</option><option value="2">Hey, not too rough</option><option value="3" selected>Hurt me plenty</option><option value="4">Ultra-violence</option><option value="5">Nightmare</option></select></label>
-        <button>Create two-player co-op</button>
+        <button>Create two-player match</button>
       </form>
       <form data-join><h2>Join match</h2>
         <label>Name <input name="name" maxlength="32" value="Player 2" required></label>
@@ -142,7 +143,8 @@ createForm.addEventListener('submit', event => {
     event.preventDefault();
     setBusy(true);
     const data = new FormData(createForm);
-    void createMatch(String(data.get('name')), Number(data.get('skill')))
+    const mode = data.get('mode') === 'DEATHMATCH' ? 'DEATHMATCH' : 'COOP';
+    void createMatch(String(data.get('name')), Number(data.get('skill')), mode)
         .then(value => enterLobby({ ...value, playerSlot: 0 }))
         .catch(showError).finally(() => setBusy(false));
 });
@@ -231,7 +233,7 @@ async function startGame(value, status) {
     const updateHud = () => {
         const windowMs = paintedAt.length > 1 ? paintedAt.at(-1) - paintedAt[0] : 0;
         const fps = windowMs > 0 ? (paintedAt.length - 1) * 1000 / windowMs : 0;
-        hud.textContent = `CO-OP · PLAYER ${value.playerSlot + 1} · TIC ${currentTic}\n${fps.toFixed(1)} displayed FPS · click game for mouse · F/Ctrl fire · Space use`;
+        hud.textContent = `${status.mode} · PLAYER ${value.playerSlot + 1} · TIC ${currentTic}\n${fps.toFixed(1)} displayed FPS · click game for mouse · F/Ctrl fire · Space use`;
     };
     const fail = (cause) => {
         stopped = true;
@@ -251,7 +253,7 @@ async function startGame(value, status) {
         }
         retryAfter = performance.now() + Math.min(100 * transportFailures, 1000);
         hud.className = 'muted';
-        hud.textContent = `CO-OP · PLAYER ${value.playerSlot + 1} · TIC ${currentTic}\nReconnecting to Oracle…`;
+        hud.textContent = `${status.mode} · PLAYER ${value.playerSlot + 1} · TIC ${currentTic}\nReconnecting to Oracle…`;
     };
     const pump = () => {
         if (stopped || performance.now() < retryAfter)

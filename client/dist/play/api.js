@@ -115,9 +115,9 @@ function capabilityField(document, name) {
     }
     return value;
 }
-export async function createMatch(displayName, skill = 3) {
+export async function createMatch(displayName, skill = 3, gameMode = 'COOP') {
     const document = await post('create_match', {
-        p_game_mode: 'COOP', p_skill: skill, p_episode: 1, p_map: 1,
+        p_game_mode: gameMode, p_skill: skill, p_episode: 1, p_map: 1,
         p_display_name: displayName
     });
     const match = stringField(document, 'p_match');

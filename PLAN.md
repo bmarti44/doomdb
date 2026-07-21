@@ -3093,6 +3093,17 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   isolation, replay, and restart fixtures. A selected player count requires every
   browser to show 300 unique frames at >=30 FPS with paint-gap p50/p95 <=33.3 ms
   and input-to-own-frame p95 <=250 ms while single-player remains green.
+- Two-player checkpoint (2026-07-20): `CREATE_MATCH` now accepts the frozen
+  `DEATHMATCH` mode through the same salted capabilities, ready boundary,
+  retained worker, and generated AutoREST surface as co-op. A production live
+  gate advances two distinct POVs, kills the worker, and reconstructs the exact
+  tic/state/POV frontier in generation 2. A deterministic engine fixture runs
+  twice with identical output and proves distinct authored starts, frag credit,
+  vanilla deathmatch respawn, reciprocal-kill tie accounting, and suicide
+  attribution. Two real browser contexts select deathmatch, submit dynamic
+  input, reload/reconnect, retain distinct POVs, and reach synchronized tic 18.
+  The frozen frag/time limits, scoreboard/intermission workflow, expanded
+  player-count evidence, and deathmatch performance gate remain open.
 
 #### T13.5 Operations and local multiplayer gate
 

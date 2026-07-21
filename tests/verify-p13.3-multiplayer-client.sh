@@ -26,5 +26,6 @@ for _ in $(seq 1 120); do
   sleep .25
 done
 curl --fail --silent --show-error http://localhost:8080/health.txt >/dev/null
-DOOMDB_MATCH_ID_FILE="$match_file" DOOMDB_TEST_ORDS_RESTART=1 \
+DOOMDB_MATCH_ID_FILE="$match_file" \
+  DOOMDB_TEST_ORDS_RESTART="${DOOMDB_TEST_ORDS_RESTART:-1}" \
   node tests/verify-p13.3-multiplayer-client.mjs

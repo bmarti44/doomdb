@@ -160,9 +160,11 @@ function capabilityField(document: RestDocument, name: string): string {
   return value;
 }
 
-export async function createMatch(displayName: string, skill = 3): Promise<MatchCredentials> {
+export async function createMatch(displayName: string, skill = 3,
+                                  gameMode: 'COOP' | 'DEATHMATCH' = 'COOP'):
+                                  Promise<MatchCredentials> {
   const document = await post('create_match', {
-    p_game_mode: 'COOP', p_skill: skill, p_episode: 1, p_map: 1,
+    p_game_mode: gameMode, p_skill: skill, p_episode: 1, p_map: 1,
     p_display_name: displayName
   });
   const match = stringField(document, 'p_match');

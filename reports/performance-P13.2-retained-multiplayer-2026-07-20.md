@@ -93,6 +93,18 @@ fire/use bits in one ordered shared-world tic. These run beside mutual sprite
 visibility, damage/death, frag attribution, and co-op reborn, and reproduce the
 same canonical POV hashes in two clean initializations.
 
+## Deathmatch checkpoint
+
+The same generated lifecycle now accepts two-player `DEATHMATCH`. A live
+database gate produced two distinct POVs at tic 1 and recovered their exact
+state/frame frontier after replacing the worker generation. A clean-run engine
+fixture pins distinct authored starts, frag credit, vanilla respawn,
+reciprocal-kill tie accounting, and suicide attribution. Finally, two browser
+contexts selected deathmatch through the static client, submitted dynamic input,
+reloaded/reconnected, and reached synchronized tic 18 with distinct POVs.
+Frag/time limits, scoreboard/intermission, expanded player counts, and the
+deathmatch 300-frame performance gate remain open.
+
 ## Remaining P13 gates
 
 The full two-browser route, remaining authored co-op interaction fixtures,

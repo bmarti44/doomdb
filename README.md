@@ -40,7 +40,7 @@ What works today, all verified by repeatable gates:
   command with 13,272/13,272 exact state, frame, and response hashes.
 - **Playable multiplayer checkpoint.** `/play/multiplayer` now lets two browser
   sessions privately create, join, ready, and play one database-authoritative
-  co-op world through generated AutoREST. The engine advances once per ordered
+  co-op or deathmatch world through generated AutoREST. The engine advances once per ordered
   command vector and returns distinct player POVs; a live two-browser gate
   reached synchronized tic 24 with dynamic input and reload/reconnect. Forced
   worker loss now reconstructs the exact state/POV chain in a replacement
@@ -62,6 +62,10 @@ What works today, all verified by repeatable gates:
   fire/use, damage/death/frags, and reborn. Private traces are opt-in and add no
   work to normal gameplay. The full two-browser route, 300-frame multiplayer
   FPS gate, remaining authored interaction fixtures, and soak remain open.
+  Two-browser deathmatch is additionally live with authored starts, dynamic
+  input, distinct POVs, reconnect, exact worker reconstruction, frag/respawn,
+  reciprocal-kill tie, and suicide-accounting fixtures. Frag/time limits,
+  scoreboard/intermission, and its 300-frame gate remain open.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is

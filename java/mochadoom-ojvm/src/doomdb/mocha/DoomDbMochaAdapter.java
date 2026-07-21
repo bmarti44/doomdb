@@ -847,6 +847,84 @@ public final class DoomDbMochaAdapter {
     }
   }
 
+  /** Disposable vanilla deathmatch spawn/score/reborn proof. */
+  public static synchronized String deathmatchProbeSafe() {
+    try {
+      initializeMultiplayerEngine(2, 1, 3, 1, 1);
+      if (!engine.netgame || !engine.deathmatch
+          || engine.players[0].mo == null || engine.players[1].mo == null) {
+        throw new IllegalStateException("deathmatch initialization failed");
+      }
+      int spawn0x = engine.players[0].mo.x;
+      int spawn0y = engine.players[0].mo.y;
+      int spawn1x = engine.players[1].mo.x;
+      int spawn1y = engine.players[1].mo.y;
+      if (spawn0x == spawn1x && spawn0y == spawn1y) {
+        throw new IllegalStateException("deathmatch starts collapsed");
+      }
+
+      int fragBefore = engine.players[0].frags[1];
+      mobj_t firstVictim = engine.players[1].mo;
+      engine.actions.DamageMobj(firstVictim, engine.players[0].mo,
+          engine.players[0].mo, 10000);
+      if (engine.players[0].frags[1] != fragBefore + 1
+          || engine.players[1].playerstate != data.Defines.PST_DEAD) {
+        throw new IllegalStateException("deathmatch frag failed");
+      }
+      setMultiplayerCommand(0, 0, 0, 0, 0);
+      setMultiplayerCommand(1, 0, 0, 0, data.Defines.BT_USE);
+      tickMultiplayerEngine();
+      setMultiplayerCommand(0, 0, 0, 0, 0);
+      setMultiplayerCommand(1, 0, 0, 0, 0);
+      tickMultiplayerEngine();
+      boolean respawned = engine.players[1].playerstate == data.Defines.PST_LIVE
+          && engine.players[1].mo != null && engine.players[1].mo != firstVictim
+          && engine.players[1].health[0] > 0;
+      if (!respawned) throw new IllegalStateException("deathmatch respawn failed");
+
+      int p0TieBefore = engine.players[0].frags[1];
+      int p1TieBefore = engine.players[1].frags[0];
+      mobj_t p0 = engine.players[0].mo;
+      mobj_t p1 = engine.players[1].mo;
+      engine.actions.DamageMobj(p1, p0, p0, 10000);
+      engine.actions.DamageMobj(p0, p1, p1, 10000);
+      boolean simultaneousTie = engine.players[0].playerstate == data.Defines.PST_DEAD
+          && engine.players[1].playerstate == data.Defines.PST_DEAD
+          && engine.players[0].frags[1] == p0TieBefore + 1
+          && engine.players[1].frags[0] == p1TieBefore + 1;
+      if (!simultaneousTie) {
+        throw new IllegalStateException("deathmatch simultaneous tie failed");
+      }
+
+      setMultiplayerCommand(0, 0, 0, 0, data.Defines.BT_USE);
+      setMultiplayerCommand(1, 0, 0, 0, data.Defines.BT_USE);
+      tickMultiplayerEngine();
+      setMultiplayerCommand(0, 0, 0, 0, 0);
+      setMultiplayerCommand(1, 0, 0, 0, 0);
+      tickMultiplayerEngine();
+      if (engine.players[0].playerstate != data.Defines.PST_LIVE
+          || engine.players[1].playerstate != data.Defines.PST_LIVE) {
+        throw new IllegalStateException("deathmatch dual respawn failed");
+      }
+      int suicideBefore = engine.players[0].frags[0];
+      engine.actions.DamageMobj(engine.players[0].mo, engine.players[0].mo,
+          engine.players[0].mo, 10000);
+      int suicideDelta = engine.players[0].frags[0] - suicideBefore;
+      if (suicideDelta != 1) {
+        throw new IllegalStateException("deathmatch suicide attribution failed");
+      }
+      return "ok|state=deathmatch-probed|membership=1100|deathmatch=1"
+          + "|spawn0=" + spawn0x + "," + spawn0y
+          + "|spawn1=" + spawn1x + "," + spawn1y
+          + "|frag=1|respawn=1|simultaneousTie=1|suicideDelta=" + suicideDelta
+          + "|stateSha=" + multiplayerStateSha(2);
+    } catch (Throwable failure) {
+      return failure("deathmatch-probe", failure);
+    } finally {
+      disposeSafe();
+    }
+  }
+
   /** Benchmark one authoritative tic followed by one immutable POV per player. */
   public static synchronized String multiplayerBenchmarkSafe(
       int activePlayers, int samples, int warmups, Blob output) {

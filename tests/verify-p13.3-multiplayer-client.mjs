@@ -13,7 +13,10 @@ let match = '';
 try {
   await host.goto(`${base}/play/multiplayer`, {waitUntil: 'networkidle'});
   await host.locator('[data-create] input[name=name]').fill('BROWSER HOST');
-  await host.getByRole('button', {name: 'Create two-player co-op'}).click();
+  const requestedMode = process.env.DOOMDB_MATCH_MODE === 'DEATHMATCH'
+    ? 'DEATHMATCH' : 'COOP';
+  await host.locator('[data-create] select[name=mode]').selectOption(requestedMode);
+  await host.getByRole('button', {name: 'Create two-player match'}).click();
   await host.locator('[data-room]').waitFor({state: 'visible'});
   const share = await host.locator('[data-share]').inputValue();
   const parsed = new URL(share);
@@ -121,7 +124,7 @@ try {
   assert.ok(hostTic >= 1 && guestTic >= 1);
   assert.ok(Math.abs(hostTic - guestTic) <= 1);
   process.stdout.write(
-    `PASS P13.3-MULTIPLAYER-CLIENT two browsers dynamic-input ORDS-restart reconnect distinct-POVs hostTic=${hostTic} guestTic=${guestTic} (bearers redacted)\n`);
+    `PASS P13.3-MULTIPLAYER-CLIENT mode=${requestedMode} two browsers dynamic-input ${process.env.DOOMDB_TEST_ORDS_RESTART === '1' ? 'ORDS-restart ' : ''}reconnect distinct-POVs hostTic=${hostTic} guestTic=${guestTic} (bearers redacted)\n`);
 } finally {
   await browser.close();
 }

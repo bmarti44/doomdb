@@ -142,6 +142,11 @@ as language java
 name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerProbeSafe() return java.lang.String';
 /
 
+create or replace function doom_mocha_deathmatch_probe return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.deathmatchProbeSafe() return java.lang.String';
+/
+
 create or replace function doom_mocha_multiplayer_benchmark(
   p_active_players in number,
   p_samples in number,
