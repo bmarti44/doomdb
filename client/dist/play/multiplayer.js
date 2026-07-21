@@ -1,9 +1,9 @@
 import { createMatch, getAsset, joinMatch, matchStatus, pollMatchBatch, matchInputFrontier, pollMatchFrame, readyMatch, submitMatchBatch, submitMatchBatchInput, reviseMatchInput } from './api.js';
 import { AudioPresenter } from './audio.js';
-import { createDoomCanvas, blit } from './canvas.js';
+import { createDoomCanvas, createIndexedBlitter } from './canvas.js';
 import { decodeBytes, decodeFrameBatch, decodePayload } from './codec.js';
 import { bindInput } from './input.js';
-import { applyPalette, createPalette } from './palette.js';
+import { createPalette } from './palette.js';
 const PACED_KEYFRAME_TICS = 32;
 const style = document.createElement('style');
 style.textContent = `
@@ -215,8 +215,9 @@ async function startGame(value, status) {
         matchInputFrontier(value.match, value.playerCapability)
     ]);
     const palette = createPalette(decodeBytes(paletteAsset.payload));
+    const blitIndexed = createIndexedBlitter(canvas, palette);
     const title = decodeBytes(titleAsset.payload);
-    blit(canvas, applyPalette(title, palette));
+    blitIndexed(title);
     if (initial.payload === null)
         throw new Error('tic-zero POV is unavailable');
     const initialFrame = await decodePayload(initial.payload);
@@ -309,7 +310,7 @@ async function startGame(value, status) {
         if (presentationStarted && nextFrame !== undefined &&
             performance.now() >= nextPresentationAt) {
             frameBuffer.delete(nextFrame.tic);
-            blit(canvas, applyPalette(nextFrame.indices, palette));
+            blitIndexed(nextFrame.indices);
             audio.enqueue(nextFrame.audio, fail);
             currentTic = nextFrame.tic;
             const now = performance.now();

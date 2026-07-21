@@ -37,8 +37,9 @@ authoritative record.
   are green. Two consecutive enforced runs reached 35.18/34.80 and
   35.18/34.85 FPS; paint p95 stayed at 32.2--32.7 ms and input p95 at
   145.3--181.9 ms.
-  T13.5 soak, deathmatch 300-frame performance, and the remaining
-  gameplay-breadth fixtures remain open.
+  T13.5 soak and the remaining gameplay-breadth fixtures remain open. The
+  verified v1 production cap is two players; three/four-player transport is
+  explicitly deferred.
 - **Next:** finish P13 gameplay breadth and soak; re-verify the finished single-player +
   multiplayer build with
   the full T12.1/T12.2 300-frame performance protocol; then run P11 real S3 +
@@ -3139,8 +3140,19 @@ other P13 authority, durability, security, and AutoREST rails remain unchanged.
   Production now freezes the first-score-at-10-frags or 10-minute/21,000-tic
   terminal rules in the retained engine. A low-limit live fixture proves the
   winner enters Doom's authentic scoreboard/intermission, alongside all combat
-  assertions above. The full-duration time-limit gate, expanded player-count
-  evidence, and deathmatch performance gate remain open.
+  assertions above. The full 21,000-tic boundary also runs twice without an
+  early exit and enters the authentic intermission exactly after the limit.
+  Two consecutive enforced deathmatch browser runs reached 35.36/34.96 and
+  35.34/34.98 FPS, 32.0--32.5 ms paint p95, and 149.2--176.3 ms input p95.
+  Each canvas now reuses one browser-owned RGBA surface instead of allocating
+  ~256 KiB per presented frame. The refreshed engine-only 300-sample benchmark
+  remains credible through four POVs (7.13 ms total p95), but four interactive
+  players require four held polls plus four simultaneous input writers. The
+  required eight-session ORDS pool already regressed the selected two-player
+  gate, while six sessions cannot guarantee those eight hot lanes. Per the
+  frozen evidence-gated rule, v1 therefore selects the fully verified
+  two-player cap without reducing resolution, skipping frames, or projecting
+  unmeasured four-client performance; three/four-player transport is deferred.
 
 #### T13.5 Operations and local multiplayer gate
 

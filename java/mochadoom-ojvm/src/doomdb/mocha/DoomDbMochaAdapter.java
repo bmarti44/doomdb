@@ -964,11 +964,34 @@ public final class DoomDbMochaAdapter {
       if (!limitIntermission) {
         throw new IllegalStateException("deathmatch frag limit failed");
       }
+      initializeMultiplayerEngine(2, 1, 3, 1, 1);
+      deathmatchFragLimit = 0;
+      for (int tic = 1; tic <= DEATHMATCH_TIME_LIMIT_TICS; tic++) {
+        setMultiplayerCommand(0, 0, 0, 0, 0);
+        setMultiplayerCommand(1, 0, 0, 0, 0);
+        tickMultiplayerEngine();
+        if (tic < DEATHMATCH_TIME_LIMIT_TICS
+            && engine.gamestate != defines.gamestate_t.GS_LEVEL) {
+          throw new IllegalStateException("deathmatch time limit fired early " + tic);
+        }
+      }
+      // ExitLevel is armed exactly on the limit tic; the following vanilla
+      // ticker consumes gameaction and enters the authentic intermission.
+      setMultiplayerCommand(0, 0, 0, 0, 0);
+      setMultiplayerCommand(1, 0, 0, 0, 0);
+      tickMultiplayerEngine();
+      boolean timeLimitIntermission =
+          engine.gamestate == defines.gamestate_t.GS_INTERMISSION;
+      if (!timeLimitIntermission) {
+        throw new IllegalStateException("deathmatch time limit failed");
+      }
       return "ok|state=deathmatch-probed|membership=1100|deathmatch=1"
           + "|spawn0=" + spawn0x + "," + spawn0y
           + "|spawn1=" + spawn1x + "," + spawn1y
           + "|frag=1|respawn=1|simultaneousTie=1|suicideDelta=" + suicideDelta
           + "|limitIntermission=1"
+          + "|timeLimitTics=" + DEATHMATCH_TIME_LIMIT_TICS
+          + "|timeLimitIntermission=1"
           + "|stateSha=" + multiplayerStateSha(2);
     } catch (Throwable failure) {
       return failure("deathmatch-probe", failure);

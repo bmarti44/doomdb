@@ -66,8 +66,11 @@ What works today, all verified by repeatable gates:
   input, distinct POVs, reconnect, exact worker reconstruction, frag/respawn,
   reciprocal-kill tie, suicide accounting, a frozen 10-frag/10-minute rule, and
   authentic scoreboard/intermission fixtures. Each POV now receives sound
-  attenuated and panned for its own Oracle-owned listener. The full-duration
-  time-limit, expanded-player, and 300-frame gates remain open.
+  attenuated and panned for its own Oracle-owned listener. The exact full
+  21,000-tic time limit and two consecutive 300-frame deathmatch gates are now
+  green. The verified v1 cap is two players; three/four-player transport is
+  deferred because its eight required hot ORDS lanes regress the selected
+  two-player configuration.
 - **Co-op multiplayer performance is green.** New matches now freeze
   a feature-flagged `PACED_INPUT` mode: the retained Oracle Scheduler session
   advances the one authoritative world at 35 Hz while AutoREST independently
@@ -96,6 +99,9 @@ What works today, all verified by repeatable gates:
   native-compiled. A live ORDS restart also re-fences and resumes
   at a retained keyframe after stale frames age out. Locator reuse, four-frame
   burst polling, and an eight-session ORDS pool were measured and rejected.
+  The multiplayer canvases also reuse one RGBA surface each, eliminating about
+  18 MiB/s of two-player browser allocation. Consecutive deathmatch runs reach
+  34.96--35.36 FPS with 32.0--32.5 ms paint p95 and 149.2--176.3 ms input p95.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is
