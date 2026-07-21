@@ -21,7 +21,8 @@ sed -i \
 printf '%s\n' \
   'shared_pool_size=256m' \
   'java_pool_size=256m' \
-  'db_cache_size=256m' >>/tmp/doomdb-init.ora
+  'db_cache_size=256m' \
+  'job_queue_processes=8' >>/tmp/doomdb-init.ora
 
 spfile_path="${ORACLE_HOME}/dbs/spfileFREE.ora"
 # On initialized volumes this is a symlink into /opt/oracle/oradata/dbconfig.

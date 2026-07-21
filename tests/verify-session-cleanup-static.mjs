@@ -13,6 +13,9 @@ assert.doesNotMatch(newGame,
 assert.match(cleanup, /create or replace package doom_session_cleanup/i);
 assert.match(cleanup, /fetch first l_limit rows only/i);
 assert.match(cleanup, /doom_unified_worker\.request_stop/);
+assert.match(cleanup, /user_scheduler_running_jobs/);
+assert.match(cleanup, /dbms_scheduler\.stop_job\(l_job,true\)/);
+assert.match(cleanup, /expired owner reclaimed/);
 assert.match(cleanup, /procedure purge_expired_matches/);
 assert.match(cleanup, /delete from doom_match where match_id=expired_\.match_id/);
 assert.match(cleanup, /doom_match_worker\.stop_match/);

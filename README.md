@@ -106,8 +106,10 @@ What works today, all verified by repeatable gates:
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is
   evicted (bounded, deterministic, durable-state reconstruct) so a new player
-  is never refused; the eleven-gate Mocha regression suite passes from a fully
-  occupied pool.
+  is never refused. Expiry cleanup now force-fences an expired owner whose
+  Scheduler session has already disappeared, and the local database reserves
+  eight job slaves so four retained workers cannot starve cleanup or a new
+  dispatch. The stale-owner live regression and eleven-gate Mocha suite pass.
 - **Fresh-stack multiplayer hardening (2026-07-20).** Empty ORDS config volumes
   now install cleanly, republish the allowlisted AutoREST API after repository
   replacement, and preserve the fixed six-session pool. Oracle's persisted

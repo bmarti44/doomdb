@@ -16,6 +16,7 @@ services:
       - ./deploy/local/db-entrypoint.sh:/doomdb/db-entrypoint.sh:ro
       - ./deploy/local/initdb/10-doom-runtime-grants.sql:/container-entrypoint-initdb.d/10-doom-runtime-grants.sql:ro
       - ./deploy/local/initdb/20-doom-storage.sql:/container-entrypoint-initdb.d/20-doom-storage.sql:ro
+      - ./deploy/local/initdb/30-doom-job-queue.sql:/container-entrypoint-initdb.d/30-doom-job-queue.sql:ro
     ports:
       - "${DOOMDB_DB_PORT:-1521}:1521"
     # Oracle JVM JIT emits executable code through shared memory. Docker's

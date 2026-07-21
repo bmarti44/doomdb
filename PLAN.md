@@ -45,6 +45,13 @@ authoritative record.
   the full T12.1/T12.2 300-frame performance protocol; then run P11 real S3 +
   Autonomous cloud deployment as the final gate (credentials are required;
   local dry-runs exist).
+- **Admission repair (2026-07-21):** `/play/` fresh-game admission is green
+  after reproducing a dead Scheduler session whose fenced owner row survived.
+  Expiry cleanup now force-stops and reclaims only expired owners after a
+  bounded graceful-stop fence and confirmed job absence. Local/fresh stacks
+  reserve eight Scheduler job slaves (four retained workers plus dispatch and
+  maintenance headroom). The stale-owner live regression and warm browser
+  movement/fire gate pass.
 - **Known cost:** cold Mocha engine construction in a fresh worker session is
   ~10–20 s depending on host load. The selected pre-warmed standby worker
   (2026-07-19 checkpoint) reduces a standby-claimed new game to ~1.4 s,
