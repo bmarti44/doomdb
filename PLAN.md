@@ -2938,13 +2938,14 @@ not the limiter: database 7.14/11.87 ms, ticker 0.30/1.68 ms, render 1.02/1.95
 ms, codec 0.06/0.16 ms, and BLOB 0.24/0.47 ms before commit. Commit is sampled
 every 32nd tic (9/270 measured samples, 1.18–2.41 ms) so profiling does not add
 a second hot-path update; unsampled commits remain in the external remainder.
-The depth-2 browser pipeline plus
-bounded backlog catch-up passes the latest live interaction gate at 31.36 FPS
-with 32.1/33.1 ms p50/p95 paint gaps and 126.1 ms
-input-to-correlated-paint. Still
-open locally: drive the exact fixed fixture through two independent browser
-runs, retain identical state/frame/payload chains, and complete T12.2's local
-profile/stop-rule ledger. Stable-host tails and managed ORDS remain final P11.
+The depth-2 browser pipeline plus bounded backlog catch-up passes the live
+interaction gate at 31.36 FPS with 32.1/33.1 ms p50/p95 paint gaps and 126.1 ms
+input-to-correlated-paint. The exact fixed fixture then passed two independent
+browser runs at 31.70 and 31.56 FPS; their state, frame, and payload chain
+digests match each other and the private attribution replay exactly. The
+fail-closed `verify.sh task T12.1` gate validates the complete local envelope.
+T12.1 is locally complete. T12.2's local profile/stop-rule ledger remains next;
+stable-host tails and managed ORDS remain final P11.
 
 - Route: Terra medium.
 - Collect the Section 6.6 replay, execution plans with runtime statistics, V$SQL

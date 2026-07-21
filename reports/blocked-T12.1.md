@@ -1,7 +1,6 @@
 # T12.1 selected-engine evidence status
 
-Status: **LOCAL ATTRIBUTION AND 30 FPS BROWSER GATE PASS; FIXED TWO-RUN BROWSER
-CHAIN AND CLOUD EXECUTION REMAIN**.
+Status: **LOCAL COMPLETE; MANAGED CLOUD EXECUTION DEFERRED TO FINAL P11**.
 
 The original source-first evidence driver targeted the retired production
 shape: synchronous SQL-renderer `STEP`, gzip canonical JSON, and SQL R1/R2
@@ -40,6 +39,12 @@ independent evidence validators pass. That run measured 25.54 serial FPS after
 the poll-wait fix; the live depth-2 browser path measured 30.91 displayed FPS
 with 33.0 ms paint-gap p95.
 
-Local work remaining: execute the exact fixture twice through the browser,
-retain identical state/frame/payload chains, and publish the T12.2 local
-profile/stop-rule ledger. Managed ORDS/S3 execution stays deferred to final P11.
+The exact fixture subsequently completed two independent browser runs at 31.70
+and 31.56 FPS. Both browser runs and the private stage-attribution run have
+identical 300-state (`a4af25da…e4b3c`), frame (`e14a8f7e…1d19a`), and payload
+(`b91ce8c7…a0f2`) chain digests. `verify.sh task T12.1` fails closed on any
+missing artifact, sub-30-FPS browser run, chain drift, missing commit samples,
+clock anomaly, or artifact-integrity failure.
+
+No T12.1 local work remains. Managed ORDS/S3 repetition stays deferred to final
+P11; T12.2 owns the next local optimization/stop-rule ledger.

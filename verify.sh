@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: ./verify.sh env | secrets | transport | task T0.1..T7.3|T13.0..T13.5 | phase P0|P1|P2|P3|P13 | evaluator-self-test" >&2
+  echo "usage: ./verify.sh env | secrets | transport | task T0.1..T7.3|T12.1|T12.2|T13.0..T13.5 | phase P0|P1|P2|P3|P13 | evaluator-self-test" >&2
   exit 2
 }
 
@@ -108,6 +108,14 @@ case "$1" in
         evaluator/t7.3/run-visible.sh
         scripts/db_sql.sh tests/verify-t7.3-history.sql
         node tests/verify-t7.3-audio.mjs
+        ;;
+      T12.1)
+        node tests/verify-t12.1-mocha-replay.mjs
+        node tests/verify-performance-baseline-unit.mjs
+        node tests/verify-t12.1-local-evidence.mjs
+        ;;
+      T12.2)
+        node tests/verify-performance-optimization-unit.mjs
         ;;
       T13.0)
         scripts/db_sql.sh tests/verify-p13.0-multiplayer-probe.sql

@@ -45,7 +45,10 @@ What works today, all verified by repeatable gates:
   single-player poll quantum from 50 ms to 5 ms raised serial correlated
   throughput from 15.27 to 25.54 FPS; the instrumented pre-commit retained
   worker measures 7.14/11.87 ms p50/p95, with commit separately sampled every
-  32nd tic to avoid profiling DML on the hot path.
+  32nd tic to avoid profiling DML on the hot path. The exact fixed fixture also
+  completed two independent browser runs at 31.70 and 31.56 FPS; both and the
+  private attribution replay reproduced the same 300-state, 300-frame, and
+  300-payload chain digests.
 - **Full skill-3 route.** An authentic, no-cheat E1M1 run reaches the
   intermission at tic 13,272 with the expected combat, resources, keyed door,
   lift, secret, and exit interactions. A fresh Oracle session replayed every
@@ -197,11 +200,11 @@ What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 - **P9 is complete** — the Oracle `MODEL`-clause title fire animation passed
   two independent full-size database runs, deterministic checks, mutation
   checks, and visual review.
-- **T12.1/T12.2** — the content-addressed replay, reviewed manifest, DMF
+- **T12.1 is locally complete** — the content-addressed replay, reviewed manifest, DMF
   driver, local raw/report evidence, 90-call cursor matrix, internal plans, and
-  30 FPS live browser gate are green. Next, bind the fixed replay to the two-run
-  browser chain gate and complete the local optimization ledger; managed-ORDS
-  repetition stays in final P11.
+  exact two-run 30 FPS browser chain gate are green. **T12.2 is next:** complete
+  the local optimization/stop-rule ledger; managed-ORDS repetition stays in
+  final P11.
 - **P11 (last)** — only after those local gates, deploy the static client to real
   S3 and the database/AutoREST surface to Autonomous Database, then repeat the
   packaged correctness, security, recovery, and performance protocol in cloud.

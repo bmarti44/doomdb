@@ -93,6 +93,7 @@ function frameFrom(value) {
         tic,
         mode: document.mode,
         complete: document.complete,
+        stateSha: document.state_sha,
         frameSha: document.frame_sha,
         indices,
         audio: audioTuples(document.audio, tic),
@@ -168,7 +169,7 @@ function binaryFrameFrom(bytes, previousTransport) {
             indices[y * 320 + x] = transportIndices[x * 200 + y];
     }
     return { tic, mode: modeByte === 0 ? 'game' : 'dead', complete: complete,
-        frameSha, indices, audio: audioTuples(audio, tic), transportIndices };
+        stateSha, frameSha, indices, audio: audioTuples(audio, tic), transportIndices };
 }
 async function sha256(bytes) {
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
@@ -183,7 +184,8 @@ async function decodeRawFrame(bytes, previousTransport) {
         throw new TypeError('payload frame hash is invalid');
     }
     return { tic: decoded.tic, mode: decoded.mode, complete: decoded.complete,
-        frameSha: decoded.frameSha, indices: decoded.indices, audio: decoded.audio,
+        stateSha: decoded.stateSha, frameSha: decoded.frameSha,
+        indices: decoded.indices, audio: decoded.audio,
         transportIndices: decoded.transportIndices };
 }
 export async function decodeFrameBatch(encoded, state) {
@@ -265,6 +267,7 @@ export async function decodePayload(encoded) {
         tic: decoded.tic,
         mode: decoded.mode,
         complete: decoded.complete,
+        stateSha: decoded.stateSha,
         frameSha: decoded.frameSha,
         indices: decoded.indices,
         audio: decoded.audio

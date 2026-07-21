@@ -88,6 +88,8 @@ function validateSamples(samples) {
     assert.equal(sample.externalClock, true);
     for (const metric of CONTRACT.metricNames) assert.ok(finite(sample[metric]), `frame ${index} ${metric}`);
     assert.ok(hex(sample.payloadSha256));
+    assert.ok(hex(sample.stateSha256));
+    assert.ok(hex(sample.frameSha256));
     assert.ok(Array.isArray(sample.responseBodyKeys));
     for (const key of CONTRACT.forbiddenPayloadKeys) assert.ok(!sample.responseBodyKeys.includes(key), `payload timer leak ${key}`);
   });

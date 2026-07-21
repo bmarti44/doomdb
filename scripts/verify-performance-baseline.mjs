@@ -24,6 +24,8 @@ function decodeBinary(bytes) {
   assert.ok(magic === 'DMF3' || magic === 'DMF4', 'unsupported DMF envelope');
   assert.ok(bytes.length >= 140, 'short DMF envelope');
   const tic = bytes.readInt32BE(4);
+  const stateSha = ascii(bytes, 10, 64);
+  const frameSha = ascii(bytes, 74, 64);
   const audioLength = bytes.readUInt16BE(138);
   const frameStart = 140 + audioLength;
   assert.ok(tic >= 0 && frameStart <= bytes.length, 'invalid DMF header');
@@ -53,9 +55,10 @@ function decodeBinary(bytes) {
     for (let y = 0; y < CONTRACT.height; y += 1)
       pixels[y * CONTRACT.width + x] = transport[x * CONTRACT.height + y];
   }
-  assert.equal(ascii(bytes, 74, 64), sha256(pixels), 'DMF frame digest');
+  assert.match(stateSha, /^[0-9a-f]{64}$/);
+  assert.equal(frameSha, sha256(pixels), 'DMF frame digest');
   JSON.parse(bytes.subarray(140, frameStart).toString('utf8'));
-  return {tic, magic, pixels};
+  return {tic, magic, stateSha, frameSha, pixels};
 }
 
 function decodeTransport(document) {
@@ -177,7 +180,10 @@ async function collect(replayPath, evidencePath) {
       inputToPaintMs: paintEnd - begin,
       submitMs,
       payloadBytes: response.bytes.length,
-      payloadSha256: sha256(response.bytes),
+      transportBytes: decoded.compressed.length,
+      stateSha256: decoded.frame.stateSha,
+      frameSha256: decoded.frame.frameSha,
+      payloadSha256: sha256(decoded.compressed),
       responseBodyKeys
     });
   }
@@ -194,11 +200,16 @@ async function collect(replayPath, evidencePath) {
     return merged;
   });
   const root = path.dirname(path.resolve(evidencePath));
-  const payloads = samples.map(({frame, payloadBytes, payloadSha256, responseBodyKeys}) => ({frame, payloadBytes, payloadSha256, responseBodyKeys}));
+  const payloads = samples.map(({frame, payloadBytes, transportBytes, stateSha256,
+    frameSha256, payloadSha256, responseBodyKeys}) => ({frame, payloadBytes,
+    transportBytes, stateSha256, frameSha256, payloadSha256, responseBodyKeys}));
   const replayLedger = {identitySha256: CONTRACT.replaySha256,
     sourceBytesSha256: sha256(replayBytes), frames: 300, warmFrames: 30,
     measuredFrames: 270, resolution: [320, 200],
-    engine: CONTRACT.engine, commandsSha256: commandDigest(samples)};
+    engine: CONTRACT.engine, commandsSha256: commandDigest(samples),
+    stateChainSha256: sha256(JSON.stringify(samples.map(row => row.stateSha256))),
+    frameChainSha256: sha256(JSON.stringify(samples.map(row => row.frameSha256))),
+    payloadChainSha256: sha256(JSON.stringify(samples.map(row => row.payloadSha256)))};
   const rawArtifacts = [
     writeArtifact(root, 'artifacts/performance/t12.1/raw/samples.json', samples, 'samples', 300),
     writeArtifact(root, 'artifacts/performance/t12.1/raw/plans.json', observations.plans, 'plans', 3),

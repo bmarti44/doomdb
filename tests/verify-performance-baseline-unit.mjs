@@ -66,6 +66,9 @@ const samples = replay.frames.map(item => ({
   r1Ms: 1,
   r2Ms: 2,
   payloadBytes: 8000 + item.frame,
+  transportBytes: 7000 + item.frame,
+  stateSha256: sha256(`state-${item.frame}`),
+  frameSha256: sha256(`frame-${item.frame}`),
   payloadSha256: sha256(`payload-${item.frame}`),
   responseBodyKeys: ['audio', 'cols', 'frame_sha', 'h', 'tic', 'v', 'w']
 }));

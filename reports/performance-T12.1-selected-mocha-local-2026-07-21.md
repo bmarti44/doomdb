@@ -1,7 +1,6 @@
 # T12.1 selected-Mocha local checkpoint — 2026-07-21
 
-Status: local attribution and live 30 FPS interaction gates pass. The exact
-two-run fixed browser chain and managed-cloud repetition remain open.
+Status: local complete. Managed-cloud repetition remains final-P11 work.
 
 The content-addressed 300-frame fixture (`1ad47bc8…327fe3`) ran through the
 production `SUBMIT_STEP`/`POLL_FRAME` surfaces. An independent decoder verified
@@ -39,6 +38,13 @@ interaction gate measured 31.36 displayed FPS, 32.1/33.1 ms p50/p95 paint
 gaps, and 126.1 ms input-to-correlated-paint while movement, fire animation,
 mouse capture, Tab menu, Escape behavior, and tic-zero suppression all passed.
 No frame is skipped or reordered.
+
+The exact content-addressed fixture then ran twice through a dedicated browser
+driver using the same production API, codec, palette, and canvas modules. The
+runs sustained 31.70 and 31.56 FPS. Both browser runs and the private
+attribution replay reproduced identical state (`a4af25da…e4b3c`), frame
+(`e14a8f7e…1d19a`), and payload (`b91ce8c7…a0f2`) chain digests across all 300
+frames. `verify.sh task T12.1` revalidates this local evidence fail-closed.
 
 This Colima/Lima VM can step Oracle's wall clock backward. The collector counts
 and clamps impossible negative database substage observations rather than

@@ -4,6 +4,7 @@ export type Frame = {
   tic: number;
   mode: string;
   complete: 0 | 1;
+  stateSha: string;
   frameSha: string;
   indices: Uint8Array<ArrayBuffer>;
   audio: AudioTuple[];
@@ -103,6 +104,7 @@ function frameFrom(value: unknown): DecodedFrame {
     tic,
     mode: document.mode,
     complete: document.complete as 0 | 1,
+    stateSha: document.state_sha as string,
     frameSha: document.frame_sha,
     indices,
     audio: audioTuples(document.audio, tic),
@@ -177,7 +179,7 @@ function binaryFrameFrom(bytes: Uint8Array<ArrayBuffer>,
     for (let y = 0; y < 200; y += 1) indices[y * 320 + x] = transportIndices[x * 200 + y] as number;
   }
   return {tic, mode: modeByte === 0 ? 'game' : 'dead', complete: complete as 0 | 1,
-    frameSha, indices, audio: audioTuples(audio, tic), transportIndices};
+    stateSha, frameSha, indices, audio: audioTuples(audio, tic), transportIndices};
 }
 
 async function sha256(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
@@ -196,7 +198,8 @@ Promise<Frame & {transportIndices: Uint8Array<ArrayBuffer>}> {
     throw new TypeError('payload frame hash is invalid');
   }
   return {tic: decoded.tic, mode: decoded.mode, complete: decoded.complete,
-    frameSha: decoded.frameSha, indices: decoded.indices, audio: decoded.audio,
+    stateSha: decoded.stateSha, frameSha: decoded.frameSha,
+    indices: decoded.indices, audio: decoded.audio,
     transportIndices: decoded.transportIndices};
 }
 
@@ -273,6 +276,7 @@ export async function decodePayload(encoded: string): Promise<Frame> {
     tic: decoded.tic,
     mode: decoded.mode,
     complete: decoded.complete,
+    stateSha: decoded.stateSha,
     frameSha: decoded.frameSha,
     indices: decoded.indices,
     audio: decoded.audio
