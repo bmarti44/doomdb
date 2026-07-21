@@ -1975,8 +1975,8 @@ create or replace package body doom_api as
       -- The retained Mocha worker normally commits in under 10 ms. A 50 ms
       -- polling quantum dominated the otherwise-correlated request and added
       -- one to two display tics of input latency. Keep the bounded waiter, but
-      -- sample at 5 ms so readiness—not the sleep floor—sets response time.
-      dbms_session.sleep(.005);
+      -- sample at 2 ms so readiness—not the sleep floor—sets response time.
+      dbms_session.sleep(.002);
     end loop;
     -- A forced Scheduler stop can leave READY plus a fresh heartbeat behind.
     -- Keep the expensive data-dictionary liveness check off the hot submit

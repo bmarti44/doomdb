@@ -2966,6 +2966,20 @@ stable-host tails and managed ORDS remain final P11.
 
 #### T12.2 Profile-guided optimization loop
 
+**Local completion (2026-07-21).** The fail-closed local ledger selected the
+2 ms correlated readiness quantum: versus the immediate 5 ms baseline it
+improved serial p50 from 41.827 to 30.060 ms (28.13%) and reached 31.248
+effective serial FPS with zero clock-anomaly samples. The exact selected browser
+runs passed at 31.814/31.591 FPS with unchanged state/frame/payload chains. A
+1 ms transport attempt regressed to 36.464/72.954 ms p50/p95 and captured one
+backward-clock sample, so it was rolled back. A technically distinct redundant
+`(request_id,request_status)` index did not change the poll plan and regressed
+p50 by 3.92%; it was dropped. Attempts 2 and 3 are the first consecutive,
+distinct sub-5% pair, satisfying the stop rule. `verify.sh task T12.2` validates
+the retained attempt evidence, rollback state, selected source, exact chains,
+and browser FPS. Local T12.2 is complete; only final-P11 cloud publication is
+withheld.
+
 - Route: Sol high for SQL changes, Terra for transport/client changes.
 - Optimize the measured bottleneck using indexes, join/order changes, precomputed
   static relations, partitioning, aggregation shape, or codec changes that retain

@@ -104,7 +104,8 @@ try {
   const output = {schema: 1, task: 'T12.1-BROWSER-TWO-RUN', replaySha256:
     '1ad47bc8e2a5b7518d68b937a333492d66d7d539f827980086d4b4fdad327fe3',
     identicalChains: true, summaries};
-  const artifact = path.join(root, '.artifacts/t12.1/browser-two-run.json');
+  const artifact = path.resolve(process.env.T121_BROWSER_OUTPUT ??
+    path.join(root, '.artifacts/t12.1/browser-two-run.json'));
   fs.mkdirSync(path.dirname(artifact), {recursive: true});
   fs.writeFileSync(artifact, `${JSON.stringify(output)}\n`, {mode: 0o600});
   process.stdout.write(`PASS T12.1-BROWSER-TWO-RUN ${JSON.stringify(output)}\n`);

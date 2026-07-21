@@ -116,6 +116,7 @@ case "$1" in
         ;;
       T12.2)
         node tests/verify-performance-optimization-unit.mjs
+        node tests/verify-t12.2-local-ledger.mjs
         ;;
       T13.0)
         scripts/db_sql.sh tests/verify-p13.0-multiplayer-probe.sql

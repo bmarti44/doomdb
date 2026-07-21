@@ -10,7 +10,8 @@ client at <http://localhost:8080/play/> while the Compose stack is running.
 
 ## Current status
 
-The active implementation path is **P12: post-multiplayer performance verification**.
+The local implementation plan is complete through **P12**. The remaining work
+is the final **P11 managed-cloud/stable-host certification**.
 Single-player is playable end to end on the local stack. New `/play/` sessions run the
 pinned GPLv3 `AXDOOMER/mochadoom` engine (commit `c0af1322…abe93`) as Java
 schema objects inside OJVM, owned by a long-lived Scheduler worker session and
@@ -49,6 +50,14 @@ What works today, all verified by repeatable gates:
   completed two independent browser runs at 31.70 and 31.56 FPS; both and the
   private attribution replay reproduced the same 300-state, 300-frame, and
   300-payload chain digests.
+- **T12.2 local optimization is complete.** The selected 5 ms → 2 ms
+  readiness change improved serial p50 by 28.13% (41.83 → 30.06 ms) and reached
+  31.25 effective serial FPS. A 1 ms quantum regressed and captured a host-clock
+  anomaly; a redundant poll index left the plan unchanged and regressed p50 by
+  3.92%. Both were rolled back. Those technically distinct final attempts
+  satisfy the two-consecutive-sub-5% stop rule. The selected exact browser runs
+  remain green at 31.81/31.59 FPS, and the live interaction gate reaches 32.07
+  FPS with 122.2 ms input-to-correlated-paint.
 - **Full skill-3 route.** An authentic, no-cheat E1M1 run reaches the
   intermission at tic 13,272 with the expected combat, resources, keyed door,
   lift, secret, and exit interactions. A fresh Oracle session replayed every
@@ -200,12 +209,11 @@ What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 - **P9 is complete** — the Oracle `MODEL`-clause title fire animation passed
   two independent full-size database runs, deterministic checks, mutation
   checks, and visual review.
-- **T12.1 is locally complete** — the content-addressed replay, reviewed manifest, DMF
+- **T12.1/T12.2 are locally complete** — the content-addressed replay, reviewed manifest, DMF
   driver, local raw/report evidence, 90-call cursor matrix, internal plans, and
-  exact two-run 30 FPS browser chain gate are green. **T12.2 is next:** complete
-  the local optimization/stop-rule ledger; managed-ORDS repetition stays in
-  final P11.
-- **P11 (last)** — only after those local gates, deploy the static client to real
+  exact two-run 30 FPS browser chain gate are green; the local optimization
+  journal selected 2 ms and stopped on the first valid distinct sub-5% pair.
+- **P11 (last, now next)** — deploy the static client to real
   S3 and the database/AutoREST surface to Autonomous Database, then repeat the
   packaged correctness, security, recovery, and performance protocol in cloud.
 
