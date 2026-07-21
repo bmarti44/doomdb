@@ -102,8 +102,17 @@ fixture pins distinct authored starts, frag credit, vanilla respawn,
 reciprocal-kill tie accounting, and suicide attribution. Finally, two browser
 contexts selected deathmatch through the static client, submitted dynamic input,
 reloaded/reconnected, and reached synchronized tic 18 with distinct POVs.
-Frag/time limits, scoreboard/intermission, expanded player counts, and the
+The full-duration time-limit boundary, expanded player counts, and the
 deathmatch 300-frame performance gate remain open.
+
+The retained engine now freezes production deathmatch at 10 frags or 21,000
+tics (10 minutes at 35 Hz). A live low-limit fixture crosses the frag boundary
+and renders Doom's authentic intermission/scoreboard. The full-duration time
+boundary remains part of the soak gate. Multiplayer audio is no longer copied
+from player 0: each sound origin is evaluated through vanilla distance and
+stereo separation for each active listener immediately before that POV's DMF3
+payload is encoded. Two clean co-op probes reproduce the canonical frame hashes
+while proving the listener tuples differ.
 
 ## Remaining P13 gates
 

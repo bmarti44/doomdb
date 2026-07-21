@@ -47,6 +47,7 @@ begin
   equal_(field_(first_,'pickupWinner'),'0','pickup contention order');
   equal_(field_(first_,'sharedKey'),'1','netgame shared key');
   equal_(field_(first_,'simultaneousActions'),'1','simultaneous fire/use');
+  equal_(field_(first_,'spatialAudio'),'1','per-listener spatial audio');
   if field_(first_,'command0')=field_(first_,'command1') then
     raise_application_error(-20000,'distinct slot commands collapsed');
   end if;

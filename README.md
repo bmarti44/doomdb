@@ -64,8 +64,10 @@ What works today, all verified by repeatable gates:
   FPS gate, remaining authored interaction fixtures, and soak remain open.
   Two-browser deathmatch is additionally live with authored starts, dynamic
   input, distinct POVs, reconnect, exact worker reconstruction, frag/respawn,
-  reciprocal-kill tie, and suicide-accounting fixtures. Frag/time limits,
-  scoreboard/intermission, and its 300-frame gate remain open.
+  reciprocal-kill tie, suicide accounting, a frozen 10-frag/10-minute rule, and
+  authentic scoreboard/intermission fixtures. Each POV now receives sound
+  attenuated and panned for its own Oracle-owned listener. The full-duration
+  time-limit, expanded-player, and 300-frame gates remain open.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is

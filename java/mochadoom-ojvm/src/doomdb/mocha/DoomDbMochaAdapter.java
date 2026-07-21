@@ -57,6 +57,10 @@ public final class DoomDbMochaAdapter {
   private static int controlTurnHeld;
   private static String lastAudioJson = "[]";
   private static short[][] multiplayerConsistency;
+  private static final int DEATHMATCH_FRAG_LIMIT = 10;
+  private static final int DEATHMATCH_TIME_LIMIT_TICS = 10 * 60 * 35;
+  private static int deathmatchFragLimit;
+  private static int deathmatchTimeLimitTics;
 
   private DoomDbMochaAdapter() {}
 
@@ -762,6 +766,18 @@ public final class DoomDbMochaAdapter {
       if (visible0 < 1 || visible1 < 1) {
         throw new IllegalStateException("mutual sprite projection missing");
       }
+      DummySFX.beginTic(engine.gametic + 1L);
+      engine.doomSound.StartSound(engine.players[0].mo,
+          data.sounds.sfxenum_t.sfx_pistol);
+      String audio0 = DummySFX.drainEventsFor(engine.gametic + 1L,
+          (s.AbstractDoomAudio) engine.doomSound, engine.players[0].mo);
+      String audio1 = DummySFX.drainEventsFor(engine.gametic + 1L,
+          (s.AbstractDoomAudio) engine.doomSound, engine.players[1].mo);
+      boolean spatialAudio = !"[]".equals(audio0) && !"[]".equals(audio1)
+          && !audio0.equals(audio1);
+      if (!spatialAudio) {
+        throw new IllegalStateException("per-listener spatial audio failed");
+      }
 
       // Lock vanilla co-op pickup semantics in the shared world. Ordinary
       // ammo has one deterministic winner and is unlinked before another
@@ -839,6 +855,7 @@ public final class DoomDbMochaAdapter {
           + "|pov1VisibleSprites=" + visible1
           + "|renderStateSha=" + beforeRender
           + "|pickupWinner=0|sharedKey=1|simultaneousActions=1"
+          + "|spatialAudio=1"
           + "|damage=10000|dead=1|fragDelta=" + fragDelta + "|reborn=1";
     } catch (Throwable failure) {
       return failure("multiplayer-probe", failure);
@@ -913,10 +930,26 @@ public final class DoomDbMochaAdapter {
       if (suicideDelta != 1) {
         throw new IllegalStateException("deathmatch suicide attribution failed");
       }
+      initializeMultiplayerEngine(2, 1, 3, 1, 1);
+      deathmatchFragLimit = 1;
+      engine.actions.DamageMobj(engine.players[1].mo, engine.players[0].mo,
+          engine.players[0].mo, 10000);
+      setMultiplayerCommand(0, 0, 0, 0, 0);
+      setMultiplayerCommand(1, 0, 0, 0, 0);
+      tickMultiplayerEngine();
+      setMultiplayerCommand(0, 0, 0, 0, 0);
+      setMultiplayerCommand(1, 0, 0, 0, 0);
+      tickMultiplayerEngine();
+      boolean limitIntermission =
+          engine.gamestate == defines.gamestate_t.GS_INTERMISSION;
+      if (!limitIntermission) {
+        throw new IllegalStateException("deathmatch frag limit failed");
+      }
       return "ok|state=deathmatch-probed|membership=1100|deathmatch=1"
           + "|spawn0=" + spawn0x + "," + spawn0y
           + "|spawn1=" + spawn1x + "," + spawn1y
           + "|frag=1|respawn=1|simultaneousTie=1|suicideDelta=" + suicideDelta
+          + "|limitIntermission=1"
           + "|stateSha=" + multiplayerStateSha(2);
     } catch (Throwable failure) {
       return failure("deathmatch-probe", failure);
@@ -1210,6 +1243,8 @@ public final class DoomDbMochaAdapter {
     lastAudioJson = "[]";
     multiplayerConsistency = new short[engine.playeringame.length]
         [engine.netcmds[0].length];
+    deathmatchFragLimit = deathmatch == 1 ? DEATHMATCH_FRAG_LIMIT : 0;
+    deathmatchTimeLimitTics = deathmatch == 1 ? DEATHMATCH_TIME_LIMIT_TICS : 0;
   }
 
   private static void requireMultiplayerEngine(int activePlayers) {
@@ -1238,6 +1273,7 @@ public final class DoomDbMochaAdapter {
       String state, int activePlayers, String membership, String stateSha,
       Blob[] outputs) throws Exception {
     String beforeRender = multiplayerStateSha(activePlayers);
+    String sharedAudio = lastAudioJson;
     int savedConsole = engine.consoleplayer;
     int savedDisplay = engine.displayplayer;
     StringBuilder result = new StringBuilder("ok|state=").append(state)
@@ -1255,6 +1291,11 @@ public final class DoomDbMochaAdapter {
         engine.consoleplayer = player;
         engine.displayplayer = player;
         engine.Display();
+        if (engine.doomSound instanceof s.AbstractDoomAudio
+            && engine.players[player].mo != null) {
+          lastAudioJson = DummySFX.drainEventsFor(engine.gametic,
+              (s.AbstractDoomAudio) engine.doomSound, engine.players[player].mo);
+        }
         String frameSha = currentFrameSha();
         byte[] payload = encodeDmf3(stateSha, frameSha);
         writeBlob(output, payload);
@@ -1264,16 +1305,21 @@ public final class DoomDbMochaAdapter {
                 MessageDigest.getInstance("SHA-256").digest(payload)))
             .append("|pov").append(player).append("Bytes=")
             .append(payload.length);
+        lastAudioJson = sharedAudio;
         if (!beforeRender.equals(multiplayerStateSha(activePlayers))) {
           throw new IllegalStateException(
               "POV render mutated world player=" + player);
         }
       }
     } finally {
+      lastAudioJson = sharedAudio;
       engine.consoleplayer = savedConsole;
       engine.displayplayer = savedDisplay;
     }
     result.append("|routeDiag=").append(multiplayerRouteDiagnostic(activePlayers));
+    if (engine.deathmatch) result.append("|fragLimit=")
+        .append(deathmatchFragLimit).append("|timeLimitTics=")
+        .append(deathmatchTimeLimitTics);
     return result.toString();
   }
 
@@ -1382,6 +1428,7 @@ public final class DoomDbMochaAdapter {
         % engine.netcmds[0].length;
     DummySFX.beginTic(engine.gametic + 1L);
     engine.Ticker();
+    armDeathmatchIntermission();
     if (multiplayerConsistency != null) {
       for (int player = 0; player < engine.playeringame.length; player++) {
         if (!engine.playeringame[player]) continue;
@@ -1393,6 +1440,23 @@ public final class DoomDbMochaAdapter {
     }
     engine.gametic++;
     lastAudioJson = DummySFX.drainEvents(engine.gametic);
+  }
+
+  private static void armDeathmatchIntermission() {
+    if (!engine.deathmatch || engine.gamestate != defines.gamestate_t.GS_LEVEL) {
+      return;
+    }
+    boolean reached = deathmatchTimeLimitTics > 0
+        && engine.leveltime >= deathmatchTimeLimitTics;
+    for (int player = 0; player < engine.playeringame.length && !reached; player++) {
+      if (!engine.playeringame[player]) continue;
+      int score = -engine.players[player].frags[player];
+      for (int victim = 0; victim < engine.playeringame.length; victim++) {
+        if (victim != player) score += engine.players[player].frags[victim];
+      }
+      reached = deathmatchFragLimit > 0 && score >= deathmatchFragLimit;
+    }
+    if (reached) engine.ExitLevel();
   }
 
   /** Decode canonical network-order ticcmd bytes without upstream sign drift. */

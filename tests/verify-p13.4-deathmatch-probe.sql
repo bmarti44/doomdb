@@ -27,6 +27,7 @@ begin
   equal_(field_(first_,'respawn'),'1','respawn');
   equal_(field_(first_,'simultaneousTie'),'1','simultaneous tie');
   equal_(field_(first_,'suicideDelta'),'1','suicide attribution');
+  equal_(field_(first_,'limitIntermission'),'1','frag-limit intermission');
   if field_(first_,'spawn0')=field_(first_,'spawn1') then
     raise_application_error(-20000,'deathmatch starts collapsed');
   end if;

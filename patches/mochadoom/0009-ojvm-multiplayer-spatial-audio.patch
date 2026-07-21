@@ -1,0 +1,95 @@
+diff --git a/src/s/DummySFX.java b/src/s/DummySFX.java
+--- a/src/s/DummySFX.java
++++ b/src/s/DummySFX.java
+@@ -7,10 +7,52 @@ public class DummySFX implements ISoundDriver {
+ 	private static final StringBuilder events = new StringBuilder();
+ 	private static int eventCount;
++	private static final java.util.ArrayList<WorldEvent> worldEvents =
++		new java.util.ArrayList<WorldEvent>();
++
++	private static final class WorldEvent {
++		final int id;
++		final ISoundOrigin origin;
++		final int volume;
++		final int pitch;
++		WorldEvent(int id, ISoundOrigin origin, int volume, int pitch) {
++			this.id = id;
++			this.origin = origin;
++			this.volume = volume;
++			this.pitch = pitch;
++		}
++	}
+ 
+ 	public static synchronized void clearEvents() {
+ 		events.setLength(0);
+ 		eventCount = 0;
++		worldEvents.clear();
+ 	}
++
++	public static synchronized void captureWorldEvent(
++			int id, ISoundOrigin origin, int volume, int pitch) {
++		if (id > 0 && id < data.sounds.sfxenum_t.values().length
++				&& worldEvents.size() < 64) {
++			worldEvents.add(new WorldEvent(id, origin, volume, pitch));
++		}
++	}
++
++	public static synchronized String drainEventsFor(long tic,
++			AbstractDoomAudio audio, p.mobj_t listener) {
++		StringBuilder result = new StringBuilder("[");
++		int ordinal = 0;
++		for (WorldEvent event : worldEvents) {
++			int[] params = audio.doomdbSpatialParams(listener, event.origin,
++				event.volume, event.pitch);
++			if (params == null) continue;
++			String name = data.sounds.sfxenum_t.values()[event.id].name();
++			if (name.startsWith("sfx_")) name = name.substring(4);
++			if (ordinal > 0) result.append(',');
++			result.append('[').append(tic).append(',').append(ordinal++)
++				.append(",\"DS").append(name.toUpperCase()).append("\",")
++				.append(params[0]).append(',').append(params[1]).append(']');
++		}
++		return result.append(']').toString();
++	}
+ 
+ 	public static synchronized String drainEvents(long tic) {
+ 		if (eventCount == 0) return "[]";
+diff --git a/src/s/AbstractDoomAudio.java b/src/s/AbstractDoomAudio.java
+--- a/src/s/AbstractDoomAudio.java
++++ b/src/s/AbstractDoomAudio.java
+@@ -234,6 +234,10 @@ public abstract class AbstractDoomAudio implements IDoomSound {
+ 			priority = NORM_PRIORITY;
+ 		}
+ 
++		if (ISND instanceof DummySFX) {
++			DummySFX.captureWorldEvent(sfx_id, origin, volume, pitch);
++		}
++
+ 
+ 		// Check to see if it is audible,
+ 		//  and if not, modify the params
+@@ -350,5 +354,24 @@ public abstract class AbstractDoomAudio implements IDoomSound {
+ 	} 
+ 
++	/** Read-only per-listener parameters for DoomDB's immutable POV payloads. */
++	public int[] doomdbSpatialParams(mobj_t listener, ISoundOrigin source,
++			int volume, int pitch) {
++		vps_t params = new vps_t();
++		params.volume = volume;
++		params.pitch = pitch;
++		params.sep = NORM_SEP;
++		if (source != null && listener != source) {
++			if (!AdjustSoundParams(listener, source, params)) return null;
++			if (source.getX() == listener.x && source.getY() == listener.y) {
++				params.sep = NORM_SEP;
++			}
++		}
++		return new int[] {
++			Math.max(0, Math.min(255, params.volume)),
++			Math.max(0, Math.min(255, params.sep))
++		};
++	}
++
+ 
+ 	public void
+ 	StartSound

@@ -39,6 +39,8 @@ assert.match(adapter, /POV render mutated world/);
 assert.match(adapter, /co-op pickup contention failed/);
 assert.match(adapter, /co-op shared key failed/);
 assert.match(adapter, /simultaneous player actions failed/);
+assert.match(adapter, /per-listener spatial audio failed/);
+assert.match(adapter, /DummySFX\.drainEventsFor/);
 assert.match(adapter, /MULTI_INITIAL/);
 assert.match(adapter, /previousStateSha \+ '\|' \+ membership/);
 assert.match(calls, /create or replace function doom_mocha_multiplayer_new_game/i);

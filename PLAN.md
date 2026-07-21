@@ -3020,7 +3020,10 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   grace (long enough for a measured generated-ORDS restart); the host can
   explicitly finish the match idempotently. Tic 1 alone uses a 500 ms cold
   generated-procedure allowance, while every warm missing-peer deadline remains
-  75 ms. Bounded final leave semantics are closed.
+  75 ms. Sound origins are captured once per shared tic and re-evaluated through
+  vanilla attenuation/panning for each active listener before immutable POV
+  encoding; a clean-run fixture proves distinct player audio without changing
+  the canonical co-op frame hashes. Bounded final leave semantics are closed.
 
 #### T13.3 Co-op client, replay, and recovery
 
@@ -3102,8 +3105,11 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   vanilla deathmatch respawn, reciprocal-kill tie accounting, and suicide
   attribution. Two real browser contexts select deathmatch, submit dynamic
   input, reload/reconnect, retain distinct POVs, and reach synchronized tic 18.
-  The frozen frag/time limits, scoreboard/intermission workflow, expanded
-  player-count evidence, and deathmatch performance gate remain open.
+  Production now freezes the first-score-at-10-frags or 10-minute/21,000-tic
+  terminal rules in the retained engine. A low-limit live fixture proves the
+  winner enters Doom's authentic scoreboard/intermission, alongside all combat
+  assertions above. The full-duration time-limit gate, expanded player-count
+  evidence, and deathmatch performance gate remain open.
 
 #### T13.5 Operations and local multiplayer gate
 
