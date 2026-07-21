@@ -3,6 +3,7 @@
   "task": "T11.1",
   "sqlcl": {"name": "SQLcl", "version": "26.2.0.181.2110"},
   "minimumDatabaseMajor": 23,
+  "ojvm": {"javaRelease": 8, "classCount": 830, "loadMode": "client-side-loadjava"},
   "bootstrapOrder": "sql/bootstrap/order.txt",
   "seedOrderGenerator": "tools/wad/seed-load-order.mjs",
   "domains": ["schema", "seed", "engine", "rest"],

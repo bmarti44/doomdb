@@ -37,6 +37,14 @@ What works today, all verified by repeatable gates:
   across independent runs). The latest live interactive gate after the
   selected depth-2 pipeline tuning measured 31.36 FPS with 32.1/33.1 ms
   p50/p95 frame gaps and 126.1 ms input-to-correlated-paint latency.
+- **Cloud-compatible engine artifact.** The selected pinned source plus adapter
+  now builds reproducibly as 830 Java 8 classfiles (JAR SHA-256
+  `a27903f2…ab`) for Autonomous OJVM. A full local reload, native hot-class
+  compile, eleven-gate engine regression, and two independent browser routes
+  pass; the browser routes held 32.39/35.51 FPS with identical 300-state,
+  frame, and payload chains. The production cloud gate loads that JAR with the
+  supported client-side `loadjava` path, loads the SHA-verified IWAD, and only
+  then installs the runtime call specifications.
 - **Selected-engine T12.1 attribution is live.** The content-addressed
   300-frame Mocha fixture now runs through `SUBMIT_STEP`/`POLL_FRAME`, an
   independent DMF3/4 decoder, and a credential-private Oracle collector. Its
@@ -220,8 +228,11 @@ What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
   deterministic dry-runs, source and mutation gates, fresh 24-domain local seed
   evidence, and approved 13,272-command completion ledger pass. Live execution
   is currently `NOT RUN`: this shell has no Autonomous connection/wallet/managed
-  ORDS URL, target S3 bucket, or pinned SQLcl. Run `./verify.sh phase P11` once
-  those external authorities are supplied; missing inputs cannot produce PASS.
+  ORDS URL, target S3 bucket, or pinned SQLcl. The target must also have Oracle
+  JVM enabled and restarted by its administrator before the gate; the gate
+  verifies the reported JDK before changing schema state. Run
+  `./verify.sh phase P11` once those external authorities are supplied; missing
+  inputs cannot produce PASS.
 
 Full measurements, rejected alternatives, and acceptance gates are maintained
 in [PLAN.md](PLAN.md), the

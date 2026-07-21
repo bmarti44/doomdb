@@ -14,7 +14,8 @@ sql_input(){
   printf '%s\n' "$credential_line"
   command cat "$1"
 }
-sql_file(){ sql_input "$1" | timeout 1800 sql -s /nolog | node "$root/scripts/redact-cloud-output.mjs"; }
+sql_file_timeout(){ local seconds=$1; shift; sql_input "$1" | timeout "$seconds" sql -s /nolog | node "$root/scripts/redact-cloud-output.mjs"; }
+sql_file(){ sql_file_timeout 1800 "$1"; }
 cleanup(){
   local status=$?;trap - EXIT HUP INT TERM
   if [[ "$transport_installed" == 1 && -n "$tmp" ]]; then
@@ -77,13 +78,21 @@ DOOM_ORDS_URL="$ADB_ORDS_BASE_URL" timeout 1800 "$root/scripts/verify-transport.
 sql_file "$root/deploy/local/probes/transport/uninstall.sql" >"$tmp/transport-uninstall.log";transport_installed=0
 
 # Resolve the exact local sql/schema, sql/seed, sql/engine, and sql/rest sources
-# into one SQLcl input while retaining the byte order from the local bootstrap.
-ledger="$tmp/deployment.ledger";deploy_sql="$tmp/deploy.sql";: >"$ledger";: >"$deploy_sql";chmod 600 "$ledger" "$deploy_sql"
-printf '%s\n' 'whenever oserror exit failure rollback' 'whenever sqlerror exit sql.sqlcode rollback' 'set echo off verify off define off' >>"$deploy_sql"
+# into pre/post-OJVM SQLcl inputs while retaining the byte order from the local
+# bootstrap. Runtime finalization cannot precede the client-side class load.
+ledger="$tmp/deployment.ledger";pre_sql="$tmp/deploy-pre-java.sql";post_sql="$tmp/deploy-post-java.sql"
+: >"$ledger";: >"$pre_sql";: >"$post_sql";chmod 600 "$ledger" "$pre_sql" "$post_sql"
+for file in "$pre_sql" "$post_sql"; do
+  printf '%s\n' 'whenever oserror exit failure rollback' 'whenever sqlerror exit sql.sqlcode rollback' 'set echo off verify off define off' >>"$file"
+done
 credential_line="connect $ADB_USERNAME/\"$ADB_PASSWORD\"@$ADB_CONNECTION_STRING"
-printf '%s\n' "$credential_line" >>"$deploy_sql"
+printf '%s\n' "$credential_line" >>"$pre_sql"
+printf '%s\n' "$credential_line" >>"$post_sql"
+phase=pre
 while IFS= read -r entry || [[ -n "$entry" ]]; do
   [[ -z "$entry" || "$entry" == \#* ]] && continue
+  [[ "$entry" == sql/schema/059_finalize_runtime.sql ]] && phase=post
+  [[ "$phase" == pre ]] && deploy_sql="$pre_sql" || deploy_sql="$post_sql"
   if [[ "$entry" == '@seed-manifest' ]]; then
     while IFS= read -r seed; do
       path="sql/seed/$seed";file="$root/$path";printf 'seed|%s|%s\n' "$path" "$(sha "$file")" >>"$ledger"
@@ -96,12 +105,20 @@ while IFS= read -r entry || [[ -n "$entry" ]]; do
   case "$entry" in sql/bootstrap/*|sql/schema/*) domain=schema;; *) domain=engine;; esac
   printf '%s|%s|%s\n' "$domain" "$entry" "$(sha "$root/$entry")" >>"$ledger";command cat "$root/$entry" >>"$deploy_sql";printf '%s\n' 'commit;' >>"$deploy_sql"
 done <"$root/sql/bootstrap/order.txt"
+deploy_sql="$post_sql"
 for entry in sql/rest/010_doom_api.sql sql/rest/020_ords_enable.sql deploy/cloud/t11.1/least-grants.sql; do
   printf 'rest|%s|%s\n' "$entry" "$(sha "$root/$entry")" >>"$ledger";command cat "$root/$entry" >>"$deploy_sql";printf '%s\n' 'commit;' >>"$deploy_sql"
 done
-printf '%s\n' 'exit success commit' >>"$deploy_sql"
-node "$root/scripts/t11.1-deployment-manifest.mjs" "$ledger" "$tmp/deployment.json"
-timeout 14400 sql -s /nolog <"$deploy_sql" | node "$root/scripts/redact-cloud-output.mjs" >"$tmp/deployment.log"
+printf '%s\n' 'exit success commit' >>"$pre_sql"
+printf '%s\n' 'exit success commit' >>"$post_sql"
+
+"$root/scripts/mochadoom/build-ojvm-jar.sh" "$tmp/mochadoom-ojvm.jar" "$tmp/ojvm-artifact.json" >"$tmp/ojvm-build.log"
+node "$root/scripts/t11.1-deployment-manifest.mjs" "$ledger" "$tmp/deployment.json" "$tmp/ojvm-artifact.json"
+sql_file "$root/deploy/cloud/t11.1/ojvm-preflight.sql" >"$tmp/ojvm-preflight.log"
+timeout 14400 sql -s /nolog <"$pre_sql" | node "$root/scripts/redact-cloud-output.mjs" >"$tmp/deployment-pre.log"
+"$root/scripts/mochadoom/load-cloud-ojvm.sh" "$tmp/mochadoom-ojvm.jar" "$tmp/ojvm-artifact.json" >"$tmp/ojvm-load.log"
+timeout 14400 sql -s /nolog <"$post_sql" | node "$root/scripts/redact-cloud-output.mjs" >"$tmp/deployment-post.log"
+sql_file_timeout 7200 "$root/scripts/mochadoom/compile-hot-renderer.sql" >"$tmp/ojvm-native-compile.log"
 
 sql_file "$root/deploy/cloud/t11.1/catalog-observation.sql" >"$tmp/catalog.log"
 sql_file "$root/deploy/cloud/t11.1/seed-observation.sql" >"$tmp/cloud-seeds.log"

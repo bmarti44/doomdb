@@ -1,5 +1,7 @@
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -29,7 +31,10 @@ public final class DoomMochaIwadLoader {
     }
     String password = System.getenv("DOOMDB_PASSWORD");
     if (password == null || password.isEmpty()) {
-      throw new IllegalStateException("DOOMDB_PASSWORD is required");
+      password = new BufferedReader(new InputStreamReader(System.in)).readLine();
+    }
+    if (password == null || password.isEmpty()) {
+      throw new IllegalStateException("database password is required");
     }
     Path path = Path.of(args[2]);
     String actualSha = sha256(path);

@@ -52,7 +52,12 @@ authoritative record.
   Deterministic dry-runs, source/evaluator mutation gates, the fresh 24-domain
   local seed observation, and the approved 13,272-command completion ledger are
   ready. Live execution requires the external Autonomous wallet/target,
-  managed ORDS origin, pinned SQLcl, and target S3 bucket.
+  managed ORDS origin, pinned SQLcl, and target S3 bucket. The production gate
+  now also builds and content-addresses the complete 830-class Java 8 OJVM
+  artifact, verifies JAVAVM/JDK availability before mutation, loads the classes
+  and pinned IWAD client-side, and finalizes runtime call specs only afterward.
+  A full local Java 8 reload passed the eleven-gate core suite and identical
+  300-frame browser chains at 32.39/35.51 FPS.
 - **Admission repair (2026-07-21):** `/play/` fresh-game admission is green
   after reproducing a dead Scheduler session whose fenced owner row survived.
   Expiry cleanup now force-stops and reclaims only expired owners after a
@@ -2169,9 +2174,11 @@ the clean-room engine unless it is needed to validate the new public contract.
 - Preserve upstream GPLv3 and per-file notices. Add a machine-readable license
   ledger and document that the project adapter and combined engine distribution
   are GPLv3-compatible while Oracle Database is a separately licensed runtime.
-- Compile all sources with Oracle's embedded `javac --release 11`; package a
-  deterministic JAR; load it with `loadjava -resolve`; fail on any invalid Java
-  object or resolver error.
+- Compile all sources with the pinned Oracle toolchain using `javac --release
+  8`, the bytecode floor supported by Autonomous OJVM; package a deterministic
+  JAR; load it with client-side `loadjava -resolve`; fail on any invalid Java
+  object or resolver error. Java 11 remains valid for historical local probes,
+  but is not the production cloud artifact contract.
 - Spike evidence (2026-07-18): all 442 upstream Java sources compiled unchanged
   into 820 classes and a 1.2 MB JAR. A disposable OJVM schema resolved all 820
   classes with zero errors and a SQL call returned
@@ -2881,11 +2888,30 @@ has run because this shell lacks the Autonomous connection, wallet, managed
 ORDS URL, target S3 bucket, and pinned SQLcl. Absence remains `NOT RUN`, never
 `PASS`.
 
+**OJVM deployment reconciliation (2026-07-21).** The earlier database deployer
+installed Java call specifications without loading the selected Mocha class
+graph or IWAD, and attempted runtime finalization before either existed. The
+production gate now builds a deterministic 830-class Java 8 JAR (SHA-256
+`a27903f2dcd81aecb0292f605453969ad3d4389382bebdb8386dff3cb13f23ab`),
+preflights the target JDK, deploys pre-Java schema/seed sources, loads the JAR
+with Oracle's supported client-side `loadjava`, loads and verifies the
+28,795,076-byte IWAD, then installs post-Java runtime/REST sources and native-
+compiles the selected hot classes. Local reconstruction of that exact sequence
+passed all eleven Mocha core gates; two independent real-browser 300-frame
+routes reproduced identical chains at 32.39 and 35.51 FPS. Autonomous requires
+an administrator to enable `JAVAVM` and restart the database before this gate;
+absence fails before production schema mutation.
+
 #### T11.1 Cloud database deployment
 
 - Route: Terra high.
 - First run the unchanged P0 capability and transport probes against the target
   Autonomous Database. Any unsupported feature or transport mismatch blocks P11.
+- Require an administrator-enabled and restarted Autonomous `JAVAVM` feature;
+  preflight `DBMS_JAVA.GET_JDK_VERSION` before deploying production objects.
+- Build and verify the pinned release-8 class graph locally, use client-side
+  `loadjava` (server-side loadjava is unsupported on Autonomous), and load the
+  SHA-verified IWAD before runtime call-spec finalization.
 - Apply the same schema/seed/engine/rest scripts to the target database using a
   pinned deployment tool. Validate resource limits, grants, object exposure,
   package compilation, and transport contract.

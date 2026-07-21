@@ -35,7 +35,7 @@
     "repository": "https://github.com/AXDOOMER/mochadoom.git",
     "commit": "c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93",
     "license": "GPL-3.0-or-later",
-    "javaRelease": 11
+    "javaRelease": 8
   },
   "deploymentTools": {
     "awsCli": "2.34.36",

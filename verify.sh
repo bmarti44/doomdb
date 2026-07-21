@@ -111,6 +111,7 @@ case "$1" in
         ;;
       T11.1)
         tests/verify-t11.1-source.sh
+        tests/verify-t11.1-ojvm-artifact.sh
         scripts/collect-t11.1-local-seeds.sh
         export ADB_LOCAL_SEED_EVIDENCE="${ADB_LOCAL_SEED_EVIDENCE:-/tmp/doomdb-t111-local-seed-observation.json}"
         evaluator/t11.1/run-visible.sh

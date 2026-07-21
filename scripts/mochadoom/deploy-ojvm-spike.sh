@@ -61,7 +61,7 @@ docker cp "$host_tmp/freedoom1.wad" "$container:$tmp/freedoom1.wad" >/dev/null
 
 docker exec -d "$container" bash -lc \
   "find '$tmp/source' '$tmp/adapter' -name '*.java' -print0 | \
-   xargs -0 '$java_home/jdk/bin/javac' --release 11 -encoding UTF-8 \
+   xargs -0 '$java_home/jdk/bin/javac' --release 8 -encoding UTF-8 \
      -J-Xms64m -J-Xmx256m \
      -cp '$java_home/jdbc/lib/ojdbc11.jar' -d '$tmp/classes' \
      >'$tmp/javac.log' 2>&1; printf '%s' \"\$?\" >'$tmp/javac.status'"

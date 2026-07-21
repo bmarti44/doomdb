@@ -2,6 +2,11 @@
 
 Date: 2026-07-18
 
+> Production cloud supersession (2026-07-21): this report preserves the
+> historical Java 11 feasibility spike. The selected Autonomous artifact now
+> targets Java 8 bytecode and contains 830 classes; see
+> [the P11 OJVM readiness report](performance-P11-ojvm-cloud-readiness-2026-07-21.md).
+
 ## Result
 
 The production migration is feasible. Pinned Mocha Doom now initializes E1M1,

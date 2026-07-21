@@ -33,6 +33,16 @@ creating or exposing an ORDS object and aborts deployment if the capability is
 absent. A tenant administrator must grant it according to that tenant's
 Autonomous Database policy before running `--execute`.
 
+The target must also have Oracle JVM enabled. An Autonomous administrator must
+run `DBMS_CLOUD_ADMIN.ENABLE_FEATURE` for `JAVAVM` and restart the database
+before this deployment begins. The production gate calls
+`DBMS_JAVA.GET_JDK_VERSION` and stops before schema mutation if OJVM is absent or
+incompatible. It deterministically compiles the pinned engine to 830 Java 8
+classfiles, uses Oracle's supported client-side `loadjava` path, loads the
+SHA-verified IWAD, and only then installs the runtime call specifications. The
+wallet, JAR, IWAD, loader logs, and password remain in mode-protected temporary
+storage and are removed on exit.
+
 Teardown is explicit and intentionally separate. Review the dry-run teardown
 manifest, then invoke `deploy/cloud/teardown.sh --execute` with the same guarded
 environment to delete only the allowlisted S3 object and remove the placeholder
@@ -49,3 +59,9 @@ local seed observation, and explicit resource bounds. With any input absent it
 returns `NOT RUN`, performs no cloud command, and publishes no evidence. A fully
 successful live run atomically creates `/tmp/doomdb-t111-evidence.json`; only the
 frozen independent evaluator may accept that record.
+
+The gate order is deliberately fail-closed: capability/transport probes, OJVM
+preflight, pre-Java schema and seed sources, class/IWAD load, post-Java runtime
+and REST sources, native hot-class compilation, then catalog/seed/API evidence.
+The deployment manifest content-addresses the release, pinned Mocha revision,
+830-class count, and deterministic JAR SHA.
