@@ -76,7 +76,11 @@ What works today, all verified by repeatable gates:
   p95 33.1/33.0 ms, and input p95/max 245.9/247.6 and 229.0/246.2 ms. The first
   enforced repeat narrowly missed at 33.6 ms paint p95 and 265.9 ms maximum
   input, so two consecutive passes and the soak remain open; no 30 FPS
-  multiplayer completion claim is made yet.
+  multiplayer completion claim is made yet. Follow-up A/B tests rejected raw
+  keyframes, preallocated PackBits output, and a 32-tic cross-response delta
+  chain: all worsened paint or input tails. The four-tic, independently
+  decodable candidate remains deployed while the residual commit tail is
+  isolated.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is

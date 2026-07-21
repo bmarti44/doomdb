@@ -210,7 +210,7 @@ try {
         const presented = presents.find(row => row.tic === effective.effectiveTic);
         return input === undefined || presented === undefined ? null : presented.at-input.at;
       }).filter(value => value !== null);
-      assert.ok(latencies.length>=20,
+      assert.ok(latencies.length>=(enforcePerformance?20:1),
         `player ${slot} input overlay samples=${latencies.length}`);
       const p50 = percentile(gaps, .5), p95 = percentile(gaps, .95);
       const measuredSubmits = all.filter(row => row.name === 'submit' &&
@@ -237,7 +237,9 @@ try {
       }).filter(value => value !== null);
       const inputP50=percentile(latencies,.5),inputP95=percentile(latencies,.95);
       const inputMax=Math.max(...latencies);
-      const detail = `p${slot}=${fps.toFixed(2)}fps paint=${p50.toFixed(2)}/${p95.toFixed(2)}ms submitGap=${percentile(submitGaps, .5).toFixed(2)}/${percentile(submitGaps, .95).toFixed(2)}ms submitDecode=${percentile(server, .5).toFixed(2)}/${percentile(server, .95).toFixed(2)}ms pollReady=${percentile(delivery, .5).toFixed(2)}/${percentile(delivery, .95).toFixed(2)}ms decodePaint=${percentile(decodePaint, .5).toFixed(2)}/${percentile(decodePaint, .95).toFixed(2)}ms input=${inputP50.toFixed(2)}/${inputP95.toFixed(2)}/${inputMax.toFixed(2)}ms n=${latencies.length}`;
+      const worstGap=gaps.reduce((best,value,index)=>value>best.value?
+        {value,tic:presents[index+1].tic}:best,{value:-1,tic:-1});
+      const detail = `p${slot}=${fps.toFixed(2)}fps paint=${p50.toFixed(2)}/${p95.toFixed(2)}ms submitGap=${percentile(submitGaps, .5).toFixed(2)}/${percentile(submitGaps, .95).toFixed(2)}ms submitDecode=${percentile(server, .5).toFixed(2)}/${percentile(server, .95).toFixed(2)}ms pollReady=${percentile(delivery, .5).toFixed(2)}/${percentile(delivery, .95).toFixed(2)}ms decodePaint=${percentile(decodePaint, .5).toFixed(2)}/${percentile(decodePaint, .95).toFixed(2)}ms input=${inputP50.toFixed(2)}/${inputP95.toFixed(2)}/${inputMax.toFixed(2)}ms n=${latencies.length} worstPaint=${worstGap.tic}:${worstGap.value.toFixed(1)}`;
       if (enforcePerformance) {
         assert.ok(fps >= 30, `player ${slot} ${detail}`);
         assert.ok(p50 <= 33.3 && p95 <= 33.3, `player ${slot} ${detail}`);

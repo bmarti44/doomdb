@@ -3170,6 +3170,20 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   includes pool sizes seven/eight, per-transition standalone requests,
   presentation acknowledgements, one-poll input mode, and presentation-relative
   lead five or lower; each lost throughput or amplified tails.
+  Codec A/B evidence also rejects raw DMF3 keyframes (25--26 FPS, 113--128 ms
+  paint p95) and a byte-identical preallocated PackBits output buffer (two warm
+  runs at only 27--31 FPS with 73--110 ms paint p95). The original
+  `ByteArrayOutputStream` DMF4 keyframe implementation remains selected. A
+  retained diagnostic localized normal slow commits mainly to tics congruent
+  to one modulo four; a separate 2.03-second terminal gap was positively
+  attributed to the expected post-browser `NEUTRAL_DEADLINE`, not the codec.
+  A wider 32-tic keyframe interval with ordered client-side delta-chain decode
+  is also rejected: tested variants ranged from 18--49 FPS but repeatedly
+  produced 61--113+ ms paint tails and 263--395+ ms input tails. Reusing the
+  previous-frame buffer removed a 128 KB allocation per tic without improving
+  the result (26.5 FPS, paint p95 above 113 ms). Keep each response independently
+  decodable on the selected four-tic cadence; do not reintroduce cross-response
+  decode state or defer the early input frame behind a long delta chain.
 
 ## 8. Final acceptance matrix
 
