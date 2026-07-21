@@ -257,15 +257,62 @@ export async function submitMatchBatch(match: string, playerCapability: string,
   };
 }
 
+export async function submitMatchBatchInput(match: string, playerCapability: string,
+                                            firstTic: number, firstSequence: number,
+                                            ticcmdHex: string, inputSequence: number,
+                                            inputTiccmdHex: string): Promise<{
+  accepted: number; inputAccepted: number; effectiveTic: number;
+  membershipEpoch: number; generation: number; payload: string;
+}> {
+  const document = await postAsync('submit_match_batch_input', {
+    p_match: match, p_player_capability: playerCapability,
+    p_first_tic: firstTic, p_first_command_seq: firstSequence,
+    p_ticcmd_hex: ticcmdHex, p_input_seq: inputSequence,
+    p_input_ticcmd_hex: inputTiccmdHex
+  });
+  return {accepted: numberField(document, 'p_accepted'),
+    inputAccepted: numberField(document, 'p_input_accepted'),
+    effectiveTic: numberField(document, 'p_effective_tic'),
+    membershipEpoch: numberField(document, 'p_membership_epoch'),
+    generation: numberField(document, 'p_generation'),
+    payload: stringField(document, 'p_payload')};
+}
+
+export async function reviseMatchInput(match: string, playerCapability: string,
+                                       inputSequence: number,
+                                       ticcmdHex: string): Promise<{
+  accepted: number; effectiveTic: number;
+  membershipEpoch: number; generation: number;
+}> {
+  const document = await postAsync('revise_match_input', {
+    p_match: match, p_player_capability: playerCapability,
+    p_input_seq: inputSequence, p_ticcmd_hex: ticcmdHex
+  });
+  return {accepted: numberField(document, 'p_accepted'),
+    effectiveTic: numberField(document, 'p_effective_tic'),
+    membershipEpoch: numberField(document, 'p_membership_epoch'),
+    generation: numberField(document, 'p_generation')};
+}
+
+export async function matchInputFrontier(match: string,
+                                         playerCapability: string): Promise<number> {
+  const document = await post('match_input_frontier', {
+    p_match: match, p_player_capability: playerCapability
+  });
+  return numberField(document, 'p_input_seq');
+}
+
 export async function exchangeMatchBatch(match: string, playerCapability: string,
-                                         firstTic: number, firstSequence: number,
+                                         firstTic: number, firstFrameTic: number,
+                                         firstSequence: number,
                                          ticcmdHex: string, waitMilliseconds = 1000): Promise<{
   accepted: number; membershipEpoch: number; generation: number;
   currentTic: number; payload: string;
 }> {
   const document = await postAsync('exchange_match_batch', {
     p_match: match, p_player_capability: playerCapability,
-    p_first_tic: firstTic, p_first_command_seq: firstSequence,
+    p_first_tic: firstTic, p_first_frame_tic: firstFrameTic,
+    p_first_command_seq: firstSequence,
     p_ticcmd_hex: ticcmdHex, p_wait_ms: waitMilliseconds
   });
   return {

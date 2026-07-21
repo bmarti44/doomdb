@@ -2,10 +2,269 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DoomDB</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DoomDB — Build Review</title>
+  <style>
+    :root { color-scheme: dark; --ink:#f2ead8; --muted:#aaa393; --red:#db3b2f; --amber:#f0a629; --panel:#171714; --line:#39372f; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:#0b0b09; font:15px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.16; background:repeating-linear-gradient(0deg,transparent 0 3px,#fff 4px); }
+    main { width:min(1120px,calc(100% - 32px)); margin:auto; padding:48px 0 64px; }
+    header { display:grid; grid-template-columns:1fr auto; gap:24px; align-items:end; border-bottom:1px solid var(--line); padding-bottom:24px; }
+    .eyebrow { color:var(--amber); text-transform:uppercase; letter-spacing:.2em; font-size:12px; }
+    h1 { margin:.15em 0 0; font:900 clamp(48px,10vw,96px)/.9 Impact,Haettenschweiler,sans-serif; letter-spacing:.02em; text-transform:uppercase; text-shadow:4px 4px 0 #5b130f; }
+    .stack { text-align:right; color:var(--muted); }
+    .live { display:inline-flex; align-items:center; gap:8px; color:#86d875; }
+    .dot { width:9px; height:9px; border-radius:50%; background:currentColor; box-shadow:0 0 16px currentColor; }
+    .hero { display:grid; grid-template-columns:1.25fr .75fr; gap:18px; margin:24px 0; }
+    .panel { background:linear-gradient(145deg,#1a1a16,#11110f); border:1px solid var(--line); padding:22px; box-shadow:0 12px 40px #0008; }
+    h2 { margin:0 0 14px; color:var(--amber); font-size:14px; text-transform:uppercase; letter-spacing:.12em; }
+    .big { font:700 clamp(26px,5vw,52px)/1.05 ui-monospace,monospace; margin:0; }
+    .big span { color:var(--red); }
+    .muted { color:var(--muted); }
+    .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:18px 0; }
+    .metric { border-left:3px solid var(--red); padding:8px 12px; background:#ffffff05; }
+    .metric strong { display:block; font-size:22px; }
+    .phases { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    .phase { position:relative; min-height:132px; }
+    .phase b { display:block; font-size:28px; }
+    .phase.done::after { content:"PASS"; position:absolute; right:14px; top:14px; color:#86d875; font-weight:700; }
+    .phase.active { border-color:var(--amber); }
+    .phase.active::after { content:"ACTIVE"; position:absolute; right:14px; top:14px; color:var(--amber); font-weight:700; }
+    .phase.next { opacity:.75; }
+    .phase.next::after { content:"NEXT"; position:absolute; right:14px; top:14px; color:var(--muted); font-weight:700; }
+    .review-grid { display:grid; grid-template-columns:minmax(0,1fr) 240px; gap:18px; margin:18px 0; }
+    canvas { display:block; width:100%; height:auto; border:1px solid var(--line); background:#080806; image-rendering:pixelated; }
+    .readout strong { color:var(--amber); }
+    .pose-controls { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 14px; }
+    button { color:var(--ink); background:#ffffff08; border:1px solid var(--line); padding:8px 10px; font:inherit; cursor:pointer; }
+    button[aria-pressed="true"],button:hover { color:var(--amber); border-color:var(--amber); }
+    .checkpoint-image { display:block; width:100%; height:auto; border:1px solid var(--line); image-rendering:pixelated; background:#080806; }
+    .links { display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+    a { color:var(--ink); text-decoration:none; border:1px solid var(--line); padding:9px 13px; background:#ffffff06; }
+    a:hover { border-color:var(--amber); color:var(--amber); }
+    code { color:#fff; }
+    footer { color:var(--muted); margin-top:26px; font-size:12px; }
+    @media (max-width:780px) { header,.hero,.review-grid { grid-template-columns:1fr; } .stack{text-align:left}.metrics,.phases{grid-template-columns:repeat(2,1fr)} }
+  </style>
 </head>
 <body>
-  <script type="module" src="/main.js"></script>
+<main>
+  <header>
+    <div><div class="eyebrow">Oracle-native Doom · build review</div><h1>DoomDB</h1></div>
+    <div class="stack"><span class="live"><i class="dot"></i><span id="status">checking stack…</span></span><br>Oracle Free 23ai · ORDS · 2 CPU / 4 GiB</div>
+  </header>
+
+  <section class="hero">
+    <article class="panel">
+      <h2>Current milestone</h2>
+      <p class="big">Database multiplayer<br><span>implementation active</span></p>
+      <p class="muted">Single-player, an authentic 13,272-tic skill-3 E1M1 route, exact replay, and the local 30 FPS gate are green. One retained Mocha world now advances two players together and renders a distinct immutable POV for each.</p>
+    </article>
+    <article class="panel">
+      <h2>Canonical acceptance</h2>
+      <p><strong>P13 — active</strong><br><span class="muted">authentic co-op exit + exact recovery green · fixtures, FPS, and soak next</span></p>
+      <p><strong>Legacy oracle preserved</strong><br><span class="muted">P0–P7 complete · independently executable SQL differential oracle</span></p>
+      <div class="links"><a href="/health.txt">static health</a><a href="/ords/">ORDS</a></div>
+    </article>
+  </section>
+
+  <section class="panel" aria-label="current route status">
+    <h2>Live implementation status · July 20, 2026</h2>
+    <p><strong>Multiplayer:</strong> two independent browsers create, join, ready, submit live input, and receive distinct POVs with per-listener spatial audio from one Oracle-owned co-op or deathmatch world. A live ORDS-mid-poll restart recovered both clients and reached synchronized tic 114 after guest reload. The frozen two-slot E1M1 co-op route reaches authentic intermission at tic 762 and a forced worker loss at tic 400 finishes with identical state/POV hashes. Two-browser deathmatch is live through tic 18; deterministic gates cover authored starts, frags, respawn, reciprocal-kill ties, suicide accounting, the frozen 10-frag/10-minute rule, authentic scoreboard/intermission, and exact worker reconstruction. Shared keys, one-winner ammo, simultaneous actions, signed command replay, and generation recovery are independently green. Private authoring traces are disabled during normal play and measurement; capabilities remain redacted.</p>
+    <p class="muted"><strong>Multiplayer performance:</strong> DMF5 temporal deltas, two correlated poll lanes, atomic input-overlay/command batches, and early input-frame delivery now pass a 300-frame diagnostic at 40.54/40.53 FPS. Paint-gap p95 is 33.1/33.0 ms and 27 input transitions per player measure 245.9/229.0 ms p95 with 247.6/246.2 ms maxima. The first enforced repeat narrowly missed the tail (33.6 ms paint; 265.9 ms maximum input), so two consecutive passes and the soak remain open.</p>
+    <p><strong>Skill-3 E1M1 — complete:</strong> an authentic no-cheat run reaches intermission at tic 13,272. A fresh Oracle session replayed all 13,272 commands with zero state, frame, or response SHA mismatches. The accepted route, terminal intermission image, and repeatability ledger are frozen in the repository.</p>
+    <p><strong>Engine:</strong> all 442 pinned upstream sources plus the DoomDB adapter compile to 824 classes. Oracle verifies the 28,795,076-byte Freedoom IWAD by SHA-256 before constructing E1M1. The engine has no desktop loop, external configuration files, privileged logger setup, or host WAD file; all 18 upstream process-exit sites are fenced into catchable OJVM errors.</p>
+    <p class="muted"><strong>Bounded bridge:</strong> dynamic <code>ticcmd_t</code> input advances exactly one tic and renders a deterministic 320×200 indexed framebuffer. Tic zero hashes to <code>a1c9b037…d3b5</code>; a caller-owned Oracle BLOB receives all 64,000 pixels in 1.431 ms. A pre-warmed standby worker constructs the next engine ahead of the claim — a new game drops from ~17 s cold to ~1.4 s, byte-exact with a cold construction — and the skill menu overlaps any remaining construction with a speculative default-skill allocation.</p>
+    <p><strong>Performance:</strong> raw binary DMF3 keeps compression outside OJVM, ORDS uses a fixed six-connection pool, and asynchronous submission no longer probes the synchronous response queue. Two consecutive warm moving/combat runs passed at 30.75 and 32.05 FPS with 300 unique frames and paint-gap p95 below 32.1 ms.</p>
+    <p><strong>Recovery and admission (hardened July 19):</strong> exact command reconstruction, save/load lineage forking, frame replay, duplicate/AQ, concurrent sessions, forced worker restart, and GOD/ALL/NOCLIP/FULLMAP reconstruction all pass. Worker claims self-heal lost Scheduler dispatches, dead claims are reclaimed, and a full pool deterministically evicts its least-recently-active idle worker instead of refusing a new player. The eleven-gate Mocha suite, a 46-request direct AutoREST workflow, and desktop/mobile/intermission/death-restart Playwright workflows are green.</p>
+    <p class="muted"><strong>Fresh-stack multiplayer hardening (July 20):</strong> an empty ORDS config volume now installs the pinned repository, republishes only the allowlisted AutoREST objects, and comes online without manual metadata repair. The persisted Oracle SPFILE reserves 256 MiB for the shared OJVM graph; lifecycle, lockstep, deadline, checkpoint, exact reconstruction, and public generation-recovery gates pass after container recreation.</p>
+    <p class="muted"><strong>Active-match storage bound (July 20):</strong> each match keeps tic zero, a 128-tic two-POV response ring, and its latest two native checkpoints while preserving the compact complete command/state ledger for exact replay. A live 160-tic gate held the expected 258 frame BLOBs and two checkpoints instead of growing frame storage without bound.</p>
+    <p class="muted"><strong>Presentation contract (July 19):</strong> the DMF3 <code>complete</code> byte is populated from vanilla <code>gamestate</code>, each producer format has exactly one canonical <code>frame_sha</code> orientation (a transposed frame can no longer validate), and death presentation is no longer silently discarded. Tab opens Doom's menu, M opens the automap, and Escape exits pointer capture or fullscreen without becoming a game command. Ctrl fires on every platform; the dedicated fullscreen button is the sole fullscreen entry and opts into Keyboard Lock on supported browsers.</p>
+    <p class="muted"><strong>Signed input and terminal workflows (July 19):</strong> Mocha's v2 command envelope preserves signed mouse/demo axes while v1 remains frozen. Public AutoREST browser routes reproduce exact intermission and no-cheat death frames; death restart creates a fresh same-skill session with byte-identical canonical spawn.</p>
+    <p class="muted"><strong>Long-route hardening (July 19):</strong> a complete 6,336-command save/load lineage export replays byte-exactly through public AutoREST. It exposed a deterministic cyclic fine-angle audio lookup at tic 8,006; the clean-room overlay now masks that lookup to vanilla's fine-angle domain, and the reconstructed branch advances normally through tic 8,048. A safe tic-7,953 authoring checkpoint is verified, while the uninterrupted skill-3 completion gate remains open.</p>
+    <p class="muted"><strong>Oracle MODEL fire — complete (July 19):</strong> two independent full 150×160×96 ordered cellular executions produced the same 604,369 canonical RLE rows, all 150 frame hashes, and exact animation SHA <code>b1eac353…e4ba</code>. The operation spills heavily to TEMP and is intentionally an offline capability artifact, not part of gameplay.</p>
+    <p class="muted"><strong>Current play page:</strong> new <code>/play/</code> games use Mocha Doom in OJVM through the same generated AutoREST endpoints. Reload any tab opened before cutover to start a Mocha session.</p>
+  </section>
+
+  <section class="panel review-grid" aria-label="Oracle MODEL fire checkpoint">
+    <div>
+      <h2>Oracle MODEL fire · 150 database frames</h2>
+      <img class="checkpoint-image" width="160" height="96" src="/review/model-fire.apng" alt="Animated fire generated by one ordered Oracle SQL MODEL operation">
+    </div>
+    <div class="readout">
+      <p><strong>604,369 RLE rows</strong><br><span class="muted">2,304,000 checked cells · 160×96</span></p>
+      <p><strong><code>b1eac353…e4ba</code></strong><br><span class="muted">exact animation SHA-256</span></p>
+      <p><strong><code>79c27b97…69b3</code></strong><br><span class="muted">database-derived APNG SHA-256</span></p>
+      <div class="links"><a href="/review/model-fire.html">Open exact-frame review</a></div>
+    </div>
+  </section>
+
+  <section class="panel review-grid" aria-label="E1M1 completion milestone">
+    <div>
+      <h2>Database-rendered E1M1 completion</h2>
+      <img class="checkpoint-image" width="320" height="200" src="/review/exit-intermission.png" alt="E1M1 intermission rendered by Oracle Database">
+    </div>
+    <div class="readout">
+      <p><strong>tic 4,118 · DONE</strong><br><span class="muted">49 HP · 42 kills · 34 items · 1 secret</span></p>
+      <p><strong><code>32028078…e851</code></strong><br><span class="muted">64,000-byte frame SHA-256</span></p>
+      <p><strong><code>b5a37ae7…9581</code></strong><br><span class="muted">indexed PNG SHA-256</span></p>
+      <p class="muted">The route, terminal counters, palette indices, frame identity, and PNG round trip are captured in one database transaction and then rolled back to the accepted plasma checkpoint.</p>
+    </div>
+  </section>
+
+  <section class="panel review-grid" aria-label="human-reviewed first-light checkpoint">
+    <div>
+      <h2>Approved visual checkpoint · three poses</h2>
+      <img id="checkpoint-image" class="checkpoint-image" width="320" height="200" src="/review/spawn-east.png" alt="Database-rendered E1M1 spawn facing east">
+    </div>
+    <div class="readout">
+      <h2>Reviewed pose</h2>
+      <div class="pose-controls" role="group" aria-label="Select reviewed pose">
+        <button type="button" data-pose="spawn-east" aria-pressed="true">East 0°</button>
+        <button type="button" data-pose="spawn-north" aria-pressed="false">North 90°</button>
+        <button type="button" data-pose="spawn-south" aria-pressed="false">South 270°</button>
+      </div>
+      <p id="checkpoint-status" class="muted">loading reviewed identity…</p>
+      <p><strong id="checkpoint-sha">—</strong><br><span class="muted">indexed PNG SHA-256</span></p>
+      <p class="muted">Each option is an independently decoded, deterministic indexed PNG made from the captured SQL frame and PLAYPAL rows. All three passed direct visual inspection and byte-level SQL/RLE/RGBA/PNG agreement.</p>
+    </div>
+  </section>
+
+  <section class="panel review-grid" aria-label="database R2 world frame">
+    <div>
+      <h2>Verified game output · E1M1 portal renderer</h2>
+      <canvas id="frame-view" width="320" height="200" aria-label="320 by 200 frame rendered from Oracle palette pixels"></canvas>
+    </div>
+    <div class="readout">
+      <h2>Frame diagnostic</h2>
+      <p id="frame-status" class="muted">loading database frame…</p>
+      <p><strong id="frame-pixels">—</strong><br><span class="muted">canonical pixels</span></p>
+      <p><strong id="frame-layers">—</strong><br><span class="muted">planes / portal pieces / solid walls</span></p>
+      <p><strong id="frame-sha">—</strong><br><span class="muted">database frame SHA-256</span></p>
+      <p class="muted">This artifact is generated by querying <code>DOOM_R2_PIXELS</code> at tic 17 and the relational PLAYPAL rows. Portal windows, sector planes, sky, animation, texture offsets, pegging, and lighting are selected in Oracle; the browser only applies the palette.</p>
+    </div>
+  </section>
+
+  <section class="panel review-grid" aria-label="human-reviewed masked texture and world sprite checkpoint">
+    <div>
+      <h2>Approved game output · masked walls + world sprites</h2>
+      <img id="masked-image" class="checkpoint-image" width="320" height="200" src="/review/t5.3-spawn-east.png" alt="Database-rendered E1M1 masked textures and world sprites at spawn">
+    </div>
+    <div class="readout">
+      <h2>Reviewed R2 pose</h2>
+      <div class="pose-controls" role="group" aria-label="Select reviewed masked renderer pose">
+        <button type="button" data-masked-pose="spawn-east" aria-pressed="true">Spawn 0°</button>
+        <button type="button" data-masked-pose="diagnostic-north" aria-pressed="false">North 90°</button>
+        <button type="button" data-masked-pose="diagnostic-south" aria-pressed="false">South 270°</button>
+      </div>
+      <p id="masked-status" class="muted">loading reviewed masked identity…</p>
+      <p><strong id="masked-overlays">—</strong><br><span class="muted">selected overlay pixels</span></p>
+      <p><strong id="masked-sources">—</strong><br><span class="muted">masked walls / sprite sources</span></p>
+      <p><strong id="masked-sha">—</strong><br><span class="muted">indexed PNG SHA-256</span></p>
+      <p class="muted">These are actual 64,000-pixel Oracle frames composed from <code>DOOM_R2_PIXELS</code> and the deterministic winners from <code>DOOM_R2_MASKED_PIXELS</code>. Transparent holes expose the world beneath; the browser displays the reviewed PNG bytes unchanged.</p>
+    </div>
+  </section>
+
+  <section class="metrics" aria-label="verified metrics">
+    <div class="metric"><strong>822 / 852</strong><span class="muted">Mocha / total valid classes</span></div>
+    <div class="metric"><strong>28.8 MB</strong><span class="muted">verified IWAD BLOB</span></div>
+    <div class="metric"><strong>64,000</strong><span class="muted">indexed frame bytes</span></div>
+    <div class="metric"><strong>1.431 ms</strong><span class="muted">frame BLOB handoff</span></div>
+    <div class="metric"><strong>3.927 ms p95</strong><span class="muted">moving/combat Mocha step</span></div>
+    <div class="metric"><strong>3.191 ms p95</strong><span class="muted">controls → tic → render → BLOB</span></div>
+    <div class="metric"><strong>0.820 ms p95</strong><span class="muted">raw DMF3 codec</span></div>
+    <div class="metric"><strong>23.837 ms p95</strong><span class="muted">retained durable worker</span></div>
+    <div class="metric"><strong>32.05 FPS</strong><span class="muted">AutoREST · verified warm run</span></div>
+  </section>
+
+  <section class="panel review-grid" aria-label="database ray diagnostic">
+    <div>
+      <h2>Verified game output · R1 ray fan</h2>
+      <canvas id="ray-view" width="820" height="320" aria-label="320 database-authored camera rays and nearest wall hits"></canvas>
+    </div>
+    <div class="readout">
+      <h2>Spawn diagnostic</h2>
+      <p id="ray-status" class="muted">loading database artifact…</p>
+      <p><strong id="ray-cols">—</strong><br><span class="muted">camera columns</span></p>
+      <p><strong id="ray-hits">—</strong><br><span class="muted">analytic intersections</span></p>
+      <p><strong id="ray-lines">—</strong><br><span class="muted">nearest linedefs</span></p>
+      <p class="muted">Every amber ray and red endpoint is emitted by Oracle's reviewed T4.1 SQL macros at the actual E1M1 player-one spawn. This is geometry diagnostics, not a mocked game frame.</p>
+    </div>
+  </section>
+
+  <section class="phases" aria-label="phase status">
+    <article class="panel phase done"><b>P0</b><span>Ground truth</span><p class="muted">Oracle and transport probes</p></article>
+    <article class="panel phase done"><b>P1</b><span>Bootstrap</span><p class="muted">local and cloud skeleton</p></article>
+    <article class="panel phase done"><b>P2</b><span>WAD ingestion</span><p class="muted">deterministic parser and seed</p></article>
+    <article class="panel phase done"><b>P3</b><span>Acceleration</span><p class="muted">BSP, graph, Spatial</p></article>
+    <article class="panel phase done"><b>P4</b><span>First light</span><p class="muted">1,667,739 assertions + visual review</p></article>
+    <article class="panel phase done"><b>P5.2</b><span>Portal world</span><p class="muted">1,856,885 assertions · 64,000 SQL pixels</p></article>
+    <article class="panel phase done"><b>P5.3</b><span>Masked world</span><p class="muted">988 assertions · sprites + transparent walls</p></article>
+    <article class="panel phase done"><b>P5.4</b><span>Presentation</span><p class="muted">HUD, weapons, menu, pause, automap, intermission</p></article>
+    <article class="panel phase done"><b>P6</b><span>Simulation</span><p class="muted">tic, movement, machines, history, replay</p></article>
+    <article class="panel phase done"><b>P7</b><span>Gameplay</span><p class="muted">weapons, monsters, pickups, audio</p></article>
+    <article class="panel phase done"><b>T12.M4</b><span>AutoREST cutover</span><p class="muted">worker, recovery, persistence, and controls green</p></article>
+    <article class="panel phase done"><b>T12.M5</b><span>Mocha selection</span><p class="muted">11-gate core + direct and 4-browser workflows green</p></article>
+    <article class="panel phase done"><b>P8</b><span>Full route matrix</span><p class="muted">13,272 tics · exact fresh-session replay</p></article>
+    <article class="panel phase done"><b>P9</b><span>MODEL fire</span><p class="muted">two full deterministic Oracle runs + visual review</p></article>
+    <article class="panel phase active"><b>P13</b><span>Multiplayer</span><p class="muted">co-op + deathmatch green · 40.5 FPS candidate · repeat tail gate + soak active</p></article>
+    <article class="panel phase next"><b>T12</b><span>Performance reverify</span><p class="muted">finished single + multiplayer build · local 300-frame protocol</p></article>
+    <article class="panel phase next"><b>P11</b><span>Cloud · final</span><p class="muted">real S3 + Autonomous Database after local acceptance</p></article>
+  </section>
+  <footer><a href="/play/">Open the Mocha Doom playable client</a> · Oracle/ORDS/AutoREST only · no credentials or evaluator data are exposed to the browser.</footer>
+</main>
+<script>
+fetch('/health.txt',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.text()}).then(t=>{
+  document.querySelector('#status').textContent=t.trim()==='DOOMDB_ORDS_READY'?'stack online':'unexpected health response';
+}).catch(()=>document.querySelector('#status').textContent='stack unavailable');
+fetch('/review/rays.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(data=>{
+  if(data.width!==320||data.columns.length!==320) throw Error();
+  const canvas=document.querySelector('#ray-view'),ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const ox=canvas.width*.18,oy=canvas.height*.48;
+  const distances=data.columns.map(c=>c.nearestT).filter(Number.isFinite).sort((a,b)=>a-b);
+  const cap=distances[Math.floor(distances.length*.94)]||1,scale=canvas.width*.62/cap;
+  ctx.lineWidth=.65; ctx.strokeStyle='#f0a62955';
+  for(const c of data.columns){
+    const t=Math.min(Number(c.nearestT)||cap,cap),ex=ox+c.rayX*t*scale,ey=oy-c.rayY*t*scale;
+    ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ex,ey);ctx.stroke();
+    if(c.nearestT!=null){ctx.fillStyle='#db3b2f';ctx.fillRect(ex-1,ey-1,2,2);}
+  }
+  ctx.fillStyle='#86d875';ctx.fillRect(ox-3,oy-3,6,6);
+  ctx.strokeStyle='#f2ead8';ctx.lineWidth=1.2;ctx.beginPath();
+  data.columns.forEach((c,i)=>{const y=canvas.height-12-Math.min(Number(c.nearestT)||cap,cap)/cap*70,x=i/(data.width-1)*canvas.width;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();
+  const total=data.columns.reduce((n,c)=>n+c.hitCount,0),lines=new Set(data.columns.map(c=>c.linedefId).filter(v=>v!=null));
+  document.querySelector('#ray-cols').textContent='320 / 320';
+  document.querySelector('#ray-hits').textContent=total.toLocaleString();
+  document.querySelector('#ray-lines').textContent=lines.size.toLocaleString();
+  document.querySelector('#ray-status').textContent=`spawn (${data.spawn.spawnX}, ${data.spawn.spawnY}) · ${data.spawn.angle}°`;
+}).catch(()=>document.querySelector('#ray-status').textContent='diagnostic is rebuilding; refresh shortly');
+fetch('/review/r2-frame.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(data=>{
+  if(data.width!==320||data.height!==200||data.pixels.length!==64000||data.palette.length!==256)throw Error();
+  const canvas=document.querySelector('#frame-view'),ctx=canvas.getContext('2d'),image=ctx.createImageData(320,200),counts={0:0,1:0,3:0,4:0,10:0,11:0,12:0};
+  for(let x=0;x<320;x++)for(let y=0;y<200;y++){
+    const source=x*200+y,target=(y*320+x)*4,rgb=data.palette[data.pixels[source]];
+    image.data[target]=rgb[0];image.data[target+1]=rgb[1];image.data[target+2]=rgb[2];image.data[target+3]=255;counts[data.layers[source]]++;
+  }
+  ctx.putImageData(image,0,0);
+  document.querySelector('#frame-pixels').textContent='64,000 / 64,000';
+  const planes=counts[0]+counts[1]+counts[3]+counts[4],portals=counts[11]+counts[12];
+  document.querySelector('#frame-layers').textContent=`${planes.toLocaleString()} / ${portals.toLocaleString()} / ${counts[10].toLocaleString()}`;
+  document.querySelector('#frame-sha').textContent=data.frameSha.slice(0,16)+'…';
+  document.querySelector('#frame-status').textContent=`human-reviewed R2 · spawn (${data.spawn.x}, ${data.spawn.y}) · ${data.spawn.angle}° · tic ${data.currentTic}`;
+}).catch(()=>document.querySelector('#frame-status').textContent='verified frame artifact is rebuilding; refresh shortly');
+fetch('/review/t5.3-summary.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(summary=>{
+  if(!String(summary.status).startsWith('HUMAN_REVIEWED_APPROVED')||summary.poses.length!==3)throw Error();
+  const poses=new Map(summary.poses.map(p=>[p.pose.id,p])),image=document.querySelector('#masked-image'),status=document.querySelector('#masked-status'),overlays=document.querySelector('#masked-overlays'),sources=document.querySelector('#masked-sources'),sha=document.querySelector('#masked-sha');
+  const show=id=>{const pose=poses.get(id);if(!pose)throw Error();const kinds=pose.overlaySources.reduce((n,s)=>{n[s.startsWith('MASKED:')?'masked':'sprites']++;return n},{masked:0,sprites:0});image.src=`/review/t5.3-${id}.png`;image.alt=`Database-rendered masked textures and sprites at ${id.replaceAll('-', ' ')}`;status.textContent=`(${pose.pose.x}, ${pose.pose.y}) · ${pose.pose.angle}° · human-reviewed`;overlays.textContent=pose.overlayPixelCount.toLocaleString();sources.textContent=`${kinds.masked} / ${kinds.sprites}`;sha.textContent=pose.pngSha256.slice(0,16)+'…';document.querySelectorAll('[data-masked-pose]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.maskedPose===id)));};
+  document.querySelectorAll('[data-masked-pose]').forEach(button=>button.addEventListener('click',()=>show(button.dataset.maskedPose)));show('spawn-east');
+}).catch(()=>document.querySelector('#masked-status').textContent='reviewed masked identities unavailable');
+fetch('/review/t4.3-summary.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(summary=>{
+  const poses=new Map(summary.observed.map(p=>[p.id,p])),image=document.querySelector('#checkpoint-image'),status=document.querySelector('#checkpoint-status'),sha=document.querySelector('#checkpoint-sha');
+  const show=id=>{const pose=poses.get(id);if(!pose)throw Error();image.src=`/review/${id}.png`;image.alt=`Database-rendered E1M1 ${id.replace('-', ' ')}`;status.textContent=`(${pose.pose.x}, ${pose.pose.y}) · ${pose.pose.angle}° · ${pose.pngBytes.toLocaleString()} bytes`;sha.textContent=pose.pngSha256.slice(0,16)+'…';document.querySelectorAll('[data-pose]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.pose===id)));};
+  document.querySelectorAll('[data-pose]').forEach(button=>button.addEventListener('click',()=>show(button.dataset.pose)));show('spawn-east');
+}).catch(()=>document.querySelector('#checkpoint-status').textContent='review identities unavailable');
+</script>
 </body>
 </html>

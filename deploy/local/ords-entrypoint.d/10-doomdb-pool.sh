@@ -2,7 +2,8 @@
 set -Eeuo pipefail
 
 # The two-player exchange pipeline holds two correlated requests in flight.
-# Keep six physical sessions warm so gameplay and bounded control/recovery work
+# Keep six physical sessions warm for the selected two-player topology: two
+# batched frame polls and one command/input submission per player.
 # never wait for pool growth: allowing UCP to grow
 # the pool mid-route makes each new session describe generated AutoREST
 # procedures through USER_PROCEDURES/USER_ARGUMENTS, which stalls every cursor

@@ -20,6 +20,7 @@ sql/schema/046_mocha_frame_ledger.sql
 sql/schema/047_multiplayer.sql
 sql/schema/048_multiplayer_worker.sql
 sql/schema/049_multiplayer_route_diagnostics.sql
+sql/schema/050_multiplayer_input_overlay.sql
 sql/schema/050_config.sql
 sql/engine/005_render_axes.sql
 sql/engine/010_engine_defs.sql

@@ -57,6 +57,7 @@ public final class DoomDbMochaAdapter {
   private static int controlTurnHeld;
   private static String lastAudioJson = "[]";
   private static short[][] multiplayerConsistency;
+  private static byte[][] multiplayerPreviousTransport;
   private static final int DEATHMATCH_FRAG_LIMIT = 10;
   private static final int DEATHMATCH_TIME_LIMIT_TICS = 10 * 60 * 35;
   private static int deathmatchFragLimit;
@@ -417,6 +418,7 @@ public final class DoomDbMochaAdapter {
       controlTurnHeld = 0;
       lastAudioJson = "[]";
       multiplayerConsistency = null;
+      multiplayerPreviousTransport = null;
       Engine.releaseHeadless();
       InputStreamSugar.clearInjectedResource();
       return "ok|state=disposed";
@@ -425,6 +427,7 @@ public final class DoomDbMochaAdapter {
       controlTurnHeld = 0;
       lastAudioJson = "[]";
       multiplayerConsistency = null;
+      multiplayerPreviousTransport = null;
       return failure("dispose", failure);
     }
   }
@@ -1191,6 +1194,7 @@ public final class DoomDbMochaAdapter {
               engine.consoleplayer = player;
               engine.displayplayer = player;
               engine.Display();
+              rememberMultiplayerFrame(player);
             }
           } finally {
             engine.consoleplayer = savedConsole;
@@ -1243,6 +1247,7 @@ public final class DoomDbMochaAdapter {
     lastAudioJson = "[]";
     multiplayerConsistency = new short[engine.playeringame.length]
         [engine.netcmds[0].length];
+    multiplayerPreviousTransport = new byte[engine.playeringame.length][];
     deathmatchFragLimit = deathmatch == 1 ? DEATHMATCH_FRAG_LIMIT : 0;
     deathmatchTimeLimitTics = deathmatch == 1 ? DEATHMATCH_TIME_LIMIT_TICS : 0;
   }
@@ -1297,7 +1302,7 @@ public final class DoomDbMochaAdapter {
               (s.AbstractDoomAudio) engine.doomSound, engine.players[player].mo);
         }
         String frameSha = currentFrameSha();
-        byte[] payload = encodeDmf4(stateSha, frameSha);
+        byte[] payload = encodeMultiplayerFrame(stateSha, frameSha, player);
         writeBlob(output, payload);
         result.append("|pov").append(player).append("FrameSha=")
             .append(frameSha).append("|pov").append(player)
@@ -1740,11 +1745,47 @@ public final class DoomDbMochaAdapter {
   private static byte[] encodeDmf4(String stateSha, String frameSha)
       throws Exception {
     byte[] raw = encodeDmf3(stateSha, frameSha);
+    return packDmf(raw, (byte) '4');
+  }
+
+  private static byte[] encodeMultiplayerFrame(
+      String stateSha, String frameSha, int player) throws Exception {
+    byte[] raw = encodeDmf3(stateSha, frameSha);
+    int frameStart = 140 + ((raw[138] & 0xff) << 8) + (raw[139] & 0xff);
+    byte[] current = Arrays.copyOfRange(raw, frameStart, raw.length);
+    byte[] previous = multiplayerPreviousTransport == null
+        ? null : multiplayerPreviousTransport[player];
+    boolean keyframe = engine.gametic == 0 || engine.gametic % 4 == 1
+        || previous == null || previous.length != current.length;
+    byte[] packed;
+    if (keyframe) {
+      packed = packDmf(raw, (byte) '4');
+    } else {
+      for (int index = 0; index < current.length; index++) {
+        raw[frameStart + index] = (byte) (current[index] ^ previous[index]);
+      }
+      packed = packDmf(raw, (byte) '5');
+    }
+    multiplayerPreviousTransport[player] = current;
+    return packed;
+  }
+
+  private static void rememberMultiplayerFrame(int player) throws Exception {
+    byte[] pixels = currentFrame();
+    byte[] transport = new byte[pixels.length];
+    int offset = 0;
+    for (int x = 0; x < 320; x++) {
+      for (int y = 0; y < 200; y++) transport[offset++] = pixels[y * 320 + x];
+    }
+    multiplayerPreviousTransport[player] = transport;
+  }
+
+  private static byte[] packDmf(byte[] raw, byte magic) throws Exception {
     int frameStart = 140 + ((raw[138] & 0xff) << 8) + (raw[139] & 0xff);
     ByteArrayOutputStream output = new ByteArrayOutputStream(raw.length);
     output.write(raw, 0, frameStart);
     byte[] header = output.toByteArray();
-    header[3] = '4';
+    header[3] = magic;
     output.reset();
     output.write(header, 0, header.length);
     int source = frameStart;
@@ -1772,7 +1813,10 @@ public final class DoomDbMochaAdapter {
       output.write(raw, literalStart, literalLength);
     }
     byte[] packed = output.toByteArray();
-    return packed.length < raw.length ? packed : raw;
+    if (packed.length < raw.length) return packed;
+    // A full frame can fall back to DMF3. A delta must retain its DMF5 marker
+    // even when an unusually noisy transition does not shrink.
+    return magic == '4' ? raw : packed;
   }
 
   private static void applyControlFlags(int flags) {

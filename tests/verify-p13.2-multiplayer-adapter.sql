@@ -3,8 +3,9 @@ set serveroutput on size unlimited feedback off verify off
 
 declare
   out0_ blob;out1_ blob;out2_ blob;out3_ blob;
-  initial_ varchar2(4000);stepped_ varchar2(4000);
-  state0_ varchar2(64);state1_ varchar2(64);frame0_ varchar2(64);frame1_ varchar2(64);
+  initial_ varchar2(4000);stepped_ varchar2(4000);delta_ varchar2(4000);
+  state0_ varchar2(64);state1_ varchar2(64);state2_ varchar2(64);
+  frame0_ varchar2(64);frame1_ varchar2(64);
   tic_ number;
 
   function field_(status_ varchar2,name_ varchar2) return varchar2 is
@@ -27,8 +28,10 @@ begin
   state0_:=field_(initial_,'stateSha256');
   frame0_:=field_(initial_,'pov0FrameSha');frame1_:=field_(initial_,'pov1FrameSha');
   if field_(initial_,'membership')<>'1100' or field_(initial_,'tic')<>'0' or
-     dbms_lob.getlength(out0_)<64000 or
-     dbms_lob.getlength(out1_)<64000 or dbms_lob.getlength(out2_)<>0 or
+     dbms_lob.getlength(out0_)<=140 or
+     dbms_lob.getlength(out1_)<=140 or
+     rawtohex(dbms_lob.substr(out0_,4,1)) not in('444D4633','444D4634') or
+     dbms_lob.getlength(out2_)<>0 or
      dbms_lob.getlength(out3_)<>0 then
     raise_application_error(-20000,'invalid initial multiplayer payloads');
   end if;
@@ -51,10 +54,20 @@ begin
        field_(stepped_,'pov1ResponseSha') then
     raise_application_error(-20000,'response SHA mismatch');
   end if;
+  delta_:=doom_mocha_multiplayer_step(2,3,
+    '08000000000000000008010000000000'||rpad('0',32,'0'),
+    state1_,out0_,out1_,out2_,out3_);
+  if delta_ not like 'ok|%' then raise_application_error(-20000,delta_);end if;
+  state2_:=field_(delta_,'stateSha256');
+  if field_(delta_,'tic')<>'2' or state2_=state1_ or
+     rawtohex(dbms_lob.substr(out0_,4,1))<>'444D4635' or
+     dbms_lob.getlength(out0_)>=64000 then
+    raise_application_error(-20000,'invalid temporal delta payload');
+  end if;
   if doom_mocha_dispose not like 'ok|%' then
     raise_application_error(-20000,'dispose failed');
   end if;
-  dbms_output.put_line('PASS P13.2-MULTIPLAYER-ADAPTER-LIVE tic=1 membership=1100 distinctPOVs=1');
+  dbms_output.put_line('PASS P13.2-MULTIPLAYER-ADAPTER-LIVE tic=2 membership=1100 distinctPOVs=1 dmf5=1');
 exception when others then
   begin if doom_mocha_dispose is null then null;end if;exception when others then null;end;
   raise;

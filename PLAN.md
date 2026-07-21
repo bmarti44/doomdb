@@ -3152,17 +3152,24 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   exhaustion during concurrent retained-match initialization. Static ownership,
   lifecycle HTTP, full retained-worker, neutral deadline, checkpoint, exact
   replay, and public generation-recovery gates pass on the recreated stack.
-- Performance checkpoint (2026-07-20): detailed browser tracing isolated the
-  original 10–14 FPS path as a serial submit → worker → poll chain. The current
-  candidate uses ordered four-command batches, independent correlated frame
-  polls, bounded exact-frame buffering, and multiplayer-only DMF4 RLE (a sampled
-  frame fell from 64,142 to 20,665 bytes without changing frame/state SHA). The
-  824-class OJVM graph is deployed and native-compiled at jar SHA
-  `43a7080817a2195f96506385e28e3d0c3f03f390ab7daa97925ea8bff7c770b8`.
-  A 30-frame diagnostic is currently 23.89/25.26 FPS and 339–637 ms input
-  latency; therefore the 300-frame/30 FPS gate remains open. Eight-frame and
-  over-concurrent-poll variants are recorded as rejected because they raised
-  input latency or ORDS contention.
+- Performance checkpoint (2026-07-20): the selected candidate retains ordered
+  four-command reservations, two correlated poll lanes per player, and the
+  fixed six-session ORDS pool. DMF5 encodes three temporal XOR/PackBits deltas
+  behind each four-tic keyframe; reconnect batches prepend the required base.
+  Dynamic input is no longer trapped behind the immutable reservation horizon:
+  an append-only transition ledger is inserted atomically with the command
+  batch at `current_tic+1`, and that same AutoREST response returns a
+  self-contained frame chain through the effective tic. Reconnect reads the
+  durable input sequence frontier, preserving strict idempotency. The browser
+  keeps every authoritative frame and caps reservation lead at six tics.
+  A 300-frame diagnostic with 27 observable transitions per player passed at
+  40.54/40.53 FPS, 23.7/33.1 and 23.8/33.0 ms paint-gap p50/p95, and input
+  p50/p95/max of 198.5/245.9/247.6 and 155.5/229.0/246.2 ms. The first enforced
+  repeat narrowly missed (33.6 ms paint p95; 265.9 ms input max), so selection
+  still requires two consecutive green 300-frame runs. Rejected evidence now
+  includes pool sizes seven/eight, per-transition standalone requests,
+  presentation acknowledgements, one-poll input mode, and presentation-relative
+  lead five or lower; each lost throughput or amplified tails.
 
 ## 8. Final acceptance matrix
 

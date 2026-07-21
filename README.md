@@ -68,12 +68,15 @@ What works today, all verified by repeatable gates:
   authentic scoreboard/intermission fixtures. Each POV now receives sound
   attenuated and panned for its own Oracle-owned listener. The full-duration
   time-limit, expanded-player, and 300-frame gates remain open.
-- **Multiplayer performance is still open.** The retained two-POV engine itself
-  is fast (5.670 ms p95), and multiplayer-only DMF4 RLE cuts a sampled response
-  from 64,142 to 20,665 bytes with identical pixels/hashes. The latest stable
-  two-browser diagnostic is 23.89/25.26 FPS with 339–637 ms corresponding-input
-  latency, so it is not yet the required 30 FPS pass. The active work is the
-  bounded command/poll pipeline and its 300-frame gate.
+- **Multiplayer performance is at the final tail gate.** The selected candidate
+  combines DMF5 temporal deltas, two correlated poll lanes, six warm ORDS
+  sessions, append-only input overlays fused atomically with four-command
+  reservations, and an early self-contained input-frame chain. A 300-frame,
+  27-transition diagnostic passed both players at 40.54/40.53 FPS, paint-gap
+  p95 33.1/33.0 ms, and input p95/max 245.9/247.6 and 229.0/246.2 ms. The first
+  enforced repeat narrowly missed at 33.6 ms paint p95 and 265.9 ms maximum
+  input, so two consecutive passes and the soak remain open; no 30 FPS
+  multiplayer completion claim is made yet.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is

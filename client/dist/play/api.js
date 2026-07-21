@@ -192,10 +192,41 @@ export async function submitMatchBatch(match, playerCapability, firstTic, firstS
         generation: numberField(document, 'p_generation')
     };
 }
-export async function exchangeMatchBatch(match, playerCapability, firstTic, firstSequence, ticcmdHex, waitMilliseconds = 1000) {
-    const document = await postAsync('exchange_match_batch', {
+export async function submitMatchBatchInput(match, playerCapability, firstTic, firstSequence, ticcmdHex, inputSequence, inputTiccmdHex) {
+    const document = await postAsync('submit_match_batch_input', {
         p_match: match, p_player_capability: playerCapability,
         p_first_tic: firstTic, p_first_command_seq: firstSequence,
+        p_ticcmd_hex: ticcmdHex, p_input_seq: inputSequence,
+        p_input_ticcmd_hex: inputTiccmdHex
+    });
+    return { accepted: numberField(document, 'p_accepted'),
+        inputAccepted: numberField(document, 'p_input_accepted'),
+        effectiveTic: numberField(document, 'p_effective_tic'),
+        membershipEpoch: numberField(document, 'p_membership_epoch'),
+        generation: numberField(document, 'p_generation'),
+        payload: stringField(document, 'p_payload') };
+}
+export async function reviseMatchInput(match, playerCapability, inputSequence, ticcmdHex) {
+    const document = await postAsync('revise_match_input', {
+        p_match: match, p_player_capability: playerCapability,
+        p_input_seq: inputSequence, p_ticcmd_hex: ticcmdHex
+    });
+    return { accepted: numberField(document, 'p_accepted'),
+        effectiveTic: numberField(document, 'p_effective_tic'),
+        membershipEpoch: numberField(document, 'p_membership_epoch'),
+        generation: numberField(document, 'p_generation') };
+}
+export async function matchInputFrontier(match, playerCapability) {
+    const document = await post('match_input_frontier', {
+        p_match: match, p_player_capability: playerCapability
+    });
+    return numberField(document, 'p_input_seq');
+}
+export async function exchangeMatchBatch(match, playerCapability, firstTic, firstFrameTic, firstSequence, ticcmdHex, waitMilliseconds = 1000) {
+    const document = await postAsync('exchange_match_batch', {
+        p_match: match, p_player_capability: playerCapability,
+        p_first_tic: firstTic, p_first_frame_tic: firstFrameTic,
+        p_first_command_seq: firstSequence,
         p_ticcmd_hex: ticcmdHex, p_wait_ms: waitMilliseconds
     });
     return {

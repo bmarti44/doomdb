@@ -1,4 +1,4 @@
-import { createMatch, getAsset, joinMatch, matchStatus, pollMatchBatch, pollMatchFrame, readyMatch, submitMatchBatch } from './api.js';
+import { createMatch, getAsset, joinMatch, matchStatus, pollMatchBatch, matchInputFrontier, pollMatchFrame, readyMatch, submitMatchBatch, submitMatchBatchInput } from './api.js';
 import { AudioPresenter } from './audio.js';
 import { createDoomCanvas, blit } from './canvas.js';
 import { decodeBytes, decodeFrameBatch, decodePayload } from './codec.js';
@@ -204,9 +204,10 @@ async function startGame(value, status) {
     lobby.hidden = true;
     game.dataset.active = '';
     const audio = new AudioPresenter();
-    const [paletteAsset, titleAsset, initial] = await Promise.all([
+    const [paletteAsset, titleAsset, initial, initialInputSequence] = await Promise.all([
         getAsset('PLAYPAL'), getAsset('TITLEPIC'),
-        pollMatchFrame(value.match, value.playerCapability, 0, 1000)
+        pollMatchFrame(value.match, value.playerCapability, 0, 1000),
+        matchInputFrontier(value.match, value.playerCapability)
     ]);
     const palette = createPalette(decodeBytes(paletteAsset.payload));
     const title = decodeBytes(titleAsset.payload);
@@ -218,8 +219,15 @@ async function startGame(value, status) {
         throw new Error('invalid multiplayer frontier');
     let latest = { seq: 0, turn: 0, forward: 0, strafe: 0, run: 0,
         fire: 0, use: 0, weapon: 0, pause: 0, automap: 0, menu: 'NONE', cheat: '' };
+    let inputSequence = initialInputSequence;
+    const inputQueue = [];
     const buttons = new Map();
-    bindInput(canvas, buttons, command => { latest = command; trace('input', { command }); }, () => { }, () => {
+    bindInput(canvas, buttons, command => {
+        latest = command;
+        inputSequence += 1;
+        inputQueue.push({ sequence: inputSequence, command: { ...command }, hex: ticcmd(command) });
+        trace('input', { inputSequence, command });
+    }, () => { }, () => {
         void audio.enable();
     });
     canvas.addEventListener('click', () => {
@@ -231,9 +239,9 @@ async function startGame(value, status) {
     let serverTic = status.currentTic;
     let submittedTic = currentTic;
     let submitting = false;
+    let pendingSubmit = null;
     const pollingBatches = new Set();
     let nextPollTic = currentTic + 1;
-    let pendingSubmit = null;
     const frameBuffer = new Map();
     let nextPresentationAt = 0;
     let stopped = false;
@@ -281,23 +289,51 @@ async function startGame(value, status) {
             if (paintedAt.length > 60)
                 paintedAt.shift();
             trace('present', { tic: nextFrame.tic, frameSha: nextFrame.frameSha });
-            nextPresentationAt = now + 28;
+            nextPresentationAt = now + 20;
             recovered();
             updateHud();
         }
-        if (!submitting && submittedTic < serverTic + 8) {
+        if (!submitting && submittedTic < currentTic + 6) {
             submitting = true;
-            const request = pendingSubmit ?? {
-                tic: submittedTic + 1, command: { ...latest }, hex: ticcmd(latest)
-            };
+            let request = pendingSubmit;
+            if (request === null) {
+                request = { tic: submittedTic + 1, command: { ...latest }, hex: ticcmd(latest) };
+                const inputs = inputQueue.splice(0, 4);
+                if (inputs.length > 0)
+                    request.inputs = inputs;
+            }
             pendingSubmit = request;
             for (let offset = 0; offset < 4; offset += 1) {
                 trace('submit', { tic: request.tic + offset, command: request.command });
             }
-            void submitMatchBatch(value.match, value.playerCapability, request.tic, request.tic, request.hex.repeat(4)).then(result => {
+            const operation = request.inputs === undefined ?
+                submitMatchBatch(value.match, value.playerCapability, request.tic, request.tic, request.hex.repeat(4)) :
+                submitMatchBatchInput(value.match, value.playerCapability, request.tic, request.tic, request.hex.repeat(4), request.inputs[0].sequence, request.inputs.map(input => input.hex).join(''));
+            void operation.then(async (result) => {
                 if (result.accepted !== 4 || result.generation < generation ||
                     result.membershipEpoch !== membershipEpoch) {
                     throw new Error('multiplayer submit fence changed');
+                }
+                if (result.inputAccepted !== undefined) {
+                    if (request.inputs === undefined ||
+                        result.inputAccepted !== request.inputs.length ||
+                        result.effectiveTic === undefined)
+                        throw new Error('multiplayer input fence changed');
+                    for (const input of request.inputs)
+                        trace('input-effective', {
+                            inputSequence: input.sequence, effectiveTic: result.effectiveTic,
+                            command: input.command
+                        });
+                    if (result.payload === undefined)
+                        throw new Error('multiplayer input frame is unavailable');
+                    const inputFrames = await decodeFrameBatch(result.payload);
+                    if (inputFrames.length < 1 || inputFrames.at(-1).tic !== result.effectiveTic)
+                        throw new Error('multiplayer input frame frontier changed');
+                    for (const frame of inputFrames) {
+                        if (frame.tic > currentTic)
+                            frameBuffer.set(frame.tic, frame);
+                        trace('input-frame', { tic: frame.tic, frameSha: frame.frameSha });
+                    }
                 }
                 generation = result.generation;
                 submittedTic = request.tic + 3;
@@ -308,18 +344,11 @@ async function startGame(value, status) {
                     retryTransport(cause);
                     return;
                 }
-                // The worker may have durably supplied this slot's neutral command
-                // while a tab was suspended or reconnecting. Refresh instead of
-                // treating that expected late-submit rejection as a fatal error.
                 const refreshed = await matchStatus(value.match, value.playerCapability);
-                if (refreshed.state !== 'ACTIVE' ||
-                    refreshed.generation < generation ||
+                if (refreshed.state !== 'ACTIVE' || refreshed.generation < generation ||
                     refreshed.membershipEpoch !== membershipEpoch)
                     throw cause;
                 generation = refreshed.generation;
-                // A deadline-neutralized batch can be older than the bounded frame
-                // ring. Resume at the durable frontier; ordinary transport retries
-                // remain exact and never enter this authoritative rejection path.
                 currentTic = Math.max(currentTic, refreshed.currentTic);
                 serverTic = Math.max(serverTic, refreshed.currentTic);
                 submittedTic = Math.max(submittedTic, refreshed.currentTic);
@@ -339,9 +368,8 @@ async function startGame(value, status) {
             const firstTic = nextPollTic;
             pollingBatches.add(firstTic);
             nextPollTic += 4;
-            for (let offset = 0; offset < 4; offset += 1) {
+            for (let offset = 0; offset < 4; offset += 1)
                 trace('poll', { tic: firstTic + offset });
-            }
             void pollMatchBatch(value.match, value.playerCapability, firstTic)
                 .then(async (result) => {
                 const frames = await decodeFrameBatch(result.payload);

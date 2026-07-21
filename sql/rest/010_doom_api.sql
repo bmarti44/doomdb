@@ -68,12 +68,45 @@ create or replace package doom_api authid definer as
     p_ticcmd_hex        in  varchar2,
     p_accepted          out number,
     p_membership_epoch  out number,
+    p_generation        out number,
+    p_input_seq         in  number default null,
+    p_input_ticcmd_hex  in  varchar2 default null);
+
+  procedure submit_match_batch_input(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_first_tic         in  number,
+    p_first_command_seq in  number,
+    p_ticcmd_hex        in  varchar2,
+    p_input_seq         in  number,
+    p_input_ticcmd_hex  in  varchar2,
+    p_accepted          out number,
+    p_input_accepted    out number,
+    p_effective_tic     out number,
+    p_membership_epoch  out number,
+    p_generation        out number,
+    p_payload           out blob);
+
+  procedure revise_match_input(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_input_seq         in  number,
+    p_ticcmd_hex        in  varchar2,
+    p_accepted          out number,
+    p_effective_tic     out number,
+    p_membership_epoch  out number,
     p_generation        out number);
+
+  procedure match_input_frontier(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_input_seq         out number);
 
   procedure exchange_match_batch(
     p_match             in  varchar2,
     p_player_capability in  varchar2,
     p_first_tic         in  number,
+    p_first_frame_tic   in  number,
     p_first_command_seq in  number,
     p_ticcmd_hex        in  varchar2,
     p_wait_ms           in  number,
@@ -164,6 +197,62 @@ create or replace package body doom_api as
   procedure fail(p_code pls_integer, p_message varchar2) is
   begin
     raise_application_error(p_code,p_message);
+  end;
+
+  function player_capability_slot(
+    p_match varchar2,p_capability varchar2,
+    p_include_left number default 0) return number;
+
+  procedure submit_match_batch_input(
+    p_match in varchar2,p_player_capability in varchar2,p_first_tic in number,
+    p_first_command_seq in number,p_ticcmd_hex in varchar2,p_input_seq in number,
+    p_input_ticcmd_hex in varchar2,p_accepted out number,p_input_accepted out number,
+    p_effective_tic out number,p_membership_epoch out number,p_generation out number,
+    p_payload out blob
+  ) is
+    l_count number;l_slot number;l_base number;l_skip number;l_ready number;
+    l_frame blob;l_length number;
+    l_deadline timestamp with time zone;
+  begin
+    p_accepted:=0;p_input_accepted:=0;p_effective_tic:=null;
+    p_membership_epoch:=null;p_generation:=null;p_payload:=null;
+    if p_input_ticcmd_hex is null or
+       not regexp_like(p_input_ticcmd_hex,'^([0-9a-fA-F]{16}){1,4}$') then
+      fail(c_bad_request,'invalid fused input revisions');end if;
+    l_count:=length(p_input_ticcmd_hex)/16;
+    submit_match_batch(p_match,p_player_capability,p_first_tic,
+      p_first_command_seq,p_ticcmd_hex,p_accepted,p_membership_epoch,p_generation,
+      p_input_seq,p_input_ticcmd_hex);
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    select effective_tic into p_effective_tic from doom_match_input_event
+      where match_id=p_match and player_slot=l_slot and input_seq=p_input_seq;
+    p_input_accepted:=l_count;
+    l_base:=p_effective_tic-mod(p_effective_tic-1,4);
+    l_skip:=p_effective_tic-l_base;
+    dbms_lob.createtemporary(p_payload,true,dbms_lob.call);
+    dbms_lob.writeappend(p_payload,6,
+      utl_raw.concat(hextoraw('444d4232'),
+        hextoraw(lpad(to_char(l_skip+1,'fmxx'),2,'0')),
+        hextoraw('00')));
+    for i in 0..l_skip loop
+      l_deadline:=systimestamp+interval '2' second;
+      loop
+        l_ready:=0;
+        begin
+          select response_blob into l_frame from doom_match_frame
+            where match_id=p_match and tic=l_base+i and player_slot=l_slot
+              and membership_epoch=p_membership_epoch and generation=p_generation;
+          l_ready:=1;
+        exception when no_data_found then null;end;
+        exit when l_ready=1 or systimestamp>=l_deadline;
+        dbms_session.sleep(.005);
+      end loop;
+      if l_ready<>1 then p_payload:=null;return;end if;
+      l_length:=dbms_lob.getlength(l_frame);
+      dbms_lob.writeappend(p_payload,4,
+        utl_raw.cast_from_binary_integer(l_length,utl_raw.big_endian));
+      dbms_lob.copy(p_payload,l_frame,l_length,dbms_lob.getlength(p_payload)+1,1);
+    end loop;
   end;
 
   function utc_now return timestamp with time zone is
@@ -639,23 +728,30 @@ create or replace package body doom_api as
   procedure submit_match_batch(
     p_match in varchar2,p_player_capability in varchar2,p_first_tic in number,
     p_first_command_seq in number,p_ticcmd_hex in varchar2,p_accepted out number,
-    p_membership_epoch out number,p_generation out number
+    p_membership_epoch out number,p_generation out number,
+    p_input_seq in number default null,p_input_ticcmd_hex in varchar2 default null
   ) is
     l_slot number;l_state varchar2(16);l_expiry timestamp with time zone;
-    l_now timestamp with time zone:=utc_now;l_raw raw(32);
+    l_now timestamp with time zone:=utc_now;l_raw raw(32);l_input_raw raw(32);
   begin
     p_accepted:=0;p_membership_epoch:=null;p_generation:=null;
     if p_first_tic is null or p_first_tic<>trunc(p_first_tic) or
        p_first_command_seq is null or
        p_first_command_seq<>trunc(p_first_command_seq) or
        p_ticcmd_hex is null or
-       not regexp_like(p_ticcmd_hex,'^[0-9a-fA-F]{64}$') or
+       not regexp_like(p_ticcmd_hex,'^([0-9a-fA-F]{32}|[0-9a-fA-F]{64})$') or
        substr(lower(p_ticcmd_hex),9,6)<>'000000' or
        substr(lower(p_ticcmd_hex),25,6)<>'000000' or
-       substr(lower(p_ticcmd_hex),41,6)<>'000000' or
-       substr(lower(p_ticcmd_hex),57,6)<>'000000' then
+       (length(p_ticcmd_hex)=64 and
+         (substr(lower(p_ticcmd_hex),41,6)<>'000000' or
+          substr(lower(p_ticcmd_hex),57,6)<>'000000')) then
       fail(c_bad_request,'invalid match command batch');
     end if;
+    if (p_input_seq is null and p_input_ticcmd_hex is not null) or
+       (p_input_seq is not null and (p_input_seq<>trunc(p_input_seq) or p_input_seq<1 or
+        p_input_ticcmd_hex is null or
+        not regexp_like(p_input_ticcmd_hex,'^([0-9a-fA-F]{16}){1,4}$'))) then
+      fail(c_bad_request,'invalid fused input revisions');end if;
     require_match_shape(p_match);
     select match_state,expires_at,membership_epoch,generation
       into l_state,l_expiry,p_membership_epoch,p_generation
@@ -665,8 +761,11 @@ create or replace package body doom_api as
     end if;
     l_slot:=player_capability_slot(p_match,p_player_capability);
     l_raw:=hextoraw(lower(p_ticcmd_hex));
+    if p_input_ticcmd_hex is not null then
+      l_input_raw:=hextoraw(lower(p_input_ticcmd_hex));end if;
     doom_match_worker.submit_command_batch(p_match,l_slot,p_membership_epoch,
-      p_generation,p_first_tic,p_first_command_seq,l_raw,p_accepted);
+      p_generation,p_first_tic,p_first_command_seq,l_raw,p_accepted,
+      p_input_seq,l_input_raw);
   exception when no_data_found then
     rollback;p_accepted:=0;p_membership_epoch:=null;p_generation:=null;
     raise_application_error(c_match_auth,'match unavailable');
@@ -683,19 +782,121 @@ create or replace package body doom_api as
     end;
   end;
 
+  procedure revise_match_input(
+    p_match in varchar2,p_player_capability in varchar2,p_input_seq in number,
+    p_ticcmd_hex in varchar2,p_accepted out number,p_effective_tic out number,
+    p_membership_epoch out number,p_generation out number
+  ) is
+    l_slot number;l_state varchar2(16);l_expiry timestamp with time zone;
+    l_current number;l_frontier number;l_existing raw(8);l_raw raw(8);
+    l_now timestamp with time zone:=utc_now;
+  begin
+    p_accepted:=0;p_effective_tic:=null;
+    p_membership_epoch:=null;p_generation:=null;
+    if p_input_seq is null or p_input_seq<>trunc(p_input_seq) or p_input_seq<1 or
+       p_ticcmd_hex is null or
+       not regexp_like(p_ticcmd_hex,'^[0-9a-fA-F]{16}$') or
+       substr(lower(p_ticcmd_hex),9,6)<>'000000' then
+      fail(c_bad_request,'invalid match input revision');
+    end if;
+    require_match_shape(p_match);l_raw:=hextoraw(lower(p_ticcmd_hex));
+    select match_state,expires_at,membership_epoch,generation,current_tic
+      into l_state,l_expiry,p_membership_epoch,p_generation,l_current
+      from doom_match where match_id=p_match for update;
+    if l_state<>'ACTIVE' or l_expiry<=l_now or p_generation<1 then
+      fail(c_match_auth,'match unavailable');end if;
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    begin
+      select ticcmd_raw,effective_tic into l_existing,p_effective_tic
+        from doom_match_input_event where match_id=p_match
+          and player_slot=l_slot and input_seq=p_input_seq;
+      if l_existing<>l_raw then fail(c_bad_request,'input revision mismatch');end if;
+      p_accepted:=1;commit;return;
+    exception when no_data_found then null;end;
+    select coalesce(max(input_seq),0) into l_frontier
+      from doom_match_input_event where match_id=p_match and player_slot=l_slot;
+    if p_input_seq<>l_frontier+1 then fail(c_bad_request,'input revision sequence');end if;
+    p_effective_tic:=l_current+2;
+    insert into doom_match_input_event(match_id,player_slot,input_seq,effective_tic,
+      membership_epoch,generation,ticcmd_raw,command_sha,accepted_at)
+    values(p_match,l_slot,p_input_seq,p_effective_tic,p_membership_epoch,
+      p_generation,l_raw,lower(rawtohex(dbms_crypto.hash(
+        l_raw,dbms_crypto.hash_sh256))),l_now);
+    update doom_match_member set member_state='ACTIVE',last_seen_at=l_now,
+      disconnected_at=null where match_id=p_match and player_slot=l_slot
+      and membership_epoch=p_membership_epoch and generation=p_generation
+      and member_state in('ACTIVE','DISCONNECTED');
+    if sql%rowcount<>1 then fail(c_match_auth,'match unavailable');end if;
+    p_accepted:=1;commit;
+  exception when no_data_found then
+    rollback;p_accepted:=0;p_effective_tic:=null;
+    p_membership_epoch:=null;p_generation:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;begin
+      rollback;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      elsif l_code between -20999 and -20000 then
+        raise_application_error(c_bad_request,'match input revision rejected');
+      end if;
+      raise_application_error(c_bad_request,'match input revision rejected');
+    end;
+  end;
+
+  procedure match_input_frontier(
+    p_match in varchar2,p_player_capability in varchar2,p_input_seq out number
+  ) is
+    l_slot number;
+  begin
+    p_input_seq:=null;require_match_shape(p_match);
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    select coalesce(max(input_seq),0) into p_input_seq
+      from doom_match_input_event
+      where match_id=p_match and player_slot=l_slot;
+  exception when no_data_found then
+    p_input_seq:=null;raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;l_message varchar2(1800):=substr(sqlerrm,1,1800);
+    begin
+      p_input_seq:=null;
+      if l_code between -20999 and -20000 then
+        raise_application_error(l_code,l_message);
+      end if;
+      raise_application_error(c_match_auth,'match unavailable');
+    end;
+  end;
+
   procedure exchange_match_batch(
     p_match in varchar2,p_player_capability in varchar2,p_first_tic in number,
-    p_first_command_seq in number,p_ticcmd_hex in varchar2,p_wait_ms in number,
+    p_first_frame_tic in number,p_first_command_seq in number,
+    p_ticcmd_hex in varchar2,p_wait_ms in number,
     p_accepted out number,p_membership_epoch out number,p_generation out number,
     p_current_tic out number,p_payload out blob
   ) is
     l_ready number;l_frame blob;l_length number;l_slot number;
     l_deadline timestamp with time zone;l_now timestamp with time zone;
+    l_frontier number;
   begin
     p_payload:=null;p_current_tic:=null;
-    if p_wait_ms is null or p_wait_ms<>trunc(p_wait_ms) or
+    if p_first_frame_tic is null or
+       p_first_frame_tic<>trunc(p_first_frame_tic) or p_first_frame_tic<1 or
+       p_first_frame_tic>p_first_tic or
+       p_wait_ms is null or p_wait_ms<>trunc(p_wait_ms) or
        p_wait_ms not between 0 and 1000 then
       fail(c_bad_request,'invalid match exchange wait');
+    end if;
+    -- A second exchange lane can reserve the next batch before the first lane
+    -- has advanced the durable frontier.  Wait inside the correlated request
+    -- rather than rejecting valid, bounded four-tic lead commands.
+    l_deadline:=systimestamp+numtodsinterval(p_wait_ms/1000,'SECOND');
+    loop
+      select current_tic into l_frontier from doom_match where match_id=p_match;
+      exit when p_first_tic<=l_frontier+4 or systimestamp>=l_deadline;
+      dbms_session.sleep(.005);
+    end loop;
+    if p_first_tic>l_frontier+4 then
+      fail(c_bad_request,'match exchange frontier wait expired');
     end if;
     submit_match_batch(p_match,p_player_capability,p_first_tic,
       p_first_command_seq,p_ticcmd_hex,p_accepted,
@@ -706,8 +907,14 @@ create or replace package body doom_api as
     for i in 0..3 loop
       l_deadline:=systimestamp+numtodsinterval(p_wait_ms/1000,'SECOND');
       loop
-        doom_match_worker.poll_frame(p_match,l_slot,p_membership_epoch,
-          p_generation,p_first_tic+i,l_ready,l_frame);
+        l_ready:=0;
+        begin
+          select response_blob into l_frame from doom_match_frame
+            where match_id=p_match and tic=p_first_frame_tic+i
+              and player_slot=l_slot and membership_epoch=p_membership_epoch
+              and generation=p_generation;
+          l_ready:=1;
+        exception when no_data_found then null;end;
         exit when l_ready=1 or systimestamp>=l_deadline;
         dbms_session.sleep(.01);
       end loop;
@@ -736,6 +943,7 @@ create or replace package body doom_api as
     l_state varchar2(16);l_expiry timestamp with time zone;
     l_epoch number;l_generation number;l_slot number;l_ready number;
     l_frame blob;l_length number;l_deadline timestamp with time zone;
+    l_base_tic number;l_total number;l_skip number;
     l_now timestamp with time zone:=utc_now;
   begin
     p_payload:=null;p_current_tic:=null;require_match_shape(p_match);
@@ -748,13 +956,24 @@ create or replace package body doom_api as
     if l_state<>'ACTIVE' or l_expiry<=l_now or l_generation<1 then
       fail(c_match_auth,'match unavailable');end if;
     l_slot:=player_capability_slot(p_match,p_player_capability);
+    l_base_tic:=p_first_tic-mod(p_first_tic-1,4);
+    l_skip:=p_first_tic-l_base_tic;l_total:=4+l_skip;
     dbms_lob.createtemporary(p_payload,true,dbms_lob.call);
-    dbms_lob.writeappend(p_payload,5,hextoraw('444d423104'));
-    for i in 0..3 loop
+    dbms_lob.writeappend(p_payload,6,
+      utl_raw.concat(hextoraw('444d4232'),
+        hextoraw(lpad(to_char(l_total,'fmxx'),2,'0')),
+        hextoraw(lpad(to_char(l_skip,'fmxx'),2,'0'))));
+    for i in 0..l_total-1 loop
       l_deadline:=systimestamp+numtodsinterval(p_wait_ms/1000,'SECOND');
       loop
-        doom_match_worker.poll_frame(p_match,l_slot,l_epoch,l_generation,
-          p_first_tic+i,l_ready,l_frame);
+        l_ready:=0;
+        begin
+          select response_blob into l_frame from doom_match_frame
+            where match_id=p_match and tic=l_base_tic+i
+              and player_slot=l_slot and membership_epoch=l_epoch
+              and generation=l_generation;
+          l_ready:=1;
+        exception when no_data_found then null;end;
         exit when l_ready=1 or systimestamp>=l_deadline;
         dbms_session.sleep(.01);
       end loop;

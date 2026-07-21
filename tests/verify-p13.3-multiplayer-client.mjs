@@ -14,7 +14,7 @@ const guestContext = await browser.newContext({viewport: {width: 1000, height: 7
 for (const context of [hostContext, guestContext]) {
   await context.addInitScript(() => {
     window.__doomMultiplayerTrace = [];
-    for (const name of ['input', 'submit', 'poll', 'ready', 'decoded', 'present']) {
+    for (const name of ['input', 'input-effective', 'submit', 'poll', 'ready', 'decoded', 'present']) {
       addEventListener(`doom:multiplayer-${name}`, event => {
         window.__doomMultiplayerTrace.push({name, ...event.detail});
       });
@@ -139,17 +139,26 @@ try {
   assert.ok(Math.abs(hostTic - guestTic) <= 8);
   let performanceSummary = '';
   if (performanceFrames > 0) {
-    const starts = await Promise.all([host, guest].map(page => page.evaluate(() =>
-      window.__doomMultiplayerTrace.filter(row => row.name === 'present').length)));
-    await Promise.all([
-      host.keyboard.down('w'), host.keyboard.down('a'),
-      guest.keyboard.down('w'), guest.keyboard.down('d')
-    ]);
+    const starts = await Promise.all([host, guest].map(page => page.evaluate(() => ({
+      count: window.__doomMultiplayerTrace.filter(row => row.name === 'present').length,
+      at: performance.now()
+    }))));
+    const exerciseInput = async (page, key) => {
+      for (let transition = 0; transition < 26; transition += 1) {
+        if (transition % 2 === 0) await page.keyboard.down(key);
+        else await page.keyboard.up(key);
+        await page.waitForTimeout(180);
+      }
+      await page.keyboard.up(key);
+    };
     try {
-      await Promise.all([host, guest].map((page, index) => page.waitForFunction(
-        ({start, count}) => window.__doomMultiplayerTrace
-          .filter(row => row.name === 'present').length >= start + count,
-        {start: starts[index], count: performanceFrames}, {timeout: 120000})));
+      await Promise.all([
+        exerciseInput(host, 'w'), exerciseInput(guest, 'w'),
+        ...[host, guest].map((page, index) => page.waitForFunction(
+          ({start, count}) => window.__doomMultiplayerTrace
+            .filter(row => row.name === 'present').length >= start + count,
+          {start: starts[index].count, count: performanceFrames}, {timeout: 120000}))
+      ]);
     } catch (cause) {
       const diagnostic = await Promise.all([host, guest].map(page => page.evaluate(() => {
         const presents = window.__doomMultiplayerTrace.filter(row => row.name === 'present');
@@ -159,15 +168,11 @@ try {
       throw new Error(`multiplayer performance timeout ${JSON.stringify(diagnostic)}`,
         {cause});
     }
-    await Promise.all([
-      host.keyboard.up('a'), host.keyboard.up('w'),
-      guest.keyboard.up('d'), guest.keyboard.up('w')
-    ]);
     const traces = await Promise.all([host, guest].map((page, index) =>
       page.evaluate(({start, count}) => {
         const all = window.__doomMultiplayerTrace;
         const presents = all.filter(row => row.name === 'present')
-          .slice(start, start + count);
+          .slice(start.count, start.count + count);
         return {all, presents};
       }, {start: starts[index], count: performanceFrames})));
     const percentile = (values, fraction) => {
@@ -182,19 +187,31 @@ try {
         assert.equal(presents[index].tic, presents[index - 1].tic + 1,
           `player ${slot} skipped measured tic ${presents[index - 1].tic}`);
       }
+      const decodedTics = [...new Set(all.filter(row => row.name === 'decoded')
+        .map(row => row.tic))].sort((a, b) => a - b);
+      for (let index = 1; index < decodedTics.length; index += 1) {
+        assert.equal(decodedTics[index], decodedTics[index - 1] + 1,
+          `player ${slot} authoritative decoded chain skipped tic ${decodedTics[index - 1]}`);
+      }
       const gaps = presents.slice(1).map((row, index) => row.at - presents[index].at);
       const elapsed = presents.at(-1).at - presents[0].at;
       const fps = (presents.length - 1) * 1000 / elapsed;
       const measuredTics = new Set(presents.map(row => row.tic));
-      const submit = all.find(row => row.name === 'submit' &&
-        row.command?.forward === 1 && measuredTics.has(row.tic));
-      assert.ok(submit, `player ${slot} movement submit missing`);
-      const input = all.filter(row => row.name === 'input' &&
-        row.command?.forward === 1 && row.at <= submit.at).at(-1);
-      assert.ok(input, `player ${slot} movement input missing`);
-      const presented = presents.find(row => row.tic === submit.tic);
-      assert.ok(presented, `player ${slot} correlated presentation missing tic=${submit.tic}`);
-      const latency = presented.at - input.at;
+      const inputs = all.filter(row => row.name === 'input' && row.at>=starts[slot].at);
+      const applicable = new Map();
+      for (const effective of all.filter(row => row.name === 'input-effective' &&
+        measuredTics.has(row.effectiveTic))) {
+        const prior=applicable.get(effective.effectiveTic);
+        if (prior===undefined || effective.inputSequence>prior.inputSequence)
+          applicable.set(effective.effectiveTic,effective);
+      }
+      const latencies = [...applicable.values()].map(effective => {
+        const input = inputs.find(row => row.inputSequence === effective.inputSequence);
+        const presented = presents.find(row => row.tic === effective.effectiveTic);
+        return input === undefined || presented === undefined ? null : presented.at-input.at;
+      }).filter(value => value !== null);
+      assert.ok(latencies.length>=20,
+        `player ${slot} input overlay samples=${latencies.length}`);
       const p50 = percentile(gaps, .5), p95 = percentile(gaps, .95);
       const measuredSubmits = all.filter(row => row.name === 'submit' &&
         measuredTics.has(row.tic));
@@ -218,11 +235,14 @@ try {
           candidate.tic === row.tic);
         return decoded === undefined ? null : row.at - decoded.at;
       }).filter(value => value !== null);
-      const detail = `p${slot}=${fps.toFixed(2)}fps paint=${p50.toFixed(2)}/${p95.toFixed(2)}ms submitGap=${percentile(submitGaps, .5).toFixed(2)}/${percentile(submitGaps, .95).toFixed(2)}ms submitDecode=${percentile(server, .5).toFixed(2)}/${percentile(server, .95).toFixed(2)}ms pollReady=${percentile(delivery, .5).toFixed(2)}/${percentile(delivery, .95).toFixed(2)}ms decodePaint=${percentile(decodePaint, .5).toFixed(2)}/${percentile(decodePaint, .95).toFixed(2)}ms input=${latency.toFixed(2)}ms`;
+      const inputP50=percentile(latencies,.5),inputP95=percentile(latencies,.95);
+      const inputMax=Math.max(...latencies);
+      const detail = `p${slot}=${fps.toFixed(2)}fps paint=${p50.toFixed(2)}/${p95.toFixed(2)}ms submitGap=${percentile(submitGaps, .5).toFixed(2)}/${percentile(submitGaps, .95).toFixed(2)}ms submitDecode=${percentile(server, .5).toFixed(2)}/${percentile(server, .95).toFixed(2)}ms pollReady=${percentile(delivery, .5).toFixed(2)}/${percentile(delivery, .95).toFixed(2)}ms decodePaint=${percentile(decodePaint, .5).toFixed(2)}/${percentile(decodePaint, .95).toFixed(2)}ms input=${inputP50.toFixed(2)}/${inputP95.toFixed(2)}/${inputMax.toFixed(2)}ms n=${latencies.length}`;
       if (enforcePerformance) {
         assert.ok(fps >= 30, `player ${slot} ${detail}`);
         assert.ok(p50 <= 33.3 && p95 <= 33.3, `player ${slot} ${detail}`);
-        assert.ok(latency <= 250, `player ${slot} ${detail}`);
+        assert.ok(inputP50<=250 && inputP95<=250 && inputMax<=250,
+          `player ${slot} ${detail}`);
       }
       return detail;
     });

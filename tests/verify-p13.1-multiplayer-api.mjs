@@ -12,7 +12,9 @@ const httpSmoke = fs.readFileSync(new URL(
 
 for (const procedure of [
   'create_match', 'join_match', 'ready_match', 'match_status',
-  'submit_match_step', 'poll_match_frame', 'leave_match'
+  'submit_match_step', 'submit_match_batch', 'submit_match_batch_input',
+  'revise_match_input', 'match_input_frontier', 'poll_match_batch',
+  'poll_match_frame', 'leave_match'
 ]) {
   assert.equal((api.match(new RegExp(`  procedure ${procedure}\\(`, 'g')) ?? []).length, 2,
     `${procedure} must appear once in the spec and once in the body`);

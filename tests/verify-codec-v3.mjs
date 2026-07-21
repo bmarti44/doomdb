@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
-import {decodePayload} from '../client/staging/codec.js';
+import {decodeFrameBatch,decodePayload} from '../client/staging/codec.js';
 
 const transport=Buffer.alloc(320*200);
 for(let index=0;index<transport.length;index++)transport[index]=(index*17+3)&255;
@@ -52,7 +52,21 @@ const rawDecoded=await decodePayload(dmf4.toString('base64'));
 assert.equal(rawDecoded.frameSha,rowMajorSha);assert.deepEqual(rawDecoded.audio,decoded.audio);
 assert.deepEqual(rawDecoded.indices,decoded.indices);
 
+const deltaFrames=[];
+for(let tic=8;tic<11;tic++){
+  const header=Buffer.from(rawEnvelope.subarray(0,140));
+  header.write('DMF5',0,'ascii');header.writeInt32BE(tic,4);header.writeUInt16BE(2,138);
+  deltaFrames.push(Buffer.concat([header,Buffer.from('[]'),packBits(Buffer.alloc(320*200))]));
+}
+const batchParts=[Buffer.from('DMB2','ascii'),Buffer.from([4,0])];
+for(const item of [dmf4,...deltaFrames]){
+  const length=Buffer.alloc(4);length.writeUInt32BE(item.length);batchParts.push(length,item);
+}
+const batch=await decodeFrameBatch(Buffer.concat(batchParts).toString('base64'));
+assert.deepEqual(batch.map(frame=>frame.tic),[7,8,9,10]);
+for(const item of batch)assert.deepEqual(item.indices,decoded.indices);
+
 envelope[8]=2;
 await assert.rejects(decodePayload(gzipSync(envelope).toString('base64')),
   /binary envelope is invalid/);
-console.log(`PASS codec v3/v4 binary indexed frame dmf4Bytes=${dmf4.length}`);
+console.log(`PASS codec v3/v4/v5 binary indexed frame dmf4Bytes=${dmf4.length}`);

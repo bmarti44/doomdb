@@ -13,7 +13,8 @@ create or replace package doom_match_worker authid definer as
   procedure submit_command_batch(
     p_match in varchar2,p_player_slot in number,p_membership_epoch in number,
     p_generation in number,p_first_tic in number,p_first_command_seq in number,
-    p_ticcmd_raw in raw,p_accepted out number);
+    p_ticcmd_raw in raw,p_accepted out number,
+    p_first_input_seq in number default null,p_input_raw in raw default null);
   procedure poll_frame(
     p_match in varchar2,p_player_slot in number,p_membership_epoch in number,
     p_generation in number,p_tic in number,p_ready out number,
@@ -244,6 +245,7 @@ create or replace package body doom_match_worker as
     l_b0 blob;l_b1 blob;l_checkpoint blob;l_event varchar2(64);
     l_checkpoint_status varchar2(4000);l_checkpoint_sha varchar2(64);
     l_checkpoint_bytes number;l_checkpoint_actual number;
+    l_input raw(8);
   begin
     select state_sha into l_previous from doom_match_tic
       where match_id=p_match and tic=p_tic-1 and generation=p_generation;
@@ -273,7 +275,22 @@ create or replace package body doom_match_worker as
       case when p_tic=1 then c_initial_command_deadline_ms
            else c_command_deadline_ms end/1000,'SECOND');
     if l_deadline>l_now then l_deadline:=l_now;end if;
-    l_vector_hex:=l_vector_hex||rpad('00',32,'0');
+    -- Reservation rows stay immutable for transport retry. The latest
+    -- committed two-tic input transition overlays each active slot before the
+    -- exact applied vector is hashed and written to the replay ledger.
+    for l_slot in 0..1 loop
+      begin
+        select ticcmd_raw into l_input from (
+          select ticcmd_raw from doom_match_input_event
+            where match_id=p_match and player_slot=l_slot
+              and membership_epoch=p_epoch and effective_tic<=p_tic
+            order by input_seq desc
+        ) where rownum=1;
+        l_vector_hex:=substr(l_vector_hex,1,l_slot*16)||rawtohex(l_input)||
+          substr(l_vector_hex,l_slot*16+17);
+      exception when no_data_found then null;end;
+    end loop;
+    l_vector_hex:=lower(l_vector_hex||rpad('00',32,'0'));
     insert into doom_match_frame(match_id,tic,player_slot,membership_epoch,
       generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
     values(p_match,p_tic,0,p_epoch,p_generation,rpad('0',64,'0'),
@@ -359,8 +376,10 @@ create or replace package body doom_match_worker as
     -- Response BLOBs dominate storage (~128 KiB/tic for two POVs). Retain tic
     -- zero plus a bounded late-poll window; exact restart uses command vectors
     -- and the selected frontier frames, not historical response BLOBs.
-    delete from doom_match_frame where match_id=p_match and tic<>0
-      and tic<p_tic-c_frame_retention_tics+1;
+    if mod(p_tic,32)=0 then
+      delete from doom_match_frame where match_id=p_match and tic<>0
+        and tic<p_tic-c_frame_retention_tics+1;
+    end if;
     update doom_match set current_tic=p_tic,last_activity_at=l_now
       where match_id=p_match and match_state='ACTIVE' and generation=p_generation
         and membership_epoch=p_epoch and current_tic=p_tic-1;
@@ -700,23 +719,28 @@ create or replace package body doom_match_worker as
   procedure submit_command_batch(
     p_match in varchar2,p_player_slot in number,p_membership_epoch in number,
     p_generation in number,p_first_tic in number,p_first_command_seq in number,
-    p_ticcmd_raw in raw,p_accepted out number
+    p_ticcmd_raw in raw,p_accepted out number,
+    p_first_input_seq in number default null,p_input_raw in raw default null
   ) is
     l_current number;l_state varchar2(16);l_member_count number;
     l_existing raw(8);l_existing_seq number;l_existing_count number:=0;
     l_seq_frontier number;l_vector_count number;l_tic number;l_seq number;
+    l_batch_count number;l_input_count number;l_input_frontier number;
+    l_input_existing raw(8);l_input_effective number;l_input raw(8);
     l_raw raw(8);l_sha varchar2(64);l_now timestamp with time zone:=utc_now;
   begin
     p_accepted:=0;
+    l_batch_count:=case when p_ticcmd_raw is null then 0
+      else utl_raw.length(p_ticcmd_raw)/8 end;
     if p_player_slot not between 0 and 1 or p_ticcmd_raw is null or
-       utl_raw.length(p_ticcmd_raw)<>32 or p_first_tic is null or
+       l_batch_count not in(2,4) or p_first_tic is null or
        p_first_command_seq is null then
       raise_application_error(c_error,'invalid match command batch');
     end if;
     select match_state,current_tic into l_state,l_current from doom_match
       where match_id=p_match and membership_epoch=p_membership_epoch
         and generation=p_generation for update;
-    for i in 0..3 loop
+    for i in 0..l_batch_count-1 loop
       l_tic:=p_first_tic+i;l_seq:=p_first_command_seq+i;
       l_raw:=utl_raw.substr(p_ticcmd_raw,i*8+1,8);
       begin
@@ -729,7 +753,6 @@ create or replace package body doom_match_worker as
         l_existing_count:=l_existing_count+1;
       exception when no_data_found then null;end;
     end loop;
-    if l_existing_count=4 then p_accepted:=4;commit;return;end if;
     if l_state<>'ACTIVE' then raise_application_error(c_error,'command frontier mismatch');end if;
     select count(*) into l_member_count from doom_match_member
       where match_id=p_match and player_slot=p_player_slot
@@ -739,9 +762,39 @@ create or replace package body doom_match_worker as
     update doom_match_member set member_state='ACTIVE',last_seen_at=l_now,
       disconnected_at=null where match_id=p_match and player_slot=p_player_slot
       and membership_epoch=p_membership_epoch and generation=p_generation;
+    l_input_count:=case when p_input_raw is null then 0
+      else utl_raw.length(p_input_raw)/8 end;
+    if (p_first_input_seq is null and p_input_raw is not null) or
+       (p_first_input_seq is not null and
+        (l_input_count not between 1 and 4 or p_first_input_seq<1)) then
+      raise_application_error(c_error,'invalid fused input revisions');end if;
+    if l_input_count>0 then
+      select coalesce(max(input_seq),0) into l_input_frontier
+        from doom_match_input_event where match_id=p_match
+          and player_slot=p_player_slot;
+      for i in 0..l_input_count-1 loop
+        l_input:=utl_raw.substr(p_input_raw,i*8+1,8);
+        begin
+          select ticcmd_raw,effective_tic into l_input_existing,l_input_effective
+            from doom_match_input_event where match_id=p_match
+              and player_slot=p_player_slot and input_seq=p_first_input_seq+i;
+          if l_input_existing<>l_input then
+            raise_application_error(c_error,'input revision mismatch');end if;
+        exception when no_data_found then
+          if p_first_input_seq+i<>l_input_frontier+1 then
+            raise_application_error(c_error,'input revision sequence');end if;
+          insert into doom_match_input_event(match_id,player_slot,input_seq,
+            effective_tic,membership_epoch,generation,ticcmd_raw,command_sha,accepted_at)
+          values(p_match,p_player_slot,p_first_input_seq+i,l_current+1,
+            p_membership_epoch,p_generation,l_input,
+            lower(rawtohex(dbms_crypto.hash(l_input,dbms_crypto.hash_sh256))),l_now);
+          l_input_frontier:=l_input_frontier+1;
+        end;
+      end loop;
+    end if;
     select coalesce(max(command_seq),0) into l_seq_frontier
       from doom_match_command where match_id=p_match and player_slot=p_player_slot;
-    for i in 0..3 loop
+    for i in 0..l_batch_count-1 loop
       l_tic:=p_first_tic+i;l_seq:=p_first_command_seq+i;
       l_raw:=utl_raw.substr(p_ticcmd_raw,i*8+1,8);
       select count(*) into l_existing_count from doom_match_command
@@ -779,7 +832,7 @@ create or replace package body doom_match_worker as
         if l_vector_count<>1 then raise_application_error(c_error,'worker is not ready');end if;
       end if;
     end if;
-    p_accepted:=4;commit;
+    p_accepted:=l_batch_count;commit;
   exception when no_data_found then rollback;raise_application_error(c_error,'match unavailable');
   end;
 

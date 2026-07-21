@@ -102,9 +102,10 @@ function frameFrom(value) {
 function ascii(bytes, start, length) {
     return new TextDecoder('ascii', { fatal: true }).decode(bytes.subarray(start, start + length));
 }
-function binaryFrameFrom(bytes) {
+function binaryFrameFrom(bytes, previousTransport) {
     const magic = bytes.length >= 4 ? ascii(bytes, 0, 4) : '';
-    if ((magic !== 'DMF3' && magic !== 'DMF4') || bytes.length < 140) {
+    if ((magic !== 'DMF3' && magic !== 'DMF4' && magic !== 'DMF5') ||
+        bytes.length < 140) {
         throw new TypeError('payload binary header is invalid');
     }
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -150,6 +151,16 @@ function binaryFrameFrom(bytes) {
         }
         if (source !== bytes.length || target !== transportIndices.length)
             throw new TypeError('payload binary RLE coverage is invalid');
+        if (magic === 'DMF5') {
+            if (previousTransport === undefined ||
+                previousTransport.length !== transportIndices.length) {
+                throw new TypeError('payload binary delta base is unavailable');
+            }
+            for (let index = 0; index < transportIndices.length; index += 1) {
+                transportIndices[index] = transportIndices[index] ^
+                    previousTransport[index];
+            }
+        }
     }
     const indices = new Uint8Array(320 * 200);
     for (let x = 0; x < 320; x += 1) {
@@ -163,26 +174,33 @@ async function sha256(bytes) {
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
     return Array.from(digest, value => value.toString(16).padStart(2, '0')).join('');
 }
-async function decodeRawFrame(bytes) {
-    if (bytes.length < 4 || !/^(?:DMF3|DMF4)$/.test(ascii(bytes, 0, 4))) {
+async function decodeRawFrame(bytes, previousTransport) {
+    if (bytes.length < 4 || !/^(?:DMF3|DMF4|DMF5)$/.test(ascii(bytes, 0, 4))) {
         throw new TypeError('batched frame envelope is invalid');
     }
-    const decoded = binaryFrameFrom(bytes);
+    const decoded = binaryFrameFrom(bytes, previousTransport);
     if (decoded.frameSha !== await sha256(decoded.indices)) {
         throw new TypeError('payload frame hash is invalid');
     }
     return { tic: decoded.tic, mode: decoded.mode, complete: decoded.complete,
-        frameSha: decoded.frameSha, indices: decoded.indices, audio: decoded.audio };
+        frameSha: decoded.frameSha, indices: decoded.indices, audio: decoded.audio,
+        transportIndices: decoded.transportIndices };
 }
 export async function decodeFrameBatch(encoded) {
     const bytes = base64Bytes(encoded);
-    if (bytes.length < 5 || ascii(bytes, 0, 4) !== 'DMB1' || bytes[4] !== 4) {
+    const magic = bytes.length >= 4 ? ascii(bytes, 0, 4) : '';
+    const count = bytes[4];
+    const skip = magic === 'DMB2' ? bytes[5] : 0;
+    const headerBytes = magic === 'DMB2' ? 6 : 5;
+    if (bytes.length < headerBytes || (magic !== 'DMB1' && magic !== 'DMB2') ||
+        count < 1 || count > 7 || skip > 3 || count - skip < 1 || count - skip > 4) {
         throw new TypeError('frame batch header is invalid');
     }
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const frames = [];
-    let offset = 5;
-    for (let index = 0; index < 4; index += 1) {
+    let previousTransport;
+    let offset = headerBytes;
+    for (let index = 0; index < count; index += 1) {
         if (offset + 4 > bytes.length)
             throw new TypeError('frame batch length is invalid');
         const length = view.getUint32(offset, false);
@@ -190,7 +208,10 @@ export async function decodeFrameBatch(encoded) {
         if (length === 0 || offset + length > bytes.length) {
             throw new TypeError('frame batch length is invalid');
         }
-        frames.push(await decodeRawFrame(bytes.slice(offset, offset + length)));
+        const frame = await decodeRawFrame(bytes.slice(offset, offset + length), previousTransport);
+        if (index >= skip)
+            frames.push(frame);
+        previousTransport = frame.transportIndices;
         offset += length;
     }
     if (offset !== bytes.length)
