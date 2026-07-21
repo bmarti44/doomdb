@@ -60,8 +60,9 @@ What works today, all verified by repeatable gates:
   rejoined the same authoritative match, and reached synchronized tic 114.
   Deterministic fixtures cover shared keys, one-winner ammo, simultaneous
   fire/use, damage/death/frags, and reborn. Private traces are opt-in and add no
-  work to normal gameplay. The co-op two-browser 300-frame FPS gate is green;
-  remaining authored interaction fixtures and soak remain open.
+  work to normal gameplay. The co-op two-browser 300-frame FPS gate and the
+  complete 762-frame public route are green; the full 30-minute soak remains
+  open.
   Two-browser deathmatch is additionally live with authored starts, dynamic
   input, distinct POVs, reconnect, exact worker reconstruction, frag/respawn,
   reciprocal-kill tie, suicide accounting, a frozen 10-frag/10-minute rule, and
@@ -84,7 +85,8 @@ What works today, all verified by repeatable gates:
   two consecutive enforced 300-frame runs reached 35.18/34.80 and
   35.18/34.85 FPS; paint p95 stayed at 32.2--32.7 ms and input p95 at
   145.3--181.9 ms.
-  Soak remains open, so no multiplayer completion claim is made yet. Focused
+  The full resource/chain soak is green; stable-host extreme-tail certification
+  remains open, so no final multiplayer completion claim is made yet. Focused
   gates now pass exact paced-input idempotency, sampled-ledger identity, forced
   generation recovery, and bounded active retention. Isolated 400-tic tracing
   proved OJVM allocation/GC was the tail: no-GC Java p95 was 10.74 ms,
@@ -115,7 +117,19 @@ What works today, all verified by repeatable gates:
   exact terminal state hash. Player colors and HUD values are independently
   rendered for each POV. A 120-second paced soak advanced both clients from
   tic 104 to 4,187 while retaining only 258 frame rows and two checkpoints;
-  Java heap stayed flat. The required 30-minute soak remains open.
+  Java heap stayed flat. The corrected 30-minute soak then advanced both clients
+  from tic 136 to 59,904 with zero measured resyncs or disconnect/deadline/leave
+  neutral substitutions, 258 retained frames, two checkpoints, and bounded
+  memory. Lifecycle
+  admission is also live-tested at the exact 16-create/minute boundary; excess
+  creation receives the retryable capacity result and join is bounded by the
+  frozen two-player lobby. The first long soak also found and fixed a fixed
+  20-minute match cutoff: authenticated status/input/poll traffic now sparsely
+  renews an idle lease, while autonomous worker tics cannot keep an abandoned
+  match alive. Renewal occurs only below ten minutes remaining, avoiding hot-row
+  lock contention.
+  Paint p99.9/max was 195.6/1,517.3 and 200.4/1,556.2 ms; those tails record the
+  known Colima clock stalls and remain provisional until native Linux/OCI.
 - **Local host timing caveat (2026-07-21).** This Colima/Lima host steps its VM
   clock backward about every ten seconds; 98.7% of 865 Oracle `Time stalled`
   alerts correlate with those corrections. VZ restart and a separate QEMU
@@ -165,15 +179,18 @@ Key verified numbers (local two-core Oracle Free stack):
 
 What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 
-- **P13** — finish the 30-minute multiplayer soak and stable-clock p99.9/max
-  performance rerun; the capability-secured lobby, retained worker, authentic
+- **P13** — finish the stable-clock p99.9/max performance rerun; the 30-minute
+  resource/chain soak, capability-secured lobby, retained worker, authentic
   two-browser co-op exit, deathmatch rules, recovery, and selected two-player
   throughput gates are implemented.
 - **P9 is complete** — the Oracle `MODEL`-clause title fire animation passed
   two independent full-size database runs, deterministic checks, mutation
   checks, and visual review.
 - **T12.1/T12.2** — after multiplayer, rerun the full golden-preserving local
-  300-frame performance protocol against the finished architecture.
+  300-frame performance protocol against the finished architecture. The stale
+  orphan replay identity has been replaced by a real 300-frame Mocha fixture
+  content-addressed as `1ad47bc8…327fe3`; its review-manifest/DMF collector
+  cutover is the next local slice.
 - **P11 (last)** — only after those local gates, deploy the static client to real
   S3 and the database/AutoREST surface to Autonomous Database, then repeat the
   packaged correctness, security, recovery, and performance protocol in cloud.
@@ -182,6 +199,7 @@ Full measurements, rejected alternatives, and acceptance gates are maintained
 in [PLAN.md](PLAN.md), the
 [P12.M OJVM performance report](reports/performance-P12.M-mochadoom-ojvm-2026-07-18.md),
 the [2026-07-19 outage triage](reports/task-T12.M-triage-2026-07-19.md),
+the [P13.5 30-minute soak report](reports/performance-P13.5-30-minute-soak-2026-07-21.md),
 and [reports/](reports/).
 
 ## Reviewed database output
@@ -279,6 +297,9 @@ classes/JARs, and Terraform variable files are ignored by
 ./verify.sh env
 ./verify.sh secrets
 ./verify.sh task T7.3
+./verify.sh task T13.1
+# Full P13 includes two 300-frame runs and the 30-minute soak.
+./verify.sh phase P13
 ./verify.sh evaluator-self-test
 ```
 

@@ -262,6 +262,17 @@ create or replace package body doom_api as
     return localtimestamp at time zone 'UTC';
   end;
 
+  -- expires_at is an idle lease, not an absolute match-duration limit. Renew
+  -- it only after a capability-authenticated request; the retained worker must
+  -- never keep an abandoned match alive by advancing neutral tics on its own.
+  procedure renew_match_lease(p_match varchar2,p_now timestamp with time zone) is
+  begin
+    update doom_match set last_activity_at=p_now,
+      expires_at=p_now+interval '20' minute
+      where match_id=p_match and match_state in('LOBBY','ACTIVE')
+        and expires_at<p_now+interval '10' minute;
+  end;
+
   function utf8_blob(p_text clob) return blob is
     l_blob blob;
     l_dest binary_integer := 1;
@@ -652,6 +663,7 @@ create or replace package body doom_api as
     if l_expiry<=utc_now then fail(c_match_auth,'match unavailable');end if;
     p_requester_slot:=any_capability_slot(
       p_match,p_capability,l_host_salt,l_host_hash);
+    renew_match_lease(p_match,utc_now);
     select count(*),count(case when member_state='READY' then 1 end)
       into p_member_count,p_ready_count from doom_match_member
       where match_id=p_match and member_state<>'LEFT';
@@ -669,6 +681,8 @@ create or replace package body doom_api as
       -- fully-ready lobby unclaimed. Authorized status polling is a generated
       -- AutoREST POST, so use it as an idempotent fenced claim/retry boundary.
       doom_match_worker.start_ready(p_match,20,p_match_state);
+    else
+      commit;
     end if;
   exception when no_data_found then
     p_match_state:=null;raise_application_error(c_match_auth,'match unavailable');
@@ -715,6 +729,7 @@ create or replace package body doom_api as
         and member_state in('ACTIVE','DISCONNECTED')
         and membership_epoch=p_membership_epoch and generation=p_generation;
     if sql%rowcount<>1 then fail(c_match_auth,'match unavailable');end if;
+    renew_match_lease(p_match,l_now);
     l_raw:=hextoraw(lower(p_ticcmd_hex));
     doom_match_worker.submit_command(p_match,l_slot,p_membership_epoch,
       p_generation,p_tic,p_command_seq,l_raw,p_accepted);
@@ -769,6 +784,7 @@ create or replace package body doom_api as
       fail(c_match_auth,'match unavailable');
     end if;
     l_slot:=player_capability_slot(p_match,p_player_capability);
+    renew_match_lease(p_match,l_now);
     l_raw:=hextoraw(lower(p_ticcmd_hex));
     if p_input_ticcmd_hex is not null then
       l_input_raw:=hextoraw(lower(p_input_ticcmd_hex));end if;
@@ -826,7 +842,7 @@ create or replace package body doom_api as
         from doom_match_input_event where match_id=p_match
           and player_slot=l_slot and input_seq=p_input_seq;
       if l_existing<>l_raw then fail(c_bad_request,'input revision mismatch');end if;
-      p_accepted:=1;commit;return;
+      renew_match_lease(p_match,l_now);p_accepted:=1;commit;return;
     exception when no_data_found then null;end;
     select coalesce(max(input_seq),0) into l_frontier
       from doom_match_input_event where match_id=p_match and player_slot=l_slot;
@@ -848,7 +864,7 @@ create or replace package body doom_api as
       and membership_epoch=p_membership_epoch and generation=p_generation
       and member_state in('ACTIVE','DISCONNECTED');
     if sql%rowcount<>1 then fail(c_match_auth,'match unavailable');end if;
-    p_accepted:=1;commit;
+    renew_match_lease(p_match,l_now);p_accepted:=1;commit;
   exception when no_data_found then
     rollback;p_accepted:=0;p_effective_tic:=null;
     p_membership_epoch:=null;p_generation:=null;
@@ -875,6 +891,7 @@ create or replace package body doom_api as
     select coalesce(max(input_seq),0) into p_input_seq
       from doom_match_input_event
       where match_id=p_match and player_slot=l_slot;
+    renew_match_lease(p_match,utc_now);commit;
   exception when no_data_found then
     p_input_seq:=null;raise_application_error(c_match_auth,'match unavailable');
   when others then
@@ -1029,6 +1046,7 @@ create or replace package body doom_api as
       where match_id=p_match and player_slot=l_slot
       and member_state in('ACTIVE','DISCONNECTED')
       and membership_epoch=l_epoch and generation=l_generation;
+    renew_match_lease(p_match,l_now);
     commit;
   exception when no_data_found then
     rollback;p_current_tic:=null;p_payload:=null;
@@ -1089,6 +1107,7 @@ create or replace package body doom_api as
       where match_id=p_match and player_slot=l_slot
         and member_state in('ACTIVE','DISCONNECTED')
         and membership_epoch=l_epoch and generation=l_generation;
+    renew_match_lease(p_match,l_now);
     commit;
   exception when no_data_found then
     rollback;p_ready:=0;p_current_tic:=null;p_payload:=null;

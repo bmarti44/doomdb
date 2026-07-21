@@ -9,6 +9,8 @@ const specification = api.slice(api.indexOf('create or replace package doom_api'
   api.indexOf('create or replace package body doom_api'));
 const httpSmoke = fs.readFileSync(new URL(
   './verify-p13.1-multiplayer-autorest.mjs', import.meta.url), 'utf8');
+const matchWorker = fs.readFileSync(new URL(
+  '../sql/sim/084_multiplayer_worker.sql', import.meta.url), 'utf8');
 
 for (const procedure of [
   'create_match', 'join_match', 'ready_match', 'match_status',
@@ -25,6 +27,12 @@ assert.match(lifecycle, /utl_raw\.concat\(p_salt,hextoraw\(p_capability\)\)/);
 assert.match(lifecycle, /match unavailable/g);
 assert.match(lifecycle, /for update/g);
 assert.match(lifecycle, /l_recent>=16 or l_open>=32/);
+assert.match(api, /procedure renew_match_lease/);
+assert.match(api, /expires_at=p_now\+interval '20' minute/);
+assert.match(api, /expires_at<p_now\+interval '10' minute/);
+assert.match(lifecycle, /renew_match_lease\(p_match,l_now\)/);
+assert.doesNotMatch(matchWorker,/expires_at\s*=/i,
+  'autonomous worker must not renew an abandoned match lease');
 assert.match(lifecycle, /upper\(p_game_mode\) not in\('COOP','DEATHMATCH'\)/);
 assert.match(lifecycle, /'LOBBY',upper\(p_game_mode\)/);
 assert.match(lifecycle, /interval '20' minute/);

@@ -1,0 +1,5406 @@
+{
+  "schema": 2,
+  "task": "T12.1",
+  "engine": "MOCHA_OJVM_RETAINED",
+  "resolution": [
+    320,
+    200
+  ],
+  "source": {
+    "path": "artifacts/t8.1-live/mocha-e1m1-skill3-route.json",
+    "sha256": "cc4ad42d7f6663cf3197d67c5a8ba8a73da69e239d1536cbe71fb8633e4364c9",
+    "firstCommands": 299
+  },
+  "frames": [
+    {
+      "frame": 0,
+      "pose": "spawn",
+      "command": "IDLE",
+      "request": {
+        "p_skill": 3
+      }
+    },
+    {
+      "frame": 1,
+      "pose": "spawn",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 2,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": -21,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 3,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": -11,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 4,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 5,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 6,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 7,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 8,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 9,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 10,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 11,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 12,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 13,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 14,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 15,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 16,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 17,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 18,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 19,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 20,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 21,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 22,
+      "pose": "spawn",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 23,
+      "pose": "spawn",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 24,
+      "pose": "spawn",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 25,
+      "pose": "spawn",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 26,
+      "pose": "spawn",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 27,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 28,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 29,
+      "pose": "spawn",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 30,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 31,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 32,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 5,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 33,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 34,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 35,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 36,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 37,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 38,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 39,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 40,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 41,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 42,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 43,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 44,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 45,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 46,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 47,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 48,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 49,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 50,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 51,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 52,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 53,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 54,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 55,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 56,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -4,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 57,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 58,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 59,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -4,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 60,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 61,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 62,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 63,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 64,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 65,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 66,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 67,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 68,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 69,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 70,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 71,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 72,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 73,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 74,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 75,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 76,
+      "pose": "corridor",
+      "command": "USE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 77,
+      "pose": "corridor",
+      "command": "USE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 78,
+      "pose": "corridor",
+      "command": "USE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 79,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 80,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": -50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 81,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": -50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 82,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": -50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 83,
+      "pose": "corridor",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 84,
+      "pose": "corridor",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 85,
+      "pose": "corridor",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 86,
+      "pose": "corridor",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 87,
+      "pose": "corridor",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 88,
+      "pose": "corridor",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 89,
+      "pose": "corridor",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 90,
+      "pose": "corridor",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 91,
+      "pose": "corridor",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 92,
+      "pose": "corridor",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 93,
+      "pose": "corridor",
+      "command": "TURN",
+      "request": {
+        "turn": -3,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 94,
+      "pose": "corridor",
+      "command": "TURN",
+      "request": {
+        "turn": -2,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 95,
+      "pose": "corridor",
+      "command": "TURN",
+      "request": {
+        "turn": -1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 96,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 97,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 98,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 99,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 100,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 101,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -5,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 102,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 103,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 104,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 105,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 106,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 107,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 108,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 109,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 110,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 111,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 112,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 113,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 114,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 115,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 116,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 117,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 118,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 119,
+      "pose": "corridor",
+      "command": "MOVE",
+      "request": {
+        "turn": -4,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 120,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 121,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 122,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 123,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 124,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 125,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 126,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 127,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 128,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 129,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 130,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 131,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 132,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 133,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 134,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 135,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 136,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 137,
+      "pose": "door",
+      "command": "USE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 138,
+      "pose": "door",
+      "command": "USE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 139,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": -50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 140,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": -50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 141,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": -50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 142,
+      "pose": "door",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 143,
+      "pose": "door",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 144,
+      "pose": "door",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 145,
+      "pose": "door",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 146,
+      "pose": "door",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 147,
+      "pose": "door",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 148,
+      "pose": "door",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 149,
+      "pose": "door",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 150,
+      "pose": "door",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 151,
+      "pose": "door",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 152,
+      "pose": "door",
+      "command": "TURN",
+      "request": {
+        "turn": 2,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 153,
+      "pose": "door",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 154,
+      "pose": "door",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 155,
+      "pose": "door",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 156,
+      "pose": "door",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 157,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 158,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 159,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 160,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 161,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 162,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 163,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 164,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 165,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 166,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 167,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 168,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 169,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 170,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 171,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 172,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 4,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 173,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 174,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 175,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 176,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 177,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 2,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 178,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 179,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 180,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 181,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 182,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 183,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 184,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 185,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 186,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 187,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 188,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 189,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 190,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 191,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 192,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 193,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 194,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 195,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 196,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 197,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 198,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 199,
+      "pose": "door",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 200,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 201,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 202,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 203,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -4,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 204,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 205,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 206,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 207,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 208,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 209,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 210,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 211,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 212,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 213,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 214,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 215,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 216,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 217,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 218,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 219,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 220,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 221,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 222,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 223,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 224,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 225,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 226,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 227,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 228,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -2,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 229,
+      "pose": "combat",
+      "command": "TURN",
+      "request": {
+        "turn": -1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 230,
+      "pose": "combat",
+      "command": "USE",
+      "request": {
+        "turn": -2,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 231,
+      "pose": "combat",
+      "command": "USE",
+      "request": {
+        "turn": -5,
+        "forward": 0,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 232,
+      "pose": "combat",
+      "command": "USE",
+      "request": {
+        "turn": -9,
+        "forward": -50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 233,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -10,
+        "forward": -50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 234,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": -3,
+        "forward": -50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 235,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": -50,
+        "strafe": -40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 236,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 237,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 238,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 239,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 240,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 241,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 242,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 243,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 244,
+      "pose": "combat",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 245,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 246,
+      "pose": "combat",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 247,
+      "pose": "combat",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 248,
+      "pose": "combat",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 249,
+      "pose": "combat",
+      "command": "TURN",
+      "request": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 250,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 251,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 252,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 253,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 254,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 255,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 256,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 257,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 258,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 259,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 260,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 261,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 262,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 3,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 263,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 7,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 264,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 5,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 265,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 7,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 266,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 6,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 267,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 7,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 268,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 6,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 269,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 3,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 270,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 1,
+        "forward": 50,
+        "strafe": 40,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 271,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 272,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 273,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 274,
+      "pose": "combat",
+      "command": "USE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 275,
+      "pose": "combat",
+      "command": "USE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 276,
+      "pose": "combat",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 1,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 277,
+      "pose": "combat",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 278,
+      "pose": "combat",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 279,
+      "pose": "combat",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 280,
+      "pose": "combat",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 281,
+      "pose": "combat",
+      "command": "FIRE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 1,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 282,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 283,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 284,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 285,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 286,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 287,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 288,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 289,
+      "pose": "combat",
+      "command": "IDLE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 290,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -1,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 291,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -1,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 292,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -1,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 293,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -1,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 294,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -1,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 295,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -1,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 296,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -1,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 297,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -1,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 298,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -1,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "frame": 299,
+      "pose": "combat",
+      "command": "MOVE",
+      "request": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": -1,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    }
+  ]
+}

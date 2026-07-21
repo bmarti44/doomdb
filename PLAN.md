@@ -40,12 +40,13 @@ authoritative record.
   The real two-browser canonical co-op route now presents all 762 consecutive
   tics and reaches its exact terminal state hash; per-player sprite colors and
   HUD values are independently rendered from the one retained world. A
-  120-second paced soak advanced both clients from tic 104 to 4,187 with a
-  flat Java heap, 258 retained frame rows, and two checkpoints. The 30-minute
-  soak remains open. The
+  30-minute paced soak advanced both clients from tic 136 to 59,904 with a
+  bounded Java heap, 258 retained frame rows, and two checkpoints. Resource,
+  chain, lease, and session-soak acceptance is closed; stable-host extreme-tail
+  qualification remains open. The
   verified v1 production cap is two players; three/four-player transport is
   explicitly deferred.
-- **Next:** finish P13 gameplay breadth and soak; re-verify the finished single-player +
+- **Next:** finish stable-clock tail certification; re-verify the finished single-player +
   multiplayer build with
   the full T12.1/T12.2 300-frame performance protocol; then run P11 real S3 +
   Autonomous cloud deployment as the final gate (credentials are required;
@@ -2895,6 +2896,36 @@ deployment gate.
 
 #### T12.1 Baseline and cursor hygiene
 
+**Approved selected-engine evidence reconciliation (2026-07-21).** T12.1 is
+the single-player compatibility baseline for the selected retained Mocha/OJVM
+production path; P13 retains its separate multiplayer routes, performance, and
+soak evidence. The frozen statement-family labels map to real generated
+AutoREST surfaces: `step` is `DOOM_API.SUBMIT_STEP`, `frame` is
+`DOOM_API.POLL_FRAME`, and `asset` is `DOOM_API.GET_ASSET`. Their required
+90-call `ALLSTATS LAST`/cursor-hygiene matrix is a separate attribution pass,
+not a claim that asset reads occur per gameplay frame. The primary two-run
+300-frame browser gate keeps intrusive diagnostics off and requires identical
+state/frame/payload chains; an identical third replay collects private worker
+stages and must reproduce that chain. Legacy evidence keys `r1Ms` and `r2Ms`
+remain only as documented aliases for authoritative ticker/command application
+and presentation+DMF codec+BLOB write respectively. The report must also carry
+the canonical prepare, ticker, render, codec, BLOB, finalize, commit, ORDS,
+transfer, decode, palette, blit, and input-to-correlated-paint stages. The SQL
+renderer remains an independently executable differential oracle, not the
+measured production renderer. Cloud samples remain final-P11 work.
+
+The old `c393f8f…` replay identity is orphaned: no corresponding replay bytes
+exist in the worktree or reachable history, and the old validator trusted the
+declared identity instead of hashing the file. Never relabel new bytes with
+that digest. Supersede it with a content-addressed 300-frame fixture derived
+from the accepted canonical route, update its review manifest explicitly, and
+make the validator hash the actual bytes before any live T12.1 collection.
+The selected-engine candidate is now materialized at
+`artifacts/performance/t12.1/mocha-replay-300.json`: 300 ordered frames derived
+from the tracked skill-3 route, all five command classes/four observation phases,
+SHA-256 `1ad47bc8…327fe3`. Its source/expansion/content-address gate passes; the
+review-manifest and live-driver cutover remain the active T12.1 slice.
+
 - Route: Terra medium.
 - Collect the Section 6.6 replay, execution plans with runtime statistics, V$SQL
   parse/execution data, stage timers excluded from payloads, and payload sizes.
@@ -2921,6 +2952,11 @@ deployment gate.
   T12.0 revision as the initial candidate state, not as proof of final local or
   cloud performance. MLE and UTL_TCP remain out of scope under Section 1.8.
 - Stop only under Section 6.6. Record every attempt, including regressions.
+- Collect local attempts and the selected local replay now, but do not publish
+  final T12.2 evidence until P11 appends the identical managed-ORDS/S3 sample.
+  Primary FPS runs keep route diagnostics/statistics overhead disabled; use a
+  separate exact-chain attribution replay because current diagnostics add DML
+  and a second commit per tic and would otherwise measure the profiler.
 - Accept locally: all correctness and mutation tests remain green and the report
   states the highest verified local FPS without a marketing estimate. The same
   report receives its verified cloud FPS during final P11; no cloud work runs
@@ -3013,7 +3049,10 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   error shapes do not enumerate matches, and generation/membership bounds are
   enforced. Direct HTTP gates pass lifecycle, arbitrary command arrival,
   per-player polling, retry, and authorization with bearer material redacted.
-  Expiry/reconnect/rate-limit breadth remains open.
+  Expiry, reconnect, and cleanup are live-tested. The serialized global create
+  admission boundary is exercised at exactly 16 creations/minute and the next
+  call returns the public retryable capacity code; join admission is exercised
+  through the frozen two-slot/full-lobby boundary.
 
 #### T13.2 Deterministic lockstep and retained match worker
 
@@ -3110,8 +3149,9 @@ other P13 authority, durability, security, and AutoREST rails remain unchanged.
   two-minute generated-API startup, resumed in lockstep, reloaded the guest,
   and reached synchronized tic 114 with distinct POVs. The disconnected-to-LEFT
   grace is three minutes so this measured transport recovery is possible;
-  explicit leave and match expiry remain immediate. The 300-frame FPS gate and
-  full-route two-browser replay remain open.
+  explicit leave and match expiry remain immediate. At this checkpoint the
+  300-frame FPS gate and full-route two-browser replay were still open; both
+  are closed by the later checkpoints below.
 - Co-op route checkpoint (2026-07-20): the retained adapter now mirrors Doom's
   exact internal consistency word after each world tick, including the reborn
   case where `DoReborn` replaces the player mobj before vanilla records the
@@ -3134,8 +3174,9 @@ other P13 authority, durability, security, and AutoREST rails remain unchanged.
   normal-path DML. A separate live gate forcibly stops and drops the owning
   Scheduler job at tic 400, invokes fenced reconstruction in a replacement
   session, completes the route at tic 762, and reproduces the same state and
-  both POV hashes. The two-browser full-route parity replay and remaining
-  authored interaction fixtures remain before T13.3 closes. The
+  both POV hashes. The public two-browser gate presents all 762 ordered frames,
+  applies the player-1 contribution to world state, reaches authentic
+  intermission, and reproduces the canonical terminal state hash. The
   deterministic OJVM fixture already locks mutual visibility, one shared world
   tic, simultaneous fire/use, one-winner ammo contention, per-player netgame
   keys, damage/death, frag attribution, and co-op reborn with identical results
@@ -3282,8 +3323,9 @@ other P13 authority, durability, security, and AutoREST rails remain unchanged.
   checkpoints are every 1,024 tics because current recovery replays the compact
   exact ledger. The best clean 150-frame run reached 36.03/34.99 FPS,
   33.5/32.6 ms paint p95, and 249.3/195.0 ms input p95. The first enforced
-  300-frame run missed one player at 34.5 ms paint and 316 ms input p95, so
-  selection and the required two consecutive passes remain open. A true
+  300-frame run missed one player at 34.5 ms paint and 316 ms input p95, so at
+  this checkpoint selection and the required two consecutive passes were still
+  open; the later superseding selection closes them. A true
   SecureFile locator-reuse ring is rejected: its second wrap stalled around
   tics 257--258 and regressed both clients to ~32 FPS with 42--54 ms paint p95.
   Focused paced gates now pass exact input retry/mismatch handling, sampled
@@ -3340,7 +3382,19 @@ other P13 authority, durability, security, and AutoREST rails remain unchanged.
   and leave substitution remained zero. The soak gate now requires a final
   consecutive post-resync run and correlates any disconnect-neutral interval
   with a recorded recovery of at most 30 seconds. The full 30-minute run is
-  still required.
+  still required. The first long run exposed an exact 20-minute lifecycle
+  cutoff: `expires_at` was an absolute creation deadline even while both
+  clients remained active. It is now a sparse authenticated idle lease—status,
+  input, or polling extends it from ten minutes remaining back to twenty,
+  while worker tic advancement alone never renews an abandoned match. The
+  compare-and-update avoids hot match-row DML/lock convoy. A post-fix 30-second
+  two-browser smoke passed 1,038 measured tics, then the full 1,800-second gate
+  advanced both clients from tic 136 to 59,904 with zero measured resyncs or
+  disconnect/deadline/leave neutral substitutions, 258 retained frames, two
+  checkpoints, bounded memory, and Java session heap 3,328,000 → 3,395,584
+  bytes. Paint p99.9/max was 195.6/1,517.3 and 200.4/1,556.2 ms; those extreme
+  tails are provisional on this known clock-stalling host and must be repeated
+  on stable-clock native Linux/OCI.
   Local-host timing finding (2026-07-21): failed repeats were traced outside
   the renderer. Colima 0.10.1/Lima 2.1.1 steps the guest clock backward about
   every ten seconds on this host; 98.7% of 865 Oracle VKTM `Time stalled`

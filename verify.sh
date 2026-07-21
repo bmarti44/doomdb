@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: ./verify.sh env | secrets | transport | task T0.1..T7.3 | phase P0|P1|P2|P3 | evaluator-self-test" >&2
+  echo "usage: ./verify.sh env | secrets | transport | task T0.1..T7.3|T13.0..T13.5 | phase P0|P1|P2|P3|P13 | evaluator-self-test" >&2
   exit 2
 }
 
@@ -109,6 +109,47 @@ case "$1" in
         scripts/db_sql.sh tests/verify-t7.3-history.sql
         node tests/verify-t7.3-audio.mjs
         ;;
+      T13.0)
+        scripts/db_sql.sh tests/verify-p13.0-multiplayer-probe.sql
+        scripts/db_sql.sh scripts/mochadoom/multiplayer-feasibility-benchmark.sql
+        ;;
+      T13.1)
+        node tests/verify-p13.1-multiplayer-schema.mjs
+        node tests/verify-p13.1-multiplayer-api.mjs
+        scripts/db_sql.sh tests/verify-p13.1-multiplayer-schema.sql
+        scripts/db_sql.sh tests/verify-p13.1-multiplayer-api.sql
+        scripts/db_sql.sh tests/verify-p13.1-multiplayer-rate-limit.sql
+        node tests/verify-p13.1-multiplayer-autorest.mjs
+        ;;
+      T13.2)
+        node tests/verify-p13.2-multiplayer-adapter.mjs
+        node tests/verify-p13.2-retained-match-worker.mjs
+        scripts/db_sql.sh tests/verify-p13.2-multiplayer-adapter.sql
+        scripts/db_sql.sh tests/verify-p13.2-retained-match-worker.sql
+        scripts/db_sql.sh tests/verify-p13.2-paced-input.sql
+        scripts/db_sql.sh tests/verify-p13.2-active-leave.sql
+        bash tests/verify-p13.2-multiplayer-autorest.sh
+        ;;
+      T13.3)
+        bash tests/verify-p13.3-coop-route.sh
+        bash tests/verify-p13.3-coop-browser-route.sh
+        bash tests/verify-p13.3-multiplayer-client.sh
+        ;;
+      T13.4)
+        scripts/db_sql.sh tests/verify-p13.4-deathmatch-probe.sql
+        scripts/db_sql.sh tests/verify-p13.4-deathmatch-lifecycle.sql
+        bash tests/verify-p13.4-deathmatch-client.sh
+        ;;
+      T13.5)
+        node tests/verify-p13.5-operations.mjs
+        node tests/verify-session-cleanup-static.mjs
+        scripts/db_sql.sh tests/verify-p13.5-active-retention.sql
+        scripts/db_sql.sh tests/verify-session-cleanup-live.sql
+        bash tests/verify-p13.5-multiplayer-performance.sh
+        bash tests/verify-p13.5-multiplayer-performance.sh
+        DOOMDB_MULTIPLAYER_SOAK_SECONDS="${DOOMDB_MULTIPLAYER_SOAK_SECONDS:-1800}" \
+          bash tests/verify-p13.5-multiplayer-soak.sh
+        ;;
       *) usage ;;
     esac
     ;;
@@ -142,6 +183,7 @@ case "$1" in
         printf 'PASS P2 (548/548 assertions)\n'
         ;;
       P3) tests/verify-phase-p3.sh ;;
+      P13) bash tests/verify-phase-p13.sh ;;
       *) usage ;;
     esac
     ;;

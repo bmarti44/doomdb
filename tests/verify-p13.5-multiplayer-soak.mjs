@@ -35,8 +35,12 @@ const contexts=await Promise.all([0,1].map(()=>browser.newContext({viewport:{wid
 const [host,guest]=await Promise.all(contexts.map(context=>context.newPage()));
 await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
   window.__doomSoakTics=[];
+  window.__doomSoakPaintAt=[];
   window.__doomSoakResyncs=[];
-  addEventListener('doom:multiplayer-present',event=>window.__doomSoakTics.push(event.detail.tic));
+  addEventListener('doom:multiplayer-present',event=>{
+    window.__doomSoakTics.push(event.detail.tic);
+    window.__doomSoakPaintAt.push(performance.now());
+  });
   addEventListener('doom:multiplayer-resync',event=>window.__doomSoakResyncs.push({
     atCount:window.__doomSoakTics.length,tic:event.detail.tic
   }));
@@ -113,19 +117,29 @@ try {
   const ends=await Promise.all([host,guest].map(ticOf));
   const evidence=await Promise.all([host,guest].map((page,slot)=>page.evaluate(start=>({
     presented:window.__doomSoakTics.slice(start),
+    paintAt:window.__doomSoakPaintAt.slice(start),
     resyncs:window.__doomSoakResyncs.filter(value=>value.atCount>=start)
       .map(value=>({...value,atCount:value.atCount-start}))
   }),startCounts[slot])));
   const presented=evidence.map(value=>value.presented);
+  const paintTails=[];
   for (let slot=0;slot<2;slot++) {
     assert.ok(presented[slot].length>=seconds*25,
       `soak player ${slot} presented ${presented[slot].length} frames`);
+    assert.equal(evidence[slot].paintAt.length,presented[slot].length,
+      `soak player ${slot} paint/tic trace mismatch`);
     const gaps=[];
     for (let index=1;index<presented[slot].length;index+=1) {
       assert.ok(presented[slot][index]>presented[slot][index-1],
         `soak player ${slot} repeated or reversed tic ${presented[slot][index-1]}`);
       if (presented[slot][index]!==presented[slot][index-1]+1) gaps.push(index);
     }
+    const timed=evidence[slot].paintAt;
+    const intervals=timed.slice(1).map((at,index)=>at-timed[index]);
+    assert.ok(intervals.length>0,`soak player ${slot} has no paint intervals`);
+    const ordered=[...intervals].sort((a,b)=>a-b);
+    paintTails.push({p999:ordered[Math.ceil(ordered.length*.999)-1],
+      max:ordered.at(-1)});
     assert.ok(gaps.length<=evidence[slot].resyncs.length,
       `soak player ${slot} skipped without a recorded authoritative resync`);
     const finalStart=evidence[slot].resyncs.at(-1)?.atCount??0;
@@ -147,7 +161,7 @@ try {
     `(select count(*) from doom_match_command d where d.match_id=m.match_id),`+
     `(select coalesce(sum(f.response_bytes),0) from doom_match_frame f where f.match_id=m.match_id),`+
     `(select count(*) from doom_match_command d where d.match_id=m.match_id and `+
-    `d.command_source='NEUTRAL_DISCONNECTED'),`+
+    `d.command_source='NEUTRAL_DISCONNECTED' and d.tic>=${Math.min(...starts)}),`+
     `(select count(*) from doom_match_command d where d.match_id=m.match_id and `+
     `d.command_source='NEUTRAL_DEADLINE'),`+
     `(select count(*) from doom_match_command d where d.match_id=m.match_id and `+
@@ -194,7 +208,8 @@ try {
     `maxReconnectSeconds=${maxReconnectSamples*5} `+
     `resyncs=${evidence.map(value=>value.resyncs.length).join('/')} `+
     `frames=${frames} checkpoints=${checkpoints} bytes=${bytes} `+
-    `disconnectedNeutral=${disconnectedNeutral} initialNeutral=${initialNeutral}${memorySummary}\n`);
+    `disconnectedNeutral=${disconnectedNeutral} initialNeutral=${initialNeutral} `+
+    `paint999Max=${paintTails.map(value=>`${value.p999.toFixed(1)}/${value.max.toFixed(1)}`).join(',')}${memorySummary}\n`);
 } finally {
   await browser.close();
 }

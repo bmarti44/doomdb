@@ -10,6 +10,7 @@ declare
   worker_mode_ varchar2(16);
   code1_ number;code2_ number;message1_ varchar2(4000);message2_ varchar2(4000);
   count_ number;third_ varchar2(64);
+  expiry_before_ timestamp with time zone;
 
   procedure status_(match_id_ varchar2,capability_ varchar2) is
   begin
@@ -46,6 +47,21 @@ begin
      epoch_<>1 or generation_<>0 or tic_<>0 then
     raise_application_error(-20000,'host status mismatch');
   end if;
+  update doom_match set expires_at=systimestamp+interval '15' minute
+    where match_id=match_;
+  commit;
+  select expires_at into expiry_before_ from doom_match where match_id=match_;
+  status_(match_,host_);
+  select count(*) into count_ from doom_match where match_id=match_
+    and expires_at=expiry_before_;
+  if count_<>1 then raise_application_error(-20000,'healthy lease renewed too eagerly');end if;
+  update doom_match set expires_at=systimestamp+interval '5' second
+    where match_id=match_;
+  commit;
+  status_(match_,host_);
+  select count(*) into count_ from doom_match where match_id=match_
+    and expires_at>systimestamp+interval '19' minute;
+  if count_<>1 then raise_application_error(-20000,'authenticated idle lease did not renew');end if;
   capture_status_(rpad('0',32,'0'),rpad('f',64,'f'),code1_,message1_);
   capture_status_(match_,rpad('f',64,'f'),code2_,message2_);
   if code1_<>-20713 or code2_<>-20713 or message1_<>message2_ then

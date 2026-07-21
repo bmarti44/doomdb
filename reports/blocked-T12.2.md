@@ -1,50 +1,25 @@
-# T12.2 source-first implementation status
+# T12.2 selected-engine optimization status
 
-Status: **OPTIMIZATION LEDGER, CAPTURE SCHEMA, VERIFY/PUBLISH DRIVER, AND
-SYNTHETIC TAMPER UNITS COMPLETE; LIVE PROFILE LOOP INTENTIONALLY PARKED**.
+Status: **LOCAL PROFILE LOOP PENDING T12.1 CUTOVER; FINAL PUBLICATION DEFERRED
+UNTIL P11 ADDS CLOUD EVIDENCE**.
 
-The corrected frozen evaluator manifest is byte-identical at
-`3bd2feea88d0c25e6a8c6e87f2b359b5251a1c4c6cc63d27686f92f677b7dc0a`.
-This implementation did not edit evaluator sources or manifests, shared
-routing, database objects, cloud resources, or unfinished optimized systems.
-It performed no database, HTTP, cloud, or network operation and records no
-latency or FPS claim.
+The optimization ledger, capture schema, stop rule, artifact verification, and
+tamper/redaction tests are implemented. Their production, evaluator, and
+mutation self-checks pass after reconciling the reviewed T12.1 manifest ancestry
+to `8a93c521…551d4`; no evaluator result is being replaced by synthetic timing.
 
-Delivered production sources:
+The live loop now targets the retained Mocha/OJVM path. Each attempt must:
 
-- `scripts/run-performance-optimization.mjs`: fail-closed publication and
-  verify-only driver for externally captured 300-frame attempts and independent
-  final local/cloud replays. It derives p50/p95, effective FPS, stage medians,
-  dominant bottlenecks, improvement percentages, accept/rollback decisions and
-  the exact Section 6.6 stop rather than accepting copied summaries.
-- `scripts/performance/t12.2-ledger.mjs`: fixed contract, append-only chained
-  journal validation, unique allowed-diff enforcement, schema/golden invariance,
-  complete correctness/mutation gates, safe artifact paths, recursive redaction,
-  atomic writes and content/provenance verification.
-- `scripts/performance/t12.2-capture-plan.schema.json`: finite live input
-  contract with approved baseline ancestry, external samples and reviewed
-  attempt metadata. Correctness/mutation payloads exclude their digest; the
-  driver hashes their finite bytes and stores the external digest in evidence.
-- `tests/verify-performance-optimization-unit.mjs`: synthetic statistics,
-  stop-rule, journal, invariance, provenance, redaction and artifact-tamper
-  tests. Its temporary evidence passes both production verification and the
-  corrected frozen evaluator, and is deleted afterward.
+1. use the content-addressed selected-engine replay;
+2. preserve its complete state/frame/payload chain and all correctness/mutation
+   gates;
+3. measure the primary browser run with diagnostics off;
+4. collect private worker stages and SQL cursor plans in a separate identical
+   replay, because route diagnostics add DML and a second commit per tic;
+5. retain regressions and stop only after the first two technically distinct
+   reviewed attempts below five-percent improvement.
 
-Executed evidence:
-
-```text
-PASS T12.2-SCHEMA-PARSE
-PASS T12.2-PRODUCTION-UNITS (ledger, profiling, stop rule, invariance, provenance, redaction)
-PASS T12.2-EVAL-SELF-CHECK (14/14 fixture-contract assertions)
-PASS T12.2-EVAL-MUTATION-SELF-CHECK (30/30 isolated mutations killed)
-PASS T12.2-SOURCE-AUDIT (optimization driver contract present)
-```
-
-Live acceptance remains blocked by design until T12.1 and T11.2 provide the
-approved real baseline/replay and working local/cloud stacks. It additionally
-requires actual reviewed source changes targeting each measured dominant
-bottleneck, full correctness and mutation machine reports after every attempt,
-and independent final local/cloud replay samples. The journal must preserve
-regressions and stop at the first two consecutive technically distinct reviewed
-attempts below five percent. Only that evidence may publish direct local/cloud
-p50, p95 and FPS values; synthetic units are never accepted as measurements.
+Local attempt capture and the selected local replay proceed before cloud.
+Final T12.2 publication remains correctly fail-closed until P11 appends the
+identical real S3/managed-ORDS verification. Cloud credentials are not required
+for the local profile loop and are never placed in argv or retained artifacts.

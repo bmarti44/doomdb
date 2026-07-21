@@ -6,7 +6,7 @@ import path from 'node:path';
 export const CONTRACT = Object.freeze({
   task: 'T12.2', resolution: [320, 200], frames: 300, warmFrames: 30, measuredFrames: 270,
   replaySha256: 'c393f8f38a5a89e3bcda88d46e9b62f84e5856ae63bda597b2f67b9cd3856c65',
-  t12_1ManifestSha256: '2fcdd0f204ea7a248f29970be8a6ce56f6a18b3e3f4ff4bd2c10a9c5a7d1cd93',
+  t12_1ManifestSha256: '8a93c521c4facb04f59f07a85ec4d8b701bfa340f1b4e72b6bb4228c949551d4',
   publicSchemaSha256: 'e1f9c194869f0aa0652ca868f2c74a3e466aee77229b775e8c776674d2823291',
   goldenManifestSha256: '031c59e530fe365cc08bd65f6a325435107ffc8516b027c2e9c1dd9ef6b1a31f',
   changeClasses: ['index', 'join-order', 'precomputed-static-relation', 'partitioning', 'aggregation-shape', 'codec', 'transport', 'client'],

@@ -1,46 +1,37 @@
-# T12.1 source-first implementation status
+# T12.1 selected-engine evidence status
 
-Status: **SOURCE, COLLECTOR CONTRACT, SCHEMAS, AND SYNTHETIC ARTIFACT UNITS
-COMPLETE; LIVE ACCEPTANCE BLOCKED BY UPSTREAM T11.2 AND REAL REPLAY/STACKS**.
+Status: **LOCAL IMPLEMENTATION ACTIVE; CLOUD EXECUTION DEFERRED TO FINAL P11**.
 
-The frozen evaluator manifest remains byte-identical at
-`2fcdd0f204ea7a248f29970be8a6ce56f6a18b3e3f4ff4bd2c10a9c5a7d1cd93`.
-No evaluator, manifest, shared routing, database, cloud deployment, or live
-benchmark was changed or started by this implementation task.
+The original source-first evidence driver targeted the retired production
+shape: synchronous SQL-renderer `STEP`, gzip canonical JSON, and SQL R1/R2
+stages. The selected runtime is now a retained Mocha Doom engine inside OJVM,
+with generated AutoREST submission/polling and DMF3/4/5 frames. Filling the old
+fields with zeroes or profiling the SQL oracle as production would be invalid.
 
-Delivered production sources:
+The reconciled contract keeps the frozen statement-family names while mapping
+them to real production surfaces:
 
-- `scripts/verify-performance-baseline.mjs`: independent external 300-frame
-  HTTP timing, transport decode/blit timing, payload identity/size ledger,
-  database-observation merge, report derivation, atomic publication, and
-  verify-only artifact validation.
-- `scripts/performance/t12.1-evidence.mjs`: fixed Section 6.6 contract,
-  programmatic schema validation, p50/p95/FPS derivation, cursor/shape checks,
-  recursive redaction, safe paths, hashes, and atomic writes.
-- `scripts/performance/t12.1-collector.mjs`: bounded stdin/stdout adapter for
-  credential-private collection of `ALLSTATS LAST`, redacted `V$SQL`, bound
-  shapes, and out-of-band stage timers.
-- JSON schemas for the evidence envelope and collector output, plus adapter
-  documentation.
-- `tests/verify-performance-baseline-unit.mjs`: temporary synthetic evidence
-  and artifact tests. Synthetic data is never published as T12.1 evidence.
+- `step`: `DOOM_API.SUBMIT_STEP`;
+- `frame`: `DOOM_API.POLL_FRAME`;
+- `asset`: `DOOM_API.GET_ASSET`.
 
-Executed evidence:
+The required 90-call cursor/`ALLSTATS LAST` matrix is a separate attribution
+pass. Primary FPS evidence comes from two identical 300-frame browser replays
+with diagnostics off. A third exact-chain replay collects prepare, ticker,
+render, codec, BLOB, finalize, commit, ORDS, transfer, decode, palette, blit,
+and correlated-input stages. Legacy `r1Ms`/`r2Ms` remain documented aliases,
+not fabricated SQL-renderer timings.
 
-```text
-PASS T12.1-PRODUCTION-UNITS (replay, observations, artifacts, redaction, collector protocol)
-PASS T12.1-EVAL-SELF-CHECK (15/15 fixture-contract assertions)
-PASS T12.1-EVAL-MUTATION-SELF-CHECK (24/24 isolated mutations killed)
-PASS T12.1-SOURCE-AUDIT (baseline driver contract present)
-```
+The prior replay identity `c393f8f…` had no corresponding bytes anywhere in
+the worktree or reachable history. It must never be accepted on a caller's
+declaration alone. The real selected-engine fixture is now tracked at
+`artifacts/performance/t12.1/mocha-replay-300.json`, derived from the accepted
+skill-3 route and content-addressed as
+`1ad47bc8e2a5b7518d68b937a333492d66d7d539f827980086d4b4fdad327fe3`.
+Its source, expansion, command/phase coverage, and bytes pass an independent
+gate.
 
-The production unit fixture also passes the frozen evaluator's
-`validate-evidence.mjs`, then proves rejection of shape drift, a payload timer
-leak, a secret-bearing key, a changed artifact digest, and a credential-bearing
-collector argv.
-
-Live work remains intentionally parked. It requires the accepted T11.2 S3 and
-Autonomous Database browser gate, the reviewed replay with the frozen identity,
-live local and cloud endpoints, and credential-private collector adapters. Only
-those real systems can produce the accepted baseline; this task records no FPS,
-latency, plan, cursor, payload, or stage measurement claim.
+Local work remaining: update the reviewed manifest, require hashing those
+actual replay bytes, add independent DMF decoding and the credential-private
+local collector, then execute the three-pass protocol. Only managed-ORDS/S3
+execution is blocked on final P11 credentials; local collection is not.

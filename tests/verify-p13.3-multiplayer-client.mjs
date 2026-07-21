@@ -232,6 +232,7 @@ try {
       assert.ok(latencies.length>=(enforcePerformance?20:0),
         `player ${slot} input overlay samples=${latencies.length}`);
       const p50 = percentile(gaps, .5), p95 = percentile(gaps, .95);
+      const p999 = percentile(gaps, .999), paintMax = Math.max(...gaps);
       const measuredSubmits = all.filter(row => row.name === 'submit' &&
         measuredTics.has(row.tic));
       const submitGaps = measuredSubmits.slice(1)
@@ -255,6 +256,7 @@ try {
         return decoded === undefined ? null : row.at - decoded.at;
       }).filter(value => value !== null);
       const inputP50=percentile(latencies,.5),inputP95=percentile(latencies,.95);
+      const inputP999=percentile(latencies,.999);
       const inputMax=Math.max(...latencies);
       const worstGap=gaps.reduce((best,value,index)=>value>best.value?
         {value,tic:presents[index+1].tic}:best,{value:-1,tic:-1});
@@ -262,7 +264,7 @@ try {
         row.name.startsWith('submit_match') || row.name==='revise_match_input');
       const pollResources=resources.filter(row=>row.name==='poll_match_batch');
       const resourceTail=(rows,field)=>rows.length===0?0:percentile(rows.map(row=>row[field]),.95);
-      const detail = `p${slot}=${fps.toFixed(2)}fps paint=${p50.toFixed(2)}/${p95.toFixed(2)}ms submitGap=${percentile(submitGaps, .5).toFixed(2)}/${percentile(submitGaps, .95).toFixed(2)}ms submitDecode=${percentile(server, .5).toFixed(2)}/${percentile(server, .95).toFixed(2)}ms pollReady=${percentile(delivery, .5).toFixed(2)}/${percentile(delivery, .95).toFixed(2)}ms decodePaint=${percentile(decodePaint, .5).toFixed(2)}/${percentile(decodePaint, .95).toFixed(2)}ms input=${inputP50.toFixed(2)}/${inputP95.toFixed(2)}/${inputMax.toFixed(2)}ms n=${latencies.length} worstPaint=${worstGap.tic}:${worstGap.value.toFixed(1)} net95=submit(q${resourceTail(submitResources,'queue').toFixed(1)},t${resourceTail(submitResources,'ttfb').toFixed(1)},d${resourceTail(submitResources,'download').toFixed(1)})/poll(q${resourceTail(pollResources,'queue').toFixed(1)},t${resourceTail(pollResources,'ttfb').toFixed(1)},d${resourceTail(pollResources,'download').toFixed(1)})`;
+      const detail = `p${slot}=${fps.toFixed(2)}fps paint=${p50.toFixed(2)}/${p95.toFixed(2)}ms paint999/max=${p999.toFixed(2)}/${paintMax.toFixed(2)}ms submitGap=${percentile(submitGaps, .5).toFixed(2)}/${percentile(submitGaps, .95).toFixed(2)}ms submitDecode=${percentile(server, .5).toFixed(2)}/${percentile(server, .95).toFixed(2)}ms pollReady=${percentile(delivery, .5).toFixed(2)}/${percentile(delivery, .95).toFixed(2)}ms decodePaint=${percentile(decodePaint, .5).toFixed(2)}/${percentile(decodePaint, .95).toFixed(2)}ms input=${inputP50.toFixed(2)}/${inputP95.toFixed(2)}ms input999/max=${inputP999.toFixed(2)}/${inputMax.toFixed(2)}ms n=${latencies.length} worstPaint=${worstGap.tic}:${worstGap.value.toFixed(1)} net95=submit(q${resourceTail(submitResources,'queue').toFixed(1)},t${resourceTail(submitResources,'ttfb').toFixed(1)},d${resourceTail(submitResources,'download').toFixed(1)})/poll(q${resourceTail(pollResources,'queue').toFixed(1)},t${resourceTail(pollResources,'ttfb').toFixed(1)},d${resourceTail(pollResources,'download').toFixed(1)})`;
       if (enforcePerformance) {
         assert.ok(fps >= 30, `player ${slot} ${detail}`);
         assert.ok(p50 <= 33.3 && p95 <= 33.3, `player ${slot} ${detail}`);
