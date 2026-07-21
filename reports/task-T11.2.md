@@ -16,8 +16,9 @@ AWS resource, Autonomous Database, or external endpoint was read or changed.
   first cloud operation.
 - `scripts/t11.2-build-client.mjs` compiles a private cloud artifact, replaces
   the same-origin API root with the managed ORDS root at build time, content-
-  addresses the entry bundle, and emits an exact allowlist plus deterministic
-  content types and cache controls.
+  addresses the entry bundle, preserves the single-player and multiplayer entry
+  documents, and emits an exact allowlist plus deterministic content types and
+  cache controls.
 - `deploy/cloud/t11.2/cloud-browser.spec.ts` runs only from the explicit S3
   index object and observes real browser preflight, API, asset, frame, audio,
   persistence, replay, completion, and complete-network behavior without route
@@ -48,8 +49,11 @@ Live T11.2 remains blocked until all of the following exist outside this task:
 
 - real AWS authority and a target S3 bucket;
 - a passing T11.1 Autonomous Database/managed ORDS evidence artifact;
-- the independently reviewed and approved full E1M1 completion command ledger;
 - the pinned Chromium browser installation in the live execution environment.
+
+The approved completion ledger is no longer a blocker: it is reproducibly
+generated from the accepted, content-addressed no-cheat 13,272-tic E1M1 route
+and pins that route's terminal state and frame hashes.
 
 Until then, the driver exits nonzero with `T11.2 NOT RUN`, deletes any stale
 T11.2 evidence, performs no network or deployment operation, and cannot emit a

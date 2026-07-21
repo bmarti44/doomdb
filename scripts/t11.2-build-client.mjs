@@ -27,12 +27,28 @@ fs.writeFileSync(apiPath, api, {mode: 0o644});
 
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 const mainPath = path.join(build, 'main.js');
+let main = fs.readFileSync(mainPath, 'utf8');
+const multiplayerMarker = "coop.href = '/play/multiplayer';";
+assert.equal(main.split(multiplayerMarker).length - 1, 1, 'single-player multiplayer link marker');
+main = main.replace(multiplayerMarker, "coop.href = '/multiplayer.html';");
+fs.writeFileSync(mainPath, main, {mode: 0o644});
+const multiplayerPath = path.join(build, 'multiplayer.js');
+let multiplayer = fs.readFileSync(multiplayerPath, 'utf8');
+assert.equal(multiplayer.split("'/play/multiplayer.html'").length - 1, 1, 'multiplayer share marker');
+multiplayer = multiplayer.replace("'/play/multiplayer.html'", "'/multiplayer.html'");
+fs.writeFileSync(multiplayerPath, multiplayer, {mode: 0o644});
+const multiplayerIndexPath = path.join(build, 'multiplayer.html');
+let multiplayerIndex = fs.readFileSync(multiplayerIndexPath, 'utf8');
+assert.equal((multiplayerIndex.match(/\/play\/multiplayer\.js/g) ?? []).length, 1, 'multiplayer entry marker');
+multiplayerIndex = multiplayerIndex.replace('/play/multiplayer.js', '/multiplayer.js');
+fs.writeFileSync(multiplayerIndexPath, multiplayerIndex, {mode: 0o644});
+
 const mainBytes = fs.readFileSync(mainPath), mainDigest = sha(mainBytes);
 const addressedMain = `main-${mainDigest.slice(0, 12)}.js`;
 fs.renameSync(mainPath, path.join(build, addressedMain));
 let index = fs.readFileSync(indexPath, 'utf8');
-assert.equal((index.match(/\/main\.js/g) ?? []).length, 1, 'index must contain one main entry');
-index = index.replace('/main.js', `/${addressedMain}`);
+assert.equal((index.match(/\/play\/main\.js/g) ?? []).length, 1, 'index must contain one main entry');
+index = index.replace('/play/main.js', `/${addressedMain}`);
 fs.writeFileSync(indexPath, index, {mode: 0o644});
 
 const files = fs.readdirSync(build, {recursive: true})

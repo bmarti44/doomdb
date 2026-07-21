@@ -30,7 +30,7 @@ authoritative record.
   P8.1 is complete. P9 is complete: two independent
   full-size Oracle MODEL runs produced the same 604,369 RLE rows, all 150
   frame hashes, and canonical animation SHA.
-- **Active:** P13 database-authoritative multiplayer. Co-op completion, exact
+- **Complete locally:** P13 database-authoritative multiplayer. Co-op completion, exact
   worker/ORDS recovery, deathmatch rules, per-listener audio, bounded storage,
   browser play, paced-input linearization/idempotency, sampled-ledger identity,
   forced paced-worker recovery, and the co-op two-browser 300-frame performance gate
@@ -42,15 +42,17 @@ authoritative record.
   HUD values are independently rendered from the one retained world. A
   30-minute paced soak advanced both clients from tic 136 to 59,904 with a
   bounded Java heap, 258 retained frame rows, and two checkpoints. Resource,
-  chain, lease, and session-soak acceptance is closed; stable-host extreme-tail
-  qualification remains open. The
+  chain, lease, and session-soak acceptance is closed; the stable-host
+  extreme-tail sample is retained for final P11 cloud certification. The
   verified v1 production cap is two players; three/four-player transport is
   explicitly deferred.
-- **Next:** finish stable-clock tail certification; re-verify the finished single-player +
-  multiplayer build with
-  the full T12.1/T12.2 300-frame performance protocol; then run P11 real S3 +
-  Autonomous cloud deployment as the final gate (credentials are required;
-  local dry-runs exist).
+- **Active/last:** P11 real S3 + Autonomous Database deployment. The finished
+  single-player + multiplayer build has passed the local T12.1/T12.2 protocol;
+  the final stable-host tails travel with the identical managed-ORDS sample.
+  Deterministic dry-runs, source/evaluator mutation gates, the fresh 24-domain
+  local seed observation, and the approved 13,272-command completion ledger are
+  ready. Live execution requires the external Autonomous wallet/target,
+  managed ORDS origin, pinned SQLcl, and target S3 bucket.
 - **Admission repair (2026-07-21):** `/play/` fresh-game admission is green
   after reproducing a dead Scheduler session whose fenced owner row survived.
   Expiry cleanup now force-stops and reclaims only expired owners after a
@@ -2866,6 +2868,18 @@ the clean-room engine unless it is needed to validate the new public contract.
 P11 runs only after P13 and the post-multiplayer T12.1/T12.2 re-verification.
 It deploys and verifies the finished architecture; it is not an intermediate
 dependency for multiplayer implementation or local performance work.
+
+**Execution readiness checkpoint (2026-07-21).** `verify.sh phase P11` is the
+single fail-closed entry point. The source audits, 48 isolated evaluator
+mutations, deterministic upload/database/teardown dry-runs, and secret audit
+pass. The local seed collector was exercised against Oracle and now emits all
+24 populated domains (29,596 rows); its JSON syntax and canonical sprite/audio
+asset sources were corrected after the former query failed locally. The cloud
+completion ledger is reproducibly expanded from the accepted no-cheat
+13,272-tic route and pins its terminal state/frame hashes. No live operation
+has run because this shell lacks the Autonomous connection, wallet, managed
+ORDS URL, target S3 bucket, and pinned SQLcl. Absence remains `NOT RUN`, never
+`PASS`.
 
 #### T11.1 Cloud database deployment
 

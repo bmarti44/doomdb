@@ -32,9 +32,14 @@ PASS T11.1-SOURCE-AUDIT (pinned fail-closed cloud driver)
 PASS T11.1-SOURCE-FIRST (shell/static/self 22/22; mutations 24/24; guards fail closed)
 ```
 
-External blockers are unchanged: real Autonomous Database 23ai-or-later target
-authority, `ADB_CONNECTION_STRING`, `ADB_USERNAME`, `ADB_PASSWORD`, a mode-0600
-wallet directory, its managed ORDS HTTPS schema origin, declared resource bounds,
-and a fresh accepted local seed observation. Until those exist, live capability,
+The fresh local seed prerequisite now passes against the running Oracle stack:
+24/24 populated domains and 29,596 canonical rows. This exercise also corrected
+the collector's invalid wildcard-JSON syntax and replaced three empty legacy
+sprite/audio tables with the populated canonical asset domains.
+
+External blockers are now limited to a real Autonomous Database 23ai-or-later
+target authority, `ADB_CONNECTION_STRING`, `ADB_USERNAME`, `ADB_PASSWORD`, a
+mode-0600 wallet directory, its managed ORDS HTTPS schema origin, declared
+resource bounds, and pinned SQLcl 26.2.0.181.2110. Until those exist, live capability,
 transport, deployment, catalog, seed equality, and direct API evidence remain
 `NOT RUN`; `/tmp/doomdb-t111-evidence.json` is not created.

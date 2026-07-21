@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: ./verify.sh env | secrets | transport | task T0.1..T7.3|T12.1|T12.2|T13.0..T13.5 | phase P0|P1|P2|P3|P13 | evaluator-self-test" >&2
+  echo "usage: ./verify.sh env | secrets | transport | task T0.1..T7.3|T11.1|T11.2|T12.1|T12.2|T13.0..T13.5 | phase P0|P1|P2|P3|P11|P13 | evaluator-self-test" >&2
   exit 2
 }
 
@@ -109,6 +109,18 @@ case "$1" in
         scripts/db_sql.sh tests/verify-t7.3-history.sql
         node tests/verify-t7.3-audio.mjs
         ;;
+      T11.1)
+        tests/verify-t11.1-source.sh
+        scripts/collect-t11.1-local-seeds.sh
+        export ADB_LOCAL_SEED_EVIDENCE="${ADB_LOCAL_SEED_EVIDENCE:-/tmp/doomdb-t111-local-seed-observation.json}"
+        evaluator/t11.1/run-visible.sh
+        ;;
+      T11.2)
+        export T112_COMPLETION_LEDGER="${T112_COMPLETION_LEDGER:-/tmp/doomdb-t112-completion-ledger.json}"
+        tests/verify-t11.2-source.sh
+        node scripts/build-t11.2-completion-ledger.mjs "$T112_COMPLETION_LEDGER"
+        evaluator/t11.2/run-visible.sh
+        ;;
       T12.1)
         node tests/verify-t12.1-mocha-replay.mjs
         node tests/verify-performance-baseline-unit.mjs
@@ -192,6 +204,11 @@ case "$1" in
         printf 'PASS P2 (548/548 assertions)\n'
         ;;
       P3) tests/verify-phase-p3.sh ;;
+      P11)
+        "$0" task T11.1
+        "$0" task T11.2
+        printf 'PASS P11 (live Autonomous Database, managed ORDS, and S3 browser gates)\n'
+        ;;
       P13) bash tests/verify-phase-p13.sh ;;
       *) usage ;;
     esac

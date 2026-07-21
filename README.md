@@ -10,8 +10,8 @@ client at <http://localhost:8080/play/> while the Compose stack is running.
 
 ## Current status
 
-The local implementation plan is complete through **P12**. The remaining work
-is the final **P11 managed-cloud/stable-host certification**.
+The local implementation plan is complete through **P13 and P12**. The only
+remaining work is the final **P11 managed-cloud/stable-host certification**.
 Single-player is playable end to end on the local stack. New `/play/` sessions run the
 pinned GPLv3 `AXDOOMER/mochadoom` engine (commit `c0af1322…abe93`) as Java
 schema objects inside OJVM, owned by a long-lived Scheduler worker session and
@@ -202,10 +202,11 @@ Key verified numbers (local two-core Oracle Free stack):
 
 What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 
-- **P13** — only stable-clock p99.9/max performance certification remains; the 30-minute
-  resource/chain soak, capability-secured lobby, retained worker, authentic
-  two-browser co-op exit, deathmatch rules, recovery, and selected two-player
-  throughput gates are implemented.
+- **P13 is locally complete** — the 30-minute resource/chain soak,
+  capability-secured lobby, retained worker, authentic two-browser co-op exit,
+  deathmatch rules, recovery, and selected two-player throughput gates pass.
+  Its stable-clock p99.9/max sample is part of the final P11 cloud run because
+  the local Lima VM clock is not trustworthy for extreme tails.
 - **P9 is complete** — the Oracle `MODEL`-clause title fire animation passed
   two independent full-size database runs, deterministic checks, mutation
   checks, and visual review.
@@ -213,9 +214,14 @@ What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
   driver, local raw/report evidence, 90-call cursor matrix, internal plans, and
   exact two-run 30 FPS browser chain gate are green; the local optimization
   journal selected 2 ms and stopped on the first valid distinct sub-5% pair.
-- **P11 (last, now next)** — deploy the static client to real
-  S3 and the database/AutoREST surface to Autonomous Database, then repeat the
-  packaged correctness, security, recovery, and performance protocol in cloud.
+- **P11 (last, active)** — deploy the static client to real S3 and the
+  database/AutoREST surface to Autonomous Database, then repeat the packaged
+  correctness, security, recovery, and performance protocol in cloud. The
+  deterministic dry-runs, source and mutation gates, fresh 24-domain local seed
+  evidence, and approved 13,272-command completion ledger pass. Live execution
+  is currently `NOT RUN`: this shell has no Autonomous connection/wallet/managed
+  ORDS URL, target S3 bucket, or pinned SQLcl. Run `./verify.sh phase P11` once
+  those external authorities are supplied; missing inputs cannot produce PASS.
 
 Full measurements, rejected alternatives, and acceptance gates are maintained
 in [PLAN.md](PLAN.md), the
