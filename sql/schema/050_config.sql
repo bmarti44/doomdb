@@ -21,6 +21,9 @@ using (
   select 'UNIFIED_WORKER_IDLE_SECONDS', 600, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_MAX_PACK_BYTES', 2000, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_POOL_SIZE', 4, cast(null as varchar2(4000)) from dual union all
+  -- Frozen into each match control row at start. PACED_INPUT remains an
+  -- opt-in spike until its deterministic and two-browser selection gates pass.
+  select 'MATCH_WORKER_MODE', cast(null as number), 'LOCKSTEP' from dual union all
   select 'UNIFIED_WORKER_FAILPOINT', 0, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_PARITY_INTERVAL', 0, cast(null as varchar2(4000)) from dual union all
   select 'UNIFIED_WORKER_SPLIT_USE_ENABLED', 0, cast(null as varchar2(4000)) from dual union all

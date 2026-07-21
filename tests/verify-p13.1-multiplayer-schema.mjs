@@ -5,6 +5,8 @@ const schema = fs.readFileSync(new URL(
   '../sql/schema/047_multiplayer.sql', import.meta.url), 'utf8');
 const inputOverlay = fs.readFileSync(new URL(
   '../sql/schema/050_multiplayer_input_overlay.sql', import.meta.url), 'utf8');
+const pacedInput = fs.readFileSync(new URL(
+  '../sql/schema/051_multiplayer_paced_input.sql', import.meta.url), 'utf8');
 const drop = fs.readFileSync(new URL(
   '../sql/schema/000_drop.sql', import.meta.url), 'utf8');
 const order = fs.readFileSync(new URL(
@@ -21,6 +23,8 @@ for (const table of tables) {
 assert.match(inputOverlay, /create table doom_match_input_event \(/);
 assert.match(inputOverlay, /primary key\(match_id,player_slot,input_seq\)/);
 assert.match(inputOverlay, /effective_tic number\(12\) not null/);
+assert.match(pacedInput, /worker_mode varchar2\(16\)/);
+assert.match(pacedInput, /SAMPLED_INPUT/);
 assert.match(drop, /'DOOM_MATCH_INPUT_EVENT'/);
 assert.equal((schema.match(/create table doom_match(?: |\n|\()/g) ?? []).length, 1);
 assert.match(schema, /host_capability_salt raw\(32\) not null/);
@@ -47,6 +51,8 @@ assert.ok(lines.indexOf('sql/schema/047_multiplayer.sql') <
   lines.indexOf('sql/schema/050_config.sql'));
 assert.equal(lines.filter(line => line ===
   'sql/schema/050_multiplayer_input_overlay.sql').length, 1);
+assert.equal(lines.filter(line => line ===
+  'sql/schema/051_multiplayer_paced_input.sql').length, 1);
 
 const dropPositions = [
   'DOOM_MATCH_CHECKPOINT', 'DOOM_MATCH_FRAME', 'DOOM_MATCH_COMMAND',

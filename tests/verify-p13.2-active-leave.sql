@@ -7,11 +7,12 @@ declare
   l_mode varchar2(16);l_skill number;l_episode number;l_map number;l_max number;
   l_members number;l_ready_count number;l_requester number;l_epoch number;
   l_generation number;l_tic number;l_accepted number;l_ready number;l_payload blob;
+  l_worker_mode varchar2(16);
   l_job varchar2(64);l_count number;l_bitmap varchar2(2);l_source varchar2(16);
   procedure status_ is
   begin
     doom_api.match_status(l_match,l_host,l_state,l_mode,l_skill,l_episode,l_map,
-      l_max,l_members,l_ready_count,l_requester,l_epoch,l_generation,l_tic);
+      l_max,l_members,l_ready_count,l_requester,l_epoch,l_generation,l_tic,l_worker_mode);
   end;
   procedure cleanup_ is
   begin

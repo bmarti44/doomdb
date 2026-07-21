@@ -48,7 +48,8 @@ create or replace package doom_api authid definer as
     p_requester_slot    out number,
     p_membership_epoch  out number,
     p_generation        out number,
-    p_current_tic       out number);
+    p_current_tic       out number,
+    p_worker_mode       out varchar2);
 
   procedure submit_match_step(
     p_match             in  varchar2,
@@ -121,6 +122,7 @@ create or replace package doom_api authid definer as
     p_player_capability in  varchar2,
     p_first_tic         in  number,
     p_wait_ms           in  number,
+    p_frame_count       in  number default 4,
     p_current_tic       out number,
     p_payload           out blob);
 
@@ -630,7 +632,8 @@ create or replace package body doom_api as
     p_game_mode out varchar2,p_skill out number,p_episode out number,
     p_map out number,p_max_players out number,p_member_count out number,
     p_ready_count out number,p_requester_slot out number,
-    p_membership_epoch out number,p_generation out number,p_current_tic out number
+    p_membership_epoch out number,p_generation out number,p_current_tic out number,
+    p_worker_mode out varchar2
   ) is
     l_state varchar2(16);l_expiry timestamp with time zone;
     l_host_salt raw(32);l_host_hash varchar2(64);
@@ -638,7 +641,7 @@ create or replace package body doom_api as
     p_match_state:=null;p_game_mode:=null;p_skill:=null;p_episode:=null;
     p_map:=null;p_max_players:=null;p_member_count:=null;p_ready_count:=null;
     p_requester_slot:=null;p_membership_epoch:=null;p_generation:=null;
-    p_current_tic:=null;require_match_shape(p_match);
+    p_current_tic:=null;p_worker_mode:=null;require_match_shape(p_match);
     select match_state,game_mode,skill,episode,map,max_players,
            membership_epoch,generation,current_tic,expires_at,
            host_capability_salt,host_capability_hash
@@ -653,6 +656,13 @@ create or replace package body doom_api as
       into p_member_count,p_ready_count from doom_match_member
       where match_id=p_match and member_state<>'LEFT';
     p_match_state:=l_state;
+    begin
+      select worker_mode into p_worker_mode from doom_match_worker_control
+        where match_id=p_match;
+    exception when no_data_found then
+      select text_value into p_worker_mode from doom_config
+        where config_key='MATCH_WORKER_MODE';
+    end;
     if l_state='LOBBY' and p_member_count=p_max_players and
        p_ready_count=p_max_players then
       begin
@@ -789,6 +799,8 @@ create or replace package body doom_api as
   ) is
     l_slot number;l_state varchar2(16);l_expiry timestamp with time zone;
     l_current number;l_frontier number;l_existing raw(8);l_raw raw(8);
+    l_worker_mode varchar2(16);l_prior_effective number;l_sampling_tic number;
+    l_request_status varchar2(16);
     l_now timestamp with time zone:=utc_now;
   begin
     p_accepted:=0;p_effective_tic:=null;
@@ -806,6 +818,10 @@ create or replace package body doom_api as
     if l_state<>'ACTIVE' or l_expiry<=l_now or p_generation<1 then
       fail(c_match_auth,'match unavailable');end if;
     l_slot:=player_capability_slot(p_match,p_player_capability);
+    select worker_mode,request_status,requested_tic
+      into l_worker_mode,l_request_status,l_sampling_tic
+      from doom_match_worker_control
+      where match_id=p_match and generation=p_generation;
     begin
       select ticcmd_raw,effective_tic into l_existing,p_effective_tic
         from doom_match_input_event where match_id=p_match
@@ -816,7 +832,13 @@ create or replace package body doom_api as
     select coalesce(max(input_seq),0) into l_frontier
       from doom_match_input_event where match_id=p_match and player_slot=l_slot;
     if p_input_seq<>l_frontier+1 then fail(c_bad_request,'input revision sequence');end if;
-    p_effective_tic:=l_current+2;
+    select coalesce(max(effective_tic),l_current) into l_prior_effective
+      from doom_match_input_event where match_id=p_match and player_slot=l_slot;
+    p_effective_tic:=case when l_worker_mode='PACED_INPUT'
+      then greatest(l_current+1,l_prior_effective+1,
+        case when l_request_status='PROCESSING' then l_sampling_tic+1
+             else l_current+1 end)
+      else l_current+2 end;
     insert into doom_match_input_event(match_id,player_slot,input_seq,effective_tic,
       membership_epoch,generation,ticcmd_raw,command_sha,accepted_at)
     values(p_match,l_slot,p_input_seq,p_effective_tic,p_membership_epoch,
@@ -938,26 +960,31 @@ create or replace package body doom_api as
 
   procedure poll_match_batch(
     p_match in varchar2,p_player_capability in varchar2,p_first_tic in number,
-    p_wait_ms in number,p_current_tic out number,p_payload out blob
+    p_wait_ms in number,p_frame_count in number default 4,
+    p_current_tic out number,p_payload out blob
   ) is
     l_state varchar2(16);l_expiry timestamp with time zone;
     l_epoch number;l_generation number;l_slot number;l_ready number;
     l_frame blob;l_length number;l_deadline timestamp with time zone;
     l_base_tic number;l_total number;l_skip number;
-    l_now timestamp with time zone:=utc_now;
+    l_now timestamp with time zone:=utc_now;l_worker_mode varchar2(16);
   begin
     p_payload:=null;p_current_tic:=null;require_match_shape(p_match);
     if p_first_tic is null or p_first_tic<>trunc(p_first_tic) or p_first_tic<1 or
        p_wait_ms is null or p_wait_ms<>trunc(p_wait_ms) or
-       p_wait_ms not between 0 and 5000 then fail(c_bad_request,'invalid match batch poll');end if;
+       p_wait_ms not between 0 and 5000 or p_frame_count is null or
+       p_frame_count<>trunc(p_frame_count) or p_frame_count not between 1 and 4
+       then fail(c_bad_request,'invalid match batch poll');end if;
     select match_state,expires_at,membership_epoch,generation,current_tic
       into l_state,l_expiry,l_epoch,l_generation,p_current_tic
       from doom_match where match_id=p_match;
     if l_state<>'ACTIVE' or l_expiry<=l_now or l_generation<1 then
       fail(c_match_auth,'match unavailable');end if;
     l_slot:=player_capability_slot(p_match,p_player_capability);
+    select worker_mode into l_worker_mode from doom_match_worker_control
+      where match_id=p_match and generation=l_generation;
     l_base_tic:=p_first_tic-mod(p_first_tic-1,4);
-    l_skip:=p_first_tic-l_base_tic;l_total:=4+l_skip;
+    l_skip:=p_first_tic-l_base_tic;l_total:=p_frame_count+l_skip;
     dbms_lob.createtemporary(p_payload,true,dbms_lob.call);
     dbms_lob.writeappend(p_payload,6,
       utl_raw.concat(hextoraw('444d4232'),
@@ -986,8 +1013,11 @@ create or replace package body doom_api as
     end loop;
     select current_tic into p_current_tic from doom_match
       where match_id=p_match and membership_epoch=l_epoch and generation=l_generation;
-    update doom_match_member set member_state='ACTIVE',last_seen_at=l_now,
-      disconnected_at=null where match_id=p_match and player_slot=l_slot
+    update doom_match_member set
+      member_state=case when l_worker_mode='LOCKSTEP' then 'ACTIVE' else member_state end,
+      last_seen_at=l_now,
+      disconnected_at=case when l_worker_mode='LOCKSTEP' then null else disconnected_at end
+      where match_id=p_match and player_slot=l_slot
       and member_state in('ACTIVE','DISCONNECTED')
       and membership_epoch=l_epoch and generation=l_generation;
     commit;

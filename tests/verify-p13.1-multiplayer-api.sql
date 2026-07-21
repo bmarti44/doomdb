@@ -7,13 +7,14 @@ declare
   player1_old_ varchar2(64);slot_ number;state_ varchar2(32);mode_ varchar2(16);
   skill_ number;episode_ number;map_ number;max_ number;members_ number;
   ready_ number;requester_ number;epoch_ number;generation_ number;tic_ number;
+  worker_mode_ varchar2(16);
   code1_ number;code2_ number;message1_ varchar2(4000);message2_ varchar2(4000);
   count_ number;third_ varchar2(64);
 
   procedure status_(match_id_ varchar2,capability_ varchar2) is
   begin
     doom_api.match_status(match_id_,capability_,state_,mode_,skill_,episode_,
-      map_,max_,members_,ready_,requester_,epoch_,generation_,tic_);
+      map_,max_,members_,ready_,requester_,epoch_,generation_,tic_,worker_mode_);
   end;
 
   procedure capture_status_(

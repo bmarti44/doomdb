@@ -2986,6 +2986,28 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
 
 #### T13.2 Deterministic lockstep and retained match worker
 
+**Approved paced-input amendment (2026-07-20).** The user's standing approval
+authorizes a feature-flagged `PACED_INPUT` retained-worker mode as the next
+bounded performance architecture. In that mode the browser still uses only
+generated AutoREST: authenticated input transitions append to Oracle, while the
+match's Scheduler session independently samples the latest durable transition
+at an absolute 35 Hz boundary and materializes a private, generation-fenced
+ordered command vector. That prepare transaction is the input linearization
+point and releases the match-row lock before OJVM/render work; the worker then
+advances the one authoritative engine and atomically commits hashes, events,
+POV frames, checkpoints, and the public replay frontier. A prepared vector has
+no public frame/result visibility and is resumed exactly after recovery. The committed
+`doom_match_tic.command_vector` remains the replay truth; there is no browser
+prediction or client-side world simulation. Worker mode is frozen when a match
+starts, active lineages are never converted, and `LOCKSTEP` remains executable
+as the differential oracle until paced mode passes input linearization,
+idempotency, ledger identity, 300-tic replay/parity, recovery seams,
+disconnect/leave, co-op/deathmatch, two consecutive two-browser performance
+runs, and soak. Wall-clock cadence is presentation policy and never enters the
+deterministic state/hash chain. This amendment replaces delayed future-command
+reservation only for matches explicitly created in `PACED_INPUT` mode; all
+other P13 authority, durability, security, and AutoREST rails remain unchanged.
+
 - Use server-authoritative delayed lockstep, initially two tics. Clients submit
   keyboard-state commands for bounded future tics without deriving them from
   frames. At each deadline the worker orders by slot and durably records a
@@ -3199,6 +3221,29 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   native compression, custom keyframe scans, correlated exchange lanes, client
   jitter pacing, or adaptive poll throttling. The pushed four-tic DMF4/DMF5
   candidate remains selected while a new architecture is evaluated.
+  A Sol xhigh architecture review selected a feature-flagged, absolute-clock
+  35 Hz retained worker as that next bounded experiment. It removes the cyclic
+  browser-reservation/peer/worker/poll dependency by separating the durable
+  input-transition ledger from authoritative frame production. Selection is
+  not claimed: first prove server cadence p95 at or below 28.57 ms and two
+  poll-only clients at or above 30 displayed FPS, then complete the amendment's
+  exactness, recovery, gameplay, repeat-performance, and soak gates.
+  Implementation checkpoint (2026-07-20): `PACED_INPUT` is now frozen per new
+  match behind `MATCH_WORKER_MODE`; existing `LOCKSTEP` lineages remain valid.
+  The worker samples the append-only authenticated input ledger on an absolute
+  35 Hz schedule, writes the exact applied command rows, and publishes only
+  committed database POVs. A generation-fenced prepare/render split reduced
+  input endpoint p95 to 27--36 ms by removing the match-row lock convoy.
+  Two-frame self-contained poll batches reduced ordinary poll-ready p95 to
+  63--145 ms, and incremental two-row frame retirement replaced 32-tic LOB
+  delete bursts. Tic 32 remains the mandatory native checkpoint; steady
+  checkpoints are every 1,024 tics because current recovery replays the compact
+  exact ledger. The best clean 150-frame run reached 36.03/34.99 FPS,
+  33.5/32.6 ms paint p95, and 249.3/195.0 ms input p95. The first enforced
+  300-frame run missed one player at 34.5 ms paint and 316 ms input p95, so
+  selection and the required two consecutive passes remain open. A true
+  SecureFile locator-reuse ring is rejected: its second wrap stalled around
+  tics 257--258 and regressed both clients to ~32 FPS with 42--54 ms paint p95.
 
 ## 8. Final acceptance matrix
 

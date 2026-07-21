@@ -8,6 +8,7 @@ declare
   slot_ number;state_ varchar2(32);mode_ varchar2(16);skill_ number;
   episode_ number;map_ number;max_ number;members_ number;ready_count_ number;
   requester_ number;epoch1_ number;generation1_ number;tic_ number;
+  worker_mode_ varchar2(16);
   epoch2_ number;generation2_ number;accepted_ number;ready_ number;
   payload0_ blob;payload1_ blob;count_ number;vector_ varchar2(64);
   frame0_ varchar2(64);frame1_ varchar2(64);root1_ varchar2(64);
@@ -18,7 +19,7 @@ declare
   procedure status_(match_id_ varchar2,capability_ varchar2) is
   begin
     doom_api.match_status(match_id_,capability_,state_,mode_,skill_,episode_,
-      map_,max_,members_,ready_count_,requester_,epoch1_,generation1_,tic_);
+      map_,max_,members_,ready_count_,requester_,epoch1_,generation1_,tic_,worker_mode_);
   end;
 
   procedure cleanup_(match_id_ varchar2) is

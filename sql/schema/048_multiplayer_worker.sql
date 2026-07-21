@@ -20,6 +20,7 @@ create table doom_match_worker_control (
   generation number(12) not null,
   membership_epoch number(12) not null,
   job_name varchar2(64) not null,
+  worker_mode varchar2(16) default 'LOCKSTEP' not null,
   worker_status varchar2(16) not null,
   request_status varchar2(16) not null,
   requested_tic number(12),
@@ -34,6 +35,8 @@ create table doom_match_worker_control (
   constraint doom_match_worker_control_match_fk foreign key(match_id)
     references doom_match(match_id) on delete cascade,
   constraint doom_match_worker_control_job_uq unique(job_name),
+  constraint doom_match_worker_mode_ck check(
+    worker_mode in('LOCKSTEP','PACED_INPUT')),
   constraint doom_match_worker_control_fence_ck check(
     generation>0 and membership_epoch>0 and
     (requested_tic is null or requested_tic>0)),

@@ -1,7 +1,7 @@
 import {
   createMatch, getAsset, joinMatch, matchStatus, pollMatchBatch,
   matchInputFrontier, pollMatchFrame, readyMatch, submitMatchBatch,
-  submitMatchBatchInput,
+  submitMatchBatchInput, reviseMatchInput,
   type Command, type MatchStatus
 } from './api.js';
 import {AudioPresenter} from './audio.js';
@@ -223,10 +223,22 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
   if (initial.payload === null) throw new Error('tic-zero POV is unavailable');
   const initialFrame = await decodePayload(initial.payload);
   if (initialFrame.tic !== 0) throw new Error('invalid multiplayer frontier');
+  // Asset and tic-zero loading can take seconds on a cold generated-ORDS path
+  // while a paced worker is already producing frames. Join the latest durable
+  // frontier before presentation instead of replaying that startup backlog.
+  if (status.workerMode === 'PACED_INPUT') {
+    const refreshed = await matchStatus(value.match,value.playerCapability);
+    if (refreshed.state!=='ACTIVE' ||
+        refreshed.membershipEpoch!==status.membershipEpoch ||
+        refreshed.generation<status.generation)
+      throw new Error('multiplayer startup fence changed');
+    status=refreshed;
+  }
 
   let latest: Command = {seq: 0, turn: 0, forward: 0, strafe: 0, run: 0,
     fire: 0, use: 0, weapon: 0, pause: 0, automap: 0, menu: 'NONE', cheat: ''};
   let inputSequence = initialInputSequence;
+  const paced = status.workerMode === 'PACED_INPUT';
   type InputRevision = {sequence: number; command: Command; hex: string};
   const inputQueue: InputRevision[] = [];
   const buttons = new Map<ControlName, HTMLButtonElement>();
@@ -249,9 +261,11 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
   let pendingSubmit: {tic: number; command: Command; hex: string;
     inputs?: InputRevision[]} | null = null;
   const pollingBatches = new Set<number>();
+  let pollEpoch = 0;
   let nextPollTic = currentTic + 1;
   const frameBuffer = new Map<number, Frame>();
   let nextPresentationAt = 0;
+  let presentationStarted = !paced;
   let stopped = false;
   const membershipEpoch = status.membershipEpoch;
   let generation = status.generation;
@@ -261,7 +275,7 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
   const updateHud = (): void => {
     const windowMs = paintedAt.length > 1 ? paintedAt.at(-1)! - paintedAt[0]! : 0;
     const fps = windowMs > 0 ? (paintedAt.length - 1) * 1000 / windowMs : 0;
-    hud.textContent = `${status.mode} · PLAYER ${value.playerSlot + 1} · TIC ${currentTic}\n${fps.toFixed(1)} displayed FPS · click game for mouse · F/Ctrl fire · Space use`;
+    hud.textContent = `${status.mode} · PLAYER ${value.playerSlot + 1} · TIC ${currentTic} · LAG ${Math.max(0,serverTic-currentTic)}\n${fps.toFixed(1)} displayed FPS · click game for mouse · F/Ctrl fire · Space use`;
   };
   const fail = (cause: unknown): void => {
     stopped = true;hud.className = 'error';
@@ -280,7 +294,12 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
   const pump = (): void => {
     if (stopped || performance.now() < retryAfter) return;
     const nextFrame = frameBuffer.get(currentTic + 1);
-    if (nextFrame !== undefined && performance.now() >= nextPresentationAt) {
+    if (!presentationStarted && nextFrame !== undefined &&
+        frameBuffer.has(currentTic + 2)) {
+      presentationStarted = true;nextPresentationAt = performance.now();
+    }
+    if (presentationStarted && nextFrame !== undefined &&
+        performance.now() >= nextPresentationAt) {
       frameBuffer.delete(nextFrame.tic);
       blit(canvas, applyPalette(nextFrame.indices, palette));
       audio.enqueue(nextFrame.audio, fail);
@@ -289,10 +308,27 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
       paintedAt.push(now);
       if (paintedAt.length > 60) paintedAt.shift();
       trace('present', {tic: nextFrame.tic, frameSha: nextFrame.frameSha});
-      nextPresentationAt = now + 20;
+      // A reconnect begins at Oracle's current frontier. Let an older client
+      // drain a deep authoritative buffer without skipping frames, then settle
+      // onto the worker's exact cadence once only a small jitter reserve remains.
+      nextPresentationAt = now + (paced && frameBuffer.size <= 2 ? 24 : 20);
       recovered();updateHud();
     }
-    if (!submitting && submittedTic < currentTic + 6) {
+    if (paced && !submitting && inputQueue.length > 0) {
+      submitting = true;
+      const input = inputQueue[0]!;
+      void reviseMatchInput(value.match,value.playerCapability,input.sequence,input.hex)
+        .then(result => {
+          if (result.accepted!==1 || result.membershipEpoch!==membershipEpoch ||
+              result.generation<generation) throw new Error('multiplayer input fence changed');
+          generation=result.generation;inputQueue.shift();
+          trace('input-effective',{inputSequence:input.sequence,
+            effectiveTic:result.effectiveTic,command:input.command});recovered();
+        }).catch(cause => {
+          if (transientTransportFailure(cause)) retryTransport(cause);else fail(cause);
+        }).finally(()=>{submitting=false;});
+    }
+    if (!paced && !submitting && submittedTic < currentTic + 6) {
       submitting = true;
       let request=pendingSubmit;
       if (request===null) {
@@ -353,17 +389,31 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
           else fail(cause);
         }).finally(() => {submitting = false;});
     }
-    if (pollingBatches.size < 2 && nextPollTic + 3 <= submittedTic) {
+    const pollSpan=paced?2:4;
+    if (pollingBatches.size < 2 &&
+        (paced ? nextPollTic <= currentTic + 3 : nextPollTic + 3 <= submittedTic)) {
       const firstTic = nextPollTic;
-      pollingBatches.add(firstTic);nextPollTic += 4;
-      for (let offset = 0; offset < 4; offset += 1) trace('poll', {tic: firstTic + offset});
-      void pollMatchBatch(value.match, value.playerCapability, firstTic)
+      const requestEpoch = pollEpoch;
+      pollingBatches.add(firstTic);nextPollTic += pollSpan;
+      for (let offset = 0; offset < pollSpan; offset += 1) trace('poll', {tic: firstTic + offset});
+      void pollMatchBatch(value.match, value.playerCapability,firstTic,5000,pollSpan)
         .then(async result => {
           const frames = await decodeFrameBatch(result.payload);
+          if (requestEpoch!==pollEpoch) return;
+          if (paced && paintedAt.length<20 && result.currentTic-currentTic>8) {
+            // A cold start/reconnect may leave the browser far behind a worker
+            // that never stopped. Rejoin a recent committed frontier; this
+            // skips stale presentation only and never synthesizes game state.
+            currentTic=result.currentTic-4;serverTic=result.currentTic;
+            frameBuffer.clear();nextPollTic=currentTic+1;pollEpoch+=1;
+            presentationStarted=false;nextPresentationAt=0;
+            trace('resync',{tic:currentTic});updateHud();return;
+          }
           for (const [index, frame] of frames.entries()) {
             const tic = firstTic + index;trace('ready', {tic});
             if (frame.tic !== tic) throw new Error('multiplayer frame frontier changed');
-            trace('decoded', {tic, frameSha: frame.frameSha});frameBuffer.set(tic, frame);
+            trace('decoded', {tic, frameSha: frame.frameSha});
+            if (tic>currentTic) frameBuffer.set(tic, frame);
           }
           serverTic = Math.max(serverTic, result.currentTic);recovered();
         }).catch(cause => {

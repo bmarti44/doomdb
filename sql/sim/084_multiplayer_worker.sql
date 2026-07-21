@@ -29,6 +29,7 @@ create or replace package body doom_match_worker as
   c_command_deadline_ms constant pls_integer:=2000;
   c_initial_command_deadline_ms constant pls_integer:=500;
   c_frame_retention_tics constant pls_integer:=128;
+  c_checkpoint_tics constant pls_integer:=1024;
   c_command_lead_tics constant pls_integer:=8;
 
   -- This bounded T13.2 slice advances complete two-player vectors and fills a
@@ -230,7 +231,8 @@ create or replace package body doom_match_worker as
   end;
 
   procedure process_step(
-    p_match varchar2,p_generation number,p_epoch number,p_tic number
+    p_match varchar2,p_generation number,p_epoch number,p_tic number,
+    p_paced number default 0
   ) is
     l_previous varchar2(64);l_vector_hex varchar2(64);l_applied_hex varchar2(64);
     l_status varchar2(4000);l_route_status varchar2(4000);
@@ -278,18 +280,20 @@ create or replace package body doom_match_worker as
     -- Reservation rows stay immutable for transport retry. The latest
     -- committed two-tic input transition overlays each active slot before the
     -- exact applied vector is hashed and written to the replay ledger.
-    for l_slot in 0..1 loop
-      begin
-        select ticcmd_raw into l_input from (
-          select ticcmd_raw from doom_match_input_event
-            where match_id=p_match and player_slot=l_slot
-              and membership_epoch=p_epoch and effective_tic<=p_tic
-            order by input_seq desc
-        ) where rownum=1;
-        l_vector_hex:=substr(l_vector_hex,1,l_slot*16)||rawtohex(l_input)||
-          substr(l_vector_hex,l_slot*16+17);
-      exception when no_data_found then null;end;
-    end loop;
+    if p_paced=0 then
+      for l_slot in 0..1 loop
+        begin
+          select ticcmd_raw into l_input from (
+            select ticcmd_raw from doom_match_input_event
+              where match_id=p_match and player_slot=l_slot
+                and membership_epoch=p_epoch and effective_tic<=p_tic
+              order by input_seq desc
+          ) where rownum=1;
+          l_vector_hex:=substr(l_vector_hex,1,l_slot*16)||rawtohex(l_input)||
+            substr(l_vector_hex,l_slot*16+17);
+        exception when no_data_found then null;end;
+      end loop;
+    end if;
     l_vector_hex:=lower(l_vector_hex||rpad('00',32,'0'));
     insert into doom_match_frame(match_id,tic,player_slot,membership_epoch,
       generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
@@ -347,7 +351,7 @@ create or replace package body doom_match_worker as
       hextoraw(lpad(to_char(l_membership,'fmxx'),2,'0')),
       hextoraw(lpad(to_char(l_neutral,'fmxx'),2,'0')),
       hextoraw(l_applied_hex),l_command_sha,l_previous,l_state,l_event,l_deadline,l_now);
-    if mod(p_tic,32)=0 then
+    if p_tic=32 or mod(p_tic,c_checkpoint_tics)=0 then
       insert into doom_match_checkpoint(match_id,tic,membership_epoch,generation,
         membership_bitmap,command_sha,state_sha,checkpoint_sha,
         checkpoint_bytes,checkpoint_blob,created_at)
@@ -371,14 +375,14 @@ create or replace package body doom_match_worker as
       -- Two native checkpoints are sufficient for operational inspection. The
       -- compact per-tic vector ledger remains complete for exact replay.
       delete from doom_match_checkpoint where match_id=p_match
-        and tic<p_tic-32;
+        and tic<p_tic-c_checkpoint_tics;
     end if;
     -- Response BLOBs dominate storage (~128 KiB/tic for two POVs). Retain tic
     -- zero plus a bounded late-poll window; exact restart uses command vectors
     -- and the selected frontier frames, not historical response BLOBs.
-    if mod(p_tic,32)=0 then
-      delete from doom_match_frame where match_id=p_match and tic<>0
-        and tic<p_tic-c_frame_retention_tics+1;
+    if p_tic>c_frame_retention_tics then
+      delete from doom_match_frame where match_id=p_match
+        and tic=p_tic-c_frame_retention_tics;
     end if;
     update doom_match set current_tic=p_tic,last_activity_at=l_now
       where match_id=p_match and match_state='ACTIVE' and generation=p_generation
@@ -500,29 +504,110 @@ create or replace package body doom_match_worker as
     commit;
   end;
 
+  -- PACED_INPUT linearizes at the match-row lock. Input committed before this
+  -- lock is sampled for this exact tic; input accepted afterwards is assigned
+  -- to a later frontier. The materialized command rows are the applied replay
+  -- vector, so process_step must not perform the lockstep overlay again.
+  procedure materialize_paced_vector(
+    p_match varchar2,p_generation number,p_epoch number,p_tic out number
+  ) is
+    l_now timestamp with time zone:=utc_now;
+    l_raw raw(8);l_neutral raw(8):=hextoraw('0000000000000000');
+    l_source varchar2(24);l_state varchar2(16);l_leave number;
+    l_seen timestamp with time zone;l_sha varchar2(64);l_count number;
+  begin
+    select current_tic+1 into p_tic from doom_match where match_id=p_match
+      and match_state='ACTIVE' and generation=p_generation
+      and membership_epoch=p_epoch for update;
+    select count(*) into l_count from doom_match_command where match_id=p_match
+      and tic=p_tic and generation=p_generation and membership_epoch=p_epoch;
+    if l_count not in(0,2) then
+      raise_application_error(c_error,'partial paced vector');end if;
+    if l_count=0 then for l_slot in 0..1 loop
+      select member_state,leave_tic,last_seen_at
+        into l_state,l_leave,l_seen from doom_match_member
+        where match_id=p_match and player_slot=l_slot
+          and generation=p_generation and membership_epoch=p_epoch for update;
+      if l_state='LEFT' and l_leave<=p_tic then
+        l_raw:=l_neutral;l_source:='NEUTRAL_LEFT';
+      elsif l_state='DISCONNECTED' or l_seen<l_now-interval '3' second then
+        if l_state='ACTIVE' then
+          update doom_match_member set member_state='DISCONNECTED',
+            disconnected_at=l_now where match_id=p_match and player_slot=l_slot;
+        end if;
+        l_raw:=l_neutral;l_source:='NEUTRAL_DISCONNECTED';
+      else
+        begin
+          select ticcmd_raw into l_raw from (
+            select ticcmd_raw from doom_match_input_event
+              where match_id=p_match and player_slot=l_slot
+                and membership_epoch=p_epoch and effective_tic<=p_tic
+              order by effective_tic desc,input_seq desc
+          ) where rownum=1;
+          l_source:='SAMPLED_INPUT';
+        exception when no_data_found then
+          l_raw:=l_neutral;l_source:='NEUTRAL_INITIAL';
+        end;
+      end if;
+      l_sha:=sha_raw(l_raw);
+      insert into doom_match_command(match_id,tic,player_slot,command_seq,
+        membership_epoch,generation,command_source,ticcmd_raw,command_sha,
+        submitted_at,accepted_at)
+      values(p_match,p_tic,l_slot,p_tic,p_epoch,p_generation,l_source,l_raw,
+        l_sha,l_now,l_now);
+    end loop;end if;
+    update doom_match_worker_control set request_status='PROCESSING',
+      requested_tic=p_tic,heartbeat=l_now where match_id=p_match
+      and generation=p_generation and membership_epoch=p_epoch
+      and worker_status='READY' and request_status='IDLE';
+    if sql%rowcount<>1 then
+      raise_application_error(c_error,'paced worker is not ready');
+    end if;
+    -- The prepared vector is private and generation-fenced. Releasing the
+    -- linearization lock before OJVM/render work prevents authenticated input
+    -- writers from convoying behind the full frame transaction. Public frame
+    -- visibility still begins only with process_step's authoritative commit.
+    commit;
+  end;
+
   procedure run_match(p_match in varchar2) is
     l_generation number;l_epoch number;l_status varchar2(16);l_request varchar2(16);
     l_tic number;l_stop number;l_idle number:=0;l_dispose varchar2(4000);
-    l_match_state varchar2(16);
+    l_match_state varchar2(16);l_worker_mode varchar2(16);
+    l_boundary timestamp with time zone;
+    l_delay interval day to second;l_sleep number;
   begin
-    select generation,membership_epoch into l_generation,l_epoch
+    select generation,membership_epoch,worker_mode
+      into l_generation,l_epoch,l_worker_mode
       from doom_match_worker_control where match_id=p_match;
     select match_state into l_match_state from doom_match where match_id=p_match;
     if l_match_state='LOBBY' then publish_initial(p_match,l_generation);
     elsif l_match_state='ACTIVE' then reconstruct_existing(p_match,l_generation);
     else raise_application_error(c_error,'match is not recoverable');end if;
+    l_boundary:=utc_now;
     loop
       select worker_status,request_status,requested_tic,stop_requested
         into l_status,l_request,l_tic,l_stop from doom_match_worker_control
         where match_id=p_match and generation=l_generation;
       exit when l_stop=1 or l_status<>'READY';
-      if l_request='QUEUED' then
+      if l_worker_mode='PACED_INPUT' and l_request='IDLE' then
+        l_boundary:=l_boundary+numtodsinterval(1/35,'SECOND');
+        l_delay:=l_boundary-utc_now;
+        l_sleep:=extract(day from l_delay)*86400+extract(hour from l_delay)*3600+
+          extract(minute from l_delay)*60+extract(second from l_delay);
+        if l_sleep>0 then dbms_session.sleep(l_sleep);
+        elsif l_sleep < -2/35 then l_boundary:=utc_now;end if;
+        materialize_paced_vector(p_match,l_generation,l_epoch,l_tic);
+        process_step(p_match,l_generation,l_epoch,l_tic,1);
+        l_idle:=l_idle+1;
+        if mod(l_idle,35)=0 then mark_disconnected(p_match,l_generation,l_epoch);end if;
+      elsif l_request='QUEUED' then
         update doom_match_worker_control set request_status='PROCESSING',
           heartbeat=(localtimestamp at time zone 'UTC')
           where match_id=p_match and generation=l_generation
           and membership_epoch=l_epoch and request_status='QUEUED'
           and requested_tic=l_tic;
-        if sql%rowcount=1 then commit;process_step(p_match,l_generation,l_epoch,l_tic);
+        if sql%rowcount=1 then commit;process_step(p_match,l_generation,l_epoch,l_tic,0);
         else rollback;end if;
         l_idle:=0;
       else
@@ -597,7 +682,7 @@ create or replace package body doom_match_worker as
   ) is
     l_state varchar2(16);l_epoch number;l_generation number;l_count number;
     l_job varchar2(64):='DOOM_MATCH_'||upper(p_match);l_wait number;
-    l_dummy number;l_worker_error varchar2(2000);
+    l_dummy number;l_worker_error varchar2(2000);l_worker_mode varchar2(16);
   begin
     p_match_state:=null;l_wait:=least(greatest(coalesce(p_wait_ms,30000),0),60000);
     select number_value into l_dummy from doom_config
@@ -616,10 +701,14 @@ create or replace package body doom_match_worker as
     if l_count>=4 then raise_application_error(-20702,'match worker capacity reached');end if;
     delete from doom_match_worker_control where match_id=p_match
       and worker_status in('FAILED','STOPPED');
+    select text_value into l_worker_mode from doom_config
+      where config_key='MATCH_WORKER_MODE';
+    if l_worker_mode not in('LOCKSTEP','PACED_INPUT') then
+      raise_application_error(c_error,'invalid match worker mode');end if;
     begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
     insert into doom_match_worker_control(match_id,generation,membership_epoch,
-      job_name,worker_status,request_status,heartbeat)
-    values(p_match,1,l_epoch,l_job,'STARTING','IDLE',
+      job_name,worker_mode,worker_status,request_status,heartbeat)
+    values(p_match,1,l_epoch,l_job,l_worker_mode,'STARTING','IDLE',
       (localtimestamp at time zone 'UTC'));
     commit;
     dbms_scheduler.create_job(job_name=>l_job,job_type=>'STORED_PROCEDURE',

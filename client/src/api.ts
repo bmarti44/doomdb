@@ -97,6 +97,7 @@ export type MatchStatus = {
   membershipEpoch: number;
   generation: number;
   currentTic: number;
+  workerMode: 'LOCKSTEP' | 'PACED_INPUT';
 };
 
 export async function newGame(skill = 3): Promise<NewGameResult> {
@@ -217,7 +218,8 @@ export async function matchStatus(match: string, capability: string): Promise<Ma
     requesterSlot: numberField(document, 'p_requester_slot'),
     membershipEpoch: numberField(document, 'p_membership_epoch'),
     generation: numberField(document, 'p_generation'),
-    currentTic: numberField(document, 'p_current_tic')
+    currentTic: numberField(document, 'p_current_tic'),
+    workerMode: stringField(document, 'p_worker_mode') as 'LOCKSTEP' | 'PACED_INPUT'
   };
 }
 
@@ -325,12 +327,14 @@ export async function exchangeMatchBatch(match: string, playerCapability: string
 }
 
 export async function pollMatchBatch(match: string, playerCapability: string,
-                                     firstTic: number, waitMilliseconds = 5000): Promise<{
+                                     firstTic: number, waitMilliseconds = 5000,
+                                     frameCount = 4): Promise<{
   currentTic: number; payload: string;
 }> {
   const document = await postAsync('poll_match_batch', {
     p_match: match, p_player_capability: playerCapability,
-    p_first_tic: firstTic, p_wait_ms: waitMilliseconds
+    p_first_tic: firstTic, p_wait_ms: waitMilliseconds,
+    p_frame_count: frameCount
   });
   return {currentTic: numberField(document, 'p_current_tic'),
     payload: stringField(document, 'p_payload')};

@@ -68,20 +68,21 @@ What works today, all verified by repeatable gates:
   authentic scoreboard/intermission fixtures. Each POV now receives sound
   attenuated and panned for its own Oracle-owned listener. The full-duration
   time-limit, expanded-player, and 300-frame gates remain open.
-- **Multiplayer performance is at the final tail gate.** The selected candidate
-  combines DMF5 temporal deltas, two correlated poll lanes, six warm ORDS
-  sessions, append-only input overlays fused atomically with four-command
-  reservations, and an early self-contained input-frame chain. A 300-frame,
-  27-transition diagnostic passed both players at 40.54/40.53 FPS, paint-gap
-  p95 33.1/33.0 ms, and input p95/max 245.9/247.6 and 229.0/246.2 ms. The first
-  enforced repeat narrowly missed at 33.6 ms paint p95 and 265.9 ms maximum
-  input, so two consecutive passes and the soak remain open; no 30 FPS
-  multiplayer completion claim is made yet. Follow-up A/B tests rejected raw
-  keyframes, preallocated PackBits output, and a 32-tic cross-response delta
-  chain, correlated exchange lanes, native zlib, array-only LZ4, jitter pacing,
-  and adaptive poll throttling: none repeated within both paint and input
-  limits. The four-tic, independently decodable DMF4/DMF5 candidate remains
-  deployed while repeat tail qualification and the next architecture remain open.
+- **Multiplayer performance is at the final tail gate.** New matches now freeze
+  a feature-flagged `PACED_INPUT` mode: the retained Oracle Scheduler session
+  advances the one authoritative world at 35 Hz while AutoREST independently
+  appends authenticated input transitions and polls database-authored frames.
+  Exact sampled command rows and `doom_match_tic.command_vector` remain the
+  replay truth; the browser neither predicts nor simulates. Preparing the next
+  vector before render removed the input/worker lock convoy, two-frame poll
+  batches removed the old eight-tic future wait, incremental frame retirement
+  replaced burst deletion, and steady native checkpoints moved to tic 1,024
+  because recovery currently uses the complete compact ledger. The best clean
+  150-frame run reached 36.03/34.99 FPS, 33.5/32.6 ms paint p95, and
+  249.3/195.0 ms input p95. The first enforced 300-frame run still missed one
+  player's tail (34.5 ms paint and 316 ms input p95), so two consecutive passes
+  and soak remain open; no multiplayer completion claim is made yet. SecureFile
+  locator rekey/reuse was measured and rejected after a second-wrap stall.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is
@@ -95,9 +96,10 @@ What works today, all verified by repeatable gates:
   match HTTP gates pass after a real container recreation, including exact
   generation recovery and tic-zero reconstruction.
 - **Bounded active multiplayer storage.** Each live match keeps tic zero and a
-  128-tic response ring (two 64 KB POVs per tic) plus its latest two native
-  checkpoints. The compact ordered command/state ledger stays complete for
-  exact replay; a live 160-tic gate proved the BLOB counts stop growing.
+  128-tic response ring (two POVs per tic), the required tic-32 native
+  checkpoint, and sparse steady checkpoints every 1,024 tics. The compact
+  ordered command/state ledger stays complete for exact replay; frame BLOB
+  counts remain bounded.
 - **Long-route hardening.** A complete 6,336-command save/load lineage export
   now replays byte-exactly through public AutoREST. That route exposed an
   unsigned fine-angle audio lookup after tic 8,006; the clean-room overlay now
@@ -120,7 +122,7 @@ Key verified numbers (local two-core Oracle Free stack):
 | Engine step + render + BLOB (warm, p95) | 3.2–3.9 ms |
 | Durable tic with ledger + synchronous commit (p95) | ~20 ms |
 | Single-player displayed FPS, two 300-frame routes | 30.75–32.05 |
-| Multiplayer displayed FPS, latest diagnostic (gate open) | 23.89 / 25.26 |
+| Multiplayer displayed FPS, best paced diagnostic (gate open) | 36.03 / 34.99 |
 | New game, standby-claimed vs cold construction | ~1.4 s vs ~17 s |
 | Tic-zero frame SHA-256 | `a1c9b037…d3b5` |
 | IWAD BLOB (SecureFile, SHA-verified) | 28,795,076 bytes |

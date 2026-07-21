@@ -92,7 +92,7 @@ create table doom_match_command (
   command_seq number(12) not null,
   membership_epoch number(12) not null,
   generation number(12) not null,
-  command_source varchar2(16) not null,
+  command_source varchar2(24) not null,
   ticcmd_raw raw(8) not null,
   command_sha varchar2(64) not null,
   submitted_at timestamp with time zone not null,
@@ -105,7 +105,8 @@ create table doom_match_command (
     tic>0 and command_seq>0 and membership_epoch>0 and generation>0),
   constraint doom_match_command_slot_ck check(player_slot between 0 and 3),
   constraint doom_match_command_source_ck check(
-    command_source in('SUBMITTED','NEUTRAL_DEADLINE','NEUTRAL_LEFT')),
+    command_source in('SUBMITTED','SAMPLED_INPUT','NEUTRAL_INITIAL',
+      'NEUTRAL_DISCONNECTED','NEUTRAL_DEADLINE','NEUTRAL_LEFT')),
   constraint doom_match_command_raw_ck check(vsize(ticcmd_raw)=8),
   constraint doom_match_command_sha_ck check(
     regexp_like(command_sha,'^[0-9a-f]{64}$')),

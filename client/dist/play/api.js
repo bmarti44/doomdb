@@ -163,7 +163,8 @@ export async function matchStatus(match, capability) {
         requesterSlot: numberField(document, 'p_requester_slot'),
         membershipEpoch: numberField(document, 'p_membership_epoch'),
         generation: numberField(document, 'p_generation'),
-        currentTic: numberField(document, 'p_current_tic')
+        currentTic: numberField(document, 'p_current_tic'),
+        workerMode: stringField(document, 'p_worker_mode')
     };
 }
 export async function submitMatchStep(match, playerCapability, tic, sequence, ticcmdHex) {
@@ -237,10 +238,11 @@ export async function exchangeMatchBatch(match, playerCapability, firstTic, firs
         payload: stringField(document, 'p_payload')
     };
 }
-export async function pollMatchBatch(match, playerCapability, firstTic, waitMilliseconds = 5000) {
+export async function pollMatchBatch(match, playerCapability, firstTic, waitMilliseconds = 5000, frameCount = 4) {
     const document = await postAsync('poll_match_batch', {
         p_match: match, p_player_capability: playerCapability,
-        p_first_tic: firstTic, p_wait_ms: waitMilliseconds
+        p_first_tic: firstTic, p_wait_ms: waitMilliseconds,
+        p_frame_count: frameCount
     });
     return { currentTic: numberField(document, 'p_current_tic'),
         payload: stringField(document, 'p_payload') };
