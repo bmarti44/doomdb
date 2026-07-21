@@ -1297,7 +1297,7 @@ public final class DoomDbMochaAdapter {
               (s.AbstractDoomAudio) engine.doomSound, engine.players[player].mo);
         }
         String frameSha = currentFrameSha();
-        byte[] payload = encodeDmf3(stateSha, frameSha);
+        byte[] payload = encodeDmf4(stateSha, frameSha);
         writeBlob(output, payload);
         result.append("|pov").append(player).append("FrameSha=")
             .append(frameSha).append("|pov").append(player)
@@ -1735,6 +1735,44 @@ public final class DoomDbMochaAdapter {
     // directly avoids the measured OJVM gzip tail; clients retain legacy gzip
     // decoding and detect DMF3 before attempting decompression.
     return payload;
+  }
+
+  private static byte[] encodeDmf4(String stateSha, String frameSha)
+      throws Exception {
+    byte[] raw = encodeDmf3(stateSha, frameSha);
+    int frameStart = 140 + ((raw[138] & 0xff) << 8) + (raw[139] & 0xff);
+    ByteArrayOutputStream output = new ByteArrayOutputStream(raw.length);
+    output.write(raw, 0, frameStart);
+    byte[] header = output.toByteArray();
+    header[3] = '4';
+    output.reset();
+    output.write(header, 0, header.length);
+    int source = frameStart;
+    while (source < raw.length) {
+      int run = 1;
+      while (source + run < raw.length && raw[source + run] == raw[source]
+          && run < 128) run++;
+      if (run >= 3) {
+        output.write(0x80 | (run - 1));
+        output.write(raw[source] & 0xff);
+        source += run;
+        continue;
+      }
+      int literalStart = source;
+      source += run;
+      while (source < raw.length && source - literalStart < 128) {
+        run = 1;
+        while (source + run < raw.length && raw[source + run] == raw[source]
+            && run < 128) run++;
+        if (run >= 3 || source - literalStart + run > 128) break;
+        source += run;
+      }
+      int literalLength = source - literalStart;
+      output.write(literalLength - 1);
+      output.write(raw, literalStart, literalLength);
+    }
+    byte[] packed = output.toByteArray();
+    return packed.length < raw.length ? packed : raw;
   }
 
   private static void applyControlFlags(int flags) {

@@ -4,9 +4,23 @@ import fs from 'node:fs';
 import {chromium} from 'playwright';
 
 const base = process.env.DOOMDB_PLAY_BASE_URL ?? 'http://localhost:8080';
+const performanceFrames = Number(process.env.DOOMDB_MULTIPLAYER_FRAMES ?? 0);
+const enforcePerformance = process.env.DOOMDB_PERF_DIAGNOSTIC !== '1';
+assert.ok(Number.isInteger(performanceFrames) && performanceFrames >= 0 &&
+  performanceFrames <= 300);
 const browser = await chromium.launch({headless: true});
 const hostContext = await browser.newContext({viewport: {width: 1000, height: 760}});
 const guestContext = await browser.newContext({viewport: {width: 1000, height: 760}});
+for (const context of [hostContext, guestContext]) {
+  await context.addInitScript(() => {
+    window.__doomMultiplayerTrace = [];
+    for (const name of ['input', 'submit', 'poll', 'ready', 'decoded', 'present']) {
+      addEventListener(`doom:multiplayer-${name}`, event => {
+        window.__doomMultiplayerTrace.push({name, ...event.detail});
+      });
+    }
+  });
+}
 const host = await hostContext.newPage();
 const guest = await guestContext.newPage();
 let match = '';
@@ -114,7 +128,7 @@ try {
     const hostFrontier = Number((hostHud ?? '').match(/TIC (\d+)/)?.[1] ?? 0);
     const guestFrontier = Number((guestHud ?? '').match(/TIC (\d+)/)?.[1] ?? 0);
     if (hostFrontier >= 1 && guestFrontier >= 1 &&
-        Math.abs(hostFrontier - guestFrontier) <= 1) break;
+        Math.abs(hostFrontier - guestFrontier) <= 8) break;
     await host.waitForTimeout(100);
   }
   assert.match(hostHud ?? '', /PLAYER 1/);
@@ -122,9 +136,100 @@ try {
   const hostTic = Number((hostHud ?? '').match(/TIC (\d+)/)?.[1] ?? 0);
   const guestTic = Number((guestHud ?? '').match(/TIC (\d+)/)?.[1] ?? 0);
   assert.ok(hostTic >= 1 && guestTic >= 1);
-  assert.ok(Math.abs(hostTic - guestTic) <= 1);
+  assert.ok(Math.abs(hostTic - guestTic) <= 8);
+  let performanceSummary = '';
+  if (performanceFrames > 0) {
+    const starts = await Promise.all([host, guest].map(page => page.evaluate(() =>
+      window.__doomMultiplayerTrace.filter(row => row.name === 'present').length)));
+    await Promise.all([
+      host.keyboard.down('w'), host.keyboard.down('a'),
+      guest.keyboard.down('w'), guest.keyboard.down('d')
+    ]);
+    try {
+      await Promise.all([host, guest].map((page, index) => page.waitForFunction(
+        ({start, count}) => window.__doomMultiplayerTrace
+          .filter(row => row.name === 'present').length >= start + count,
+        {start: starts[index], count: performanceFrames}, {timeout: 120000})));
+    } catch (cause) {
+      const diagnostic = await Promise.all([host, guest].map(page => page.evaluate(() => {
+        const presents = window.__doomMultiplayerTrace.filter(row => row.name === 'present');
+        return {hud: document.querySelector('[data-hud]')?.textContent ?? '',
+          totalPresents: presents.length, lastTic: presents.at(-1)?.tic ?? null};
+      })));
+      throw new Error(`multiplayer performance timeout ${JSON.stringify(diagnostic)}`,
+        {cause});
+    }
+    await Promise.all([
+      host.keyboard.up('a'), host.keyboard.up('w'),
+      guest.keyboard.up('d'), guest.keyboard.up('w')
+    ]);
+    const traces = await Promise.all([host, guest].map((page, index) =>
+      page.evaluate(({start, count}) => {
+        const all = window.__doomMultiplayerTrace;
+        const presents = all.filter(row => row.name === 'present')
+          .slice(start, start + count);
+        return {all, presents};
+      }, {start: starts[index], count: performanceFrames})));
+    const percentile = (values, fraction) => {
+      const ordered = [...values].sort((a, b) => a - b);
+      return ordered[Math.ceil(ordered.length * fraction) - 1];
+    };
+    const summaries = traces.map(({all, presents}, slot) => {
+      assert.equal(presents.length, performanceFrames);
+      assert.equal(new Set(presents.map(row => row.tic)).size,
+        performanceFrames, `player ${slot} repeated a measured tic`);
+      for (let index = 1; index < presents.length; index += 1) {
+        assert.equal(presents[index].tic, presents[index - 1].tic + 1,
+          `player ${slot} skipped measured tic ${presents[index - 1].tic}`);
+      }
+      const gaps = presents.slice(1).map((row, index) => row.at - presents[index].at);
+      const elapsed = presents.at(-1).at - presents[0].at;
+      const fps = (presents.length - 1) * 1000 / elapsed;
+      const measuredTics = new Set(presents.map(row => row.tic));
+      const submit = all.find(row => row.name === 'submit' &&
+        row.command?.forward === 1 && measuredTics.has(row.tic));
+      assert.ok(submit, `player ${slot} movement submit missing`);
+      const input = all.filter(row => row.name === 'input' &&
+        row.command?.forward === 1 && row.at <= submit.at).at(-1);
+      assert.ok(input, `player ${slot} movement input missing`);
+      const presented = presents.find(row => row.tic === submit.tic);
+      assert.ok(presented, `player ${slot} correlated presentation missing tic=${submit.tic}`);
+      const latency = presented.at - input.at;
+      const p50 = percentile(gaps, .5), p95 = percentile(gaps, .95);
+      const measuredSubmits = all.filter(row => row.name === 'submit' &&
+        measuredTics.has(row.tic));
+      const submitGaps = measuredSubmits.slice(1)
+        .map((row, index) => row.at - measuredSubmits[index].at);
+      const server = measuredSubmits.map(row => {
+        const decoded = all.find(candidate => candidate.name === 'decoded' &&
+          candidate.tic === row.tic);
+        return decoded === undefined ? null : decoded.at - row.at;
+      }).filter(value => value !== null);
+      const delivery = presents.map(row => {
+        const polled = all.find(candidate => candidate.name === 'poll' &&
+          candidate.tic === row.tic);
+        const frameReady = all.find(candidate => candidate.name === 'ready' &&
+          candidate.tic === row.tic);
+        return polled === undefined || frameReady === undefined ? null :
+          frameReady.at - polled.at;
+      }).filter(value => value !== null);
+      const decodePaint = presents.map(row => {
+        const decoded = all.find(candidate => candidate.name === 'decoded' &&
+          candidate.tic === row.tic);
+        return decoded === undefined ? null : row.at - decoded.at;
+      }).filter(value => value !== null);
+      const detail = `p${slot}=${fps.toFixed(2)}fps paint=${p50.toFixed(2)}/${p95.toFixed(2)}ms submitGap=${percentile(submitGaps, .5).toFixed(2)}/${percentile(submitGaps, .95).toFixed(2)}ms submitDecode=${percentile(server, .5).toFixed(2)}/${percentile(server, .95).toFixed(2)}ms pollReady=${percentile(delivery, .5).toFixed(2)}/${percentile(delivery, .95).toFixed(2)}ms decodePaint=${percentile(decodePaint, .5).toFixed(2)}/${percentile(decodePaint, .95).toFixed(2)}ms input=${latency.toFixed(2)}ms`;
+      if (enforcePerformance) {
+        assert.ok(fps >= 30, `player ${slot} ${detail}`);
+        assert.ok(p50 <= 33.3 && p95 <= 33.3, `player ${slot} ${detail}`);
+        assert.ok(latency <= 250, `player ${slot} ${detail}`);
+      }
+      return detail;
+    });
+    performanceSummary = ` frames=${performanceFrames} ${summaries.join(' ')}`;
+  }
   process.stdout.write(
-    `PASS P13.3-MULTIPLAYER-CLIENT mode=${requestedMode} two browsers dynamic-input ${process.env.DOOMDB_TEST_ORDS_RESTART === '1' ? 'ORDS-restart ' : ''}reconnect distinct-POVs hostTic=${hostTic} guestTic=${guestTic} (bearers redacted)\n`);
+    `PASS P13.3-MULTIPLAYER-CLIENT mode=${requestedMode} two browsers dynamic-input ${process.env.DOOMDB_TEST_ORDS_RESTART === '1' ? 'ORDS-restart ' : ''}reconnect distinct-POVs hostTic=${hostTic} guestTic=${guestTic}${performanceSummary} (bearers redacted)\n`);
 } finally {
   await browser.close();
 }

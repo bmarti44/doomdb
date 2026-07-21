@@ -1,7 +1,7 @@
-import { createMatch, getAsset, joinMatch, matchStatus, pollMatchFrame, readyMatch, submitMatchStep } from './api.js';
+import { createMatch, getAsset, joinMatch, matchStatus, pollMatchBatch, pollMatchFrame, readyMatch, submitMatchBatch } from './api.js';
 import { AudioPresenter } from './audio.js';
 import { createDoomCanvas, blit } from './canvas.js';
-import { decodeBytes, decodePayload } from './codec.js';
+import { decodeBytes, decodeFrameBatch, decodePayload } from './codec.js';
 import { bindInput } from './input.js';
 import { applyPalette, createPalette } from './palette.js';
 const style = document.createElement('style');
@@ -67,6 +67,11 @@ const game = main.querySelector('[data-game]');
 const hud = main.querySelector('[data-hud]');
 const canvas = createDoomCanvas();
 game.prepend(canvas);
+const trace = (name, detail) => {
+    window.dispatchEvent(new CustomEvent(`doom:multiplayer-${name}`, {
+        detail: { at: performance.now(), ...detail }
+    }));
+};
 const storageKey = (match) => `doomdb.match.${match}`;
 const saveLocal = (value) => {
     sessionStorage.setItem(storageKey(value.match), JSON.stringify(value));
@@ -104,6 +109,7 @@ let local = null;
 let latestStatus = null;
 let ready = false;
 let lobbyTimer = 0;
+let gameStarted = false;
 const joinUrl = (value) => {
     const url = new URL('/play/multiplayer.html', location.origin);
     url.hash = `join=${value.match}.${value.joinCapability ?? ''}`;
@@ -117,7 +123,8 @@ async function refreshLobby() {
     roomStatus.textContent = `Match ${local.match} · player ${local.playerSlot + 1}\n${latestStatus.memberCount}/${latestStatus.maxPlayers} joined · ${latestStatus.readyCount} ready · ${latestStatus.state}`;
     readyButton.textContent = ready ? 'Not ready' : 'Ready';
     readyButton.disabled = latestStatus.memberCount !== latestStatus.maxPlayers;
-    if (latestStatus.state === 'ACTIVE') {
+    if (latestStatus.state === 'ACTIVE' && !gameStarted) {
+        gameStarted = true;
         window.clearInterval(lobbyTimer);
         await startGame(local, latestStatus);
     }
@@ -178,7 +185,7 @@ function signedByte(value) {
 }
 function transientTransportFailure(cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
-    return /request failed|failed to fetch|networkerror|load failed/i.test(message);
+    return /request failed: 5\d\d|failed to fetch|networkerror|load failed/i.test(message);
 }
 function ticcmd(command) {
     const bytes = new Uint8Array(8);
@@ -212,7 +219,7 @@ async function startGame(value, status) {
     let latest = { seq: 0, turn: 0, forward: 0, strafe: 0, run: 0,
         fire: 0, use: 0, weapon: 0, pause: 0, automap: 0, menu: 'NONE', cheat: '' };
     const buttons = new Map();
-    bindInput(canvas, buttons, command => { latest = command; }, () => { }, () => {
+    bindInput(canvas, buttons, command => { latest = command; trace('input', { command }); }, () => { }, () => {
         void audio.enable();
     });
     canvas.addEventListener('click', () => {
@@ -221,9 +228,14 @@ async function startGame(value, status) {
     });
     canvas.focus();
     let currentTic = status.currentTic;
+    let serverTic = status.currentTic;
     let submittedTic = currentTic;
     let submitting = false;
-    let polling = false;
+    const pollingBatches = new Set();
+    let nextPollTic = currentTic + 1;
+    let pendingSubmit = null;
+    const frameBuffer = new Map();
+    let nextPresentationAt = 0;
     let stopped = false;
     const membershipEpoch = status.membershipEpoch;
     let generation = status.generation;
@@ -258,18 +270,44 @@ async function startGame(value, status) {
     const pump = () => {
         if (stopped || performance.now() < retryAfter)
             return;
-        const target = currentTic + 1;
-        if (!submitting && submittedTic < target) {
+        const nextFrame = frameBuffer.get(currentTic + 1);
+        if (nextFrame !== undefined && performance.now() >= nextPresentationAt) {
+            frameBuffer.delete(nextFrame.tic);
+            blit(canvas, applyPalette(nextFrame.indices, palette));
+            audio.enqueue(nextFrame.audio, fail);
+            currentTic = nextFrame.tic;
+            const now = performance.now();
+            paintedAt.push(now);
+            if (paintedAt.length > 60)
+                paintedAt.shift();
+            trace('present', { tic: nextFrame.tic, frameSha: nextFrame.frameSha });
+            nextPresentationAt = now + 28;
+            recovered();
+            updateHud();
+        }
+        if (!submitting && submittedTic < serverTic + 8) {
             submitting = true;
-            void submitMatchStep(value.match, value.playerCapability, target, target, ticcmd(latest)).then(result => {
-                if (result.accepted !== 1 || result.generation < generation ||
+            const request = pendingSubmit ?? {
+                tic: submittedTic + 1, command: { ...latest }, hex: ticcmd(latest)
+            };
+            pendingSubmit = request;
+            for (let offset = 0; offset < 4; offset += 1) {
+                trace('submit', { tic: request.tic + offset, command: request.command });
+            }
+            void submitMatchBatch(value.match, value.playerCapability, request.tic, request.tic, request.hex.repeat(4)).then(result => {
+                if (result.accepted !== 4 || result.generation < generation ||
                     result.membershipEpoch !== membershipEpoch) {
                     throw new Error('multiplayer submit fence changed');
                 }
                 generation = result.generation;
-                submittedTic = target;
+                submittedTic = request.tic + 3;
+                pendingSubmit = null;
                 recovered();
             }).catch(async (cause) => {
+                if (transientTransportFailure(cause)) {
+                    retryTransport(cause);
+                    return;
+                }
                 // The worker may have durably supplied this slot's neutral command
                 // while a tab was suspended or reconnecting. Refresh instead of
                 // treating that expected late-submit rejection as a fatal error.
@@ -279,8 +317,15 @@ async function startGame(value, status) {
                     refreshed.membershipEpoch !== membershipEpoch)
                     throw cause;
                 generation = refreshed.generation;
+                // A deadline-neutralized batch can be older than the bounded frame
+                // ring. Resume at the durable frontier; ordinary transport retries
+                // remain exact and never enter this authoritative rejection path.
                 currentTic = Math.max(currentTic, refreshed.currentTic);
-                submittedTic = currentTic;
+                serverTic = Math.max(serverTic, refreshed.currentTic);
+                submittedTic = Math.max(submittedTic, refreshed.currentTic);
+                nextPollTic = currentTic + 1;
+                frameBuffer.clear();
+                pendingSubmit = null;
                 recovered();
                 updateHud();
             }).catch(cause => {
@@ -290,29 +335,32 @@ async function startGame(value, status) {
                     fail(cause);
             }).finally(() => { submitting = false; });
         }
-        if (!polling && submittedTic >= target) {
-            polling = true;
-            void pollMatchFrame(value.match, value.playerCapability, target, 1000)
+        if (pollingBatches.size < 2 && nextPollTic + 3 <= submittedTic) {
+            const firstTic = nextPollTic;
+            pollingBatches.add(firstTic);
+            nextPollTic += 4;
+            for (let offset = 0; offset < 4; offset += 1) {
+                trace('poll', { tic: firstTic + offset });
+            }
+            void pollMatchBatch(value.match, value.playerCapability, firstTic)
                 .then(async (result) => {
-                if (result.payload === null)
-                    return;
-                const frame = await decodePayload(result.payload);
-                if (frame.tic !== target)
-                    throw new Error('multiplayer frame frontier changed');
-                blit(canvas, applyPalette(frame.indices, palette));
-                audio.enqueue(frame.audio, fail);
-                currentTic = result.currentTic;
-                paintedAt.push(performance.now());
-                if (paintedAt.length > 60)
-                    paintedAt.shift();
+                const frames = await decodeFrameBatch(result.payload);
+                for (const [index, frame] of frames.entries()) {
+                    const tic = firstTic + index;
+                    trace('ready', { tic });
+                    if (frame.tic !== tic)
+                        throw new Error('multiplayer frame frontier changed');
+                    trace('decoded', { tic, frameSha: frame.frameSha });
+                    frameBuffer.set(tic, frame);
+                }
+                serverTic = Math.max(serverTic, result.currentTic);
                 recovered();
-                updateHud();
             }).catch(cause => {
                 if (transientTransportFailure(cause))
                     retryTransport(cause);
                 else
                     fail(cause);
-            }).finally(() => { polling = false; });
+            }).finally(() => { pollingBatches.delete(firstTic); });
         }
     };
     updateHud();

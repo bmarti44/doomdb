@@ -163,6 +163,40 @@ async function sha256(bytes) {
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
     return Array.from(digest, value => value.toString(16).padStart(2, '0')).join('');
 }
+async function decodeRawFrame(bytes) {
+    if (bytes.length < 4 || !/^(?:DMF3|DMF4)$/.test(ascii(bytes, 0, 4))) {
+        throw new TypeError('batched frame envelope is invalid');
+    }
+    const decoded = binaryFrameFrom(bytes);
+    if (decoded.frameSha !== await sha256(decoded.indices)) {
+        throw new TypeError('payload frame hash is invalid');
+    }
+    return { tic: decoded.tic, mode: decoded.mode, complete: decoded.complete,
+        frameSha: decoded.frameSha, indices: decoded.indices, audio: decoded.audio };
+}
+export async function decodeFrameBatch(encoded) {
+    const bytes = base64Bytes(encoded);
+    if (bytes.length < 5 || ascii(bytes, 0, 4) !== 'DMB1' || bytes[4] !== 4) {
+        throw new TypeError('frame batch header is invalid');
+    }
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const frames = [];
+    let offset = 5;
+    for (let index = 0; index < 4; index += 1) {
+        if (offset + 4 > bytes.length)
+            throw new TypeError('frame batch length is invalid');
+        const length = view.getUint32(offset, false);
+        offset += 4;
+        if (length === 0 || offset + length > bytes.length) {
+            throw new TypeError('frame batch length is invalid');
+        }
+        frames.push(await decodeRawFrame(bytes.slice(offset, offset + length)));
+        offset += length;
+    }
+    if (offset !== bytes.length)
+        throw new TypeError('frame batch trailing bytes are invalid');
+    return frames;
+}
 export async function decodePayload(encoded) {
     const bytes = base64Bytes(encoded);
     let inflated;

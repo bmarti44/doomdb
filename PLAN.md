@@ -8,7 +8,7 @@ This document is the implementation contract. A task is not complete because a
 demo looks plausible or because a subset passes. It is complete only when its
 listed acceptance command succeeds without weakening an existing check.
 
-## Status summary (updated 2026-07-19)
+## Status summary (updated 2026-07-20)
 
 Orientation only; the task cards and dated checkpoints in Section 7 are the
 authoritative record.
@@ -18,7 +18,7 @@ authoritative record.
   Doom build, bounded OJVM adapter, deterministic command/audio/persistence
   bridge, resident worker + AutoREST cutover). T10.1/T10.2 shipped the public
   package and thin client for the SQL engine and carry forward under Mocha.
-- **Active:** T12.M5 gameplay/performance selection. Local 30 FPS is
+- **Complete:** T12.M5 gameplay/performance selection. Single-player local 30 FPS is
   requalified (two independent 300-frame routes, identical frame-chain SHA);
   the 2026-07-19 checkpoints added worker-admission self-healing, bounded
   eviction, the canonical presentation contract, collision-free key bindings,
@@ -30,7 +30,12 @@ authoritative record.
   P8.1 is complete. P9 is complete: two independent
   full-size Oracle MODEL runs produced the same 604,369 RLE rows, all 150
   frame hashes, and canonical animation SHA.
-- **Next:** implement P13 multiplayer; re-verify the finished single-player +
+- **Active:** P13 database-authoritative multiplayer. Co-op completion, exact
+  worker/ORDS recovery, deathmatch rules, per-listener audio, bounded storage,
+  and browser play are green. T13.5 performance remains open: the latest
+  reproducible two-browser diagnostic is 23.89/25.26 FPS with 339–637 ms input
+  latency; it is not a 30 FPS pass.
+- **Next:** finish P13 performance and soak; re-verify the finished single-player +
   multiplayer build with
   the full T12.1/T12.2 300-frame performance protocol; then run P11 real S3 +
   Autonomous cloud deployment as the final gate (credentials are required;
@@ -3147,6 +3152,17 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   exhaustion during concurrent retained-match initialization. Static ownership,
   lifecycle HTTP, full retained-worker, neutral deadline, checkpoint, exact
   replay, and public generation-recovery gates pass on the recreated stack.
+- Performance checkpoint (2026-07-20): detailed browser tracing isolated the
+  original 10–14 FPS path as a serial submit → worker → poll chain. The current
+  candidate uses ordered four-command batches, independent correlated frame
+  polls, bounded exact-frame buffering, and multiplayer-only DMF4 RLE (a sampled
+  frame fell from 64,142 to 20,665 bytes without changing frame/state SHA). The
+  824-class OJVM graph is deployed and native-compiled at jar SHA
+  `43a7080817a2195f96506385e28e3d0c3f03f390ab7daa97925ea8bff7c770b8`.
+  A 30-frame diagnostic is currently 23.89/25.26 FPS and 339–637 ms input
+  latency; therefore the 300-frame/30 FPS gate remains open. Eight-frame and
+  over-concurrent-poll variants are recorded as rejected because they raised
+  input latency or ORDS contention.
 
 ## 8. Final acceptance matrix
 

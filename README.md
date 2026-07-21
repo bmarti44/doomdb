@@ -68,6 +68,12 @@ What works today, all verified by repeatable gates:
   authentic scoreboard/intermission fixtures. Each POV now receives sound
   attenuated and panned for its own Oracle-owned listener. The full-duration
   time-limit, expanded-player, and 300-frame gates remain open.
+- **Multiplayer performance is still open.** The retained two-POV engine itself
+  is fast (5.670 ms p95), and multiplayer-only DMF4 RLE cuts a sampled response
+  from 64,142 to 20,665 bytes with identical pixels/hashes. The latest stable
+  two-browser diagnostic is 23.89/25.26 FPS with 339–637 ms corresponding-input
+  latency, so it is not yet the required 30 FPS pass. The active work is the
+  bounded command/poll pipeline and its 300-frame gate.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is
@@ -105,7 +111,8 @@ Key verified numbers (local two-core Oracle Free stack):
 | --- | --- |
 | Engine step + render + BLOB (warm, p95) | 3.2–3.9 ms |
 | Durable tic with ledger + synchronous commit (p95) | ~20 ms |
-| Displayed FPS, two independent 300-frame routes | 30.75–32.05 |
+| Single-player displayed FPS, two 300-frame routes | 30.75–32.05 |
+| Multiplayer displayed FPS, latest diagnostic (gate open) | 23.89 / 25.26 |
 | New game, standby-claimed vs cold construction | ~1.4 s vs ~17 s |
 | Tic-zero frame SHA-256 | `a1c9b037…d3b5` |
 | IWAD BLOB (SecureFile, SHA-verified) | 28,795,076 bytes |

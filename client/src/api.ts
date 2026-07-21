@@ -240,6 +240,55 @@ export async function submitMatchStep(match: string, playerCapability: string,
   };
 }
 
+export async function submitMatchBatch(match: string, playerCapability: string,
+                                       firstTic: number, firstSequence: number,
+                                       ticcmdHex: string): Promise<{
+  accepted: number; membershipEpoch: number; generation: number;
+}> {
+  const document = await post('submit_match_batch', {
+    p_match: match, p_player_capability: playerCapability,
+    p_first_tic: firstTic, p_first_command_seq: firstSequence,
+    p_ticcmd_hex: ticcmdHex
+  });
+  return {
+    accepted: numberField(document, 'p_accepted'),
+    membershipEpoch: numberField(document, 'p_membership_epoch'),
+    generation: numberField(document, 'p_generation')
+  };
+}
+
+export async function exchangeMatchBatch(match: string, playerCapability: string,
+                                         firstTic: number, firstSequence: number,
+                                         ticcmdHex: string, waitMilliseconds = 1000): Promise<{
+  accepted: number; membershipEpoch: number; generation: number;
+  currentTic: number; payload: string;
+}> {
+  const document = await postAsync('exchange_match_batch', {
+    p_match: match, p_player_capability: playerCapability,
+    p_first_tic: firstTic, p_first_command_seq: firstSequence,
+    p_ticcmd_hex: ticcmdHex, p_wait_ms: waitMilliseconds
+  });
+  return {
+    accepted: numberField(document, 'p_accepted'),
+    membershipEpoch: numberField(document, 'p_membership_epoch'),
+    generation: numberField(document, 'p_generation'),
+    currentTic: numberField(document, 'p_current_tic'),
+    payload: stringField(document, 'p_payload')
+  };
+}
+
+export async function pollMatchBatch(match: string, playerCapability: string,
+                                     firstTic: number, waitMilliseconds = 5000): Promise<{
+  currentTic: number; payload: string;
+}> {
+  const document = await postAsync('poll_match_batch', {
+    p_match: match, p_player_capability: playerCapability,
+    p_first_tic: firstTic, p_wait_ms: waitMilliseconds
+  });
+  return {currentTic: numberField(document, 'p_current_tic'),
+    payload: stringField(document, 'p_payload')};
+}
+
 export async function pollMatchFrame(match: string, playerCapability: string,
                                      tic: number, waitMilliseconds = 1000): Promise<{
   currentTic: number; payload: string | null;

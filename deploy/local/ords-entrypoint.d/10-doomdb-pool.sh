@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# The selected browser pipeline can have four submits and two frame polls in
-# flight. Keep exactly six physical sessions from startup: allowing UCP to grow
+# The two-player exchange pipeline holds two correlated requests in flight.
+# Keep six physical sessions warm so gameplay and bounded control/recovery work
+# never wait for pool growth: allowing UCP to grow
 # the pool mid-route makes each new session describe generated AutoREST
 # procedures through USER_PROCEDURES/USER_ARGUMENTS, which stalls every cursor
 # sharing those metadata statements. Long reuse limits then preserve the warm

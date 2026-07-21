@@ -48,9 +48,12 @@ assert.match(worker, /route_status=case when l_route_diagnostics=1 then l_route_
 assert.match(worker, /insert into doom_match_route_trace/);
 assert.match(worker, /l_existing<>p_ticcmd_raw or l_existing_seq<>p_command_seq/);
 assert.match(worker, /p_command_seq<>l_seq_frontier\+1/);
-assert.match(worker, /c_command_deadline_ms constant pls_integer:=75/);
+assert.match(worker, /c_command_deadline_ms constant pls_integer:=2000/);
 assert.match(worker, /c_initial_command_deadline_ms constant pls_integer:=500/);
 assert.match(worker, /c_frame_retention_tics constant pls_integer:=128/);
+assert.match(worker, /c_command_lead_tics constant pls_integer:=8/);
+assert.match(worker, /p_tic not between l_current\+1/);
+assert.match(worker, /l_next_count=2 then 'QUEUED'/);
 assert.match(worker, /delete from doom_match_frame where match_id=p_match and tic<>0/);
 assert.match(worker, /delete from doom_match_checkpoint where match_id=p_match/);
 assert.match(worker, /'NEUTRAL_DEADLINE'/);
