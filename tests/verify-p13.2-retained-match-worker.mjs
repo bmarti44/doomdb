@@ -71,6 +71,10 @@ assert.match(api, /member_state in\('ACTIVE','DISCONNECTED'\)/);
 assert.match(worker, /if p_tic=32 or mod\(p_tic,c_checkpoint_tics\)=0 then/);
 assert.match(worker, /procedure materialize_paced_vector/);
 assert.match(worker, /worker_mode='PACED_INPUT'/);
+assert.match(worker, /l_boundary_ticks:=dbms_utility\.get_time/);
+assert.match(worker, /dbms_session\.sleep\(l_delay_ticks\/100\)/);
+assert.doesNotMatch(worker, /l_boundary:=utc_now/,
+  'wall-clock corrections must not pace the retained worker');
 assert.match(worker, /request_status='PROCESSING'/);
 assert.match(worker, /commit;\s*end;\s*\n\s*procedure run_match/);
 assert.match(worker, /l_checkpoint_status:=doom_mocha_save\(l_checkpoint\)/);

@@ -8,6 +8,8 @@ const calls = fs.readFileSync(new URL(
   '../sql/accel/030_mochadoom_calls.sql', import.meta.url), 'utf8');
 const consistencyPatch = fs.readFileSync(new URL(
   '../patches/mochadoom/0008-ojvm-consistency-ring.patch', import.meta.url), 'utf8');
+const presentationPatch = fs.readFileSync(new URL(
+  '../patches/mochadoom/0011-ojvm-multiplayer-presentation.patch', import.meta.url), 'utf8');
 
 for (const entrypoint of [
   'multiplayerNewGamePayloadsSafe', 'multiplayerStepPayloadsSafe',
@@ -33,13 +35,19 @@ assert.match(adapter, /engine\.doomdbConsistency\(player, consistencyBuffer\)/);
 assert.match(consistencyPatch, /public short doomdbConsistency/);
 assert.match(adapter, /\|routeDiag=/);
 assert.match(adapter, /private static String multiplayerRouteDiagnostic/);
-assert.match(adapter, /engine\.consoleplayer = savedConsole/);
-assert.match(adapter, /engine\.displayplayer = savedDisplay/);
+assert.match(adapter, /restoreMultiplayerPresentationPlayer\(savedConsole, savedDisplay\)/);
 assert.match(adapter, /POV render mutated world/);
 assert.match(adapter, /co-op pickup contention failed/);
 assert.match(adapter, /co-op shared key failed/);
 assert.match(adapter, /simultaneous player actions failed/);
 assert.match(adapter, /per-listener spatial audio failed/);
+assert.match(adapter, /player color translation/);
+assert.match(adapter, /per-player HUD projection missing/);
+assert.match(adapter, /selectMultiplayerPresentationPlayer\(player\)/);
+assert.match(adapter, /engine\.statusBar\.doomdbDisplayPlayer\(player\)/);
+assert.match(adapter, /engine\.headsUp\.doomdbDisplayPlayer\(player\)/);
+assert.match(presentationPatch, /Retarget those existing widgets in place/);
+assert.match(presentationPatch, /w_health\.n\.numarray = plyr\.health/);
 assert.match(adapter, /DummySFX\.drainEventsFor/);
 assert.match(adapter, /MULTI_INITIAL/);
 assert.match(adapter, /previousStateSha \+ '\|' \+ membership/);

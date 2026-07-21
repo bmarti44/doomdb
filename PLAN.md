@@ -8,7 +8,7 @@ This document is the implementation contract. A task is not complete because a
 demo looks plausible or because a subset passes. It is complete only when its
 listed acceptance command succeeds without weakening an existing check.
 
-## Status summary (updated 2026-07-20)
+## Status summary (updated 2026-07-21)
 
 Orientation only; the task cards and dated checkpoints in Section 7 are the
 authoritative record.
@@ -37,7 +37,12 @@ authoritative record.
   are green. Two consecutive enforced runs reached 35.18/34.80 and
   35.18/34.85 FPS; paint p95 stayed at 32.2--32.7 ms and input p95 at
   145.3--181.9 ms.
-  T13.5 soak and the remaining gameplay-breadth fixtures remain open. The
+  The real two-browser canonical co-op route now presents all 762 consecutive
+  tics and reaches its exact terminal state hash; per-player sprite colors and
+  HUD values are independently rendered from the one retained world. A
+  120-second paced soak advanced both clients from tic 104 to 4,187 with a
+  flat Java heap, 258 retained frame rows, and two checkpoints. The 30-minute
+  soak remains open. The
   verified v1 production cap is two players; three/four-player transport is
   explicitly deferred.
 - **Next:** finish P13 gameplay breadth and soak; re-verify the finished single-player +
@@ -52,6 +57,16 @@ authoritative record.
   reserve eight Scheduler job slaves (four retained workers plus dispatch and
   maintenance headroom). The stale-owner live regression and warm browser
   movement/fire gate pass.
+- **Local timer qualification (2026-07-21):** a Sol xhigh audit correlated
+  98.7% of 865 Oracle `Time stalled` alerts with Lima's 10-second guest-clock
+  corrections on this Colima host. Both VZ and an isolated native-x86 QEMU
+  profile repeated the drift, so tail-sensitive FPS evidence from a window
+  containing an alert is provisional. The retained match cadence uses
+  `DBMS_UTILITY.GET_TIME` rather than wall time; the local database now uses a
+  two-vCPU cpuset instead of CFS quota and grants only `SYS_NICE` so VKTM/LGWR
+  start without ORA-00800. Final local tail acceptance requires a stable-clock
+  native Linux/OCI rerun with max/p99.9 evidence; correctness hashes remain
+  valid here. The live single-player gate is green after these changes.
 - **Known cost:** cold Mocha engine construction in a fresh worker session is
   ~10–20 s depending on host load. The selected pre-warmed standby worker
   (2026-07-19 checkpoint) reduces a standby-claimed new game to ~1.4 s,
@@ -2886,9 +2901,11 @@ deployment gate.
 - Record separate out-of-band timers for renderer materialization, RLE,
   canonical JSON aggregation, frame hashing, UTF-8 conversion, gzip, response
   copy/ORDS marshaling, browser decode, and canvas blit. Measure one-command and
-  four-command STEP latency locally and on managed ORDS.
-- Accept: bound statement shapes remain stable across poses/commands and the
-  complete raw/report artifact exists.
+  four-command STEP latency locally. Package the identical probe for managed
+  ORDS, but execute that cloud half only inside final P11.
+- Accept locally: bound statement shapes remain stable across poses/commands and
+  the complete local raw/report artifact exists. P11 appends the managed-ORDS
+  samples before final project acceptance.
 - Reuse T12.0 artifacts only as ancestry and local diagnostic evidence. Capture
   the complete 300-frame local and cloud baseline here; the pulled-forward gate
   does not satisfy or shorten this acceptance contract.
@@ -2904,8 +2921,10 @@ deployment gate.
   T12.0 revision as the initial candidate state, not as proof of final local or
   cloud performance. MLE and UTL_TCP remain out of scope under Section 1.8.
 - Stop only under Section 6.6. Record every attempt, including regressions.
-- Accept: all correctness and mutation tests remain green and the final report
-  states the highest verified local and cloud FPS without a marketing estimate.
+- Accept locally: all correctness and mutation tests remain green and the report
+  states the highest verified local FPS without a marketing estimate. The same
+  report receives its verified cloud FPS during final P11; no cloud work runs
+  ahead of that gate.
 
 ### P13 - Database-authoritative multiplayer
 
@@ -3308,6 +3327,34 @@ other P13 authority, durability, security, and AutoREST rails remain unchanged.
   ORDS restart/re-fencing, bounded retention, co-op, and deathmatch browser
   gates pass. The consecutive enforced 300-frame results are 35.18/34.80 and
   35.18/34.85 FPS, 32.2--32.7 ms paint p95, and 145.3--181.9 ms input p95.
+  Multiplayer presentation and soak checkpoint (2026-07-21): one retained
+  engine now retargets the existing status-bar and heads-up widgets for each
+  POV without recreating them; deterministic probes prove player color
+  translations `0/1` and distinct HUD-region hashes. The public two-browser
+  canonical co-op route presented every tic 1--762 without a skip and matched
+  terminal state SHA `dd7c3f04e66ffdee72f303a442a95d354603aaa4638ac63d9d2956971f1b59b7`.
+  A 120-second production-paced soak advanced both clients from tic 104 to
+  4,187, retained 258 frame rows/two checkpoints, held Java session heap flat
+  at 3,409,920 bytes, and recovered one authoritative resync per client. Four
+  disconnect-neutral tics were correctly bounded to that recovery; deadline
+  and leave substitution remained zero. The soak gate now requires a final
+  consecutive post-resync run and correlates any disconnect-neutral interval
+  with a recorded recovery of at most 30 seconds. The full 30-minute run is
+  still required.
+  Local-host timing finding (2026-07-21): failed repeats were traced outside
+  the renderer. Colima 0.10.1/Lima 2.1.1 steps the guest clock backward about
+  every ten seconds on this host; 98.7% of 865 Oracle VKTM `Time stalled`
+  alerts aligned within 1.5 seconds. Restarting VZ and testing a separate
+  native-x86 QEMU profile (generic TSC, host CPU, and HPET trials) did not stop
+  the corrections. FPS tail evidence from an affected interval is therefore
+  provisional even though browser timers truthfully show the degraded user
+  experience and deterministic hashes remain valid. Match pacing now derives
+  from monotonic `DBMS_UTILITY.GET_TIME`; Oracle Free uses a two-vCPU cpuset
+  instead of CFS quota, and the database container has only `SYS_NICE`, which
+  removes the VKTM/LGWR priority startup error. A live single-player rerun
+  passed at 36.7 ms input-to-submit and 207.9 ms input-to-correlated-paint.
+  Final P13 performance/soak acceptance must be repeated on stable-clock native
+  Linux or OCI and report p99.9/max gaps in addition to the existing p50/p95.
 
 ## 8. Final acceptance matrix
 

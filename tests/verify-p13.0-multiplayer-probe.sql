@@ -48,6 +48,10 @@ begin
   equal_(field_(first_,'sharedKey'),'1','netgame shared key');
   equal_(field_(first_,'simultaneousActions'),'1','simultaneous fire/use');
   equal_(field_(first_,'spatialAudio'),'1','per-listener spatial audio');
+  equal_(field_(first_,'playerColors'),'0/1','player color translations');
+  if field_(first_,'hud0Sha')=field_(first_,'hud1Sha') then
+    raise_application_error(-20000,'per-player HUDs collapsed');
+  end if;
   if field_(first_,'command0')=field_(first_,'command1') then
     raise_application_error(-20000,'distinct slot commands collapsed');
   end if;
@@ -56,6 +60,8 @@ begin
   end if;
   if not regexp_like(field_(first_,'pov0Sha'),'^[0-9a-f]{64}$') or
      not regexp_like(field_(first_,'pov1Sha'),'^[0-9a-f]{64}$') or
+     not regexp_like(field_(first_,'hud0Sha'),'^[0-9a-f]{64}$') or
+     not regexp_like(field_(first_,'hud1Sha'),'^[0-9a-f]{64}$') or
      not regexp_like(field_(first_,'renderStateSha'),'^[0-9a-f]{64}$') then
     raise_application_error(-20000,'malformed multiplayer hash');
   end if;

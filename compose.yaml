@@ -24,7 +24,13 @@ services:
     # leaves java_jit_enabled=TRUE without a usable JIT code cache.
     tmpfs:
       - /dev/shm:rw,exec,suid,size=256m,mode=1777
-    cpus: 2.0
+    # Keep Oracle Free on two vCPUs without CFS quota throttling the entire
+    # database cgroup at the end of each quota period. SYS_NICE lets VKTM and
+    # LGWR obtain Oracle's requested scheduling priority instead of starting
+    # with ORA-00800 [Set Priority Failed].
+    cpuset: "0,1"
+    cap_add:
+      - SYS_NICE
     # The retained OJVM renderer keeps immutable map/asset packs plus JIT code
     # beside Oracle's 1 GiB SGA.  A 2 GiB cgroup ceiling OOM-kills shadow
     # processes during the 300-frame parity gate; 4 GiB leaves deterministic

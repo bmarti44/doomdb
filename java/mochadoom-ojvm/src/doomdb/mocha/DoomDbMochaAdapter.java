@@ -730,6 +730,14 @@ public final class DoomDbMochaAdapter {
       if (playerMobjs != 2) {
         throw new IllegalStateException("player mobj count " + playerMobjs);
       }
+      int playerColor0 = (int) ((engine.players[0].mo.flags & mobj_t.MF_TRANSLATION)
+          >>> mobj_t.MF_TRANSSHIFT);
+      int playerColor1 = (int) ((engine.players[1].mo.flags & mobj_t.MF_TRANSLATION)
+          >>> mobj_t.MF_TRANSSHIFT);
+      if (playerColor0 != 0 || playerColor1 != 1) {
+        throw new IllegalStateException("player color translation "
+            + playerColor0 + "/" + playerColor1);
+      }
 
       // Face the authored E1M1 co-op starts toward one another. This makes the
       // two immutable POV renders exercise player-sprite projection rather
@@ -755,35 +763,47 @@ public final class DoomDbMochaAdapter {
         throw new IllegalStateException("executed command vector mismatch");
       }
 
-      String beforeRender = multiplayerStateSha(2);
       int savedDisplay = engine.displayplayer;
       String frame0;
       String frame1;
+      String hud0;
+      String hud1;
       int visible0;
       int visible1;
+      engine.players[0].health[0] = engine.players[0].mo.health = 91;
+      engine.players[1].health[0] = engine.players[1].mo.health = 73;
+      String beforeRender = multiplayerStateSha(2);
+      int savedConsole = engine.consoleplayer;
       try {
-        engine.displayplayer = 0;
+        selectMultiplayerPresentationPlayer(0);
         engine.Display();
         frame0 = currentFrameSha();
+        hud0 = hex(MessageDigest.getInstance("SHA-256").digest(
+            Arrays.copyOfRange(currentFrame(), 320 * 168, 320 * 200)));
         visible0 = engine.sceneRenderer.getVisSpriteManager().getNumVisSprites();
         if (!beforeRender.equals(multiplayerStateSha(2))) {
           throw new IllegalStateException("player 0 render mutated world");
         }
-        engine.displayplayer = 1;
+        selectMultiplayerPresentationPlayer(1);
         engine.Display();
         frame1 = currentFrameSha();
+        hud1 = hex(MessageDigest.getInstance("SHA-256").digest(
+            Arrays.copyOfRange(currentFrame(), 320 * 168, 320 * 200)));
         visible1 = engine.sceneRenderer.getVisSpriteManager().getNumVisSprites();
         if (!beforeRender.equals(multiplayerStateSha(2))) {
           throw new IllegalStateException("player 1 render mutated world");
         }
       } finally {
-        engine.displayplayer = savedDisplay;
+        restoreMultiplayerPresentationPlayer(savedConsole, savedDisplay);
       }
       if (frame0.equals(frame1)) {
         throw new IllegalStateException("two POV frames are identical");
       }
       if (visible0 < 1 || visible1 < 1) {
         throw new IllegalStateException("mutual sprite projection missing");
+      }
+      if (hud0.equals(hud1)) {
+        throw new IllegalStateException("per-player HUD projection missing");
       }
       DummySFX.beginTic(engine.gametic + 1L);
       engine.doomSound.StartSound(engine.players[0].mo,
@@ -872,6 +892,8 @@ public final class DoomDbMochaAdapter {
           + "|pov0Sha=" + frame0 + "|pov1Sha=" + frame1
           + "|pov0VisibleSprites=" + visible0
           + "|pov1VisibleSprites=" + visible1
+          + "|playerColors=" + playerColor0 + "/" + playerColor1
+          + "|hud0Sha=" + hud0 + "|hud1Sha=" + hud1
           + "|renderStateSha=" + beforeRender
           + "|pickupWinner=0|sharedKey=1|simultaneousActions=1"
           + "|spatialAudio=1"
@@ -1030,10 +1052,11 @@ public final class DoomDbMochaAdapter {
         tickMultiplayerEngine();
         long ticker = (System.nanoTime() - stageStarted) / 1000L;
         String stateBeforeRender = multiplayerStateSha(activePlayers);
+        int savedConsole = engine.consoleplayer;
         int savedDisplay = engine.displayplayer;
         try {
           for (int player = 0; player < activePlayers; player++) {
-            engine.displayplayer = player;
+            selectMultiplayerPresentationPlayer(player);
             stageStarted = System.nanoTime();
             engine.Display();
             long render = (System.nanoTime() - stageStarted) / 1000L;
@@ -1057,7 +1080,7 @@ public final class DoomDbMochaAdapter {
             }
           }
         } finally {
-          engine.displayplayer = savedDisplay;
+          restoreMultiplayerPresentationPlayer(savedConsole, savedDisplay);
         }
         if (index >= 0) {
           tickerMicros[index] = ticker;
@@ -1246,14 +1269,12 @@ public final class DoomDbMochaAdapter {
           try {
             for (int player = 0; player < activePlayers; player++) {
               if (!engine.playeringame[player]) continue;
-              engine.consoleplayer = player;
-              engine.displayplayer = player;
+              selectMultiplayerPresentationPlayer(player);
               engine.Display();
               rememberMultiplayerFrame(player);
             }
           } finally {
-            engine.consoleplayer = savedConsole;
-            engine.displayplayer = savedDisplay;
+            restoreMultiplayerPresentationPlayer(savedConsole, savedDisplay);
           }
         }
       }
@@ -1353,8 +1374,7 @@ public final class DoomDbMochaAdapter {
         if (output == null) {
           throw new IllegalArgumentException("POV output " + player);
         }
-        engine.consoleplayer = player;
-        engine.displayplayer = player;
+        selectMultiplayerPresentationPlayer(player);
         engine.Display();
         if (engine.doomSound instanceof s.AbstractDoomAudio
             && engine.players[player].mo != null) {
@@ -1381,14 +1401,28 @@ public final class DoomDbMochaAdapter {
       }
     } finally {
       lastAudioJson = sharedAudio;
-      engine.consoleplayer = savedConsole;
-      engine.displayplayer = savedDisplay;
+      restoreMultiplayerPresentationPlayer(savedConsole, savedDisplay);
     }
     result.append("|routeDiag=").append(multiplayerRouteDiagnostic(activePlayers));
     if (engine.deathmatch) result.append("|fragLimit=")
         .append(deathmatchFragLimit).append("|timeLimitTics=")
         .append(deathmatchTimeLimitTics);
     return result.toString();
+  }
+
+  private static void selectMultiplayerPresentationPlayer(int player) {
+    engine.consoleplayer = player;
+    engine.displayplayer = player;
+    engine.statusBar.doomdbDisplayPlayer(player);
+    engine.headsUp.doomdbDisplayPlayer(player);
+  }
+
+  private static void restoreMultiplayerPresentationPlayer(
+      int consolePlayer, int displayPlayer) {
+    engine.statusBar.doomdbDisplayPlayer(consolePlayer);
+    engine.headsUp.doomdbDisplayPlayer(consolePlayer);
+    engine.consoleplayer = consolePlayer;
+    engine.displayplayer = displayPlayer;
   }
 
   /** Private, read-only state for authoring real netgame routes. */

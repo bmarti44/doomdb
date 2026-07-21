@@ -110,6 +110,21 @@ What works today, all verified by repeatable gates:
   Scheduler session has already disappeared, and the local database reserves
   eight job slaves so four retained workers cannot starve cleanup or a new
   dispatch. The stale-owner live regression and eleven-gate Mocha suite pass.
+- **Current multiplayer validation (2026-07-21).** The public two-browser
+  canonical co-op route presented all 762 consecutive tics and matched its
+  exact terminal state hash. Player colors and HUD values are independently
+  rendered for each POV. A 120-second paced soak advanced both clients from
+  tic 104 to 4,187 while retaining only 258 frame rows and two checkpoints;
+  Java heap stayed flat. The required 30-minute soak remains open.
+- **Local host timing caveat (2026-07-21).** This Colima/Lima host steps its VM
+  clock backward about every ten seconds; 98.7% of 865 Oracle `Time stalled`
+  alerts correlate with those corrections. VZ restart and a separate QEMU
+  profile did not remove it. Correctness hashes remain valid, but tail-sensitive
+  FPS runs containing an alert are provisional. Oracle now uses a two-vCPU
+  cpuset without CFS quota, `SYS_NICE` for VKTM/LGWR, and monotonic match
+  cadence. A live `/play/` rerun passes movement, fire, mouse, menu, and input
+  latency; final p99.9/max performance and the long soak must run on a
+  stable-clock native Linux/OCI host.
 - **Fresh-stack multiplayer hardening (2026-07-20).** Empty ORDS config volumes
   now install cleanly, republish the allowlisted AutoREST API after repository
   replacement, and preserve the fixed six-session pool. Oracle's persisted
@@ -143,16 +158,17 @@ Key verified numbers (local two-core Oracle Free stack):
 | Engine step + render + BLOB (warm, p95) | 3.2–3.9 ms |
 | Durable tic with ledger + synchronous commit (p95) | ~20 ms |
 | Single-player displayed FPS, two 300-frame routes | 30.75–32.05 |
-| Multiplayer displayed FPS, consecutive 300-frame gates | 34.80--35.18 |
+| Multiplayer displayed FPS, selected clean 300-frame gates | 34.80--35.18 |
 | New game, standby-claimed vs cold construction | ~1.4 s vs ~17 s |
 | Tic-zero frame SHA-256 | `a1c9b037…d3b5` |
 | IWAD BLOB (SecureFile, SHA-verified) | 28,795,076 bytes |
 
 What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 
-- **P13** — finish the capability-secured AutoREST lobby, deterministic retained
-  match worker, authentic two-browser co-op exit route, remaining interaction
-  fixtures, deathmatch expansion, and local multiplayer soak/performance gates.
+- **P13** — finish the 30-minute multiplayer soak and stable-clock p99.9/max
+  performance rerun; the capability-secured lobby, retained worker, authentic
+  two-browser co-op exit, deathmatch rules, recovery, and selected two-player
+  throughput gates are implemented.
 - **P9 is complete** — the Oracle `MODEL`-clause title fire animation passed
   two independent full-size database runs, deterministic checks, mutation
   checks, and visual review.

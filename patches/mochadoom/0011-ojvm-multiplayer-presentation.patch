@@ -1,0 +1,84 @@
+--- a/src/st/AbstractStatusBar.java
++++ b/src/st/AbstractStatusBar.java
+@@ -8,4 +8,9 @@
+     public AbstractStatusBar(DoomMain<?, ?> DOOM) {
+         this.DOOM = DOOM;
+     }
++
++    /** DoomDB renders every active netgame POV from one retained world. */
++    public void doomdbDisplayPlayer(int player) {
++        // Concrete status bars may retarget their pointer-like widgets.
++    }
+ }
+--- a/src/st/StatusBar.java
++++ b/src/st/StatusBar.java
+@@ -1282,6 +1282,48 @@
+         drawWidgets(false);
+     }
+-
++
++    @Override
++    public void doomdbDisplayPlayer(int player) {
++        if (player < 0 || player >= DOOM.players.length) {
++            throw new IllegalArgumentException("display player " + player);
++        }
++        player_t selected = DOOM.players[player];
++        if (plyr == selected) return;
++        plyr = selected;
++
++        // The Java port models C pointers as array references captured by the
++        // widgets at ST_Start. Retarget those existing widgets in place; do
++        // not recreate the status bar for every database-authored POV.
++        w_ready.numarray = plyr.ammo;
++        w_health.n.numarray = plyr.health;
++        w_armor.n.numarray = plyr.armorpoints;
++        for (int i = 0; i < 6; i++) {
++            w_arms[i].asboolean = plyr.weaponowned;
++        }
++        for (int i = 0; i < 4; i++) {
++            w_ammo[i].numarray = plyr.ammo;
++            w_maxammo[i].numarray = plyr.maxammo;
++        }
++        if (weaponinfo[plyr.readyweapon.ordinal()].ammo == ammotype_t.am_noammo)
++            w_ready.numindex = largeammo;
++        else
++            w_ready.numindex = weaponinfo[plyr.readyweapon.ordinal()].ammo.ordinal();
++        w_ready.data = plyr.readyweapon.ordinal();
++        for (int i = 0; i < 3; i++) {
++            keyboxes[i] = plyr.cards[i] ? i : -1;
++            if (plyr.cards[i + 3]) keyboxes[i] = i + 3;
++        }
++        st_fragscount[0] = 0;
++        for (int i = 0; i < MAXPLAYERS; i++) {
++            if (i != player) st_fragscount[0] += plyr.frags[i];
++            else st_fragscount[0] -= plyr.frags[i];
++        }
++        int health = Math.max(0, Math.min(100, plyr.health[0]));
++        st_faceindex[0] = health == 0 ? ST_DEADFACE
++            : ST_FACESTRIDE * (((100 - health) * ST_NUMPAINFACES) / 101);
++        st_oldhealth = plyr.health[0];
++    }
++
+     public void Drawer(boolean fullscreen, boolean refresh) {
+-
++
+        st_statusbaron[0] = (!fullscreen) || DOOM.automapactive;
+--- a/src/hu/HU.java
++++ b/src/hu/HU.java
+@@ -505,6 +505,14 @@
+-
++
+    }
+-
++
++    /** Retarget the existing HUD widgets for DoomDB's immutable netgame POV. */
++    public void doomdbDisplayPlayer(int player) {
++        if (player < 0 || player >= DOOM.players.length) {
++            throw new IllegalArgumentException("display player " + player);
++        }
++        plr = DOOM.players[player];
++    }
++
+     @Override
+     public void Drawer() {
+         this.w_message.drawSText();

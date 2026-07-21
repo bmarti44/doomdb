@@ -631,8 +631,10 @@ create or replace package body doom_match_worker as
     l_generation number;l_epoch number;l_status varchar2(16);l_request varchar2(16);
     l_tic number;l_stop number;l_idle number:=0;l_dispose varchar2(4000);
     l_match_state varchar2(16);l_worker_mode varchar2(16);
-    l_boundary timestamp with time zone;
-    l_delay interval day to second;l_sleep number;
+    -- Pace from Oracle's monotonic hundredths clock. SYSTIMESTAMP is a ledger
+    -- timestamp, not a cadence source: host/NTP backward corrections otherwise
+    -- turn into a spurious positive sleep and freeze every retained match.
+    l_boundary_ticks number;l_now_ticks number;l_delay_ticks number;
   begin
     select generation,membership_epoch,worker_mode
       into l_generation,l_epoch,l_worker_mode
@@ -646,19 +648,20 @@ create or replace package body doom_match_worker as
     if substr(l_dispose,1,3)<>'ok|' then
       raise_application_error(c_error,substr(l_dispose,1,1800));
     end if;
-    l_boundary:=utc_now;
+    l_boundary_ticks:=dbms_utility.get_time;
     loop
       select worker_status,request_status,requested_tic,stop_requested
         into l_status,l_request,l_tic,l_stop from doom_match_worker_control
         where match_id=p_match and generation=l_generation;
       exit when l_stop=1 or l_status<>'READY';
       if l_worker_mode='PACED_INPUT' and l_request='IDLE' then
-        l_boundary:=l_boundary+numtodsinterval(1/35,'SECOND');
-        l_delay:=l_boundary-utc_now;
-        l_sleep:=extract(day from l_delay)*86400+extract(hour from l_delay)*3600+
-          extract(minute from l_delay)*60+extract(second from l_delay);
-        if l_sleep>0 then dbms_session.sleep(l_sleep);
-        elsif l_sleep < -2/35 then l_boundary:=utc_now;end if;
+        l_boundary_ticks:=l_boundary_ticks+100/35;
+        l_now_ticks:=dbms_utility.get_time;
+        l_delay_ticks:=l_boundary_ticks-l_now_ticks;
+        if l_delay_ticks>0 then dbms_session.sleep(l_delay_ticks/100);
+        elsif l_delay_ticks < -200/35 then
+          l_boundary_ticks:=l_now_ticks;
+        end if;
         materialize_paced_vector(p_match,l_generation,l_epoch,l_tic);
         process_step(p_match,l_generation,l_epoch,l_tic,1);
         l_idle:=l_idle+1;
