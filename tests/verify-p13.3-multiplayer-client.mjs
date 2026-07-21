@@ -13,6 +13,7 @@ const hostContext = await browser.newContext({viewport: {width: 1000, height: 76
 const guestContext = await browser.newContext({viewport: {width: 1000, height: 760}});
 for (const context of [hostContext, guestContext]) {
   await context.addInitScript(() => {
+    performance.setResourceTimingBufferSize(2000);
     window.__doomMultiplayerTrace = [];
     for (const name of ['input', 'input-effective', 'submit', 'poll', 'ready', 'decoded', 'present']) {
       addEventListener(`doom:multiplayer-${name}`, event => {
@@ -173,13 +174,20 @@ try {
         const all = window.__doomMultiplayerTrace;
         const presents = all.filter(row => row.name === 'present')
           .slice(start.count, start.count + count);
-        return {all, presents};
+        const resources = performance.getEntriesByType('resource')
+          .filter(row => row.startTime >= start.at && row.name.includes('/ords/'))
+          .map(row => ({name: (new URL(row.name).pathname.split('/').filter(Boolean).at(-1) ?? '').toLowerCase(),
+            queue: row.requestStart-row.startTime,
+            ttfb: row.responseStart-row.requestStart,
+            download: row.responseEnd-row.responseStart,
+            duration: row.duration}));
+        return {all, presents, resources};
       }, {start: starts[index], count: performanceFrames})));
     const percentile = (values, fraction) => {
       const ordered = [...values].sort((a, b) => a - b);
       return ordered[Math.ceil(ordered.length * fraction) - 1];
     };
-    const summaries = traces.map(({all, presents}, slot) => {
+    const summaries = traces.map(({all, presents, resources}, slot) => {
       assert.equal(presents.length, performanceFrames);
       assert.equal(new Set(presents.map(row => row.tic)).size,
         performanceFrames, `player ${slot} repeated a measured tic`);
@@ -239,7 +247,10 @@ try {
       const inputMax=Math.max(...latencies);
       const worstGap=gaps.reduce((best,value,index)=>value>best.value?
         {value,tic:presents[index+1].tic}:best,{value:-1,tic:-1});
-      const detail = `p${slot}=${fps.toFixed(2)}fps paint=${p50.toFixed(2)}/${p95.toFixed(2)}ms submitGap=${percentile(submitGaps, .5).toFixed(2)}/${percentile(submitGaps, .95).toFixed(2)}ms submitDecode=${percentile(server, .5).toFixed(2)}/${percentile(server, .95).toFixed(2)}ms pollReady=${percentile(delivery, .5).toFixed(2)}/${percentile(delivery, .95).toFixed(2)}ms decodePaint=${percentile(decodePaint, .5).toFixed(2)}/${percentile(decodePaint, .95).toFixed(2)}ms input=${inputP50.toFixed(2)}/${inputP95.toFixed(2)}/${inputMax.toFixed(2)}ms n=${latencies.length} worstPaint=${worstGap.tic}:${worstGap.value.toFixed(1)}`;
+      const submitResources=resources.filter(row=>row.name.startsWith('submit_match'));
+      const pollResources=resources.filter(row=>row.name==='poll_match_batch');
+      const resourceTail=(rows,field)=>rows.length===0?0:percentile(rows.map(row=>row[field]),.95);
+      const detail = `p${slot}=${fps.toFixed(2)}fps paint=${p50.toFixed(2)}/${p95.toFixed(2)}ms submitGap=${percentile(submitGaps, .5).toFixed(2)}/${percentile(submitGaps, .95).toFixed(2)}ms submitDecode=${percentile(server, .5).toFixed(2)}/${percentile(server, .95).toFixed(2)}ms pollReady=${percentile(delivery, .5).toFixed(2)}/${percentile(delivery, .95).toFixed(2)}ms decodePaint=${percentile(decodePaint, .5).toFixed(2)}/${percentile(decodePaint, .95).toFixed(2)}ms input=${inputP50.toFixed(2)}/${inputP95.toFixed(2)}/${inputMax.toFixed(2)}ms n=${latencies.length} worstPaint=${worstGap.tic}:${worstGap.value.toFixed(1)} net95=submit(q${resourceTail(submitResources,'queue').toFixed(1)},t${resourceTail(submitResources,'ttfb').toFixed(1)},d${resourceTail(submitResources,'download').toFixed(1)})/poll(q${resourceTail(pollResources,'queue').toFixed(1)},t${resourceTail(pollResources,'ttfb').toFixed(1)},d${resourceTail(pollResources,'download').toFixed(1)})`;
       if (enforcePerformance) {
         assert.ok(fps >= 30, `player ${slot} ${detail}`);
         assert.ok(p50 <= 33.3 && p95 <= 33.3, `player ${slot} ${detail}`);

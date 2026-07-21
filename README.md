@@ -78,9 +78,10 @@ What works today, all verified by repeatable gates:
   input, so two consecutive passes and the soak remain open; no 30 FPS
   multiplayer completion claim is made yet. Follow-up A/B tests rejected raw
   keyframes, preallocated PackBits output, and a 32-tic cross-response delta
-  chain: all worsened paint or input tails. The four-tic, independently
-  decodable candidate remains deployed while the residual commit tail is
-  isolated.
+  chain, correlated exchange lanes, native zlib, array-only LZ4, jitter pacing,
+  and adaptive poll throttling: none repeated within both paint and input
+  limits. The four-tic, independently decodable DMF4/DMF5 candidate remains
+  deployed while repeat tail qualification and the next architecture remain open.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is

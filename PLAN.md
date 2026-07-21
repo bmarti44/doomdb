@@ -3184,6 +3184,21 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   the result (26.5 FPS, paint p95 above 113 ms). Keep each response independently
   decodable on the selected four-tic cadence; do not reintroduce cross-response
   decode state or defer the early input frame behind a long delta chain.
+  Further bounded trials close the remaining obvious transport/codec branches.
+  Two correlated `EXCHANGE_MATCH_BATCH` lanes averaged 38.6 FPS but missed at
+  39--40 ms paint p95, 269--300 ms input p95, and 273--296 ms exchange TTFB.
+  Native DMF6/zlib keyframes were catastrophic both with per-frame compressor
+  allocation (3.4 FPS, ~1.2 s paint p95) and retained/reset compressors
+  (13.8 FPS, 180--221 ms paint p95). An independently implemented array-only
+  DMF7/LZ4 block improved that result but remained rejected at 17--18 FPS and
+  108--140 ms paint p95. Fixed/buffer-aware 24--30 ms presentation and 4--12 ms
+  input catch-up variants moved latency between paint and input without passing
+  both gates. Adaptive poll admission also failed repeat selection: its first
+  clean diagnostic reached 39.4/39.5 FPS, but a fully quiesced repeat fell to
+  32.4 FPS with 71--75 ms paint p95 and 310--329 ms input p95. Do not retry
+  native compression, custom keyframe scans, correlated exchange lanes, client
+  jitter pacing, or adaptive poll throttling. The pushed four-tic DMF4/DMF5
+  candidate remains selected while a new architecture is evaluated.
 
 ## 8. Final acceptance matrix
 
