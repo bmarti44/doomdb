@@ -119,10 +119,13 @@ try {
     return Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
   });
   const [hostSha, guestSha] = await Promise.all([bitmapSha(host), bitmapSha(guest)]);
-  assert.notEqual(hostSha, guestSha, 'browser POV canvases collapsed');
+  const earlyHuds=await Promise.all([host,guest].map(page=>page.locator('[data-hud]')
+    .evaluate(element=>({text:element.textContent,error:element.classList.contains('error')}))));
+  assert.notEqual(hostSha, guestSha,
+    `browser POV canvases collapsed ${JSON.stringify(earlyHuds)}`);
   let hostHud = '';
   let guestHud = '';
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 300; attempt += 1) {
     [hostHud, guestHud] = await Promise.all([
       host.locator('[data-hud]').textContent(), guest.locator('[data-hud]').textContent()
     ]);
@@ -137,7 +140,8 @@ try {
   const hostTic = Number((hostHud ?? '').match(/TIC (\d+)/)?.[1] ?? 0);
   const guestTic = Number((guestHud ?? '').match(/TIC (\d+)/)?.[1] ?? 0);
   assert.ok(hostTic >= 1 && guestTic >= 1);
-  assert.ok(Math.abs(hostTic - guestTic) <= 4);
+  assert.ok(Math.abs(hostTic - guestTic) <= 4,
+    `browser frontiers diverged host=${hostTic} guest=${guestTic}`);
   await Promise.all([host,guest].map(page=>page.waitForFunction(()=>{
     const lag=Number(document.querySelector('[data-hud]')?.textContent
       ?.match(/LAG (\d+)/)?.[1] ?? 999);

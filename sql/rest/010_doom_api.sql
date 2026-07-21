@@ -982,13 +982,23 @@ create or replace package body doom_api as
     l_slot:=player_capability_slot(p_match,p_player_capability);
     select worker_mode into l_worker_mode from doom_match_worker_control
       where match_id=p_match and generation=l_generation;
-    l_base_tic:=p_first_tic-mod(p_first_tic-1,4);
-    l_skip:=p_first_tic-l_base_tic;l_total:=p_frame_count+l_skip;
+    if l_worker_mode='PACED_INPUT' then
+      l_base_tic:=p_first_tic;l_skip:=0;l_total:=p_frame_count;
+    else
+      l_base_tic:=p_first_tic-mod(p_first_tic-1,4);
+      l_skip:=p_first_tic-l_base_tic;l_total:=p_frame_count+l_skip;
+    end if;
     dbms_lob.createtemporary(p_payload,true,dbms_lob.call);
-    dbms_lob.writeappend(p_payload,6,
-      utl_raw.concat(hextoraw('444d4232'),
-        hextoraw(lpad(to_char(l_total,'fmxx'),2,'0')),
-        hextoraw(lpad(to_char(l_skip,'fmxx'),2,'0'))));
+    if l_worker_mode='PACED_INPUT' then
+      dbms_lob.writeappend(p_payload,5,
+        utl_raw.concat(hextoraw('444d4233'),
+          hextoraw(lpad(to_char(l_total,'fmxx'),2,'0'))));
+    else
+      dbms_lob.writeappend(p_payload,6,
+        utl_raw.concat(hextoraw('444d4232'),
+          hextoraw(lpad(to_char(l_total,'fmxx'),2,'0')),
+          hextoraw(lpad(to_char(l_skip,'fmxx'),2,'0'))));
+    end if;
     for i in 0..l_total-1 loop
       l_deadline:=systimestamp+numtodsinterval(p_wait_ms/1000,'SECOND');
       loop

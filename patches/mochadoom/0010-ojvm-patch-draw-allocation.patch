@@ -1,0 +1,59 @@
+--- a/src/v/graphics/Columns.java
++++ b/src/v/graphics/Columns.java
+@@ -76,13 +76,7 @@
+      */
+     default void DrawPatchColumns(V screen, patch_t patch, int x, int y, int dupx, int dupy, boolean flip) {
+         final int scrWidth = getScreenWidth();
+-        final IntConsumer task = i -> {
+-            final int startPoint = point(x + i * dupx, y, scrWidth);
+-            final column_t column = flip ? patch.columns[patch.width - 1 - i] : patch.columns[i];
+-            DrawColumn(screen, column, new Horizontal(startPoint, dupx),
+-                convertPalettedBlock(column.data), scrWidth, dupy);
+-        };
+-
++
+         /**
+          * As vanilla DOOM does not parallel column computation, we should have the option to turn off
+          * the parallelism. Just set it to 0 in cfg:parallelism_patch_columns, and it will process columns in serial.
+@@ -92,10 +86,23 @@
+          * computing "what to process" instead of "what will be the result"
+          */
+         if (U.COLUMN_THREADS > 0) try {
++            final IntConsumer task = i -> {
++                final int startPoint = point(x + i * dupx, y, scrWidth);
++                final column_t column = flip ? patch.columns[patch.width - 1 - i] : patch.columns[i];
++                DrawColumn(screen, column, new Horizontal(startPoint, dupx),
++                    convertPalettedBlock(column.data), scrWidth, dupy);
++            };
+             U.pool.submit(() -> IntStream.range(0, patch.width).parallel().forEach(task)).get();
+         } catch (InterruptedException | ExecutionException ex) {
+             Loggers.getLogger(Columns.class.getName()).log(Level.SEVERE, null, ex);
+-        } else for (int i = 0; i < patch.width; ++i) {
+-            task.accept(i);
++        } else {
++            final Horizontal row = new Horizontal();
++            row.length = dupx;
++            for (int i = 0; i < patch.width; ++i) {
++                row.start = point(x + i * dupx, y, scrWidth);
++                final column_t column = flip ? patch.columns[patch.width - 1 - i] : patch.columns[i];
++                DrawColumn(screen, column, row,
++                    convertPalettedBlock(column.data), scrWidth, dupy);
++            }
+         }
+     }
+--- a/src/m/Menu.java
++++ b/src/m/Menu.java
+@@ -1267,12 +1267,12 @@
+         int x;
+         int y;
+         int max;
+-        char[] string = new char[40];
+         char[] msstring;
+         int start;
+         inhelpscreens = false; // Horiz. & Vertically center string and print
+         // it.
+         if (messageToPrint) {
++            char[] string = new char[40];
+             start = 0;
+             y = 100 - this.StringHeight(messageString) / 2;
+             msstring = messageString.toCharArray();

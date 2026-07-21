@@ -57,6 +57,43 @@ begin
   -- patch that reloads this class invalidates its native methods even when all
   -- renderer/action callees remain compiled.
   names(47):='doom/DoomMain';
+  -- Display() invokes these presentation layers once per POV per tic after the
+  -- BSP. Leaving them interpreted made the two-player worker CPU-bound even
+  -- when the scene renderer itself was native.
+  names(48):='st/AbstractStatusBar';
+  names(49):='st/StatusBar';
+  names(50):='st/StatusBar$st_binicon_t';
+  names(51):='st/StatusBar$st_multicon_t';
+  names(52):='st/StatusBar$st_number_t';
+  names(53):='st/StatusBar$st_percent_t';
+  names(54):='hu/HU';
+  names(55):='hu/HU$hu_itext_t';
+  names(56):='hu/HU$hu_stext_t';
+  names(57):='hu/HU$hu_textline_t';
+  names(58):='v/DoomGraphicSystem';
+  names(59):='v/renderers/SoftwareGraphicsSystem';
+  names(60):='v/renderers/SoftwareIndexedVideoRenderer';
+  names(61):='v/graphics/Patches';
+  names(62):='v/graphics/Blocks';
+  names(63):='v/graphics/Screens';
+  names(64):='m/Menu';
+  names(65):='i/DiskDrawer';
+  -- The moving/firing E1M1 route reaches these action, RNG, and audio paths;
+  -- compiling only the neutral spinner leaves them interpreted and produces a
+  -- misleadingly low isolated benchmark.
+  names(66):='p/Actions/ActiveStates/Attacks';
+  names(67):='p/Actions/ActionsAttacks';
+  names(68):='p/Actions/ActiveStates/MonsterStates/Zombies';
+  names(69):='p/Actions/ActiveStates/MonsterStates/Demonspawns';
+  names(70):='p/Actions/ActiveStates/Weapons';
+  names(71):='p/Actions/ActiveStates/Sounds';
+  names(72):='p/Actions/ActiveStates/Thinkers';
+  names(73):='m/DoomRandom';
+  names(74):='m/DelegateRandom';
+  names(75):='s/AbstractDoomAudio';
+  names(76):='v/graphics/Columns';
+  names(77):='v/graphics/Horizontal';
+  names(78):='v/graphics/Relocation';
 
   for i in 1..names.count loop
     compiled:=dbms_java.compile_class(names(i));

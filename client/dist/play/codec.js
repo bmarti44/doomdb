@@ -186,19 +186,20 @@ async function decodeRawFrame(bytes, previousTransport) {
         frameSha: decoded.frameSha, indices: decoded.indices, audio: decoded.audio,
         transportIndices: decoded.transportIndices };
 }
-export async function decodeFrameBatch(encoded) {
+export async function decodeFrameBatch(encoded, state) {
     const bytes = base64Bytes(encoded);
     const magic = bytes.length >= 4 ? ascii(bytes, 0, 4) : '';
     const count = bytes[4];
     const skip = magic === 'DMB2' ? bytes[5] : 0;
     const headerBytes = magic === 'DMB2' ? 6 : 5;
-    if (bytes.length < headerBytes || (magic !== 'DMB1' && magic !== 'DMB2') ||
+    if (bytes.length < headerBytes ||
+        (magic !== 'DMB1' && magic !== 'DMB2' && magic !== 'DMB3') ||
         count < 1 || count > 7 || skip > 3 || count - skip < 1 || count - skip > 4) {
-        throw new TypeError('frame batch header is invalid');
+        throw new TypeError(`frame batch header is invalid ${magic}/${count}/${skip}/${bytes.length}`);
     }
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const frames = [];
-    let previousTransport;
+    let previousTransport = magic === 'DMB3' ? state?.previousTransport : undefined;
     let offset = headerBytes;
     for (let index = 0; index < count; index += 1) {
         if (offset + 4 > bytes.length)
@@ -216,6 +217,8 @@ export async function decodeFrameBatch(encoded) {
     }
     if (offset !== bytes.length)
         throw new TypeError('frame batch trailing bytes are invalid');
+    if (magic === 'DMB3' && state !== undefined)
+        state.previousTransport = previousTransport;
     return frames;
 }
 export async function decodePayload(encoded) {

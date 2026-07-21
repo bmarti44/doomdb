@@ -58,8 +58,14 @@ public final class DoomDbMochaAdapter {
   private static String lastAudioJson = "[]";
   private static short[][] multiplayerConsistency;
   private static byte[][] multiplayerPreviousTransport;
+  private static byte[][] multiplayerTransportScratch;
+  private static byte[][] multiplayerRawPayload;
+  private static byte[][] multiplayerPackedPayload;
+  private static int[] multiplayerPayloadLength;
+  private static int multiplayerKeyframeInterval = 4;
   private static final int DEATHMATCH_FRAG_LIMIT = 10;
   private static final int DEATHMATCH_TIME_LIMIT_TICS = 10 * 60 * 35;
+  private static final int MULTIPLAYER_PAYLOAD_CAPACITY = 128 * 1024;
   private static int deathmatchFragLimit;
   private static int deathmatchTimeLimitTics;
 
@@ -419,6 +425,11 @@ public final class DoomDbMochaAdapter {
       lastAudioJson = "[]";
       multiplayerConsistency = null;
       multiplayerPreviousTransport = null;
+      multiplayerTransportScratch = null;
+      multiplayerRawPayload = null;
+      multiplayerPackedPayload = null;
+      multiplayerPayloadLength = null;
+      multiplayerKeyframeInterval = 4;
       Engine.releaseHeadless();
       InputStreamSugar.clearInjectedResource();
       return "ok|state=disposed";
@@ -428,6 +439,11 @@ public final class DoomDbMochaAdapter {
       lastAudioJson = "[]";
       multiplayerConsistency = null;
       multiplayerPreviousTransport = null;
+      multiplayerTransportScratch = null;
+      multiplayerRawPayload = null;
+      multiplayerPackedPayload = null;
+      multiplayerPayloadLength = null;
+      multiplayerKeyframeInterval = 4;
       return failure("dispose", failure);
     }
   }
@@ -1142,6 +1158,22 @@ public final class DoomDbMochaAdapter {
     }
   }
 
+  /** Select the bounded transport keyframe cadence for this retained session. */
+  public static synchronized String multiplayerKeyframeIntervalSafe(int interval) {
+    try {
+      if (engine == null || multiplayerConsistency == null) {
+        throw new IllegalStateException("multiplayer engine not initialized");
+      }
+      if (interval != 4 && interval != 32) {
+        throw new IllegalArgumentException("multiplayer keyframe interval");
+      }
+      multiplayerKeyframeInterval = interval;
+      return "ok|keyframeInterval=" + interval;
+    } catch (Throwable failure) {
+      return failure("multiplayer-keyframes", failure);
+    }
+  }
+
   /** Rebuild a multiplayer world from its canonical ordered vector ledger. */
   public static synchronized String multiplayerReconstructPayloadsSafe(
       int activePlayers, int deathmatch, int skill, int episode, int map,
@@ -1248,6 +1280,11 @@ public final class DoomDbMochaAdapter {
     multiplayerConsistency = new short[engine.playeringame.length]
         [engine.netcmds[0].length];
     multiplayerPreviousTransport = new byte[engine.playeringame.length][];
+    multiplayerTransportScratch = new byte[engine.playeringame.length][];
+    multiplayerRawPayload = new byte[engine.playeringame.length][];
+    multiplayerPackedPayload = new byte[engine.playeringame.length][];
+    multiplayerPayloadLength = new int[engine.playeringame.length];
+    multiplayerKeyframeInterval = 4;
     deathmatchFragLimit = deathmatch == 1 ? DEATHMATCH_FRAG_LIMIT : 0;
     deathmatchTimeLimitTics = deathmatch == 1 ? DEATHMATCH_TIME_LIMIT_TICS : 0;
   }
@@ -1303,13 +1340,16 @@ public final class DoomDbMochaAdapter {
         }
         String frameSha = currentFrameSha();
         byte[] payload = encodeMultiplayerFrame(stateSha, frameSha, player);
-        writeBlob(output, payload);
+        int payloadLength = multiplayerPayloadLength[player];
+        writeBlob(output, payload, payloadLength);
+        MessageDigest responseDigest = MessageDigest.getInstance("SHA-256");
+        responseDigest.update(payload, 0, payloadLength);
+        String responseSha = hex(responseDigest.digest());
         result.append("|pov").append(player).append("FrameSha=")
             .append(frameSha).append("|pov").append(player)
-            .append("ResponseSha=").append(hex(
-                MessageDigest.getInstance("SHA-256").digest(payload)))
+            .append("ResponseSha=").append(responseSha)
             .append("|pov").append(player).append("Bytes=")
-            .append(payload.length);
+            .append(payloadLength);
         lastAudioJson = sharedAudio;
         if (!beforeRender.equals(multiplayerStateSha(activePlayers))) {
           throw new IllegalStateException(
@@ -1567,10 +1607,18 @@ public final class DoomDbMochaAdapter {
   }
 
   private static void writeBlob(Blob output, byte[] bytes) throws Exception {
+    writeBlob(output, bytes, bytes.length);
+  }
+
+  private static void writeBlob(Blob output, byte[] bytes, int length)
+      throws Exception {
+    if (length < 0 || length > bytes.length) {
+      throw new IllegalArgumentException("BLOB byte length " + length);
+    }
     output.truncate(0);
     int offset = 0;
-    while (offset < bytes.length) {
-      int count = Math.min(32767, bytes.length - offset);
+    while (offset < length) {
+      int count = Math.min(32767, length - offset);
       int written = output.setBytes(offset + 1L, bytes, offset, count);
       if (written != count) throw new IllegalStateException("short BLOB write");
       offset += count;
@@ -1750,34 +1798,114 @@ public final class DoomDbMochaAdapter {
 
   private static byte[] encodeMultiplayerFrame(
       String stateSha, String frameSha, int player) throws Exception {
-    byte[] raw = encodeDmf3(stateSha, frameSha);
-    int frameStart = 140 + ((raw[138] & 0xff) << 8) + (raw[139] & 0xff);
-    byte[] current = Arrays.copyOfRange(raw, frameStart, raw.length);
-    byte[] previous = multiplayerPreviousTransport == null
-        ? null : multiplayerPreviousTransport[player];
-    boolean keyframe = engine.gametic == 0 || engine.gametic % 4 == 1
+    byte[] pixels = currentFrame();
+    if (pixels.length != 320 * 200) {
+      throw new IllegalStateException("DMF3 requires 320x200 indexed frame");
+    }
+    byte[] audio = lastAudioJson.getBytes(StandardCharsets.US_ASCII);
+    if (audio.length > 65535) {
+      throw new IllegalStateException("DMF3 audio payload too large");
+    }
+    int frameStart = 140 + audio.length;
+    int rawLength = frameStart + pixels.length;
+    byte[] raw = multiplayerRawPayload[player];
+    if (raw == null) {
+      raw = new byte[MULTIPLAYER_PAYLOAD_CAPACITY];
+      multiplayerRawPayload[player] = raw;
+    }
+    raw[0] = 'D'; raw[1] = 'M'; raw[2] = 'F'; raw[3] = '3';
+    int tic = engine.gametic;
+    raw[4] = (byte) (tic >>> 24);raw[5] = (byte) (tic >>> 16);
+    raw[6] = (byte) (tic >>> 8);raw[7] = (byte) tic;
+    doom.player_t active = engine.players[engine.consoleplayer];
+    raw[8] = (byte) (active.health[0] <= 0 ? 1 : 0);
+    raw[9] = (byte)
+        (engine.gamestate == defines.gamestate_t.GS_LEVEL ? 0 : 1);
+    byte[] stateBytes = stateSha.getBytes(StandardCharsets.US_ASCII);
+    byte[] frameBytes = frameSha.getBytes(StandardCharsets.US_ASCII);
+    System.arraycopy(stateBytes, 0, raw, 10, 64);
+    System.arraycopy(frameBytes, 0, raw, 74, 64);
+    raw[138] = (byte) (audio.length >>> 8);raw[139] = (byte) audio.length;
+    System.arraycopy(audio, 0, raw, 140, audio.length);
+    byte[] previous = multiplayerPreviousTransport[player];
+    byte[] current = multiplayerTransportScratch[player];
+    if (current == null || current.length != pixels.length) {
+      current = new byte[pixels.length];
+    }
+    boolean keyframe = engine.gametic == 0
+        || engine.gametic % multiplayerKeyframeInterval == 1
         || previous == null || previous.length != current.length;
-    byte[] packed;
-    if (keyframe) {
-      packed = packDmf(raw, (byte) '4');
-    } else {
-      for (int index = 0; index < current.length; index++) {
-        raw[frameStart + index] = (byte) (current[index] ^ previous[index]);
+    int transport = 0;
+    for (int x = 0; x < 320; x++) {
+      for (int y = 0; y < 200; y++) {
+        byte value = pixels[y * 320 + x];
+        current[transport] = value;
+        raw[frameStart + transport] = keyframe ? value
+            : (byte) (value ^ previous[transport]);
+        transport++;
       }
-      packed = packDmf(raw, (byte) '5');
     }
     multiplayerPreviousTransport[player] = current;
-    return packed;
+    multiplayerTransportScratch[player] = previous;
+    return packMultiplayerDmf(raw, rawLength, frameStart,
+        (byte) (keyframe ? '4' : '5'), player);
   }
 
   private static void rememberMultiplayerFrame(int player) throws Exception {
     byte[] pixels = currentFrame();
-    byte[] transport = new byte[pixels.length];
+    byte[] transport = multiplayerTransportScratch[player];
+    if (transport == null || transport.length != pixels.length) {
+      transport = new byte[pixels.length];
+    }
     int offset = 0;
     for (int x = 0; x < 320; x++) {
       for (int y = 0; y < 200; y++) transport[offset++] = pixels[y * 320 + x];
     }
+    byte[] previous = multiplayerPreviousTransport[player];
     multiplayerPreviousTransport[player] = transport;
+    multiplayerTransportScratch[player] = previous;
+  }
+
+  private static byte[] packMultiplayerDmf(
+      byte[] raw, int rawLength, int frameStart, byte magic, int player) {
+    int maximumLength = rawLength + ((rawLength - frameStart + 127) / 128) + 1;
+    if (maximumLength > MULTIPLAYER_PAYLOAD_CAPACITY) {
+      throw new IllegalStateException("multiplayer payload workspace " + maximumLength);
+    }
+    byte[] packed = multiplayerPackedPayload[player];
+    if (packed == null) {
+      packed = new byte[MULTIPLAYER_PAYLOAD_CAPACITY];
+      multiplayerPackedPayload[player] = packed;
+    }
+    System.arraycopy(raw, 0, packed, 0, frameStart);
+    packed[3] = magic;
+    int source = frameStart, target = frameStart;
+    while (source < rawLength) {
+      int run = 1;
+      while (source + run < rawLength && raw[source + run] == raw[source]
+          && run < 128) run++;
+      if (run >= 3) {
+        packed[target++] = (byte) (0x80 | (run - 1));
+        packed[target++] = raw[source];source += run;continue;
+      }
+      int literalStart = source;
+      source += run;
+      while (source < rawLength && source - literalStart < 128) {
+        run = 1;
+        while (source + run < rawLength && raw[source + run] == raw[source]
+            && run < 128) run++;
+        if (run >= 3 || source - literalStart + run > 128) break;
+        source += run;
+      }
+      int literalLength = source - literalStart;
+      packed[target++] = (byte) (literalLength - 1);
+      System.arraycopy(raw, literalStart, packed, target, literalLength);
+      target += literalLength;
+    }
+    if (magic == '4' && target >= rawLength) {
+      multiplayerPayloadLength[player] = rawLength;return raw;
+    }
+    multiplayerPayloadLength[player] = target;return packed;
   }
 
   private static byte[] packDmf(byte[] raw, byte magic) throws Exception {

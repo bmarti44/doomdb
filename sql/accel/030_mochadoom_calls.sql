@@ -188,6 +188,13 @@ as language java
 name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerStepPayloadsSafe(int,int,java.lang.String,java.lang.String,java.sql.Blob,java.sql.Blob,java.sql.Blob,java.sql.Blob) return java.lang.String';
 /
 
+create or replace function doom_mocha_multiplayer_keyframes(
+  p_interval in number
+) return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerKeyframeIntervalSafe(int) return java.lang.String';
+/
+
 create or replace function doom_mocha_multiplayer_reconstruct(
   p_active_players in number,p_deathmatch in number,p_skill in number,
   p_episode in number,p_map in number,p_command_stream in blob,

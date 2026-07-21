@@ -1,9 +1,10 @@
-import { createMatch, getAsset, joinMatch, matchStatus, pollMatchBatch, matchInputFrontier, pollMatchFrame, readyMatch, submitMatchBatch, submitMatchBatchInput } from './api.js';
+import { createMatch, getAsset, joinMatch, matchStatus, pollMatchBatch, matchInputFrontier, pollMatchFrame, readyMatch, submitMatchBatch, submitMatchBatchInput, reviseMatchInput } from './api.js';
 import { AudioPresenter } from './audio.js';
 import { createDoomCanvas, blit } from './canvas.js';
 import { decodeBytes, decodeFrameBatch, decodePayload } from './codec.js';
 import { bindInput } from './input.js';
 import { applyPalette, createPalette } from './palette.js';
+const PACED_KEYFRAME_TICS = 32;
 const style = document.createElement('style');
 style.textContent = `
   :root{color-scheme:dark;background:#080806;color:#eee;font:15px/1.4 system-ui}
@@ -120,6 +121,10 @@ async function refreshLobby() {
         return;
     const capability = local.hostCapability ?? local.playerCapability;
     latestStatus = await matchStatus(local.match, capability);
+    if (latestStatus.state === 'READY_TO_START' && ready) {
+        await readyMatch(local.match, local.playerCapability, true);
+        latestStatus = await matchStatus(local.match, capability);
+    }
     roomStatus.textContent = `Match ${local.match} · player ${local.playerSlot + 1}\n${latestStatus.memberCount}/${latestStatus.maxPlayers} joined · ${latestStatus.readyCount} ready · ${latestStatus.state}`;
     readyButton.textContent = ready ? 'Not ready' : 'Ready';
     readyButton.disabled = latestStatus.memberCount !== latestStatus.maxPlayers;
@@ -185,7 +190,7 @@ function signedByte(value) {
 }
 function transientTransportFailure(cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
-    return /request failed: 5\d\d|failed to fetch|networkerror|load failed/i.test(message);
+    return /request failed: 5\d\d|failed to fetch|networkerror|load failed|p_payload response field is invalid/i.test(message);
 }
 function ticcmd(command) {
     const bytes = new Uint8Array(8);
@@ -217,9 +222,21 @@ async function startGame(value, status) {
     const initialFrame = await decodePayload(initial.payload);
     if (initialFrame.tic !== 0)
         throw new Error('invalid multiplayer frontier');
+    // Asset and tic-zero loading can take seconds on a cold generated-ORDS path
+    // while a paced worker is already producing frames. Join the latest durable
+    // frontier before presentation instead of replaying that startup backlog.
+    if (status.workerMode === 'PACED_INPUT') {
+        const refreshed = await matchStatus(value.match, value.playerCapability);
+        if (refreshed.state !== 'ACTIVE' ||
+            refreshed.membershipEpoch !== status.membershipEpoch ||
+            refreshed.generation < status.generation)
+            throw new Error('multiplayer startup fence changed');
+        status = refreshed;
+    }
     let latest = { seq: 0, turn: 0, forward: 0, strafe: 0, run: 0,
         fire: 0, use: 0, weapon: 0, pause: 0, automap: 0, menu: 'NONE', cheat: '' };
     let inputSequence = initialInputSequence;
+    const paced = status.workerMode === 'PACED_INPUT';
     const inputQueue = [];
     const buttons = new Map();
     bindInput(canvas, buttons, command => {
@@ -236,14 +253,19 @@ async function startGame(value, status) {
     });
     canvas.focus();
     let currentTic = status.currentTic;
+    if (paced && currentTic > 0)
+        currentTic -= ((currentTic - 1) % PACED_KEYFRAME_TICS) + 1;
     let serverTic = status.currentTic;
     let submittedTic = currentTic;
     let submitting = false;
     let pendingSubmit = null;
     const pollingBatches = new Set();
+    let pollEpoch = 0;
     let nextPollTic = currentTic + 1;
     const frameBuffer = new Map();
+    const frameBatchState = { previousTransport: undefined };
     let nextPresentationAt = 0;
+    let presentationStarted = !paced;
     let stopped = false;
     const membershipEpoch = status.membershipEpoch;
     let generation = status.generation;
@@ -253,7 +275,7 @@ async function startGame(value, status) {
     const updateHud = () => {
         const windowMs = paintedAt.length > 1 ? paintedAt.at(-1) - paintedAt[0] : 0;
         const fps = windowMs > 0 ? (paintedAt.length - 1) * 1000 / windowMs : 0;
-        hud.textContent = `${status.mode} · PLAYER ${value.playerSlot + 1} · TIC ${currentTic}\n${fps.toFixed(1)} displayed FPS · click game for mouse · F/Ctrl fire · Space use`;
+        hud.textContent = `${status.mode} · PLAYER ${value.playerSlot + 1} · TIC ${currentTic} · LAG ${Math.max(0, serverTic - currentTic)}\n${fps.toFixed(1)} displayed FPS · click game for mouse · F/Ctrl fire · Space use`;
     };
     const fail = (cause) => {
         stopped = true;
@@ -279,7 +301,13 @@ async function startGame(value, status) {
         if (stopped || performance.now() < retryAfter)
             return;
         const nextFrame = frameBuffer.get(currentTic + 1);
-        if (nextFrame !== undefined && performance.now() >= nextPresentationAt) {
+        if (!presentationStarted && nextFrame !== undefined &&
+            frameBuffer.has(currentTic + 2)) {
+            presentationStarted = true;
+            nextPresentationAt = performance.now();
+        }
+        if (presentationStarted && nextFrame !== undefined &&
+            performance.now() >= nextPresentationAt) {
             frameBuffer.delete(nextFrame.tic);
             blit(canvas, applyPalette(nextFrame.indices, palette));
             audio.enqueue(nextFrame.audio, fail);
@@ -289,11 +317,35 @@ async function startGame(value, status) {
             if (paintedAt.length > 60)
                 paintedAt.shift();
             trace('present', { tic: nextFrame.tic, frameSha: nextFrame.frameSha });
-            nextPresentationAt = now + 20;
+            // A reconnect begins at Oracle's current frontier. Let an older client
+            // drain a deep authoritative buffer without skipping frames, then settle
+            // onto the worker's exact cadence once only a small jitter reserve remains.
+            nextPresentationAt = paced ? (serverTic - currentTic > 2 ? now + 20 :
+                Math.max(nextPresentationAt + 1000 / 35, now + 20)) : now + 20;
             recovered();
             updateHud();
         }
-        if (!submitting && submittedTic < currentTic + 6) {
+        if (paced && !submitting && inputQueue.length > 0) {
+            submitting = true;
+            const input = inputQueue[0];
+            void reviseMatchInput(value.match, value.playerCapability, input.sequence, input.hex)
+                .then(result => {
+                if (result.accepted !== 1 || result.membershipEpoch !== membershipEpoch ||
+                    result.generation < generation)
+                    throw new Error('multiplayer input fence changed');
+                generation = result.generation;
+                inputQueue.shift();
+                trace('input-effective', { inputSequence: input.sequence,
+                    effectiveTic: result.effectiveTic, command: input.command });
+                recovered();
+            }).catch(cause => {
+                if (transientTransportFailure(cause))
+                    retryTransport(cause);
+                else
+                    fail(cause);
+            }).finally(() => { submitting = false; });
+        }
+        if (!paced && !submitting && submittedTic < currentTic + 6) {
             submitting = true;
             let request = pendingSubmit;
             if (request === null) {
@@ -364,28 +416,79 @@ async function startGame(value, status) {
                     fail(cause);
             }).finally(() => { submitting = false; });
         }
-        if (pollingBatches.size < 2 && nextPollTic + 3 <= submittedTic) {
+        const pollSpan = paced ? 2 : 4;
+        if (pollingBatches.size < (paced ? 1 : 2) &&
+            (paced ? nextPollTic <= currentTic + 3 : nextPollTic + 3 <= submittedTic)) {
             const firstTic = nextPollTic;
+            const requestEpoch = pollEpoch;
             pollingBatches.add(firstTic);
-            nextPollTic += 4;
-            for (let offset = 0; offset < 4; offset += 1)
+            nextPollTic += pollSpan;
+            for (let offset = 0; offset < pollSpan; offset += 1)
                 trace('poll', { tic: firstTic + offset });
-            void pollMatchBatch(value.match, value.playerCapability, firstTic)
+            void pollMatchBatch(value.match, value.playerCapability, firstTic, 5000, pollSpan)
                 .then(async (result) => {
-                const frames = await decodeFrameBatch(result.payload);
+                const frames = await decodeFrameBatch(result.payload, paced ? frameBatchState : undefined);
+                if (requestEpoch !== pollEpoch)
+                    return;
+                if (paced && paintedAt.length < 20 && result.currentTic - currentTic > 8) {
+                    // A cold start/reconnect may leave the browser far behind a worker
+                    // that never stopped. Rejoin a recent committed frontier; this
+                    // skips stale presentation only and never synthesizes game state.
+                    currentTic = Math.max(0, result.currentTic -
+                        ((result.currentTic - 1) % PACED_KEYFRAME_TICS) - 1);
+                    serverTic = result.currentTic;
+                    frameBuffer.clear();
+                    nextPollTic = currentTic + 1;
+                    pollEpoch += 1;
+                    frameBatchState.previousTransport = undefined;
+                    presentationStarted = false;
+                    nextPresentationAt = 0;
+                    trace('resync', { tic: currentTic });
+                    updateHud();
+                    return;
+                }
                 for (const [index, frame] of frames.entries()) {
                     const tic = firstTic + index;
                     trace('ready', { tic });
                     if (frame.tic !== tic)
                         throw new Error('multiplayer frame frontier changed');
                     trace('decoded', { tic, frameSha: frame.frameSha });
-                    frameBuffer.set(tic, frame);
+                    if (tic > currentTic)
+                        frameBuffer.set(tic, frame);
                 }
                 serverTic = Math.max(serverTic, result.currentTic);
                 recovered();
-            }).catch(cause => {
-                if (transientTransportFailure(cause))
+            }).catch(async (cause) => {
+                if (transientTransportFailure(cause)) {
+                    if (requestEpoch === pollEpoch)
+                        nextPollTic = Math.min(nextPollTic, firstTic);
                     retryTransport(cause);
+                    try {
+                        const refreshed = await matchStatus(value.match, value.playerCapability);
+                        if (requestEpoch === pollEpoch && refreshed.state === 'ACTIVE' &&
+                            refreshed.membershipEpoch === membershipEpoch &&
+                            refreshed.generation >= generation &&
+                            refreshed.currentTic - firstTic > 8) {
+                            generation = refreshed.generation;
+                            serverTic = refreshed.currentTic;
+                            currentTic = Math.max(0, refreshed.currentTic -
+                                ((refreshed.currentTic - 1) % PACED_KEYFRAME_TICS) - 1);
+                            frameBuffer.clear();
+                            frameBatchState.previousTransport = undefined;
+                            nextPollTic = currentTic + 1;
+                            pollEpoch += 1;
+                            presentationStarted = false;
+                            nextPresentationAt = 0;
+                            trace('resync', { tic: currentTic });
+                            recovered();
+                            updateHud();
+                        }
+                    }
+                    catch (statusFailure) {
+                        if (!transientTransportFailure(statusFailure))
+                            fail(statusFailure);
+                    }
+                }
                 else
                     fail(cause);
             }).finally(() => { pollingBatches.delete(firstTic); });

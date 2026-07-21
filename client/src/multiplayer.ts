@@ -4,11 +4,15 @@ import {
   submitMatchBatchInput, reviseMatchInput,
   type Command, type MatchStatus
 } from './api.js';
+
 import {AudioPresenter} from './audio.js';
 import {createDoomCanvas, blit} from './canvas.js';
-import {decodeBytes, decodeFrameBatch, decodePayload, type Frame} from './codec.js';
+import {decodeBytes, decodeFrameBatch, decodePayload, type Frame,
+  type FrameBatchState} from './codec.js';
 import {bindInput, type ControlName} from './input.js';
 import {applyPalette, createPalette} from './palette.js';
+
+const PACED_KEYFRAME_TICS = 32;
 
 type LocalMatch = {
   match: string;
@@ -198,7 +202,7 @@ function signedByte(value: number): number {
 }
 function transientTransportFailure(cause: unknown): boolean {
   const message = cause instanceof Error ? cause.message : String(cause);
-  return /request failed: 5\d\d|failed to fetch|networkerror|load failed/i.test(message);
+  return /request failed: 5\d\d|failed to fetch|networkerror|load failed|p_payload response field is invalid/i.test(message);
 }
 function ticcmd(command: Command): string {
   const bytes = new Uint8Array(8);
@@ -259,6 +263,8 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
   canvas.focus();
 
   let currentTic = status.currentTic;
+  if (paced && currentTic>0)
+    currentTic-=((currentTic-1)%PACED_KEYFRAME_TICS)+1;
   let serverTic = status.currentTic;
   let submittedTic = currentTic;
   let submitting = false;
@@ -268,6 +274,7 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
   let pollEpoch = 0;
   let nextPollTic = currentTic + 1;
   const frameBuffer = new Map<number, Frame>();
+  const frameBatchState: FrameBatchState = {previousTransport:undefined};
   let nextPresentationAt = 0;
   let presentationStarted = !paced;
   let stopped = false;
@@ -315,7 +322,7 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
       // A reconnect begins at Oracle's current frontier. Let an older client
       // drain a deep authoritative buffer without skipping frames, then settle
       // onto the worker's exact cadence once only a small jitter reserve remains.
-      nextPresentationAt = paced ? (serverTic-currentTic>4 ? now+20 :
+      nextPresentationAt = paced ? (serverTic-currentTic>2 ? now+20 :
         Math.max(nextPresentationAt + 1000 / 35,now + 20)) : now + 20;
       recovered();updateHud();
     }
@@ -395,7 +402,7 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
         }).finally(() => {submitting = false;});
     }
     const pollSpan=paced?2:4;
-    if (pollingBatches.size < 2 &&
+    if (pollingBatches.size < (paced?1:2) &&
         (paced ? nextPollTic <= currentTic + 3 : nextPollTic + 3 <= submittedTic)) {
       const firstTic = nextPollTic;
       const requestEpoch = pollEpoch;
@@ -403,14 +410,18 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
       for (let offset = 0; offset < pollSpan; offset += 1) trace('poll', {tic: firstTic + offset});
       void pollMatchBatch(value.match, value.playerCapability,firstTic,5000,pollSpan)
         .then(async result => {
-          const frames = await decodeFrameBatch(result.payload);
+          const frames = await decodeFrameBatch(result.payload,
+            paced?frameBatchState:undefined);
           if (requestEpoch!==pollEpoch) return;
           if (paced && paintedAt.length<20 && result.currentTic-currentTic>8) {
             // A cold start/reconnect may leave the browser far behind a worker
             // that never stopped. Rejoin a recent committed frontier; this
             // skips stale presentation only and never synthesizes game state.
-            currentTic=result.currentTic-4;serverTic=result.currentTic;
+            currentTic=Math.max(0,result.currentTic-
+              ((result.currentTic-1)%PACED_KEYFRAME_TICS)-1);
+            serverTic=result.currentTic;
             frameBuffer.clear();nextPollTic=currentTic+1;pollEpoch+=1;
+            frameBatchState.previousTransport=undefined;
             presentationStarted=false;nextPresentationAt=0;
             trace('resync',{tic:currentTic});updateHud();return;
           }
@@ -421,8 +432,28 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
             if (tic>currentTic) frameBuffer.set(tic, frame);
           }
           serverTic = Math.max(serverTic, result.currentTic);recovered();
-        }).catch(cause => {
-          if (transientTransportFailure(cause)) retryTransport(cause);
+        }).catch(async cause => {
+          if (transientTransportFailure(cause)) {
+            if (requestEpoch===pollEpoch) nextPollTic=Math.min(nextPollTic,firstTic);
+            retryTransport(cause);
+            try {
+              const refreshed=await matchStatus(value.match,value.playerCapability);
+              if (requestEpoch===pollEpoch && refreshed.state==='ACTIVE' &&
+                  refreshed.membershipEpoch===membershipEpoch &&
+                  refreshed.generation>=generation &&
+                  refreshed.currentTic-firstTic>8) {
+                generation=refreshed.generation;serverTic=refreshed.currentTic;
+                currentTic=Math.max(0,refreshed.currentTic-
+                  ((refreshed.currentTic-1)%PACED_KEYFRAME_TICS)-1);
+                frameBuffer.clear();frameBatchState.previousTransport=undefined;
+                nextPollTic=currentTic+1;pollEpoch+=1;
+                presentationStarted=false;nextPresentationAt=0;
+                trace('resync',{tic:currentTic});recovered();updateHud();
+              }
+            } catch (statusFailure) {
+              if (!transientTransportFailure(statusFailure)) fail(statusFailure);
+            }
+          }
           else fail(cause);
         }).finally(() => {pollingBatches.delete(firstTic);});
     }

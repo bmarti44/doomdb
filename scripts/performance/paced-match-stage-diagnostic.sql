@@ -46,7 +46,17 @@ begin
           cast(t.deadline_at as timestamp)))*1000 total_ms,
         to_number(regexp_substr(r.route_status,'sqlToJavaMicros=([0-9]+)',1,1,null,1))/1000 pre_java_ms,
         to_number(regexp_substr(r.route_status,'javaMicros=([0-9]+)',1,1,null,1))/1000 java_ms,
-        to_number(regexp_substr(r.route_status,'sqlAfterJavaMicros=([0-9]+)',1,1,null,1))/1000 post_java_ms
+        to_number(regexp_substr(r.route_status,'sqlAfterJavaMicros=([0-9]+)',1,1,null,1))/1000 post_java_ms,
+        to_number(regexp_substr(r.route_status,'frameRowsMicros=([0-9]+)',1,1,null,1))/1000 frame_rows_ms,
+        to_number(regexp_substr(r.route_status,'frameFinalizeMicros=([0-9]+)',1,1,null,1))/1000 frame_finalize_ms,
+        to_number(regexp_substr(r.route_status,'ledgerMicros=([0-9]+)',1,1,null,1))/1000 ledger_ms,
+        to_number(regexp_substr(r.route_status,'retirementMicros=([0-9]+)',1,1,null,1))/1000 retirement_ms,
+        to_number(regexp_substr(r.route_status,'frontierMicros=([0-9]+)',1,1,null,1))/1000 frontier_ms,
+        to_number(regexp_substr(r.route_status,'commitMicros=([0-9]+)',1,1,null,1))/1000 commit_ms,
+        (to_number(regexp_substr(r.route_status,'sqlToJavaMicros=([0-9]+)',1,1,null,1))+
+         to_number(regexp_substr(r.route_status,'javaMicros=([0-9]+)',1,1,null,1))+
+         to_number(regexp_substr(r.route_status,'sqlAfterJavaMicros=([0-9]+)',1,1,null,1))+
+         to_number(regexp_substr(r.route_status,'commitMicros=([0-9]+)',1,1,null,1)))/1000 instrumented_ms
       from doom_match_tic t join doom_match_route_trace r
         on r.match_id=t.match_id and r.tic=t.tic
       where t.match_id=l_match and t.tic>64
@@ -54,6 +64,13 @@ begin
       select 'PRE_JAVA' metric,pre_java_ms value from samples union all
       select 'JAVA',java_ms from samples union all
       select 'POST_JAVA',post_java_ms from samples union all
+      select 'FRAME_ROWS',frame_rows_ms from samples union all
+      select 'FRAME_FINALIZE',frame_finalize_ms from samples union all
+      select 'LEDGER_CHECKPOINT',ledger_ms from samples union all
+      select 'RETIREMENT',retirement_ms from samples union all
+      select 'FRONTIER',frontier_ms from samples union all
+      select 'COMMIT',commit_ms from samples union all
+      select 'INSTRUMENTED_TOTAL',instrumented_ms from samples union all
       select 'PRECOMMIT_TOTAL',total_ms from samples
     )
     select metric,count(*) samples,round(avg(value),3) average_ms,

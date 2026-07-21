@@ -9,6 +9,10 @@ export type Frame = {
   audio: AudioTuple[];
 };
 
+export type FrameBatchState = {
+  previousTransport: Uint8Array<ArrayBuffer> | undefined;
+};
+
 type DecodedFrame = Frame & {transportIndices: Uint8Array<ArrayBuffer>};
 
 const rleFrameKeys = ['audio', 'cols', 'complete', 'frame_sha', 'h', 'mode', 'state_sha', 'tic', 'v', 'w'];
@@ -196,19 +200,21 @@ Promise<Frame & {transportIndices: Uint8Array<ArrayBuffer>}> {
     transportIndices: decoded.transportIndices};
 }
 
-export async function decodeFrameBatch(encoded: string): Promise<Frame[]> {
+export async function decodeFrameBatch(encoded: string,
+                                       state?: FrameBatchState): Promise<Frame[]> {
   const bytes = base64Bytes(encoded);
   const magic = bytes.length >= 4 ? ascii(bytes, 0, 4) : '';
   const count = bytes[4] as number;
   const skip = magic === 'DMB2' ? bytes[5] as number : 0;
   const headerBytes = magic === 'DMB2' ? 6 : 5;
-  if (bytes.length < headerBytes || (magic !== 'DMB1' && magic !== 'DMB2') ||
+  if (bytes.length < headerBytes ||
+      (magic !== 'DMB1' && magic !== 'DMB2' && magic !== 'DMB3') ||
       count < 1 || count > 7 || skip > 3 || count-skip<1 || count-skip>4) {
-    throw new TypeError('frame batch header is invalid');
+    throw new TypeError(`frame batch header is invalid ${magic}/${count}/${skip}/${bytes.length}`);
   }
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const frames: Frame[] = [];
-  let previousTransport: Uint8Array<ArrayBuffer> | undefined;
+  let previousTransport = magic === 'DMB3' ? state?.previousTransport : undefined;
   let offset = headerBytes;
   for (let index = 0; index < count; index += 1) {
     if (offset + 4 > bytes.length) throw new TypeError('frame batch length is invalid');
@@ -223,6 +229,7 @@ export async function decodeFrameBatch(encoded: string): Promise<Frame[]> {
     offset += length;
   }
   if (offset !== bytes.length) throw new TypeError('frame batch trailing bytes are invalid');
+  if (magic === 'DMB3' && state !== undefined) state.previousTransport=previousTransport;
   return frames;
 }
 

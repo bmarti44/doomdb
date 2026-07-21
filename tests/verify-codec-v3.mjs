@@ -66,6 +66,20 @@ const batch=await decodeFrameBatch(Buffer.concat(batchParts).toString('base64'))
 assert.deepEqual(batch.map(frame=>frame.tic),[7,8,9,10]);
 for(const item of batch)assert.deepEqual(item.indices,decoded.indices);
 
+// Paced multiplayer carries the exact delta base across sequential DMB3
+// responses, avoiding retransmission of the preceding keyframe block.
+const streamState={previousTransport:undefined};
+const streamFrames=[];
+for(const pair of [[dmf4,deltaFrames[0]],[deltaFrames[1],deltaFrames[2]]]){
+  const parts=[Buffer.from('DMB3','ascii'),Buffer.from([2])];
+  for(const item of pair){const length=Buffer.alloc(4);
+    length.writeUInt32BE(item.length);parts.push(length,item);}
+  streamFrames.push(...await decodeFrameBatch(
+    Buffer.concat(parts).toString('base64'),streamState));
+}
+assert.deepEqual(streamFrames.map(frame=>frame.tic),[7,8,9,10]);
+for(const item of streamFrames)assert.deepEqual(item.indices,decoded.indices);
+
 envelope[8]=2;
 await assert.rejects(decodePayload(gzipSync(envelope).toString('base64')),
   /binary envelope is invalid/);

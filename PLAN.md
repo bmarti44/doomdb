@@ -33,11 +33,13 @@ authoritative record.
 - **Active:** P13 database-authoritative multiplayer. Co-op completion, exact
   worker/ORDS recovery, deathmatch rules, per-listener audio, bounded storage,
   browser play, paced-input linearization/idempotency, sampled-ledger identity,
-  and forced paced-worker recovery are green. T13.5 performance remains open:
-  the best clean two-browser diagnostic is 36.03/34.99 FPS, but the first
-  enforced 300-frame run missed one paint/input tail. The worker alone measures
-  22.30 ms p95; concurrent poll/LOB pressure is the isolated blocker.
-- **Next:** finish P13 performance and soak; re-verify the finished single-player +
+  forced paced-worker recovery, and the co-op two-browser 300-frame performance gate
+  are green. Two consecutive enforced runs reached 35.18/34.80 and
+  35.18/34.85 FPS; paint p95 stayed at 32.2--32.7 ms and input p95 at
+  145.3--181.9 ms.
+  T13.5 soak, deathmatch 300-frame performance, and the remaining
+  gameplay-breadth fixtures remain open.
+- **Next:** finish P13 gameplay breadth and soak; re-verify the finished single-player +
   multiplayer build with
   the full T12.1/T12.2 300-frame performance protocol; then run P11 real S3 +
   Autonomous cloud deployment as the final gate (credentials are required;
@@ -3259,6 +3261,34 @@ other P13 authority, durability, security, and AutoREST rails remain unchanged.
   spike were rejected because they worsened input/presentation behavior. Next:
   attribute slow tics with stage/wait/GC telemetry, then run the bounded
   preallocation x deferred-retirement factorial before changing storage shape.
+  Superseding selection (2026-07-21): per-stage tracing proved every tic over
+  28.57 ms was an OJVM GC tic; no-GC Java p95 was 10.74 ms and persistent BLOB
+  writes were ~1.04 ms p95. The old codec allocated at least ~424 KiB per
+  two-player tic. Fused transpose/XOR plus fixed session-private raw, packed,
+  and double-buffered transport workspaces reduced isolated Java p95 to
+  10.01 ms, codec p95 to 1.67 ms, GC pause p95/max to 1/2 ms, and total p95 to
+  13.92 ms. A sequential `DMB3` stream carries the exact delta base across
+  two-frame responses, eliminating duplicated keyframe-block copies while
+  preserving every canonical frame payload and SHA. An intermediate 300-frame
+  browser run reached 34.90/34.52 FPS with 32.5/32.3 ms paint p95 and
+  203.1/192.9 ms input p95. Six warm
+  ORDS sessions remain selected (eight regressed CPU contention). A missing
+  Scheduler job behind a stale `STARTING` claim is now reclaimed after its
+  one-second creation fence. After a long ORDS restart ages an in-flight batch
+  out of the 128-tic ring, the client re-fences through `MATCH_STATUS`, resets
+  at the latest keyframe, and resumes its delta chain; the live restart/reload
+  gate passes. Performance is selected; soak remains open.
+  Final tail hardening (2026-07-21): paced streams now keyframe every 32 tics
+  while lockstep retains its self-contained four-tic contract. This cut the
+  retained response average to 3.2--4.0 KiB/POV. Oracle call-heap counters then
+  confirmed movement/presentation GC (30 collections reclaiming 60.5 MiB in a
+  sampled session). The serial patch-column path no longer creates a capturing
+  lambda and one `Horizontal` per column, the closed menu no longer allocates a
+  message buffer, and the E1M1-reached weapon/monster/RNG/audio plus HUD/video
+  classes are synchronously native-compiled. Two exact recovery repeats, forced
+  ORDS restart/re-fencing, bounded retention, co-op, and deathmatch browser
+  gates pass. The consecutive enforced 300-frame results are 35.18/34.80 and
+  35.18/34.85 FPS, 32.2--32.7 ms paint p95, and 145.3--181.9 ms input p95.
 
 ## 8. Final acceptance matrix
 

@@ -6,13 +6,12 @@ cd "$root"
 match_file="${DOOMDB_MATCH_ID_FILE:-$(mktemp)}"
 cleanup() {
   match="$(tr -d '\r\n' <"$match_file" 2>/dev/null || true)"
-  rm -f "$match_file"
-  [[ "${DOOMDB_KEEP_MATCH:-0}" != 1 ]] || return 0
-  [[ "$match" =~ ^[0-9a-f]{32}$ ]] || return 0
   if [[ "${DOOMDB_KEEP_MATCH:-0}" == 1 ]]; then
     printf 'RETAINED_MATCH=%s\n' "$match" >&2
     return 0
   fi
+  rm -f "$match_file"
+  [[ "$match" =~ ^[0-9a-f]{32}$ ]] || return 0
   container="$(docker compose ps -q db)"
   java_home=/opt/oracle/product/26ai/dbhomeFree
   {

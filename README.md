@@ -60,15 +60,15 @@ What works today, all verified by repeatable gates:
   rejoined the same authoritative match, and reached synchronized tic 114.
   Deterministic fixtures cover shared keys, one-winner ammo, simultaneous
   fire/use, damage/death/frags, and reborn. Private traces are opt-in and add no
-  work to normal gameplay. The full two-browser route, 300-frame multiplayer
-  FPS gate, remaining authored interaction fixtures, and soak remain open.
+  work to normal gameplay. The co-op two-browser 300-frame FPS gate is green;
+  remaining authored interaction fixtures and soak remain open.
   Two-browser deathmatch is additionally live with authored starts, dynamic
   input, distinct POVs, reconnect, exact worker reconstruction, frag/respawn,
   reciprocal-kill tie, suicide accounting, a frozen 10-frag/10-minute rule, and
   authentic scoreboard/intermission fixtures. Each POV now receives sound
   attenuated and panned for its own Oracle-owned listener. The full-duration
   time-limit, expanded-player, and 300-frame gates remain open.
-- **Multiplayer performance is at the final tail gate.** New matches now freeze
+- **Co-op multiplayer performance is green.** New matches now freeze
   a feature-flagged `PACED_INPUT` mode: the retained Oracle Scheduler session
   advances the one authoritative world at 35 Hz while AutoREST independently
   appends authenticated input transitions and polls database-authored frames.
@@ -78,17 +78,24 @@ What works today, all verified by repeatable gates:
   batches removed the old eight-tic future wait, incremental frame retirement
   replaced burst deletion, and steady native checkpoints moved to tic 1,024
   because recovery currently uses the complete compact ledger. The best clean
-  150-frame run reached 36.03/34.99 FPS, 33.5/32.6 ms paint p95, and
-  249.3/195.0 ms input p95. The first enforced 300-frame run still missed one
-  player's tail (34.5 ms paint and 316 ms input p95), so two consecutive passes
-  and soak remain open; no multiplayer completion claim is made yet. Focused
+  two consecutive enforced 300-frame runs reached 35.18/34.80 and
+  35.18/34.85 FPS; paint p95 stayed at 32.2--32.7 ms and input p95 at
+  145.3--181.9 ms.
+  Soak remains open, so no multiplayer completion claim is made yet. Focused
   gates now pass exact paced-input idempotency, sampled-ledger identity, forced
-  generation recovery, and bounded active retention. An isolated 400-tic trace
-  puts worker precommit at 22.30 ms p95; only concurrent browser polling raises
-  it to ~60 ms. Live Oracle waits point to cached SecureFile/DBWR contention as
-  the leading tail source, with OJVM GC still being instrumented. Locator reuse,
-  four-frame burst polling, and cross-response delta streaming were measured
-  and rejected rather than selected.
+  generation recovery, and bounded active retention. Isolated 400-tic tracing
+  proved OJVM allocation/GC was the tail: no-GC Java p95 was 10.74 ms,
+  while the old codec allocated at least ~424 KiB per two-player tic. Fixed
+  reusable codec workspaces reduce isolated Java/total p95 to 10.01/13.92 ms.
+  A sequential two-frame `DMB3` stream preserves canonical payload bytes while
+  avoiding repeated delta bases. Paced keyframes occur every 32 tics, reducing
+  retained responses to 3.2--4.0 KiB/POV on average; lockstep keeps its
+  self-contained four-tic contract. Oracle counters confirmed the remaining
+  tail was presentation allocation, so the serial patch renderer now reuses
+  column geometry and all gameplay paths reached by the moving/firing route are
+  native-compiled. A live ORDS restart also re-fences and resumes
+  at a retained keyframe after stale frames age out. Locator reuse, four-frame
+  burst polling, and an eight-session ORDS pool were measured and rejected.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is
@@ -128,7 +135,7 @@ Key verified numbers (local two-core Oracle Free stack):
 | Engine step + render + BLOB (warm, p95) | 3.2–3.9 ms |
 | Durable tic with ledger + synchronous commit (p95) | ~20 ms |
 | Single-player displayed FPS, two 300-frame routes | 30.75–32.05 |
-| Multiplayer displayed FPS, best paced diagnostic (gate open) | 36.03 / 34.99 |
+| Multiplayer displayed FPS, consecutive 300-frame gates | 34.80--35.18 |
 | New game, standby-claimed vs cold construction | ~1.4 s vs ~17 s |
 | Tic-zero frame SHA-256 | `a1c9b037…d3b5` |
 | IWAD BLOB (SecureFile, SHA-verified) | 28,795,076 bytes |

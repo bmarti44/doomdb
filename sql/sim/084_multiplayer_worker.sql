@@ -210,7 +210,9 @@ create or replace package body doom_match_worker as
     end if;
     if l_actual_frame0<>l_expected_frame0 or
        (bitand(l_membership,2)=2 and l_actual_frame1<>l_expected_frame1) then
-      raise_application_error(c_error,'recovery POV mismatch');
+      raise_application_error(c_error,'recovery POV mismatch p0='||
+        substr(l_expected_frame0,1,12)||'/'||substr(l_actual_frame0,1,12)||
+        ' p1='||substr(l_expected_frame1,1,12)||'/'||substr(l_actual_frame1,1,12));
     end if;
     update doom_match_frame set generation=p_generation
       where match_id=p_match and tic=l_tic;
@@ -261,6 +263,11 @@ create or replace package body doom_match_worker as
     l_input raw(8);
     l_sql_started timestamp with time zone;l_java_started timestamp with time zone;
     l_java_done timestamp with time zone;
+    l_frame_rows_started timestamp with time zone;l_frame_finalized timestamp with time zone;
+    l_ledger_done timestamp with time zone;l_retirement_started timestamp with time zone;
+    l_retirement_done timestamp with time zone;l_frontier_done timestamp with time zone;
+    l_commit_started timestamp with time zone;l_commit_done timestamp with time zone;
+    l_commit_micros number;
   begin
     select state_sha into l_previous from doom_match_tic
       where match_id=p_match and tic=p_tic-1 and generation=p_generation;
@@ -309,6 +316,9 @@ create or replace package body doom_match_worker as
       end loop;
     end if;
     l_vector_hex:=lower(l_vector_hex||rpad('00',32,'0'));
+    if l_route_diagnostics=1 then
+      l_frame_rows_started:=utc_now;dbms_application_info.set_action('FRAME_ROWS');
+    end if;
     insert into doom_match_frame(match_id,tic,player_slot,membership_epoch,
       generation,frame_sha,response_sha,response_bytes,response_blob,created_at)
     values(p_match,p_tic,0,p_epoch,p_generation,rpad('0',64,'0'),
@@ -319,7 +329,9 @@ create or replace package body doom_match_worker as
       values(p_match,p_tic,1,p_epoch,p_generation,rpad('0',64,'0'),
         rpad('0',64,'0'),1,empty_blob(),l_now) returning response_blob into l_b1;
     end if;
-    if l_route_diagnostics=1 then l_java_started:=utc_now;end if;
+    if l_route_diagnostics=1 then
+      l_java_started:=utc_now;dbms_application_info.set_action('OJVM_STEP');
+    end if;
     l_status:=doom_mocha_multiplayer_step(
       2,l_membership,l_vector_hex,l_previous,l_b0,l_b1,null,null);
     if l_route_diagnostics=1 then l_java_done:=utc_now;end if;
@@ -358,6 +370,9 @@ create or replace package body doom_match_worker as
       update doom_match_frame set frame_sha=l_frame1,response_sha=l_response1,
         response_bytes=l_bytes1 where match_id=p_match and tic=p_tic and player_slot=1;
     end if;
+    if l_route_diagnostics=1 then
+      l_frame_finalized:=utc_now;dbms_application_info.set_action('LEDGER_CHECKPOINT');
+    end if;
     l_command_sha:=sha_raw(hextoraw(l_applied_hex));
     select lower(standard_hash('[]','SHA256')) into l_event from dual;
     insert into doom_match_tic(match_id,tic,membership_epoch,generation,
@@ -394,6 +409,10 @@ create or replace package body doom_match_worker as
       delete from doom_match_checkpoint where match_id=p_match
         and tic<p_tic-c_checkpoint_tics;
     end if;
+    if l_route_diagnostics=1 then
+      l_ledger_done:=utc_now;l_retirement_started:=l_ledger_done;
+      dbms_application_info.set_action('FRAME_RETIRE');
+    end if;
     -- Response BLOBs dominate storage (~128 KiB/tic for two POVs). Retain tic
     -- zero plus a bounded late-poll window; exact restart uses command vectors
     -- and the selected frontier frames, not historical response BLOBs.
@@ -401,18 +420,13 @@ create or replace package body doom_match_worker as
       delete from doom_match_frame where match_id=p_match
         and tic=p_tic-c_frame_retention_tics;
     end if;
+    if l_route_diagnostics=1 then
+      l_retirement_done:=utc_now;dbms_application_info.set_action('FRONTIER');
+    end if;
     update doom_match set current_tic=p_tic,last_activity_at=l_now
       where match_id=p_match and match_state='ACTIVE' and generation=p_generation
         and membership_epoch=p_epoch and current_tic=p_tic-1;
     if sql%rowcount<>1 then raise_application_error(c_error,'step frontier fence');end if;
-    if l_route_diagnostics=1 then
-      l_route_status:=l_route_status||'|sqlToJavaMicros='||
-        elapsed_micros(l_sql_started,l_java_started)||'|javaMicros='||
-        elapsed_micros(l_java_started,l_java_done)||'|sqlAfterJavaMicros='||
-        elapsed_micros(l_java_done,utc_now);
-      insert into doom_match_route_trace(match_id,tic,route_status)
-        values(p_match,p_tic,l_route_status);
-    end if;
     select count(*) into l_next_count from doom_match_command
       where match_id=p_match and tic=p_tic+1 and membership_epoch=p_epoch
         and generation=p_generation and player_slot in(0,1);
@@ -426,7 +440,29 @@ create or replace package body doom_match_worker as
         and generation=p_generation and membership_epoch=p_epoch
         and request_status='PROCESSING' and requested_tic=p_tic;
     if sql%rowcount<>1 then raise_application_error(c_error,'step control fence');end if;
+    if l_route_diagnostics=1 then
+      l_frontier_done:=utc_now;
+      l_route_status:=l_route_status||'|sqlToJavaMicros='||
+        elapsed_micros(l_sql_started,l_java_started)||'|frameRowsMicros='||
+        elapsed_micros(l_frame_rows_started,l_java_started)||'|javaMicros='||
+        elapsed_micros(l_java_started,l_java_done)||'|frameFinalizeMicros='||
+        elapsed_micros(l_java_done,l_frame_finalized)||'|ledgerMicros='||
+        elapsed_micros(l_frame_finalized,l_ledger_done)||'|retirementMicros='||
+        elapsed_micros(l_retirement_started,l_retirement_done)||'|frontierMicros='||
+        elapsed_micros(l_retirement_done,l_frontier_done)||'|sqlAfterJavaMicros='||
+        elapsed_micros(l_java_done,l_frontier_done);
+      insert into doom_match_route_trace(match_id,tic,route_status)
+        values(p_match,p_tic,l_route_status);
+      l_commit_started:=utc_now;dbms_application_info.set_action('COMMIT');
+    end if;
     commit;
+    if l_route_diagnostics=1 then
+      l_commit_done:=utc_now;l_commit_micros:=elapsed_micros(l_commit_started,l_commit_done);
+      update doom_match_route_trace set route_status=route_status||'|commitMicros='||
+        l_commit_micros
+        where match_id=p_match and tic=p_tic;
+      commit;dbms_application_info.set_action(null);
+    end if;
   end;
 
   procedure fill_deadline(
@@ -605,6 +641,11 @@ create or replace package body doom_match_worker as
     if l_match_state='LOBBY' then publish_initial(p_match,l_generation);
     elsif l_match_state='ACTIVE' then reconstruct_existing(p_match,l_generation);
     else raise_application_error(c_error,'match is not recoverable');end if;
+    l_dispose:=doom_mocha_multiplayer_keyframes(
+      case l_worker_mode when 'PACED_INPUT' then 32 else 4 end);
+    if substr(l_dispose,1,3)<>'ok|' then
+      raise_application_error(c_error,substr(l_dispose,1,1800));
+    end if;
     l_boundary:=utc_now;
     loop
       select worker_status,request_status,requested_tic,stop_requested
@@ -704,6 +745,7 @@ create or replace package body doom_match_worker as
     l_state varchar2(16);l_epoch number;l_generation number;l_count number;
     l_job varchar2(64):='DOOM_MATCH_'||upper(p_match);l_wait number;
     l_dummy number;l_worker_error varchar2(2000);l_worker_mode varchar2(16);
+    l_heartbeat timestamp with time zone;
   begin
     p_match_state:=null;l_wait:=least(greatest(coalesce(p_wait_ms,30000),0),60000);
     select number_value into l_dummy from doom_config
@@ -714,9 +756,19 @@ create or replace package body doom_match_worker as
     if l_state<>'LOBBY' or l_generation<>0 then
       raise_application_error(c_error,'match is not startable');
     end if;
-    select count(*) into l_count from doom_match_worker_control
-      where match_id=p_match and worker_status='STARTING';
-    if l_count=1 then p_match_state:='STARTING';commit;return;end if;
+    begin
+      select heartbeat into l_heartbeat from doom_match_worker_control
+        where match_id=p_match and worker_status='STARTING';
+      select count(*) into l_count from user_scheduler_jobs where job_name=l_job;
+      if l_count=1 or l_heartbeat>utc_now-interval '1' second then
+        p_match_state:='STARTING';commit;return;
+      end if;
+      -- Scheduler job creation follows the durable claim. If dispatch loses
+      -- that job entirely, a later authorized status poll reclaims the stale
+      -- STARTING row instead of leaving the ready lobby permanently wedged.
+      delete from doom_match_worker_control where match_id=p_match
+        and worker_status='STARTING' and heartbeat=l_heartbeat;
+    exception when no_data_found then null;end;
     select count(*) into l_count from doom_match_member where match_id=p_match
       and member_state='READY' and membership_epoch=l_epoch;
     if l_count<>2 then raise_application_error(c_error,'membership is not ready');end if;

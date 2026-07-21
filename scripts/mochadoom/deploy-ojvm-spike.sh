@@ -7,6 +7,7 @@ java_home="/opt/oracle/product/26ai/dbhomeFree"
 revision="c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93"
 iwad_sha="7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
 tmp="/tmp/doomdb-mocha-$$"
+adapter_only="${DOOMDB_MOCHA_ADAPTER_ONLY:-0}"
 
 [[ -n "$container" ]] || { printf 'database container is not running\n' >&2; exit 1; }
 [[ "$(git -C "$root/third_party/mochadoom" rev-parse HEAD)" == "$revision" ]] || {
@@ -37,7 +38,7 @@ find "$host_tmp/source" -name '*.java' -exec perl -pi -e 's/\r$//' {} +
 # Keep the pinned upstream tree pristine. The OJVM integration is a small,
 # reviewable patch overlay applied only to the disposable build tree.
 for overlay in "$root"/patches/mochadoom/*.patch; do
-  patch --batch --forward -d "$host_tmp/source" -p2 <"$overlay"
+  patch --batch --forward --ignore-whitespace -d "$host_tmp/source" -p2 <"$overlay"
 done
 find "$host_tmp/source" -name '*.orig' -delete
 # OJVM System.exit can tear down a live session JVM instead of returning a
@@ -83,12 +84,15 @@ if ((javac_status != 0)); then
 fi
 docker exec "$container" bash -lc \
   "find '$tmp/classes' -name '*.class' -exec touch -t 200001010000 {} +; \
-   cd '$tmp/classes'; find . -name '*.class' -print | LC_ALL=C sort >'$tmp/classes.list'; \
+   cd '$tmp/classes'; \
+   if [ '$adapter_only' = 1 ]; then \
+     find ./doomdb/mocha -name 'DoomDbMochaAdapter*.class' -print; \
+   else find . -name '*.class' -print; fi | LC_ALL=C sort >'$tmp/classes.list'; \
    '$java_home/jdk/bin/jar' --create --file '$tmp/mochadoom-ojvm.jar' \
      --no-manifest @'$tmp/classes.list'"
 
 jar_sha="$(docker exec "$container" sha256sum "$tmp/mochadoom-ojvm.jar" | awk '{print $1}')"
-class_count="$(docker exec "$container" bash -lc "find '$tmp/classes' -name '*.class' | wc -l")"
+class_count="$(docker exec "$container" sh -c "wc -l <'$tmp/classes.list'" | tr -d '[:space:]')"
 
 table_present="$(docker exec "$container" bash -lc \
   "'$java_home/bin/sqlplus' -s / as sysdba <<'SQL'
