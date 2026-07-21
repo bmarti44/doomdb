@@ -35,7 +35,7 @@ PASS T11.1-EVAL-MUTATION-SELF-CHECK (24/24 isolated mutations killed)
 PASS T11.1-SOURCE-POLICY-SELF-CHECK (synthetic positive and negative canaries)
 PASS T11.1-SOURCE-AUDIT (pinned fail-closed cloud driver)
 PASS T11.1-SOURCE-FIRST (shell/static/self 22/22; mutations 24/24; guards fail closed)
-PASS T11.1-OJVM-ARTIFACT (830 deterministic Java 8 classes; client-loadable jar)
+PASS T11.1-OJVM-ARTIFACT (830 deterministic Java 8 classes; client load+resolve 830/830)
 PASS MOCHADOOM-CRASH-RECONSTRUCT oldGeneration=20 newGeneration=21 commands=102 identicalFrameAfterSeam=1
 PASS T12.1-BROWSER-TWO-RUN (32.39/35.51 FPS; identical 300-frame chains)
 ```
@@ -53,3 +53,7 @@ pinned SQLcl 26.2.0.181.2110. None of the required `ADB_*` inputs is present in
 this shell. Until those exist, live capability, transport, OJVM preflight,
 deployment, catalog, seed equality, and direct API evidence remain `NOT RUN`;
 `/tmp/doomdb-t111-evidence.json` is not created.
+
+The production entry point additionally requires the explicit
+`DOOMDB_CLOUD_EXECUTE=YES` guard. No credential presence alone can trigger a
+cloud mutation.

@@ -24,6 +24,16 @@ Autonomous `JAVAVM` must be enabled and the database restarted by an
 administrator before the gate. Missing or incompatible OJVM fails before
 production schema mutation.
 
+The exact loader path is now locally executed, not merely source-inspected. The
+first probe exposed root ownership on mode-0600 files copied into the pinned
+tool container and a dangerous `loadjava` behavior: the unreadable JAR emitted
+a permission error but exited zero after loading zero classes. The selected
+loader transfers the protected staging tree to `oracle:oinstall`, reads the
+database password from a mode-0600 in-container stdin file, and never places it
+in argv or environment. The corrected disposable-schema probe loaded and
+resolved 830/830 valid classes. A separate production SQL assertion repeats
+that exact class/invalid count before runtime call specifications are finalized.
+
 ## Local acceptance
 
 The exact release-8 graph was loaded into the local Oracle runtime and its 78

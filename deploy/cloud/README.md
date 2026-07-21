@@ -20,7 +20,8 @@ its contents must still exactly match the reviewed allowlist.
 Real execution additionally requires `--execute` and
 `DOOMDB_CLOUD_EXECUTE=YES`. S3 upload requires `DOOMDB_S3_BUCKET`, `AWS_REGION`,
 `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`. Autonomous deployment requires
-`ADB_CONNECTION_STRING`, `ADB_USER`, `ADB_PASSWORD`, and `ADB_ORDS_BASE_URL`.
+`ADB_CONNECTION_STRING`, `ADB_USERNAME`, `ADB_PASSWORD`, and
+`ADB_ORDS_BASE_URL`.
 Optional AWS session credentials remain environment-only. The scripts verify the
 AWS CLI and SQLcl versions pinned in `versions.lock`; database credentials are
 fed to SQLcl through standard input, never process arguments. Output passes
@@ -65,3 +66,9 @@ preflight, pre-Java schema and seed sources, class/IWAD load, post-Java runtime
 and REST sources, native hot-class compilation, then catalog/seed/API evidence.
 The deployment manifest content-addresses the release, pinned Mocha revision,
 830-class count, and deterministic JAR SHA.
+
+Production execution also requires `DOOMDB_CLOUD_EXECUTE=YES`. The canonical
+database account variable is `ADB_USERNAME` in the skeleton, production gate,
+environment report, loader, and teardown. After client-side `loadjava`, the
+gate queries `USER_JAVA_CLASSES` and refuses to continue unless all 830 classes
+exist and every Java class object is valid.

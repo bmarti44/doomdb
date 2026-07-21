@@ -2902,6 +2902,19 @@ routes reproduced identical chains at 32.39 and 35.51 FPS. Autonomous requires
 an administrator to enable `JAVAVM` and restart the database before this gate;
 absence fails before production schema mutation.
 
+**Client loader hardening (2026-07-21).** A disposable-schema execution of the
+exact production `loadjava -oci8 -resolve` path found that `docker cp` preserved
+the mode-0600 JAR as root-owned inside the pinned tool container; `loadjava`
+reported a permission error yet could exit zero with zero loaded classes. The
+loader now stages its wallet, JAR, IWAD, loader, and password under a mode-0700
+directory, transfers ownership to the container's `oracle` account without
+weakening permissions, and supplies the password through a protected stdin
+file rather than argv/environment or `docker exec -i`. A post-load SQL gate
+requires exactly 830 classes and zero invalids before any runtime finalization.
+The corrected disposable run loaded and resolved 830/830 classes. The complete
+production entry point now also requires `DOOMDB_CLOUD_EXECUTE=YES`, and all
+cloud scripts use the evaluator-contract name `ADB_USERNAME`.
+
 #### T11.1 Cloud database deployment
 
 - Route: Terra high.

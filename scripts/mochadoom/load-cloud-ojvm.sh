@@ -15,6 +15,8 @@ host_tmp=''; remote=''
 for name in ADB_CONNECTION_STRING ADB_USERNAME ADB_PASSWORD ADB_WALLET_DIR; do
   [[ -n "${!name:-}" ]] || { printf 'required environment variable is absent: %s\n' "$name" >&2; exit 2; }
 done
+[[ "$ADB_USERNAME" =~ ^[A-Za-z][A-Za-z0-9_\$#]{0,127}$ ]] || {
+  printf 'ADB_USERNAME is not a simple Oracle identifier\n' >&2; exit 2; }
 [[ -n "$container" ]] || { printf 'pinned Java/loadjava tool container is unavailable\n' >&2; exit 2; }
 [[ -d "$ADB_WALLET_DIR" && ! -L "$ADB_WALLET_DIR" ]] || { printf 'wallet directory is invalid\n' >&2; exit 2; }
 for tool in docker unzip shasum node; do command -v "$tool" >/dev/null || {
@@ -47,18 +49,26 @@ docker cp "$host_tmp/wallet/." "$container:$remote/wallet" >/dev/null
 docker cp "$host_tmp/freedoom1.wad" "$container:$remote/freedoom1.wad" >/dev/null
 docker cp "$jar" "$container:$remote/mochadoom-ojvm.jar" >/dev/null
 docker cp "$root/tools/mochadoom/DoomMochaIwadLoader.java" "$container:$remote/DoomMochaIwadLoader.java" >/dev/null
+printf '%s\n' "$ADB_PASSWORD" | docker exec -i "$container" sh -c \
+  "umask 077; cat > '$remote/password'"
+# docker cp creates root-owned files. The pinned tool container runs Java as
+# oracle, so make the protected staging tree readable by that account without
+# weakening its mode. A zero-exit loadjava can otherwise report zero classes.
+docker exec -u 0 "$container" chown -R oracle:oinstall "$remote"
 docker exec "$container" chmod -R go-rwx "$remote"
 docker exec "$container" "$java_home/jdk/bin/javac" --release 11 \
   -cp "$java_home/jdbc/lib/ojdbc11.jar" -d "$remote" "$remote/DoomMochaIwadLoader.java"
 
-if ! printf '%s\n' "$ADB_PASSWORD" | docker exec -i -e "TNS_ADMIN=$remote/wallet" \
-  "$container" "$java_home/bin/loadjava" -oci8 -force -resolve \
+if ! docker exec -e "TNS_ADMIN=$remote/wallet" "$container" sh -c \
+  'password=$1; shift; exec "$@" < "$password"' sh "$remote/password" \
+  "$java_home/bin/loadjava" -oci8 -force -resolve \
   -user "$ADB_USERNAME@$ADB_CONNECTION_STRING" "$remote/mochadoom-ojvm.jar" \
   >"$host_tmp/loadjava.log" 2>&1; then
   printf 'client-side loadjava failed (private diagnostics discarded)\n' >&2; exit 1
 fi
-if ! printf '%s\n' "$ADB_PASSWORD" | docker exec -i -e "TNS_ADMIN=$remote/wallet" \
-  "$container" "$java_home/jdk/bin/java" \
+if ! docker exec -e "TNS_ADMIN=$remote/wallet" "$container" sh -c \
+  'password=$1; shift; exec "$@" < "$password"' sh "$remote/password" \
+  "$java_home/jdk/bin/java" \
   -cp "$remote:$java_home/jdbc/lib/ojdbc11.jar" DoomMochaIwadLoader \
   "jdbc:oracle:thin:@$ADB_CONNECTION_STRING" "$ADB_USERNAME" \
   "$remote/freedoom1.wad" "$iwad_sha" "$revision" \

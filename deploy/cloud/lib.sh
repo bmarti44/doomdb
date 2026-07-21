@@ -26,6 +26,26 @@ cloud_check_execute_guard() {
     cloud_die 'execution requires DOOMDB_CLOUD_EXECUTE=YES in addition to --execute'
 }
 
+cloud_validate_adb_credentials() {
+  case "$ADB_USERNAME" in
+    ''|[!A-Za-z]*|*[!A-Za-z0-9_\$#]*)
+      cloud_die 'ADB_USERNAME is not a simple Oracle identifier' ;;
+  esac
+  [ "${#ADB_USERNAME}" -le 128 ] ||
+    cloud_die 'ADB_USERNAME exceeds the Oracle identifier limit'
+  case "$ADB_CONNECTION_STRING" in
+    ''|*[!A-Za-z0-9._:/?=@-]*)
+      cloud_die 'ADB_CONNECTION_STRING contains unsupported characters' ;;
+  esac
+  cloud_cr=$(printf '\r')
+  case "$ADB_PASSWORD" in
+    *"\""*|*"$cloud_cr"*)
+      cloud_die 'ADB_PASSWORD cannot be represented safely in a SQLcl connect command' ;;
+  esac
+  [ "$(printf '%s' "$ADB_PASSWORD" | wc -l | tr -d ' ')" -eq 0 ] ||
+    cloud_die 'ADB_PASSWORD cannot contain a newline'
+}
+
 cloud_check_tool_version() {
   cloud_tool=$1
   cloud_expected=$2

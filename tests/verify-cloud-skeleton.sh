@@ -48,6 +48,13 @@ if deploy/cloud/s3-upload.sh --execute > /dev/null 2>&1; then
   fail 'execute mode was accepted without explicit guard'
 fi
 pass
+if DOOMDB_CLOUD_EXECUTE=YES ADB_CONNECTION_STRING=doomdb_low \
+  ADB_USERNAME=DOOM ADB_PASSWORD='unsafe"password' \
+  ADB_ORDS_BASE_URL=https://example.invalid/ords/doom \
+  deploy/cloud/autonomous-deploy.sh --execute > /dev/null 2>&1; then
+  fail 'unsafe SQLcl credential was accepted'
+fi
+pass
 for script in deploy/cloud/s3-upload.sh deploy/cloud/autonomous-deploy.sh deploy/cloud/teardown.sh; do
   grep -q 'cloud_check_execute_guard' "$script" || fail "$script lacks explicit execution guard"
 done

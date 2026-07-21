@@ -142,7 +142,7 @@ credential_state() {
   if [ "$present" = yes ]; then printf 'INFO: %s credentials PRESENT\n' "$label"; else printf 'INFO: %s credentials ABSENT\n' "$label"; fi
 }
 credential_state AWS AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION
-credential_state ADB ADB_CONNECTION_STRING ADB_USER ADB_PASSWORD
+credential_state ADB ADB_CONNECTION_STRING ADB_USERNAME ADB_PASSWORD
 
 if [ "$failures" -ne 0 ]; then
   printf 'ENV RESULT: FAIL (%s checks failed)\n' "$failures" >&2

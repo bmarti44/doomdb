@@ -28,12 +28,15 @@ cleanup(){
 trap cleanup EXIT HUP INT TERM
 rm -f "$evidence"
 
+[[ "${DOOMDB_CLOUD_EXECUTE:-}" == YES ]] || die 'execution requires DOOMDB_CLOUD_EXECUTE=YES'
 for name in ADB_CONNECTION_STRING ADB_USERNAME ADB_PASSWORD ADB_WALLET_DIR ADB_ORDS_BASE_URL ADB_LOCAL_SEED_EVIDENCE ADB_EXPECTED_MAX_CPU ADB_EXPECTED_MAX_STORAGE_GB ADB_EXPECTED_AUTOSCALING; do
   [[ -n "${!name:-}" ]] || die "required environment variable is absent: $name"
 done
 [[ "$ADB_EXPECTED_MAX_CPU" =~ ^[1-9][0-9]*$ ]] || die 'ADB_EXPECTED_MAX_CPU must be a positive integer'
 [[ "$ADB_EXPECTED_MAX_STORAGE_GB" =~ ^[1-9][0-9]*$ ]] || die 'ADB_EXPECTED_MAX_STORAGE_GB must be a positive integer'
 [[ "$ADB_EXPECTED_AUTOSCALING" == true || "$ADB_EXPECTED_AUTOSCALING" == false ]] || die 'ADB_EXPECTED_AUTOSCALING must be true or false'
+[[ "$ADB_USERNAME" =~ ^[A-Za-z][A-Za-z0-9_\$#]{0,127}$ ]] || die 'ADB_USERNAME is not a simple Oracle identifier'
+[[ "$ADB_PASSWORD" != *'"'* && "$ADB_PASSWORD" != *$'\n'* && "$ADB_PASSWORD" != *$'\r'* ]] || die 'ADB_PASSWORD cannot be represented safely in a SQLcl connect command'
 [[ "$ADB_CONNECTION_STRING" =~ ^[A-Za-z0-9._:/?=@-]+$ ]] || die 'connection identifier contains unsupported characters'
 [[ "$ADB_ORDS_BASE_URL" =~ ^https://[^/?#]+/ords/[A-Za-z0-9._~-]+/?$ ]] || die 'managed ORDS base must be an HTTPS schema root without query or fragment'
 [[ -d "$ADB_WALLET_DIR" && ! -L "$ADB_WALLET_DIR" ]] || die 'wallet directory must be a real directory'
@@ -117,6 +120,7 @@ node "$root/scripts/t11.1-deployment-manifest.mjs" "$ledger" "$tmp/deployment.js
 sql_file "$root/deploy/cloud/t11.1/ojvm-preflight.sql" >"$tmp/ojvm-preflight.log"
 timeout 14400 sql -s /nolog <"$pre_sql" | node "$root/scripts/redact-cloud-output.mjs" >"$tmp/deployment-pre.log"
 "$root/scripts/mochadoom/load-cloud-ojvm.sh" "$tmp/mochadoom-ojvm.jar" "$tmp/ojvm-artifact.json" >"$tmp/ojvm-load.log"
+sql_file "$root/deploy/cloud/t11.1/ojvm-postload.sql" >"$tmp/ojvm-postload.log"
 timeout 14400 sql -s /nolog <"$post_sql" | node "$root/scripts/redact-cloud-output.mjs" >"$tmp/deployment-post.log"
 sql_file_timeout 7200 "$root/scripts/mochadoom/compile-hot-renderer.sql" >"$tmp/ojvm-native-compile.log"
 

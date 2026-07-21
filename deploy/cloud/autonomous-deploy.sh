@@ -20,14 +20,15 @@ printf '{\n  "schema": 1,\n  "operation": "autonomous-sql",\n  "mode": "%s",\n  
 [ "$mode" = execute ] || exit 0
 cloud_check_execute_guard
 cloud_require_value ADB_CONNECTION_STRING
-cloud_require_value ADB_USER
+cloud_require_value ADB_USERNAME
 cloud_require_value ADB_PASSWORD
 cloud_require_value ADB_ORDS_BASE_URL
+cloud_validate_adb_credentials
 sqlcl_version=$(sed -n 's/.*"sqlcl": "\([^"]*\)".*/\1/p' "$ROOT/versions.lock")
 cloud_check_tool_version sql "$sqlcl_version"
 {
   printf 'set echo off termout off define off\n'
-  printf 'connect %s/%s@%s\n' "$ADB_USER" "$ADB_PASSWORD" "$ADB_CONNECTION_STRING"
+  printf 'connect %s/"%s"@%s\n' "$ADB_USERNAME" "$ADB_PASSWORD" "$ADB_CONNECTION_STRING"
   printf 'set termout on\n'
   printf '@%s\n' "$sql_file"
   printf 'exit\n'

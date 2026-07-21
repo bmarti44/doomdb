@@ -44,7 +44,10 @@ What works today, all verified by repeatable gates:
   pass; the browser routes held 32.39/35.51 FPS with identical 300-state,
   frame, and payload chains. The production cloud gate loads that JAR with the
   supported client-side `loadjava` path, loads the SHA-verified IWAD, and only
-  then installs the runtime call specifications.
+  then installs the runtime call specifications. A disposable-schema gate now
+  exercises that exact credential/file/OCI path and requires 830/830 resolved
+  classes; the production gate independently repeats the count before runtime
+  finalization.
 - **Selected-engine T12.1 attribution is live.** The content-addressed
   300-frame Mocha fixture now runs through `SUBMIT_STEP`/`POLL_FRAME`, an
   independent DMF3/4 decoder, and a credential-private Oracle collector. Its

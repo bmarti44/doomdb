@@ -5,9 +5,11 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/doomdb-t111-source.XXXXXX")";trap 'rm -rf "$tm
 
 bash -n "$root/scripts/verify-cloud-database.sh"
 bash -n "$root/scripts/mochadoom/build-ojvm-jar.sh" "$root/scripts/mochadoom/load-cloud-ojvm.sh"
-for marker in build-ojvm-jar.sh ojvm-preflight.sql load-cloud-ojvm.sh deploy-pre-java.sql deploy-post-java.sql; do
+for marker in build-ojvm-jar.sh ojvm-preflight.sql load-cloud-ojvm.sh ojvm-postload.sql deploy-pre-java.sql deploy-post-java.sql; do
   grep -q "$marker" "$root/scripts/verify-cloud-database.sh"
 done
+grep -q 'DOOMDB_CLOUD_EXECUTE' "$root/scripts/verify-cloud-database.sh"
+grep -q 'chown -R oracle:oinstall' "$root/scripts/mochadoom/load-cloud-ojvm.sh"
 for source in t11.1-cloud-api.mjs t11.1-build-evidence.mjs t11.1-deployment-manifest.mjs; do node --check "$root/scripts/$source";done
 T111_REQUIRE_PRODUCTION=1 node "$root/evaluator/t11.1/source-audit.mjs"
 node "$root/evaluator/t11.1/self-check.mjs"
@@ -19,7 +21,24 @@ rc=$?
 set -e
 [[ "$rc" -ne 0 ]]
 grep -q '^T11.1 NOT RUN:' "$tmp/err"
+grep -q 'DOOMDB_CLOUD_EXECUTE=YES' "$tmp/err"
 ! grep -q 'PASS' "$tmp/out"
+[[ ! -e /tmp/doomdb-t111-evidence.json ]]
+
+mkdir "$tmp/wallet";printf 'fixture\n' >"$tmp/wallet/tnsnames.ora";chmod 600 "$tmp/wallet/tnsnames.ora"
+printf '{}\n' >"$tmp/seeds.json"
+set +e
+env -i PATH="$PATH" HOME="${HOME:-/tmp}" DOOMDB_CLOUD_EXECUTE=YES \
+  ADB_CONNECTION_STRING=doomdb_low ADB_USERNAME=DOOM \
+  ADB_PASSWORD='unsafe"password' ADB_WALLET_DIR="$tmp/wallet" \
+  ADB_ORDS_BASE_URL=https://example.invalid/ords/doom \
+  ADB_LOCAL_SEED_EVIDENCE="$tmp/seeds.json" ADB_EXPECTED_MAX_CPU=2 \
+  ADB_EXPECTED_MAX_STORAGE_GB=20 ADB_EXPECTED_AUTOSCALING=false \
+  bash "$root/scripts/verify-cloud-database.sh" >"$tmp/injection.out" 2>"$tmp/injection.err"
+rc=$?
+set -e
+[[ "$rc" -ne 0 ]]
+grep -q 'cannot be represented safely' "$tmp/injection.err"
 [[ ! -e /tmp/doomdb-t111-evidence.json ]]
 
 printf '%s\n' \

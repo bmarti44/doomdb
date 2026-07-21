@@ -24,8 +24,9 @@ cloud_require_value AWS_REGION
 cloud_require_value AWS_ACCESS_KEY_ID
 cloud_require_value AWS_SECRET_ACCESS_KEY
 cloud_require_value ADB_CONNECTION_STRING
-cloud_require_value ADB_USER
+cloud_require_value ADB_USERNAME
 cloud_require_value ADB_PASSWORD
+cloud_validate_adb_credentials
 aws_version=$(sed -n 's/.*"awsCli": "\([^"]*\)".*/\1/p' "$ROOT/versions.lock")
 sqlcl_version=$(sed -n 's/.*"sqlcl": "\([^"]*\)".*/\1/p' "$ROOT/versions.lock")
 cloud_check_tool_version aws "$aws_version"
@@ -33,7 +34,7 @@ cloud_check_tool_version sql "$sqlcl_version"
 aws s3api delete-object --bucket "$bucket" --key index.html >/dev/null
 {
   printf 'set echo off termout off define off\n'
-  printf 'connect %s/%s@%s\n' "$ADB_USER" "$ADB_PASSWORD" "$ADB_CONNECTION_STRING"
+  printf 'connect %s/"%s"@%s\n' "$ADB_USERNAME" "$ADB_PASSWORD" "$ADB_CONNECTION_STRING"
   printf 'set termout on\n'
   printf '@%s\n' "$ROOT/deploy/cloud/sql/teardown-health.sql"
   printf 'exit\n'
