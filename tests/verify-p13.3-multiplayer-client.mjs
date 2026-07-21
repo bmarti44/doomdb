@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import {chromium} from 'playwright';
 
@@ -60,6 +61,27 @@ try {
     host.waitForFunction(() => /TIC [1-9][0-9]*/.test(document.querySelector('[data-hud]')?.textContent ?? ''), null, {timeout: 30000}),
     guest.waitForFunction(() => /TIC [1-9][0-9]*/.test(document.querySelector('[data-hud]')?.textContent ?? ''), null, {timeout: 30000})
   ]);
+  if (process.env.DOOMDB_TEST_ORDS_RESTART === '1') {
+    const beforeRestart = await Promise.all([host, guest].map(async page =>
+      Number((await page.locator('[data-hud]').textContent() ?? '')
+        .match(/TIC (\d+)/)?.[1] ?? 0)));
+    execFileSync('docker', ['compose', 'restart', 'ords'], {stdio: 'ignore'});
+    let healthy = false;
+    for (let attempt = 0; attempt < 360; attempt += 1) {
+      try {
+        const response = await fetch(`${base}/health.txt`);
+        if (response.ok) { healthy = true;break; }
+      } catch { /* ORDS is expected to refuse connections while restarting. */ }
+      await new Promise(resolve => setTimeout(resolve, 250));
+    }
+    assert.equal(healthy, true, 'ORDS did not become healthy after restart');
+    await Promise.all([host, guest].map((page, index) => page.waitForFunction(
+      previous => {
+        const hud = document.querySelector('[data-hud]');
+        const tic = Number(hud?.textContent?.match(/TIC (\d+)/)?.[1] ?? 0);
+        return !hud?.classList.contains('error') && tic > previous;
+      }, beforeRestart[index], {timeout: 60000})));
+  }
   await guest.reload({waitUntil: 'domcontentloaded'});
   await guest.locator('[data-game][data-active]').waitFor({state: 'visible', timeout: 30000});
   await guest.waitForFunction(() => /TIC [1-9][0-9]*/.test(
@@ -99,7 +121,7 @@ try {
   assert.ok(hostTic >= 1 && guestTic >= 1);
   assert.ok(Math.abs(hostTic - guestTic) <= 1);
   process.stdout.write(
-    `PASS P13.3-MULTIPLAYER-CLIENT two browsers dynamic-input reconnect distinct-POVs hostTic=${hostTic} guestTic=${guestTic} (bearers redacted)\n`);
+    `PASS P13.3-MULTIPLAYER-CLIENT two browsers dynamic-input ORDS-restart reconnect distinct-POVs hostTic=${hostTic} guestTic=${guestTic} (bearers redacted)\n`);
 } finally {
   await browser.close();
 }

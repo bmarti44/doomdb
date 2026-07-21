@@ -55,7 +55,7 @@ assert.match(worker, /delete from doom_match_frame where match_id=p_match and ti
 assert.match(worker, /delete from doom_match_checkpoint where match_id=p_match/);
 assert.match(worker, /'NEUTRAL_DEADLINE'/);
 assert.match(worker, /'NEUTRAL_LEFT'/);
-assert.match(worker, /disconnected_at<l_now-interval '10' second/);
+assert.match(worker, /disconnected_at<l_now-interval '180' second/);
 assert.match(worker, /leave_tic=\(select current_tic\+1/);
 assert.match(worker, /doom_mocha_multiplayer_step\(\s*2,l_membership/);
 assert.match(worker, /utl_raw\.concat\(vector_\.membership_bitmap,vector_\.command_vector\)/);

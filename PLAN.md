@@ -3016,7 +3016,8 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   durable vector records `NEUTRAL_LEFT`, membership changes from `03` to `01`,
   the retired POV is no longer rendered, and reconstruction reproduces the
   one-POV frontier. Idle members transition ACTIVE → DISCONNECTED after three
-  seconds and to the same terminal LEFT boundary after ten more; the host can
+  seconds and to the same terminal LEFT boundary after a three-minute transport
+  grace (long enough for a measured generated-ORDS restart); the host can
   explicitly finish the match idempotently. Tic 1 alone uses a 500 ms cold
   generated-procedure allowance, while every warm missing-peer deadline remains
   75 ms. Bounded final leave semantics are closed.
@@ -3042,7 +3043,14 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   keeps each player capability in session storage, captures dynamic input, and
   displays only that player's Oracle frame. A real two-context Playwright gate
   reached synchronized tic 24 and proved distinct POVs without bearer output.
-  The 300-frame FPS gate and broader interaction fixtures remain open.
+  The client now treats bounded network/ORDS failures as retryable, refreshes
+  authoritative fences, and never predicts. A live two-context gate restarted
+  the complete ORDS container mid-poll; both slots survived the measured
+  two-minute generated-API startup, resumed in lockstep, reloaded the guest,
+  and reached synchronized tic 114 with distinct POVs. The disconnected-to-LEFT
+  grace is three minutes so this measured transport recovery is possible;
+  explicit leave and match expiry remain immediate. The 300-frame FPS gate and
+  full-route two-browser replay remain open.
 - Co-op route checkpoint (2026-07-20): the retained adapter now mirrors Doom's
   exact internal consistency word after each world tick, including the reborn
   case where `DoReborn` replaces the player mobj before vanilla records the
@@ -3065,8 +3073,12 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   normal-path DML. A separate live gate forcibly stops and drops the owning
   Scheduler job at tic 400, invokes fenced reconstruction in a replacement
   session, completes the route at tic 762, and reproduces the same state and
-  both POV hashes. The two-browser full-route replay, ORDS-mid-poll seam, and
-  isolated interaction fixtures remain before T13.3 closes.
+  both POV hashes. The two-browser full-route parity replay and remaining
+  authored interaction fixtures remain before T13.3 closes. The
+  deterministic OJVM fixture already locks mutual visibility, one shared world
+  tic, simultaneous fire/use, one-winner ammo contention, per-player netgame
+  keys, damage/death, frag attribution, and co-op reborn with identical results
+  across two clean initializations.
 
 #### T13.4 Deathmatch and player-count expansion
 

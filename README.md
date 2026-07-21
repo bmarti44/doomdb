@@ -55,9 +55,13 @@ What works today, all verified by repeatable gates:
   reconstruction of the terminal state and both POV hashes. A second live run
   forcibly killed the match worker at tic 400, rebuilt the retained world in a
   replacement Scheduler session, and still reproduced those exact hashes at
-  tic 762. Private traces are opt-in and add no work to normal gameplay. The
-  full two-browser route, 300-frame multiplayer FPS gate, interaction fixtures,
-  and soak remain open.
+  tic 762. A live two-browser test also restarted ORDS mid-poll; both clients
+  retried without prediction, survived the measured API-republication window,
+  rejoined the same authoritative match, and reached synchronized tic 114.
+  Deterministic fixtures cover shared keys, one-winner ammo, simultaneous
+  fire/use, damage/death/frags, and reborn. Private traces are opt-in and add no
+  work to normal gameplay. The full two-browser route, 300-frame multiplayer
+  FPS gate, remaining authored interaction fixtures, and soak remain open.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is

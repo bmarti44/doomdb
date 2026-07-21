@@ -180,6 +180,10 @@ copyButton.addEventListener('click', () => {
 function signedByte(value: number): number {
   return Math.max(-127, Math.min(127, Math.trunc(value)));
 }
+function transientTransportFailure(cause: unknown): boolean {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  return /request failed|failed to fetch|networkerror|load failed/i.test(message);
+}
 function ticcmd(command: Command): string {
   const bytes = new Uint8Array(8);
   bytes[0] = signedByte(Math.abs(command.forward) > 1 ? command.forward : command.forward * (command.run ? 50 : 25));
@@ -223,6 +227,10 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
   let submitting = false;
   let polling = false;
   let stopped = false;
+  const membershipEpoch = status.membershipEpoch;
+  let generation = status.generation;
+  let transportFailures = 0;
+  let retryAfter = 0;
   const paintedAt: number[] = [];
   const updateHud = (): void => {
     const windowMs = paintedAt.length > 1 ? paintedAt.at(-1)! - paintedAt[0]! : 0;
@@ -233,30 +241,43 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
     stopped = true;hud.className = 'error';
     hud.textContent = cause instanceof Error ? cause.message : String(cause);
   };
+  const recovered = (): void => {
+    transportFailures = 0;retryAfter = 0;hud.className = '';
+  };
+  const retryTransport = (cause: unknown): void => {
+    transportFailures += 1;
+    if (transportFailures > 60) { fail(cause);return; }
+    retryAfter = performance.now() + Math.min(100 * transportFailures, 1000);
+    hud.className = 'muted';
+    hud.textContent = `CO-OP · PLAYER ${value.playerSlot + 1} · TIC ${currentTic}\nReconnecting to Oracle…`;
+  };
   const pump = (): void => {
-    if (stopped) return;
+    if (stopped || performance.now() < retryAfter) return;
     const target = currentTic + 1;
     if (!submitting && submittedTic < target) {
       submitting = true;
       void submitMatchStep(value.match, value.playerCapability, target, target,
         ticcmd(latest)).then(result => {
-          if (result.accepted !== 1 || result.generation !== status.generation ||
-              result.membershipEpoch !== status.membershipEpoch) {
+          if (result.accepted !== 1 || result.generation < generation ||
+              result.membershipEpoch !== membershipEpoch) {
             throw new Error('multiplayer submit fence changed');
           }
-          submittedTic = target;
+          generation = result.generation;submittedTic = target;recovered();
         }).catch(async cause => {
           // The worker may have durably supplied this slot's neutral command
           // while a tab was suspended or reconnecting. Refresh instead of
           // treating that expected late-submit rejection as a fatal error.
           const refreshed = await matchStatus(value.match, value.playerCapability);
           if (refreshed.state !== 'ACTIVE' ||
-              refreshed.generation !== status.generation ||
-              refreshed.membershipEpoch !== status.membershipEpoch) throw cause;
+              refreshed.generation < generation ||
+              refreshed.membershipEpoch !== membershipEpoch) throw cause;
+          generation = refreshed.generation;
           currentTic = Math.max(currentTic, refreshed.currentTic);
-          submittedTic = currentTic;
-          updateHud();
-        }).catch(fail).finally(() => {submitting = false;});
+          submittedTic = currentTic;recovered();updateHud();
+        }).catch(cause => {
+          if (transientTransportFailure(cause)) retryTransport(cause);
+          else fail(cause);
+        }).finally(() => {submitting = false;});
     }
     if (!polling && submittedTic >= target) {
       polling = true;
@@ -270,8 +291,11 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
           currentTic = result.currentTic;
           paintedAt.push(performance.now());
           if (paintedAt.length > 60) paintedAt.shift();
-          updateHud();
-        }).catch(fail).finally(() => {polling = false;});
+          recovered();updateHud();
+        }).catch(cause => {
+          if (transientTransportFailure(cause)) retryTransport(cause);
+          else fail(cause);
+        }).finally(() => {polling = false;});
     }
   };
   updateHud();window.setInterval(pump, 4);

@@ -763,6 +763,49 @@ public final class DoomDbMochaAdapter {
         throw new IllegalStateException("mutual sprite projection missing");
       }
 
+      // Lock vanilla co-op pickup semantics in the shared world. Ordinary
+      // ammo has one deterministic winner and is unlinked before another
+      // player can contend for it; keys remain in netgames so every player can
+      // acquire the same authored key independently.
+      int clipIndex = ammotype_t.am_clip.ordinal();
+      int ammo0Before = engine.players[0].ammo[clipIndex];
+      int ammo1Before = engine.players[1].ammo[clipIndex];
+      mobj_t clip = engine.actions.SpawnMobj(engine.players[0].mo.x,
+          engine.players[0].mo.y, data.Defines.ONFLOORZ,
+          data.mobjtype_t.MT_CLIP);
+      engine.actions.TouchSpecialThing(clip, engine.players[0].mo);
+      boolean pickupContention = engine.players[0].ammo[clipIndex] > ammo0Before
+          && engine.players[1].ammo[clipIndex] == ammo1Before
+          && clip.thinkerFunction == p.RemoveState.REMOVE;
+      if (!pickupContention) {
+        throw new IllegalStateException("co-op pickup contention failed");
+      }
+      mobj_t blueKey = engine.actions.SpawnMobj(engine.players[0].mo.x,
+          engine.players[0].mo.y, data.Defines.ONFLOORZ,
+          data.mobjtype_t.MT_MISC4);
+      engine.actions.TouchSpecialThing(blueKey, engine.players[0].mo);
+      engine.actions.TouchSpecialThing(blueKey, engine.players[1].mo);
+      int blueCard = defines.card_t.it_bluecard.ordinal();
+      boolean sharedKey = engine.players[0].cards[blueCard]
+          && engine.players[1].cards[blueCard]
+          && blueKey.thinkerFunction != p.RemoveState.REMOVE;
+      if (!sharedKey) throw new IllegalStateException("co-op shared key failed");
+      engine.actions.RemoveMobj(blueKey);
+
+      // Both slots' action bits must survive one ordered vector and advance
+      // the shared world only once. The route gate separately proves authored
+      // door/lift/exit effects; this pins simultaneous fire/use ingestion.
+      int actionBeforeTic = engine.gametic;
+      setMultiplayerCommand(0, 0, 0, 0, data.Defines.BT_ATTACK);
+      setMultiplayerCommand(1, 0, 0, 0, data.Defines.BT_USE);
+      tickMultiplayerEngine();
+      boolean simultaneousActions = engine.gametic == actionBeforeTic + 1
+          && (engine.players[0].cmd.buttons & data.Defines.BT_ATTACK) != 0
+          && (engine.players[1].cmd.buttons & data.Defines.BT_USE) != 0;
+      if (!simultaneousActions) {
+        throw new IllegalStateException("simultaneous player actions failed");
+      }
+
       // Exercise shared combat ownership directly after the command/render
       // proof. DamageMobj is the same vanilla path used by hitscan/projectiles;
       // the source player must receive the frag and the victim must respawn in
@@ -795,6 +838,7 @@ public final class DoomDbMochaAdapter {
           + "|pov0VisibleSprites=" + visible0
           + "|pov1VisibleSprites=" + visible1
           + "|renderStateSha=" + beforeRender
+          + "|pickupWinner=0|sharedKey=1|simultaneousActions=1"
           + "|damage=10000|dead=1|fragDelta=" + fragDelta + "|reborn=1";
     } catch (Throwable failure) {
       return failure("multiplayer-probe", failure);

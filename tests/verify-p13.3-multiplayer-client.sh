@@ -19,4 +19,12 @@ cleanup() {
   } | docker exec -i "$container" "$java_home/bin/sqlplus" -s /nolog >/dev/null
 }
 trap cleanup EXIT
-DOOMDB_MATCH_ID_FILE="$match_file" node tests/verify-p13.3-multiplayer-client.mjs
+for _ in $(seq 1 120); do
+  if curl --fail --silent http://localhost:8080/health.txt >/dev/null; then
+    break
+  fi
+  sleep .25
+done
+curl --fail --silent --show-error http://localhost:8080/health.txt >/dev/null
+DOOMDB_MATCH_ID_FILE="$match_file" DOOMDB_TEST_ORDS_RESTART=1 \
+  node tests/verify-p13.3-multiplayer-client.mjs

@@ -79,10 +79,24 @@ replacement session completes tic 762 with the same state SHA and both POV
 hashes as the uninterrupted accepted run. This closes the retained-worker-loss
 route seam without weakening the dynamic two-player command path.
 
+The browser transport seam is also live. Both independent contexts were active
+when the ORDS container restarted and republished the generated API. The client
+kept the database frontier authoritative, retried transport failures, refreshed
+generation fences, and resumed both POVs; the guest then reloaded and both
+clients reached synchronized tic 114. The measured local restart can exceed two
+minutes, so automatic LEFT now follows a three-minute disconnected grace.
+Explicit leave and match expiry are unchanged.
+
+The deterministic engine fixture now additionally proves one-winner ordinary
+ammo contention, retained netgame keys acquired by both players, and concurrent
+fire/use bits in one ordered shared-world tic. These run beside mutual sprite
+visibility, damage/death, frag attribution, and co-op reborn, and reproduce the
+same canonical POV hashes in two clean initializations.
+
 ## Remaining P13 gates
 
-The full two-browser route and ORDS-mid-poll seams, broader co-op interaction
-fixtures, deathmatch selection,
+The full two-browser route, remaining authored co-op interaction fixtures,
+deathmatch selection,
 capacity telemetry, the 300-frame two-browser run, and the 30-minute soak remain
 open. T12 performance follows P13; P11 cloud deployment remains the final
 milestone.

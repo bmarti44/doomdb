@@ -448,7 +448,11 @@ create or replace package body doom_match_worker as
           and membership_epoch=p_epoch),last_seen_at=l_now
       where match_id=p_match and generation=p_generation
       and membership_epoch=p_epoch and member_state='DISCONNECTED'
-      and disconnected_at<l_now-interval '10' second;
+      -- A generated-ORDS restart republishes the allowlist before serving and
+      -- can exceed two minutes on the pinned local stack. Keep the slot
+      -- recoverable across that bounded transport outage; explicit leave and
+      -- match expiry remain immediate bounded cleanup paths.
+      and disconnected_at<l_now-interval '180' second;
     update doom_match_member set member_state='DISCONNECTED',
       disconnected_at=l_now where match_id=p_match and generation=p_generation
       and membership_epoch=p_epoch and member_state='ACTIVE'

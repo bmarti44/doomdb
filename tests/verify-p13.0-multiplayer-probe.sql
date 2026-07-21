@@ -44,6 +44,9 @@ begin
   equal_(field_(first_,'dead'),'1','shared damage/death');
   equal_(field_(first_,'fragDelta'),'1','frag attribution');
   equal_(field_(first_,'reborn'),'1','co-op reborn');
+  equal_(field_(first_,'pickupWinner'),'0','pickup contention order');
+  equal_(field_(first_,'sharedKey'),'1','netgame shared key');
+  equal_(field_(first_,'simultaneousActions'),'1','simultaneous fire/use');
   if field_(first_,'command0')=field_(first_,'command1') then
     raise_application_error(-20000,'distinct slot commands collapsed');
   end if;
