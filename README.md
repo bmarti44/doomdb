@@ -81,8 +81,14 @@ What works today, all verified by repeatable gates:
   150-frame run reached 36.03/34.99 FPS, 33.5/32.6 ms paint p95, and
   249.3/195.0 ms input p95. The first enforced 300-frame run still missed one
   player's tail (34.5 ms paint and 316 ms input p95), so two consecutive passes
-  and soak remain open; no multiplayer completion claim is made yet. SecureFile
-  locator rekey/reuse was measured and rejected after a second-wrap stall.
+  and soak remain open; no multiplayer completion claim is made yet. Focused
+  gates now pass exact paced-input idempotency, sampled-ledger identity, forced
+  generation recovery, and bounded active retention. An isolated 400-tic trace
+  puts worker precommit at 22.30 ms p95; only concurrent browser polling raises
+  it to ~60 ms. Live Oracle waits point to cached SecureFile/DBWR contention as
+  the leading tail source, with OJVM GC still being instrumented. Locator reuse,
+  four-frame burst polling, and cross-response delta streaming were measured
+  and rejected rather than selected.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is

@@ -3,7 +3,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
-match_file="$(mktemp)"
+match_file="${DOOMDB_MATCH_ID_FILE:-$(mktemp)}"
 cleanup() {
   match="$(tr -d '\r\n' <"$match_file" 2>/dev/null || true)"
   rm -f "$match_file"

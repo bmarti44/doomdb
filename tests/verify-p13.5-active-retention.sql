@@ -37,21 +37,29 @@ begin
     l_max,l_members,l_ready_count,l_requester,l_epoch,l_generation,l_tic,l_worker_mode);
   if l_state<>'ACTIVE' then raise_application_error(-20000,'retention start failed');end if;
   for i in 1..160 loop
-    doom_match_worker.submit_command(l_match,0,l_epoch,l_generation,i,i,
-      hextoraw('0800000000000000'),l_accepted);
-    doom_match_worker.submit_command(l_match,1,l_epoch,l_generation,i,i,
-      hextoraw('0000000000000000'),l_accepted);
+    if l_worker_mode='LOCKSTEP' then
+      doom_match_worker.submit_command(l_match,0,l_epoch,l_generation,i,i,
+        hextoraw('0800000000000000'),l_accepted);
+      doom_match_worker.submit_command(l_match,1,l_epoch,l_generation,i,i,
+        hextoraw('0000000000000000'),l_accepted);
+    end if;
     for p in 1..1000 loop
       doom_match_worker.poll_frame(l_match,0,l_epoch,l_generation,i,l_ready,l_payload);
       exit when l_ready=1;dbms_session.sleep(.005);
     end loop;
     if l_ready<>1 then raise_application_error(-20000,'retention frame timeout');end if;
   end loop;
+  if l_worker_mode='PACED_INPUT' then
+    doom_match_worker.stop_match(l_match,l_generation);dbms_session.sleep(.2);
+  end if;
   select count(*) into l_frames from doom_match_frame where match_id=l_match;
   select count(*) into l_checkpoints from doom_match_checkpoint where match_id=l_match;
   select count(*) into l_tics from doom_match_tic where match_id=l_match;
   select count(*) into l_commands from doom_match_command where match_id=l_match;
-  if l_frames<>258 or l_checkpoints<>1 or l_tics<>161 or l_commands<>320 then
+  if l_frames<>258 or l_checkpoints<>1 or
+     (l_worker_mode='LOCKSTEP' and (l_tics<>161 or l_commands<>320)) or
+     (l_worker_mode='PACED_INPUT' and (l_tics not between 161 and 163 or
+       l_commands not between 2*(l_tics-1) and 2*l_tics)) then
     raise_application_error(-20000,'retention bounds frames='||l_frames||
       ' checkpoints='||l_checkpoints||' tics='||l_tics||' commands='||l_commands);
   end if;

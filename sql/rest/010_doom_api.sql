@@ -665,11 +665,10 @@ create or replace package body doom_api as
     end;
     if l_state='LOBBY' and p_member_count=p_max_players and
        p_ready_count=p_max_players then
-      begin
-        select case worker_status when 'STARTING' then 'STARTING'
-                 when 'FAILED' then 'READY_TO_START' else 'READY_TO_START' end
-          into p_match_state from doom_match_worker_control where match_id=p_match;
-      exception when no_data_found then p_match_state:='READY_TO_START';end;
+      -- Concurrent READY commits can each observe only itself and leave a
+      -- fully-ready lobby unclaimed. Authorized status polling is a generated
+      -- AutoREST POST, so use it as an idempotent fenced claim/retry boundary.
+      doom_match_worker.start_ready(p_match,20,p_match_state);
     end if;
   exception when no_data_found then
     p_match_state:=null;raise_application_error(c_match_auth,'match unavailable');

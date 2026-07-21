@@ -32,9 +32,11 @@ authoritative record.
   frame hashes, and canonical animation SHA.
 - **Active:** P13 database-authoritative multiplayer. Co-op completion, exact
   worker/ORDS recovery, deathmatch rules, per-listener audio, bounded storage,
-  and browser play are green. T13.5 performance remains open: the latest
-  reproducible two-browser diagnostic is 23.89/25.26 FPS with 339–637 ms input
-  latency; it is not a 30 FPS pass.
+  browser play, paced-input linearization/idempotency, sampled-ledger identity,
+  and forced paced-worker recovery are green. T13.5 performance remains open:
+  the best clean two-browser diagnostic is 36.03/34.99 FPS, but the first
+  enforced 300-frame run missed one paint/input tail. The worker alone measures
+  22.30 ms p95; concurrent poll/LOB pressure is the isolated blocker.
 - **Next:** finish P13 performance and soak; re-verify the finished single-player +
   multiplayer build with
   the full T12.1/T12.2 300-frame performance protocol; then run P11 real S3 +
@@ -3244,6 +3246,19 @@ other P13 authority, durability, security, and AutoREST rails remain unchanged.
   selection and the required two consecutive passes remain open. A true
   SecureFile locator-reuse ring is rejected: its second wrap stalled around
   tics 257--258 and regressed both clients to ~32 FPS with 42--54 ms paint p95.
+  Focused paced gates now pass exact input retry/mismatch handling, sampled
+  command-vector identity, forced Scheduler generation recovery, and the
+  128-tic frame/1,024-tic checkpoint retention contract. A 400-tic isolated
+  worker trace measured PRE_JAVA 1.18 ms, Java 20.35 ms, POST_JAVA 2.03 ms,
+  and total precommit 22.30 ms p95, proving the retained worker can sustain
+  35 Hz without browser load. Under concurrent polling, precommit p95 rises to
+  ~60 ms. Live ASH and segment statistics identify cached SecureFile pressure
+  (`write complete waits`, 2,569 LOB buffer-busy waits, and a 32.25 MiB segment
+  for ~7.9 MiB retained payload) as the leading cause; OJVM GC remains the
+  secondary hypothesis. A four-frame poll burst and a cross-response delta
+  spike were rejected because they worsened input/presentation behavior. Next:
+  attribute slow tics with stage/wait/GC telemetry, then run the bounded
+  preallocation x deferred-retirement factorial before changing storage shape.
 
 ## 8. Final acceptance matrix
 

@@ -54,6 +54,17 @@ create or replace package body doom_match_worker as
     return lower(rawtohex(dbms_crypto.hash(p_raw,dbms_crypto.hash_sh256)));
   end;
 
+  function elapsed_micros(
+    p_started timestamp with time zone,p_finished timestamp with time zone
+  ) return number is
+    l_elapsed interval day to second:=p_finished-p_started;
+  begin
+    return round(extract(day from l_elapsed)*86400000000+
+      extract(hour from l_elapsed)*3600000000+
+      extract(minute from l_elapsed)*60000000+
+      extract(second from l_elapsed)*1000000);
+  end;
+
   procedure copy_blob(p_source blob,p_target out blob) is
   begin
     dbms_lob.createtemporary(p_target,true,dbms_lob.call);
@@ -248,12 +259,15 @@ create or replace package body doom_match_worker as
     l_checkpoint_status varchar2(4000);l_checkpoint_sha varchar2(64);
     l_checkpoint_bytes number;l_checkpoint_actual number;
     l_input raw(8);
+    l_sql_started timestamp with time zone;l_java_started timestamp with time zone;
+    l_java_done timestamp with time zone;
   begin
     select state_sha into l_previous from doom_match_tic
       where match_id=p_match and tic=p_tic-1 and generation=p_generation;
     select route_diagnostics into l_route_diagnostics
       from doom_match_worker_control where match_id=p_match
         and generation=p_generation and membership_epoch=p_epoch;
+    if l_route_diagnostics=1 then l_sql_started:=utc_now;end if;
     select count(*),lower(listagg(rawtohex(ticcmd_raw),'') within group(order by player_slot)),
       coalesce(sum(case when command_source like 'NEUTRAL_%'
         then power(2,player_slot) else 0 end),0),min(submitted_at)
@@ -305,8 +319,10 @@ create or replace package body doom_match_worker as
       values(p_match,p_tic,1,p_epoch,p_generation,rpad('0',64,'0'),
         rpad('0',64,'0'),1,empty_blob(),l_now) returning response_blob into l_b1;
     end if;
+    if l_route_diagnostics=1 then l_java_started:=utc_now;end if;
     l_status:=doom_mocha_multiplayer_step(
       2,l_membership,l_vector_hex,l_previous,l_b0,l_b1,null,null);
+    if l_route_diagnostics=1 then l_java_done:=utc_now;end if;
     if substr(l_status,1,3)<>'ok|' then
       raise_application_error(c_error,substr(l_status,1,1800));
     end if;
@@ -350,7 +366,8 @@ create or replace package body doom_match_worker as
     values(p_match,p_tic,p_epoch,p_generation,
       hextoraw(lpad(to_char(l_membership,'fmxx'),2,'0')),
       hextoraw(lpad(to_char(l_neutral,'fmxx'),2,'0')),
-      hextoraw(l_applied_hex),l_command_sha,l_previous,l_state,l_event,l_deadline,l_now);
+      hextoraw(l_applied_hex),l_command_sha,l_previous,l_state,l_event,l_deadline,
+      greatest(l_deadline,(localtimestamp at time zone 'UTC')));
     if p_tic=32 or mod(p_tic,c_checkpoint_tics)=0 then
       insert into doom_match_checkpoint(match_id,tic,membership_epoch,generation,
         membership_bitmap,command_sha,state_sha,checkpoint_sha,
@@ -389,6 +406,10 @@ create or replace package body doom_match_worker as
         and membership_epoch=p_epoch and current_tic=p_tic-1;
     if sql%rowcount<>1 then raise_application_error(c_error,'step frontier fence');end if;
     if l_route_diagnostics=1 then
+      l_route_status:=l_route_status||'|sqlToJavaMicros='||
+        elapsed_micros(l_sql_started,l_java_started)||'|javaMicros='||
+        elapsed_micros(l_java_started,l_java_done)||'|sqlAfterJavaMicros='||
+        elapsed_micros(l_java_done,utc_now);
       insert into doom_match_route_trace(match_id,tic,route_status)
         values(p_match,p_tic,l_route_status);
     end if;
@@ -693,6 +714,9 @@ create or replace package body doom_match_worker as
     if l_state<>'LOBBY' or l_generation<>0 then
       raise_application_error(c_error,'match is not startable');
     end if;
+    select count(*) into l_count from doom_match_worker_control
+      where match_id=p_match and worker_status='STARTING';
+    if l_count=1 then p_match_state:='STARTING';commit;return;end if;
     select count(*) into l_count from doom_match_member where match_id=p_match
       and member_state='READY' and membership_epoch=l_epoch;
     if l_count<>2 then raise_application_error(c_error,'membership is not ready');end if;

@@ -134,6 +134,10 @@ async function refreshLobby(): Promise<void> {
   if (local === null) return;
   const capability = local.hostCapability ?? local.playerCapability;
   latestStatus = await matchStatus(local.match, capability);
+  if (latestStatus.state==='READY_TO_START' && ready) {
+    await readyMatch(local.match,local.playerCapability,true);
+    latestStatus=await matchStatus(local.match,capability);
+  }
   roomStatus.textContent = `Match ${local.match} · player ${local.playerSlot + 1}\n${latestStatus.memberCount}/${latestStatus.maxPlayers} joined · ${latestStatus.readyCount} ready · ${latestStatus.state}`;
   readyButton.textContent = ready ? 'Not ready' : 'Ready';
   readyButton.disabled = latestStatus.memberCount !== latestStatus.maxPlayers;
@@ -311,7 +315,8 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
       // A reconnect begins at Oracle's current frontier. Let an older client
       // drain a deep authoritative buffer without skipping frames, then settle
       // onto the worker's exact cadence once only a small jitter reserve remains.
-      nextPresentationAt = now + (paced && frameBuffer.size <= 2 ? 24 : 20);
+      nextPresentationAt = paced ? (serverTic-currentTic>4 ? now+20 :
+        Math.max(nextPresentationAt + 1000 / 35,now + 20)) : now + 20;
       recovered();updateHud();
     }
     if (paced && !submitting && inputQueue.length > 0) {
