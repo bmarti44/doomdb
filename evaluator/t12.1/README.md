@@ -1,9 +1,11 @@
 # T12.1 independent evaluator
 
 This fail-closed evaluator accepts a baseline only after a real fixed 300-frame
-Section 6.6 replay. Frames 0-29 are warm observations; all 270 later frames are
+selected retained-Mocha replay. Frames 0-29 are warm observations; all 270 later frames are
 externally timed. It requires complete per-frame latency, database, ORDS,
-decode/blit, R1/R2 and payload-byte evidence, but enforces no portable FPS floor.
+transfer, decode, palette, blit, input-to-paint, named retained-worker stages,
+R1/R2 compatibility aliases, and payload-byte evidence, but enforces no
+portable FPS floor.
 
 Every exercised SQL family must retain `ALLSTATS LAST` runtime operations and
 redacted `V$SQL` parse/execution snapshots. Its normalized bound shape and

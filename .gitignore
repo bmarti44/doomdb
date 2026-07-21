@@ -1,4 +1,5 @@
 node_modules/
+.artifacts/
 
 # Local credentials. Keep only deliberately fake templates in version control.
 secrets/**

@@ -2923,17 +2923,39 @@ make the validator hash the actual bytes before any live T12.1 collection.
 The selected-engine candidate is now materialized at
 `artifacts/performance/t12.1/mocha-replay-300.json`: 300 ordered frames derived
 from the tracked skill-3 route, all five command classes/four observation phases,
-SHA-256 `1ad47bc8…327fe3`. Its source/expansion/content-address gate passes; the
-review-manifest and live-driver cutover remain the active T12.1 slice.
+SHA-256 `1ad47bc8…327fe3`. Its source/expansion/content-address gate, explicitly
+superseded evaluator manifest, async DMF3/4 live driver, credential-private
+collector, and local production/evaluator evidence validation now pass. The
+isolated matrix records exactly 90 generated AutoREST invocations per family
+and real internal `ALLSTATS LAST` anchor plans without mislabeling anonymous
+PL/SQL blocks as row-source plans.
+
+**Local T12.1 checkpoint (2026-07-21).** The first selected-engine 300-frame
+attribution run measured 37.81/56.09 ms p50/p95 serial correlated latency and
+25.54 effective serial FPS after reducing `POLL_FRAME`'s readiness quantum from
+50 ms to 5 ms (before: 78.64/82.06 ms and 15.27 FPS). The retained worker is
+not the limiter: database 7.14/11.87 ms, ticker 0.30/1.68 ms, render 1.02/1.95
+ms, codec 0.06/0.16 ms, and BLOB 0.24/0.47 ms before commit. Commit is sampled
+every 32nd tic (9/270 measured samples, 1.18–2.41 ms) so profiling does not add
+a second hot-path update; unsampled commits remain in the external remainder.
+The depth-2 browser pipeline plus
+bounded backlog catch-up passes the latest live interaction gate at 31.36 FPS
+with 32.1/33.1 ms p50/p95 paint gaps and 126.1 ms
+input-to-correlated-paint. Still
+open locally: drive the exact fixed fixture through two independent browser
+runs, retain identical state/frame/payload chains, and complete T12.2's local
+profile/stop-rule ledger. Stable-host tails and managed ORDS remain final P11.
 
 - Route: Terra medium.
 - Collect the Section 6.6 replay, execution plans with runtime statistics, V$SQL
   parse/execution data, stage timers excluded from payloads, and payload sizes.
-- Record separate out-of-band timers for renderer materialization, RLE,
-  canonical JSON aggregation, frame hashing, UTF-8 conversion, gzip, response
-  copy/ORDS marshaling, browser decode, and canvas blit. Measure one-command and
-  four-command STEP latency locally. Package the identical probe for managed
-  ORDS, but execute that cloud half only inside final P11.
+- Record separate out-of-band timers for prepare, ticker/command application,
+  render, DMF codec, SecureFile BLOB write, finalize, commit, ORDS, transfer,
+  browser decode, palette expansion, canvas blit, and input-to-correlated-paint.
+  Keep `r1Ms`/`r2Ms` only as the documented compatibility aliases above. Run
+  the primary 300-frame browser capture without route diagnostics, then replay
+  identical bytes in the private attribution pass. Package the identical probe
+  for managed ORDS, but execute that cloud half only inside final P11.
 - Accept locally: bound statement shapes remain stable across poses/commands and
   the complete local raw/report artifact exists. P11 appends the managed-ORDS
   samples before final project acceptance.

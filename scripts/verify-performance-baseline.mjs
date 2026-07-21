@@ -15,30 +15,59 @@ import {collectDatabaseEvidence} from './performance/t12.1-collector.mjs';
 // Cursor hygiene comes from redacted V$SQL before/after observations.
 const usage = 'usage: verify-performance-baseline.mjs <evidence.json> | --collect <replay.json> <evidence.json>';
 
+function ascii(bytes, start, length) {
+  return bytes.subarray(start, start + length).toString('ascii');
+}
+
+function decodeBinary(bytes) {
+  const magic = bytes.length >= 4 ? ascii(bytes, 0, 4) : '';
+  assert.ok(magic === 'DMF3' || magic === 'DMF4', 'unsupported DMF envelope');
+  assert.ok(bytes.length >= 140, 'short DMF envelope');
+  const tic = bytes.readInt32BE(4);
+  const audioLength = bytes.readUInt16BE(138);
+  const frameStart = 140 + audioLength;
+  assert.ok(tic >= 0 && frameStart <= bytes.length, 'invalid DMF header');
+  const transport = Buffer.alloc(CONTRACT.width * CONTRACT.height);
+  if (magic === 'DMF3') {
+    assert.equal(bytes.length, frameStart + transport.length);
+    bytes.copy(transport, 0, frameStart);
+  } else {
+    let source = frameStart, target = 0;
+    while (source < bytes.length && target < transport.length) {
+      const control = bytes[source++];
+      const length = (control & 0x7f) + 1;
+      if ((control & 0x80) !== 0) {
+        assert.ok(source < bytes.length && target + length <= transport.length);
+        transport.fill(bytes[source++], target, target + length);
+      } else {
+        assert.ok(source + length <= bytes.length && target + length <= transport.length);
+        bytes.copy(transport, target, source, source + length);
+        source += length;
+      }
+      target += length;
+    }
+    assert.equal(source, bytes.length); assert.equal(target, transport.length);
+  }
+  const pixels = Buffer.alloc(transport.length);
+  for (let x = 0; x < CONTRACT.width; x += 1) {
+    for (let y = 0; y < CONTRACT.height; y += 1)
+      pixels[y * CONTRACT.width + x] = transport[x * CONTRACT.height + y];
+  }
+  assert.equal(ascii(bytes, 74, 64), sha256(pixels), 'DMF frame digest');
+  JSON.parse(bytes.subarray(140, frameStart).toString('utf8'));
+  return {tic, magic, pixels};
+}
+
 function decodeTransport(document) {
   assert.ok(document && typeof document === 'object' && !Array.isArray(document), 'REST document is invalid');
   const encoded = document.p_payload;
   assert.equal(typeof encoded, 'string', 'REST payload missing');
   const compressed = Buffer.from(encoded, 'base64');
   assert.ok(compressed.length > 0, 'empty transport payload');
-  const frame = JSON.parse(gunzipSync(compressed));
-  assert.equal(frame.w, CONTRACT.width);
-  assert.equal(frame.h, CONTRACT.height);
-  assert.ok(Array.isArray(frame.cols) && frame.cols.length === CONTRACT.width);
-  const pixels = Buffer.alloc(CONTRACT.width * CONTRACT.height);
-  for (let x = 0; x < CONTRACT.width; x += 1) {
-    let y = 0;
-    for (const run of frame.cols[x]) {
-      assert.ok(Array.isArray(run) && run.length === 3);
-      const [start, length, color] = run;
-      assert.equal(start, y);
-      assert.ok(Number.isInteger(length) && length > 0 && y + length <= CONTRACT.height);
-      assert.ok(Number.isInteger(color) && color >= 0 && color <= 255);
-      for (let offset = 0; offset < length; offset += 1) pixels[(y + offset) * CONTRACT.width + x] = color;
-      y += length;
-    }
-    assert.equal(y, CONTRACT.height);
-  }
+  const inflated = compressed[0] === 0x1f && compressed[1] === 0x8b ?
+    gunzipSync(compressed) : compressed;
+  const frame = decodeBinary(inflated);
+  const pixels = frame.pixels;
   // The timed blit is a complete memory copy, independent of production code.
   const canvas = Buffer.alloc(pixels.length);
   pixels.copy(canvas);
@@ -46,17 +75,24 @@ function decodeTransport(document) {
 }
 
 async function post(base, route, body) {
-  const target = new URL(`${route}/`, base.endsWith('/') ? base : `${base}/`);
-  const response = await fetch(target, {
+  const request = target => fetch(target, {
     method: 'POST',
     headers: {'content-type': 'application/json'},
     body: JSON.stringify(body),
     redirect: 'error',
     signal: AbortSignal.timeout(120_000)
   });
+  let target = new URL(route.toUpperCase(), base.endsWith('/') ? base : `${base}/`);
+  let response = await request(target);
+  if (response.status === 404) {
+    target = new URL(route, base.endsWith('/') ? base : `${base}/`);
+    response = await request(target);
+  }
   assert.equal(response.ok, true, `${route} failed with ${response.status}`);
+  const headersAt = performance.now();
   const bytes = Buffer.from(await response.arrayBuffer());
-  return {bytes, document: JSON.parse(bytes.toString('utf8'))};
+  const completeAt = performance.now();
+  return {bytes, document: JSON.parse(bytes.toString('utf8')), headersAt, completeAt};
 }
 
 function commandDigest(samples) {
@@ -83,20 +119,30 @@ async function collect(replayPath, evidencePath) {
   const collectorCommand = JSON.parse(process.env.T121_DB_COLLECTOR_COMMAND || 'null');
   assert.ok(Array.isArray(collectorCommand), 'T121_DB_COLLECTOR_COMMAND must be a JSON argv array');
   const replayBytes = fs.readFileSync(replayPath);
-  const replay = validateReplay(JSON.parse(replayBytes));
+  const replay = validateReplay(JSON.parse(replayBytes), replayBytes);
   const startedUtc = new Date().toISOString();
-  const observationsPromise = collectDatabaseEvidence(collectorCommand, replay.identitySha256, process.env);
   const external = [];
   let session;
   for (const item of replay.frames) {
-    const route = item.frame === 0 ? 'new_game' : 'step';
-    const request = item.frame === 0 ? item.request : {
-      p_session: session,
-      p_commands: JSON.stringify({v: 1, commands: [item.request]})
-    };
     const begin = performance.now();
-    const response = await post(base, route, request);
-    const responseAt = performance.now();
+    let response;
+    let submitMs = 0;
+    if (item.frame === 0) response = await post(base, 'new_game', item.request);
+    else {
+      const command = {...item.request, seq: item.frame};
+      const submitted = await post(base, 'submit_step', {
+        p_session: session, p_commands: JSON.stringify({v: 2, commands: [command]})
+      });
+      submitMs = submitted.completeAt - begin;
+      assert.match(submitted.document.p_request, /^[0-9a-f]{32}$/);
+      do {
+        response = await post(base, 'poll_frame', {
+          p_session: session, p_seq: item.frame, p_wait_ms: 1000
+        });
+      } while (response.document.p_ready === 0);
+      assert.equal(response.document.p_ready, 1);
+    }
+    const responseAt = response.completeAt;
     if (item.frame === 0) {
       assert.match(response.document.p_session, /^[0-9a-f]{32}$/);
       session = response.document.p_session;
@@ -104,7 +150,17 @@ async function collect(replayPath, evidencePath) {
     const decodeBegin = performance.now();
     const decoded = decodeTransport(response.document);
     const decodeEnd = performance.now();
-    const responseBodyKeys = Object.keys(decoded.frame).sort();
+    const paletteBegin = performance.now();
+    const rgba = Buffer.alloc(decoded.canvas.length * 4);
+    for (let pixel = 0; pixel < decoded.canvas.length; pixel += 1) {
+      const color = decoded.canvas[pixel];
+      rgba[pixel * 4] = color; rgba[pixel * 4 + 1] = color;
+      rgba[pixel * 4 + 2] = color; rgba[pixel * 4 + 3] = 255;
+    }
+    const paletteEnd = performance.now();
+    const blit = Buffer.alloc(rgba.length); rgba.copy(blit);
+    const paintEnd = performance.now();
+    const responseBodyKeys = Object.keys(response.document).sort();
     for (const key of CONTRACT.forbiddenPayloadKeys) assert.ok(!responseBodyKeys.includes(key), `stage timer leaked in frame ${item.frame}`);
     external.push({
       frame: item.frame,
@@ -113,18 +169,36 @@ async function collect(replayPath, evidencePath) {
       command: item.command,
       externalClock: true,
       endToEndMs: responseAt - begin,
-      decodeBlitMs: decodeEnd - decodeBegin,
+      transferMs: response.completeAt - response.headersAt,
+      decodeMs: decodeEnd - decodeBegin,
+      paletteMs: paletteEnd - paletteBegin,
+      blitMs: paintEnd - paletteEnd,
+      decodeBlitMs: paintEnd - decodeBegin,
+      inputToPaintMs: paintEnd - begin,
+      submitMs,
       payloadBytes: response.bytes.length,
       payloadSha256: sha256(response.bytes),
       responseBodyKeys
     });
   }
+  const observations = await collectDatabaseEvidence(collectorCommand,
+    CONTRACT.replaySha256, session, process.env);
   session = undefined;
-  const observations = await observationsPromise;
-  const samples = external.map((sample, frame) => ({...sample, ...observations.stageSamples[frame]}));
+  const samples = external.map((sample, frame) => {
+    const merged = {...sample, ...observations.stageSamples[frame]};
+    // The database collector owns worker timings. ORDS plus connection/pool
+    // overhead is the externally observed interval left after database work
+    // and response-body transfer; it never enters the public payload.
+    merged.ordsMs = Math.max(0,
+      merged.endToEndMs - merged.databaseMs - merged.transferMs);
+    return merged;
+  });
   const root = path.dirname(path.resolve(evidencePath));
   const payloads = samples.map(({frame, payloadBytes, payloadSha256, responseBodyKeys}) => ({frame, payloadBytes, payloadSha256, responseBodyKeys}));
-  const replayLedger = {identitySha256: replay.identitySha256, sourceBytesSha256: sha256(replayBytes), frames: 300, warmFrames: 30, measuredFrames: 270, resolution: [320, 200], commandsSha256: commandDigest(samples)};
+  const replayLedger = {identitySha256: CONTRACT.replaySha256,
+    sourceBytesSha256: sha256(replayBytes), frames: 300, warmFrames: 30,
+    measuredFrames: 270, resolution: [320, 200],
+    engine: CONTRACT.engine, commandsSha256: commandDigest(samples)};
   const rawArtifacts = [
     writeArtifact(root, 'artifacts/performance/t12.1/raw/samples.json', samples, 'samples', 300),
     writeArtifact(root, 'artifacts/performance/t12.1/raw/plans.json', observations.plans, 'plans', 3),
@@ -142,7 +216,8 @@ async function collect(replayPath, evidencePath) {
     status: 'COMPLETE',
     synthetic: false,
     resolution: [320, 200],
-    replay: {frames: 300, warmFrames: 30, measuredFrames: 270, sha256: replay.identitySha256, commandsSha256: commandDigest(samples)},
+    replay: {frames: 300, warmFrames: 30, measuredFrames: 270,
+      sha256: CONTRACT.replaySha256, commandsSha256: commandDigest(samples)},
     capture: {owner: 'independent evaluator', clock: 'external monotonic', startedUtc, endedUtc: new Date().toISOString(), atomicWrite: true},
     samples,
     plans: observations.plans,

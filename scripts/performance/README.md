@@ -55,12 +55,18 @@ complete redacted observation document containing:
   including runtime starts, rows, and elapsed microseconds;
 - redacted before/after `V$SQL` counters for those families;
 - all 60 pose/command statement-shape observations;
-- all 300 out-of-band database, ORDS, R1, and R2 stage samples.
+- all 300 out-of-band named retained-worker stages plus the documented R1/R2
+  compatibility aliases.
 
 The public HTTP response is independently timed and decoded by the driver. Stage
-timers are rejected if they occur among response-body keys. No live adapter is
-provided until the T11.2 cloud/browser gate and a reviewed fixed replay exist;
-the source and artifact tests intentionally do not start or benchmark a service.
+timers are rejected if they occur among response-body keys.
+`t12.1-local-collector.mjs` is the credential-private local adapter. It leaves
+the primary route free of intrusive diagnostics, then temporarily enables
+Oracle row-source statistics for an isolated exact 90-call submit/poll/asset
+matrix. It publishes only hashed cursor identities and structured internal
+anchor operations, restores normal database settings in a `finally` path, and
+never emits credentials or session correlations. Managed-ORDS collection
+remains final-P11 work.
 
 ## T12.2 optimization ledger
 

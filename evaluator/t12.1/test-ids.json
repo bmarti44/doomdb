@@ -1,8 +1,8 @@
 {
   "task":"T12.1",
   "tests":[
-    {"id":"T121-REPLAY-IDENTITY","assertions":12,"intent":"The exact fixed 300-frame replay, 320x200 resolution, warm boundary, measured range, command digest and deterministic frame sequence are present without substitutions or omissions."},
-    {"id":"T121-EXTERNAL-SAMPLES","assertions":300,"intent":"Every frame has evaluator-owned monotonic wall-clock measurements and all measured frames expose end-to-end, database, ORDS, decode/blit, R1 and R2 durations as finite nonnegative observations."},
+    {"id":"T121-REPLAY-IDENTITY","assertions":12,"intent":"The exact content-addressed selected-Mocha 300-frame replay, 320x200 resolution, warm boundary, measured range, command digest and deterministic frame sequence are present without substitutions or omissions."},
+    {"id":"T121-EXTERNAL-SAMPLES","assertions":300,"intent":"Every frame has evaluator-owned monotonic wall-clock measurements and all measured frames expose transport, presentation, named retained-worker, R1 and R2 durations as finite nonnegative observations."},
     {"id":"T121-REPORT-STATISTICS","assertions":32,"intent":"The report derives p50 and p95 latency, database, ORDS, payload and decode/blit statistics, effective FPS, R1/R2 timing and cursor totals from the complete measured raw sample population."},
     {"id":"T121-RUNTIME-PLANS","assertions":36,"intent":"Each exercised statement family has an execution plan captured with ALLSTATS LAST runtime rows, starts, elapsed time and a plan hash after representative bound executions."},
     {"id":"T121-VSQL-COUNTERS","assertions":36,"intent":"V$SQL observations retain redacted SQL identity, force-matching signature, parse calls and execution deltas for each family without bind values or connection secrets."},

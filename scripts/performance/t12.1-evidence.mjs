@@ -10,12 +10,17 @@ export const CONTRACT = Object.freeze({
   frames: 300,
   warmFrames: 30,
   measuredFrames: 270,
-  replaySha256: 'c393f8f38a5a89e3bcda88d46e9b62f84e5856ae63bda597b2f67b9cd3856c65',
+  replaySha256: '1ad47bc8e2a5b7518d68b937a333492d66d7d539f827980086d4b4fdad327fe3',
+  replaySchema: 2,
+  engine: 'MOCHA_OJVM_RETAINED',
   poses: ['spawn', 'corridor', 'door', 'combat'],
   commands: ['IDLE', 'MOVE', 'TURN', 'USE', 'FIRE'],
   families: ['step', 'frame', 'asset'],
   rawKinds: ['samples', 'plans', 'vsql', 'payloads', 'replay'],
-  metricNames: ['endToEndMs', 'databaseMs', 'ordsMs', 'decodeBlitMs', 'r1Ms', 'r2Ms', 'payloadBytes'],
+  metricNames: ['endToEndMs', 'databaseMs', 'ordsMs', 'transferMs',
+    'decodeMs', 'paletteMs', 'blitMs', 'decodeBlitMs', 'inputToPaintMs',
+    'prepareMs', 'tickerMs', 'renderMs', 'codecMs', 'blobMs', 'finalizeMs',
+    'commitMs', 'r1Ms', 'r2Ms', 'payloadBytes'],
   forbiddenPayloadKeys: ['r1Ms', 'r2Ms', 'databaseMs', 'ordsMs', 'stageTimers', 'sqlId', 'planHash']
 });
 
@@ -52,10 +57,14 @@ export function percentile(values, fraction) {
   return values.slice().sort((a, b) => a - b)[Math.ceil(fraction * values.length) - 1];
 }
 
-export function validateReplay(replay) {
-  assert.equal(replay.schema, 1);
+export function validateReplay(replay, sourceBytes) {
+  assert.ok(Buffer.isBuffer(sourceBytes) || sourceBytes instanceof Uint8Array,
+    'replay source bytes are required');
+  assert.equal(sha256(sourceBytes), CONTRACT.replaySha256,
+    'unapproved replay content');
+  assert.equal(replay.schema, CONTRACT.replaySchema);
   assert.equal(replay.task, CONTRACT.task);
-  assert.equal(replay.identitySha256, CONTRACT.replaySha256, 'unapproved replay identity');
+  assert.equal(replay.engine, CONTRACT.engine);
   assert.deepEqual(replay.resolution, [CONTRACT.width, CONTRACT.height]);
   assert.equal(replay.frames.length, CONTRACT.frames);
   replay.frames.forEach((frame, index) => {
@@ -123,7 +132,9 @@ export function validateDatabaseObservations(observations) {
   }
   observations.stageSamples.forEach((sample, frame) => {
     assert.equal(sample.frame, frame);
-    for (const metric of ['databaseMs', 'ordsMs', 'r1Ms', 'r2Ms']) assert.ok(finite(sample[metric]), `stage ${frame} ${metric}`);
+    for (const metric of ['databaseMs', 'ordsMs', 'prepareMs', 'tickerMs',
+      'renderMs', 'codecMs', 'blobMs', 'finalizeMs', 'commitMs', 'r1Ms',
+      'r2Ms']) assert.ok(finite(sample[metric]), `stage ${frame} ${metric}`);
   });
   scanRedacted(observations, 'database observations');
   return observations;
@@ -142,6 +153,10 @@ export function buildReport(samples, vsql, rawArtifacts) {
   return {
     measuredFrames: CONTRACT.measuredFrames,
     metrics,
+    clockAnomalies: measured.reduce((count, sample) =>
+      count + (sample.clockAnomaly === 1 ? 1 : 0), 0),
+    commitSamples: measured.reduce((count, sample) =>
+      count + (sample.commitSampled === 1 || sample.commitMs > 0 ? 1 : 0), 0),
     cursor: {
       parseCallsDelta: vsql.reduce((sum, row) => sum + row.parseCallsAfter - row.parseCallsBefore, 0),
       executionsDelta: vsql.reduce((sum, row) => sum + row.executionsAfter - row.executionsBefore, 0),

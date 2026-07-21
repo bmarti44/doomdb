@@ -9,19 +9,10 @@ import {
 } from '../scripts/performance/t12.1-evidence.mjs';
 import {runCollector} from '../scripts/performance/t12.1-collector.mjs';
 
-const replay = {
-  schema: 1,
-  task: 'T12.1',
-  identitySha256: CONTRACT.replaySha256,
-  resolution: [320, 200],
-  frames: Array.from({length: 300}, (_, frame) => ({
-    frame,
-    pose: CONTRACT.poses[frame % 4],
-    command: CONTRACT.commands[frame % 5],
-    request: {seq: frame, forward: frame % 2}
-  }))
-};
-assert.equal(validateReplay(replay), replay);
+const replayBytes = fs.readFileSync(path.resolve(
+  'artifacts/performance/t12.1/mocha-replay-300.json'));
+const replay = JSON.parse(replayBytes);
+assert.equal(validateReplay(replay, replayBytes), replay);
 
 const shapes = [];
 for (const [familyIndex, family] of CONTRACT.families.entries()) {
@@ -42,7 +33,11 @@ const observations = {
     parseCallsAfter: 2, executionsBefore: 0, executionsAfter: 90, versionCount: 1
   })),
   shapes,
-  stageSamples: Array.from({length: 300}, (_, frame) => ({frame, databaseMs: 4, ordsMs: 1, r1Ms: 1, r2Ms: 2}))
+  stageSamples: Array.from({length: 300}, (_, frame) => ({
+    frame, databaseMs: 4, ordsMs: 1, prepareMs: .2, tickerMs: 1,
+    renderMs: 2, codecMs: .5, blobMs: .2, finalizeMs: .1, commitMs: .4,
+    r1Ms: 1, r2Ms: 2.7
+  }))
 };
 assert.equal(validateDatabaseObservations(observations), observations);
 
@@ -55,7 +50,19 @@ const samples = replay.frames.map(item => ({
   endToEndMs: 10 + item.frame % 3,
   databaseMs: 4,
   ordsMs: 1,
+  transferMs: .4,
+  decodeMs: 1,
+  paletteMs: .6,
+  blitMs: .4,
   decodeBlitMs: 2,
+  inputToPaintMs: 13,
+  prepareMs: .2,
+  tickerMs: 1,
+  renderMs: 2,
+  codecMs: .5,
+  blobMs: .2,
+  finalizeMs: .1,
+  commitMs: .4,
   r1Ms: 1,
   r2Ms: 2,
   payloadBytes: 8000 + item.frame,

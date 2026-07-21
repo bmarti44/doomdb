@@ -28,21 +28,30 @@ export async function runCollector(command, request, environment = process.env) 
     child.once('close', resolve);
   });
   const stderrBody = Buffer.concat(stderr);
-  assert.equal(exitCode, 0, `database collector failed (exit ${exitCode}; diagnostic sha256 ${
-    crypto.createHash('sha256').update(stderrBody).digest('hex')
-  })`);
+  const diagnostic = crypto.createHash('sha256').update(stderrBody).digest('hex');
+  if (exitCode !== 0 && environment.T121_LOCAL_DEBUG === 'YES') {
+    const text = stderrBody.toString('utf8').slice(0, 4000);
+    assert.ok(!/(?:password|authorization|bearer|jdbc:)/i.test(text),
+      `database collector failed (exit ${exitCode}; unsafe diagnostic ${diagnostic})`);
+    assert.fail(`database collector failed (exit ${exitCode}; diagnostic ${diagnostic})\n${text}`);
+  }
+  assert.equal(exitCode, 0, `database collector failed (exit ${exitCode}; diagnostic sha256 ${diagnostic})`);
   assert.ok(bytes <= MAX_COLLECTOR_BYTES, 'database collector output exceeded limit');
   const result = JSON.parse(Buffer.concat(stdout).toString('utf8'));
   scanRedacted(result, 'collector output');
   return result;
 }
 
-export async function collectDatabaseEvidence(command, replayIdentity, environment) {
+export async function collectDatabaseEvidence(command, replayIdentity, runtimeSession,
+                                              environment) {
+  assert.match(runtimeSession, /^[0-9a-f]{32}$/,
+    'runtime session correlation is invalid');
   const result = await runCollector(command, {
     schema: 1,
     task: CONTRACT.task,
     action: 'collect-complete-observations',
     replayIdentity,
+    runtimeCorrelation: runtimeSession,
     planFormat: 'ALLSTATS LAST',
     cursorCatalog: 'V$SQL',
     families: CONTRACT.families,

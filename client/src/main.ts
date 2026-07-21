@@ -472,9 +472,15 @@ async function boot(): Promise<void> {
   let presentationTimer = 0;
   const commandPeriodMs = 32;
   const presentationPeriodMs = 31.8;
-  const submitDepth = 4;
+  // Two commands are enough to overlap submit, worker execution, frame poll,
+  // decode, and paint. A four-command frontier preserved throughput but made
+  // the corresponding visual response arrive roughly four tics after input.
+  const submitDepth = 2;
   const fetchDepth = 2;
-  const presentationBuffer = 4;
+  // Two decoded frames cover one ordinary submit/poll jitter interval without
+  // forcing every input to wait behind four complete 31.8 ms display slots.
+  // Depth four was smooth but added roughly 120 ms of avoidable control lag.
+  const presentationBuffer = 2;
   const submitted = new Set<number>();
   const retryFetch: number[] = [];
   const completed = new Map<number, typeof frame>();
@@ -501,8 +507,13 @@ async function boot(): Promise<void> {
     // When a server frame misses its nominal display slot, check the local
     // decoded queue promptly. setInterval previously waited another complete
     // 31.8 ms period even when the frame arrived a millisecond later.
-    presentationTimer = window.setTimeout(
-      presentationLoop, painted ? presentationPeriodMs : 4);
+    // A transport stall can leave multiple authoritative frames queued. At a
+    // permanently fixed cadence that one stall becomes permanent control lag.
+    // Drain only the excess at half a display period, then return to 31.8 ms;
+    // no frame is skipped or reordered.
+    const delayMs = painted && completed.size > presentationBuffer ?
+      presentationPeriodMs / 2 : painted ? presentationPeriodMs : 4;
+    presentationTimer = window.setTimeout(presentationLoop, delayMs);
   };
   const startPresentation = (): void => {
     if (presentationTimer !== 0 || completed.size < presentationBuffer) return;

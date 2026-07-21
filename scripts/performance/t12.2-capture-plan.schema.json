@@ -23,7 +23,7 @@
   "$defs": {
     "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "path": {"type": "string", "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$"},
-    "replay": {"const": {"frames": 300, "warmFrames": 30, "measuredFrames": 270, "sha256": "c393f8f38a5a89e3bcda88d46e9b62f84e5856ae63bda597b2f67b9cd3856c65"}},
+    "replay": {"const": {"frames": 300, "warmFrames": 30, "measuredFrames": 270, "sha256": "1ad47bc8e2a5b7518d68b937a333492d66d7d539f827980086d4b4fdad327fe3"}},
     "capture": {
       "type": "object", "additionalProperties": false, "required": ["owner", "clock", "startedUtc", "endedUtc"],
       "properties": {"owner": {"const": "independent evaluator"}, "clock": {"const": "external monotonic"}, "startedUtc": {"type": "string", "format": "date-time"}, "endedUtc": {"type": "string", "format": "date-time"}}

@@ -1369,7 +1369,7 @@ create or replace package body doom_api as
     end if;
 
     if l_pipeline_ahead=0 then
-      select s.current_tic,s.last_command_seq,
+      select /* T121_STEP_PLAN_ANCHOR */ s.current_tic,s.last_command_seq,
         case when coalesce(l_fire,0)<>0 or l_flags>0 then 4
           when coalesce(l_use,0)<>0 or coalesce(l_weapon,0)<>0 or
           p.pending_weapon is not null or p.weapon_state not like 'WEAPON_%_READY' or
@@ -1965,14 +1965,18 @@ create or replace package body doom_api as
     l_deadline:=systimestamp+numtodsinterval(p_wait_ms/1000,'SECOND');
     loop
       begin
-        select x.response_blob into l_source
+        select /* T121_FRAME_ANCHOR */ x.response_blob into l_source
           from doom_worker_request q join doom_worker_result x
             on x.request_id=q.request_id
           where q.request_id=l_request and q.request_status='COMMITTED';
         copy_blob(l_source,p_payload);p_ready:=1;commit;return;
       exception when no_data_found then null;end;
       exit when systimestamp>=l_deadline;
-      dbms_session.sleep(.05);
+      -- The retained Mocha worker normally commits in under 10 ms. A 50 ms
+      -- polling quantum dominated the otherwise-correlated request and added
+      -- one to two display tics of input latency. Keep the bounded waiter, but
+      -- sample at 5 ms so readiness—not the sleep floor—sets response time.
+      dbms_session.sleep(.005);
     end loop;
     -- A forced Scheduler stop can leave READY plus a fresh heartbeat behind.
     -- Keep the expensive data-dictionary liveness check off the hot submit
@@ -2297,7 +2301,7 @@ create or replace package body doom_api as
       if dbms_lob.getlength(l_blob)<>320*200 then fail(c_asset,'title asset is invalid');end if;
       p_media_type:='application/x-doom-indexed';
     elsif substr(p_asset_name,1,2)='M_' then
-      select b.encoded_bytes,b.media_type into l_blob,p_media_type
+      select /* T121_ASSET_ANCHOR */ b.encoded_bytes,b.media_type into l_blob,p_media_type
         from doom_asset a join doom_asset_blob b on b.asset_id=a.asset_id
         where a.asset_kind='mocha_ui_patch' and a.asset_name=p_asset_name;
     else

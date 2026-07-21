@@ -1,6 +1,7 @@
 # T12.1 selected-engine evidence status
 
-Status: **LOCAL IMPLEMENTATION ACTIVE; CLOUD EXECUTION DEFERRED TO FINAL P11**.
+Status: **LOCAL ATTRIBUTION AND 30 FPS BROWSER GATE PASS; FIXED TWO-RUN BROWSER
+CHAIN AND CLOUD EXECUTION REMAIN**.
 
 The original source-first evidence driver targeted the retired production
 shape: synchronous SQL-renderer `STEP`, gzip canonical JSON, and SQL R1/R2
@@ -31,7 +32,14 @@ skill-3 route and content-addressed as
 Its source, expansion, command/phase coverage, and bytes pass an independent
 gate.
 
-Local work remaining: update the reviewed manifest, require hashing those
-actual replay bytes, add independent DMF decoding and the credential-private
-local collector, then execute the three-pass protocol. Only managed-ORDS/S3
-execution is blocked on final P11 credentials; local collection is not.
+The reviewed manifest now pins the actual fixture bytes. The async production
+driver independently decodes and hashes DMF3/4, and the credential-private
+collector passed a real 300-frame run plus exactly 90 submit, poll, and asset
+AutoREST invocations with internal `ALLSTATS LAST` anchors. Production and
+independent evidence validators pass. That run measured 25.54 serial FPS after
+the poll-wait fix; the live depth-2 browser path measured 30.91 displayed FPS
+with 33.0 ms paint-gap p95.
+
+Local work remaining: execute the exact fixture twice through the browser,
+retain identical state/frame/payload chains, and publish the T12.2 local
+profile/stop-rule ledger. Managed ORDS/S3 execution stays deferred to final P11.

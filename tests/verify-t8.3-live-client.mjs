@@ -116,6 +116,13 @@ try {
   await page.waitForTimeout(100);
 
   const trace = await page.evaluate(() => window.__doomTrace);
+  const presentation = trace.filter(row => row.name === 'present');
+  const presentationGaps = presentation.slice(1).map((row, index) =>
+    row.at - presentation[index].at).sort((left, right) => left - right);
+  const percentile = fraction => presentationGaps[
+    Math.ceil(presentationGaps.length * fraction) - 1];
+  const displayFps = (presentation.length - 1) * 1000 /
+    (presentation.at(-1).at - presentation[0].at);
   const movementInput = trace.find(row => row.name === 'input' && row.command.forward === 1);
   assert.ok(movementInput, 'W did not reach the thin-client command register');
   const movementSubmit = trace.find(row => row.name === 'submit' && row.at >= movementInput.at &&
@@ -132,6 +139,7 @@ try {
   };
   assert.ok(latency.inputToSubmitMs <= 70, `input scheduling latency ${latency.inputToSubmitMs}`);
   assert.ok(latency.inputToPaintMs <= 250, `input-to-correlated-paint latency ${latency.inputToPaintMs}`);
+  assert.ok(displayFps >= 25, `display throughput ${displayFps.toFixed(2)} FPS`);
   assert.ok(new Set(weaponHashes).size >= 2, 'FIRE produced no visible weapon animation');
   const mouseTrace = trace.slice(mouseTraceStart);
   assert.ok(mouseTrace.some(row => row.name === 'input' && row.command.turn !== 0),
@@ -157,7 +165,8 @@ try {
     'Escape leaked into the Doom menu command');
 
   process.stdout.write(`PASS T8.3-LIVE-CLIENT ${JSON.stringify({latency,
-    weaponFrames:new Set(weaponHashes).size,presented:trace.filter(row=>row.name==='present').length,
+    display:{fps:displayFps,gapP50Ms:percentile(.5),gapP95Ms:percentile(.95)},
+    weaponFrames:new Set(weaponHashes).size,presented:presentation.length,
     mouseCaptured:true,ticZeroSuppressed:true,tabMenu:true,escapeBrowserOnly:true})}\n`);
 } finally {
   await browser.close();

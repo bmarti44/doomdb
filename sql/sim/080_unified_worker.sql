@@ -1732,7 +1732,7 @@ create or replace package body doom_worker_api as
     -- with the session), so submit-side millisecond polling adds no safety.
     select lower(rawtohex(standard_hash(p_command,'SHA256'))) into l_sha from dual;
     begin
-      insert into doom_worker_request(request_id,worker_slot,session_token,
+      insert /* T121_STEP_ANCHOR */ into doom_worker_request(request_id,worker_slot,session_token,
         save_lineage,generation,expected_tic,expected_command_seq,command_version,
         command_count,command_bytes,command_sha,command_pack,async_mode,
         request_status,created_at)

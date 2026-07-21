@@ -31,8 +31,10 @@ assert.equal((client.match(/await audio\.consume\(frame\.audio\)/g) ?? []).lengt
   'only the one-time boot frame may await audio initialization');
 assert.match(client, /audio\.enqueue\(frame\.audio/,
   'steady-state asset fetch/decode must not block canvas presentation');
-assert.match(client, /const submitDepth = 4;/,
-  'live input must use the reviewed depth-4 scheduler');
+assert.match(client, /const submitDepth = 2;/,
+  'live input must use the reviewed depth-2 scheduler');
+assert.match(client, /completed\.size > presentationBuffer/,
+  'presentation must recover bounded backlog without dropping frames');
 assert.match(client, /Press R or click this message to restart/,
   'a stopped pipeline must not look like dead keyboard input');
 assert.match(combat, /m\.mobj_id<>projectile\.owner_mobj_id/i,

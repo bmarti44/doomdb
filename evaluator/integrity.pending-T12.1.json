@@ -2,24 +2,24 @@
   "schema": 1,
   "task": "T12.1-EVAL",
   "algorithm": "sha256",
-  "approval": "APPROVED AND FROZEN UNDER USER STANDING AUTHORIZATION 2026-07-15; LIVE PERFORMANCE ACCEPTANCE PENDING IMPLEMENTATION AND T11.2",
+  "approval": "APPROVED SUPERSEDING SELECTED-MOCHA EVALUATOR UNDER USER STANDING AUTHORIZATION 2026-07-21; LOCAL PASS COMPLETE, MANAGED CLOUD ACCEPTANCE PENDING T11.2/P11",
   "dependencies": [
     {"task":"T11.2","status":"APPROVED EVALUATOR LINEAGE PINNED; LIVE S3 AND MANAGED ORDS PASS REQUIRED"},
-    {"task":"T12.1","status":"PRODUCTION BASELINE DRIVER, REAL REPLAY, DATABASE OBSERVATIONS, AND RAW/REPORT ARTIFACTS PENDING"}
+    {"task":"T12.1","status":"CONTENT-ADDRESSED MOCHA REPLAY, LOCAL DMF DRIVER, DATABASE OBSERVATIONS, RAW/REPORT ARTIFACTS, AND 30 FPS BROWSER GATE PASS; MANAGED CLOUD CAPTURE PENDING P11"}
   ],
   "approvedBaselines": [
     {"path":"evaluator/integrity.pending-T11.2.json","sha256":"5422ee7e3c135f2c40e6eff8772b14361ca1c514ca134a78abeb4a54087608da"}
   ],
   "files": {
-    "evaluator/t12.1/README.md":"8e7c9ee235869d3e33e746e77a0ce2d0871dc35570a5336dd969f732f89cd48c",
-    "evaluator/t12.1/fixtures.json":"324592bda2eac1958e0568e9022e9ed97b0f4b95002b7ed759fb8689c7f6d2ba",
+    "evaluator/t12.1/README.md":"8ed682408ae7aaa0631efeb2a1fffa5744ce85a5ed25be55bb2adb3f5f199786",
+    "evaluator/t12.1/fixtures.json":"3fd2662f25d2b6f1716f637b9c091828e595f2e9369c075ea4d42e9b836578e3",
     "evaluator/t12.1/mutation-self-check.mjs":"d4c1a4d75934dedcd5224dc2d5c2b81897e7de450dc120c66f6c12c161c5d7cd",
     "evaluator/t12.1/mutation-specs.json":"0527030215fa686fc868f67b8e6f30bbc89a6d609c29fb39c6aea8dc97e15d17",
-    "evaluator/t12.1/reference.mjs":"a5daca56a6957349871c685b9adc23701bc9ef5d7a5e5d0d3e09f4757bfc2fb0",
+    "evaluator/t12.1/reference.mjs":"8da984356718c8c1dc76a0457f55c4dfb706bd9ee8a2a8604af8a33937a6d8d3",
     "evaluator/t12.1/run-visible.sh":"9113cd7947f042df06de77ecce263799aaa17041f3940bfeb8f804704e1136fc",
     "evaluator/t12.1/self-check.mjs":"e740df20d8cc162845303e0bd553cdb4f988be357a4fc8fc98570dd2ebfa6e8c",
     "evaluator/t12.1/source-audit.mjs":"53565ac538cf00bf9ef47d358c1d2bce343bb216e37ab4b5eabff72ad5b29c20",
-    "evaluator/t12.1/test-ids.json":"3e565fc93f952da89dbccc580488b6a1d4ddc2f77c9781ee5c3dcfb2e5104841",
+    "evaluator/t12.1/test-ids.json":"0873058d50ae85427d06110bd1dc58526fc07a6da4e50cd431a84b224d178fcd",
     "evaluator/t12.1/validate-evidence.mjs":"3503920d4b6af2776c5cbbc1d74d11e26d30cfdf34d7a81c40a527ce0535fb22"
   }
 }

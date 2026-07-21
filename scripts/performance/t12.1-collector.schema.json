@@ -50,10 +50,14 @@
     },
     "stage": {
       "type": "object",
-      "required": ["frame", "databaseMs", "ordsMs", "r1Ms", "r2Ms"],
+      "required": ["frame", "databaseMs", "ordsMs", "prepareMs", "tickerMs", "renderMs", "codecMs", "blobMs", "finalizeMs", "commitMs", "r1Ms", "r2Ms"],
       "properties": {
         "frame": {"type": "integer", "minimum": 0, "maximum": 299},
         "databaseMs": {"$ref": "#/$defs/nonnegative"}, "ordsMs": {"$ref": "#/$defs/nonnegative"},
+        "prepareMs": {"$ref": "#/$defs/nonnegative"}, "tickerMs": {"$ref": "#/$defs/nonnegative"},
+        "renderMs": {"$ref": "#/$defs/nonnegative"}, "codecMs": {"$ref": "#/$defs/nonnegative"},
+        "blobMs": {"$ref": "#/$defs/nonnegative"}, "finalizeMs": {"$ref": "#/$defs/nonnegative"},
+        "commitMs": {"$ref": "#/$defs/nonnegative"},
         "r1Ms": {"$ref": "#/$defs/nonnegative"}, "r2Ms": {"$ref": "#/$defs/nonnegative"}
       }
     }

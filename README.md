@@ -10,7 +10,7 @@ client at <http://localhost:8080/play/> while the Compose stack is running.
 
 ## Current status
 
-The active implementation path is **P13: database-authoritative multiplayer**.
+The active implementation path is **P12: post-multiplayer performance verification**.
 Single-player is playable end to end on the local stack. New `/play/` sessions run the
 pinned GPLv3 `AXDOOMER/mochadoom` engine (commit `c0af1322…abe93`) as Java
 schema objects inside OJVM, owned by a long-lived Scheduler worker session and
@@ -33,7 +33,19 @@ What works today, all verified by repeatable gates:
 - **30 FPS locally.** Repeated 300-frame moving/combat routes through the real
   HTTP/browser pipeline hold 30–32 displayed FPS with paint-gap p95 ≤ 33.3 ms
   and 300/300 unique frames (frame-chain SHA `a1888c88…4be900` reproduced
-  across independent runs).
+  across independent runs). The latest live interactive gate after the
+  selected depth-2 pipeline tuning measured 31.36 FPS with 32.1/33.1 ms
+  p50/p95 frame gaps and 126.1 ms input-to-correlated-paint latency.
+- **Selected-engine T12.1 attribution is live.** The content-addressed
+  300-frame Mocha fixture now runs through `SUBMIT_STEP`/`POLL_FRAME`, an
+  independent DMF3/4 decoder, and a credential-private Oracle collector. Its
+  isolated matrix captured exactly 90 generated AutoREST calls for each of
+  submit, poll, and asset plus real internal `ALLSTATS LAST` plans. Redacted
+  production and independent evaluator validation both pass. Reducing the
+  single-player poll quantum from 50 ms to 5 ms raised serial correlated
+  throughput from 15.27 to 25.54 FPS; the instrumented pre-commit retained
+  worker measures 7.14/11.87 ms p50/p95, with commit separately sampled every
+  32nd tic to avoid profiling DML on the hot path.
 - **Full skill-3 route.** An authentic, no-cheat E1M1 run reaches the
   intermission at tic 13,272 with the expected combat, resources, keyed door,
   lift, secret, and exit interactions. A fresh Oracle session replayed every
@@ -61,8 +73,7 @@ What works today, all verified by repeatable gates:
   Deterministic fixtures cover shared keys, one-winner ammo, simultaneous
   fire/use, damage/death/frags, and reborn. Private traces are opt-in and add no
   work to normal gameplay. The co-op two-browser 300-frame FPS gate and the
-  complete 762-frame public route are green; the full 30-minute soak remains
-  open.
+  complete 762-frame public route and full 30-minute soak are green.
   Two-browser deathmatch is additionally live with authored starts, dynamic
   input, distinct POVs, reconnect, exact worker reconstruction, frag/respawn,
   reciprocal-kill tie, suicide accounting, a frozen 10-frag/10-minute rule, and
@@ -179,18 +190,18 @@ Key verified numbers (local two-core Oracle Free stack):
 
 What is left (see [PLAN.md](PLAN.md) §7 for the task cards):
 
-- **P13** — finish the stable-clock p99.9/max performance rerun; the 30-minute
+- **P13** — only stable-clock p99.9/max performance certification remains; the 30-minute
   resource/chain soak, capability-secured lobby, retained worker, authentic
   two-browser co-op exit, deathmatch rules, recovery, and selected two-player
   throughput gates are implemented.
 - **P9 is complete** — the Oracle `MODEL`-clause title fire animation passed
   two independent full-size database runs, deterministic checks, mutation
   checks, and visual review.
-- **T12.1/T12.2** — after multiplayer, rerun the full golden-preserving local
-  300-frame performance protocol against the finished architecture. The stale
-  orphan replay identity has been replaced by a real 300-frame Mocha fixture
-  content-addressed as `1ad47bc8…327fe3`; its review-manifest/DMF collector
-  cutover is the next local slice.
+- **T12.1/T12.2** — the content-addressed replay, reviewed manifest, DMF
+  driver, local raw/report evidence, 90-call cursor matrix, internal plans, and
+  30 FPS live browser gate are green. Next, bind the fixed replay to the two-run
+  browser chain gate and complete the local optimization ledger; managed-ORDS
+  repetition stays in final P11.
 - **P11 (last)** — only after those local gates, deploy the static client to real
   S3 and the database/AutoREST surface to Autonomous Database, then repeat the
   packaged correctness, security, recovery, and performance protocol in cloud.
