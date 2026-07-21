@@ -21,6 +21,11 @@ Implemented source:
   all 17 evaluator API families, including gzip, assets, persistence, replay,
   errors, method handling, and CORS.
 - Secret-free evidence/deployment manifest builders and a focused source gate.
+- `scripts/mochadoom/build-ojvm-jar.sh`, `load-cloud-ojvm.sh`, and
+  `deploy/cloud/t11.1/ojvm-preflight.sql`: deterministic 830-class Java 8
+  artifact, target-JDK fail-fast check, supported client-side class load, and
+  SHA-verified IWAD load before runtime call-spec finalization. The deployment
+  manifest binds the release, pinned revision, class count, and JAR SHA-256.
 
 Verified without external access:
 
@@ -30,6 +35,9 @@ PASS T11.1-EVAL-MUTATION-SELF-CHECK (24/24 isolated mutations killed)
 PASS T11.1-SOURCE-POLICY-SELF-CHECK (synthetic positive and negative canaries)
 PASS T11.1-SOURCE-AUDIT (pinned fail-closed cloud driver)
 PASS T11.1-SOURCE-FIRST (shell/static/self 22/22; mutations 24/24; guards fail closed)
+PASS T11.1-OJVM-ARTIFACT (830 deterministic Java 8 classes; client-loadable jar)
+PASS MOCHADOOM-CRASH-RECONSTRUCT oldGeneration=20 newGeneration=21 commands=102 identicalFrameAfterSeam=1
+PASS T12.1-BROWSER-TWO-RUN (32.39/35.51 FPS; identical 300-frame chains)
 ```
 
 The fresh local seed prerequisite now passes against the running Oracle stack:
@@ -38,8 +46,10 @@ the collector's invalid wildcard-JSON syntax and replaced three empty legacy
 sprite/audio tables with the populated canonical asset domains.
 
 External blockers are now limited to a real Autonomous Database 23ai-or-later
-target authority, `ADB_CONNECTION_STRING`, `ADB_USERNAME`, `ADB_PASSWORD`, a
-mode-0600 wallet directory, its managed ORDS HTTPS schema origin, declared
-resource bounds, and pinned SQLcl 26.2.0.181.2110. Until those exist, live capability,
-transport, deployment, catalog, seed equality, and direct API evidence remain
-`NOT RUN`; `/tmp/doomdb-t111-evidence.json` is not created.
+target authority with administrator-enabled/restarted `JAVAVM`,
+`ADB_CONNECTION_STRING`, `ADB_USERNAME`, `ADB_PASSWORD`, a mode-0600 wallet
+directory, its managed ORDS HTTPS schema origin, declared resource bounds, and
+pinned SQLcl 26.2.0.181.2110. None of the required `ADB_*` inputs is present in
+this shell. Until those exist, live capability, transport, OJVM preflight,
+deployment, catalog, seed equality, and direct API evidence remain `NOT RUN`;
+`/tmp/doomdb-t111-evidence.json` is not created.
