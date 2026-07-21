@@ -2,8 +2,20 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
+const canonicalMode = process.argv.includes('--canonical');
+const canonical = canonicalMode ? JSON.parse(fs.readFileSync(new URL(
+  '../../artifacts/p13.3-coop-e1m1-route.json', import.meta.url))) : null;
+if (canonical) {
+  for (const transform of canonical.player0Transforms) {
+    process.argv.push(`--${transform.axis}-adjust=${transform.firstTic}-${transform.lastTic}:${transform.delta}`);
+  }
+  const guest = canonical.player1Runs.find(run => run.ticcmdHex !== '0000000000000000');
+  process.argv.push(`--guest-strafe=${guest.firstTic}-${guest.lastTic}`);
+}
 const routeArg = process.argv.find(value => value.startsWith('--route='));
-const routePath = routeArg?.slice(8) ??
+const routePath = canonical
+  ? new URL(`../../${canonical.baseRoute.path}`, import.meta.url)
+  : routeArg?.slice(8) ??
   new URL('../../artifacts/t8.1-live/mocha-e1m1-skill3-route.json', import.meta.url);
 const route = JSON.parse(fs.readFileSync(routePath));
 assert.ok(Number.isInteger(route.commandCount) && route.commandCount > 0);
@@ -25,7 +37,10 @@ assert.ok(guestStrafeFirst === 0 || (guestStrafeFirst >= 1
   && guestStrafeLast >= guestStrafeFirst && guestStrafeLast <= limit));
 const preserve = process.argv.includes('--preserve');
 const trace = preserve || process.argv.includes('--trace');
+const killArg = process.argv.find(value => value.startsWith('--kill-at='));
+const killAt = killArg ? Number(killArg.slice(10)) : 0;
 assert.ok(Number.isInteger(limit) && limit > 0 && limit <= route.commandCount);
+assert.ok(Number.isInteger(killAt) && killAt >= 0 && killAt < limit);
 
 const byte = value => ((value % 256) + 256) % 256;
 let turnHeld = 0;
@@ -134,6 +149,14 @@ for (const run of vectorRuns) {
       exit when ready=1;dbms_session.sleep(.002);end loop;
     if ready<>1 then select last_error into err from doom_match_worker_control where match_id=m;
       raise_application_error(-20000,'co-op route timeout '||seq||' '||err);end if;
+    ${killAt > 0 ? `if seq=${killAt} then
+      select job_name into job from doom_match_worker_control where match_id=m;
+      begin dbms_scheduler.stop_job(job,true);exception when others then null;end;
+      begin dbms_scheduler.drop_job(job,true);exception when others then null;end;
+      doom_match_worker.recover_match(m,180000,s);status_;
+      if s<>'ACTIVE' or tic<>seq then
+        raise_application_error(-20000,'mid-route recovery');end if;
+    end if;` : ''}
   end loop;
 `);
 }
@@ -151,6 +174,10 @@ process.stdout.write(`  status_;
   if membership<>'${guestLeaves ? '01' : '03'}' or guest_non_neutral<>${guestStrafeFirst > 0
       ? guestStrafeLast - guestStrafeFirst + 1 : 0} then
     raise_application_error(-20000,'co-op membership/input evidence');end if;
+  ${canonical ? `if state_sha<>'${canonical.accepted.stateSha256}' or
+      frame_sha<>'${canonical.accepted.player0FrameSha256}' or
+      frame_sha1<>'${canonical.accepted.player1FrameSha256}' then
+    raise_application_error(-20000,'canonical co-op hash mismatch');end if;` : ''}
 `);
   if (limit === route.commandCount) {
   process.stdout.write(`  if complete<>'01' then

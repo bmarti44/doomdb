@@ -73,10 +73,16 @@ tics now reaches intermission at tic 762 with membership `03`; fresh replay
 reproduces state SHA `dd7c3f04…1b59b7` and both terminal POV hashes. Private
 trace tables perform no inserts when their diagnostic flag is off.
 
+The canonical live gate also stops and drops the match's Scheduler worker at
+tic 400. Fenced reconstruction resumes at exactly that frontier and the
+replacement session completes tic 762 with the same state SHA and both POV
+hashes as the uninterrupted accepted run. This closes the retained-worker-loss
+route seam without weakening the dynamic two-player command path.
+
 ## Remaining P13 gates
 
-The full-route worker-loss/browser seam, broader co-op interaction fixtures,
-deathmatch selection,
+The full two-browser route and ORDS-mid-poll seams, broader co-op interaction
+fixtures, deathmatch selection,
 capacity telemetry, the 300-frame two-browser run, and the 30-minute soak remain
 open. T12 performance follows P13; P11 cloud deployment remains the final
 milestone.

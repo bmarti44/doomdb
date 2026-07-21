@@ -3062,7 +3062,10 @@ is fenced by match, slot, membership epoch, worker generation, tic, and sequence
   than 63 map units, so the contribution is applied world state rather than a
   nonzero-byte fiction. The canonical specification is
   `artifacts/p13.3-coop-e1m1-route.json`. Private traces remain opt-in and add no
-  normal-path DML. The worker-loss seam, two-browser full-route replay, and
+  normal-path DML. A separate live gate forcibly stops and drops the owning
+  Scheduler job at tic 400, invokes fenced reconstruction in a replacement
+  session, completes the route at tic 762, and reproduces the same state and
+  both POV hashes. The two-browser full-route replay, ORDS-mid-poll seam, and
   isolated interaction fixtures remain before T13.3 closes.
 
 #### T13.4 Deathmatch and player-count expansion

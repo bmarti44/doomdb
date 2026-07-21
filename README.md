@@ -49,12 +49,15 @@ What works today, all verified by repeatable gates:
   only the surviving POV is rendered, and that frontier reconstructs exactly.
   The exact internal vanilla consistency ring now survives reborn boundaries;
   a formerly failing 4,082-tic route prefix advances beyond tic 4,200. The
-  co-op because the solo demo depends on damage knockback. The frozen two-slot
-  correction route now reaches authentic E1M1 intermission at tic 762 with
+  frozen two-slot correction route accounts for co-op's different damage
+  knockback and reaches authentic E1M1 intermission at tic 762 with
   membership `03`, eight applied player-1 movement tics, and exact fresh-session
-  reconstruction of the terminal state and both POV hashes. Private traces are
-  opt-in and add no work to normal gameplay. The full browser-route recovery,
-  300-frame multiplayer FPS gate, interaction fixtures, and soak remain open.
+  reconstruction of the terminal state and both POV hashes. A second live run
+  forcibly killed the match worker at tic 400, rebuilt the retained world in a
+  replacement Scheduler session, and still reproduced those exact hashes at
+  tic 762. Private traces are opt-in and add no work to normal gameplay. The
+  full two-browser route, 300-frame multiplayer FPS gate, interaction fixtures,
+  and soak remain open.
 - **Operational resilience (2026-07-19).** Worker claims self-heal when the
   Oracle Scheduler loses an async job dispatch; dead claims are reclaimed;
   when all four worker slots are busy the least-recently-active idle worker is
