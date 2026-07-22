@@ -14,10 +14,23 @@ PASS secret ignore audit (8 ignored paths, 3 visible templates, no tracked secre
 ```
 
 The current shell exposes AWS credential variable names but no approved target
-`DOOMDB_S3_BUCKET` or execution guard, and the managed ORDS origin required to
-build the final same-origin/CORS configuration is also absent. T11.2 therefore
+`AWS_S3_BUCKET`, execution guard, or managed ORDS origin. T11.2 therefore
 remains `NOT RUN`. Completion requires an explicit target bucket/region,
 `DOOMDB_CLOUD_EXECUTE=YES`, the real managed ORDS HTTPS base URL, and authority
-to upload and later tear down only the reviewed allowlist. The actual S3 HTTPS
-index must then pass the packaged Playwright network, new-game, gameplay,
-asset/audio, save/load, replay, multiplayer, and completion-smoke protocol.
+to replace the dedicated bucket's contents with the reviewed allowlist. The
+actual S3 HTTPS index must then pass the packaged Playwright network, new-game,
+gameplay, asset/audio, save/load, replay,
+multiplayer, and completion-smoke protocol.
+
+The final audit also found an unresolved contract conflict that must be tested
+on the managed target before T11.2 can pass. A real cross-origin Chromium probe
+against the local ORDS 26.2 AutoREST procedure endpoint was blocked: ORDS
+answered the browser's `OPTIONS` request with status 200, an empty body, and no
+`Access-Control-Allow-*` headers. The frozen evaluator requires status 204,
+exact origin reflection, POST, and `content-type`. Oracle documents automatic
+preflight handling for public ORDS resources, but the documented origin-setting
+API applies to resource modules, while this project is constrained to AutoREST.
+No evaluator result or managed-service behavior is inferred from the local
+observation. The managed T11.1 origin must be probed before S3 upload; if it has
+the same response, the frozen CORS requirement and AutoREST-only charter need a
+formal reconciliation rather than a fabricated PASS.

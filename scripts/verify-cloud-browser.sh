@@ -12,7 +12,7 @@ sha(){ if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"|awk '{print 
 cleanup(){
   local status=$?; trap - EXIT HUP INT TERM
   [[ -z "$tmp" ]] || rm -rf "$tmp"
-  unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_REGION AWS_S3_BUCKET ADB_ORDS_BASE_URL T112_COMPLETION_LEDGER T112_S3_INDEX_URL T112_BROWSER_LEDGER
+  unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_REGION AWS_S3_BUCKET ADB_ORDS_BASE_URL T112_COMPLETION_LEDGER T112_S3_INDEX_URL T112_BROWSER_LEDGER DOOMDB_CLOUD_EXECUTE
   exit "$status"
 }
 trap cleanup EXIT HUP INT TERM
@@ -21,12 +21,13 @@ rm -f "$evidence" /tmp/doomdb-t112-playwright.json
 # Live authority is mandatory. An absent value is a nonzero NOT RUN and is never
 # translated into PASS. Values stay in the environment and private temporary
 # files; retained output contains hashes only.
+[[ "${DOOMDB_CLOUD_EXECUTE:-}" == YES ]] || not_run 'DOOMDB_CLOUD_EXECUTE=YES is required'
 for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION AWS_S3_BUCKET ADB_ORDS_BASE_URL T112_COMPLETION_LEDGER; do
   [[ -n "${!name:-}" ]] || not_run "required external authority is absent: $name"
   case "${!name,,}" in *placeholder*|*example*|*change-me*|*invalid*) not_run "$name is not a live value";; esac
 done
 [[ "$AWS_REGION" =~ ^[a-z]{2}(-gov)?-[a-z]+-[1-9]$ ]] || not_run 'AWS region syntax is invalid'
-[[ "$AWS_S3_BUCKET" =~ ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$ && "$AWS_S3_BUCKET" != *..* ]] || not_run 'S3 authority syntax is invalid'
+[[ "$AWS_S3_BUCKET" =~ ^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$ ]] || not_run 'S3 bucket must be a DNS-safe label without dots for the pinned virtual-host HTTPS URL'
 [[ "$ADB_ORDS_BASE_URL" =~ ^https://[^/?#]+/ords/[A-Za-z0-9._~-]+/?$ ]] || not_run 'managed ORDS must be an HTTPS schema root'
 [[ -f "$T112_COMPLETION_LEDGER" && ! -L "$T112_COMPLETION_LEDGER" ]] || not_run 'approved completion command ledger is absent'
 node - "$T112_COMPLETION_LEDGER" <<'NODE' || not_run 'completion command ledger is not approved and deterministic'
@@ -72,6 +73,32 @@ node - "$tmp/aws/location.json" "$AWS_REGION" <<'NODE'
 import fs from 'node:fs';import assert from 'node:assert/strict';const [p,want]=process.argv.slice(2),x=JSON.parse(fs.readFileSync(p)),got=x.LocationConstraint??'us-east-1';assert.equal(got,want,'bucket region differs from AWS_REGION');
 NODE
 
+# Fail before any S3 mutation if the managed AutoREST endpoint cannot serve the
+# frozen browser preflight contract. S3 bucket CORS cannot repair a response
+# produced by Oracle. Target-bearing headers and diagnostics stay private.
+s3_origin="https://${AWS_S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com"
+ords_root=${ADB_ORDS_BASE_URL%/}
+if ! preflight_status=$(curl --proto '=https' --tlsv1.2 --silent --show-error --max-redirs 0 \
+  --request OPTIONS --output /dev/null --dump-header "$tmp/aws/ords-preflight.headers" \
+  --write-out '%{http_code}' \
+  --header "Origin: $s3_origin" \
+  --header 'Access-Control-Request-Method: POST' \
+  --header 'Access-Control-Request-Headers: content-type,accept' \
+  "$ords_root/doom_api/new_game/" 2>"$tmp/aws/ords-preflight-error.log"); then
+  die 'managed AutoREST preflight request failed before S3 mutation'
+fi
+if ! node - "$tmp/aws/ords-preflight.headers" "$preflight_status" "$s3_origin" >"$tmp/aws/ords-preflight-check.log" 2>&1 <<'NODE'
+import fs from 'node:fs';import assert from 'node:assert/strict';
+const [p,status,origin]=process.argv.slice(2),blocks=fs.readFileSync(p,'utf8').replaceAll('\r','').trim().split(/\n\n+/),lines=blocks.at(-1).split('\n'),headers={};
+for(const line of lines.slice(1)){const i=line.indexOf(':');if(i>0)headers[line.slice(0,i).toLowerCase()]=line.slice(i+1).trim();}
+const csv=name=>(headers[name]??'').toLowerCase().split(/\s*,\s*/).filter(Boolean);
+assert.equal(status,'204');assert.equal(headers['access-control-allow-origin'],origin);assert.ok(csv('access-control-allow-methods').includes('post'));assert.ok(csv('access-control-allow-headers').includes('content-type'));assert.ok(csv('access-control-allow-headers').includes('accept'));
+NODE
+then
+  die 'managed AutoREST does not satisfy the frozen CORS preflight contract; S3 was not mutated'
+fi
+: >"$tmp/aws/ords-preflight-error.log"; : >"$tmp/aws/ords-preflight-check.log"
+
 # Remove every non-allowlisted key before upload. The resulting inventory must
 # equal the deterministic artifact-allowlist exactly; no source maps or tools
 # can remain from a prior deployment. Every object has exact Content-Type and
@@ -94,7 +121,7 @@ while IFS= read -r key; do
   aws_quiet s3api get-object --bucket "$AWS_S3_BUCKET" --key "$key" "$tmp/aws/$safe.get"
 done <"$tmp/artifact-allowlist.txt"
 
-export T112_S3_INDEX_URL="https://${AWS_S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/index.html"
+export T112_S3_INDEX_URL="$s3_origin/index.html"
 if ! curl --proto '=https' --tlsv1.2 --fail --silent --max-redirs 0 --dump-header "$tmp/aws/index.headers" --output "$tmp/aws/index.get" "$T112_S3_INDEX_URL" 2>"$tmp/aws/curl-error.log"; then die 'explicit S3 index fetch failed'; fi
 [[ "$(sha "$tmp/aws/index.get")" == "$(jq -r '.objects[]|select(.key=="index.html")|.sha256' "$tmp/build-manifest.json")" ]] || die 'explicit index.html bytes differ from build'
 

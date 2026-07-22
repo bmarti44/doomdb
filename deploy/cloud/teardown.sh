@@ -11,7 +11,7 @@ case "${1---dry-run}" in
   *) cloud_die 'usage: teardown.sh [--dry-run|--execute]' ;;
 esac
 
-bucket=${DOOMDB_S3_BUCKET:-doomdb-placeholder-bucket}
+bucket=${AWS_S3_BUCKET:-doomdb-placeholder-bucket}
 region=${AWS_REGION:-us-east-1}
 ords_base=${ADB_ORDS_BASE_URL:-https://doomdb-placeholder.adb.us-ashburn-1.oraclecloudapps.com/ords/doom}
 ords_base=${ords_base%/}
@@ -19,7 +19,7 @@ printf '{\n  "schema": 1,\n  "operation": "cloud-teardown",\n  "mode": "%s",\n  
 
 [ "$mode" = execute ] || exit 0
 cloud_check_execute_guard
-cloud_require_value DOOMDB_S3_BUCKET
+cloud_require_value AWS_S3_BUCKET
 cloud_require_value AWS_REGION
 cloud_require_value AWS_ACCESS_KEY_ID
 cloud_require_value AWS_SECRET_ACCESS_KEY

@@ -2936,6 +2936,17 @@ cloud scripts use the evaluator-contract name `ADB_USERNAME`.
 - Upload only allowlisted static production artifacts with deterministic metadata
   and cache policy. Configure the client with the managed ORDS base URL at build
   time, not a runtime proxy.
+- Require `DOOMDB_CLOUD_EXECUTE=YES` and a dedicated target bucket before the
+  exact-inventory deployment deletes non-allowlisted objects. Use the frozen
+  evaluator variable `AWS_S3_BUCKET`, reject dotted bucket names for the pinned
+  virtual-host HTTPS URL, and normalize the ORDS schema-root trailing slash.
+- Before uploading, run the real cross-origin preflight against the managed
+  AutoREST procedure endpoint. Local ORDS 26.2 returns `200` with no CORS headers
+  for this probe while the frozen evaluator requires `204` and explicit allow
+  headers. Treat matching managed behavior as an AutoREST/evaluator feasibility
+  conflict; do not substitute a custom ORDS module or manufacture evidence.
+  The supported-surface analysis and bounded managed probe are recorded in
+  `reports/performance-P11-autorest-cors-feasibility-2026-07-21.md`.
 - Accept: Playwright from the actual S3 HTTPS index URL passes CORS/preflight,
   new-game, STEP, asset, canvas, audio, save/load, replay, and completion-smoke
   tests. No non-S3/non-Oracle runtime dependency appears in the network log.

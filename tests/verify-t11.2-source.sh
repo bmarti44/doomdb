@@ -6,6 +6,11 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/doomdb-t112-source.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT
 
 bash -n "$root/scripts/verify-cloud-browser.sh"
+grep -q 'DOOMDB_CLOUD_EXECUTE.*YES' "$root/scripts/verify-cloud-browser.sh"
+grep -q 'without dots' "$root/scripts/verify-cloud-browser.sh"
+grep -q 'Access-Control-Request-Headers.*content-type,accept' "$root/scripts/verify-cloud-browser.sh"
+grep -q 'S3 was not mutated' "$root/scripts/verify-cloud-browser.sh"
+grep -q "const ordsBase = ordsRoot.endsWith('/')" "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
 node --check "$root/scripts/t11.2-build-client.mjs"
 node --check "$root/scripts/build-t11.2-completion-ledger.mjs"
 "$root/node_modules/.bin/tsc" -p "$root/client/tsconfig.json" --noEmit false --outDir "$tmp/client"
@@ -41,5 +46,18 @@ status=$?
 set -e
 [[ "$status" == 2 ]]
 grep -q '^T11.2 NOT RUN:' "$tmp/err"
+[[ ! -e /tmp/doomdb-t112-evidence.json ]]
+
+set +e
+env -i PATH="$PATH" HOME="${HOME:-/tmp}" DOOMDB_CLOUD_EXECUTE=YES \
+  AWS_ACCESS_KEY_ID=AKIATEST AWS_SECRET_ACCESS_KEY=testsecret \
+  AWS_REGION=us-east-1 AWS_S3_BUCKET=doomdb.test \
+  ADB_ORDS_BASE_URL=https://cloud.oraclecloudapps.com/ords/doom \
+  T112_COMPLETION_LEDGER="$tmp/completion.json" \
+  bash "$root/scripts/verify-cloud-browser.sh" >"$tmp/dotted-out" 2>"$tmp/dotted-err"
+status=$?
+set -e
+[[ "$status" == 2 ]]
+grep -q 'without dots' "$tmp/dotted-err"
 [[ ! -e /tmp/doomdb-t112-evidence.json ]]
 printf 'PASS T11.2-SOURCE-FIRST (12-object single/multiplayer build, approved completion ledger, fail-closed authority)\n'

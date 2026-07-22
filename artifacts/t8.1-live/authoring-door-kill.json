@@ -1,0 +1,87 @@
+{
+  "envelopeVersion": 2,
+  "startSequence": 7782,
+  "commandCount": 76,
+  "runs": [
+    {
+      "repeat": 22,
+      "command": {
+        "turn": 1,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 2,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "repeat": 25,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 2,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "repeat": 1,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 1,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "repeat": 18,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    },
+    {
+      "repeat": 10,
+      "command": {
+        "turn": 0,
+        "forward": 0,
+        "strafe": 0,
+        "run": 0,
+        "fire": 1,
+        "use": 0,
+        "weapon": 2,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    }
+  ]
+}

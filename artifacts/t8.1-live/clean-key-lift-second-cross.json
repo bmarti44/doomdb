@@ -1,0 +1,19 @@
+{
+  "envelopeVersion": 2,
+  "startSequence": 6570,
+  "commandCount": 58,
+  "runs": [
+    {
+      "repeat": 1,
+      "command": {"turn": 0, "forward": 0, "strafe": 0, "run": 0, "fire": 0, "use": 1, "weapon": 3, "pause": 0, "automap": 0, "menu": "NONE", "cheat": ""}
+    },
+    {
+      "repeat": 45,
+      "command": {"turn": 0, "forward": 0, "strafe": 0, "run": 0, "fire": 0, "use": 0, "weapon": 3, "pause": 0, "automap": 0, "menu": "NONE", "cheat": ""}
+    },
+    {
+      "repeat": 12,
+      "command": {"turn": 0, "forward": 50, "strafe": 0, "run": 1, "fire": 0, "use": 0, "weapon": 3, "pause": 0, "automap": 0, "menu": "NONE", "cheat": ""}
+    }
+  ]
+}

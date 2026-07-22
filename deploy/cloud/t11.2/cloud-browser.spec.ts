@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const sha = (value:string|Buffer) => crypto.createHash('sha256').update(value).digest('hex');
 const indexUrl = process.env.T112_S3_INDEX_URL!;
 const ordsRoot = process.env.ADB_ORDS_BASE_URL!;
+const ordsBase = ordsRoot.endsWith('/') ? ordsRoot : `${ordsRoot}/`;
 const output = process.env.T112_BROWSER_LEDGER!;
 const routeFile = process.env.T112_COMPLETION_LEDGER!;
 
@@ -75,7 +76,7 @@ test('[T112-LIVE-CLOUD-BROWSER] direct S3 and managed ORDS workflow', async ({pa
     if(completionLast.mode!=='INTERMISSION'&&completionLast.complete!==1)throw Error('completion ledger did not complete E1M1');last=completionLast;hashes.push(await render(last));
     const starts=(window as any).__doomAudioStarts as number[];if(starts.length<scheduled)throw Error('AudioContext did not schedule database event');
     return {gameTokenSha256:await hex(completionToken),gameTokenBits:128,commandLedgerSha256:await hex(JSON.stringify(commands)),terminalStateSha256:last.state_sha,saveStateSha256:save,loadStateSha256:load.state_sha,replayStateSha256:replay.state_sha,completionStateSha256:last.state_sha,playpalSha256:await hex(palette),audioAssetSha256:await hex(audioAsset),steps:seq+completionSteps,gzipBlobDecoded:true,rleCoverage:64000,canvasWidth:320,canvasHeight:200,canvasRgbaHashes:hashes,audioEventsIssued:issued,audioEventsScheduled:scheduled,completed:true,intermissionVisible:true,apiFamilies:['NEW_GAME','STEP','GET_ASSET','SAVE','LOAD','REPLAY']};
-  }, {base: new URL('doom_api/', ordsRoot).href, commands: route.commands});
+  }, {base: new URL('doom_api/', ordsBase).href, commands: route.commands});
   await Promise.all(responseTasks);
   expect(errors).toEqual([]); expect(options.some(x => x.origin === ordsOrigin)).toBe(true);expect(cors?.status).toBe(204);expect(cors?.allowOriginExact).toBe(true);expect(cors?.allowMethods).toContain('POST');expect(cors?.allowHeaders).toContain('content-type');
   expect(network.every(x => x.kind !== 'OTHER' && !x.redirected && !x.websocket && x.status >= 200 && x.status < 300)).toBe(true);

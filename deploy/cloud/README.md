@@ -18,7 +18,7 @@ deployment can select a compiled directory with `DOOMDB_CLIENT_ARTIFACT_DIR`, bu
 its contents must still exactly match the reviewed allowlist.
 
 Real execution additionally requires `--execute` and
-`DOOMDB_CLOUD_EXECUTE=YES`. S3 upload requires `DOOMDB_S3_BUCKET`, `AWS_REGION`,
+`DOOMDB_CLOUD_EXECUTE=YES`. S3 upload requires `AWS_S3_BUCKET`, `AWS_REGION`,
 `AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`. Autonomous deployment requires
 `ADB_CONNECTION_STRING`, `ADB_USERNAME`, `ADB_PASSWORD`, and
 `ADB_ORDS_BASE_URL`.
@@ -72,3 +72,11 @@ database account variable is `ADB_USERNAME` in the skeleton, production gate,
 environment report, loader, and teardown. After client-side `loadjava`, the
 gate queries `USER_JAVA_CLASSES` and refuses to continue unless all 830 classes
 exist and every Java class object is valid.
+
+The T11.2 production browser gate requires a dedicated bucket: it enforces the
+frozen exact-object inventory by deleting every non-allowlisted key after the
+explicit `DOOMDB_CLOUD_EXECUTE=YES` guard. `AWS_S3_BUCKET` must be a DNS-safe
+label without dots because the accepted browser URL is the bucket's
+virtual-hosted HTTPS URL. The gate accepts the managed ORDS schema root with or
+without a trailing slash and normalizes it before constructing AutoREST package
+URLs.

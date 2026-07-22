@@ -1,0 +1,23 @@
+{
+  "envelopeVersion": 2,
+  "startSequence": 7763,
+  "commandCount": 10,
+  "runs": [
+    {
+      "repeat": 10,
+      "command": {
+        "turn": 0,
+        "forward": 50,
+        "strafe": 0,
+        "run": 1,
+        "fire": 0,
+        "use": 0,
+        "weapon": 0,
+        "pause": 0,
+        "automap": 0,
+        "menu": "NONE",
+        "cheat": ""
+      }
+    }
+  ]
+}

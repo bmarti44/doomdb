@@ -13,7 +13,7 @@ esac
 
 artifact_dir=${DOOMDB_CLIENT_ARTIFACT_DIR:-$ROOT/deploy/cloud/placeholder-client}
 allowlist=$ROOT/deploy/cloud/artifact-allowlist.txt
-bucket=${DOOMDB_S3_BUCKET:-doomdb-placeholder-bucket}
+bucket=${AWS_S3_BUCKET:-doomdb-placeholder-bucket}
 region=${AWS_REGION:-us-east-1}
 cloud_validate_allowlist "$artifact_dir" "$allowlist"
 
@@ -29,7 +29,7 @@ printf '\n  ]\n}\n'
 
 [ "$mode" = execute ] || exit 0
 cloud_check_execute_guard
-cloud_require_value DOOMDB_S3_BUCKET
+cloud_require_value AWS_S3_BUCKET
 cloud_require_value AWS_REGION
 cloud_require_value AWS_ACCESS_KEY_ID
 cloud_require_value AWS_SECRET_ACCESS_KEY
