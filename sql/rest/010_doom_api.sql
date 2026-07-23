@@ -452,7 +452,7 @@ create or replace package body doom_api as
     l_host_salt raw(32);l_join_salt raw(32);l_player_salt raw(32);
     l_solo_salt raw(32);l_solo_capability varchar2(64);l_solo_hash varchar2(64);
     l_host_hash varchar2(64);l_join_hash varchar2(64);l_player_hash varchar2(64);
-    l_recent number;l_open number;l_lock number;
+    l_recent number;l_open number;l_lock number;l_match_limit number;
   begin
     p_match:=null;p_host_capability:=null;p_join_capability:=null;
     p_player_capability:=null;
@@ -473,11 +473,17 @@ create or replace package body doom_api as
     -- v1 uses a deliberately small global burst/open-lobby limit.
     select number_value into l_lock from doom_config
       where config_key='MAX_ACTIVE_SESSIONS' for update;
+    select number_value into l_match_limit from doom_config
+      where config_key='MAX_ACTIVE_MATCHES';
+    if l_match_limit is null or l_match_limit<>trunc(l_match_limit) or
+       l_match_limit not between 1 and 32 then
+      fail(c_capacity,'invalid match capacity');
+    end if;
     select count(*) into l_recent from doom_match
       where created_at>l_now-interval '1' minute;
     select count(*) into l_open from doom_match
       where match_state in('LOBBY','ACTIVE') and expires_at>l_now;
-    if l_recent>=16 or l_open>=32 then
+    if l_recent>=16 or l_open>=l_match_limit then
       fail(c_capacity,'match capacity reached');
     end if;
 

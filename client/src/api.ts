@@ -203,6 +203,14 @@ export async function readyMatch(match: string, playerCapability: string,
   return stringField(document, 'p_match_state');
 }
 
+export async function leaveMatch(match: string,
+                                 playerCapability: string): Promise<string> {
+  const document = await post('leave_match', {
+    p_match: match, p_player_capability: playerCapability
+  });
+  return stringField(document, 'p_match_state');
+}
+
 export async function matchStatus(match: string, capability: string): Promise<MatchStatus> {
   const document = await post('match_status', {
     p_match: match, p_capability: capability

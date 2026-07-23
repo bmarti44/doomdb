@@ -1,5 +1,5 @@
 import {
-  createMatch, getAsset, joinMatch, matchStatus, matchInputFrontier,
+  createMatch, getAsset, joinMatch, leaveMatch, matchStatus, matchInputFrontier,
   pollMatchTransitions, readyMatch, reviseMatchInput,
   type Command, type MatchStatus
 } from './api.js';
@@ -121,8 +121,10 @@ const trace = (name: string, detail: object): void => {
 };
 
 const storageKey = (match: string): string => `doomdb.match.${match}`;
+const soloCurrentKey = 'doomdb.solo.current';
 const saveLocal = (value: LocalMatch): void => {
   sessionStorage.setItem(storageKey(value.match), JSON.stringify(value));
+  if (soloMode) sessionStorage.setItem(soloCurrentKey,value.match);
 };
 const loadLocal = (match: string): LocalMatch | null => {
   try {
@@ -133,6 +135,38 @@ const loadLocal = (match: string): LocalMatch | null => {
         (candidate.playerSlot !== 0 && candidate.playerSlot !== 1)) return null;
     return candidate as LocalMatch;
   } catch { return null; }
+};
+
+const retirePriorSolo = async (): Promise<void> => {
+  const current = sessionStorage.getItem(soloCurrentKey);
+  const matches = new Set<string>();
+  if (current !== null) matches.add(current);
+  // Migration fallback for solo credentials saved before the explicit pointer
+  // existed. Multiplayer hosts retain host/join capabilities; the solo host
+  // deliberately stores neither, so this cannot retire a co-op lobby.
+  for (let index = 0; index < sessionStorage.length; index++) {
+    const key = sessionStorage.key(index);
+    if (key?.startsWith('doomdb.match.')) {
+      const match = key.slice('doomdb.match.'.length);
+      const candidate = loadLocal(match);
+      if (candidate?.playerSlot === 0 && candidate.hostCapability === undefined &&
+          candidate.joinCapability === undefined) matches.add(match);
+    }
+  }
+  for (const match of matches) {
+    const prior = loadLocal(match);
+    try {
+      if (prior !== null && prior.playerSlot === 0) {
+        await leaveMatch(prior.match,prior.playerCapability);
+      }
+    } catch {
+      // Expired/already-finished credentials are already retired. Any real
+      // remaining capacity conflict is still rejected by CREATE_MATCH.
+    } finally {
+      sessionStorage.removeItem(storageKey(match));
+    }
+  }
+  sessionStorage.removeItem(soloCurrentKey);
 };
 
 const setBusy = (busy: boolean): void => {
@@ -186,7 +220,8 @@ async function refreshLobby(): Promise<void> {
     latestStatus=await matchStatus(local.match,capability);
   }
   const soloProgress = soloMode && latestStatus.state === 'STARTING' ?
-    ` · cold authority + standby ${Math.floor((performance.now()-soloStartedAt)/1000)}s` : '';
+    ` · cold MLE authority ${Math.floor((performance.now()-soloStartedAt)/1000)}s`
+      + ' · local Free baseline ~110s' : '';
   roomStatus.textContent = `Match ${local.match} · player ${local.playerSlot + 1}\n${latestStatus.memberCount}/${latestStatus.maxPlayers} joined · ${latestStatus.readyCount} ready · ${latestStatus.state}${soloProgress}`;
   readyButton.textContent = ready ? 'Not ready' : 'Ready';
   readyButton.disabled = latestStatus.memberCount !== latestStatus.maxPlayers;
@@ -683,7 +718,8 @@ if (soloMode) {
     blit(decodeBytes(titleAsset.payload));
   }).catch(showSoloError);
   ready = true;setBusy(true);
-  void createMatch('PLAYER 1',soloSkill,'COOP',1).then(async value => {
+  void retirePriorSolo().then(() =>
+    createMatch('PLAYER 1',soloSkill,'COOP',1)).then(async value => {
     const credentials: LocalMatch = {
       match:value.match,playerCapability:value.playerCapability,playerSlot:0
     };

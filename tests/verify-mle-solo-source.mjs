@@ -9,6 +9,7 @@ const api=fs.readFileSync('client/src/api.ts','utf8');
 const schema=fs.readFileSync('sql/schema/053_singleplayer_mle.sql','utf8');
 const rest=fs.readFileSync('sql/rest/010_doom_api.sql','utf8');
 const worker=fs.readFileSync('sql/sim/084_multiplayer_worker.sql','utf8');
+const config=fs.readFileSync('sql/schema/050_config.sql','utf8');
 
 assert.match(index,/src="\/play\/main\.js"/);
 assert.match(soloIndex,/<body data-doom-solo>/);
@@ -16,7 +17,9 @@ assert.match(soloIndex,/src="\/play\/multiplayer\.js"/);
 assert.match(menu,/new URL\('solo\.html', location\.href\)/);
 assert.match(menu,/location\.assign\(mleUrl\);\s*return;/);
 assert.match(client,/const soloMode = document\.body\.hasAttribute\('data-doom-solo'\)/);
-assert.match(client,/createMatch\('PLAYER 1',soloSkill,'COOP',1\)/);
+assert.match(client,/retirePriorSolo\(\)\.then\(\(\) =>\s+createMatch\('PLAYER 1',soloSkill,'COOP',1\)\)/);
+assert.match(client,/await leaveMatch\(prior\.match,prior\.playerCapability\)/);
+assert.match(client,/doomdb\.solo\.current/);
 assert.match(client,/await readyMatch\(value\.match,value\.playerCapability,true\)/);
 assert.match(client,/function scheduleLobbyRefresh\(\): void/);
 assert.doesNotMatch(client,/lobbyTimer = window\.setInterval/);
@@ -33,5 +36,9 @@ assert.match(worker,/solo authority admission fence/);
 assert.match(worker,/else\s+await_initial_standby\(p_match,l_generation\)/);
 assert.match(worker,/Cold TeaVM initialization is intentionally outside the match-row/);
 assert.match(worker,/doom_mle_match_runtime\.initialize_game[\s\S]+select max_players[\s\S]+for update/);
+assert.match(worker,/instr\(p_error,'host membership is not active'\)>0[\s\S]+standby_status in\('STARTING','READY'\)/);
+assert.match(worker,/config_key='MAX_ACTIVE_MATCHES'/);
+assert.match(config,/select 'MAX_ACTIVE_MATCHES', 1/);
+assert.match(rest,/l_open>=l_match_limit/);
 
 process.stdout.write('PASS MLE-SOLO-SOURCE /play uses one-player retained MLE match authority\n');

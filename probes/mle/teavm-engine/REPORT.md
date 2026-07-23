@@ -619,3 +619,27 @@ SHA-256 `1e940a38c9d5131811bed81e886fdb153196e7af3298ff7471bb531629579d7e`.
 `versions.lock`, browser assets, and production remain on the accepted
 `06ac3333…`/`bd35d277…` pair until the canonical and 762-tic differential
 batch passes for the changed authority artifact.
+
+## Live match-admission contention correction — 2026-07-23
+
+A real second single-player launch exposed a lifecycle/capacity mismatch that
+the isolated soak did not cover. An abandoned match had reached terminal host
+membership and its authority correctly failed with `ORA-20731`, but its
+generation-matched standby remained `READY`. A subsequent match then ran its
+authority and a second standby alongside that leaked context: three retained
+MLE jobs competed under Free's two-running-session limit. The new solo
+authority eventually sustained 35.88 tics/s, but cold admission appeared
+frozen for minutes.
+
+The source correction makes terminal host membership finish and immediately
+expire the match while signaling its standby to stop. `MAX_ACTIVE_MATCHES=1`
+now freezes the honest Free-edition game capacity in both creation and worker
+admission; larger deployments must raise it only with separate capacity
+evidence. The browser records its current solo capability and retires that
+authority before starting another New Game. A migration fallback recognizes
+older solo credentials without touching co-op hosts. Two live leaked terminal
+matches were fenced by their exact error and cleaned up; both standbys reached
+`STOPPED`. A subsequently created two-browser co-op match reached
+authority/standby `READY` and tic 938. The new package bodies remain a source
+candidate until that live match exits, because replacing a package used by a
+retained session would invalidate the game being reviewed.

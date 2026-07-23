@@ -91,12 +91,23 @@ create or replace package body doom_match_worker as
   end;
 
   procedure fail_control(p_match varchar2,p_error varchar2) is
+    l_now timestamp with time zone:=(localtimestamp at time zone 'UTC');
   begin
     rollback;
     update doom_match_worker_control set worker_status='FAILED',
-      request_status='FAILED',heartbeat=(localtimestamp at time zone 'UTC'),
+      request_status='FAILED',heartbeat=l_now,
       last_error=substr(p_error,1,2000)
       where match_id=p_match;
+    -- Slot zero having LEFT is a terminal membership state, not a recoverable
+    -- engine crash. Leaving its standby runnable consumed one of Oracle Free's
+    -- two session slots and made the next match scheduler-thrash for minutes.
+    if instr(p_error,'host membership is not active')>0 then
+      update doom_match set match_state='FINISHED',finished_at=l_now,
+        last_activity_at=l_now,expires_at=l_now
+        where match_id=p_match and match_state='ACTIVE';
+      update doom_match_standby_control set stop_requested=1,heartbeat=l_now
+        where match_id=p_match and standby_status in('STARTING','READY');
+    end if;
     commit;
   end;
 
@@ -1216,12 +1227,18 @@ create or replace package body doom_match_worker as
     l_state varchar2(16);l_epoch number;l_generation number;l_count number;
     l_job varchar2(64):='DOOM_MATCH_'||upper(p_match);l_wait number;
     l_dummy number;l_worker_error varchar2(2000);l_worker_mode varchar2(16);
-    l_worker_status varchar2(16);
+    l_worker_status varchar2(16);l_match_limit number;
     l_heartbeat timestamp with time zone;
   begin
     p_match_state:=null;l_wait:=least(greatest(coalesce(p_wait_ms,30000),0),60000);
     select number_value into l_dummy from doom_config
       where config_key='MAX_ACTIVE_SESSIONS' for update;
+    select number_value into l_match_limit from doom_config
+      where config_key='MAX_ACTIVE_MATCHES';
+    if l_match_limit is null or l_match_limit<>trunc(l_match_limit) or
+       l_match_limit not between 1 and 32 then
+      raise_application_error(c_error,'invalid match capacity');
+    end if;
     select match_state,membership_epoch,generation into l_state,l_epoch,l_generation
       from doom_match where match_id=p_match for update;
     if l_state='ACTIVE' and l_generation>0 then
@@ -1257,9 +1274,12 @@ create or replace package body doom_match_worker as
     select count(*) into l_count from doom_match_member where match_id=p_match
       and member_state='READY' and membership_epoch=l_epoch;
     if l_count<>2 then raise_application_error(c_error,'membership is not ready');end if;
-    select count(*) into l_count from doom_match_worker_control
-      where worker_status in('STARTING','READY');
-    if l_count>=4 then raise_application_error(-20702,'match worker capacity reached');end if;
+    select count(*) into l_count from doom_match
+      where match_id<>p_match and match_state in('LOBBY','ACTIVE')
+        and expires_at>(localtimestamp at time zone 'UTC');
+    if l_count>=l_match_limit then
+      raise_application_error(-20702,'match worker capacity reached');
+    end if;
     delete from doom_match_worker_control where match_id=p_match
       and worker_status in('FAILED','STOPPED');
     select text_value into l_worker_mode from doom_config

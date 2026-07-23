@@ -147,6 +147,12 @@ export async function readyMatch(match, playerCapability, ready) {
     });
     return stringField(document, 'p_match_state');
 }
+export async function leaveMatch(match, playerCapability) {
+    const document = await post('leave_match', {
+        p_match: match, p_player_capability: playerCapability
+    });
+    return stringField(document, 'p_match_state');
+}
 export async function matchStatus(match, capability) {
     const document = await post('match_status', {
         p_match: match, p_capability: capability

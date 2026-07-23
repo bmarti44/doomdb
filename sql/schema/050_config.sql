@@ -5,6 +5,9 @@ using (
   select 'FRAME_WIDTH', 320, cast(null as varchar2(4000)) from dual union all
   select 'FRAME_HEIGHT', 200, cast(null as varchar2(4000)) from dual union all
   select 'MAX_ACTIVE_SESSIONS', 64, cast(null as varchar2(4000)) from dual union all
+  -- One Free-edition game owns an authority plus a recovery standby. Raising
+  -- this requires a separately measured paid/Autonomous capacity envelope.
+  select 'MAX_ACTIVE_MATCHES', 1, cast(null as varchar2(4000)) from dual union all
   select 'SESSION_TTL_SECONDS', 3600, cast(null as varchar2(4000)) from dual union all
   select 'MAX_COMMAND_BYTES', 65536, cast(null as varchar2(4000)) from dual union all
   select 'MAX_COMMANDS_PER_STEP', 4, cast(null as varchar2(4000)) from dual union all
