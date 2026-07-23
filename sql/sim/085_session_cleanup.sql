@@ -51,7 +51,9 @@ create or replace package body doom_session_cleanup as
             select count(*) into l_running from user_scheduler_running_jobs
               where job_name=l_job;
             if l_running<>0 then
-              begin dbms_scheduler.stop_job(l_job,true);exception when others then null;end;
+              begin doom_worker_lifecycle.stop_job(
+                l_job,true,'expired session cleanup');
+              exception when others then null;end;
               select count(*) into l_running from user_scheduler_running_jobs
                 where job_name=l_job;
             end if;

@@ -99,7 +99,8 @@ begin
     raise_application_error(-20000,'guest sampled ledger mismatch');end if;
 
   select job_name into l_job from doom_match_worker_control where match_id=l_match;
-  dbms_scheduler.stop_job(l_job,true);
+  doom_worker_lifecycle.stop_job(
+    l_job,true,'paced-input recovery gate');
   select current_tic into l_frontier from doom_match where match_id=l_match;
   select state_sha into l_frontier_state from doom_match_tic
     where match_id=l_match and tic=l_frontier;

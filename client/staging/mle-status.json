@@ -58,7 +58,8 @@
     "coopEveryTic762": "PASS",
     "membershipRecovery": "PASS",
     "ledgerEveryTic13272": "PASS",
-    "finalWorkerSoak": "RERUN_REQUIRED_ON_A942",
+    "finalWorkerSoak": "RERUN_REQUIRED_AFTER_LIFECYCLE_HARDENING",
+    "lifecycleHardening": "PASS",
     "calibratedProcessMemory": "PASS",
     "browserConfirmedOnly": "PASS",
     "soloMleAuthority": "PASS",
@@ -81,7 +82,12 @@
     "standbyPssEndBytes": 413642752,
     "processMemoryMarginBytes": 67108864,
     "ashSamples": 1486,
-    "resourceManagerCpuQuantumSamples": 0
+    "resourceManagerCpuQuantumSamples": 0,
+    "promotedAttemptState": "VOIDED",
+    "promotedAttemptReason": "legacy cleanup stop/lifecycle ownership race",
+    "postDietPartialAuthorityPssMinimumBytes": 262067200,
+    "postDietPartialAuthorityPssMaximumBytes": 311932928,
+    "postDietPartialPlateauProven": false
   },
   "capacity": {
     "effectivePdbCpu": 1,
@@ -105,6 +111,8 @@
     "legacyEndpointCalls": 0,
     "headlessAuthorityColdInitP50Seconds": 4.684,
     "concurrentTwoSlotDeployReadySeconds": 34.669,
+    "sequentialAuthorityFirstAdmittableSeconds": 28,
+    "sequentialAuthorityThenStandbyReadySeconds": 55,
     "promotedWarmAdmissionSeconds": 4.341,
     "newGameToFirstConfirmedFrameSeconds": 5.223,
     "startupOptimization": "deploy-time retained MLE pool, exact tic-zero restore, and headless init diet",
@@ -114,6 +122,11 @@
     "note": "cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline"
   },
   "remaining": [
+    {
+      "id": "SOAK",
+      "state": "NEXT",
+      "label": "Post-hardening short reproduction, then 30-minute final soak"
+    },
     {
       "id": "WAN",
       "state": "NEXT",
@@ -141,6 +154,9 @@
     "solo": "artifacts/performance/pmle-browser-role-swap/solo-live-2026-07-23.log",
     "soloAdmission": "artifacts/performance/pmle-browser-role-swap/solo-admission-live-2026-07-23.log",
     "warmPoolAdmission": "artifacts/performance/pmle-browser-role-swap/warm-pool-admission-live-2026-07-23.log",
-    "initDietPromotion": "artifacts/performance/pmle-init-diet/promotion-a942cd2d-2026-07-23.log"
+    "initDietPromotion": "artifacts/performance/pmle-init-diet/promotion-a942cd2d-2026-07-23.log",
+    "voidedPromotedSoak": "artifacts/performance/pmle-worker-soak/run-final-init-diet-a942-2026-07-23.log",
+    "voidedDiagnosticSmoke": "artifacts/performance/pmle-worker-soak/run-smoke-init-diet-harness2-2026-07-23.log",
+    "lifecycleHardening": "artifacts/performance/pmle-worker-lifecycle/run-2026-07-23.log"
   }
 }

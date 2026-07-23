@@ -182,7 +182,9 @@ begin
   -- Stop the retained owner first: this intentionally cold diagnostic can run
   -- longer than the real client's disconnect grace and is not presence input.
   select job_name into job_ from doom_match_worker_control where match_id=match1_;
-  begin dbms_scheduler.stop_job(job_,true);exception when others then null;end;
+  begin doom_worker_lifecycle.stop_job(
+    job_,true,'retained worker disconnect recovery gate');
+  exception when others then null;end;
   begin dbms_scheduler.drop_job(job_,true);exception when others then null;end;
   select state_sha into root1_ from doom_match_tic
     where match_id=match1_ and tic=0;
@@ -238,7 +240,9 @@ begin
   -- Public polling detects a dead/stale owner, starts a fenced generation, and
   -- preserves the already-durable partial next-tic command across the seam.
   select job_name into job_ from doom_match_worker_control where match_id=match1_;
-  begin dbms_scheduler.stop_job(job_,true);exception when others then null;end;
+  begin doom_worker_lifecycle.stop_job(
+    job_,true,'retained worker partial-command recovery gate');
+  exception when others then null;end;
   begin dbms_scheduler.drop_job(job_,true);exception when others then null;end;
   update doom_match_worker_control set heartbeat=systimestamp-interval '10' second
     where match_id=match1_ and generation=generation1_;
@@ -266,7 +270,9 @@ begin
   -- A worker may disappear before the first command. Tic zero therefore has a
   -- canonical empty vector stream and must still reconstruct both POVs.
   select job_name into job_ from doom_match_worker_control where match_id=match2_;
-  begin dbms_scheduler.stop_job(job_,true);exception when others then null;end;
+  begin doom_worker_lifecycle.stop_job(
+    job_,true,'retained worker empty-vector recovery gate');
+  exception when others then null;end;
   begin dbms_scheduler.drop_job(job_,true);exception when others then null;end;
   doom_match_worker.recover_match(match2_,180000,state_);
   select match_state,generation,current_tic into state_,generation2_,tic_

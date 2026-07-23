@@ -63,6 +63,8 @@ AUTHORITY_TRANSPORT=$ROOT/sql/sim/087_mle_transition_transport.sql
 AUTHORITY_TRANSPORT_SCHEMA=$ROOT/sql/schema/052_mle_authority_transport.sql
 AUTHORITY_TRANSPORT_TEST=$ROOT/tests/verify-mle-transition-transport.sql
 MLE_MATCH_RUNTIME=$ROOT/sql/sim/088_mle_match_runtime.sql
+MLE_WORKER_LIFECYCLE=$ROOT/sql/sim/083_worker_lifecycle.sql
+MLE_WORKER_LIFECYCLE_SCHEMA=$ROOT/sql/schema/062_mle_warm_lifecycle.sql
 MLE_MATCH_WORKER=$ROOT/sql/sim/084_multiplayer_worker.sql
 MLE_MATCH_WORKER_TEST=$ROOT/tests/verify-mle-match-worker-cutover.sql
 DOOM_API=$ROOT/sql/rest/010_doom_api.sql
@@ -106,7 +108,8 @@ for file in "$INSTALL" "$BENCHMARK" "$RUNNER" "$CLEANUP" \
   "$AUTHORITY_TS" "$AUTHORITY_MIRROR_TS" "$AUTHORITY_BATCH_TS" \
   "$AUTHORITY_WAN_TS" \
   "$AUTHORITY_SQL" "$AUTHORITY_TRANSPORT" "$AUTHORITY_TRANSPORT_SCHEMA" \
-  "$MLE_MATCH_RUNTIME" "$MLE_MATCH_WORKER" "$MLE_MATCH_WORKER_TEST" \
+  "$MLE_MATCH_RUNTIME" "$MLE_WORKER_LIFECYCLE" \
+  "$MLE_WORKER_LIFECYCLE_SCHEMA" "$MLE_MATCH_WORKER" "$MLE_MATCH_WORKER_TEST" \
   "$DOOM_API" "$IWAD_LOADER" "$RUNTIME_GRANTS" \
   "$ENVIRONMENT_SQL" "$ARTIFACT_SQL" \
   "$AUTHORITY_TRANSPORT_TEST" "$AUTHORITY_TEST" "$AUTHORITY_MIRROR_TEST" \
@@ -310,6 +313,12 @@ grep -q 'record_slow_call' "$ROOT/sql/sim/084_multiplayer_worker.sql" || fail 'w
 grep -q 'run-memory-calibration.sh' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" || fail 'worker soak memory visibility calibration missing'
 grep -q 'PMLE_WORKER_SOAK_MEMORY' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" || fail 'worker soak absolute process-memory gate missing'
 grep -q 'resmgr:cpu quantum' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" || fail 'worker soak resource-manager attribution missing'
+grep -q 'PMLE_WORKER_SOAK_BROWSER_EVIDENCE|BEGIN' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" ||
+  fail 'worker soak pre-cleanup browser evidence preservation missing'
+grep -q 'reason=unplanned_retained_process_replacement' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" ||
+  fail 'worker soak process replacement hard-fail missing'
+grep -q 'PMLE_WORKER_SOAK|VOIDED|reason=harness_exit' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" ||
+  fail 'worker soak harness-abort void classification missing'
 grep -q 'doom_match_poll_lease' "$AUTHORITY_TRANSPORT_SCHEMA" || fail 'DMB1 poll lease schema missing'
 grep -q 'prompt_return_ms' "$AUTHORITY_TRANSPORT_TEST" || fail 'DMB1 prompt-return live gate missing'
 grep -q "utl_raw.cast_to_raw('DMD1')" "$AUTHORITY_SQL" || fail 'DMD1 SQL encoder missing'
@@ -319,6 +328,19 @@ grep -q 'doom_teavm_sim_multi_init_game' "$MLE_MATCH_RUNTIME" || fail 'MLE worke
 grep -q 'doom_teavm_sim_authority_step' "$MLE_MATCH_RUNTIME" || fail 'MLE worker authoritative step missing'
 grep -q 'doom_teavm_sim_checkpoint_chunk' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint export missing'
 grep -q 'doom_teavm_sim_restore_load' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint recovery missing'
+grep -q 'create table doom_worker_stop_intent' "$MLE_WORKER_LIFECYCLE_SCHEMA" ||
+  fail 'durable worker stop intent schema missing'
+grep -q 'procedure reconcile_warm_slots' "$MLE_WORKER_LIFECYCLE" ||
+  fail 'retained worker janitor missing'
+grep -q 'expected incarnation mismatch' "$MLE_WORKER_LIFECYCLE" ||
+  fail 'stop incarnation rejection fence missing'
+grep -q 'forced after bounded honor timeout' "$MLE_WORKER_LIFECYCLE" ||
+  fail 'bounded force-stop reset missing'
+if grep -Rni --include='*.sql' --include='*.sh' --include='*.mjs' \
+  --exclude='083_worker_lifecycle.sql' --exclude='verify-pmle-source.sh' \
+  'dbms_scheduler[.]stop_job' "$ROOT/sql" "$ROOT/probes" "$ROOT/scripts" "$ROOT/tests"; then
+  fail 'direct DBMS_SCHEDULER.STOP_JOB exists outside lifecycle gateway'
+fi
 grep -q 'publish_initial(p_match,l_generation,p_warm)' "$MLE_MATCH_WORKER" || fail 'RUN_MATCH warm/cold MLE initialization missing'
 grep -q 'reconstruct_existing(p_match,l_generation' "$MLE_MATCH_WORKER" || fail 'RUN_MATCH MLE recovery missing'
 grep -q 'doom_mle_match_runtime.step_game' "$MLE_MATCH_WORKER" || fail 'MLE worker step missing'
@@ -327,8 +349,8 @@ grep -q 'doom_mle_match_runtime.save_checkpoint' "$MLE_MATCH_WORKER" || fail 'ML
 grep -q 'procedure run_standby' "$MLE_MATCH_WORKER" || fail 'MLE warm standby entry point missing'
 grep -q 'restore_checkpoint_warm' "$MLE_MATCH_WORKER" || fail 'MLE warm checkpoint promotion missing'
 grep -q "'_G'||to_char(p_generation)" "$MLE_MATCH_WORKER" || fail 'standby generation-scoped Scheduler name missing'
-grep -q "assigned_role='AUTHORITY'" "$MLE_MATCH_WORKER" || fail 'warm authority claim missing'
-grep -q "assigned_role='STANDBY'" "$MLE_MATCH_WORKER" || fail 'warm standby claim missing'
+grep -q "p_match,'AUTHORITY',l_pool,l_job" "$MLE_MATCH_WORKER" || fail 'warm authority assignment request missing'
+grep -q "p_match,'STANDBY',l_pool,l_job" "$MLE_MATCH_WORKER" || fail 'warm standby assignment request missing'
 grep -q 'authority admission fence' "$MLE_MATCH_WORKER" || fail 'authority readiness transition fence missing'
 grep -q "if l_worker_status<>'READY'" "$MLE_MATCH_WORKER" || fail 'pre-admission command fence missing'
 grep -q "p_match_state:='STARTING'" "$DOOM_API" || fail 'public standby admission state missing'

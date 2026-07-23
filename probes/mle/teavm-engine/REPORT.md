@@ -475,6 +475,38 @@ refuted for this run: captured tails were primarily sampled `ON CPU`.
 This does not project uncapped-tier performance; the Free-edition result is
 reported under the enforced 50% PDB utilization and two-running-session cap.
 
+### Promoted-artifact soak abort and lifecycle hardening — 2026-07-23
+
+The first `a942cd2d…` final-soak attempt is **VOIDED**, not failed or passed.
+After 300 excluded warmup seconds and 155 scored seconds, the authority process
+was replaced. The legacy harness cleanup then stopped/dropped shared warm-pool
+jobs before preserving its browser log, so that run could not prove its own
+cause. A shorter pre-hardening diagnostic preserved the browser verdict
+(5,397 player-0 frames in 300 seconds, below the gate) but is also VOIDED. Both
+logs ship with terminal `VOIDED` markers and are excluded from acceptance.
+
+The partial promoted-artifact memory window nevertheless records the init-diet
+capacity improvement: authority/standby PSS occupied approximately 262–312 MiB
+instead of the prior 462–518 MiB envelope. The full 30-minute run must still
+prove that the observed roughly 50 MiB authority rise reaches a plateau inside
+the fixed 64 MiB ceiling; this partial window cannot widen that margin.
+
+Lifecycle hardening now routes every Scheduler stop through one durable intent
+gateway. Warm slots bind incarnation token, SID, serial#, SPID, and job-run
+token; `run_warm_slot` is the normal lifecycle writer, while a 30-second
+janitor is the bounded stale-row exception. A live four-scenario gate passed:
+incarnation mismatch rejected, cooperative stop honored, stale row reconciled,
+and non-cooperative job force-stopped/reset after the five-second honor
+deadline. The test also caught and fixed a missing `intent_id` predicate that
+could have rewritten older terminal intent rows; all three terminal statuses
+were rechecked after pool restart.
+
+Deploy prewarm now retires both old incarnations, warms authority first, admits
+when it is ready, and only then warms standby. Under the edition cap the live
+measurement was 28 seconds to first-admittable and 55 seconds total. The
+post-hardening short causal soak is next; only after it passes will the clean
+30-minute `a942cd2d…` soak be cited.
+
 The build-review dashboard now consumes a generated, evidence-validated
 `mle-status.json`, publishes the final pair and gate states, links to the MLE
 single-player/multiplayer clients, and labels WAN, Java audit, presentation/DVR,

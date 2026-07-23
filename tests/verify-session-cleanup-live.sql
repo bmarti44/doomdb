@@ -10,7 +10,9 @@ begin
     into l_slot,l_lineage,l_map_sha from doom_worker_control
     where target_session=l_session;
   l_job:='DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00');
-  begin dbms_scheduler.stop_job(l_job,true);exception when others then null;end;
+  begin doom_worker_lifecycle.stop_job(
+    l_job,true,'session cleanup orphan fixture');
+  exception when others then null;end;
   -- Recreate the exact failure shape: the Scheduler session is absent but its
   -- fenced owner row survived, so the ordinary graceful stop has no consumer.
   update doom_worker_control set ready=0,standby=0,stop_requested=0,

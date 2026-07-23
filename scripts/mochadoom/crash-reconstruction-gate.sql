@@ -80,8 +80,9 @@ begin
   if l_a_sha<>l_b_sha then raise_application_error(-20000,'pre-seam mismatch');end if;
   select worker_slot,generation into l_slot,l_old_generation
     from doom_worker_control where target_session=l_a and ready=1;
-  dbms_scheduler.stop_job(
-    'DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00'),true);
+  doom_worker_lifecycle.stop_job(
+    'DOOM_UNIFIED_WORKER_'||to_char(l_slot,'FM00'),true,
+    'crash reconstruction gate');
   l_deadline:=systimestamp+numtodsinterval(10,'SECOND');
   loop
     select count(*) into l_running from user_scheduler_running_jobs

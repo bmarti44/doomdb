@@ -1428,8 +1428,9 @@ create or replace package body doom_unified_worker as
           to_char(l_orphan.worker_slot,'FM00');
       if l_orphan_running=1 then
         begin
-          dbms_scheduler.stop_job('DOOM_UNIFIED_WORKER_'||
-            to_char(l_orphan.worker_slot,'FM00'),true);
+          doom_worker_lifecycle.stop_job('DOOM_UNIFIED_WORKER_'||
+            to_char(l_orphan.worker_slot,'FM00'),true,
+            'unified worker orphan reconciliation');
         exception when others then
           select count(*) into l_orphan_running from user_scheduler_running_jobs j
             where j.job_name='DOOM_UNIFIED_WORKER_'||

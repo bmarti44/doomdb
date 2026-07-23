@@ -39,6 +39,19 @@ begin
     where object_name='DOOM_TEAVM_SIM_MULTI_INIT_GAME'
       and object_type='FUNCTION' and status='VALID';
   if l_origins=10 and l_runtime=1 then
+    begin
+      dbms_scheduler.drop_job('DOOM_MLE_WARM_JANITOR',true);
+    exception when others then
+      if sqlcode<>-27475 then raise;end if;
+    end;
+    dbms_scheduler.create_job(
+      job_name=>'DOOM_MLE_WARM_JANITOR',
+      job_type=>'STORED_PROCEDURE',
+      job_action=>'DOOM_WORKER_LIFECYCLE.RECONCILE_WARM_SLOTS',
+      start_date=>systimestamp,
+      repeat_interval=>'FREQ=SECONDLY;INTERVAL=30',
+      enabled=>true,
+      auto_drop=>false);
     doom_match_worker.start_warm_pool;
   end if;
 end;

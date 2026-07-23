@@ -21,12 +21,21 @@ const soloAdmissionPath =
   'artifacts/performance/pmle-browser-role-swap/solo-admission-live-2026-07-23.log';
 const warmPoolPath =
   'artifacts/performance/pmle-browser-role-swap/warm-pool-admission-live-2026-07-23.log';
+const voidedSoakPath =
+  'artifacts/performance/pmle-worker-soak/run-final-init-diet-a942-2026-07-23.log';
+const voidedSmokePath =
+  'artifacts/performance/pmle-worker-soak/run-smoke-init-diet-harness2-2026-07-23.log';
+const lifecyclePath =
+  'artifacts/performance/pmle-worker-lifecycle/run-2026-07-23.log';
 const soak = read(soakPath);
 const ledger = read(ledgerPath);
 const initDiet = read(initDietPath);
 const solo = read(soloPath);
 const soloAdmission = read(soloAdmissionPath);
 const warmPool = read(warmPoolPath);
+const voidedSoak = read(voidedSoakPath);
+const voidedSmoke = read(voidedSmokePath);
+const lifecycle = read(lifecyclePath);
 const authority = versions.teaVM;
 const presentation = authority.presentation;
 
@@ -79,6 +88,18 @@ contains(warmPool,
   'PMLE_WARM_STANDBY_HEAL|PASS|polls=8|poll_interval_ms=500|' +
   'sequence=WARMING>READY',
   'warm-pool standby healing');
+contains(voidedSoak,
+  'PMLE_WORKER_SOAK|VOIDED|reason=legacy_cleanup_stop_job_lifecycle_race',
+  'promoted soak void classification');
+contains(voidedSmoke,
+  'PMLE_WORKER_SOAK|VOIDED|reason=pre_lifecycle_hardening_diagnostic',
+  'pre-hardening smoke void classification');
+contains(lifecycle,
+  'PMLE_WARM_LIFECYCLE|PASS|scenarios=4|pool_restored=1',
+  'warm lifecycle hardening');
+contains(lifecycle,
+  'PMLE_PREWARM_ORDER|PASS|order=RETIRE_BOTH_THEN_AUTHORITY_THEN_STANDBY',
+  'sequential authority-first prewarm');
 
 const status = {
   schema: 1,
@@ -137,7 +158,8 @@ const status = {
     coopEveryTic762: 'PASS',
     membershipRecovery: 'PASS',
     ledgerEveryTic13272: 'PASS',
-    finalWorkerSoak: 'RERUN_REQUIRED_ON_A942',
+    finalWorkerSoak: 'RERUN_REQUIRED_AFTER_LIFECYCLE_HARDENING',
+    lifecycleHardening: 'PASS',
     calibratedProcessMemory: 'PASS',
     browserConfirmedOnly: 'PASS',
     soloMleAuthority: 'PASS',
@@ -161,7 +183,12 @@ const status = {
     standbyPssEndBytes: 413642752,
     processMemoryMarginBytes: 67108864,
     ashSamples: 1486,
-    resourceManagerCpuQuantumSamples: 0
+    resourceManagerCpuQuantumSamples: 0,
+    promotedAttemptState: 'VOIDED',
+    promotedAttemptReason: 'legacy cleanup stop/lifecycle ownership race',
+    postDietPartialAuthorityPssMinimumBytes: 262067200,
+    postDietPartialAuthorityPssMaximumBytes: 311932928,
+    postDietPartialPlateauProven: false
   },
   capacity: {
     effectivePdbCpu: 1,
@@ -185,6 +212,8 @@ const status = {
     legacyEndpointCalls: 0,
     headlessAuthorityColdInitP50Seconds: 4.684,
     concurrentTwoSlotDeployReadySeconds: 34.669,
+    sequentialAuthorityFirstAdmittableSeconds: 28,
+    sequentialAuthorityThenStandbyReadySeconds: 55,
     promotedWarmAdmissionSeconds: 4.341,
     newGameToFirstConfirmedFrameSeconds: 5.223,
     startupOptimization:
@@ -195,6 +224,8 @@ const status = {
     note: 'cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline'
   },
   remaining: [
+    {id: 'SOAK', state: 'NEXT',
+      label: 'Post-hardening short reproduction, then 30-minute final soak'},
     {id: 'WAN', state: 'NEXT', label: 'Injected-latency multiplayer matrix'},
     {id: 'JAVA-AUDIT', state: 'NEXT',
       label: 'Production-path Java removal audit'},
@@ -206,7 +237,8 @@ const status = {
   evidence: {
     soak: soakPath, ledger: ledgerPath, solo: soloPath,
     soloAdmission: soloAdmissionPath, warmPoolAdmission: warmPoolPath,
-    initDietPromotion: initDietPath
+    initDietPromotion: initDietPath, voidedPromotedSoak: voidedSoakPath,
+    voidedDiagnosticSmoke: voidedSmokePath, lifecycleHardening: lifecyclePath
   }
 };
 

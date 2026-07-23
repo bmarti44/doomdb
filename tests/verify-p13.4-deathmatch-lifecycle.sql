@@ -57,7 +57,9 @@ begin
   if frame0_=frame1_ then raise_application_error(-20000,'deathmatch POVs collapsed');end if;
 
   select job_name into job_ from doom_match_worker_control where match_id=m;
-  begin dbms_scheduler.stop_job(job_,true);exception when others then null;end;
+  begin doom_worker_lifecycle.stop_job(
+    job_,true,'deathmatch lifecycle recovery gate');
+  exception when others then null;end;
   begin dbms_scheduler.drop_job(job_,true);exception when others then null;end;
   doom_match_worker.recover_match(m,180000,s);status_;
   if s<>'ACTIVE' or generation_<>2 or tic_<>1 then

@@ -151,7 +151,9 @@ for (const run of vectorRuns) {
       raise_application_error(-20000,'co-op route timeout '||seq||' '||err);end if;
     ${killAt > 0 ? `if seq=${killAt} then
       select job_name into job from doom_match_worker_control where match_id=m;
-      begin dbms_scheduler.stop_job(job,true);exception when others then null;end;
+      begin doom_worker_lifecycle.stop_job(
+        job,true,'co-op route injected recovery');
+      exception when others then null;end;
       begin dbms_scheduler.drop_job(job,true);exception when others then null;end;
       doom_match_worker.recover_match(m,180000,s);status_;
       if s<>'ACTIVE' or tic<>seq then
@@ -183,7 +185,9 @@ process.stdout.write(`  status_;
   process.stdout.write(`  if complete<>'01' then
     raise_application_error(-20000,'co-op route did not reach intermission');end if;
   select job_name into job from doom_match_worker_control where match_id=m;
-  begin dbms_scheduler.stop_job(job,true);exception when others then null;end;
+  begin doom_worker_lifecycle.stop_job(
+    job,true,'co-op route terminal recovery');
+  exception when others then null;end;
   begin dbms_scheduler.drop_job(job,true);exception when others then null;end;
   doom_match_worker.recover_match(m,180000,s);status_;
   if s<>'ACTIVE' or tic<>seq then raise_application_error(-20000,'co-op route recovery');end if;

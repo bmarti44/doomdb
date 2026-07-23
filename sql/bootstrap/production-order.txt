@@ -27,6 +27,7 @@ sql/schema/051_multiplayer_paced_input.sql
 sql/schema/052_mle_authority_transport.sql
 sql/schema/053_singleplayer_mle.sql
 sql/schema/054_mle_warm_pool.sql
+sql/schema/062_mle_warm_lifecycle.sql
 sql/schema/050_config.sql
 sql/schema/061_mle_production_config.sql
 sql/engine/005_render_axes.sql
@@ -62,6 +63,7 @@ sql/sim/tic/010_tic_transaction.sql
 sql/schema/058_hot_lob_storage.sql
 sql/sim/075_unified_delta_apply.sql
 sql/sim/076_retained_world_pack.sql
+sql/sim/083_worker_lifecycle.sql
 sql/sim/077_retained_switch_presentation.sql
 sql/sim/086_mle_authority_delta.sql
 sql/sim/087_mle_transition_transport.sql

@@ -14,6 +14,8 @@ for (const marker of [
   'Cold MLE initialization now measures 4.542–4.826 seconds',
   'full browser reached its first confirmed frame in 5.223 seconds',
   'separate Co-op and Multiplayer shortcuts remain on the right',
+  'single normal lifecycle writer',
+  'explicitly VOIDED',
   'WAN matrix',
   'Presentation / DVR'
 ]) {
@@ -33,7 +35,9 @@ assert.equal(status.artifacts.authority.sha256,
 assert.equal(status.artifacts.presentation.sha256,
   'd45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c');
 assert.equal(status.gates.ledgerEveryTic13272, 'PASS');
-assert.equal(status.gates.finalWorkerSoak, 'RERUN_REQUIRED_ON_A942');
+assert.equal(status.gates.finalWorkerSoak,
+  'RERUN_REQUIRED_AFTER_LIFECYCLE_HARDENING');
+assert.equal(status.gates.lifecycleHardening, 'PASS');
 assert.equal(status.gates.soloMleAuthority, 'PASS');
 assert.equal(status.gates.warmPoolAdmissionP95, 'PASS');
 assert.equal(status.gates.warmStandbyHealing, 'PASS');
@@ -42,6 +46,9 @@ assert.equal(status.solo.startupOptimization,
   'deploy-time retained MLE pool, exact tic-zero restore, and headless init diet');
 assert.equal(status.solo.warmAdmissionP95Seconds, 3.440);
 assert.equal(status.solo.warmAdmissionSamples, 10);
+assert.equal(status.solo.sequentialAuthorityFirstAdmittableSeconds, 28);
+assert.equal(status.soak.promotedAttemptState, 'VOIDED');
+assert.equal(status.soak.postDietPartialPlateauProven, false);
 assert.equal(status.architecture.productionOjvm, false);
 assert.equal(status.playModes.singlePlayer.state, 'AVAILABLE');
 assert.equal(status.playModes.coop.path, '/play/multiplayer.html#mode=COOP');

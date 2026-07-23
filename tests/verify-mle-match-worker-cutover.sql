@@ -34,7 +34,9 @@ declare
         select generation,job_name into l_generation,l_job
           from doom_match_worker_control where match_id=l_match;
         begin doom_match_worker.stop_match(l_match,l_generation);exception when others then null;end;
-        begin dbms_scheduler.stop_job(l_job,true);exception when others then null;end;
+        begin doom_worker_lifecycle.stop_job(
+          l_job,true,'MLE cutover authority cleanup');
+        exception when others then null;end;
         begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
       exception when no_data_found then null;end;
       begin
@@ -43,7 +45,8 @@ declare
         begin
           update doom_match_standby_control set stop_requested=1
             where match_id=l_match;commit;
-          dbms_scheduler.stop_job(l_standby_job,true);
+          doom_worker_lifecycle.stop_job(
+            l_standby_job,true,'MLE cutover standby cleanup');
         exception when others then null;end;
         begin dbms_scheduler.drop_job(l_standby_job,true);exception when others then null;end;
       exception when no_data_found then null;end;
@@ -198,7 +201,9 @@ begin
   end if;
 
   select job_name into l_job from doom_match_worker_control where match_id=l_match;
-  begin dbms_scheduler.stop_job(l_job,true);exception when others then null;end;
+  begin doom_worker_lifecycle.stop_job(
+    l_job,true,'MLE cutover recovery injection');
+  exception when others then null;end;
   begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
   l_started:=systimestamp;
   doom_match_worker.recover_match(l_match,180000,l_state);

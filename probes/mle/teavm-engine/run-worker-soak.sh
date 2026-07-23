@@ -36,6 +36,18 @@ browser_log="$(mktemp "${TMPDIR:-/tmp}/doom-mle-worker-soak-browser.XXXXXX")"
 memory_log="$(mktemp "${TMPDIR:-/tmp}/doom-mle-worker-soak-memory.XXXXXX")"
 browser_pid=''
 match=''
+browser_preserved=0
+run_terminal=0
+process_missing=0
+
+preserve_browser_evidence() {
+  ((browser_preserved == 0)) || return 0
+  [[ -e "$browser_log" && -e "$log" ]] || return 0
+  printf 'PMLE_WORKER_SOAK_BROWSER_EVIDENCE|BEGIN\n' >>"$log"
+  cat "$browser_log" >>"$log"
+  printf 'PMLE_WORKER_SOAK_BROWSER_EVIDENCE|END\n' >>"$log"
+  browser_preserved=1
+}
 
 cleanup_match() {
   [[ "$match" =~ ^[0-9a-f]{32}$ ]] || return 0
@@ -46,22 +58,55 @@ cleanup_match() {
   "$root/scripts/db_sql.sh" - >/dev/null <<SQL || true
 declare
   l_generation number;l_job varchar2(64);l_standby varchar2(64);
+  l_count number:=0;l_warm number:=0;
 begin
   begin
     select generation,job_name into l_generation,l_job
       from doom_match_worker_control where match_id='$match';
     begin doom_match_worker.stop_match('$match',l_generation);exception when others then null;end;
-    begin dbms_scheduler.stop_job(l_job,true);exception when others then null;end;
-    begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
+    select count(*) into l_warm from doom_mle_warm_slot where job_name=l_job;
+    if l_warm=0 then
+      begin doom_worker_lifecycle.stop_job(
+        l_job,true,'soak cleanup dedicated authority');
+      exception when others then null;end;
+      begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
+    end if;
   exception when no_data_found then null;end;
   begin
     select job_name into l_standby from doom_match_standby_control
       where match_id='$match';
     update doom_match_standby_control set stop_requested=1 where match_id='$match';
     commit;
-    begin dbms_scheduler.stop_job(l_standby,true);exception when others then null;end;
-    begin dbms_scheduler.drop_job(l_standby,true);exception when others then null;end;
+    select count(*) into l_warm from doom_mle_warm_slot where job_name=l_standby;
+    if l_warm=0 then
+      begin doom_worker_lifecycle.stop_job(
+        l_standby,true,'soak cleanup dedicated standby');
+      exception when others then null;end;
+      begin dbms_scheduler.drop_job(l_standby,true);exception when others then null;end;
+    end if;
   exception when no_data_found then null;end;
+  -- Warm-pool jobs own retained MLE contexts and must be allowed to return
+  -- through run_warm_slot's RUNNING -> READY fence. Deleting the match or
+  -- force-stopping its shared job first leaves a stale RUNNING capacity row.
+  for i in 1..200 loop
+    select count(*) into l_count from doom_mle_warm_slot
+      where assigned_match='$match';
+    exit when l_count=0;
+    dbms_session.sleep(.1);
+  end loop;
+  if l_count<>0 then
+    for slot_ in (
+      select slot_id,job_name,incarnation_token,worker_sid,worker_serial,
+        worker_spid,worker_job_run from doom_mle_warm_slot
+      where assigned_match='$match'
+    ) loop
+      begin doom_worker_lifecycle.stop_job(
+        slot_.job_name,true,'soak cleanup bounded retained-slot force',
+        slot_.incarnation_token,slot_.worker_sid,slot_.worker_serial,
+        slot_.worker_spid,slot_.worker_job_run);
+      exception when others then null;end;
+    end loop;
+  end if;
   delete from doom_match where match_id='$match';commit;
 end;
 /
@@ -72,10 +117,21 @@ cleanup() {
     kill "$browser_pid" 2>/dev/null || true
     wait "$browser_pid" 2>/dev/null || true
   fi
+  preserve_browser_evidence
   cleanup_match
   rm -f "$match_file" "$browser_log" "$memory_log"
 }
-trap cleanup EXIT
+on_exit() {
+  local status=$?
+  if ((run_terminal == 0)) && [[ -e "$log" ]]; then
+    preserve_browser_evidence
+    printf 'PMLE_WORKER_SOAK|VOIDED|reason=harness_exit|exit_status=%s|evidence=%s\n' \
+      "$status" "${log#$root/}" >>"$log"
+  fi
+  cleanup
+  return "$status"
+}
+trap on_exit EXIT
 
 {
   printf 'PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0\n'
@@ -150,26 +206,49 @@ SQL
       spid="$(sed -n 's/.*|spid=\([^|]*\).*/\1/p' <<<"$owner")"
       printf '%s\n' "$owner" | tee -a "$memory_log" >>"$log"
       if [[ "$spid" =~ ^[0-9]+$ ]]; then
-        docker compose -f "$root/compose.yaml" exec -T db sh -c '
+        sample_output="$(docker compose -f "$root/compose.yaml" exec -T db sh -c '
+          if [ ! -r "/proc/$2/smaps_rollup" ]; then
+            printf "PMLE_WORKER_SOAK_PROCESS_MISSING|role=%s|spid=%s|sample_epoch=%s\n" \
+              "$1" "$2" "$3"
+            exit 0
+          fi
           awk -v role="$1" -v spid="$2" -v sampled="$3" '\''
             /^(Rss|Pss|Private_Clean|Private_Dirty|Anonymous):/ {value[$1]=$2*1024}
             END {printf "PMLE_WORKER_SOAK_PROCESS|role=%s|spid=%s|sample_epoch=%s|rss=%d|pss=%d|private_clean=%d|private_dirty=%d|anonymous=%d\n",
               role,spid,sampled,value["Rss:"],value["Pss:"],value["Private_Clean:"],
               value["Private_Dirty:"],value["Anonymous:"]}
           '\'' "/proc/$2/smaps_rollup"
-        ' _ "$role" "$spid" "$now" </dev/null |
-          tee -a "$memory_log" >>"$log"
+        ' _ "$role" "$spid" "$now" </dev/null)"
+        printf '%s\n' "$sample_output" | tee -a "$memory_log" >>"$log"
+        if [[ "$sample_output" == *PMLE_WORKER_SOAK_PROCESS_MISSING* ]]; then
+          process_missing=1
+        fi
       fi
     done <<<"$owner_rows"
   fi
+  ((process_missing == 0)) || break
   sleep "$interval"
 done
 
 status=0
+if ((process_missing != 0)) && kill -0 "$browser_pid" 2>/dev/null; then
+  kill "$browser_pid" 2>/dev/null || true
+fi
 wait "$browser_pid" || status=$?
 browser_pid=''
-cat "$browser_log" | tee -a "$log"
-((status == 0)) || exit "$status"
+preserve_browser_evidence
+if ((process_missing != 0)); then
+  printf 'PMLE_WORKER_SOAK|FAIL|reason=unplanned_retained_process_replacement|evidence=%s\n' \
+    "${log#$root/}" | tee -a "$log"
+  run_terminal=1
+  exit 1
+fi
+if ((status != 0)); then
+  printf 'PMLE_WORKER_SOAK|FAIL|reason=browser_gate|browser_status=%s|evidence=%s\n' \
+    "$status" "${log#$root/}" | tee -a "$log"
+  run_terminal=1
+  exit "$status"
+fi
 
 memory_status=0
 summary="$(awk -F'|' -v margin="$margin" '
@@ -232,8 +311,10 @@ SQL
 if ((memory_status == 0)); then
   printf 'PMLE_WORKER_SOAK|PASS|duration_s=%s|warmup_s=%s|memory_margin=%s|evidence=%s\n' \
     "$duration" "$warmup" "$margin" "${log#$root/}" | tee -a "$log"
+  run_terminal=1
 else
   printf 'PMLE_WORKER_SOAK|FAIL|duration_s=%s|warmup_s=%s|memory_margin=%s|evidence=%s\n' \
     "$duration" "$warmup" "$margin" "${log#$root/}" | tee -a "$log"
+  run_terminal=1
   exit "$memory_status"
 fi

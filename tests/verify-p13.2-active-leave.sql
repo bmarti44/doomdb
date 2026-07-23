@@ -57,7 +57,9 @@ begin
   end if;
 
   select job_name into l_job from doom_match_worker_control where match_id=l_match;
-  begin dbms_scheduler.stop_job(l_job,true);exception when others then null;end;
+  begin doom_worker_lifecycle.stop_job(
+    l_job,true,'active-leave recovery gate');
+  exception when others then null;end;
   begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
   doom_match_worker.recover_match(l_match,180000,l_state);status_;
   if l_state<>'ACTIVE' or l_generation<>2 or l_tic<>1 then

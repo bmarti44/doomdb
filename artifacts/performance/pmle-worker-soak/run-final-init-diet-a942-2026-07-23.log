@@ -1,0 +1,77 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1167197|source_sha256=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_MLE_MEMORY_CAL_SESSION|sid=210|serial=27596|spid=138756|action=BASELINE_READY|pga=15907136|pga_max=17283392|uga=2041272|uga_max=2810296|process_pga=15575665|process_pga_max=17601177
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=BASELINE|spid=138756|rss=261029888|pss=58856448|private_clean=2203648|private_dirty=29507584|anonymous=29507584
+PMLE_MLE_MEMORY_CAL_SESSION|sid=210|serial=27596|spid=138756|action=ALLOCATED_READY|pga=15907136|pga_max=17283392|uga=2041272|uga_max=2810296|process_pga=15575665|process_pga_max=17601177
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=ALLOCATED|spid=138756|rss=395771904|pss=189437952|private_clean=2166784|private_dirty=159322112|anonymous=159322112
+PMLE_MLE_MEMORY_CAL_SESSION|sid=210|serial=27596|spid=138756|action=RELEASED_READY|pga=15907136|pga_max=17283392|uga=2041272|uga_max=2810296|process_pga=15575665|process_pga_max=17601177
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=RELEASED|spid=138756|rss=396050432|pss=189583360|private_clean=2166784|private_dirty=159412224|anonymous=159412224
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_MLE_MEMORY_CAL_ALLOCATION|bytes=134217728|loaded=134217728
+PMLE_MLE_MEMORY_CAL|PASS|allocation_bytes=134217728|minimum_visible_bytes=50331648|pss_delta=130581504|private_delta=129777664|pga_is_complete=0
+PMLE_WORKER_SOAK_MATCH|BOUND|match=ffe9b61afc9a5ea2d5763288387a31cf
+PMLE_WORKER_SOAK_WARMUP|BEGIN|seconds=300|epoch=1784829033
+PMLE_WORKER_SOAK_READY_OWNER|role=AUTHORITY|control_status=READY|control_sid=204|sid=204|serial=28968|spid=135758|scheduler_running=1|action=MLE_STEP|pga_bytes=30697393|pga_max_bytes=37786265
+PMLE_WORKER_SOAK_READY_OWNER|role=STANDBY|control_status=READY|control_sid=67|sid=67|serial=9542|spid=136115|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=29260913|pga_max_bytes=30708377
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=204|sid=204|serial=28968|spid=135758|scheduler_running=1|action=MLE_STEP|pga_bytes=30590601|pga_max_bytes=37786265
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=135758|sample_epoch=1784829338|rss=769630208|pss=262067200|private_clean=3981312|private_dirty=173187072|anonymous=173142016
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=67|sid=67|serial=9542|spid=136115|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=29260913|pga_max_bytes=30708377
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=136115|sample_epoch=1784829338|rss=620847104|pss=280327168|private_clean=7233536|private_dirty=209723392|anonymous=209207296
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=204|sid=204|serial=28968|spid=135758|scheduler_running=1|action=-|pga_bytes=30918185|pga_max_bytes=37786265
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=135758|sample_epoch=1784829369|rss=778502144|pss=263917568|private_clean=3706880|private_dirty=173486080|anonymous=173441024
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=67|sid=67|serial=9542|spid=136115|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=29260913|pga_max_bytes=30708377
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=136115|sample_epoch=1784829369|rss=635367424|pss=292171776|private_clean=5439488|private_dirty=222466048|anonymous=221949952
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=204|sid=204|serial=28968|spid=135758|scheduler_running=1|action=-|pga_bytes=30489145|pga_max_bytes=37786265
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=135758|sample_epoch=1784829400|rss=815198208|pss=292546560|private_clean=3702784|private_dirty=200069120|anonymous=200024064
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=67|sid=67|serial=9542|spid=136115|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=29260913|pga_max_bytes=30708377
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=136115|sample_epoch=1784829400|rss=623202304|pss=277761024|private_clean=3772416|private_dirty=208560128|anonymous=208044032
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=204|sid=204|serial=28968|spid=135758|scheduler_running=1|action=-|pga_bytes=30794153|pga_max_bytes=37786265
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=135758|sample_epoch=1784829431|rss=814047232|pss=297014272|private_clean=19369984|private_dirty=189837312|anonymous=189788160
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=67|sid=67|serial=9542|spid=136115|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=17267825|pga_max_bytes=30708377
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=136115|sample_epoch=1784829431|rss=574406656|pss=257260544|private_clean=815104|private_dirty=203522048|anonymous=203005952
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=204|sid=204|serial=28968|spid=135758|scheduler_running=1|action=-|pga_bytes=30623601|pga_max_bytes=37786265
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=135758|sample_epoch=1784829462|rss=836636672|pss=311932928|private_clean=19369984|private_dirty=203026432|anonymous=202977280
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=67|sid=67|serial=9542|spid=136115|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=17267825|pga_max_bytes=30708377
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=136115|sample_epoch=1784829462|rss=576421888|pss=257999872|private_clean=815104|private_dirty=203522048|anonymous=203005952
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=204|sid=204|serial=28968|spid=135758|scheduler_running=1|action=-|pga_bytes=30877569|pga_max_bytes=37786265
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=135758|sample_epoch=1784829493|rss=816017408|pss=283638784|private_clean=19374080|private_dirty=173748224|anonymous=173699072
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=67|sid=67|serial=9542|spid=136115|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=17267825|pga_max_bytes=30708377
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=136115|sample_epoch=1784829493|rss=578265088|pss=258026496|private_clean=815104|private_dirty=203522048|anonymous=203005952
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=204|sid=204|serial=47279|spid=140239|scheduler_running=0|action=-|pga_bytes=2931993|pga_max_bytes=3789817
+PMLE_WORKER_SOAK|VOIDED|reason=legacy_cleanup_stop_job_lifecycle_race|gate_result=NONE|causal_evidence_incomplete=1
