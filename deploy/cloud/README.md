@@ -34,15 +34,14 @@ creating or exposing an ORDS object and aborts deployment if the capability is
 absent. A tenant administrator must grant it according to that tenant's
 Autonomous Database policy before running `--execute`.
 
-The target must also have Oracle JVM enabled. An Autonomous administrator must
-run `DBMS_CLOUD_ADMIN.ENABLE_FEATURE` for `JAVAVM` and restart the database
-before this deployment begins. The production gate calls
-`DBMS_JAVA.GET_JDK_VERSION` and stops before schema mutation if OJVM is absent or
-incompatible. It deterministically compiles the pinned engine to 830 Java 8
-classfiles, uses Oracle's supported client-side `loadjava` path, loads the
-SHA-verified IWAD, and only then installs the runtime call specifications. The
-wallet, JAR, IWAD, loader logs, and password remain in mode-protected temporary
-storage and are removed on exit.
+The production target requires Oracle MLE JavaScript; Oracle JVM is neither
+required nor permitted in the application schema. The gate uses
+`sql/bootstrap/production-order.txt`, purges residual Java call specs and Java
+schema objects during in-place upgrades, loads the pinned IWAD through a
+database-SHA-fenced JDBC asset loader, and then stages the pinned TeaVM module
+and canonical table pack with database-side length/SHA comparison before
+`CREATE MLE MODULE`. Wallets, artifacts, loader logs, and passwords remain in
+mode-protected temporary storage and are removed on exit.
 
 Teardown is explicit and intentionally separate. Review the dry-run teardown
 manifest, then invoke `deploy/cloud/teardown.sh --execute` with the same guarded
@@ -61,17 +60,19 @@ returns `NOT RUN`, performs no cloud command, and publishes no evidence. A fully
 successful live run atomically creates `/tmp/doomdb-t111-evidence.json`; only the
 frozen independent evaluator may accept that record.
 
-The gate order is deliberately fail-closed: capability/transport probes, OJVM
-preflight, pre-Java schema and seed sources, class/IWAD load, post-Java runtime
-and REST sources, native hot-class compilation, then catalog/seed/API evidence.
-The deployment manifest content-addresses the release, pinned Mocha revision,
-830-class count, and deterministic JAR SHA.
+The gate order is deliberately fail-closed: capability/transport probes,
+production schema and seed sources, pinned IWAD load, pinned MLE
+module/table-pack load, MLE runtime and REST sources, then catalog/seed/API
+evidence. The deployment manifest content-addresses the TeaVM version and build
+profile, input/Mocha bytecode, authority module, canonical table pack, and IWAD.
 
 Production execution also requires `DOOMDB_CLOUD_EXECUTE=YES`. The canonical
 database account variable is `ADB_USERNAME` in the skeleton, production gate,
-environment report, loader, and teardown. After client-side `loadjava`, the
-gate queries `USER_JAVA_CLASSES` and refuses to continue unless all 830 classes
-exist and every Java class object is valid.
+environment report, loader, and teardown. The final catalog gate requires zero
+Java objects, Java call specs, Java dependencies, or legacy OJVM packages; one
+pinned MLE module/environment; exactly 24 MLE call specs; and database hashes
+matching the deployment manifest. The OJVM oracle remains in repository/dev
+tooling and is intentionally excluded from this production path.
 
 The T11.2 production browser gate requires a dedicated bucket: it enforces the
 frozen exact-object inventory by deleting every non-allowlisted key after the

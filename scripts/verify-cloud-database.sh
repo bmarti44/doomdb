@@ -12,6 +12,7 @@ sql_input(){
   printf '%s\n' 'whenever oserror exit failure rollback' 'whenever sqlerror exit sql.sqlcode rollback' 'set echo off verify off define off'
   credential_line="connect $ADB_USERNAME/\"$ADB_PASSWORD\"@$ADB_CONNECTION_STRING"
   printf '%s\n' "$credential_line"
+  printf '%s\n' "alter session set plsql_ccflags='doom_dev_ojvm:false';"
   command cat "$1"
 }
 sql_file_timeout(){ local seconds=$1; shift; sql_input "$1" | timeout "$seconds" sql -s /nolog | node "$root/scripts/redact-cloud-output.mjs"; }
@@ -80,21 +81,30 @@ sql_file "$root/deploy/local/probes/transport/install.sql" >"$tmp/transport-inst
 DOOM_ORDS_URL="$ADB_ORDS_BASE_URL" timeout 1800 "$root/scripts/verify-transport.sh" >"$tmp/transport.log" 2>&1
 sql_file "$root/deploy/local/probes/transport/uninstall.sql" >"$tmp/transport-uninstall.log";transport_installed=0
 
-# Resolve the exact local sql/schema, sql/seed, sql/engine, and sql/rest sources
-# into pre/post-OJVM SQLcl inputs while retaining the byte order from the local
-# bootstrap. Runtime finalization cannot precede the client-side class load.
-ledger="$tmp/deployment.ledger";pre_sql="$tmp/deploy-pre-java.sql";post_sql="$tmp/deploy-post-java.sql"
-: >"$ledger";: >"$pre_sql";: >"$post_sql";chmod 600 "$ledger" "$pre_sql" "$post_sql"
+# Resolve the production sql/schema, sql/seed, sql/engine, and sql/rest
+# bootstrap into schema/asset and MLE-runtime SQLcl
+# inputs. The explicit @mle-module boundary is where pinned IWAD assets and the
+# SHA-fenced TeaVM module are loaded; no loadjava/OJVM step exists.
+ledger="$tmp/deployment.ledger"
+pre_sql="$tmp/deploy-pre-mle.sql"
+post_sql="$tmp/deploy-post-mle.sql"
+: >"$ledger";: >"$pre_sql";: >"$post_sql"
+chmod 600 "$ledger" "$pre_sql" "$post_sql"
 for file in "$pre_sql" "$post_sql"; do
   printf '%s\n' 'whenever oserror exit failure rollback' 'whenever sqlerror exit sql.sqlcode rollback' 'set echo off verify off define off' >>"$file"
 done
 credential_line="connect $ADB_USERNAME/\"$ADB_PASSWORD\"@$ADB_CONNECTION_STRING"
 printf '%s\n' "$credential_line" >>"$pre_sql"
 printf '%s\n' "$credential_line" >>"$post_sql"
+printf '%s\n' "alter session set plsql_ccflags='doom_dev_ojvm:false';" >>"$pre_sql"
+printf '%s\n' "alter session set plsql_ccflags='doom_dev_ojvm:false';" >>"$post_sql"
 phase=pre
 while IFS= read -r entry || [[ -n "$entry" ]]; do
   [[ -z "$entry" || "$entry" == \#* ]] && continue
-  [[ "$entry" == sql/schema/059_finalize_runtime.sql ]] && phase=post
+  if [[ "$entry" == '@mle-module' ]]; then
+    phase=post
+    continue
+  fi
   [[ "$phase" == pre ]] && deploy_sql="$pre_sql" || deploy_sql="$post_sql"
   if [[ "$entry" == '@seed-manifest' ]]; then
     while IFS= read -r seed; do
@@ -104,25 +114,45 @@ while IFS= read -r entry || [[ -n "$entry" ]]; do
     done < <(node "$root/tools/wad/seed-load-order.mjs")
     continue
   fi
-  [[ "$entry" =~ ^sql/(bootstrap|schema|engine|spatial|bsp|accel|render|sim)/[A-Za-z0-9._/-]+\.sql$ && "$entry" != *..* ]] || die "unsafe bootstrap entry: $entry"
-  case "$entry" in sql/bootstrap/*|sql/schema/*) domain=schema;; *) domain=engine;; esac
+  [[ "$entry" =~ ^sql/(bootstrap|schema|engine|spatial|bsp|accel|render|sim|rest)/[A-Za-z0-9._/-]+\.sql$ && "$entry" != *..* ]] || die "unsafe bootstrap entry: $entry"
+  case "$entry" in
+    sql/bootstrap/*|sql/schema/*) domain=schema;;
+    sql/rest/*) domain=rest;;
+    *) domain=engine;;
+  esac
   printf '%s|%s|%s\n' "$domain" "$entry" "$(sha "$root/$entry")" >>"$ledger";command cat "$root/$entry" >>"$deploy_sql";printf '%s\n' 'commit;' >>"$deploy_sql"
-done <"$root/sql/bootstrap/order.txt"
+done <"$root/sql/bootstrap/production-order.txt"
 deploy_sql="$post_sql"
-for entry in sql/rest/010_doom_api.sql sql/rest/020_ords_enable.sql deploy/cloud/t11.1/least-grants.sql; do
+for entry in deploy/cloud/t11.1/least-grants.sql; do
   printf 'rest|%s|%s\n' "$entry" "$(sha "$root/$entry")" >>"$ledger";command cat "$root/$entry" >>"$deploy_sql";printf '%s\n' 'commit;' >>"$deploy_sql"
 done
 printf '%s\n' 'exit success commit' >>"$pre_sql"
 printf '%s\n' 'exit success commit' >>"$post_sql"
 
-"$root/scripts/mochadoom/build-ojvm-jar.sh" "$tmp/mochadoom-ojvm.jar" "$tmp/ojvm-artifact.json" >"$tmp/ojvm-build.log"
-node "$root/scripts/t11.1-deployment-manifest.mjs" "$ledger" "$tmp/deployment.json" "$tmp/ojvm-artifact.json"
-sql_file "$root/deploy/cloud/t11.1/ojvm-preflight.sql" >"$tmp/ojvm-preflight.log"
+node - "$root/versions.lock" "$tmp/mle-artifact.json" <<'NODE'
+import fs from 'node:fs';
+const [lockPath,outPath]=process.argv.slice(2);
+const lock=JSON.parse(fs.readFileSync(lockPath)),t=lock.teaVM;
+const artifact={schema:1,runtime:'MLE_JAVASCRIPT',teaVMVersion:t.version,
+  compilerRelease:t.compilerRelease,targetType:t.targetType,
+  moduleType:t.moduleType,optimizationLevel:t.optimizationLevel,
+  minifying:t.minifying,profile:t.profile,
+  inputBytecodeSha256:t.inputBytecodeSha256,
+  mochaBytecodeSha256:t.mochaBytecodeSha256,
+  authority:{bytes:t.outputBytes,sha256:t.outputSha256},
+  tablePack:{bytes:t.canonicalTablePackBytes,
+    sha256:t.canonicalTablePackSha256},
+  iwadSha256:lock.freedoom.freedoom1WadSha256};
+fs.writeFileSync(outPath,`${JSON.stringify(artifact)}\n`,{mode:0o600});
+NODE
+node "$root/scripts/t11.1-deployment-manifest.mjs" "$ledger" \
+  "$tmp/deployment.json" "$tmp/mle-artifact.json"
 timeout 14400 sql -s /nolog <"$pre_sql" | node "$root/scripts/redact-cloud-output.mjs" >"$tmp/deployment-pre.log"
-"$root/scripts/mochadoom/load-cloud-ojvm.sh" "$tmp/mochadoom-ojvm.jar" "$tmp/ojvm-artifact.json" >"$tmp/ojvm-load.log"
-sql_file "$root/deploy/cloud/t11.1/ojvm-postload.sql" >"$tmp/ojvm-postload.log"
+"$root/scripts/load-cloud-assets.sh" >"$tmp/asset-load.log"
+"$root/probes/mle/teavm-engine/load-mle-module.sh" --production --emit-sql \
+  >"$tmp/load-mle-module.sql"
+sql_file_timeout 14400 "$tmp/load-mle-module.sql" >"$tmp/mle-load.log"
 timeout 14400 sql -s /nolog <"$post_sql" | node "$root/scripts/redact-cloud-output.mjs" >"$tmp/deployment-post.log"
-sql_file_timeout 7200 "$root/scripts/mochadoom/compile-hot-renderer.sql" >"$tmp/ojvm-native-compile.log"
 
 sql_file "$root/deploy/cloud/t11.1/catalog-observation.sql" >"$tmp/catalog.log"
 sql_file "$root/deploy/cloud/t11.1/seed-observation.sql" >"$tmp/cloud-seeds.log"

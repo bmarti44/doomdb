@@ -5,10 +5,27 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 javascript="$project/target/javascript/doom-mle-simulation-engine-headless.js"
 table_pack="$project/target/canonical-runtime-v2.bin"
+expected_source_bytes=1163182
+expected_source_sha256="06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0"
 expected_table_pack_sha256="058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"
 base64_fold_width=2000
+build=1
+emit_only=0
+production=0
 
-if [[ "${1:-}" != --no-build ]]; then
+for option in "$@"; do
+  case "$option" in
+    --no-build) build=0 ;;
+    --emit-sql) emit_only=1 ;;
+    --production) production=1;build=0
+      javascript="$root/client/dist/play/doom-mle-authority-06ac33331d9a.js"
+      table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
+      ;;
+    *) printf 'unsupported option: %s\n' "$option" >&2;exit 2 ;;
+  esac
+done
+
+if [[ "$build" == 1 ]]; then
   "$project/probe-simulation-engine.sh" simulation-engine-headless
 fi
 test -s "$javascript"
@@ -17,6 +34,13 @@ bytes="$(wc -c <"$javascript" | tr -d '[:space:]')"
 sha256="$(shasum -a 256 "$javascript" | awk '{print $1}')"
 table_pack_bytes="$(wc -c <"$table_pack" | tr -d '[:space:]')"
 table_pack_sha256="$(shasum -a 256 "$table_pack" | awk '{print $1}')"
+if [[ "$production" == 1 &&
+      ("$bytes" != "$expected_source_bytes" ||
+       "$sha256" != "$expected_source_sha256") ]]; then
+  printf 'pinned production MLE source drift: bytes=%s sha256=%s\n' \
+    "$bytes" "$sha256" >&2
+  exit 1
+fi
 [[ "$table_pack_bytes" == 180272 && "$table_pack_sha256" == "$expected_table_pack_sha256" ]] || {
   printf 'canonical table pack drift: bytes=%s sha256=%s\n' \
     "$table_pack_bytes" "$table_pack_sha256" >&2
@@ -183,6 +207,11 @@ emit_sql() {
     '/' \
     "select 'PMLE_TEAVM_SIMULATION_LOAD|bytes='||dbms_lob.getlength(source_blob)||'|table_pack_bytes='||dbms_lob.getlength(table_pack_blob) from doom_teavm_sim_source;"
 }
+
+if [[ "$emit_only" == 1 ]]; then
+  emit_sql
+  exit 0
+fi
 
 output="$(mktemp "${TMPDIR:-/tmp}/doomdb-teavm-simulation-load.XXXXXX")"
 trap 'rm -f "$output"' EXIT HUP INT TERM

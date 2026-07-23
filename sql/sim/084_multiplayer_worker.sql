@@ -368,6 +368,7 @@ create or replace package body doom_match_worker as
     raise;
   end;
 
+  $if $$doom_dev_ojvm $then
   procedure publish_initial_ojvm_oracle(p_match varchar2,p_generation number) is
     l_skill number;l_episode number;l_map number;l_mode varchar2(16);
     l_epoch number;l_players number;l_status varchar2(4000);l_now timestamp with time zone:=utc_now;
@@ -751,6 +752,8 @@ create or replace package body doom_match_worker as
       commit;dbms_application_info.set_action(null);
     end if;
   end;
+
+  $end
 
   procedure fill_deadline(
     p_match varchar2,p_generation number,p_epoch number

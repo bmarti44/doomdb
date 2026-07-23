@@ -6,7 +6,17 @@ whenever sqlerror exit failure rollback
 alter trigger doom_game_events_bir compile;
 alter procedure doom_renderer_delta_fill compile;
 alter procedure doom_renderer_snapshot_fill compile;
-alter package doom_unified_worker compile body;
+
+declare
+  l_present number;
+begin
+  select count(*) into l_present from user_objects
+    where object_name='DOOM_UNIFIED_WORKER' and object_type='PACKAGE BODY';
+  if l_present=1 then
+    execute immediate 'alter package doom_unified_worker compile body';
+  end if;
+end;
+/
 
 declare
   l_invalid number;

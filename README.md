@@ -1,8 +1,8 @@
 # DoomDB
 
 Doom, running *inside* Oracle Database. Not next to it. Not "using it for
-saves." The game engine itself lives in the database, and the browser is just
-a dumb screen.
+saves." The authoritative game engine lives in a retained Oracle MLE
+JavaScript session; the browser renders only confirmed state transitions.
 
 ![DoomDB gameplay recorded from the local stack](media/doomdb-gameplay.gif)
 
@@ -17,22 +17,23 @@ Here's what happens when you press the fire key:
 
 1. The browser sends a tiny JSON command over REST (ORDS AutoREST — the
    database's own generated HTTP API).
-2. Oracle validates it, persists it as a row, and hands it to the Doom engine —
-   which is 830 Java classfiles loaded **into the database** as schema objects,
-   running on the JVM that has quietly shipped inside Oracle since the 90s.
+2. Oracle validates it, persists it as a row, and hands it to a pinned
+   TeaVM-generated JavaScript build of Mocha Doom running **inside the
+   database** in Oracle MLE.
 3. The engine advances one tic: the bullet traces, the zombie takes damage,
    monsters think. All of it inside your database session's world.
-4. The finished 320×200 frame comes back as a BLOB. The browser applies the
-   palette and blits it to a canvas.
+4. A compact, cryptographically chained DMD1 transition comes back. The
+   browser applies that confirmed transition to the same pinned engine artifact
+   and renders the 320×200 view.
 
-That round trip — keypress, HTTP, PL/SQL, Java-in-Oracle, frame BLOB, HTTP,
-canvas — happens **30+ times per second**. Firing the pistol is a database
-transaction. A demon dying is relational state advancement. Your save file is
-just rows.
+That round trip — keypress, HTTP, PL/SQL, MLE JavaScript, confirmed delta,
+HTTP, canvas — happens at Doom's 35 Hz tic rate. Firing the pistol is a
+database transaction. A demon dying is authoritative database state
+advancement. Your save file is rows plus an exact checkpoint.
 
-The browser contains no game logic at all. No simulation, no collision, no AI,
-no rendering decisions. If you close the tab, the world is still in the
-database, mid-frame, waiting.
+The browser has no authority: it cannot predict, simulate ahead, reorder, or
+invent a tic. If you close the tab, the world is still in the database and a
+reconnecting client verifies and resumes the confirmed chain.
 
 ## The parts I'm proud of
 
@@ -44,7 +45,8 @@ clause, doing sprite work). The title screen's PSX-style fire effect is
 computed by Oracle's `MODEL` clause — a 150-frame animation, 604,369 rows,
 bit-identical across independent runs. That SQL engine is now the referee: the
 production engine (a pinned GPLv3 build of [Mocha Doom](third_party/mochadoom))
-has to match it exactly.
+has to match it exactly. The old OJVM adapter remains in repository/dev tooling
+only as the permanent differential oracle.
 
 **Everything is deterministic, and I mean forensically.** Every frame and
 every game state carries a SHA-256 identity. A full no-cheat playthrough of
@@ -55,28 +57,28 @@ and the database reconstructs the identical frame chain from the command
 ledger and carries on.
 
 **It's actually fast.** ORDS wipes session state after every request, so a
-long-lived Oracle Scheduler job owns each warm engine and the REST calls talk
-to it. One engine step — simulate, render, encode, persist — takes 3–4 ms warm.
-The pipeline holds 30–32 FPS through a real browser, and a pre-warmed standby
-worker cuts "New Game" from ~17 seconds of engine construction down to ~1.4.
+long-lived Oracle Scheduler job owns each warm MLE engine and REST calls talk
+to it. The final four-player MLE simulation gate sustains 132.9 tics/s on the
+edition-capped local stack, with 3.3× headroom over Doom's 35 Hz requirement.
+Fresh-context checkpoint recovery takes about 1.8 seconds.
 
 **Multiplayer, where the database is the server.** Two browsers join one
 authoritative world living in Oracle. The engine advances once per ordered
-command vector and renders a separate point of view for each player, with
-per-listener positional audio. It holds ~35 FPS, survives worker kills and
-ORDS restarts mid-match, and replays to the exact terminal hash. Deathmatch
-rules, frags, and the scoreboard included.
+command vector and emits one confirmed transition chain. Each browser renders
+its own point of view, with per-listener positional audio. Co-op and deathmatch
+are both available, survive worker/ORDS recovery, and replay to the exact
+terminal hash.
 
 Numbers, measured on the local two-core Oracle Free stack:
 
 | Measurement | Result |
 | --- | --- |
-| Engine step + render + encode (warm, p95) | 3.2–3.9 ms |
-| Durable tic with ledger + synchronous commit (p95) | ~20 ms |
-| Single-player displayed FPS (300-frame browser routes) | 30.8–32.1 |
-| Two-player displayed FPS (300-frame gates) | 34.8–35.2 |
-| New game: standby worker vs cold construction | ~1.4 s vs ~17 s |
-| Full E1M1 replay, fresh session | 13,272/13,272 hashes exact |
+| Four-player MLE simulation throughput | 132.9 tics/s |
+| Final retained-session soak | 30 min PASS |
+| Single-player early authority admission | 110.458 s cold |
+| Fresh-context checkpoint recovery | ~1.8 s |
+| Full E1M1 MLE/OJVM differential | 13,272/13,272 tics exact |
+| Co-op MLE/OJVM differential | 762/762 tics exact |
 
 ## Architecture
 
@@ -87,11 +89,13 @@ static browser client
 ORDS connection pool
         ▼
 Oracle Database
-  durable commands, checkpoints, hashes, events, and response BLOBs
+  durable commands, checkpoints, hashes, events, and DMD1 transitions
         ▼
-  retained Scheduler session per game/match + AQ generation fence
+  retained Scheduler session per game/match + generation fence
         ▼
-  one authoritative headless Mocha Doom world → per-player indexed frames
+  one authoritative TeaVM/MLE Mocha Doom world → confirmed transition chain
+        ▼
+  browser verifier + renderer → per-player indexed frame
 ```
 
 ORDS is the only HTTP surface. Oracle is the only server runtime. The client
@@ -117,9 +121,10 @@ docker compose wait db
 docker compose restart ords
 ```
 
-Then open <http://localhost:8080/play/> (or `/play/multiplayer` with a
-friend). Press Enter at the title, pick a skill, and give the database a
-moment to build you a Doom engine.
+Then open <http://localhost:8080/play/>. New Game starts single-player by
+default. The right-side **Co-op** and **Multiplayer** buttons open two-player
+co-op and deathmatch respectively. Cold MLE construction on Oracle Free takes
+about two minutes; the loading screen reports progress while authority starts.
 
 **Controls:** W/S or ↑/↓ move · A/D or ←/→ turn · F or Ctrl fire · Space use ·
 Tab menu · M automap · P pause · V audio. Click the game to capture the mouse
@@ -146,8 +151,9 @@ Database credentials). Deep-dive evidence lives in [reports/](reports/).
 
 ## Credits
 
-- [Mocha Doom](https://github.com/AXDOOMER/mochadoom) (GPLv3, pinned) is the
-  production engine, adapted to run headless inside OJVM.
+- [Mocha Doom](https://github.com/AXDOOMER/mochadoom) (GPLv3, pinned) is
+  compiled by TeaVM into the production MLE JavaScript authority and browser
+  presentation artifacts.
 - [Freedoom Phase 1](https://freedoom.github.io/) (BSD) provides the game
   content.
 - Everything else is MIT — see [LICENSE](LICENSE).

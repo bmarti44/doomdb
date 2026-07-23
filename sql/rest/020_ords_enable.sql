@@ -22,6 +22,7 @@ begin
     p_url_mapping_pattern=>lower(sys_context('USERENV','CURRENT_SCHEMA')),
     p_auto_rest_auth=>false);
 
+  $if $$doom_dev_ojvm $then
   ords.enable_object(
     p_enabled=>true,
     p_schema=>sys_context('USERENV','CURRENT_SCHEMA'),
@@ -37,6 +38,17 @@ begin
     p_object_type=>'PACKAGE',
     p_object_alias=>'doom_worker_api',
     p_auto_rest_auth=>false);
+  $else
+  -- Disable stale development-oracle metadata during an in-place production
+  -- cutover. A fresh production schema never publishes this object.
+  ords.enable_object(
+    p_enabled=>false,
+    p_schema=>sys_context('USERENV','CURRENT_SCHEMA'),
+    p_object=>'DOOM_WORKER_API',
+    p_object_type=>'PACKAGE',
+    p_object_alias=>'doom_worker_api',
+    p_auto_rest_auth=>false);
+  $end
 
   ords.enable_object(
     p_enabled=>true,

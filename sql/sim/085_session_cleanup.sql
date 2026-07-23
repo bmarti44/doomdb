@@ -5,12 +5,15 @@ set define off
 -- Cascading them inside NEW_GAME turns ordinary admission into an unbounded
 -- storage operation, so retention cleanup runs only in this Scheduler session.
 create or replace package doom_session_cleanup authid definer as
+  $if $$doom_dev_ojvm $then
   procedure purge_expired(p_limit in number default 4);
+  $end
   procedure purge_expired_matches(p_limit in number default 4);
 end doom_session_cleanup;
 /
 
 create or replace package body doom_session_cleanup as
+  $if $$doom_dev_ojvm $then
   procedure purge_expired(p_limit in number default 4) is
     l_limit pls_integer:=least(8,greatest(1,trunc(coalesce(p_limit,4))));
     l_deadline timestamp with time zone;l_active number;l_running number;
@@ -80,6 +83,7 @@ create or replace package body doom_session_cleanup as
       end;
     end loop;
   end purge_expired;
+  $end
 
   procedure purge_expired_matches(p_limit in number default 4) is
     l_limit pls_integer:=least(8,greatest(1,trunc(coalesce(p_limit,4))));
@@ -115,7 +119,11 @@ begin
   dbms_scheduler.create_job(
     job_name=>'DOOM_EXPIRED_SESSION_PURGE',
     job_type=>'PLSQL_BLOCK',
+    $if $$doom_dev_ojvm $then
     job_action=>'begin doom_session_cleanup.purge_expired(4); doom_session_cleanup.purge_expired_matches(4); end;',
+    $else
+    job_action=>'begin doom_session_cleanup.purge_expired_matches(4); end;',
+    $end
     start_date=>systimestamp+numtodsinterval(1,'MINUTE'),
     repeat_interval=>'FREQ=MINUTELY;INTERVAL=1',
     enabled=>true,auto_drop=>false);

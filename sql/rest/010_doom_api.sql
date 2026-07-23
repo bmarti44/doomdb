@@ -138,6 +138,7 @@ create or replace package doom_api authid definer as
     p_current_tic       out number,
     p_payload           out blob);
 
+  $if $$doom_dev_ojvm $then
   procedure poll_match_frame(
     p_match             in  varchar2,
     p_player_capability in  varchar2,
@@ -146,12 +147,14 @@ create or replace package doom_api authid definer as
     p_ready             out number,
     p_current_tic       out number,
     p_payload           out blob);
+  $end
 
   procedure leave_match(
     p_match             in  varchar2,
     p_player_capability in  varchar2,
     p_match_state       out varchar2);
 
+  $if $$doom_dev_ojvm $then
   procedure new_game(
     p_skill       in  number,
     p_session     out varchar2,
@@ -193,6 +196,7 @@ create or replace package doom_api authid definer as
   procedure step_replay(
     p_replay_id   in  varchar2,
     p_payload     out blob);
+  $end
 
   procedure get_asset(
     p_asset_name  in  varchar2,
@@ -285,6 +289,7 @@ create or replace package body doom_api as
         and expires_at<p_now+interval '10' minute;
   end;
 
+  $if $$doom_dev_ojvm $then
   function utf8_blob(p_text clob) return blob is
     l_blob blob;
     l_dest binary_integer := 1;
@@ -312,6 +317,7 @@ create or replace package body doom_api as
     if l_warning<>0 then fail(c_bad_request,'UTF-8 conversion failed');end if;
     return l_text;
   end;
+  $end
 
   -- This bounded transport loop converts SQL-aggregated asset/response chunks;
   -- it never performs game, wall, object, or pixel decisions.
@@ -331,6 +337,7 @@ create or replace package body doom_api as
     return l_blob;
   end;
 
+  $if $$doom_dev_ojvm $then
   function sha256(p_blob blob) return varchar2 is
   begin
     return lower(rawtohex(dbms_crypto.hash(p_blob,dbms_crypto.hash_sh256)));
@@ -347,6 +354,7 @@ create or replace package body doom_api as
     if l_expiry<=utc_now then fail(c_session,'unknown or expired session');end if;
   exception when no_data_found then fail(c_session,'unknown or expired session');
   end;
+  $end
 
   procedure copy_blob(p_source blob,p_target out blob) is
   begin
@@ -354,6 +362,7 @@ create or replace package body doom_api as
     dbms_lob.copy(p_target,p_source,dbms_lob.getlength(p_source));
   end;
 
+  $if $$doom_dev_ojvm $then
   function config_number(p_key varchar2,p_default number) return number is
     l_value number;
   begin
@@ -361,6 +370,7 @@ create or replace package body doom_api as
     return l_value;
   exception when no_data_found then return p_default;
   end;
+  $end
 
   function config_text(p_key varchar2,p_default varchar2) return varchar2 is
     l_value varchar2(4000);
@@ -1151,6 +1161,7 @@ create or replace package body doom_api as
     end;
   end;
 
+  $if $$doom_dev_ojvm $then
   procedure poll_match_frame(
     p_match in varchar2,p_player_capability in varchar2,p_tic in number,
     p_wait_ms in number,p_ready out number,p_current_tic out number,
@@ -1219,6 +1230,7 @@ create or replace package body doom_api as
       raise_application_error(c_bad_request,'match poll rejected');
     end;
   end;
+  $end
 
   procedure leave_match(
     p_match in varchar2,p_player_capability in varchar2,
@@ -1308,6 +1320,7 @@ create or replace package body doom_api as
   end;
 
 
+  $if $$doom_dev_ojvm $then
   function byte_hex(p_value number) return varchar2 is
   begin
     if p_value<>trunc(p_value) or p_value not between -127 and 127 then
@@ -2360,6 +2373,8 @@ create or replace package body doom_api as
         'replay step failed: '||l_error_message);
     end;
   end;
+
+  $end
 
   procedure get_asset(
     p_asset_name in varchar2,p_payload out blob,p_media_type out varchar2

@@ -3,8 +3,14 @@
   "task": "T11.1",
   "sqlcl": {"name": "SQLcl", "version": "26.2.0.181.2110"},
   "minimumDatabaseMajor": 23,
-  "ojvm": {"javaRelease": 8, "classCount": 830, "loadMode": "client-side-loadjava"},
-  "bootstrapOrder": "sql/bootstrap/order.txt",
+  "mle": {
+    "runtime": "JavaScript",
+    "authorityBytes": 1163182,
+    "authoritySha256": "06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0",
+    "tablePackBytes": 180272,
+    "tablePackSha256": "058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"
+  },
+  "bootstrapOrder": "sql/bootstrap/production-order.txt",
   "seedOrderGenerator": "tools/wad/seed-load-order.mjs",
   "domains": ["schema", "seed", "engine", "rest"],
   "p0": {

@@ -50,6 +50,8 @@
     "mochaBytecodeSha256": "6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97",
     "canonicalOracleJarSha256": "2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74",
     "checkpointEnvelope": "DMC1-v5",
+    "canonicalTablePackBytes": 180272,
+    "canonicalTablePackSha256": "058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44",
     "outputBytes": 1163182,
     "outputSha256": "06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0",
     "presentation": {
