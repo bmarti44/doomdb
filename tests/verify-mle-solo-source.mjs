@@ -40,5 +40,8 @@ assert.match(worker,/instr\(p_error,'host membership is not active'\)>0[\s\S]+st
 assert.match(worker,/config_key='MAX_ACTIVE_MATCHES'/);
 assert.match(config,/select 'MAX_ACTIVE_MATCHES', 1/);
 assert.match(rest,/l_open>=l_match_limit/);
+assert.match(rest,/procedure poll_match_transitions[\s\S]+doom_match_worker\.recover_match\(p_match,20,l_recovery_state\)/);
+assert.match(client,/transientAuthorityFailure/);
+assert.match(client,/Recovering retained MLE authority…/);
 
 process.stdout.write('PASS MLE-SOLO-SOURCE /play uses one-player retained MLE match authority\n');

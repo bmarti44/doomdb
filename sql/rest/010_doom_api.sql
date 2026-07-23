@@ -1121,6 +1121,8 @@ create or replace package body doom_api as
     l_state varchar2(16);l_expiry timestamp with time zone;
     l_epoch number;l_generation number;l_slot number;
     l_now timestamp with time zone:=utc_now;
+    l_worker_status varchar2(16);l_worker_heartbeat timestamp with time zone;
+    l_recovery_state varchar2(16);
   begin
     p_ready:=0;p_current_tic:=null;p_payload:=null;require_match_shape(p_match);
     if p_after_tic is null or p_after_tic<>trunc(p_after_tic) or p_after_tic<0 or
@@ -1138,6 +1140,26 @@ create or replace package body doom_api as
       fail(c_match_auth,'match unavailable');
     end if;
     l_slot:=player_capability_slot(p_match,p_player_capability);
+    select worker_status,heartbeat into l_worker_status,l_worker_heartbeat
+      from doom_match_worker_control where match_id=p_match
+        and generation=l_generation;
+    if l_worker_status in('FAILED','STOPPED') or
+       (l_worker_status='READY' and
+        l_worker_heartbeat<l_now-interval '5' second) then
+      -- DMD1 is the production presentation path, so it owns the recovery
+      -- trigger formerly carried only by the retired frame endpoint.
+      doom_match_worker.recover_match(p_match,20,l_recovery_state);
+      select match_state,expires_at,membership_epoch,generation,current_tic
+        into l_state,l_expiry,l_epoch,l_generation,p_current_tic
+        from doom_match where match_id=p_match;
+      if l_recovery_state<>'ACTIVE' then
+        fail(c_capacity,'match recovery is starting');
+      end if;
+    elsif l_worker_status='STARTING' then
+      fail(c_capacity,'match recovery is starting');
+    elsif l_worker_status<>'READY' then
+      fail(c_capacity,'match worker is unavailable');
+    end if;
     doom_mle_transition_transport.poll_batch(
       p_match,l_slot,l_epoch,l_generation,p_after_tic,p_max_transitions,
       p_hold_ms,p_ready,p_payload);

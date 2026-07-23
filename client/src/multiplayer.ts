@@ -187,6 +187,9 @@ const showSoloError = (cause: unknown): void => {
     cause instanceof Error ? cause.message : String(cause)}`;
   setBusy(false);
 };
+const transientAuthorityFailure = (cause: unknown): boolean =>
+  cause instanceof Error &&
+  /request failed: (?:429|502|503|504)\b/.test(cause.message);
 
 let local: LocalMatch | null = null;
 let latestStatus: MatchStatus | null = null;
@@ -378,7 +381,13 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
           effectiveTic: result.effectiveTic, command: input.command,
           targetTic, roundTripMs: finished - started,
           leadTics: wan.inputLeadTics});
-      }).catch(fail).finally(() => { inputPosting = false; });
+      }).catch(cause => {
+        if (transientAuthorityFailure(cause)) {
+          trace('recovery-wait',{path:'input',message:String(cause)});
+        } else {
+          fail(cause);
+        }
+      }).finally(() => { inputPosting = false; });
   };
 
   const poll = (): void => {
@@ -399,7 +408,15 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
             generation: transition.generation,
             membershipEpoch: transition.membershipEpoch});
         }
-      }).catch(fail).finally(() => {
+      }).catch(cause => {
+        if (transientAuthorityFailure(cause)) {
+          trace('recovery-wait',{path:'transitions',message:String(cause)});
+          hud.textContent = `${soloMode ? 'SINGLE PLAYER' : status.mode}`
+            + ` · TIC ${presentedTic}\nRecovering retained MLE authority…`;
+        } else {
+          fail(cause);
+        }
+      }).finally(() => {
         polling = false;
         // Free defaults to immediate batches. WAN-qualified deployments select
         // a bounded hold via the page URL; the database enforces both the

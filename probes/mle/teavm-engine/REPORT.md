@@ -643,3 +643,12 @@ matches were fenced by their exact error and cleaned up; both standbys reached
 authority/standby `READY` and tic 938. The new package bodies remain a source
 candidate until that live match exits, because replacing a package used by a
 retained session would invalidate the game being reviewed.
+
+The same audit found that standby promotion was still triggered only by the
+retired frame-poll API. The production DMD1 transition poll now fences the
+worker heartbeat/status, initiates `recover_match`, and returns retryable
+capacity while the exact frontier is promoted. Confirmed-only browser input
+and transition loops preserve their queued input/frontier across
+429/502/503/504 recovery responses and resume without prediction. This closes
+the source-level production recovery trigger; forced live promotion remains a
+required post-deployment gate.
