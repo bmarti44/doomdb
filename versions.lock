@@ -56,10 +56,10 @@
     "outputSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
     "presentation": {
       "profile": "presentation-engine-headless",
-      "inputBytecodeSha256": "5194b73d7196804957221216052b552305632c943e8ea402327a220b326d0e06",
-      "mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e",
-      "outputBytes": 1232713,
-      "outputSha256": "d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c"
+      "inputBytecodeSha256": "595a9a39bafe3aa6e3bbd2405fb1ca17f3bfa081dbf098360503ba3ab32d859b",
+      "mochaBytecodeSha256": "bdef8440d129c3b1bd334c9ebe66c4d2d1f0d803939d9a1c29b7191c98b16bb3",
+      "outputBytes": 1250529,
+      "outputSha256": "e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc"
     }
   },
   "deploymentTools": {

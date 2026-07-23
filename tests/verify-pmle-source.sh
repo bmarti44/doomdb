@@ -285,6 +285,14 @@ grep -q 'MAX_INPUT_LEAD = 12' "$AUTHORITY_WAN_TS" || fail 'WAN lead bound missin
 grep -q 'MAX_PLAYOUT_TICS = 6' "$AUTHORITY_WAN_TS" || fail 'WAN playout bound missing'
 grep -q 'transitionHoldMs, 32' "$ROOT/client/src/multiplayer.ts" ||
   fail 'WAN bounded long-poll client binding missing'
+grep -q 'HIDDEN_CHECKPOINT_THRESHOLD_MS = 5_000' "$ROOT/client/src/multiplayer.ts" ||
+  fail 'WAN hidden-tab checkpoint threshold missing'
+grep -q "strategy:'poll-lease-released'" "$ROOT/client/src/multiplayer.ts" ||
+  fail 'WAN hidden-tab poll lease release missing'
+grep -q "reason:'confirmed-checkpoint'" "$ROOT/client/src/multiplayer.ts" ||
+  fail 'WAN hidden-tab checkpoint resync missing'
+grep -q 'restoreBrowserAuthorityCheckpoint' "$ROOT/client/src/teavm-browser.ts" ||
+  fail 'browser DMC1 restore binding missing'
 grep -q 'PMLE_WAN_PROXY|READY' "$WAN_PROXY" || fail 'WAN proxy readiness marker missing'
 grep -q 'PMLE_WAN_GATE|PASS' "$WAN_SOAK" || fail 'WAN browser acceptance marker missing'
 grep -q 'neutral substitution rate' "$WAN_SOAK" || fail 'WAN neutral-substitution gate missing'
@@ -298,6 +306,13 @@ grep -q 'long_poll_enabled=1' "$TEAVM_WAN_RUNNER" ||
   fail 'WAN matrix long-poll enablement missing'
 grep -q 'DOOMDB_WAN_HOLD_MS=500' "$TEAVM_WAN_RUNNER" ||
   fail 'WAN matrix bounded hold missing'
+grep -q 'DOOMDB_WAN_BACKGROUND_SCENARIO=1' "$TEAVM_WAN_RUNNER" ||
+  fail 'WAN matrix background/refocus scenario missing'
+grep -q 'PMLE_WAN_TRANSPORT|long_poll=ON' "$TEAVM_WAN_RUNNER" ||
+  fail 'WAN matrix cloud-shaped pool metadata missing'
+grep -q 'PMLE_PREWARM_DECOMPOSITION|PASS' \
+  "$ROOT/probes/mle/teavm-engine/run-prewarm-decomposition.sh" ||
+  fail 'deploy prewarm composition harness missing'
 grep -q 'already exists:' "$TEAVM_WAN_RUNNER" ||
   fail 'WAN matrix no-overwrite evidence fence missing'
 grep -q 'environment-metadata.sql' "$TEAVM_WAN_RUNNER" ||
@@ -387,11 +402,15 @@ grep -q 'resmgr=' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'resource-manager slow-call
 grep -q 'category=.*RESOURCE_MANAGER' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'resource-manager wait category missing'
 grep -q 'procedure poll_match_transitions' "$DOOM_API" || fail 'DMB1 public long-poll endpoint missing'
 grep -q 'doom_mle_transition_transport.poll_batch' "$DOOM_API" || fail 'DMB1 public endpoint transport binding missing'
+grep -q 'procedure match_checkpoint' "$DOOM_API" ||
+  fail 'confirmed browser checkpoint endpoint missing'
+grep -q 'match checkpoint SHA fence' "$DOOM_API" ||
+  fail 'confirmed browser checkpoint database SHA fence missing'
 grep -q '"version": "0.15.0"' "$VERSIONS" || fail 'TeaVM version pin missing'
 grep -q '"inputBytecodeSha256": "5194b73d7196804957221216052b552305632c943e8ea402327a220b326d0e06"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
 grep -q '"mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e"' "$VERSIONS" || fail 'TeaVM Mocha bytecode pin missing'
 grep -q '"outputSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2"' "$VERSIONS" || fail 'TeaVM output pin missing'
-grep -q '"outputSha256": "d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c"' "$VERSIONS" || fail 'TeaVM presentation output pin missing'
+grep -q '"outputSha256": "e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc"' "$VERSIONS" || fail 'TeaVM presentation output pin missing'
 grep -q 'mle-js-plsql-ffi' "$HYBRID_INSTALL" || fail 'FFI comparison path missing'
 grep -q 'PMLE_GATE|PASS|scope=mechanics_only|architecture=mle_command_stream' "$RUNNER" || fail 'mechanics-only architecture marker missing'
 grep -q 'PMLE_COMMAND_GATE|PASS' "$REPORT" || fail 'measured hybrid report missing terminal marker'

@@ -1,7 +1,8 @@
 import {
   createMatch, getAsset, joinMatch, leaveMatch, matchStatus, matchInputFrontier,
-  pollMatchTransitions, readyMatch, reviseMatchInput,
-  type Command, type MatchStatus
+  matchCheckpoint, pollMatchTransitions, readyMatch, reviseMatchInput,
+  MatchCapacityError, MatchUnavailableError,
+  type Command, type MatchCredentials, type MatchStatus
 } from './api.js';
 
 import {AudioPresenter} from './audio.js';
@@ -14,7 +15,8 @@ import {ConfirmedAuthorityMirror, type ConfirmedPresentation}
   from './authority-mirror.js';
 import {authorityRootChainSha} from './authority.js';
 import {ConfirmedWanPolicy} from './authority-wan.js';
-import {createBrowserAuthorityEngines} from './teavm-browser.js';
+import {createBrowserAuthorityEngines, restoreBrowserAuthorityCheckpoint}
+  from './teavm-browser.js';
 
 type LocalMatch = {
   match: string;
@@ -25,6 +27,8 @@ type LocalMatch = {
 };
 
 const MAX_CONFIRMED_PRESENTATION_BACKLOG = 16;
+const HIDDEN_CHECKPOINT_THRESHOLD_MS = 5_000;
+const HIDDEN_POLL_LEASE_RELEASE_MS = 1_500;
 const soloMode = document.body.hasAttribute('data-doom-solo');
 const soloStartedAt = soloMode ? performance.now() : 0;
 const launchParameters = new URLSearchParams(
@@ -87,6 +91,7 @@ main.innerHTML = `
       <p class="share" data-share-wrap hidden><input data-share readonly aria-label="Private join link"><button data-copy type="button">Copy private join link</button></p>
       <button data-ready type="button">Ready</button>
     </div>
+    <button data-cancel-queue type="button" hidden>Cancel admission wait</button>
     <p data-message class="muted">Create a match, or open a private join link from the host.</p>
   </section>
   <section data-game><div data-hud>Waiting for match…</div></section>
@@ -104,6 +109,8 @@ const room = main.querySelector<HTMLElement>('[data-room]')!;
 const roomStatus = main.querySelector<HTMLElement>('[data-room-status]')!;
 const message = main.querySelector<HTMLElement>('[data-message]')!;
 const readyButton = main.querySelector<HTMLButtonElement>('[data-ready]')!;
+const cancelQueueButton =
+  main.querySelector<HTMLButtonElement>('[data-cancel-queue]')!;
 const shareWrap = main.querySelector<HTMLElement>('[data-share-wrap]')!;
 const shareInput = main.querySelector<HTMLInputElement>('[data-share]')!;
 const copyButton = main.querySelector<HTMLButtonElement>('[data-copy]')!;
@@ -122,13 +129,14 @@ const trace = (name: string, detail: object): void => {
 
 const storageKey = (match: string): string => `doomdb.match.${match}`;
 const soloCurrentKey = 'doomdb.solo.current';
+const matchStorage = soloMode ? localStorage : sessionStorage;
 const saveLocal = (value: LocalMatch): void => {
-  sessionStorage.setItem(storageKey(value.match), JSON.stringify(value));
-  if (soloMode) sessionStorage.setItem(soloCurrentKey,value.match);
+  matchStorage.setItem(storageKey(value.match), JSON.stringify(value));
+  if (soloMode) matchStorage.setItem(soloCurrentKey,value.match);
 };
-const loadLocal = (match: string): LocalMatch | null => {
+const loadLocalFrom = (store: Storage,match: string): LocalMatch | null => {
   try {
-    const value = JSON.parse(sessionStorage.getItem(storageKey(match)) ?? 'null') as unknown;
+    const value = JSON.parse(store.getItem(storageKey(match)) ?? 'null') as unknown;
     if (typeof value !== 'object' || value === null) return null;
     const candidate = value as Partial<LocalMatch>;
     if (candidate.match !== match || !/^[0-9a-f]{64}$/.test(candidate.playerCapability ?? '') ||
@@ -136,23 +144,36 @@ const loadLocal = (match: string): LocalMatch | null => {
     return candidate as LocalMatch;
   } catch { return null; }
 };
+const loadLocal = (match: string): LocalMatch | null =>
+  loadLocalFrom(matchStorage,match) ??
+  (soloMode ? loadLocalFrom(sessionStorage,match) : null);
 
 const retirePriorSolo = async (): Promise<void> => {
-  const current = sessionStorage.getItem(soloCurrentKey);
   const matches = new Set<string>();
-  if (current !== null) matches.add(current);
+  const stores = [localStorage,sessionStorage];
+  for (const store of stores) {
+    const current = store.getItem(soloCurrentKey);
+    if (current !== null) matches.add(current);
+  }
   // Migration fallback for solo credentials saved before the explicit pointer
   // existed. Multiplayer hosts retain host/join capabilities; the solo host
   // deliberately stores neither, so this cannot retire a co-op lobby.
-  for (let index = 0; index < sessionStorage.length; index++) {
-    const key = sessionStorage.key(index);
-    if (key?.startsWith('doomdb.match.')) {
-      const match = key.slice('doomdb.match.'.length);
-      const candidate = loadLocal(match);
-      if (candidate?.playerSlot === 0 && candidate.hostCapability === undefined &&
-          candidate.joinCapability === undefined) matches.add(match);
+  for (const store of stores) {
+    for (let index = 0; index < store.length; index++) {
+      const key = store.key(index);
+      if (key?.startsWith('doomdb.match.')) {
+        const match = key.slice('doomdb.match.'.length);
+        const candidate = loadLocalFrom(store,match);
+        if (candidate?.playerSlot === 0 &&
+            candidate.hostCapability === undefined &&
+            candidate.joinCapability === undefined) matches.add(match);
+      }
     }
   }
+  // Notify any live owner before retiring its database match. Storage events
+  // reach another tab immediately, aborting its long poll before LEAVE_MATCH
+  // changes the authoritative match to a terminal state.
+  for (const store of stores) store.removeItem(soloCurrentKey);
   for (const match of matches) {
     const prior = loadLocal(match);
     try {
@@ -163,10 +184,9 @@ const retirePriorSolo = async (): Promise<void> => {
       // Expired/already-finished credentials are already retired. Any real
       // remaining capacity conflict is still rejected by CREATE_MATCH.
     } finally {
-      sessionStorage.removeItem(storageKey(match));
+      for (const store of stores) store.removeItem(storageKey(match));
     }
   }
-  sessionStorage.removeItem(soloCurrentKey);
 };
 
 const setBusy = (busy: boolean): void => {
@@ -198,6 +218,62 @@ let lobbyTimer = 0;
 let lobbyDelay = 500;
 let priorLobbyState = '';
 let gameStarted = false;
+let admissionController: AbortController | null = null;
+
+const admissionDelay = (milliseconds: number, signal: AbortSignal):
+    Promise<void> => new Promise((resolve,reject) => {
+  const timer = window.setTimeout(resolve,milliseconds);
+  signal.addEventListener('abort',() => {
+    window.clearTimeout(timer);
+    reject(new DOMException('Admission wait cancelled','AbortError'));
+  },{once:true});
+});
+
+async function queuedCreateMatch(
+    displayName: string,skill: number,mode: 'COOP' | 'DEATHMATCH',
+    maxPlayers: number): Promise<MatchCredentials> {
+  admissionController?.abort();
+  const controller = new AbortController();
+  admissionController = controller;
+  cancelQueueButton.hidden = soloMode;
+  let delayMs = 500;
+  let queuedAt = 0;
+  try {
+    for (;;) {
+      try {
+        return await createMatch(
+          displayName,skill,mode,maxPlayers,controller.signal);
+      } catch (cause) {
+        if (!(cause instanceof MatchCapacityError)) throw cause;
+        if (queuedAt === 0) queuedAt = performance.now();
+        const elapsed = Math.floor((performance.now()-queuedAt)/1000);
+        const queueText = `Waiting for the next Oracle game slot… ${elapsed}s`;
+        if (soloMode) {
+          hud.className = '';
+          hud.textContent = `SINGLE PLAYER\n${queueText}\n`
+            + 'Local Oracle Free runs one authoritative game at a time.';
+        } else {
+          message.className = 'muted';
+          message.textContent = queueText;
+        }
+        trace('admission-queued',{elapsed,delayMs});
+        await admissionDelay(delayMs,controller.signal);
+        delayMs = delayMs < 2_000 ? Math.min(2_000,delayMs*2) : 5_000;
+      }
+    }
+  } finally {
+    if (admissionController===controller) admissionController=null;
+    cancelQueueButton.hidden = true;
+  }
+}
+
+cancelQueueButton.addEventListener('click',() => {
+  admissionController?.abort();
+  message.className = 'muted';
+  message.textContent = 'Admission wait cancelled.';
+  setBusy(false);
+});
+window.addEventListener('pagehide',() => admissionController?.abort(),{once:true});
 
 function scheduleLobbyRefresh(): void {
   window.clearTimeout(lobbyTimer);
@@ -263,7 +339,8 @@ createForm.addEventListener('submit', event => {
   event.preventDefault();setBusy(true);
   const data = new FormData(createForm);
   const mode = data.get('mode') === 'DEATHMATCH' ? 'DEATHMATCH' : 'COOP';
-  void createMatch(String(data.get('name')), Number(data.get('skill')), mode)
+  void queuedCreateMatch(
+    String(data.get('name')), Number(data.get('skill')), mode,2)
     .then(value => enterLobby({...value, playerSlot: 0}))
     .catch(showError).finally(() => setBusy(false));
 });
@@ -323,7 +400,7 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
 
   const rootChainSha = await authorityRootChainSha(
     value.match, status.membershipEpoch);
-  const mirror = new ConfirmedAuthorityMirror(
+  let mirror = new ConfirmedAuthorityMirror(
     engines.verifier, engines.presenter, value.playerSlot,
     {tic: 0, generation: 1, membershipEpoch: status.membershipEpoch,
       chainSha: rootChainSha});
@@ -338,6 +415,11 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
   const inputQueue: {sequence: number; command: Command; hex: string}[] = [];
   let inputPosting = false;
   let polling = false;
+  let pollEpoch = 0;
+  let pollController: AbortController | null = null;
+  let presentationSuspended = document.hidden;
+  let hiddenAt = presentationSuspended ? performance.now() : 0;
+  let checkpointResyncing = false;
   let stopped = false;
   let presentedTic = 0;
   let serverTic = status.currentTic;
@@ -345,11 +427,41 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
   let presentationStarted = false;
   const paintedAt: number[] = [];
   const buttons = new Map<ControlName, HTMLButtonElement>();
+  const observeWanRoundTrip = (roundTripMs: number, nowMs: number,
+    minimumLeadTics = 2): void => {
+    const before = wan.inputLeadTics;
+    wan.observeRoundTrip(roundTripMs, nowMs, minimumLeadTics);
+    if (wan.inputLeadTics !== before) {
+      trace('lead', {from: before, to: wan.inputLeadTics});
+    }
+  };
 
   const fail = (cause: unknown): void => {
-    stopped = true;hud.className = 'error';
+    stopped = true;pollEpoch += 1;pollController?.abort();
+    if (cause instanceof MatchUnavailableError) {
+      for (const store of [localStorage,sessionStorage]) {
+        store.removeItem(storageKey(value.match));
+        if (store.getItem(soloCurrentKey)===value.match) {
+          store.removeItem(soloCurrentKey);
+        }
+      }
+    }
+    hud.className = 'error';
     hud.textContent = cause instanceof Error ? cause.message : String(cause);
   };
+  const stopStaleSoloClient = (): void => {
+    if (stopped) return;
+    stopped = true;pollEpoch += 1;pollController?.abort();
+    inputQueue.length = 0;
+  };
+  window.addEventListener('pagehide',stopStaleSoloClient,{once:true});
+  if (soloMode) {
+    window.addEventListener('storage',event => {
+      if (event.key===soloCurrentKey && event.newValue!==value.match) {
+        stopStaleSoloClient();
+      }
+    });
+  }
   const updateHud = (): void => {
     const elapsed = paintedAt.length > 1 ? paintedAt.at(-1)! - paintedAt[0]! : 0;
     const fps = elapsed > 0 ? (paintedAt.length - 1) * 1000 / elapsed : 0;
@@ -374,15 +486,19 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
   canvas.focus();
 
   const postInput = (): void => {
-    if (stopped || inputPosting || inputQueue.length === 0) return;
+    if (stopped || presentationSuspended || checkpointResyncing ||
+        inputPosting || inputQueue.length === 0) return;
     inputPosting = true;
     const input = inputQueue[0]!;
     const started = performance.now();
-    const targetTic = wan.inputTargetTic(Math.max(serverTic, mirror.frontier.tic));
+    // The chartered lockstep contract schedules from the client's verified
+    // confirmed frontier. Adding a separately advertised server frontier here
+    // double-counts delivery lag and inflates every input by the backlog.
+    const targetTic = wan.inputTargetTic(mirror.frontier.tic);
     void reviseMatchInput(value.match, value.playerCapability,
       input.sequence, input.hex, targetTic).then(result => {
         const finished = performance.now();
-        wan.observeRoundTrip(finished - started, finished);
+        observeWanRoundTrip(finished - started, finished);
         if (result.accepted !== 1 ||
             result.membershipEpoch !== mirror.frontier.membershipEpoch ||
             result.generation < mirror.frontier.generation) {
@@ -403,12 +519,32 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
   };
 
   const poll = (): void => {
-    if (stopped || polling) return;
+    if (stopped || presentationSuspended || checkpointResyncing || polling) return;
     polling = true;
+    const requestEpoch = pollEpoch;
+    const controller = new AbortController();
+    pollController = controller;
     const frontier = mirror.frontier;
+    const pollStarted = performance.now();
     void pollMatchTransitions(value.match, value.playerCapability,
-      frontier.tic, transitionHoldMs, 32).then(async result => {
+      frontier.tic, transitionHoldMs, 32, controller.signal).then(async result => {
+        if (requestEpoch !== pollEpoch) return;
         const batch = await decodeAuthorityBatch(result.payload, frontier);
+        const pollFinished = performance.now();
+        if (!batch.timedOut) {
+          // Remove the database's measured idle hold from wall time. The
+          // remainder is the observed transport/ORDS round trip. The batch
+          // frontier gap is a second, direct estimate of how far ahead input
+          // must be scheduled from this verified frontier.
+          observeWanRoundTrip(
+            Math.max(0,pollFinished-pollStarted-batch.holdElapsedMs),
+            pollFinished,
+            batch.committedFrontierTic-frontier.tic+1);
+        }
+        trace('batch',{holdElapsedMs:batch.holdElapsedMs,
+          wallMs:pollFinished-pollStarted,count:batch.transitions.length,
+          committedFrontierTic:batch.committedFrontierTic,
+          leadTics:wan.inputLeadTics});
         serverTic = Math.max(serverTic, result.currentTic, batch.committedFrontierTic);
         for (const transition of batch.transitions) {
           const presentation = await mirror.apply(transition);
@@ -421,6 +557,7 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
             membershipEpoch: transition.membershipEpoch});
         }
       }).catch(cause => {
+        if (requestEpoch !== pollEpoch || controller.signal.aborted) return;
         if (transientAuthorityFailure(cause)) {
           trace('recovery-wait',{path:'transitions',message:String(cause)});
           hud.textContent = `${soloMode ? 'SINGLE PLAYER' : status.mode}`
@@ -430,15 +567,96 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
         }
       }).finally(() => {
         polling = false;
+        if (pollController === controller) pollController = null;
         // Free defaults to immediate batches. WAN-qualified deployments select
         // a bounded hold via the page URL; the database enforces both the
         // 500 ms ceiling and one outstanding poll per player.
-        if (!stopped) window.setTimeout(poll, 20);
+        if (!stopped && !presentationSuspended && !checkpointResyncing) {
+          window.setTimeout(poll, 20);
+        }
       });
   };
 
+  const checkpointResync = async (hiddenMilliseconds: number): Promise<void> => {
+    if (stopped || checkpointResyncing) return;
+    checkpointResyncing = true;pollEpoch += 1;pollController?.abort();
+    try {
+      const frontier = mirror.frontier;
+      const checkpoint = await matchCheckpoint(
+        value.match, value.playerCapability, 0);
+      serverTic = Math.max(serverTic, checkpoint.currentTic);
+      if (!checkpoint.ready) {
+        trace('visibility', {state:'visible',strategy:'batch-catch-up',
+          hiddenMs:hiddenMilliseconds,frontierTic:frontier.tic});
+        return;
+      }
+      if (checkpoint.checkpointTic < 1 ||
+          checkpoint.membershipEpoch !== frontier.membershipEpoch ||
+          checkpoint.generation < frontier.generation ||
+          !/^[0-9a-f]{64}$/.test(checkpoint.chainSha) ||
+          !/^[0-9a-f]{64}$/.test(checkpoint.checkpointSha) ||
+          checkpoint.payload === null) {
+        throw new Error('browser checkpoint resync fence changed');
+      }
+      await restoreBrowserAuthorityCheckpoint(
+        engines, decodeBytes(checkpoint.payload), checkpoint.checkpointSha,
+        checkpoint.checkpointTic);
+      mirror = new ConfirmedAuthorityMirror(
+        engines.verifier, engines.presenter, value.playerSlot, {
+          tic: checkpoint.checkpointTic,
+          generation: checkpoint.generation,
+          membershipEpoch: checkpoint.membershipEpoch,
+          chainSha: checkpoint.chainSha
+        });
+      presentations.clear();
+      presentedTic = checkpoint.checkpointTic;
+      presentationStarted = false;nextPresentationAt = 0;
+      trace('resync',{tic:presentedTic,reason:'confirmed-checkpoint'});
+      trace('visibility',{state:'visible',strategy:'checkpoint-resync',
+        hiddenMs:hiddenMilliseconds,frontierTic:presentedTic});
+      updateHud();
+    } catch (cause) {
+      if (transientAuthorityFailure(cause)) {
+        trace('recovery-wait',{path:'checkpoint',message:String(cause)});
+      } else {
+        fail(cause);
+      }
+    } finally {
+      checkpointResyncing = false;
+      if (!stopped && !presentationSuspended) poll();
+    }
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (presentationSuspended) return;
+      presentationSuspended = true;hiddenAt = performance.now();
+      pollEpoch += 1;pollController?.abort();
+      trace('visibility',{state:'hidden',strategy:'suspend',
+        frontierTic:mirror.frontier.tic});
+      window.setTimeout(() => {
+        if (presentationSuspended && performance.now()-hiddenAt >=
+            HIDDEN_POLL_LEASE_RELEASE_MS) {
+          trace('visibility',{state:'hidden',strategy:'poll-lease-released',
+            frontierTic:mirror.frontier.tic});
+        }
+      },HIDDEN_POLL_LEASE_RELEASE_MS);
+      return;
+    }
+    if (!presentationSuspended) return;
+    const hiddenMilliseconds = Math.max(0,performance.now()-hiddenAt);
+    presentationSuspended = false;
+    if (hiddenMilliseconds >= HIDDEN_CHECKPOINT_THRESHOLD_MS) {
+      void checkpointResync(hiddenMilliseconds);
+    } else {
+      trace('visibility',{state:'visible',strategy:'batch-catch-up',
+        hiddenMs:hiddenMilliseconds,frontierTic:mirror.frontier.tic});
+      poll();
+    }
+  });
+
   const pump = (): void => {
-    if (stopped) return;
+    if (stopped || presentationSuspended || checkpointResyncing) return;
     postInput();
     const target = wan.presentationTargetTic(mirror.frontier.tic);
     const now = performance.now();
@@ -748,7 +966,7 @@ if (soloMode) {
   }).catch(showSoloError);
   ready = true;setBusy(true);
   void retirePriorSolo().then(() =>
-    createMatch('PLAYER 1',soloSkill,'COOP',1)).then(async value => {
+    queuedCreateMatch('PLAYER 1',soloSkill,'COOP',1)).then(async value => {
     const credentials: LocalMatch = {
       match:value.match,playerCapability:value.playerCapability,playerSlot:0
     };

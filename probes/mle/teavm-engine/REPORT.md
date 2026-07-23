@@ -721,30 +721,42 @@ in-database frame generation still requires its own measured implementation.
 ./probes/mle/teavm-engine/probe-full-engine.sh  # expected nonzero; see target log
 ```
 
-## Presentation HUD candidate — 2026-07-23
+## Full presentation HUD — 2026-07-23
 
-The pinned Oracle 26ai JDK build now renders the canonical 32-pixel Doom
-status bar for both confirmed player POVs. TeaVM's headless desktop status
-lifecycle left the `SB` buffer empty even though `STBAR` decoded correctly, so
-the presentation-only adapter composes the immutable `STBAR` and `STFBn`
-backgrounds directly into the indexed foreground and calls Mocha's own
-retargeted widget renderer through an explicit abstract-status-bar bridge.
+The browser now serves the canonical 32-pixel Doom status bar for both
+confirmed player POVs, including ammo, health, armor, weapon ownership,
+ammo/max counters, and the animated Doomguy face. The first full-HUD candidate
+still painted the face rectangle with one flat palette value; a visual frame
+inspection caught what the earlier density-only gate missed.
 
-The 96-tic Node gate passed with 93 unique moving frames per POV. POV 0's HUD
-contained 10,240 nonzero pixels across 45 palette indices with SHA-256
-`3247c00d3ed00f57dd2cc6d14a2e314f5ae2a466e00c816ac721e765165d759a`;
-POV 1 contained 10,240 across 43 indices with SHA-256
-`b44d33e0e43969b2562d41a8e8d2396b28ca21dbe16b20724b26a34e7724426d`.
-The next-tic authoritative residue remained zero.
+The final design keeps the authoritative adapter source literally unchanged.
+Only the presentation Mocha JAR changes `HeadlessStatusBar` into a delegate for
+Mocha's full `StatusBar`, after removing its unavailable AWT rectangle
+dependency. This lets the normal ticker and display lifecycle update face
+state while the accepted `a942cd2d…` browser authority artifact remains
+untouched.
 
-This is an unpromoted candidate. Its Oracle-JDK presentation artifact is
-1,228,582 bytes with SHA-256
-`af6e526a5d4bfac15d2e926a604b7fd5afc386594e34dad01fb382229233f618`.
-The shared compatibility bridge also changes the authority candidate to
-SHA-256 `1e940a38c9d5131811bed81e886fdb153196e7af3298ff7471bb531629579d7e`.
-`versions.lock`, browser assets, and production remain on the accepted
-`06ac3333…`/`bd35d277…` pair until the canonical and 762-tic differential
-batch passes for the changed authority artifact.
+The 96-tic semantic gate passed with 93 unique moving frames per POV. Each HUD
+contains all 10,240 pixels; POV 0 uses 75 palette indices with SHA-256
+`dd2e30a5ca3d0ecdfbce78bf82bdc03898bffc19d201e571fee769eea50bf032`,
+and POV 1 uses 73 with SHA-256
+`96882b5d2d1fceed8d83437b13f3976eec2c140ee2b3d8c2cbaada0af665a0af`.
+The gate also retained zero next-tic world residue across all 96 tics.
+
+The promoted presentation artifact is 1,250,529 bytes with SHA-256
+`e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc`.
+Its presentation Mocha JAR is
+`bdef8440d129c3b1bd334c9ebe66c4d2d1f0d803939d9a1c29b7191c98b16bb3`.
+Both are pinned in `versions.lock`, copied under content-addressed browser
+names, and verified byte-for-byte when served by ORDS.
+
+Repeated TeaVM 0.15 invocations over unchanged class files produced equal-size,
+semantically passing modules with different function order and SHA-256, with
+both minification enabled and disabled. Consequently, the record distinguishes
+the exact promoted artifact SHA from source/toolchain provenance; it does not
+claim that TeaVM 0.15 reproduces bit-identical JavaScript. The pinned output is
+the deployable binary, and every replacement still requires the complete
+semantic and differential gate battery.
 
 ## Live match-admission contention correction — 2026-07-23
 

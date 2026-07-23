@@ -22,12 +22,17 @@ try {
     const presenterTic =
       engines.presenter.stepMultiplayerAuthoritative(2, 3, commands);
     const frame = engines.presenter.renderPlayerFrame(0);
+    const hud = frame.slice(320 * 168);
+    const hudSha256 = Array.from(new Uint8Array(
+      await crypto.subtle.digest('SHA-256', hud)),
+    value => value.toString(16).padStart(2, '0')).join('');
     return {
       elapsedMs: performance.now() - started,
       verifierTic, presenterTic,
       canonicalBytes: engines.verifier.canonicalStateLength(),
       frameBytes: frame.length,
-      nonzero: frame.reduce((count, value) => count + (value === 0 ? 0 : 1), 0)
+      nonzero: frame.reduce((count, value) => count + (value === 0 ? 0 : 1), 0),
+      hudSha256, hudDistinct: new Set(hud).size
     };
   });
   assert.equal(result.verifierTic, 1);
@@ -35,9 +40,13 @@ try {
   assert.ok(result.canonicalBytes > 0);
   assert.equal(result.frameBytes, 320 * 200);
   assert.ok(result.nonzero > 0);
+  assert.equal(result.hudDistinct, 75);
+  assert.equal(result.hudSha256,
+    'dd2e30a5ca3d0ecdfbce78bf82bdc03898bffc19d201e571fee769eea50bf032');
   console.log(`PMLE_BROWSER_DUAL_CONTEXT|PASS|elapsed_ms=${
     result.elapsedMs.toFixed(3)}|canonical_bytes=${result.canonicalBytes}`
-    + `|frame_bytes=${result.frameBytes}|nonzero=${result.nonzero}`);
+    + `|frame_bytes=${result.frameBytes}|nonzero=${result.nonzero}`
+    + `|hud_sha256=${result.hudSha256}|hud_distinct=${result.hudDistinct}`);
 } finally {
   await browser.close();
 }

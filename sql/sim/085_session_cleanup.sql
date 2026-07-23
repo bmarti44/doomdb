@@ -89,7 +89,8 @@ create or replace package body doom_session_cleanup as
 
   procedure purge_expired_matches(p_limit in number default 4) is
     l_limit pls_integer:=least(8,greatest(1,trunc(coalesce(p_limit,4))));
-    l_job varchar2(64);l_generation number;
+    l_job varchar2(64);l_generation number;l_assigned number;
+    l_deadline timestamp with time zone;
   begin
     for expired_ in (
       select match_id from doom_match
@@ -102,8 +103,28 @@ create or replace package body doom_session_cleanup as
             from doom_match_worker_control where match_id=expired_.match_id;
           begin doom_match_worker.stop_match(expired_.match_id,l_generation);
           exception when others then null;end;
-          dbms_session.sleep(.1);
-          begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
+          if l_job like 'DOOM_MLE_WARM\_%' escape '\' then
+            -- Warm Scheduler jobs are retained pool infrastructure, never
+            -- match-owned resources. Wait for both assigned contexts to honor
+            -- STOP_REQUESTED and recycle before deleting the match lineage.
+            -- Dropping this job destroys capacity for every later game.
+            l_deadline:=systimestamp+numtodsinterval(10,'SECOND');
+            loop
+              select count(*) into l_assigned from doom_mle_warm_slot
+                where assigned_match=expired_.match_id
+                  and slot_status in('CLAIMED','RUNNING');
+              exit when l_assigned=0 or systimestamp>=l_deadline;
+              dbms_session.sleep(.1);
+            end loop;
+            if l_assigned<>0 then
+              rollback;
+              continue;
+            end if;
+          else
+            dbms_session.sleep(.1);
+            begin dbms_scheduler.drop_job(l_job,true);
+            exception when others then null;end;
+          end if;
         exception when no_data_found then null;end;
         delete from doom_match where match_id=expired_.match_id
           and expires_at<=(localtimestamp at time zone 'UTC');

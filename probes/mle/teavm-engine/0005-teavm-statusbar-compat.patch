@@ -1,0 +1,166 @@
+diff --git a/src/st/StatusBar.java b/src/st/StatusBar.java
+--- a/src/st/StatusBar.java
++++ b/src/st/StatusBar.java
+@@ -42,7 +42,6 @@
+ import static doom.player_t.*;
+ import doom.weapontype_t;
+ import g.Signals;
+-import java.awt.Rectangle;
+ import m.Settings;
+ import m.cheatseq_t;
+ import p.mobj_t;
+@@ -88,7 +87,6 @@ public class StatusBar extends AbstractStatusBar {
+     private int ST_X2;
+     private int ST_FX;
+     private int ST_FY;
+-    private Rectangle ST_RECT;
+ 
+     // Should be set to patch width
+     // for tall numbers later on
+@@ -674,10 +672,23 @@ public class StatusBar extends AbstractStatusBar {
+ 
+ 	     ST_DETHY = (int) (191*DOOM.vs.getSafeScaling());
+ 
+-         ST_RECT = new Rectangle(ST_X, 0, ST_WIDTH, ST_HEIGHT);
+     	//this.plyr=DM.players[DM.]
+     }
+ 
++    private void copyRect(v.renderers.DoomScreen sourceScreen, int sourceX,
++            int sourceY, int width, int height,
++            v.renderers.DoomScreen destinationScreen, int destinationX,
++            int destinationY) {
++        Object source = DOOM.graphicSystem.getScreen(sourceScreen);
++        Object destination = DOOM.graphicSystem.getScreen(destinationScreen);
++        int stride = DOOM.graphicSystem.getScreenWidth();
++        for (int row = 0; row < height; ++row) {
++            System.arraycopy(source, (sourceY + row) * stride + sourceX,
++                destination, (destinationY + row) * stride + destinationX,
++                width);
++        }
++    }
++
+     public void refreshBackground() {
+ 
+         if (st_statusbaron[0]) {
+@@ -690,7 +699,7 @@ public class StatusBar extends AbstractStatusBar {
+             }
+                 
+             // Buffers the background.
+-            DOOM.graphicSystem.CopyRect(SB, ST_RECT, FG, DOOM.graphicSystem.point(ST_X, ST_Y));
++            copyRect(SB, ST_X, 0, ST_WIDTH, ST_HEIGHT, FG, ST_X, ST_Y);
+             //V.CopyRect(ST_X, 0, SCREEN_SB, ST_WIDTH, ST_HEIGHT, ST_X, ST_Y, SCREEN_FG);
+         }
+ 
+@@ -1627,12 +1636,12 @@ public class StatusBar extends AbstractStatusBar {
+                 if (y - ST_Y < 0)
+                     DOOM.doomSystem.Error("updateBinIcon: y - ST_Y < 0");                    
+                 if (bi.val[valindex]) {
+-                    final Rectangle rect = new Rectangle(x, ST_Y, w*DOOM.vs.getScalingX(), h*DOOM.vs.getScalingY());
+-                    DOOM.graphicSystem.CopyRect(FG, rect, BG, DOOM.graphicSystem.point(rect.x, rect.y));
++                    copyRect(FG, x, ST_Y, w * DOOM.vs.getScalingX(),
++                        h * DOOM.vs.getScalingY(), BG, x, ST_Y);
+                     DOOM.graphicSystem.DrawPatchScaled(FG, bi.p, DOOM.vs, bi.x, bi.y, V_PREDIVIDE);
+                 } else {
+-                    final Rectangle rect = new Rectangle(x, ST_Y, w*DOOM.vs.getScalingX(), h*DOOM.vs.getScalingY());
+-                    DOOM.graphicSystem.CopyRect(FG, rect, BG, DOOM.graphicSystem.point(rect.x, rect.y));
++                    copyRect(FG, x, ST_Y, w * DOOM.vs.getScalingX(),
++                        h * DOOM.vs.getScalingY(), BG, x, ST_Y);
+                 }
+                 
+                 bi.oldval = bi.val[valindex];
+@@ -1730,12 +1739,11 @@ public class StatusBar extends AbstractStatusBar {
+                     y = this.y - this.p[this.oldinum].topoffset*DOOM.vs.getScalingY();
+                     w = this.p[this.oldinum].width*DOOM.vs.getScalingX();
+                     h = this.p[this.oldinum].height*DOOM.vs.getScalingY();
+-                    Rectangle rect = new Rectangle(x, y - ST_Y, w, h);
+ 
+                     if (y - ST_Y < 0)
+                         DOOM.doomSystem.Error("updateMultIcon: y - ST_Y < 0");
+                     //System.out.printf("Restoring at x y %d %d w h %d %d\n",x, y - ST_Y,w,h);
+-                    DOOM.graphicSystem.CopyRect(SB, rect, FG, DOOM.graphicSystem.point(x, y));
++                    copyRect(SB, x, y - ST_Y, w, h, FG, x, y);
+                     //V.CopyRect(x, y - ST_Y, SCREEN_SB, w, h, x, y, SCREEN_FG);
+                     //V.FillRect(x, y - ST_Y, w, h, FG);
+                 }
+@@ -1832,8 +1840,8 @@ public class StatusBar extends AbstractStatusBar {
+ 
+             // Restore BG from buffer
+             //V.FillRect(x+(numdigits-3) * w, y, w*3 , h, FG);
+-            Rectangle rect = new Rectangle(x + (numdigits - 3) * w, y - ST_Y, w * 3, h);
+-            DOOM.graphicSystem.CopyRect(SB, rect, FG, DOOM.graphicSystem.point(x + (numdigits - 3) * w, y));
++            copyRect(SB, x + (numdigits - 3) * w, y - ST_Y, w * 3, h,
++                FG, x + (numdigits - 3) * w, y);
+             //V.CopyRect(x+(numdigits-3)*w, y- ST_Y, SCREEN_SB, w * 3, h, x+(numdigits-3)*w, y, SCREEN_FG);
+ 
+             // if non-number, do not draw it
+diff --git a/src/st/HeadlessStatusBar.java b/src/st/HeadlessStatusBar.java
+--- a/src/st/HeadlessStatusBar.java
++++ b/src/st/HeadlessStatusBar.java
+@@ -5,45 +5,65 @@
+ 
+ /** Status-bar geometry without presentation assets or AWT state. */
+ public final class HeadlessStatusBar extends AbstractStatusBar {
++    private final StatusBar presentation;
++
+     public HeadlessStatusBar(DoomMain<?, ?> doom) {
+         super(doom);
++        presentation = new StatusBar(doom);
+     }
+ 
+     @Override
+     public void NotifyAMEnter() {
++        presentation.NotifyAMEnter();
+     }
+ 
+     @Override
+     public void NotifyAMExit() {
++        presentation.NotifyAMExit();
+     }
+ 
+     @Override
+     public boolean Responder(event_t event) {
+-        return false;
++        return presentation.Responder(event);
+     }
+ 
+     @Override
+     public void Ticker() {
++        presentation.Ticker();
+     }
+ 
+     @Override
+     public void Drawer(boolean fullscreen, boolean refresh) {
++        presentation.Drawer(fullscreen, refresh);
+     }
+ 
+     @Override
+     public void Start() {
++        presentation.Start();
+     }
+ 
+     @Override
+     public void Init() {
++        presentation.Init();
+     }
+ 
+     @Override
+     public int getHeight() {
+-        return 32 * DOOM.vs.getSafeScaling();
++        return presentation.getHeight();
+     }
+ 
+     @Override
+     public void forceRefresh() {
++        presentation.forceRefresh();
++    }
++
++    @Override
++    public void doomdbDisplayPlayer(int player) {
++        presentation.doomdbDisplayPlayer(player);
++    }
++
++    @Override
++    public void doomdbDrawWidgets(boolean refresh) {
++        presentation.doomdbDrawWidgets(refresh);
+     }
+ }

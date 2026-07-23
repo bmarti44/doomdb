@@ -1,0 +1,23 @@
+PMLE_WAN_PROXY|READY|port=18050|upstream=http://127.0.0.1:8080|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-50-jitter-10|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=50|hidden_ms=12211.7|checkpoint_tic=32|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=684|advanced=715|resyncs=2|last_resync_at=679
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: soak player 0 final post-resync run is too short
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:280:12
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0
+
+PMLE_WAN_DIAGNOSTIC|VOIDED|reason=late_valid_resync_left_only_five_frames_before_harness_teardown|action=preserve_scored_window_then_wait_for_a_clean_40_frame_confirmed_tail

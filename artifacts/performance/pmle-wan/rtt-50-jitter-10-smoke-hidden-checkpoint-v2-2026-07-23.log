@@ -1,0 +1,14 @@
+PMLE_WAN_PROXY|READY|port=18050|upstream=http://127.0.0.1:8080|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-50-jitter-10|rtt_ms=50|jitter_ms=10|seed=351272
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForFunction: Timeout 60000ms exceeded.
+    at /Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:156:17 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v25.9.0
+PMLE_WAN_PROFILE|VOIDED|reason=checkpoint_request_required_newer_than_client_frontier|corrected=latest_retained_checkpoint_then_confirmed_replay

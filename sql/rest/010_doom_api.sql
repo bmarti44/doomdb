@@ -139,6 +139,19 @@ create or replace package doom_api authid definer as
     p_current_tic       out number,
     p_payload           out blob);
 
+  procedure match_checkpoint(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_after_tic         in  number,
+    p_ready             out number,
+    p_current_tic       out number,
+    p_checkpoint_tic    out number,
+    p_membership_epoch  out number,
+    p_generation        out number,
+    p_chain_sha         out varchar2,
+    p_checkpoint_sha    out varchar2,
+    p_payload           out blob);
+
   $if $$doom_dev_ojvm $then
   procedure poll_match_frame(
     p_match             in  varchar2,
@@ -288,6 +301,85 @@ create or replace package body doom_api as
       expires_at=p_now+interval '20' minute
       where match_id=p_match and match_state in('LOBBY','ACTIVE')
         and expires_at<p_now+interval '10' minute;
+  end;
+
+  -- Forward declarations keep the public checkpoint procedure adjacent to the
+  -- lease helper while retaining the shared helper definitions below.
+  procedure require_match_shape(p_match varchar2);
+  procedure copy_blob(p_source blob,p_target out blob);
+
+  procedure match_checkpoint(
+    p_match in varchar2,p_player_capability in varchar2,p_after_tic in number,
+    p_ready out number,p_current_tic out number,p_checkpoint_tic out number,
+    p_membership_epoch out number,p_generation out number,
+    p_chain_sha out varchar2,p_checkpoint_sha out varchar2,p_payload out blob
+  ) is
+    l_state varchar2(16);l_expiry timestamp with time zone;
+    l_slot number;l_now timestamp with time zone:=utc_now;
+    l_bytes number;l_actual_sha varchar2(64);l_source blob;
+  begin
+    p_ready:=0;p_current_tic:=null;p_checkpoint_tic:=p_after_tic;
+    p_membership_epoch:=null;p_generation:=null;p_chain_sha:=null;
+    p_checkpoint_sha:=null;p_payload:=null;require_match_shape(p_match);
+    if p_after_tic is null or p_after_tic<>trunc(p_after_tic) or
+       p_after_tic<0 then
+      fail(c_bad_request,'invalid match checkpoint frontier');
+    end if;
+    select match_state,expires_at,membership_epoch,generation,current_tic
+      into l_state,l_expiry,p_membership_epoch,p_generation,p_current_tic
+      from doom_match where match_id=p_match;
+    if l_state<>'ACTIVE' or l_expiry<=l_now or p_generation<1 or
+       p_after_tic>p_current_tic then
+      fail(c_match_auth,'match unavailable');
+    end if;
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    begin
+      select checkpoint_.tic,checkpoint_.checkpoint_sha,
+        checkpoint_.checkpoint_bytes,checkpoint_.checkpoint_blob,
+        transition_.chain_sha
+      into p_checkpoint_tic,p_checkpoint_sha,l_bytes,l_source,p_chain_sha
+      from (
+        select tic,checkpoint_sha,checkpoint_bytes,checkpoint_blob
+        from doom_match_checkpoint
+        where match_id=p_match and membership_epoch=p_membership_epoch
+          and generation=p_generation and tic>p_after_tic
+          and tic<=p_current_tic order by tic desc
+        fetch first 1 row only
+      ) checkpoint_ join doom_match_transition transition_
+        on transition_.match_id=p_match and transition_.tic=checkpoint_.tic
+        and transition_.membership_epoch=p_membership_epoch
+        and transition_.generation=p_generation;
+      if dbms_lob.getlength(l_source)<>l_bytes then
+        fail(c_bad_request,'match checkpoint length fence');
+      end if;
+      l_actual_sha:=lower(rawtohex(
+        dbms_crypto.hash(l_source,dbms_crypto.hash_sh256)));
+      if l_actual_sha<>p_checkpoint_sha then
+        fail(c_bad_request,'match checkpoint SHA fence');
+      end if;
+      copy_blob(l_source,p_payload);p_ready:=1;
+    exception when no_data_found then
+      p_checkpoint_tic:=p_after_tic;p_chain_sha:=null;
+      p_checkpoint_sha:=null;p_payload:=null;p_ready:=0;
+    end;
+    update doom_match_member set member_state='ACTIVE',last_seen_at=l_now,
+      disconnected_at=null where match_id=p_match and player_slot=l_slot
+      and member_state in('ACTIVE','DISCONNECTED')
+      and membership_epoch=p_membership_epoch and generation=p_generation;
+    renew_match_lease(p_match,l_now);
+    commit;
+  exception when no_data_found then
+    rollback;p_ready:=0;p_current_tic:=null;p_payload:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;
+    begin
+      rollback;p_ready:=0;p_current_tic:=null;p_payload:=null;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      end if;
+      raise_application_error(c_bad_request,'match checkpoint rejected');
+    end;
   end;
 
   $if $$doom_dev_ojvm $then
@@ -454,6 +546,7 @@ create or replace package body doom_api as
     l_solo_salt raw(32);l_solo_capability varchar2(64);l_solo_hash varchar2(64);
     l_host_hash varchar2(64);l_join_hash varchar2(64);l_player_hash varchar2(64);
     l_recent number;l_open number;l_lock number;l_match_limit number;
+    l_usable_authority number;
   begin
     p_match:=null;p_host_capability:=null;p_join_capability:=null;
     p_player_capability:=null;
@@ -486,6 +579,15 @@ create or replace package body doom_api as
       where match_state in('LOBBY','ACTIVE') and expires_at>l_now;
     if l_recent>=16 or l_open>=l_match_limit then
       fail(c_capacity,'match capacity reached');
+    end if;
+    select count(*) into l_usable_authority
+      from doom_mle_warm_slot s
+      where s.slot_status='READY' and s.stop_requested=0
+        and exists(
+          select 1 from user_scheduler_running_jobs r
+          where r.job_name=s.job_name and r.session_id=s.worker_sid);
+    if l_usable_authority=0 then
+      fail(c_capacity,'warm authority unavailable');
     end if;
 
     p_match:=lower(rawtohex(dbms_crypto.randombytes(16)));

@@ -1,0 +1,4 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+PMLE_PREWARM_DECOMPOSITION|BEGIN|composition=module_staging_then_checkpoint_bank_then_sequential_pool
+PASS PMLE-TEAVM-simulation-engine-headless bytes=1167202
+PMLE_PREWARM_DECOMPOSITION|VOIDED|reason=development_loader_default_selected_unpinned_bytes|expected_bytes=1167197|actual_bytes=1167202

@@ -14,11 +14,17 @@ assert.match(cleanup, /create or replace package doom_session_cleanup/i);
 assert.match(cleanup, /fetch first l_limit rows only/i);
 assert.match(cleanup, /doom_unified_worker\.request_stop/);
 assert.match(cleanup, /user_scheduler_running_jobs/);
-assert.match(cleanup, /dbms_scheduler\.stop_job\(l_job,true\)/);
+assert.match(cleanup, /doom_worker_lifecycle\.stop_job\(/);
+assert.doesNotMatch(cleanup, /dbms_scheduler\.stop_job\(/);
 assert.match(cleanup, /expired owner reclaimed/);
 assert.match(cleanup, /procedure purge_expired_matches/);
 assert.match(cleanup, /delete from doom_match where match_id=expired_\.match_id/);
 assert.match(cleanup, /doom_match_worker\.stop_match/);
+assert.match(cleanup, /l_job like 'DOOM_MLE_WARM\\_%' escape '\\'/);
+assert.match(cleanup,
+  /select count\(\*\) into l_assigned from doom_mle_warm_slot[\s\S]+assigned_match=expired_\.match_id/);
+assert.match(cleanup, /if l_assigned<>0 then[\s\S]+rollback;[\s\S]+continue;/);
+assert.match(cleanup, /else[\s\S]+dbms_scheduler\.drop_job\(l_job,true\)/);
 assert.match(cleanup, /DOOM_EXPIRED_SESSION_PURGE/);
 assert.match(cleanup, /FREQ=MINUTELY;INTERVAL=1/);
 

@@ -3,8 +3,8 @@ const AUTHORITY = {
     sha: 'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2'
 };
 const PRESENTATION = {
-    url: '/play/doom-mle-presentation-d45863e0c1be.js',
-    sha: 'd45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c'
+    url: '/play/doom-mle-presentation-e55d5f1138fa.js',
+    sha: 'e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc'
 };
 const IWAD = {
     url: '/play/freedoom1-7323bcc168c5.bin',
@@ -66,4 +66,23 @@ export async function createBrowserAuthorityEngines(status) {
     initialize(authority, status, iwad, tables);
     initialize(presentation, status, iwad, tables);
     return { verifier: authority, presenter: presentation };
+}
+/** Restore both independent confirmed-only engines from one SHA-verified DMC1. */
+export async function restoreBrowserAuthorityCheckpoint(engines, checkpoint, expectedSha, expectedTic) {
+    if (!/^[0-9a-f]{64}$/.test(expectedSha) ||
+        !Number.isInteger(expectedTic) || expectedTic < 1) {
+        throw new TypeError('browser checkpoint fence is invalid');
+    }
+    const actual = hex(new Uint8Array(await crypto.subtle.digest('SHA-256', checkpoint)));
+    if (actual !== expectedSha) {
+        throw new Error('browser checkpoint integrity failed');
+    }
+    for (const value of [engines.verifier, engines.presenter]) {
+        const engine = value;
+        load(engine, checkpoint, engine.allocateCheckpoint, engine.loadCheckpointChunk, 'DMC1 checkpoint');
+        const restored = engine.restoreCheckpoint(expectedTic);
+        if (!restored.includes(`state=restored|gametic=${expectedTic}|`)) {
+            throw new Error(`browser checkpoint restore failed: ${restored}`);
+        }
+    }
 }

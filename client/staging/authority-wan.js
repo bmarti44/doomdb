@@ -42,11 +42,13 @@ export class ConfirmedWanPolicy {
     get neutralSubstitutionRate() {
         return this.scheduled === 0 ? 0 : this.substituted / this.scheduled;
     }
-    observeRoundTrip(roundTripMs, nowMs) {
+    observeRoundTrip(roundTripMs, nowMs, minimumLeadTics = MIN_INPUT_LEAD) {
         addSample(this.rttSamples, roundTripMs);
-        if (!Number.isFinite(nowMs))
-            throw new TypeError('WAN clock is invalid');
-        const desired = clamp(Math.ceil(percentile(this.rttSamples, 0.90) / TIC_MS) + 1, MIN_INPUT_LEAD, MAX_INPUT_LEAD);
+        if (!Number.isFinite(nowMs) || !Number.isInteger(minimumLeadTics) ||
+            minimumLeadTics < MIN_INPUT_LEAD) {
+            throw new TypeError('WAN clock/lead sample is invalid');
+        }
+        const desired = clamp(Math.max(Math.ceil(percentile(this.rttSamples, 0.90) / TIC_MS) + 1, minimumLeadTics), MIN_INPUT_LEAD, MAX_INPUT_LEAD);
         if (desired === this.inputLead ||
             nowMs - this.lastLeadAdjustmentMs < LEAD_HYSTERESIS_MS)
             return;

@@ -4,7 +4,7 @@ set -Eeuo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 destination="$root/client/dist/play"
-authority="$project/target/javascript/doom-mle-simulation-engine-headless.js"
+authority="$destination/doom-mle-authority-a942cd2dcbdc.js"
 presentation="$project/target/javascript/doom-mle-presentation-engine-headless.js"
 tables="$project/target/canonical-runtime-v2.bin"
 iwad="$project/target/iwad-smoke/freedoom1.wad"
@@ -27,15 +27,15 @@ verify_copy() {
 }
 
 mkdir -p "$destination"
-verify_copy "$authority" "$destination/doom-mle-authority-a942cd2dcbdc.js" \
-  a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2
-verify_copy "$presentation" "$destination/doom-mle-presentation-d45863e0c1be.js" \
-  d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c
+[[ "$(shasum -a 256 "$authority" | awk '{print $1}')" == \
+  a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2 ]]
+verify_copy "$presentation" "$destination/doom-mle-presentation-e55d5f1138fa.js" \
+  e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc
 verify_copy "$tables" "$destination/canonical-runtime-v2-058cd0df9444.bin" \
   058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
 verify_copy "$iwad" "$destination/freedoom1-7323bcc168c5.bin" \
   7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d
 printf 'PASS PMLE-BROWSER-ASSETS authority=%s presentation=%s iwad_bytes=%s\n' \
   a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2 \
-  d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c \
+  e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc \
   "$(wc -c <"$iwad" | tr -d '[:space:]')"

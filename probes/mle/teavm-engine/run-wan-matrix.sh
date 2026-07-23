@@ -84,6 +84,9 @@ update doom_match_poll_capacity set long_poll_enabled=1 where capacity_id=1;
 commit;
 SQL
 long_poll_enabled=1
+printf '%s\n' \
+  'PMLE_WAN_TRANSPORT|long_poll=ON|hold_ms=500|ords_pool_sessions=6|pool_reserve=2|max_held_polls=4|resmgr_running_sessions=2|worker_reserve=1|max_concurrent_poll_returns=1|background_refocus=ON' \
+  | tee -a "$matrix_log"
 
 profile_count=0
 while IFS='|' read -r name port rtt jitter seed upstream; do
@@ -115,6 +118,7 @@ while IFS='|' read -r name port rtt jitter seed upstream; do
     DOOMDB_WAN_RTT_MS="$rtt" \
     DOOMDB_WAN_JITTER_MS="$jitter" \
     DOOMDB_WAN_HOLD_MS=500 \
+    DOOMDB_WAN_BACKGROUND_SCENARIO=1 \
       bash "$root/tests/verify-p13.5-multiplayer-soak.sh"
   } 2>&1 | tee -a "$profile_log" "$matrix_log"
   grep -q "PMLE_WAN_GATE|PASS|rtt_ms=$rtt|jitter_ms=$jitter|seconds=$duration" \

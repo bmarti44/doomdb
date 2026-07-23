@@ -25,10 +25,10 @@ try {
   assert.equal(await page.locator('#authority-artifact').textContent(),
     'a942cd2dcbdc…');
   assert.equal(await page.locator('#presentation-artifact').textContent(),
-    'd45863e0c1be…');
+    'e55d5f1138fa…');
   assert.equal(await page.locator('#ledger-state').textContent(),
     'PASS · 13,272');
-  assert.equal(await page.locator('#soak-state').textContent(), 'RERUN · 30 min');
+  assert.equal(await page.locator('#soak-state').textContent(), 'PASS · 30 MINUTES');
   assert.equal(await page.locator('a[href="/play/"]').first().getAttribute('href'),
     '/play/');
   assert.equal(await page.locator(

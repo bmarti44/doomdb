@@ -1,0 +1,3 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+PMLE_PREWARM_DECOMPOSITION|BEGIN|composition=module_staging_then_checkpoint_bank_then_sequential_pool
+PMLE_PREWARM_DECOMPOSITION|VOIDED|reason=retained_context_library_cache_pin_preceded_staging|corrected_order=retire_pool_then_stage

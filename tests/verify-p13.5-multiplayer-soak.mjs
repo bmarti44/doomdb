@@ -11,12 +11,14 @@ const wanGate=process.env.DOOMDB_WAN_GATE==='1';
 const wanRttMs=Number(process.env.DOOMDB_WAN_RTT_MS??0);
 const wanJitterMs=Number(process.env.DOOMDB_WAN_JITTER_MS??0);
 const wanHoldMs=Number(process.env.DOOMDB_WAN_HOLD_MS??0);
+const wanBackgroundScenario=process.env.DOOMDB_WAN_BACKGROUND_SCENARIO==='1';
 assert.ok(Number.isInteger(seconds)&&seconds>=20&&seconds<=1800);
 assert.ok(Number.isInteger(warmupSeconds)&&warmupSeconds>=0&&warmupSeconds<=600);
 assert.ok(Number.isInteger(startupTimeoutMs)&&startupTimeoutMs>=60000&&startupTimeoutMs<=600000);
 if(wanGate) {
   assert.ok(wanRttMs>0&&wanJitterMs>=0&&wanJitterMs<=wanRttMs);
   assert.ok(wanHoldMs>=0&&wanHoldMs<=500);
+  if(wanBackgroundScenario) assert.ok(warmupSeconds>=20);
 }
 const matchFile=process.env.DOOMDB_MATCH_ID_FILE;
 assert.ok(matchFile,'DOOMDB_MATCH_ID_FILE is required');
@@ -42,6 +44,17 @@ const workerMemory=match=>{
   return {sessions:Number(row[1]),doomSessions:Number(row[2]),pga:Number(row[3]),
     uga:Number(row[4]),javaSession:Number(row[5]),javaCall:Number(row[6]),gc:Number(row[7])};
 };
+const heldPollLeases=(match,playerSlot)=>{
+  const sql=`alter session set container=freepdb1;\n`+
+    `set heading off feedback off pagesize 0 linesize 32767 trimspool on\n`+
+    `select 'DMB1_LEASES|'||count(*) from doom.doom_match_poll_lease `+
+    `where match_id='${match}' and player_slot=${playerSlot};\n`;
+  const output=execFileSync('docker',['exec','-i',dbContainer,'sqlplus','-s',
+    '/','as','sysdba'],{input:sql,encoding:'utf8'});
+  const row=output.match(/DMB1_LEASES\|(\d+)/);
+  assert.ok(row,'DMB1 lease evidence missing');
+  return Number(row[1]);
+};
 // Both pages represent foreground clients on separate user devices. Chromium
 // otherwise begins background/occluded-tab timer throttling after five minutes
 // in one headless process, manufacturing an ~17 FPS tail that real foreground
@@ -61,6 +74,8 @@ await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
   window.__doomWanEffective=[];
   window.__doomWanConfirmed=[];
   window.__doomWanPresented=[];
+  window.__doomWanVisibility=[];
+  window.__doomWanLead=[];
   addEventListener('doom:multiplayer-present',event=>{
     window.__doomSoakTics.push(event.detail.tic);
     window.__doomSoakPaintAt.push(performance.now());
@@ -75,6 +90,10 @@ await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
     window.__doomWanEffective.push(event.detail));
   addEventListener('doom:multiplayer-confirmed',event=>
     window.__doomWanConfirmed.push(event.detail));
+  addEventListener('doom:multiplayer-visibility',event=>
+    window.__doomWanVisibility.push(event.detail));
+  addEventListener('doom:multiplayer-lead',event=>
+    window.__doomWanLead.push(event.detail));
 })));
 let match='';
 try {
@@ -113,7 +132,64 @@ try {
     return text.includes('confirmed-only')&&window.__doomSoakTics.length>=40&&
       server-tic<=8;
   },null,{timeout:60000})));
-  if (warmupSeconds>0) await host.waitForTimeout(warmupSeconds*1000);
+  let backgroundSummary='';
+  const warmupStarted=Date.now();
+  if(wanBackgroundScenario) {
+    const presentationBefore=await guest.evaluate(()=>window.__doomSoakTics.length);
+    // Headless Chromium deliberately keeps every page "visible". Shadow the
+    // standard readonly Document property on this test page, then dispatch the
+    // real lifecycle event; production code has no test-only control surface.
+    await guest.evaluate(()=>{
+      Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await guest.waitForFunction(()=>document.hidden&&
+      window.__doomWanVisibility.some(value=>
+        value.state==='hidden'&&value.strategy==='suspend'));
+    await host.waitForTimeout(2000);
+    assert.equal(heldPollLeases(match,1),0,
+      'hidden guest retained a DMB1 poll lease');
+    await guest.waitForFunction(()=>window.__doomWanVisibility.some(value=>
+      value.state==='hidden'&&value.strategy==='poll-lease-released'));
+    await host.waitForTimeout(10000);
+    await guest.evaluate(()=>{
+      Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    try {
+      await guest.waitForFunction(()=>!document.hidden&&
+        window.__doomWanVisibility.some(value=>
+          value.state==='visible'&&value.strategy==='checkpoint-resync'),
+        null,{timeout:60000});
+    } catch (cause) {
+      const diagnostic=await guest.evaluate(()=>({
+        hidden:document.hidden,
+        hud:document.querySelector('[data-hud]')?.textContent??'',
+        hudError:document.querySelector('[data-hud]')?.classList.contains('error'),
+        visibility:window.__doomWanVisibility,
+        resyncs:window.__doomSoakResyncs
+      }));
+      process.stdout.write(`PMLE_WAN_BACKGROUND|FAIL|diagnostic=${
+        JSON.stringify(diagnostic)}\n`);
+      throw cause;
+    }
+    await guest.waitForFunction(before=>window.__doomSoakTics.length>=before+40,
+      presentationBefore,{timeout:60000});
+    const visibility=await guest.evaluate(()=>window.__doomWanVisibility);
+    const checkpoint=visibility.findLast(value=>
+      value.state==='visible'&&value.strategy==='checkpoint-resync');
+    assert.ok(checkpoint?.hiddenMs>=5000,
+      'background checkpoint staleness threshold was not exercised');
+    backgroundSummary=` hiddenMs=${checkpoint.hiddenMs.toFixed(1)}`+
+      ` checkpointTic=${checkpoint.frontierTic} leasesAfter2s=0 resumed=1`;
+    process.stdout.write(`PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=${wanRttMs}|`+
+      `hidden_ms=${checkpoint.hiddenMs.toFixed(1)}|checkpoint_tic=`+
+      `${checkpoint.frontierTic}|leases_after_2s=0|presentations_after_focus=40\n`);
+  }
+  if (warmupSeconds>0) {
+    const remaining=warmupSeconds*1000-(Date.now()-warmupStarted);
+    if(remaining>0) await host.waitForTimeout(remaining);
+  }
   const measurementStarts=await Promise.all([host,guest].map(page=>
     page.evaluate(()=>performance.now())));
   const ticOf=async page=>Number((await page.locator('[data-hud]').textContent()??'')
@@ -154,6 +230,15 @@ try {
     samples+=1;
   }
   await Promise.all([host,guest].map(page=>page.keyboard.up('w')));
+  if(wanGate) {
+    // A recovery in the final instant of the scored window must still prove
+    // a continuous confirmed tail. Extend observation, never shorten or
+    // discard the completed scoring interval.
+    await Promise.all([host,guest].map(page=>page.waitForFunction(()=>{
+      const last=window.__doomSoakResyncs.at(-1)?.atCount??0;
+      return window.__doomSoakTics.length-last>=40;
+    },null,{timeout:60000})));
+  }
   const ends=await Promise.all([host,guest].map(ticOf));
   const evidence=await Promise.all([host,guest].map((page,slot)=>page.evaluate(
     ({start,measurementStart})=>({
@@ -163,6 +248,7 @@ try {
         .map(value=>({...value,atCount:value.atCount-start})),
       inputs:window.__doomWanInputs.filter(value=>value.at>=measurementStart),
       effective:window.__doomWanEffective.filter(value=>value.at>=measurementStart),
+      lead:window.__doomWanLead.filter(value=>value.at>=measurementStart),
       confirmed:window.__doomWanConfirmed.filter(value=>value.at>=measurementStart),
       presentedDetails:window.__doomWanPresented.filter(value=>
         value.at>=measurementStart)
@@ -210,19 +296,16 @@ try {
     if(wanGate) {
       const inputBySequence=new Map(evidence[slot].inputs.map(value=>
         [value.inputSequence,value]));
-      const effectLatencies=[];const roundTrips=[];const leadChanges=[];
-      let priorLead=null;let priorLeadAt=Number.NEGATIVE_INFINITY;
+      const effectLatencies=[];const roundTrips=[];
+      let priorLead=null;
       for(const effective of evidence[slot].effective) {
         roundTrips.push(effective.roundTripMs);
         if(priorLead===null) {
-          priorLead=effective.leadTics;priorLeadAt=effective.at;
+          priorLead=effective.leadTics;
         } else if(effective.leadTics!==priorLead) {
           assert.equal(Math.abs(effective.leadTics-priorLead),1,
             `WAN player ${slot} lead jumped`);
-          assert.ok(effective.at-priorLeadAt>=9990,
-            `WAN player ${slot} lead oscillated inside ten seconds`);
-          leadChanges.push({at:effective.at,from:priorLead,to:effective.leadTics});
-          priorLead=effective.leadTics;priorLeadAt=effective.at;
+          priorLead=effective.leadTics;
         }
         const input=inputBySequence.get(effective.inputSequence);
         if(input===undefined) continue;
@@ -235,6 +318,18 @@ try {
         `WAN player ${slot} has too few input/presentation pairs`);
       assert.ok(roundTrips.length>=Math.max(20,seconds),
         `WAN player ${slot} has too few RTT samples`);
+      for(let index=0;index<evidence[slot].lead.length;index+=1) {
+        const current=evidence[slot].lead[index];
+        assert.equal(Math.abs(current.to-current.from),1,
+          `WAN player ${slot} lead adjustment jumped`);
+        if(index>0) {
+          const prior=evidence[slot].lead[index-1];
+          assert.equal(current.from,prior.to,
+            `WAN player ${slot} lead adjustment chain broke`);
+          assert.ok(current.at-prior.at>=9990,
+            `WAN player ${slot} lead oscillated inside ten seconds`);
+        }
+      }
       for(let index=1;index<evidence[slot].confirmed.length;index+=1) {
         assert.ok(evidence[slot].confirmed[index].tic>
           evidence[slot].confirmed[index-1].tic,
@@ -261,7 +356,7 @@ try {
         `WAN player ${slot} presentation p99 ${p99Interval.toFixed(1)} ms`);
       wanMetrics.push({inputPresentationP95Ms:p95,rttP90Ms:rttP90,maxLead,
         maxPlayout,
-        leadChanges:leadChanges.length,presentationP99Ms:p99Interval});
+        leadChanges:evidence[slot].lead.length,presentationP99Ms:p99Interval});
     }
   }
 
@@ -322,7 +417,7 @@ try {
         value.inputPresentationP95Ms.toFixed(1),value.rttP90Ms.toFixed(1),
         value.maxLead,value.maxPlayout,value.leadChanges,
         value.presentationP99Ms.toFixed(1)
-      ].join('/')).join(',')}\n`);
+      ].join('/')).join(',')}${backgroundSummary}\n`);
   }
   let memorySummary='';
   if (memoryBaseline!==null) {

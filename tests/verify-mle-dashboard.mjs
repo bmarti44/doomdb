@@ -35,7 +35,8 @@ assert.equal(status.schema, 1);
 assert.equal(status.artifacts.authority.sha256,
   'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2');
 assert.equal(status.artifacts.presentation.sha256,
-  'd45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c');
+  'e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc');
+assert.equal(status.gates.presentationHud96Tics, 'PASS');
 assert.equal(status.gates.ledgerEveryTic13272, 'PASS');
 assert.equal(status.gates.finalWorkerSoak, 'PASS');
 assert.equal(status.gates.lifecycleHardening, 'PASS');

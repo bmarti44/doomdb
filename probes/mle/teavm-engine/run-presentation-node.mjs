@@ -1,6 +1,11 @@
 import {createHash} from 'node:crypto';
 import fs from 'node:fs';
-import {
+import path from 'node:path';
+import {pathToFileURL} from 'node:url';
+
+const artifactPath = process.argv[4]
+  ?? './target/javascript/doom-mle-presentation-engine-headless.js';
+const {
   allocateIwad,
   allocateTablePack,
   canonicalStateChunk,
@@ -14,19 +19,21 @@ import {
   release,
   renderPlayerFrame,
   stepMultiplayerAuthoritative,
-} from './target/javascript/doom-mle-presentation-engine-headless.js';
+} = await import(pathToFileURL(path.resolve(
+  import.meta.dirname, artifactPath)).href);
 
 const iwadPath = process.argv[2];
 const tablePackPath = process.argv[3];
 if (!iwadPath || !tablePackPath) {
   throw new Error(
-    'usage: node run-presentation-node.mjs IWAD CANONICAL_TABLE_PACK',
+    'usage: node run-presentation-node.mjs IWAD CANONICAL_TABLE_PACK [ARTIFACT]',
   );
 }
 const iwad = fs.readFileSync(iwadPath);
 const tablePack = fs.readFileSync(tablePackPath);
 const chunkBytes = 1024 * 1024;
 const sampleTics = 96;
+const frameDumpDirectory = process.env.PMLE_PRESENTATION_FRAME_DIR;
 
 function loadBytes(allocate, load, bytes, label) {
   if (allocate(bytes.length) !== bytes.length) {
@@ -144,6 +151,14 @@ for (let tic = 1; tic <= sampleTics; tic += 1) {
         hudNonzero: hud.reduce(
           (count, value) => count + (value === 0 ? 0 : 1), 0),
       };
+      if (frameDumpDirectory) {
+        fs.mkdirSync(frameDumpDirectory, {recursive: true});
+        fs.writeFileSync(`${frameDumpDirectory}/player-${player}-tic-1.pgm`,
+          Buffer.concat([
+            Buffer.from('P5\n320 200\n255\n', 'ascii'),
+            Buffer.from(frame),
+          ]));
+      }
     }
   }
   const afterRender = canonicalBytes();
@@ -172,6 +187,20 @@ for (let player = 0; player < 2; player += 1) {
       JSON.stringify(firstFrameStats)} ${presentationDiagnostic()}`);
   }
 }
+const expectedHudSha256 = [
+  // These include the animated face patch. The earlier presentation root
+  // painted that 24x29 region with one flat palette index and therefore
+  // passed density checks while visibly omitting Doomguy.
+  'dd2e30a5ca3d0ecdfbce78bf82bdc03898bffc19d201e571fee769eea50bf032',
+  '96882b5d2d1fceed8d83437b13f3976eec2c140ee2b3d8c2cbaada0af665a0af',
+];
+for (let player = 0; player < expectedHudSha256.length; player += 1) {
+  if (firstFrameStats[player].hudSha256 !== expectedHudSha256[player]) {
+    throw new Error(`presentation HUD semantic golden mismatch for player ${
+      player}: ${firstFrameStats[player].hudSha256} expected ${
+      expectedHudSha256[player]}`);
+  }
+}
 console.log(
   `PMLE_TEAVM_PRESENTATION|PASS|tics=${sampleTics}`
   + `|pov0_unique=${frameHashes[0].size}|pov1_unique=${frameHashes[1].size}`
@@ -184,6 +213,7 @@ console.log(
   + `|render_canonical_mutations=${renderCanonicalMutations}`
   + `|mapped_line_residue_bytes=${mappedResidueBytes}`
   + `|mapped_line_residue_max=${mappedResidueMax}`
-  + `|next_tic_world_residue=0|memory=${memoryDiagnostic()}`,
+  + `|next_tic_world_residue=0|presentation=${presentationDiagnostic()}`
+  + `|memory=${memoryDiagnostic()}`,
 );
 release();

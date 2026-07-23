@@ -18,11 +18,27 @@ type RestDocument = Record<string, unknown>;
 const ROOT = '/ords/doom/doom_api/';
 let uppercaseProcedures = true;
 
-async function post(path: string, body: RestDocument): Promise<RestDocument> {
+export class MatchCapacityError extends Error {
+  constructor() {
+    super('Oracle match capacity is temporarily occupied.');
+    this.name = 'MatchCapacityError';
+  }
+}
+
+export class MatchUnavailableError extends Error {
+  constructor() {
+    super('This Oracle match has ended. Start a new game to continue.');
+    this.name = 'MatchUnavailableError';
+  }
+}
+
+async function post(path: string, body: RestDocument,
+                    signal?: AbortSignal): Promise<RestDocument> {
   const request = () => fetch(`${ROOT}${uppercaseProcedures ? path.toUpperCase() : path}`, {
     method: 'POST',
     headers: {'content-type': 'application/json'},
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    ...(signal === undefined ? {} : {signal})
   });
   let response = await request();
   // ORDS 26.2's generated package endpoints retain catalog case. Keep a
@@ -31,7 +47,15 @@ async function post(path: string, body: RestDocument): Promise<RestDocument> {
     uppercaseProcedures = !uppercaseProcedures;
     response = await request();
   }
-  if (!response.ok) throw new Error(`${path} request failed: ${response.status}`);
+  if (!response.ok) {
+    if (response.status === 555) {
+      const detail = await response.text();
+      if (detail.includes('ORA-20713')) throw new MatchUnavailableError();
+      if (path.toLowerCase() === 'create_match' ||
+          detail.includes('ORA-20702')) throw new MatchCapacityError();
+    }
+    throw new Error(`${path} request failed: ${response.status}`);
+  }
   const value: unknown = await response.json();
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new TypeError(`${path} response is invalid`);
@@ -55,11 +79,17 @@ async function postStep(body: RestDocument): Promise<RestDocument> {
   throw lastFailure ?? new Error('step request failed');
 }
 
-async function postAsync(path: string, body: RestDocument): Promise<RestDocument> {
+async function postAsync(path: string, body: RestDocument,
+                         signal?: AbortSignal): Promise<RestDocument> {
   let lastFailure: Error | undefined;
+  const aborted = (): boolean => signal !== undefined && signal.aborted;
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    try { return await post(path, body); }
+    if (aborted()) throw signal?.reason;
+    try { return await post(path, body, signal); }
     catch (cause) {
+      if (aborted() || cause instanceof DOMException &&
+          cause.name === 'AbortError') throw cause;
+      if (cause instanceof MatchUnavailableError) throw cause;
       lastFailure = cause instanceof Error ? cause : new Error(`${path} request failed`);
       if (attempt === 7) break;
       await delay(Math.min(25 * (2 ** attempt), 500));
@@ -164,12 +194,12 @@ function capabilityField(document: RestDocument, name: string): string {
 
 export async function createMatch(displayName: string, skill = 3,
                                   gameMode: 'COOP' | 'DEATHMATCH' = 'COOP',
-                                  maxPlayers = 2):
+                                  maxPlayers = 2, signal?: AbortSignal):
                                   Promise<MatchCredentials> {
   const document = await post('create_match', {
     p_game_mode: gameMode, p_skill: skill, p_episode: 1, p_map: 1,
     p_display_name: displayName, p_max_players: maxPlayers
-  });
+  }, signal);
   const match = stringField(document, 'p_match');
   if (!/^[0-9a-f]{32}$/.test(match)) throw new TypeError('match response is invalid');
   return {
@@ -355,13 +385,13 @@ export async function pollMatchBatch(match: string, playerCapability: string,
 
 export async function pollMatchTransitions(
   match: string, playerCapability: string, afterTic: number,
-  holdMilliseconds = 500, maxTransitions = 32
+  holdMilliseconds = 500, maxTransitions = 32, signal?: AbortSignal
 ): Promise<{currentTic: number; payload: string; ready: boolean}> {
   const document = await postAsync('poll_match_transitions', {
     p_match: match, p_player_capability: playerCapability,
     p_after_tic: afterTic, p_hold_ms: holdMilliseconds,
     p_max_transitions: maxTransitions
-  });
+  }, signal);
   const ready = numberField(document, 'p_ready');
   if (ready !== 0 && ready !== 1) {
     throw new TypeError('p_ready response field is invalid');
@@ -369,6 +399,42 @@ export async function pollMatchTransitions(
   // Timeout is a valid DMB1 batch with zero records, not a missing payload.
   return {currentTic: numberField(document, 'p_current_tic'),
     payload: stringField(document, 'p_payload'), ready: ready === 1};
+}
+
+export async function matchCheckpoint(
+  match: string, playerCapability: string, afterTic: number
+): Promise<{
+  ready: boolean;
+  currentTic: number;
+  checkpointTic: number;
+  membershipEpoch: number;
+  generation: number;
+  chainSha: string;
+  checkpointSha: string;
+  payload: string | null;
+}> {
+  const document = await postAsync('match_checkpoint', {
+    p_match: match, p_player_capability: playerCapability,
+    p_after_tic: afterTic
+  });
+  const ready = numberField(document, 'p_ready');
+  if (ready !== 0 && ready !== 1) {
+    throw new TypeError('p_ready response field is invalid');
+  }
+  const optionalString = (name: string): string => {
+    const value = document[name];
+    return typeof value === 'string' ? value : '';
+  };
+  return {
+    ready: ready === 1,
+    currentTic: numberField(document, 'p_current_tic'),
+    checkpointTic: numberField(document, 'p_checkpoint_tic'),
+    membershipEpoch: numberField(document, 'p_membership_epoch'),
+    generation: numberField(document, 'p_generation'),
+    chainSha: optionalString('p_chain_sha'),
+    checkpointSha: optionalString('p_checkpoint_sha'),
+    payload: ready === 1 ? stringField(document, 'p_payload') : null
+  };
 }
 
 export async function pollMatchFrame(match: string, playerCapability: string,

@@ -15,6 +15,12 @@ for (let time = 20_002; time < 100_000; time += 10_001) {
   policy.observeRoundTrip(400, time);
 }
 assert.equal(policy.inputLeadTics, 12, 'lead must clamp at twelve tics');
+const gapPolicy = new ConfirmedWanPolicy();
+gapPolicy.observeRoundTrip(50, 0, 7);
+assert.equal(gapPolicy.inputLeadTics, 3, 'frontier gap still moves one tic');
+gapPolicy.observeRoundTrip(50, 10_001, 7);
+assert.equal(gapPolicy.inputLeadTics, 4);
+assert.throws(()=>gapPolicy.observeRoundTrip(50,20_002,1),/invalid/);
 
 policy.observeConfirmedDelivery(0);
 policy.observeConfirmedDelivery(28.6);
