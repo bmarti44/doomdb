@@ -18,6 +18,7 @@ import m.fixed_t;
 import org.teavm.jso.JSExport;
 import org.teavm.jso.typedarrays.Uint8Array;
 import doom.thinker_t;
+import rr.patch_t;
 import savegame.IDoomSaveGame;
 import savegame.IDoomSaveGameHeader;
 import savegame.VanillaDSG;
@@ -886,6 +887,14 @@ public final class SimulationEngineReachabilityProbe {
       engine.statusBar.doomdbDisplayPlayer(playerSlot);
       if (engine.headsUp != null) engine.headsUp.doomdbDisplayPlayer(playerSlot);
       engine.Display();
+      // Mocha's desktop status lifecycle never populates its off-screen SB
+      // buffer in the TeaVM headless engine. Compose the two immutable
+      // backgrounds directly, then retain Mocha's exact widget rules for the
+      // per-player values. This is presentation-only state and the canonical
+      // before/after guard proves it cannot mutate authority.
+      drawIndexedPatch(engine.wadLoader.CachePatchName("STBAR"), 0, 168);
+      drawIndexedPatch(engine.wadLoader.CachePatchName("STFB" + playerSlot), 143, 168);
+      engine.statusBar.doomdbDrawWidgets(true);
       Object foreground = engine.graphicSystem.getScreen(DoomScreen.FG);
       if (!(foreground instanceof byte[]) || ((byte[]) foreground).length != 320 * 200) {
         throw new IllegalStateException("indexed framebuffer unavailable");
@@ -904,10 +913,82 @@ public final class SimulationEngineReachabilityProbe {
     }
   }
 
-  /** Select the fixed full-screen browser view without exporting it to MLE. */
+  private static void drawIndexedPatch(patch_t patch, int x, int y) {
+    byte[] destination = (byte[]) engine.graphicSystem.getScreen(DoomScreen.FG);
+    int originX = x - patch.leftoffset;
+    int originY = y - patch.topoffset;
+    for (int columnIndex = 0; columnIndex < patch.width; columnIndex++) {
+      int targetX = originX + columnIndex;
+      if (targetX < 0 || targetX >= 320) continue;
+      rr.column_t column = patch.columns[columnIndex];
+      for (int post = 0;
+          post < column.posts && column.postdeltas[post] != 0xff;
+          post++) {
+        int targetY = originY + column.postdeltas[post];
+        for (int pixel = 0; pixel < column.postlen[post]; pixel++) {
+          int screenY = targetY + pixel;
+          if (screenY >= 0 && screenY < 200) {
+            destination[screenY * 320 + targetX] =
+                column.data[column.postofs[post] + pixel];
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Select Doom's full-width gameplay view with the canonical 32-pixel status
+   * bar. Screenblocks 11 hid the HUD and made the presentation artifact an
+   * incomplete world-only renderer; screenblocks 10 retains the exact Mocha
+   * status-bar composition while preserving the 320x200 indexed framebuffer.
+   */
   static void initializePresentationView() {
     if (engine == null) throw new IllegalStateException("engine is not initialized");
-    engine.sceneRenderer.SetViewSize(11, 0);
+    engine.sceneRenderer.SetViewSize(10, 0);
+  }
+
+  /** Expose presentation geometry without adding it to the authority root. */
+  static String presentationDiagnostic() {
+    if (engine == null) throw new IllegalStateException("engine is not initialized");
+    Object foreground = engine.graphicSystem.getScreen(DoomScreen.FG);
+    Object status = engine.graphicSystem.getScreen(DoomScreen.SB);
+    patch_t statusPatch = engine.wadLoader.CachePatchName("STBAR");
+    int statusPosts = 0;
+    int statusPixels = 0;
+    int statusData = 0;
+    if (statusPatch.columns != null) {
+      for (int index = 0; index < statusPatch.columns.length; index++) {
+        if (statusPatch.columns[index] != null) {
+          statusPosts += statusPatch.columns[index].posts;
+          for (int post = 0; post < statusPatch.columns[index].posts; post++) {
+            statusPixels += statusPatch.columns[index].postlen[post];
+          }
+          statusData += nonzero(statusPatch.columns[index].data, 0,
+              statusPatch.columns[index].data.length);
+        }
+      }
+    }
+    return "fullHeight=" + engine.sceneRenderer.isFullHeight()
+        + "|fullScreen=" + engine.sceneRenderer.isFullScreen()
+        + "|setSizeNeeded=" + engine.sceneRenderer.getSetSizeNeeded()
+        + "|statusHeight=" + engine.statusBar.getHeight()
+        + "|fgHud=" + nonzero((byte[]) foreground, 320 * 168, 320 * 32)
+        + "|statusBuffer=" + nonzero((byte[]) status, 0, 320 * 32)
+        + "|statusPatch=" + statusPatch.width + "x" + statusPatch.height
+        + "|statusColumns=" + (statusPatch.columns == null ? -1
+            : statusPatch.columns.length)
+        + "|statusPosts=" + statusPosts
+        + "|statusPixels=" + statusPixels
+        + "|statusData=" + statusData;
+  }
+
+  private static int nonzero(byte[] bytes, int offset, int length) {
+    int count = 0;
+    int end = Math.min(bytes.length, offset + length);
+    for (int index = offset; index < end; index++) {
+      if (bytes[index] != 0) count++;
+    }
+    return count;
   }
 
   /** Describe a DMS1 byte offset for presentation-residue diagnostics. */

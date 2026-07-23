@@ -3,6 +3,9 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 order_file="${DOOMDB_BOOTSTRAP_ORDER:-$root/sql/bootstrap/order.txt}"
+if [[ "$(basename "$order_file")" == production-order.txt ]]; then
+  export DOOMDB_PLSQL_CCFLAGS=doom_dev_ojvm:false
+fi
 
 if [[ $# -ne 0 ]]; then
   printf 'usage: %s\n' "$0" >&2
@@ -25,6 +28,17 @@ while IFS= read -r entry || [[ -n "$entry" ]]; do
     seen[$entry]=1
     printf 'BOOTSTRAP %03d %s\n' "$((count + 1))" "$entry"
     "$root/scripts/load_seed.sh"
+    count=$((count + 1))
+    continue
+  fi
+  if [[ "$entry" == '@mle-module' ]]; then
+    if [[ -n "${seen[$entry]:-}" ]]; then
+      printf 'duplicate bootstrap entry: %s\n' "$entry" >&2
+      exit 1
+    fi
+    seen[$entry]=1
+    printf 'BOOTSTRAP %03d %s\n' "$((count + 1))" "$entry"
+    "$root/probes/mle/teavm-engine/load-mle-module.sh" --production
     count=$((count + 1))
     continue
   fi

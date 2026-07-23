@@ -10,6 +10,7 @@ import {
   loadIwadChunk,
   loadTablePackChunk,
   memoryDiagnostic,
+  presentationDiagnostic,
   release,
   renderPlayerFrame,
   stepMultiplayerAuthoritative,
@@ -133,10 +134,15 @@ for (let tic = 1; tic <= sampleTics; tic += 1) {
     }
     frameHashes[player].add(createHash('sha256').update(frame).digest('hex'));
     if (tic === 1) {
+      const hud = frame.subarray(320 * 168);
       firstFrameStats[player] = {
         sha256: createHash('sha256').update(frame).digest('hex'),
         distinct: new Set(frame).size,
         nonzero: frame.reduce((count, value) => count + (value === 0 ? 0 : 1), 0),
+        hudSha256: createHash('sha256').update(hud).digest('hex'),
+        hudDistinct: new Set(hud).size,
+        hudNonzero: hud.reduce(
+          (count, value) => count + (value === 0 ? 0 : 1), 0),
       };
     }
   }
@@ -159,9 +165,22 @@ if (frameHashes[0].size < 2 || frameHashes[1].size < 2) {
   throw new Error(`presentation frames are not moving: ${
     frameHashes[0].size}/${frameHashes[1].size} ${JSON.stringify(firstFrameStats)}`);
 }
+for (let player = 0; player < 2; player += 1) {
+  if (firstFrameStats[player].hudDistinct < 16
+      || firstFrameStats[player].hudNonzero < 8000) {
+    throw new Error(`presentation HUD is incomplete: ${
+      JSON.stringify(firstFrameStats)} ${presentationDiagnostic()}`);
+  }
+}
 console.log(
   `PMLE_TEAVM_PRESENTATION|PASS|tics=${sampleTics}`
   + `|pov0_unique=${frameHashes[0].size}|pov1_unique=${frameHashes[1].size}`
+  + `|pov0_hud_sha256=${firstFrameStats[0].hudSha256}`
+  + `|pov0_hud_distinct=${firstFrameStats[0].hudDistinct}`
+  + `|pov0_hud_nonzero=${firstFrameStats[0].hudNonzero}`
+  + `|pov1_hud_sha256=${firstFrameStats[1].hudSha256}`
+  + `|pov1_hud_distinct=${firstFrameStats[1].hudDistinct}`
+  + `|pov1_hud_nonzero=${firstFrameStats[1].hudNonzero}`
   + `|render_canonical_mutations=${renderCanonicalMutations}`
   + `|mapped_line_residue_bytes=${mappedResidueBytes}`
   + `|mapped_line_residue_max=${mappedResidueMax}`

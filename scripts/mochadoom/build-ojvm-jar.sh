@@ -72,6 +72,7 @@ if ! docker exec "$container" bash -lc \
    xargs -0 '$java_home/jdk/bin/javac' --release '$release' -encoding UTF-8 \
      -J-Xms64m -J-Xmx256m -cp '$java_home/jdbc/lib/ojdbc11.jar' \
      -d '$remote/classes' >'$remote/javac.log' 2>&1"; then
+  docker exec "$container" cat "$remote/javac.log" >&2 || true
   printf 'Mocha OJVM compilation failed\n' >&2; exit 1
 fi
 docker exec "$container" bash -lc \

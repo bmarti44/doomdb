@@ -116,6 +116,34 @@ diff --git a/src/rr/RendererState.java b/src/rr/RendererState.java
 -        DOOM.gameNetworking.NetUpdate();
      }
  }
+diff --git a/src/st/AbstractStatusBar.java b/src/st/AbstractStatusBar.java
+--- a/src/st/AbstractStatusBar.java
++++ b/src/st/AbstractStatusBar.java
+@@ -12,4 +12,9 @@
+     public void doomdbDisplayPlayer(int player) {
+         // Concrete status bars may retarget their pointer-like widgets.
+     }
++
++    /** TeaVM-stable bridge for presentation-only status widget composition. */
++    public void doomdbDrawWidgets(boolean refresh) {
++        // Concrete indexed status bars supply the vanilla widget renderer.
++    }
+ }
+diff --git a/src/st/StatusBar.java b/src/st/StatusBar.java
+--- a/src/st/StatusBar.java
++++ b/src/st/StatusBar.java
+@@ -1323,6 +1323,11 @@
+         st_oldhealth = plyr.health[0];
+     }
+ 
++    @Override
++    public void doomdbDrawWidgets(boolean refresh) {
++        drawWidgets(refresh);
++    }
++
+     public void Drawer(boolean fullscreen, boolean refresh) {
+ 
+        st_statusbaron[0] = (!fullscreen) || DOOM.automapactive;
 diff --git a/src/f/Finale.java b/src/f/Finale.java
 --- a/src/f/Finale.java
 +++ b/src/f/Finale.java
@@ -133,7 +161,7 @@ diff --git a/src/f/Finale.java b/src/f/Finale.java
 diff --git a/src/v/graphics/Columns.java b/src/v/graphics/Columns.java
 --- a/src/v/graphics/Columns.java
 +++ b/src/v/graphics/Columns.java
-@@ -76,40 +76,16 @@
+@@ -76,40 +76,30 @@
       */
      default void DrawPatchColumns(V screen, patch_t patch, int x, int y, int dupx, int dupy, boolean flip) {
          final int scrWidth = getScreenWidth();
@@ -165,17 +193,32 @@ diff --git a/src/v/graphics/Columns.java b/src/v/graphics/Columns.java
 -                DrawColumn(screen, column, row,
 -                    convertPalettedBlock(column.data), scrWidth, dupy);
 -            }
-+        // Browser JavaScript has no ForkJoinPool. Vanilla draws these columns
-+        // serially, so this preserves pixel order and avoids per-column
-+        // closures in both interpreted MLE and browser engines.
-+        final Horizontal row = new Horizontal();
-+        row.length = dupx;
++        // Browser JavaScript has no ForkJoinPool, and TeaVM does not preserve
++        // the erased primitive-array dispatch in DrawColumn. This extra patch
++        // is built only into the indexed MLE/browser JAR, so draw the exact
++        // vanilla posts directly into its byte framebuffer.
++        final byte[] destination = (byte[]) (Object) screen;
 +        for (int i = 0; i < patch.width; ++i) {
-+            row.start = point(x + i * dupx, y, scrWidth);
 +            final column_t column = flip ? patch.columns[patch.width - 1 - i] : patch.columns[i];
-+            DrawColumn(screen, column, row,
-+                convertPalettedBlock(column.data), scrWidth, dupy);
-         }
++            final int columnStart = point(x + i * dupx, y, scrWidth);
++            for (int post = 0;
++                 post < column.posts && column.postdeltas[post] != 0xFF;
++                 ++post) {
++                final int postStart = columnStart
++                    + column.postdeltas[post] * dupy * scrWidth;
++                for (int pixel = 0; pixel < column.postlen[post]; ++pixel) {
++                    final byte color = column.data[column.postofs[post] + pixel];
++                    final int pixelStart = postStart + pixel * dupy * scrWidth;
++                    for (int duplicateY = 0; duplicateY < dupy; ++duplicateY) {
++                        final int rowStart = pixelStart + duplicateY * scrWidth;
++                        for (int duplicateX = 0; duplicateX < dupx; ++duplicateX) {
++                            destination[rowStart + duplicateX] = color;
++                        }
++                    }
++                }
++            }
++        }
+-        }
      }
 -    
 -    class U {

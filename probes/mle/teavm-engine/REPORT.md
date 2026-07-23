@@ -594,3 +594,28 @@ in-database frame generation still requires its own measured implementation.
 ./probes/mle/teavm-engine/build-simulation.sh
 ./probes/mle/teavm-engine/probe-full-engine.sh  # expected nonzero; see target log
 ```
+
+## Presentation HUD candidate — 2026-07-23
+
+The pinned Oracle 26ai JDK build now renders the canonical 32-pixel Doom
+status bar for both confirmed player POVs. TeaVM's headless desktop status
+lifecycle left the `SB` buffer empty even though `STBAR` decoded correctly, so
+the presentation-only adapter composes the immutable `STBAR` and `STFBn`
+backgrounds directly into the indexed foreground and calls Mocha's own
+retargeted widget renderer through an explicit abstract-status-bar bridge.
+
+The 96-tic Node gate passed with 93 unique moving frames per POV. POV 0's HUD
+contained 10,240 nonzero pixels across 45 palette indices with SHA-256
+`3247c00d3ed00f57dd2cc6d14a2e314f5ae2a466e00c816ac721e765165d759a`;
+POV 1 contained 10,240 across 43 indices with SHA-256
+`b44d33e0e43969b2562d41a8e8d2396b28ca21dbe16b20724b26a34e7724426d`.
+The next-tic authoritative residue remained zero.
+
+This is an unpromoted candidate. Its Oracle-JDK presentation artifact is
+1,228,582 bytes with SHA-256
+`af6e526a5d4bfac15d2e926a604b7fd5afc386594e34dad01fb382229233f618`.
+The shared compatibility bridge also changes the authority candidate to
+SHA-256 `1e940a38c9d5131811bed81e886fdb153196e7af3298ff7471bb531629579d7e`.
+`versions.lock`, browser assets, and production remain on the accepted
+`06ac3333…`/`bd35d277…` pair until the canonical and 762-tic differential
+batch passes for the changed authority artifact.

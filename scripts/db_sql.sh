@@ -6,6 +6,7 @@ password_file="${DOOMDB_APP_PASSWORD_FILE:-$root/secrets/doom_password.txt}"
 db_user="${DOOMDB_DB_USER:-DOOM}"
 db_service="${DOOMDB_DB_SERVICE:-FREEPDB1}"
 compose_service="${DOOMDB_DB_COMPOSE_SERVICE:-db}"
+plsql_ccflags="${DOOMDB_PLSQL_CCFLAGS:-}"
 
 if [[ $# -gt 1 ]]; then
   printf 'usage: %s [sql-file|-]\n' "$0" >&2
@@ -22,6 +23,11 @@ if [[ ! "$db_user" =~ ^[A-Z][A-Z0-9_]{0,29}$ ]]; then
 fi
 if [[ ! "$db_service" =~ ^[A-Za-z0-9._-]+$ ]]; then
   printf 'invalid database service name\n' >&2
+  exit 2
+fi
+if [[ -n "$plsql_ccflags" &&
+      ! "$plsql_ccflags" =~ ^[a-z][a-z0-9_]*:(true|false)(,[a-z][a-z0-9_]*:(true|false))*$ ]]; then
+  printf 'invalid PL/SQL conditional-compilation flags\n' >&2
   exit 2
 fi
 if [[ ! -r "$password_file" ]]; then
@@ -45,6 +51,9 @@ emit_sql() {
     "alter session set nls_territory = 'AMERICA';" \
     "alter session set nls_language = 'AMERICAN';" \
     "alter session set time_zone = 'UTC';"
+  if [[ -n "$plsql_ccflags" ]]; then
+    printf "alter session set plsql_ccflags='%s';\n" "$plsql_ccflags"
+  fi
   if [[ "$input" == - ]]; then
     cat
   else

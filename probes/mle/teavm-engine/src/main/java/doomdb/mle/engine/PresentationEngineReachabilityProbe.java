@@ -86,6 +86,11 @@ public final class PresentationEngineReachabilityProbe {
   }
 
   @JSExport
+  public static String presentationDiagnostic() {
+    return SimulationEngineReachabilityProbe.presentationDiagnostic();
+  }
+
+  @JSExport
   public static String canonicalOffsetDescription(int materialOffset) {
     return SimulationEngineReachabilityProbe.canonicalOffsetDescription(materialOffset);
   }
