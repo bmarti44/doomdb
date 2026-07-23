@@ -11,8 +11,8 @@ for (const marker of [
   '/play/multiplayer.html',
   "fetch('/mle-status.json'",
   'OJVM oracle stays in repository/dev tooling only',
-  'pre-optimization authority-plus-standby baseline was 248.629 seconds cold',
-  'confirmed-only game surface in 3.440 seconds p95 across ten starts',
+  'Cold MLE initialization now measures 4.542–4.826 seconds',
+  'full browser reached its first confirmed frame in 5.223 seconds',
   'separate Co-op and Multiplayer shortcuts remain on the right',
   'WAN matrix',
   'Presentation / DVR'
@@ -29,17 +29,17 @@ for (const stale of [
 const status = JSON.parse(fs.readFileSync('client/dist/mle-status.json', 'utf8'));
 assert.equal(status.schema, 1);
 assert.equal(status.artifacts.authority.sha256,
-  '06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0');
+  'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2');
 assert.equal(status.artifacts.presentation.sha256,
-  'bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83');
+  'd45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c');
 assert.equal(status.gates.ledgerEveryTic13272, 'PASS');
-assert.equal(status.gates.finalWorkerSoak, 'PASS');
+assert.equal(status.gates.finalWorkerSoak, 'RERUN_REQUIRED_ON_A942');
 assert.equal(status.gates.soloMleAuthority, 'PASS');
 assert.equal(status.gates.warmPoolAdmissionP95, 'PASS');
 assert.equal(status.gates.warmStandbyHealing, 'PASS');
 assert.equal(status.solo.legacyEndpointCalls, 0);
 assert.equal(status.solo.startupOptimization,
-  'deploy-time retained MLE pool plus exact tic-zero restore');
+  'deploy-time retained MLE pool, exact tic-zero restore, and headless init diet');
 assert.equal(status.solo.warmAdmissionP95Seconds, 3.440);
 assert.equal(status.solo.warmAdmissionSamples, 10);
 assert.equal(status.architecture.productionOjvm, false);

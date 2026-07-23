@@ -12,7 +12,9 @@ const contains = (text, marker, label) =>
 const soakPath =
   'artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log';
 const ledgerPath =
-  'artifacts/performance/pmle-ledger-every-tic/run-final-06ac3333-2026-07-23.log';
+  'artifacts/performance/pmle-ledger-every-tic/run-init-diet-a942cd2d-2026-07-23.log';
+const initDietPath =
+  'artifacts/performance/pmle-init-diet/promotion-a942cd2d-2026-07-23.log';
 const soloPath =
   'artifacts/performance/pmle-browser-role-swap/solo-live-2026-07-23.log';
 const soloAdmissionPath =
@@ -21,14 +23,16 @@ const warmPoolPath =
   'artifacts/performance/pmle-browser-role-swap/warm-pool-admission-live-2026-07-23.log';
 const soak = read(soakPath);
 const ledger = read(ledgerPath);
+const initDiet = read(initDietPath);
 const solo = read(soloPath);
 const soloAdmission = read(soloAdmissionPath);
 const warmPool = read(warmPoolPath);
 const authority = versions.teaVM;
 const presentation = authority.presentation;
 
-contains(soak, `PMLE_ARTIFACT|source_bytes=${authority.outputBytes}` +
-  `|source_sha256=${authority.outputSha256}`, 'soak final artifact');
+contains(soak, 'PMLE_ARTIFACT|source_bytes=1163182|' +
+  'source_sha256=06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0',
+  'superseded soak artifact');
 contains(soak, 'PASS P13.5-MULTIPLAYER-SOAK seconds=1800 warmupSeconds=300',
   'browser soak');
 contains(soak, 'PMLE_WORKER_SOAK_MEMORY|PASS|role=AUTHORITY', 'authority memory');
@@ -44,6 +48,18 @@ contains(ledger,
 contains(ledger,
   'PMLE_LEDGER_PROVENANCE|CONFIRMED|executions=1|terminal_markers=1',
   'ledger provenance');
+contains(initDiet,
+  `PMLE_INIT_DIET_ARTIFACT|authority_bytes=${authority.outputBytes}` +
+  `|authority_sha256=${authority.outputSha256}` +
+  `|presentation_bytes=${presentation.outputBytes}` +
+  `|presentation_sha256=${presentation.outputSha256}`,
+  'init-diet promoted artifact');
+contains(initDiet,
+  'PMLE_INIT_DIET_COLD|PASS|sample_1_ms=4541.733|sample_2_ms=4825.980',
+  'init-diet cold gate');
+contains(initDiet,
+  'PMLE_INIT_DIET_PLAY_E2E|PASS|new_game_to_first_presented_ms=5223',
+  'init-diet live play gate');
 contains(solo, 'PMLE_SOLO_LIVE|PASS|elapsed_ms=248629', 'solo MLE browser');
 contains(solo,
   'PMLE_SOLO_LEGACY_ENDPOINTS|NEW_GAME=0|SUBMIT_STEP=0|POLL_FRAME=0',
@@ -121,7 +137,7 @@ const status = {
     coopEveryTic762: 'PASS',
     membershipRecovery: 'PASS',
     ledgerEveryTic13272: 'PASS',
-    finalWorkerSoak: 'PASS',
+    finalWorkerSoak: 'RERUN_REQUIRED_ON_A942',
     calibratedProcessMemory: 'PASS',
     browserConfirmedOnly: 'PASS',
     soloMleAuthority: 'PASS',
@@ -130,6 +146,9 @@ const status = {
     resourceCapDecision: 'PASS'
   },
   soak: {
+    artifactSha256:
+      '06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0',
+    supersededByAuthoritySha256: authority.outputSha256,
     warmupSecondsExcluded: 300,
     scoredSeconds: 1800,
     maxConfirmedLagTics: 18,
@@ -164,7 +183,12 @@ const status = {
     admissionReductionFromColdPercent: 96.57,
     measuredFps: 34.5,
     legacyEndpointCalls: 0,
-    startupOptimization: 'deploy-time retained MLE pool plus exact tic-zero restore',
+    headlessAuthorityColdInitP50Seconds: 4.684,
+    concurrentTwoSlotDeployReadySeconds: 34.669,
+    promotedWarmAdmissionSeconds: 4.341,
+    newGameToFirstConfirmedFrameSeconds: 5.223,
+    startupOptimization:
+      'deploy-time retained MLE pool, exact tic-zero restore, and headless init diet',
     recoveryStatusOutput: 'ABSENT/WARMING/READY/PROMOTING/DEGRADED',
     standbyHealing: 'WARMING to READY live gate PASS',
     ordsPoolFix: 'single outstanding status poll; cold initialization holds no match-row lock',
@@ -181,7 +205,8 @@ const status = {
   ],
   evidence: {
     soak: soakPath, ledger: ledgerPath, solo: soloPath,
-    soloAdmission: soloAdmissionPath, warmPoolAdmission: warmPoolPath
+    soloAdmission: soloAdmissionPath, warmPoolAdmission: warmPoolPath,
+    initDietPromotion: initDietPath
   }
 };
 

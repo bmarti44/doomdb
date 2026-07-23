@@ -7,7 +7,7 @@ tag="${PMLE_EVIDENCE_TAG:-final-2026-07-23}"
 [[ "$tag" =~ ^[A-Za-z0-9._-]+$ ]] ||
   { printf 'invalid evidence tag: %s\n' "$tag" >&2; exit 2; }
 
-expected_authority='06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0'
+expected_authority='a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2'
 expected_table_pack='058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44'
 expected_oracle='2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74'
 
@@ -49,7 +49,7 @@ log="$evidence/run-${tag}.log"
 } | tee "$log"
 
 grep -q '^PMLE_ENVIRONMENT|' "$log"
-grep -q "^PMLE_ARTIFACT|source_bytes=1163182|source_sha256=${expected_authority}|table_bytes=180272|table_sha256=${expected_table_pack}$" "$log"
+grep -q "^PMLE_ARTIFACT|source_bytes=1167197|source_sha256=${expected_authority}|table_bytes=180272|table_sha256=${expected_table_pack}$" "$log"
 test "$(grep -c '^PMLE_TEAVM_LEDGER_DIFFERENTIAL|PASS|tics=13272|deep_every=1|' "$log")" -eq 1
 grep -q '^PMLE_LEDGER_PROVENANCE|CONFIRMED|executions=1|terminal_markers=1$' "$log"
 printf 'PASS PMLE-LEDGER-FINAL evidence=%s\n' "${log#$root/}"

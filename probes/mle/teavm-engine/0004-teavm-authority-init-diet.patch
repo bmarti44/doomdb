@@ -1,0 +1,206 @@
+diff --git a/src/mochadoom/Engine.java b/src/mochadoom/Engine.java
+--- a/src/mochadoom/Engine.java
++++ b/src/mochadoom/Engine.java
+@@ -74,6 +74,15 @@ public class Engine {
+         }
+     }
+
++    /** Construct the simulation authority without renderer-data assembly. */
++    public static DoomMain<?, ?> createHeadlessAuthority(final String... argv) throws IOException {
++        synchronized (Engine.class) {
++            ResourceIO.disableExternalIO();
++            final Engine local = new Engine(argv, 1);
++            return local.DOOM;
++        }
++    }
++
+     /** Release the session-private headless engine. */
+     public static void releaseHeadless() {
+         synchronized (Engine.class) {
+@@ -90,7 +99,7 @@ public class Engine {
+         instance = this;
+         this.cvm = new CVarManager(Arrays.asList(argv));
+         this.cm = new ConfigManager();
+-        this.DOOM = new DoomMain<>();
++        this.DOOM = new DoomMain<>(mleMarker == 1);
+         this.windowController = null;
+     }
+
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -2519,6 +2519,10 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+      */
+     @SuppressWarnings("LeakingThisInConstructor")
+     public DoomMain() throws IOException {
++        this(false);
++    }
++
++    public DoomMain(boolean authorityHeadless) throws IOException {
+         // Init game status...
+         super();
+
+@@ -2582,7 +2586,7 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         this.endLevel = new EndLevel<>(this);
+         this.finale = selectFinale();
+
+-        readCVars();
++        readCVars(authorityHeadless);
+         System.out.print("W_Init: Init WADfiles.\n");
+         try {
+             wadLoader.InitMultipleFiles(wadfiles);
+@@ -2619,10 +2623,18 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         menu.Init();
+
+         System.out.print("R_Init: Init DOOM refresh daemon - ");
+-        sceneRenderer.Init();
++        if (authorityHeadless) {
++            textureManager.InitHeadlessDirectories();
++        } else {
++            sceneRenderer.Init();
++        }
+
+         System.out.print("\nP_Init: Init Playloop state.\n");
+-        actions.Init();
++        if (authorityHeadless) {
++            actions.InitHeadless();
++        } else {
++            actions.Init();
++        }
+
+         System.out.print("I_Init: Setting up machine state.\n");
+         doomSystem.Init();
+@@ -2770,7 +2780,7 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         }
+     }
+
+-    private void readCVars() {
++    private void readCVars(boolean authorityHeadless) {
+         /**
+          * D_DoomMain
+          *
+@@ -2788,14 +2798,16 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         }
+
+         // MAES: Check for Ultimate Doom in "doom.wad" filename.
+-        final WadLoader tmpwad = new WadLoader();
+-        try {
+-            tmpwad.InitFile(iwadfilename);
+-        } catch (Exception e2) {
+-            // TODO Auto-generated catch block
+-            e2.printStackTrace();
++        // All other game modes were already identified by their IWAD name.
++        // Avoid parsing the complete injected WAD twice in the common path.
++        if (!authorityHeadless && isRegistered()) {
++            final WadLoader tmpwad = new WadLoader();
++            try {
++                tmpwad.InitFile(iwadfilename);
++                CheckForUltimateDoom(tmpwad);
++            } catch (Exception e2) {
++                e2.printStackTrace();
++            }
+         }
+-        // Check using a reloadable hack.
+-        CheckForUltimateDoom(tmpwad);
+         // MAES: better extract a method for this.
+         GenerateTitle();
+diff --git a/src/rr/TextureManager.java b/src/rr/TextureManager.java
+--- a/src/rr/TextureManager.java
++++ b/src/rr/TextureManager.java
+@@ -64,6 +64,9 @@ public interface TextureManager<T> extends IGetColumn<T>, IGetCachedColumn<T>,IGe
+
+     void InitTextures() throws IOException;
+
++    /** Simulation-only names, dimensions, flats, and animation translations. */
++    void InitHeadlessDirectories();
++
+     //int getFirstFlat();
+
+     int getSkyTextureMid();
+diff --git a/src/rr/SimpleTextureManager.java b/src/rr/SimpleTextureManager.java
+--- a/src/rr/SimpleTextureManager.java
++++ b/src/rr/SimpleTextureManager.java
+@@ -289,6 +289,67 @@ public class SimpleTextureManager implements TextureManager<byte[]> {
+             texturetranslation[i] = i;
+     }
+
++    /**
++     * Build only the texture/flat identity needed by gameplay. Patch lookup,
++     * composite columns, sprite definitions, colormaps, screens, and drawing
++     * tables are presentation data and stay out of the retained authority.
++     */
++    @Override
++    public void InitHeadlessDirectories() {
++        try {
++            ByteBuffer[] maptex = new ByteBuffer[texturelumps.length];
++            int[] counts = new int[texturelumps.length];
++            int[] maxoff = new int[texturelumps.length];
++            for (int set = 0; set < texturelumps.length; ++set) {
++                final String lump = texturelumps[set];
++                if (W.CheckNumForName(lump) != -1) {
++                    maptex[set] = W.CacheLumpName(lump, PU_STATIC).getBuffer();
++                    maptex[set].rewind();
++                    maptex[set].order(ByteOrder.LITTLE_ENDIAN);
++                    counts[set] = maptex[set].getInt();
++                    maxoff[set] = W.LumpLength(W.GetNumForName(lump));
++                }
++            }
++            numtextures = counts[TEXTURE1] + counts[TEXTURE2];
++            textures = new texture_t[numtextures];
++            TextureCache = new Hashtable<String, Integer>(numtextures);
++            texturewidthmask = new int[numtextures];
++            textureheight = new int[numtextures];
++            texturetranslation = new int[numtextures];
++
++            int textureSet = TEXTURE1;
++            int directory = 1;
++            final maptexture_t mapped = new maptexture_t();
++            for (int textureNum = 0; textureNum < numtextures;
++                 ++textureNum, ++directory) {
++                if (textureNum == counts[TEXTURE1]) {
++                    textureSet = TEXTURE2;
++                    directory = 1;
++                }
++                final int offset = maptex[textureSet].getInt(directory << 2);
++                if (offset > maxoff[textureSet]) {
++                    I.Error("R_InitTextures: bad texture directory");
++                }
++                maptex[textureSet].position(offset);
++                mapped.unpack(maptex[textureSet]);
++                TextureCache.put(mapped.name.toUpperCase(), textureNum);
++                final texture_t texture = new texture_t();
++                texture.copyFromMapTexture(mapped);
++                textures[textureNum] = texture;
++                int mask = 1;
++                while (mask * 2 <= texture.width) {
++                    mask <<= 1;
++                }
++                texturewidthmask[textureNum] = mask - 1;
++                textureheight[textureNum] = texture.height << FRACBITS;
++                texturetranslation[textureNum] = textureNum;
++            }
++            InitFlats();
++        } catch (IOException exception) {
++            throw new RuntimeException("headless texture directory", exception);
++        }
++    }
++
+     /** Assigns proper lumpnum to patch names. Check whether flats and patches of the same name coexist.
+      *  If yes, priority should go to patches. Otherwise, it's a "flats on walls" case.
+      *
+diff --git a/src/p/UnifiedGameMap.java b/src/p/UnifiedGameMap.java
+--- a/src/p/UnifiedGameMap.java
++++ b/src/p/UnifiedGameMap.java
+@@ -670,6 +670,12 @@ public abstract class UnifiedGameMap implements ThinkerList {
+         DOOM.spriteManager.InitSprites(ISpriteManager.doomsprnames);
+     }
+
++    /** Gameplay tables without renderer-only sprite definitions. */
++    public void InitHeadless() {
++        SW.InitSwitchList();
++        SPECS.InitPicAnims();
++    }
++
+     @Override
+     public thinker_t getThinkerCap() {
+         return thinkercap;

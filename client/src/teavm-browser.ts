@@ -12,12 +12,12 @@ type TeaVmModule = TeaVmAuthorityVerifier & TeaVmAuthorityPresenter & {
 };
 
 const AUTHORITY = {
-  url: '/play/doom-mle-authority-06ac33331d9a.js',
-  sha: '06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0'
+  url: '/play/doom-mle-authority-a942cd2dcbdc.js',
+  sha: 'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2'
 };
 const PRESENTATION = {
-  url: '/play/doom-mle-presentation-bd35d27784db.js',
-  sha: 'bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83'
+  url: '/play/doom-mle-presentation-d45863e0c1be.js',
+  sha: 'd45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c'
 };
 const IWAD = {
   url: '/play/freedoom1-7323bcc168c5.bin',

@@ -13,7 +13,7 @@ assert.match(cap,/ALL_ORACLE_CAPABILITY_PROBES_OK/);assert.match(transport,/PASS
 const transportIds=['IN_NUMBER','IN_CLOB','OUT_VARCHAR2','OUT_CLOB','OUT_BLOB_BASE64','GZIP_JSON','BAD_BODY_4XX','RAISE_5XX','ROLLBACK','CORS_SIMPLE','CORS_PREFLIGHT','MAX_FRAME','LARGEST_ASSET'];
 const target=catalog.match(/^T111_TARGET\|([^|]+)\|([^|]+)\|([^\n]+)$/m);assert.ok(target);assert.match(target[1],/^(?:OLTP|APEX|AJD)$/);const major=Number(target[3].match(/\d+/)?.[0]);assert.ok(major>=23);
 const resources=catalog.match(/^T111_RESOURCES\|(\d+)\|(\d+)$/m);const cat=catalog.match(/^T111_CATALOG\|(\d+)\|(\d+)\|(\d+)\|(\d+)$/m);const grants=catalog.match(/^T111_GRANTS\|(\d+)\|(\d+)\|(\d+)$/m);assert.ok(resources&&cat&&grants);assert.deepEqual(cat.slice(1).map(Number),[0,0,0,0]);assert.deepEqual(grants.slice(1).map(Number),[2,0,0]);
-const mle=catalog.match(/^T111_MLE\|1\|1\|24\|1163182\|([0-9a-f]{64})\|180272\|([0-9a-f]{64})\|([0-9a-f]{64})$/m);
+const mle=catalog.match(/^T111_MLE\|1\|1\|24\|1167197\|([0-9a-f]{64})\|180272\|([0-9a-f]{64})\|([0-9a-f]{64})$/m);
 const javaRemoval=catalog.match(/^T111_JAVA_REMOVAL\|0\|0\|0\|0\|0$/m);
 assert.ok(mle&&javaRemoval);
 assert.equal(mle[1],deployment.mleArtifact.authority.sha256);

@@ -5,8 +5,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 javascript="$project/target/javascript/doom-mle-simulation-engine-headless.js"
 table_pack="$project/target/canonical-runtime-v2.bin"
-expected_source_bytes=1163182
-expected_source_sha256="06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0"
+expected_source_bytes=1167197
+expected_source_sha256="a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2"
 expected_table_pack_sha256="058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"
 base64_fold_width=2000
 build=1
@@ -18,7 +18,7 @@ for option in "$@"; do
     --no-build) build=0 ;;
     --emit-sql) emit_only=1 ;;
     --production) production=1;build=0
-      javascript="$root/client/dist/play/doom-mle-authority-06ac33331d9a.js"
+      javascript="$root/client/dist/play/doom-mle-authority-a942cd2dcbdc.js"
       table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
       ;;
     *) printf 'unsupported option: %s\n' "$option" >&2;exit 2 ;;

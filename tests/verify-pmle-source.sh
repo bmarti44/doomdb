@@ -38,6 +38,9 @@ TEAVM_MEMBERSHIP_DIFF=$ROOT/probes/mle/teavm-engine/membership-recovery-differen
 TEAVM_BUILD=$ROOT/probes/mle/teavm-engine/build-simulation.sh
 TEAVM_PROFILE=$ROOT/probes/mle/teavm-engine/profile-ledger-node.mjs
 TEAVM_PATCH=$ROOT/probes/mle/teavm-engine/0002-teavm-simulation-headless.patch
+TEAVM_INIT_DIET_PATCH=$ROOT/probes/mle/teavm-engine/0004-teavm-authority-init-diet.patch
+TEAVM_INIT_DIET_RUNNER=$ROOT/probes/mle/teavm-engine/run-init-diet-mle.sh
+TEAVM_INIT_PROFILE=$ROOT/probes/mle/teavm-engine/profile-init-node.sh
 TEAVM_MEMORY_CAL=$ROOT/probes/mle/teavm-engine/run-memory-calibration.sh
 TEAVM_MEMORY_CAL_SQL=$ROOT/probes/mle/teavm-engine/calibrate-memory-mle.sql
 TEAVM_DISPATCH_BENCH=$ROOT/probes/mle/teavm-engine/benchmark-active-state-dispatch.sql
@@ -94,7 +97,8 @@ for file in "$INSTALL" "$BENCHMARK" "$RUNNER" "$CLEANUP" \
   "$TEAVM_CANONICAL_BENCH" "$TEAVM_RECOVERY" "$TEAVM_MULTIPLAYER" \
   "$TEAVM_MULTI_BENCH" "$TEAVM_MULTI_RECOVERY" "$TEAVM_MULTI_SOAK" \
   "$TEAVM_MULTI_SOAK_RUNNER" "$TEAVM_COOP" "$TEAVM_MEMBERSHIP_DIFF" "$TEAVM_BUILD" \
-  "$TEAVM_PROFILE" "$TEAVM_PATCH" "$TEAVM_MEMORY_CAL" \
+  "$TEAVM_PROFILE" "$TEAVM_PATCH" "$TEAVM_INIT_DIET_PATCH" \
+  "$TEAVM_INIT_DIET_RUNNER" "$TEAVM_INIT_PROFILE" "$TEAVM_MEMORY_CAL" \
   "$TEAVM_MEMORY_CAL_SQL" "$TEAVM_DISPATCH_BENCH" \
   "$TEAVM_DISPATCH_RUNNER" "$TEAVM_DISPATCH_AB" "$TEAVM_DIFFERENTIAL_RUNNER" \
   "$TEAVM_WORKER_CUTOVER_RUNNER" "$TEAVM_WAN_RUNNER" \
@@ -113,6 +117,8 @@ done
 [ -x "$RUNNER" ] || fail 'probe runner is not executable'
 [ -x "$ADB_RUNNER" ] || fail 'ADB probe runner is not executable'
 [ -x "$TEAVM_SIM_LOADER" ] || fail 'TeaVM simulation loader is not executable'
+[ -x "$TEAVM_INIT_DIET_RUNNER" ] || fail 'TeaVM init-diet runner is not executable'
+[ -x "$TEAVM_INIT_PROFILE" ] || fail 'TeaVM init profile wrapper is not executable'
 [ -x "$TEAVM_TIC0_LOADER" ] || fail 'TeaVM tic-zero bank loader is not executable'
 [ -x "$TEAVM_MULTI_SOAK_RUNNER" ] || fail 'TeaVM multiplayer soak runner is not executable'
 [ -x "$TEAVM_MEMORY_CAL" ] || fail 'TeaVM memory calibration runner is not executable'
@@ -170,6 +176,8 @@ grep -q 'base64_fold_width=2000' "$TEAVM_TIC0_LOADER" || fail 'tic-zero bank saf
 grep -Fq 'while IFS= read -r piece || [[ -n "$piece" ]]' "$TEAVM_TIC0_LOADER" || fail 'tic-zero bank final base64 piece fence missing'
 grep -q 'dbms_crypto.hash(checkpoint_blob,dbms_crypto.hash_sh256)' "$TEAVM_TIC0_LOADER" || fail 'tic-zero bank database SHA gate missing'
 grep -q 'PMLE_TIC0_BANK_STAGING|PASS' "$TEAVM_TIC0_LOADER" || fail 'tic-zero bank staging marker missing'
+grep -q 'pathToFileURL(path.resolve(authorityPath))' "$TEAVM_TIC0_BUILDER" ||
+  fail 'tic-zero bank builder does not bind its authority input'
 grep -q 'base64_fold_width=2000' "$TEAVM_SLICE_LOADER" || fail 'TeaVM slice safe base64 fold missing'
 grep -Fq 'while IFS= read -r piece || [[ -n "$piece" ]]' "$TEAVM_SLICE_LOADER" || fail 'TeaVM slice final base64 piece fence missing'
 grep -q 'PMLE_TEAVM_PROBE_STAGING_GATE|PASS' "$TEAVM_SLICE_LOADER" || fail 'TeaVM slice database staging SHA gate missing'
@@ -217,6 +225,20 @@ grep -q 'Profiler.start' "$TEAVM_PROFILE" || fail 'Node ledger CPU profile missi
 grep -q '13272' "$TEAVM_PROFILE" || fail 'Node profile ledger-size fence missing'
 grep -q 'doomdbSqrtFloat' "$TEAVM_PATCH" || fail 'deterministic float sqrt replacement missing'
 grep -q 'doomdbScaledSqrt' "$TEAVM_PATCH" || fail 'deterministic scaled sqrt replacement missing'
+grep -q 'InitHeadlessDirectories' "$TEAVM_INIT_DIET_PATCH" ||
+  fail 'headless texture directory missing'
+grep -q 'createHeadlessAuthority' "$TEAVM_INIT_DIET_PATCH" ||
+  fail 'authority-only constructor missing'
+grep -q '!authorityHeadless && isRegistered()' "$TEAVM_INIT_DIET_PATCH" ||
+  fail 'single WAD authority parse missing'
+grep -q 'PMLE_INIT_DIET_STAGING|PASS' "$TEAVM_INIT_DIET_RUNNER" ||
+  fail 'init-diet database staging SHA gate missing'
+grep -q 'target_ms=30000' "$TEAVM_INIT_DIET_RUNNER" ||
+  fail 'init-diet 30 second gate missing'
+grep -q -- '--cpu-prof' "$TEAVM_INIT_PROFILE" ||
+  fail 'init V8 CPU profile missing'
+grep -q 'PMLE_INIT_PROFILE_TS|elapsed_ms=' "$TEAVM_INIT_PROFILE" ||
+  fail 'init stdout timestamping missing'
 grep -q 'smaps_rollup' "$TEAVM_MEMORY_CAL" || fail 'OS process memory sampler missing'
 grep -q 'minimum_visible_bytes' "$TEAVM_MEMORY_CAL" || fail 'known-allocation visibility gate missing'
 grep -q 'create mle module doom_mle_memory_cal language javascript' "$TEAVM_MEMORY_CAL_SQL" ||
@@ -334,10 +356,10 @@ grep -q 'category=.*RESOURCE_MANAGER' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'resour
 grep -q 'procedure poll_match_transitions' "$DOOM_API" || fail 'DMB1 public long-poll endpoint missing'
 grep -q 'doom_mle_transition_transport.poll_batch' "$DOOM_API" || fail 'DMB1 public endpoint transport binding missing'
 grep -q '"version": "0.15.0"' "$VERSIONS" || fail 'TeaVM version pin missing'
-grep -q '"inputBytecodeSha256": "8cae68323d62edfa56299569d15763e6dbd24974dc3a24f3ae64961071920d8b"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
-grep -q '"mochaBytecodeSha256": "6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97"' "$VERSIONS" || fail 'TeaVM Mocha bytecode pin missing'
-grep -q '"outputSha256": "06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0"' "$VERSIONS" || fail 'TeaVM output pin missing'
-grep -q '"outputSha256": "bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83"' "$VERSIONS" || fail 'TeaVM presentation output pin missing'
+grep -q '"inputBytecodeSha256": "5194b73d7196804957221216052b552305632c943e8ea402327a220b326d0e06"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
+grep -q '"mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e"' "$VERSIONS" || fail 'TeaVM Mocha bytecode pin missing'
+grep -q '"outputSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2"' "$VERSIONS" || fail 'TeaVM output pin missing'
+grep -q '"outputSha256": "d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c"' "$VERSIONS" || fail 'TeaVM presentation output pin missing'
 grep -q 'mle-js-plsql-ffi' "$HYBRID_INSTALL" || fail 'FFI comparison path missing'
 grep -q 'PMLE_GATE|PASS|scope=mechanics_only|architecture=mle_command_stream' "$RUNNER" || fail 'mechanics-only architecture marker missing'
 grep -q 'PMLE_COMMAND_GATE|PASS' "$REPORT" || fail 'measured hybrid report missing terminal marker'

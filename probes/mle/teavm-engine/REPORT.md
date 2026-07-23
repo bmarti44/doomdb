@@ -379,7 +379,7 @@ The final real two-browser run measured 35.042 and 35.034 displayed FPS, with
 a converged two-tic playout buffer. The exact worker then repeated checkpoint
 tic 32 and generation-2 recovery in 3,353.507 ms with zero legacy frames.
 
-### Final cutover artifact and acceptance packet
+### Superseded cutover artifact and acceptance packet
 
 Checkpoint-output reuse and the additive worker/presentation exports produce
 the final pinned pair from one input adapter JAR:
@@ -407,6 +407,41 @@ authoritative module, table pack, and OJVM oracle. The canonical 330-tic route,
 differential, and stale-SHA `ORA-20796` fence pass on the final bytes. The final
 no-overwrite exhaustive ledger then passed all 13,272 commands with full
 canonical comparison after every tic:
+
+### Headless-authority init-diet promotion — 2026-07-23
+
+The accepted Tier 2 batch retains the authority's texture/flat name
+directories needed by switches and animations but skips patch-composite
+assembly, sprite definitions, colormaps, tranmap, translations, drawing
+functions, and screens; the authority also registers/parses the injected WAD
+once instead of twice. The full browser presentation artifact retains renderer
+initialization.
+
+The promoted authority is 1,167,197 bytes, SHA-256
+`a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2`;
+the paired presentation artifact is 1,232,713 bytes, SHA-256
+`d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c`.
+Both derive from input adapter JAR
+`5194b73d7196804957221216052b552305632c943e8ea402327a220b326d0e06`
+and patched Mocha bytecode
+`42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e`.
+
+Isolated MLE cold initialization measured 4,541.733 and 4,825.980 ms,
+comfortably inside the 30-second gate and roughly 95% below the prior
+100.314-second authority baseline. Canonical 330, accepted 762-tic co-op,
+membership leave/neutral/checkpoint/rejoin, and the 13,272-command exhaustive
+every-tic ledger all pass against the preserved OJVM oracle. Production load,
+runtime SHA fence, and all ten E1M1 tic-zero checkpoint-bank entries passed
+database-side length/SHA verification. Concurrent deploy prewarm reached two
+READY slots in 34.669 seconds under Free's one-effective-CPU/two-session cap;
+warm admission measured 4.341 seconds and the real `/play` path reached its
+first confirmed frame 5.223 seconds after New Game confirmation.
+
+The prior 30-minute production-shaped soak remains valid evidence for its
+`06ac3333…` artifact and for the harness/platform baseline only. A rerun on
+`a942cd2d…` remains required before final cutover acceptance is claimed for
+the promoted bytes. HUD/automap/intermission/finale and asynchronous audit/DVR
+completion remain honestly open.
 
 ```text
 PMLE_TEAVM_LEDGER_DIFFERENTIAL|PASS|tics=13272|deep_every=1|route_runs=1152|vector_runs=1246

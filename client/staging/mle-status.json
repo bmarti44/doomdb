@@ -38,17 +38,17 @@
   },
   "artifacts": {
     "authority": {
-      "bytes": 1163182,
-      "sha256": "06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0",
+      "bytes": 1167197,
+      "sha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
       "profile": "simulation-engine-headless"
     },
     "presentation": {
-      "bytes": 1224686,
-      "sha256": "bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83",
+      "bytes": 1232713,
+      "sha256": "d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c",
       "profile": "presentation-engine-headless"
     },
-    "inputBytecodeSha256": "8cae68323d62edfa56299569d15763e6dbd24974dc3a24f3ae64961071920d8b",
-    "mochaBytecodeSha256": "6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97",
+    "inputBytecodeSha256": "5194b73d7196804957221216052b552305632c943e8ea402327a220b326d0e06",
+    "mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e",
     "tablePackSha256": "058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44",
     "ojvmDifferentialOracleSha256": "2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74",
     "ojvmScope": "repository/dev differential oracle only"
@@ -58,7 +58,7 @@
     "coopEveryTic762": "PASS",
     "membershipRecovery": "PASS",
     "ledgerEveryTic13272": "PASS",
-    "finalWorkerSoak": "PASS",
+    "finalWorkerSoak": "RERUN_REQUIRED_ON_A942",
     "calibratedProcessMemory": "PASS",
     "browserConfirmedOnly": "PASS",
     "soloMleAuthority": "PASS",
@@ -67,6 +67,8 @@
     "resourceCapDecision": "PASS"
   },
   "soak": {
+    "artifactSha256": "06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0",
+    "supersededByAuthoritySha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
     "warmupSecondsExcluded": 300,
     "scoredSeconds": 1800,
     "maxConfirmedLagTics": 18,
@@ -101,7 +103,11 @@
     "admissionReductionFromColdPercent": 96.57,
     "measuredFps": 34.5,
     "legacyEndpointCalls": 0,
-    "startupOptimization": "deploy-time retained MLE pool plus exact tic-zero restore",
+    "headlessAuthorityColdInitP50Seconds": 4.684,
+    "concurrentTwoSlotDeployReadySeconds": 34.669,
+    "promotedWarmAdmissionSeconds": 4.341,
+    "newGameToFirstConfirmedFrameSeconds": 5.223,
+    "startupOptimization": "deploy-time retained MLE pool, exact tic-zero restore, and headless init diet",
     "recoveryStatusOutput": "ABSENT/WARMING/READY/PROMOTING/DEGRADED",
     "standbyHealing": "WARMING to READY live gate PASS",
     "ordsPoolFix": "single outstanding status poll; cold initialization holds no match-row lock",
@@ -131,9 +137,10 @@
   ],
   "evidence": {
     "soak": "artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log",
-    "ledger": "artifacts/performance/pmle-ledger-every-tic/run-final-06ac3333-2026-07-23.log",
+    "ledger": "artifacts/performance/pmle-ledger-every-tic/run-init-diet-a942cd2d-2026-07-23.log",
     "solo": "artifacts/performance/pmle-browser-role-swap/solo-live-2026-07-23.log",
     "soloAdmission": "artifacts/performance/pmle-browser-role-swap/solo-admission-live-2026-07-23.log",
-    "warmPoolAdmission": "artifacts/performance/pmle-browser-role-swap/warm-pool-admission-live-2026-07-23.log"
+    "warmPoolAdmission": "artifacts/performance/pmle-browser-role-swap/warm-pool-admission-live-2026-07-23.log",
+    "initDietPromotion": "artifacts/performance/pmle-init-diet/promotion-a942cd2d-2026-07-23.log"
   }
 }

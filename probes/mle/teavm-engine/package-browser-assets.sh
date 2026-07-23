@@ -27,15 +27,15 @@ verify_copy() {
 }
 
 mkdir -p "$destination"
-verify_copy "$authority" "$destination/doom-mle-authority-06ac33331d9a.js" \
-  06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0
-verify_copy "$presentation" "$destination/doom-mle-presentation-bd35d27784db.js" \
-  bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83
+verify_copy "$authority" "$destination/doom-mle-authority-a942cd2dcbdc.js" \
+  a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2
+verify_copy "$presentation" "$destination/doom-mle-presentation-d45863e0c1be.js" \
+  d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c
 verify_copy "$tables" "$destination/canonical-runtime-v2-058cd0df9444.bin" \
   058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
 verify_copy "$iwad" "$destination/freedoom1-7323bcc168c5.bin" \
   7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d
 printf 'PASS PMLE-BROWSER-ASSETS authority=%s presentation=%s iwad_bytes=%s\n' \
-  06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0 \
-  bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83 \
+  a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2 \
+  d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c \
   "$(wc -c <"$iwad" | tr -d '[:space:]')"

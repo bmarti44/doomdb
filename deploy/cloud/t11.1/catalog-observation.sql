@@ -89,8 +89,8 @@ begin
     raise_application_error(-20803,'Java/OJVM production fence failed');
   end if;
   if l_mle_modules<>1 or l_mle_envs<>1 or l_mle_specs<>24 or
-     l_source_bytes<>1163182 or
-     l_source_sha<>'06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0' or
+     l_source_bytes<>1167197 or
+     l_source_sha<>'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2' or
      l_table_bytes<>180272 or
      l_table_sha<>'058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44' or
      l_iwad_sha<>'7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d' then

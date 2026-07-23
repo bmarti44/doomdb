@@ -40,7 +40,7 @@ public final class PresentationEngineReachabilityProbe {
   public static String initializeMultiplayerGame(
       int activePlayers, int deathmatch, int skill, int episode, int map)
       throws Exception {
-    return SimulationEngineReachabilityProbe.initializeMultiplayerGame(
+    return SimulationEngineReachabilityProbe.initializePresentationGame(
         activePlayers, deathmatch, skill, episode, map);
   }
 

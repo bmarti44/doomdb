@@ -5,7 +5,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 builder="$root/probes/mle/teavm-engine/build-tic0-checkpoint-bank.mjs"
 table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
 iwad_zip="$root/vendor/freedoom/0.13.0/freedoom-0.13.0.zip"
-authority_sha256="06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0"
+authority="$root/client/dist/play/doom-mle-authority-a942cd2dcbdc.js"
+authority_sha256="$(shasum -a 256 "$authority" | awk '{print $1}')"
 base64_fold_width=2000
 emit_only=0
 [[ "${1:-}" == "--emit-sql" ]] && emit_only=1
@@ -14,11 +15,11 @@ emit_only=0
 for tool in node unzip base64 fold shasum; do
   command -v "$tool" >/dev/null || { printf '%s is unavailable\n' "$tool" >&2;exit 2; }
 done
-test -s "$builder";test -s "$table_pack";test -s "$iwad_zip"
+test -s "$builder";test -s "$authority";test -s "$table_pack";test -s "$iwad_zip"
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/doomdb-tic0-bank.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 unzip -p "$iwad_zip" freedoom-0.13.0/freedoom1.wad >"$tmp/freedoom1.wad"
-node "$builder" "$tmp/freedoom1.wad" "$table_pack" "$tmp/bank" >&2
+node "$builder" "$authority" "$tmp/freedoom1.wad" "$table_pack" "$tmp/bank" >&2
 
 emit_sql() {
   printf '%s\n' \

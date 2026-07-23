@@ -687,15 +687,15 @@ cutover work is the final OS-process-memory soak on this artifact, WAN latency
 profiles, Java-removal audit, and incomplete HUD/automap/intermission/finale
 presentation; the audit/DVR tier is still not claimed complete.
 
-**Final MLE authority acceptance checkpoint (2026-07-23).** The pinned
-authority is now 1,163,182 bytes at SHA-256
-`06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0`;
-the paired browser presentation module is 1,224,686 bytes at SHA-256
-`bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83`.
+**Current MLE authority acceptance checkpoint (2026-07-23).** The promoted
+headless authority is 1,167,197 bytes at SHA-256
+`a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2`;
+the paired browser presentation module is 1,232,713 bytes at SHA-256
+`d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c`.
 They derive from input JAR
-`8cae68323d62edfa56299569d15763e6dbd24974dc3a24f3ae64961071920d8b`
+`5194b73d7196804957221216052b552305632c943e8ea402327a220b326d0e06`
 and pinned Mocha bytecode
-`6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97`;
+`42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e`;
 the permanent dev-only OJVM oracle is
 `2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74`
 and the canonical table pack remains
@@ -703,6 +703,18 @@ and the canonical table pack remains
 The canonical 330, co-op 762 every-tic, membership recovery, stale-SHA fence,
 and a fresh no-overwrite 13,272-command every-tic ledger all pass on this final
 triple.
+
+This batch keeps simulation name directories but removes renderer-only
+texture composites, sprite definitions, colormaps, translation/drawing data,
+and screens from the authority, and eliminates its duplicate WAD parse. Two
+isolated MLE cold starts measured 4,541.733 and 4,825.980 ms versus the prior
+100.314-second authority baseline. Canonical 330, co-op 762, membership
+recovery, and the 13,272-command every-tic ledger all pass on `a942cd2d…`.
+The production module and ten-entry tic-zero bank are database-SHA-verified;
+warm solo admission measured 4.341 seconds and `/play` reached its first
+confirmed frame in 5.223 seconds. The 30-minute production-shaped soak passed
+on the superseded `06ac3333…` bytes and is explicitly required to rerun on
+`a942cd2d…` before it is cited for the promoted artifact.
 
 The allocation-free checkpoint rewrite is bound end-to-end by the membership
 export/rebuild/restore/rejoin differential and by periodic checkpoint/standby

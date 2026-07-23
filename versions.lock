@@ -46,20 +46,20 @@
     "moduleType": "ES2015",
     "optimizationLevel": "ADVANCED",
     "minifying": true,
-    "inputBytecodeSha256": "8cae68323d62edfa56299569d15763e6dbd24974dc3a24f3ae64961071920d8b",
-    "mochaBytecodeSha256": "6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97",
+    "inputBytecodeSha256": "5194b73d7196804957221216052b552305632c943e8ea402327a220b326d0e06",
+    "mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e",
     "canonicalOracleJarSha256": "2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74",
     "checkpointEnvelope": "DMC1-v5",
     "canonicalTablePackBytes": 180272,
     "canonicalTablePackSha256": "058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44",
-    "outputBytes": 1163182,
-    "outputSha256": "06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0",
+    "outputBytes": 1167197,
+    "outputSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
     "presentation": {
       "profile": "presentation-engine-headless",
-      "inputBytecodeSha256": "8cae68323d62edfa56299569d15763e6dbd24974dc3a24f3ae64961071920d8b",
-      "mochaBytecodeSha256": "6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97",
-      "outputBytes": 1224686,
-      "outputSha256": "bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83"
+      "inputBytecodeSha256": "5194b73d7196804957221216052b552305632c943e8ea402327a220b326d0e06",
+      "mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e",
+      "outputBytes": 1232713,
+      "outputSha256": "d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c"
     }
   },
   "deploymentTools": {

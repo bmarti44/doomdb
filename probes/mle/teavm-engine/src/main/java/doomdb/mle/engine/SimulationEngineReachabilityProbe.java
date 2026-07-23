@@ -134,7 +134,7 @@ public final class SimulationEngineReachabilityProbe {
     if (engine != null) return snapshot("already-initialized");
     Tables.installCanonicalTablePack(tablePack);
     InputStreamSugar.setInjectedResource(iwad);
-    engine = Engine.createHeadless(
+    engine = Engine.createHeadlessAuthority(
         "-iwad", "freedoom1.wad", "-nosound", "-nomusic", "-indexed",
         "-width", "320", "-height", "200");
     engine.singletics = true;
@@ -161,6 +161,20 @@ public final class SimulationEngineReachabilityProbe {
   public static String initializeMultiplayerGame(
       int activePlayers, int deathmatch, int skill, int episode, int map)
       throws Exception {
+    return initializeMultiplayerGameInternal(
+        activePlayers, deathmatch, skill, episode, map, false);
+  }
+
+  static String initializePresentationGame(
+      int activePlayers, int deathmatch, int skill, int episode, int map)
+      throws Exception {
+    return initializeMultiplayerGameInternal(
+        activePlayers, deathmatch, skill, episode, map, true);
+  }
+
+  private static String initializeMultiplayerGameInternal(
+      int activePlayers, int deathmatch, int skill, int episode, int map,
+      boolean presentation) throws Exception {
     if (iwad == null) throw new IllegalStateException("IWAD is not loaded");
     if (tablePack == null || tablePackBytesLoaded != tablePack.length) {
       throw new IllegalStateException("canonical table pack is not loaded");
@@ -183,9 +197,13 @@ public final class SimulationEngineReachabilityProbe {
     if (engine != null) throw new IllegalStateException("engine is already initialized");
     Tables.installCanonicalTablePack(tablePack);
     InputStreamSugar.setInjectedResource(iwad);
-    engine = Engine.createHeadless(
+    String[] arguments = {
         "-iwad", "freedoom1.wad", "-nosound", "-nomusic", "-indexed",
-        "-width", "320", "-height", "200");
+        "-width", "320", "-height", "200"
+    };
+    engine = presentation
+        ? Engine.createHeadless(arguments)
+        : Engine.createHeadlessAuthority(arguments);
     Arrays.fill(engine.playeringame, false);
     for (int player = 0; player < activePlayers; player++) {
       engine.playeringame[player] = true;

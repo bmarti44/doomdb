@@ -26,7 +26,7 @@ DOOMDB_MOCHA_EXPECTED_CLASS_COUNT=830 \
   "$project/target/mochadoom-canonical-table-source.jar" \
   "$project/target/mochadoom-canonical-table-source.json"
 DOOMDB_MOCHA_EXPECTED_CLASS_COUNT=828 \
-  DOOMDB_MOCHA_EXTRA_PATCH="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch" \
+  DOOMDB_MOCHA_EXTRA_PATCH="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch" \
   "$root/scripts/mochadoom/build-ojvm-jar.sh" \
   "$project/target/mochadoom-mle-simulation.jar" \
   "$project/target/mochadoom-mle-simulation.json"

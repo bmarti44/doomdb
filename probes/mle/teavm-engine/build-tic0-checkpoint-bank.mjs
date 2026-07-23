@@ -1,7 +1,19 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import {
+import {pathToFileURL} from 'node:url';
+
+const [authorityPath, iwadPath, tablePackPath, outputDirectory] =
+  process.argv.slice(2);
+if (!authorityPath || !iwadPath || !tablePackPath || !outputDirectory) {
+  throw new Error(
+    'usage: node build-tic0-checkpoint-bank.mjs AUTHORITY IWAD TABLE_PACK OUTPUT_DIRECTORY',
+  );
+}
+const authorityBytes = fs.readFileSync(authorityPath);
+const authoritySha256 =
+  crypto.createHash('sha256').update(authorityBytes).digest('hex');
+const {
   allocateIwad,
   allocateTablePack,
   canonicalState,
@@ -11,14 +23,7 @@ import {
   loadIwadChunk,
   loadTablePackChunk,
   release,
-} from '../../../client/dist/play/doom-mle-authority-06ac33331d9a.js';
-
-const [iwadPath, tablePackPath, outputDirectory] = process.argv.slice(2);
-if (!iwadPath || !tablePackPath || !outputDirectory) {
-  throw new Error(
-    'usage: node build-tic0-checkpoint-bank.mjs IWAD TABLE_PACK OUTPUT_DIRECTORY',
-  );
-}
+} = await import(pathToFileURL(path.resolve(authorityPath)).href);
 
 const iwad = fs.readFileSync(iwadPath);
 const tables = fs.readFileSync(tablePackPath);
@@ -75,4 +80,5 @@ for (const deathmatch of [0, 1]) {
 }
 fs.writeFileSync(path.join(outputDirectory, 'manifest.tsv'), `${rows.join('\n')}\n`,
   {encoding: 'ascii', mode: 0o600});
-process.stdout.write(`PMLE_TIC0_BANK_BUILD|PASS|entries=${rows.length}\n`);
+process.stdout.write(`PMLE_TIC0_BANK_BUILD|PASS|entries=${rows.length}` +
+  `|authority_sha256=${authoritySha256}\n`);
