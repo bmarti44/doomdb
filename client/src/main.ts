@@ -96,7 +96,7 @@ fullscreen.setAttribute('aria-pressed', 'false');
 fullscreen.hidden = !document.fullscreenEnabled;
 const coop = document.createElement('a');
 coop.dataset.doomCoop = '';
-coop.href = '/play/multiplayer.html?mode=COOP';
+coop.href = '/play/multiplayer.html#mode=COOP';
 coop.textContent = 'Co-op';
 const multiplayer = document.createElement('a');
 multiplayer.dataset.doomMultiplayer = '';
@@ -420,7 +420,7 @@ async function boot(): Promise<void> {
   // Preserve the authentic title/main/skill menus, then hand the selected
   // game to the Java-free retained MLE authority. This relative URL works for
   // both local /play/ hosting and the cloud root document.
-  const mleUrl = new URL('mle.html', location.href);
+  const mleUrl = new URL('solo.html', location.href);
   // Jetty canonicalizes *.html paths and drops their query string. A fragment
   // survives that redirect and is private to the browser, which is appropriate
   // for these launch-only presentation options.

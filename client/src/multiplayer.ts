@@ -55,6 +55,11 @@ style.textContent = `
   canvas{display:block;width:min(100%,calc(100vh * 1.6 - 50px));height:auto;image-rendering:pixelated;outline:0}
   [data-hud]{position:absolute;left:10px;top:10px;padding:7px 9px;background:#000c;border:1px solid #7778;white-space:pre-line;font:12px/1.35 ui-monospace,monospace;pointer-events:none}
   .muted{color:#aaa}.error{color:#ff8a7a}
+  body[data-doom-solo]{padding:0;overflow:hidden}
+  body[data-doom-solo] main{width:100vw;height:100vh;display:block}
+  body[data-doom-solo] header,body[data-doom-solo] main>p{display:none}
+  body[data-doom-solo] [data-game][data-active]{width:100vw;height:100vh}
+  body[data-doom-solo] canvas{width:min(100vw,160vh);max-width:100vw;max-height:100vh}
   @media(max-width:700px){.forms{grid-template-columns:1fr}body{padding:8px}}
 `;
 document.head.append(style);
@@ -106,6 +111,8 @@ const game = main.querySelector<HTMLElement>('[data-game]')!;
 const hud = main.querySelector<HTMLElement>('[data-hud]')!;
 const canvas = createDoomCanvas();
 game.prepend(canvas);
+const soloPresentationAssets = soloMode ?
+  Promise.all([getAsset('PLAYPAL'),getAsset('TITLEPIC')]) : null;
 
 const trace = (name: string, detail: object): void => {
   window.dispatchEvent(new CustomEvent(`doom:multiplayer-${name}`, {
@@ -140,6 +147,12 @@ const showError = (cause: unknown): void => {
   message.textContent = cause instanceof Error ? cause.message : String(cause);
   setBusy(false);
 };
+const showSoloError = (cause: unknown): void => {
+  hud.className = 'error';
+  hud.textContent = `SINGLE PLAYER\n${
+    cause instanceof Error ? cause.message : String(cause)}`;
+  setBusy(false);
+};
 
 let local: LocalMatch | null = null;
 let latestStatus: MatchStatus | null = null;
@@ -152,7 +165,7 @@ function scheduleLobbyRefresh(): void {
   if (gameStarted || local === null) return;
   lobbyTimer = window.setTimeout(() => {
     void refreshLobby()
-      .catch(showError)
+      .catch(soloMode ? showSoloError : showError)
       .finally(() => scheduleLobbyRefresh());
   }, 500);
 }
@@ -247,11 +260,13 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
   lobby.hidden = true;game.dataset.active = '';
   hud.textContent = 'Loading SHA-verified Doom engine and IWAD…';
   const audio = new AudioPresenter();
-  const [paletteAsset, titleAsset, initialInputSequence, engines] = await Promise.all([
-    getAsset('PLAYPAL'), getAsset('TITLEPIC'),
+  const [presentationAssets, initialInputSequence, engines] = await Promise.all([
+    soloPresentationAssets ??
+      Promise.all([getAsset('PLAYPAL'),getAsset('TITLEPIC')]),
     matchInputFrontier(value.match, value.playerCapability),
     createBrowserAuthorityEngines(status)
   ]);
+  const [paletteAsset,titleAsset]=presentationAssets;
   const blitIndexed = createIndexedBlitter(canvas,
     createPalette(decodeBytes(paletteAsset.payload)));
   blitIndexed(decodeBytes(titleAsset.payload));
@@ -288,7 +303,9 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
   const updateHud = (): void => {
     const elapsed = paintedAt.length > 1 ? paintedAt.at(-1)! - paintedAt[0]! : 0;
     const fps = elapsed > 0 ? (paintedAt.length - 1) * 1000 / elapsed : 0;
-    hud.textContent = `${status.mode} · PLAYER ${value.playerSlot + 1} · TIC ${presentedTic}`
+    const role=soloMode ? 'SINGLE PLAYER' :
+      `${status.mode} · PLAYER ${value.playerSlot + 1}`;
+    hud.textContent = `${role} · TIC ${presentedTic}`
       + ` · CONFIRMED ${mirror.frontier.tic} · SERVER ${serverTic}`
       + `\n${fps.toFixed(1)} FPS · lead ${wan.inputLeadTics}`
       + ` · playout ${wan.playoutBufferTics} · confirmed-only`;
@@ -658,17 +675,23 @@ const hash = location.hash.slice(1);
 if (soloMode) {
   createForm.hidden = true;joinForm.hidden = true;
   readyButton.hidden = true;shareWrap.hidden = true;
-  message.textContent = 'Creating a one-player MLE-authoritative match inside Oracle…';
+  lobby.hidden = true;game.dataset.active = '';
+  hud.textContent = 'SINGLE PLAYER\nStarting a new game inside Oracle…';
+  void soloPresentationAssets?.then(([paletteAsset,titleAsset]) => {
+    const blit=createIndexedBlitter(canvas,
+      createPalette(decodeBytes(paletteAsset.payload)));
+    blit(decodeBytes(titleAsset.payload));
+  }).catch(showSoloError);
   ready = true;setBusy(true);
   void createMatch('PLAYER 1',soloSkill,'COOP',1).then(async value => {
     const credentials: LocalMatch = {
       match:value.match,playerCapability:value.playerCapability,playerSlot:0
     };
     await enterLobby(credentials);
-    message.textContent = 'Starting the retained MLE authority and recovery standby…';
+    hud.textContent = 'SINGLE PLAYER\nInitializing the retained MLE authority…';
     await readyMatch(value.match,value.playerCapability,true);
     await refreshLobby();
-  }).catch(showError).finally(() => setBusy(false));
+  }).catch(showSoloError).finally(() => setBusy(false));
 } else if (hash.startsWith('join=')) {
   const [match = '', join = ''] = hash.slice(5).split('.');
   if (/^[0-9a-f]{32}$/.test(match) && /^[0-9a-f]{64}$/.test(join)) {

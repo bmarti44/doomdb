@@ -16,7 +16,7 @@ node --check "$root/scripts/build-t11.2-completion-ledger.mjs"
 "$root/node_modules/.bin/tsc" -p "$root/client/tsconfig.json" --noEmit false --outDir "$tmp/client"
 cp "$root/client/dist/play/index.html" "$tmp/client/index.html"
 cp "$root/client/staging/multiplayer.html" "$tmp/client/multiplayer.html"
-cp "$root/client/staging/mle.html" "$tmp/client/mle.html"
+cp "$root/client/staging/solo.html" "$tmp/client/solo.html"
 node "$root/scripts/t11.2-build-client.mjs" "$root" "$tmp/client" \
   https://example.oraclecloudapps.com/ords/doom \
   "$tmp/build.json" "$tmp/allowlist.txt"
@@ -31,7 +31,7 @@ const keys=fs.readFileSync(path.join(tmp,'allowlist.txt'),'utf8').trim().split('
 assert.equal(manifest.objects.length,keys.length);
 assert.ok(keys.includes('index.html'));
 assert.ok(keys.includes('multiplayer.html'));
-assert.ok(keys.includes('mle.html'));
+assert.ok(keys.includes('solo.html'));
 assert.equal(keys.filter(key=>/^main-[0-9a-f]{12}\.js$/.test(key)).length,1);
 assert.equal(keys.filter(key=>/^multiplayer-[0-9a-f]{12}\.js$/.test(key)).length,1);
 assert.ok(!keys.includes('multiplayer.js'));

@@ -21,6 +21,10 @@ try {
   await assert.doesNotReject(() => page.locator('[data-doom-coop]').waitFor());
   assert.equal(await page.locator('[data-doom-coop]').textContent(), 'Co-op');
   assert.equal(await page.locator('[data-doom-multiplayer]').textContent(), 'Multiplayer');
+  assert.equal(await page.locator('[data-doom-coop]').getAttribute('href'),
+    '/play/multiplayer.html#mode=COOP');
+  assert.equal(await page.locator('[data-doom-multiplayer]').getAttribute('href'),
+    '/play/multiplayer.html');
   const fullscreen = page.locator('[data-doom-fullscreen]');
   await fullscreen.click();
   await page.waitForFunction(() => document.fullscreenElement
@@ -53,7 +57,10 @@ try {
   assert.ok(bounds, 'menu canvas has no pointer bounds');
   await page.mouse.click(bounds.x + bounds.width * 100 / 320,
     bounds.y + bounds.height * 118 / 200);
-  await page.waitForURL(/\/play\/mle(?:\.html)?#solo=1&skill=4/, {timeout: 10_000});
+  await page.waitForURL(/\/play\/solo(?:\.html)?#solo=1&skill=4/, {timeout: 10_000});
+  assert.equal(await page.locator('[data-lobby]').isVisible(),false,
+    'solo entry exposed the multiplayer lobby');
+  assert.match(await page.locator('[data-hud]').textContent()??'',/SINGLE PLAYER/);
   for (let waited = 0; createMatchCalls === 0 && waited < 3000; waited += 100) {
     await page.waitForTimeout(100);
   }

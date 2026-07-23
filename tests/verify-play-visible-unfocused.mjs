@@ -46,7 +46,7 @@ try {
   assert.ok(!requests.some(path => path.endsWith('/CREATE_MATCH')),
     'skill menu allocated a match before confirmation');
   await page.keyboard.press('Enter');
-  await page.waitForURL(/\/play\/mle(?:\.html)?#solo=1&skill=3/, {timeout: 10_000});
+  await page.waitForURL(/\/play\/solo(?:\.html)?#solo=1&skill=3/, {timeout: 10_000});
   assert.ok(requests.some(path => path.endsWith('/CREATE_MATCH')),
     'confirmed skill did not create an MLE match');
   assert.ok(!requests.some(path => path.endsWith('/NEW_GAME') ||
