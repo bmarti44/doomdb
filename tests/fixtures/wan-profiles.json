@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "seed": 351272,
+  "upstream": "http://127.0.0.1:8080",
+  "profiles": [
+    {"name": "rtt-50-jitter-10", "port": 18050, "rttMs": 50, "jitterMs": 10},
+    {"name": "rtt-100-jitter-20", "port": 18100, "rttMs": 100, "jitterMs": 20},
+    {"name": "rtt-200-jitter-40", "port": 18200, "rttMs": 200, "jitterMs": 40}
+  ]
+}

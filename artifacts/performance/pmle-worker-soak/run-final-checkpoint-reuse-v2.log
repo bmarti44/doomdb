@@ -1,0 +1,46 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1163182|source_sha256=06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_MLE_MEMORY_CAL_SESSION|sid=42|serial=56559|spid=99996|action=BASELINE_READY|pga=15972672|pga_max=15972672|uga=1895040|uga_max=1895040|process_pga=15633993|process_pga_max=16290457
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=BASELINE|spid=99996|rss=280592384|pss=133592064|private_clean=28954624|private_dirty=87216128|anonymous=87216128
+PMLE_MLE_MEMORY_CAL_SESSION|sid=42|serial=56559|spid=99996|action=ALLOCATED_READY|pga=15513920|pga_max=16103744|uga=1895040|uga_max=1895040|process_pga=15532481|process_pga_max=16421529
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=ALLOCATED|spid=99996|rss=316657664|pss=168966144|private_clean=29396992|private_dirty=122093568|anonymous=122093568
+PMLE_MLE_MEMORY_CAL_SESSION|sid=42|serial=56559|spid=99996|action=RELEASED_READY|pga=15513920|pga_max=16103744|uga=1895040|uga_max=1895040|process_pga=15532481|process_pga_max=16421529
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=RELEASED|spid=99996|rss=317124608|pss=169525248|private_clean=29458432|private_dirty=122187776|anonymous=122187776
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_MLE_MEMORY_CAL_ALLOCATION|bytes=67108864|loaded=67108864

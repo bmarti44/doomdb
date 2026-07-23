@@ -1,0 +1,60 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1162821|source_sha256=4cc6da908df03fbd7217aa0005c167dcf78451d14803ffa627b0360ae69c7094|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_MLE_MEMORY_CAL_SESSION|sid=47|serial=12066|spid=85329|action=BASELINE_READY|pga=16824640|pga_max=16824640|uga=2685752|uga_max=2685752|process_pga=16425057|process_pga_max=17404569
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=BASELINE|spid=85329|rss=281837568|pss=146834432|private_clean=30334976|private_dirty=88113152|anonymous=88113152
+PMLE_MLE_MEMORY_CAL_SESSION|sid=47|serial=12066|spid=85329|action=ALLOCATED_READY|pga=16300352|pga_max=16955712|uga=2685752|uga_max=2685752|process_pga=16290697|process_pga_max=17404569
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=ALLOCATED|spid=85329|rss=344530944|pss=209629184|private_clean=30867456|private_dirty=149573632|anonymous=149573632
+PMLE_MLE_MEMORY_CAL_SESSION|sid=47|serial=12066|spid=85329|action=RELEASED_READY|pga=16300352|pga_max=16955712|uga=2685752|uga_max=2685752|process_pga=16290697|process_pga_max=17404569
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=RELEASED|spid=85329|rss=344924160|pss=209921024|private_clean=30973952|private_dirty=149667840|anonymous=149667840
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_MLE_MEMORY_CAL_ALLOCATION|bytes=67108864|loaded=67108864
+PMLE_MLE_MEMORY_CAL|PASS|allocation_bytes=67108864|minimum_visible_bytes=50331648|pss_delta=62794752|private_delta=61992960|pga_is_complete=0
+PMLE_WORKER_SOAK_MATCH|BOUND|match=37f6367056bf0f8e2c9133b6255d1198
+PMLE_WORKER_SOAK_WARMUP|BEGIN|seconds=30|epoch=1784796235
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=216|sid=216|serial=58275|spid=81472|action=MLE_STEP|pga_bytes=31254105|pga_max_bytes=74027673
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=81472|sample_epoch=1784796268|rss=870019072|pss=399908864|private_clean=8671232|private_dirty=295383040|anonymous=295333888
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=216|sid=216|serial=58275|spid=81472|action=-|pga_bytes=31130073|pga_max_bytes=74027673
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=81472|sample_epoch=1784796273|rss=861970432|pss=390674432|private_clean=8589312|private_dirty=285958144|anonymous=285908992
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=216|sid=216|serial=58275|spid=81472|action=MLE_STEP|pga_bytes=31254105|pga_max_bytes=74027673
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=81472|sample_epoch=1784796279|rss=863379456|pss=391008256|private_clean=8658944|private_dirty=286027776|anonymous=285982720
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=216|sid=216|serial=58275|spid=81472|action=MLE_STEP|pga_bytes=31254105|pga_max_bytes=74027673
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=81472|sample_epoch=1784796285|rss=847831040|pss=374717440|private_clean=8527872|private_dirty=269725696|anonymous=269680640
+PASS P13.5-MULTIPLAYER-SOAK seconds=20 warmupSeconds=30 tics=1128/1128-1831/1830 maxLag=18 maxReconnectSeconds=0 resyncs=0/0 frames=0 checkpoints=2 bytes=0 disconnectedNeutral=0 initialNeutral=2223 paint999Max=140.0/140.0,168.9/168.9
+PMLE_WORKER_SOAK_MEMORY|PASS|role=AUTHORITY|samples=4|warmup_excluded=1|spid_stable=1|margin=67108864|rss_base=870019072|rss_max=870019072|rss_end=847831040|pss_base=399908864|pss_max=399908864|pss_end=374717440|private_base=304054272|private_max=304054272|private_end=278253568|plateau_steps_8m=0
+PMLE_WORKER_SOAK_MEMORY|FAIL|role=STANDBY|samples=0|warmup_excluded=1|spid_stable=1|margin=67108864|rss_base=0|rss_max=0|rss_end=0|pss_base=0|pss_max=0|pss_end=0|private_base=0|private_max=0|private_end=0|plateau_steps_8m=0

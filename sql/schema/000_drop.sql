@@ -32,6 +32,8 @@ begin
   drop_object('drop package doom_worker_api', -4043);
   drop_object('drop package doom_mocha_bridge', -4043);
   drop_object('drop package doom_match_worker', -4043);
+  drop_object('drop package doom_mle_authority_delta', -4043);
+  drop_object('drop package doom_mle_transition_transport', -4043);
   drop_object('drop package doom_unified_worker', -4043);
   drop_object('drop package doom_session_cleanup', -4043);
   drop_object('drop package doom_render_worker', -4043);
@@ -88,7 +90,15 @@ begin
   drop_object('drop function doom_bsp_build_kernel_pack_java', -4043);
   drop_object('drop function doom_mocha_iwad_probe', -4043);
   drop_object('drop function doom_mocha_initialize', -4043);
+  drop_object('drop function doom_mocha_canonical_state', -4043);
+  drop_object('drop function doom_mocha_canonical_blob', -4043);
+  drop_object('drop function doom_mocha_step_command_simulation', -4043);
+  drop_object('drop function doom_mocha_multiplayer_sim_step', -4043);
+  drop_object('drop function doom_mocha_multiplayer_sim_membership_step', -4043);
+  drop_object('drop function doom_mocha_multiplayer_sim_init', -4043);
+  drop_object('drop function doom_mocha_multiplayer_sim_init_skill', -4043);
   drop_object('drop function doom_mocha_step', -4043);
+  drop_object('drop function doom_mocha_step_simulation', -4043);
   drop_object('drop function doom_mocha_step_frame', -4043);
   drop_object('drop function doom_mocha_step_controls_frame', -4043);
   drop_object('drop function doom_mocha_step_controls_payload', -4043);
@@ -138,7 +148,7 @@ begin
         'FRAME_SPRITE','FRAME_WALL','FRAME_SECTOR_INTERVAL','FRAME_PORTAL_HIT',
         'FRAME_R1_HIT','FRAME_RENDER_SEG_BOUND','FRAME_COLUMN',
         'REPLAY_CURSORS','HISTORY_HEADS','SAVE_SLOTS','STATE_HISTORY','STEP_RESPONSES','AUDIO_EVENTS','GAME_EVENTS',
-        'DOOM_MATCH_ROUTE_TRACE','DOOM_MATCH_WORKER_CONTROL','DOOM_MATCH_CHECKPOINT','DOOM_MATCH_FRAME','DOOM_MATCH_INPUT_EVENT','DOOM_MATCH_COMMAND','DOOM_MATCH_TIC','DOOM_MATCH_MEMBER','DOOM_MATCH',
+        'DOOM_MATCH_POLL_LEASE','DOOM_MATCH_POLL_CAPACITY','DOOM_MATCH_SLOW_CALL','DOOM_MATCH_TRANSITION','DOOM_MATCH_ROUTE_TRACE','DOOM_MATCH_STANDBY_CONTROL','DOOM_MATCH_WORKER_CONTROL','DOOM_MATCH_CHECKPOINT','DOOM_MATCH_FRAME','DOOM_MATCH_INPUT_EVENT','DOOM_MATCH_COMMAND','DOOM_MATCH_TIC','DOOM_MATCH_MEMBER','DOOM_MATCH',
         'DOOM_MOCHA_FRAME_LEDGER','DOOM_MOCHA_INITIAL_FRAME','DOOM_MOCHA_SAVE_SLOT','DOOM_MOCHA_FRAME_CACHE',
         'DOOM_ROUTE_TRACE','DOOM_MOCHA_COMMAND','DOOM_MOCHA_LINEAGE','DOOM_WORKER_AUDIT','DOOM_WORKER_RESULT','DOOM_WORKER_REQUEST','DOOM_WORKER_CONTROL',
         'TIC_COMMANDS','ACTIVE_SWITCHES','ACTIVE_MOVERS','LINE_STATE','SECTOR_STATE',

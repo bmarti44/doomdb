@@ -5,7 +5,19 @@ import {chromium} from 'playwright';
 
 const base=process.env.DOOMDB_PLAY_BASE_URL??'http://localhost:8080';
 const seconds=Number(process.env.DOOMDB_MULTIPLAYER_SOAK_SECONDS??1800);
+const warmupSeconds=Number(process.env.DOOMDB_MULTIPLAYER_SOAK_WARMUP_SECONDS??0);
+const startupTimeoutMs=Number(process.env.DOOMDB_MULTIPLAYER_STARTUP_TIMEOUT_MS??300000);
+const wanGate=process.env.DOOMDB_WAN_GATE==='1';
+const wanRttMs=Number(process.env.DOOMDB_WAN_RTT_MS??0);
+const wanJitterMs=Number(process.env.DOOMDB_WAN_JITTER_MS??0);
+const wanHoldMs=Number(process.env.DOOMDB_WAN_HOLD_MS??0);
 assert.ok(Number.isInteger(seconds)&&seconds>=20&&seconds<=1800);
+assert.ok(Number.isInteger(warmupSeconds)&&warmupSeconds>=0&&warmupSeconds<=600);
+assert.ok(Number.isInteger(startupTimeoutMs)&&startupTimeoutMs>=60000&&startupTimeoutMs<=600000);
+if(wanGate) {
+  assert.ok(wanRttMs>0&&wanJitterMs>=0&&wanJitterMs<=wanRttMs);
+  assert.ok(wanHoldMs>=0&&wanHoldMs<=500);
+}
 const matchFile=process.env.DOOMDB_MATCH_ID_FILE;
 assert.ok(matchFile,'DOOMDB_MATCH_ID_FILE is required');
 const dbContainer=execFileSync('docker',['compose','ps','-q','db'],{encoding:'utf8'}).trim();
@@ -37,6 +49,9 @@ await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
   window.__doomSoakTics=[];
   window.__doomSoakPaintAt=[];
   window.__doomSoakResyncs=[];
+  window.__doomWanInputs=[];
+  window.__doomWanEffective=[];
+  window.__doomWanConfirmed=[];
   addEventListener('doom:multiplayer-present',event=>{
     window.__doomSoakTics.push(event.detail.tic);
     window.__doomSoakPaintAt.push(performance.now());
@@ -44,10 +59,18 @@ await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
   addEventListener('doom:multiplayer-resync',event=>window.__doomSoakResyncs.push({
     atCount:window.__doomSoakTics.length,tic:event.detail.tic
   }));
+  addEventListener('doom:multiplayer-input',event=>
+    window.__doomWanInputs.push(event.detail));
+  addEventListener('doom:multiplayer-input-effective',event=>
+    window.__doomWanEffective.push(event.detail));
+  addEventListener('doom:multiplayer-confirmed',event=>
+    window.__doomWanConfirmed.push(event.detail));
 })));
 let match='';
 try {
-  await host.goto(`${base}/play/multiplayer`,{waitUntil:'networkidle'});
+  const gameUrl=new URL('/play/multiplayer',base);
+  if(wanHoldMs>0) gameUrl.searchParams.set('holdMs',String(wanHoldMs));
+  await host.goto(gameUrl.toString(),{waitUntil:'networkidle'});
   await host.locator('[data-create] input[name=name]').fill('SOAK HOST');
   await host.getByRole('button',{name:'Create two-player match'}).click();
   await host.locator('[data-room]').waitFor({state:'visible'});
@@ -69,15 +92,20 @@ try {
   }
   await Promise.all([host,guest].map(page=>page.locator('[data-ready]').click()));
   await Promise.all([host,guest].map(page=>page.locator('[data-game][data-active]')
-    .waitFor({state:'visible',timeout:60000})));
+    .waitFor({state:'visible',timeout:startupTimeoutMs})));
   await Promise.all([host,guest].map(page=>page.waitForFunction(()=>
     /TIC [1-9][0-9]*/.test(document.querySelector('[data-hud]')?.textContent??''),
     null,{timeout:30000})));
   await Promise.all([host,guest].map(page=>page.waitForFunction(()=>{
     const text=document.querySelector('[data-hud]')?.textContent??'';
-    const lag=Number(text.match(/LAG (\d+)/)?.[1]??999);
-    return window.__doomSoakTics.length>=40&&lag<=8;
+    const tic=Number(text.match(/TIC (\d+)/)?.[1]??0);
+    const server=Number(text.match(/SERVER (\d+)/)?.[1]??999);
+    return text.includes('confirmed-only')&&window.__doomSoakTics.length>=40&&
+      server-tic<=8;
   },null,{timeout:60000})));
+  if (warmupSeconds>0) await host.waitForTimeout(warmupSeconds*1000);
+  const measurementStarts=await Promise.all([host,guest].map(page=>
+    page.evaluate(()=>performance.now())));
   const ticOf=async page=>Number((await page.locator('[data-hud]').textContent()??'')
     .match(/TIC (\d+)/)?.[1]??0);
   const starts=await Promise.all([host,guest].map(ticOf));
@@ -104,7 +132,9 @@ try {
           continue;
         }
         reconnectSamples[slot]=0;
-        const lag=Number(row.text.match(/LAG (\d+)/)?.[1]??999);
+        const tic=Number(row.text.match(/TIC (\d+)/)?.[1]??0);
+        const server=Number(row.text.match(/SERVER (\d+)/)?.[1]??999);
+        const lag=server-tic;
         assert.ok(lag<128,`soak presentation lag exceeded retention ring: ${row.text}`);
         maxLag=Math.max(maxLag,lag);
       }
@@ -115,14 +145,24 @@ try {
   }
   await Promise.all([host,guest].map(page=>page.keyboard.up('w')));
   const ends=await Promise.all([host,guest].map(ticOf));
-  const evidence=await Promise.all([host,guest].map((page,slot)=>page.evaluate(start=>({
-    presented:window.__doomSoakTics.slice(start),
-    paintAt:window.__doomSoakPaintAt.slice(start),
-    resyncs:window.__doomSoakResyncs.filter(value=>value.atCount>=start)
-      .map(value=>({...value,atCount:value.atCount-start}))
-  }),startCounts[slot])));
+  const evidence=await Promise.all([host,guest].map((page,slot)=>page.evaluate(
+    ({start,measurementStart})=>({
+      presented:window.__doomSoakTics.slice(start),
+      paintAt:window.__doomSoakPaintAt.slice(start),
+      resyncs:window.__doomSoakResyncs.filter(value=>value.atCount>=start)
+        .map(value=>({...value,atCount:value.atCount-start})),
+      inputs:window.__doomWanInputs.filter(value=>value.at>=measurementStart),
+      effective:window.__doomWanEffective.filter(value=>value.at>=measurementStart),
+      confirmed:window.__doomWanConfirmed.filter(value=>value.at>=measurementStart)
+    }),{start:startCounts[slot],measurementStart:measurementStarts[slot]})));
   const presented=evidence.map(value=>value.presented);
   const paintTails=[];
+  const wanMetrics=[];
+  const percentile=(values,fraction)=>{
+    assert.ok(values.length>0,'WAN percentile requires samples');
+    const ordered=[...values].sort((a,b)=>a-b);
+    return ordered[Math.max(0,Math.ceil(ordered.length*fraction)-1)];
+  };
   for (let slot=0;slot<2;slot++) {
     assert.ok(presented[slot].length>=seconds*25,
       `soak player ${slot} presented ${presented[slot].length} frames`);
@@ -150,11 +190,59 @@ try {
         `soak player ${slot} final run skipped tic ${presented[slot][index-1]}`);
     assert.ok(ends[slot]-starts[slot]>=seconds*25,
       `soak player ${slot} advanced ${ends[slot]-starts[slot]} tics`);
+    if(wanGate) {
+      const inputBySequence=new Map(evidence[slot].inputs.map(value=>
+        [value.inputSequence,value]));
+      const effectLatencies=[];const roundTrips=[];const leadChanges=[];
+      let priorLead=null;let priorLeadAt=Number.NEGATIVE_INFINITY;
+      for(const effective of evidence[slot].effective) {
+        roundTrips.push(effective.roundTripMs);
+        if(priorLead===null) {
+          priorLead=effective.leadTics;priorLeadAt=effective.at;
+        } else if(effective.leadTics!==priorLead) {
+          assert.equal(Math.abs(effective.leadTics-priorLead),1,
+            `WAN player ${slot} lead jumped`);
+          assert.ok(effective.at-priorLeadAt>=9990,
+            `WAN player ${slot} lead oscillated inside ten seconds`);
+          leadChanges.push({at:effective.at,from:priorLead,to:effective.leadTics});
+          priorLead=effective.leadTics;priorLeadAt=effective.at;
+        }
+        const input=inputBySequence.get(effective.inputSequence);
+        if(input===undefined) continue;
+        const applied=evidence[slot].confirmed.find(value=>
+          value.at>=effective.at&&value.tic>=effective.effectiveTic);
+        if(applied!==undefined) effectLatencies.push(applied.at-input.at);
+      }
+      assert.ok(effectLatencies.length>=Math.max(20,seconds),
+        `WAN player ${slot} has too few input/effect pairs`);
+      assert.ok(roundTrips.length>=Math.max(20,seconds),
+        `WAN player ${slot} has too few RTT samples`);
+      for(let index=1;index<evidence[slot].confirmed.length;index+=1) {
+        assert.ok(evidence[slot].confirmed[index].tic>
+          evidence[slot].confirmed[index-1].tic,
+        `WAN player ${slot} confirmed tic regressed`);
+        assert.ok(evidence[slot].confirmed[index].generation>=
+          evidence[slot].confirmed[index-1].generation,
+        `WAN player ${slot} generation regressed`);
+      }
+      const p95=percentile(effectLatencies,.95);
+      const rttP90=percentile(roundTrips,.90);
+      const maxLead=Math.max(...evidence[slot].effective.map(value=>value.leadTics));
+      const limit=wanRttMs+wanJitterMs+maxLead*(1000/35)+wanHoldMs;
+      assert.ok(p95<=limit,
+        `WAN player ${slot} input/effect p95 ${p95.toFixed(1)} > ${limit.toFixed(1)}`);
+      const p99Interval=percentile(intervals,.99);
+      assert.ok(p99Interval<=2*(1000/35),
+        `WAN player ${slot} presentation p99 ${p99Interval.toFixed(1)} ms`);
+      wanMetrics.push({inputEffectP95Ms:p95,rttP90Ms:rttP90,maxLead,
+        leadChanges:leadChanges.length,presentationP99Ms:p99Interval});
+    }
   }
 
   const sql=`set serveroutput on size unlimited feedback off heading off linesize 32767\n`+
     `declare t number;f number;c number;cmd number;b number;w varchar2(16);`+
-    `disconnected number;deadline number;left_ number;initials number;begin\n`+
+    `disconnected number;deadline number;left_ number;initials number;`+
+    `sampled number;neutral number;begin\n`+
     `select m.current_tic,`+
     `(select count(*) from doom_match_frame f where f.match_id=m.match_id),`+
     `(select count(*) from doom_match_checkpoint c where c.match_id=m.match_id),`+
@@ -168,14 +256,23 @@ try {
     `d.command_source='NEUTRAL_LEFT'),`+
     `(select count(*) from doom_match_command d where d.match_id=m.match_id and `+
     `d.command_source='NEUTRAL_INITIAL'),`+
+    `(select count(*) from doom_match_command d where d.match_id=m.match_id and `+
+    `d.command_source='SAMPLED_INPUT' and d.tic>=${Math.min(...starts)}),`+
+    `(select count(*) from doom_match_command d where d.match_id=m.match_id and `+
+    `d.command_source like 'NEUTRAL_%' and d.tic>=${Math.min(...starts)}),`+
     `(select worker_status from doom_match_worker_control w where w.match_id=m.match_id) `+
-    `into t,f,c,cmd,b,disconnected,deadline,left_,initials,w from doom_match m where m.match_id='${match}';\n`+
-    `dbms_output.put_line('SOAK_DB|tic='||t||'|frames='||f||'|checkpoints='||c||'|commands='||cmd||'|bytes='||b||'|disconnectedNeutral='||disconnected||'|deadlineNeutral='||deadline||'|leftNeutral='||left_||'|initialNeutral='||initials||'|worker='||w);end;\n/\n`;
+    `into t,f,c,cmd,b,disconnected,deadline,left_,initials,sampled,neutral,w `+
+    `from doom_match m where m.match_id='${match}';\n`+
+    `dbms_output.put_line('SOAK_DB|tic='||t||'|frames='||f||'|checkpoints='||c||`+
+    `'|commands='||cmd||'|bytes='||b||'|disconnectedNeutral='||disconnected||`+
+    `'|deadlineNeutral='||deadline||'|leftNeutral='||left_||`+
+    `'|initialNeutral='||initials||'|sampled='||sampled||`+
+    `'|neutral='||neutral||'|worker='||w);end;\n/\n`;
   const output=execFileSync('scripts/db_sql.sh',['-'],{input:sql,encoding:'utf8'});
-  const row=output.match(/SOAK_DB\|tic=(\d+)\|frames=(\d+)\|checkpoints=(\d+)\|commands=(\d+)\|bytes=(\d+)\|disconnectedNeutral=(\d+)\|deadlineNeutral=(\d+)\|leftNeutral=(\d+)\|initialNeutral=(\d+)\|worker=(\w+)/);
+  const row=output.match(/SOAK_DB\|tic=(\d+)\|frames=(\d+)\|checkpoints=(\d+)\|commands=(\d+)\|bytes=(\d+)\|disconnectedNeutral=(\d+)\|deadlineNeutral=(\d+)\|leftNeutral=(\d+)\|initialNeutral=(\d+)\|sampled=(\d+)\|neutral=(\d+)\|worker=(\w+)/);
   assert.ok(row,'soak database evidence missing');
   const [,tic,frames,checkpoints,commands,bytes,disconnectedNeutral,
-    deadlineNeutral,leftNeutral,initialNeutral,worker]=row;
+    deadlineNeutral,leftNeutral,initialNeutral,sampled,neutral,worker]=row;
   assert.equal(worker,'READY');assert.ok(Number(frames)<=258);
   assert.ok(Number(checkpoints)<=2);
   assert.equal(Number(deadlineNeutral),0);assert.equal(Number(leftNeutral),0);
@@ -187,6 +284,19 @@ try {
   assert.ok(Number(commands)>=Number(tic)*2&&Number(commands)<=(Number(tic)+2)*2,
     `command frontier commands=${commands} tic=${tic}`);
   assert.ok(Number(bytes)<=258*65536);
+  if(wanGate) {
+    const substitutionRate=Number(neutral)/
+      Math.max(1,Number(sampled)+Number(neutral));
+    assert.ok(substitutionRate<.005,
+      `WAN neutral substitution rate ${substitutionRate}`);
+    process.stdout.write(`PMLE_WAN_GATE|PASS|rtt_ms=${wanRttMs}`+
+      `|jitter_ms=${wanJitterMs}|seconds=${seconds}`+
+      `|neutral_rate=${substitutionRate.toFixed(6)}|players=`+
+      `${wanMetrics.map(value=>[
+        value.inputEffectP95Ms.toFixed(1),value.rttP90Ms.toFixed(1),
+        value.maxLead,value.leadChanges,value.presentationP99Ms.toFixed(1)
+      ].join('/')).join(',')}\n`);
+  }
   let memorySummary='';
   if (memoryBaseline!==null) {
     const memoryFinal=workerMemory(match);const allowance=64*1024*1024;
@@ -204,6 +314,7 @@ try {
       ` gc=${memoryBaseline.gc}/${memoryFinal.gc}`;
   }
   process.stdout.write(`PASS P13.5-MULTIPLAYER-SOAK seconds=${seconds} `+
+    `warmupSeconds=${warmupSeconds} `+
     `tics=${starts.join('/')}-${ends.join('/')} maxLag=${maxLag} `+
     `maxReconnectSeconds=${maxReconnectSamples*5} `+
     `resyncs=${evidence.map(value=>value.resyncs.length).join('/')} `+

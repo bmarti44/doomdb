@@ -13,6 +13,17 @@ as language java
 name 'doomdb.mocha.DoomDbMochaAdapter.initializeSafe() return java.lang.String';
 /
 
+create or replace function doom_mocha_canonical_state return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.canonicalStateDigestSafe() return java.lang.String';
+/
+
+create or replace function doom_mocha_canonical_blob(p_output in blob)
+return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.canonicalStateBlobSafe(java.sql.Blob) return java.lang.String';
+/
+
 create or replace function doom_mocha_step(
   p_forward_move in number,
   p_side_move in number,
@@ -21,6 +32,27 @@ create or replace function doom_mocha_step(
 ) return varchar2
 as language java
 name 'doomdb.mocha.DoomDbMochaAdapter.stepSafe(int,int,int,int) return java.lang.String';
+/
+
+create or replace function doom_mocha_step_simulation(
+  p_forward_move in number,
+  p_side_move in number,
+  p_angle_turn in number,
+  p_buttons in number
+) return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.stepSimulationSafe(int,int,int,int) return java.lang.String';
+/
+
+create or replace function doom_mocha_step_command_simulation(
+  p_forward_move in number,
+  p_side_move in number,
+  p_angle_turn in number,
+  p_consistency in number,
+  p_buttons in number
+) return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.stepCommandSimulationSafe(int,int,int,int,int) return java.lang.String';
 /
 
 create or replace function doom_mocha_frame(p_output in blob) return varchar2
@@ -140,6 +172,38 @@ name 'doomdb.mocha.DoomDbMochaAdapter.benchmarkSafe(int,int,int,int,int,int) ret
 create or replace function doom_mocha_multiplayer_probe return varchar2
 as language java
 name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerProbeSafe() return java.lang.String';
+/
+
+create or replace function doom_mocha_multiplayer_sim_init(
+  p_active_players in number
+) return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerSimulationInitializeSafe(int) return java.lang.String';
+/
+
+create or replace function doom_mocha_multiplayer_sim_init_skill(
+  p_active_players in number,
+  p_skill in number
+) return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerSimulationInitializeAtSkillSafe(int,int) return java.lang.String';
+/
+
+create or replace function doom_mocha_multiplayer_sim_step(
+  p_active_players in number,
+  p_command_vector_hex in varchar2
+) return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerSimulationStepSafe(int,java.lang.String) return java.lang.String';
+/
+
+create or replace function doom_mocha_multiplayer_sim_membership_step(
+  p_active_players in number,
+  p_membership_bitmap in number,
+  p_command_vector_hex in varchar2
+) return varchar2
+as language java
+name 'doomdb.mocha.DoomDbMochaAdapter.multiplayerSimulationMembershipStepSafe(int,int,java.lang.String) return java.lang.String';
 /
 
 create or replace function doom_mocha_deathmatch_probe return varchar2

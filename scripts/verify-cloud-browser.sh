@@ -51,8 +51,14 @@ aws_quiet(){ if ! aws "$@" --no-cli-pager >"$tmp/aws/aws-output.log" 2>"$tmp/aws
 # Build client/dist semantics in an isolated directory. ADB_ORDS_BASE_URL is
 # replaced at build/compile time; no runtime configuration or proxy is emitted.
 "$root/node_modules/.bin/tsc" -p "$root/client/tsconfig.json" --noEmit false --outDir "$tmp/client-dist"
+"$root/probes/mle/teavm-engine/package-browser-assets.sh"
 cp "$root/client/dist/play/index.html" "$tmp/client-dist/index.html"
 cp "$root/client/staging/multiplayer.html" "$tmp/client-dist/multiplayer.html"
+mkdir -p "$tmp/client-dist/play"
+cp "$root/client/dist/play"/doom-mle-authority-*.js "$tmp/client-dist/play/"
+cp "$root/client/dist/play"/doom-mle-presentation-*.js "$tmp/client-dist/play/"
+cp "$root/client/dist/play"/canonical-runtime-v2-*.bin "$tmp/client-dist/play/"
+cp "$root/client/dist/play"/freedoom1-*.bin "$tmp/client-dist/play/"
 node "$root/scripts/t11.2-build-client.mjs" "$root" "$tmp/client-dist" "$ADB_ORDS_BASE_URL" "$tmp/build-manifest.json" "$tmp/artifact-allowlist.txt"
 chmod 600 "$tmp/build-manifest.json" "$tmp/artifact-allowlist.txt"
 

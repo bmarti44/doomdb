@@ -1,0 +1,14 @@
+PMLE_RESOURCE_CAP_SCRATCH|BEGIN|utc=2026-07-23T08:08:25Z
+SCRATCH_CONTAINER|name=doomdb-resource-cap-scratch|evidence_container=false|removed_after_probe=true
+SCRATCH_IMAGE|tag=gvenzl/oracle-free:23.26.2-full|image_id=sha256:b7bae8a95569947bc7aba61b152ecb63aa356df71e7fcc95a9f9b2610ced7aa6
+SCRATCH_IMAGE_DIGEST|gvenzl/oracle-free@sha256:b7bae8a95569947bc7aba61b152ecb63aa356df71e7fcc95a9f9b2610ced7aa6
+OPTION|Database resource manager=FALSE
+PARAM|cpu_count=2
+ACTIVE_PLAN|DEFAULT_CDB_PLAN|cpu_managed=ON
+CREATE_CDB_PLAN|EXPECTED_FAILURE|-439|ORA-00439: feature not enabled: Database resource manager
+UPDATE_DEFAULT_DIRECTIVE|EXPECTED_FAILURE|-439|ORA-00439: feature not enabled: Database resource manager
+PDB_METRIC|num_cpus=2|cpu_utilization_limit=50|running_sessions_limit=2|plan=DEFAULT_CDB_PLAN|con_id=3
+EVIDENCE_CONTAINER|id=2c75a0cdcc11447b2a1400c6c06b04075cf48731cc6c2f06602e7afac247162a|started=2026-07-22T20:26:44.843117914Z|status=running|modified_by_probe=false
+DECISION|FREE_ENFORCED|baseline=DEFAULT_CDB_PLAN|utilization_limit=50|running_sessions_limit=2
+RECOMMENDATION|Freeze this local baseline for every remaining acceptance gate; retain Autonomous as a separately measured target.
+PMLE_RESOURCE_CAP_SCRATCH|END|utc=2026-07-23T08:10:52Z

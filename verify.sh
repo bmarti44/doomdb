@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: ./verify.sh env | secrets | transport | task T0.1..T7.3|T11.1|T11.2|T12.1|T12.2|T13.0..T13.5 | phase P0|P1|P2|P3|P11|P13 | evaluator-self-test" >&2
+  echo "usage: ./verify.sh env | secrets | transport | task T0.1..T7.3|T11.1|T11.2|T12.1|T12.2|T13.0..T13.5 | phase P0|P1|P2|P3|P11|P13|PMLE | evaluator-self-test" >&2
   exit 2
 }
 
@@ -211,6 +211,22 @@ case "$1" in
         printf 'PASS P11 (live Autonomous Database, managed ORDS, and S3 browser gates)\n'
         ;;
       P13) bash tests/verify-phase-p13.sh ;;
+      PMLE)
+        node scripts/build-mle-dashboard-status.mjs
+        cp client/staging/index.html client/dist/index.html
+        node tests/verify-mle-dashboard.mjs
+        tests/verify-pmle-source.sh
+        node_modules/.bin/tsc -p client/tsconfig.json --noEmit false \
+          --outDir client/staging
+        node tests/verify-authority-delta.mjs
+        node tests/verify-authority-batch.mjs
+        node tests/verify-authority-mirror.mjs
+        scripts/db_sql.sh sql/sim/086_mle_authority_delta.sql
+        scripts/db_sql.sh tests/verify-mle-authority-delta.sql
+        scripts/db_sql.sh sql/sim/087_mle_transition_transport.sql
+        scripts/db_sql.sh tests/verify-mle-transition-transport.sql
+        probes/mle/run.sh
+        ;;
       *) usage ;;
     esac
     ;;

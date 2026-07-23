@@ -1,0 +1,45 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1162821|source_sha256=4cc6da908df03fbd7217aa0005c167dcf78451d14803ffa627b0360ae69c7094|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_MLE_MEMORY_CAL|SKIPPED|rehearsal_only=1
+PMLE_WORKER_SOAK_MATCH|BOUND|match=3b660d295df2fb8ea0a9f9e9d1a92a6a
+PMLE_WORKER_SOAK_WARMUP|BEGIN|seconds=5|epoch=1784796589
+PMLE_WORKER_SOAK_READY_OWNER|role=AUTHORITY|control_status=READY|control_sid=23|sid=23|serial=407|spid=86620|scheduler_running=1|action=MLE_STEP|pga_bytes=18296953|pga_max_bytes=19108505
+PMLE_WORKER_SOAK_READY_OWNER|role=STANDBY|control_status=READY|control_sid=206|sid=206|serial=36115|spid=84866|scheduler_running=1|action=MLE_GAME_INIT|pga_bytes=16060889|pga_max_bytes=17404569
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=23|sid=23|serial=407|spid=86620|scheduler_running=1|action=MLE_STEP|pga_bytes=30799161|pga_max_bytes=31429273
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=86620|sample_epoch=1784796595|rss=579080192|pss=321385472|private_clean=3121152|private_dirty=257155072|anonymous=257150976
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=23|sid=23|serial=407|spid=86620|scheduler_running=1|action=MLE_STEP|pga_bytes=30715697|pga_max_bytes=31429273
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=86620|sample_epoch=1784796600|rss=584380416|pss=318066688|private_clean=3964928|private_dirty=254951424|anonymous=254939136
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=23|sid=23|serial=407|spid=86620|scheduler_running=1|action=MLE_STEP|pga_bytes=30715697|pga_max_bytes=31429273
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=86620|sample_epoch=1784796606|rss=583356416|pss=314564608|private_clean=4362240|private_dirty=250605568|anonymous=250593280
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=23|sid=23|serial=407|spid=86620|scheduler_running=1|action=MLE_STEP|pga_bytes=30593273|pga_max_bytes=31429273
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=86620|sample_epoch=1784796611|rss=600702976|pss=327623680|private_clean=2883584|private_dirty=263491584|anonymous=263479296
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=23|sid=23|serial=407|spid=86620|scheduler_running=1|action=MLE_STEP|pga_bytes=30551769|pga_max_bytes=31429273
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=86620|sample_epoch=1784796617|rss=606056448|pss=329418752|private_clean=3080192|private_dirty=264478720|anonymous=264470528
+PASS P13.5-MULTIPLAYER-SOAK seconds=20 warmupSeconds=5 tics=261/261-967/967 maxLag=21 maxReconnectSeconds=0 resyncs=0/0 frames=0 checkpoints=1 bytes=0 disconnectedNeutral=0 initialNeutral=489 paint999Max=51.2/51.2,39.2/39.2
+PMLE_WORKER_SOAK_MEMORY|PASS|role=AUTHORITY|samples=5|warmup_excluded=1|spid_stable=1|margin=67108864|rss_base=579080192|rss_max=606056448|rss_end=606056448|pss_base=321385472|pss_max=329418752|pss_end=329418752|private_base=260276224|private_max=267558912|private_end=267558912|plateau_steps_8m=1
+PMLE_WORKER_SOAK_MEMORY|FAIL|role=STANDBY|samples=0|warmup_excluded=1|spid_stable=1|margin=67108864|rss_base=0|rss_max=0|rss_end=0|pss_base=0|pss_max=0|pss_end=0|private_base=0|private_max=0|private_end=0|plateau_steps_8m=0

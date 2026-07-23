@@ -1,0 +1,186 @@
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -228,21 +228,21 @@
+ 
+         // save the current screen if about to wipe
+-        wipe = (gamestate != wipegamestate);
++        wipe = false;
+         if (wipe) {
+             wiper.StartScreen(0, 0, vs.getScreenWidth(), vs.getScreenHeight());
+         }
+ 
+-        if (gamestate == GS_LEVEL && eval(gametic)) {
++        if (gamestate == GS_LEVEL && eval(gametic) && headsUp != null) {
+             headsUp.Erase();
+         }
+         
+         // do buffered drawing
+         switch (gamestate) {
+             case GS_LEVEL:
+                 if (!eval(gametic)) {
+                         break;
+                 }
+                 
+-                if (automapactive) {
++                if (automapactive && autoMap != null) {
+                     autoMap.Drawer();
+                 }
+@@ -249,7 +249,7 @@
+                 if (wipe
+                     || (!sceneRenderer.isFullHeight() && fullscreen)
+                     || (inhelpscreensstate && !inhelpscreens)
+-                    || (diskDrawer.justDoneReading()))
++                    || (diskDrawer != null && diskDrawer.justDoneReading()))
+                 {
+                     redrawsbar = true; // just put away the help screen
+                 }
+@@ -270,15 +270,11 @@
+ 
+         // draw the view directly
+         if (gamestate == GS_LEVEL && !automapactive && eval(gametic)) {
+-            if (flashing_hom) {
+-                graphicSystem.FillRect(FG, new Rectangle(view.getViewWindowX(), view.getViewWindowY(),
+-                        view.getScaledViewWidth(), view.getScaledViewHeight()), gametic % 256);
+-            }
+             sceneRenderer.RenderPlayerView(players[displayplayer]);
+         }
+ 
+         // Automap was active, update only HU.    
+-        if (gamestate == GS_LEVEL && eval(gametic)) {
++        if (gamestate == GS_LEVEL && eval(gametic) && headsUp != null) {
+             headsUp.Drawer();
+         }
+ 
+@@ -332,8 +328,7 @@
+         // menus go directly to the screen
+         menu.Drawer(); // menu is drawn even on top of everything
+-        NetUpdate(); // send out any new accumulation
+ 
+         // Disk access goes after everything.
+-        diskDrawer.Drawer();
++        if (diskDrawer != null) diskDrawer.Drawer();
+         
+         // normal update
+         if (!wipe) {
+diff --git a/src/rr/RendererState.java b/src/rr/RendererState.java
+--- a/src/rr/RendererState.java
++++ b/src/rr/RendererState.java
+@@ -2184,6 +2184,10 @@
+      */
+     @Override
+     public void DrawViewBorder() {
++        // MLE/browser presentation is fixed at full-screen 320x200. Keeping
++        // the desktop Rectangle/CopyRect border graph unreachable is both
++        // exact for that mode and required by TeaVM's browser class library.
++        if (true) return;
+         if (view.scaledwidth == DOOM.vs.getScreenWidth()) {
+             return;
+         }
+@@ -2330,6 +2334,10 @@
+     @Override
+     @R_Draw.C(R_FillBackScreen)
+     public void FillBackScreen() {
++        // The selected MLE/browser renderer never uses a reduced-size view.
++        // Border tiling depends on java.awt.Rectangle, which is unavailable
++        // to TeaVM and is presentation-dead in the fixed full-screen mode.
++        if (true) return;
+         final boolean scaleSetting = Engine.getConfig().equals(Settings.scale_screen_tiles, Boolean.TRUE);
+         flat_t src;
+         DoomScreen dest;
+@@ -3071,27 +3079,15 @@
+         MySegs.ClearClips();
+         VIS.ClearSprites();
+ 
+-        // Check for new console commands.
+-        DOOM.gameNetworking.NetUpdate();
+-
+         // The head node is the last node output.
+         MyBSP.RenderBSPNode(DOOM.levelLoader.numnodes - 1);
+ 
+-        // Check for new console commands.
+-        DOOM.gameNetworking.NetUpdate();
+-
+         // FIXME: "Warped floor" fixed, now to fix same-height visplane
+         // bleeding.
+         MyPlanes.DrawPlanes();
+ 
+-        // Check for new console commands.
+-        DOOM.gameNetworking.NetUpdate();
+-
+         MyThings.DrawMasked();
+ 
+         colfunc.main = colfunc.base;
+-
+-        // Check for new console commands.
+-        DOOM.gameNetworking.NetUpdate();
+     }
+ }
+diff --git a/src/f/Finale.java b/src/f/Finale.java
+--- a/src/f/Finale.java
++++ b/src/f/Finale.java
+@@ -260,6 +260,10 @@
+ 
+ 	@SuppressWarnings("unchecked")
+     public void TextWrite() {
++        // Presentation phase one intentionally leaves finale art/text stubbed.
++        // The audit/DVR honesty gate remains open until this is replaced by a
++        // Rectangle-free exact implementation.
++        if (true) return;
+ 		// erase the entire screen to a tiled background
+ 		byte[] src = DOOM.wadLoader.CacheLumpName(finaleflat, PU_CACHE, flat_t.class).data;
+         if (Engine.getConfig().equals(Settings.scale_screen_tiles, Boolean.TRUE)) {
+diff --git a/src/v/graphics/Columns.java b/src/v/graphics/Columns.java
+--- a/src/v/graphics/Columns.java
++++ b/src/v/graphics/Columns.java
+@@ -76,40 +76,16 @@
+      */
+     default void DrawPatchColumns(V screen, patch_t patch, int x, int y, int dupx, int dupy, boolean flip) {
+         final int scrWidth = getScreenWidth();
+-
+-        /**
+-         * As vanilla DOOM does not parallel column computation, we should have the option to turn off
+-         * the parallelism. Just set it to 0 in cfg:parallelism_patch_columns, and it will process columns in serial.
+-         * 
+-         * It will also prevent a crash on a dumb negative value set to this option. However, a value of 1000 is even
+-         * more dumb, but will probably not crash - just take hellion of megabytes memory and waste all the CPU time on
+-         * computing "what to process" instead of "what will be the result"
+-         */
+-        if (U.COLUMN_THREADS > 0) try {
+-            final IntConsumer task = i -> {
+-                final int startPoint = point(x + i * dupx, y, scrWidth);
+-                final column_t column = flip ? patch.columns[patch.width - 1 - i] : patch.columns[i];
+-                DrawColumn(screen, column, new Horizontal(startPoint, dupx),
+-                    convertPalettedBlock(column.data), scrWidth, dupy);
+-            };
+-            U.pool.submit(() -> IntStream.range(0, patch.width).parallel().forEach(task)).get();
+-        } catch (InterruptedException | ExecutionException ex) {
+-            Loggers.getLogger(Columns.class.getName()).log(Level.SEVERE, null, ex);
+-        } else {
+-            final Horizontal row = new Horizontal();
+-            row.length = dupx;
+-            for (int i = 0; i < patch.width; ++i) {
+-                row.start = point(x + i * dupx, y, scrWidth);
+-                final column_t column = flip ? patch.columns[patch.width - 1 - i] : patch.columns[i];
+-                DrawColumn(screen, column, row,
+-                    convertPalettedBlock(column.data), scrWidth, dupy);
+-            }
++        // Browser JavaScript has no ForkJoinPool. Vanilla draws these columns
++        // serially, so this preserves pixel order and avoids per-column
++        // closures in both interpreted MLE and browser engines.
++        final Horizontal row = new Horizontal();
++        row.length = dupx;
++        for (int i = 0; i < patch.width; ++i) {
++            row.start = point(x + i * dupx, y, scrWidth);
++            final column_t column = flip ? patch.columns[patch.width - 1 - i] : patch.columns[i];
++            DrawColumn(screen, column, row,
++                convertPalettedBlock(column.data), scrWidth, dupy);
+         }
+     }
+-    
+-    class U {
+-        static final int COLUMN_THREADS = Engine.getConfig().getValue(Settings.parallelism_patch_columns, Integer.class);
+-        private static final ForkJoinPool pool = COLUMN_THREADS > 0 ? new ForkJoinPool(COLUMN_THREADS) : null;
+-        private U() {}
+-    }
+ }

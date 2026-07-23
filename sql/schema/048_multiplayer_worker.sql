@@ -1,5 +1,5 @@
 -- Private retained-match worker rendezvous. One Scheduler session owns one
--- authoritative Java engine; this table is never granted or AutoREST-enabled.
+-- authoritative MLE engine; this table is never granted or AutoREST-enabled.
 declare
   l_deferrable varchar2(16);
 begin
@@ -48,5 +48,55 @@ create table doom_match_worker_control (
 
 create index doom_match_worker_request_ix on doom_match_worker_control(
   worker_status,request_status,requested_tic,heartbeat);
+
+-- One exact-configuration warm MLE context may shadow an active match. It is
+-- session-private until a fenced generation promotion transfers worker
+-- ownership; it never publishes authority while in READY state.
+create table doom_match_standby_control (
+  match_id varchar2(32) not null,
+  base_generation number(12) not null,
+  job_name varchar2(64) not null,
+  standby_status varchar2(16) not null,
+  worker_sid number,
+  heartbeat timestamp with time zone not null,
+  promote_generation number(12),
+  last_error varchar2(2000),
+  stop_requested number(1) default 0 not null,
+  constraint doom_match_standby_pk primary key(match_id),
+  constraint doom_match_standby_match_fk foreign key(match_id)
+    references doom_match(match_id) on delete cascade,
+  constraint doom_match_standby_job_uq unique(job_name),
+  constraint doom_match_standby_status_ck check(
+    standby_status in('STARTING','READY','PROMOTING','FAILED','STOPPED')),
+  constraint doom_match_standby_generation_ck check(
+    base_generation>0 and
+    (promote_generation is null or promote_generation=base_generation+1)),
+  constraint doom_match_standby_stop_ck check(stop_requested in(0,1))
+);
+
+create index doom_match_standby_status_ix on doom_match_standby_control(
+  standby_status,heartbeat);
+
+-- Sparse, fail-closed observability for the final retained-worker soak.
+-- Ordinary tics do not write this table; a row is emitted only after a
+-- complete authority transaction (including COMMIT) exceeds 100 ms.
+create table doom_match_slow_call (
+  slow_call_id number generated always as identity,
+  match_id varchar2(32) not null,
+  tic number(12) not null,
+  generation number(12) not null,
+  worker_sid number not null,
+  started_at timestamp with time zone not null,
+  ended_at timestamp with time zone not null,
+  elapsed_ms number not null,
+  stage varchar2(32) not null,
+  constraint doom_match_slow_call_pk primary key(slow_call_id),
+  constraint doom_match_slow_call_match_fk foreign key(match_id)
+    references doom_match(match_id) on delete cascade,
+  constraint doom_match_slow_call_elapsed_ck check(elapsed_ms>100)
+);
+
+create index doom_match_slow_call_match_ix on doom_match_slow_call(
+  match_id,generation,tic);
 
 commit;

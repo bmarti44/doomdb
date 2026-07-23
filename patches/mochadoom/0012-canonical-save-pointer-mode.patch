@@ -1,0 +1,31 @@
+diff --git a/src/utils/C2JUtils.java b/src/utils/C2JUtils.java
+--- a/src/utils/C2JUtils.java
++++ b/src/utils/C2JUtils.java
+@@ -576,14 +576,27 @@ public final class C2JUtils {
+     /**
+      * Return either 0 or a hashcode 
+      * 
+      * @param o 
+      */
++    private static boolean canonicalSavePointers;
++
++    /**
++     * Make savegame pointer placeholders independent of the host runtime.
++     * This is only used while constructing a differential-test digest; normal
++     * checkpoint serialization retains Mocha Doom's existing pointer values.
++     */
++    public static void setCanonicalSavePointers(boolean enabled) {
++        canonicalSavePointers = enabled;
++    }
++
+     public static int pointer(Object o) {
+         if (o == null)
+             return 0;
++        else if (canonicalSavePointers)
++            return 1;
+         else
+             return o.hashCode();
+     }
+ 
+  
+     public static boolean checkForExtension(String filename, String ext) {

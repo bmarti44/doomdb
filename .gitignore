@@ -52,3 +52,9 @@ Wallet_*.zip
 *.wad
 *.dsg
 build/mochadoom-ojvm/
+probes/mle/teavm/target/
+probes/mle/teavm-engine/target/
+client/dist/play/doom-mle-authority-*.js
+client/dist/play/doom-mle-presentation-*.js
+client/dist/play/canonical-runtime-v2-*.bin
+client/dist/play/freedoom1-*.bin

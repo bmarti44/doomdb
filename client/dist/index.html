@@ -33,6 +33,16 @@
     .phase.active::after { content:"ACTIVE"; position:absolute; right:14px; top:14px; color:var(--amber); font-weight:700; }
     .phase.next { opacity:.75; }
     .phase.next::after { content:"NEXT"; position:absolute; right:14px; top:14px; color:var(--muted); font-weight:700; }
+    .phase.open { border-color:#985f2b; }
+    .phase.open::after { content:"OPEN"; position:absolute; right:14px; top:14px; color:#f0a629; font-weight:700; }
+    .phase.dormant { opacity:.62; }
+    .phase.dormant::after { content:"DORMANT"; position:absolute; right:14px; top:14px; color:var(--muted); font-weight:700; }
+    .status-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:18px 0; }
+    .status-card { min-height:132px; }
+    .status-card strong { display:block; color:#86d875; margin-bottom:6px; }
+    .status-card code { overflow-wrap:anywhere; }
+    .status-card[data-state="loading"] strong { color:var(--amber); }
+    .status-card[data-state="error"] strong { color:#ff8a7a; }
     .review-grid { display:grid; grid-template-columns:minmax(0,1fr) 240px; gap:18px; margin:18px 0; }
     canvas { display:block; width:100%; height:auto; border:1px solid var(--line); background:#080806; image-rendering:pixelated; }
     .readout strong { color:var(--amber); }
@@ -45,48 +55,49 @@
     a:hover { border-color:var(--amber); color:var(--amber); }
     code { color:#fff; }
     footer { color:var(--muted); margin-top:26px; font-size:12px; }
-    @media (max-width:780px) { header,.hero,.review-grid { grid-template-columns:1fr; } .stack{text-align:left}.metrics,.phases{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:780px) { header,.hero,.review-grid { grid-template-columns:1fr; } .stack{text-align:left}.metrics,.phases,.status-grid{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:520px) { .metrics,.phases,.status-grid{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
 <main>
   <header>
     <div><div class="eyebrow">Oracle-native Doom · build review</div><h1>DoomDB</h1></div>
-    <div class="stack"><span class="live"><i class="dot"></i><span id="status">checking stack…</span></span><br>Oracle Free 23ai · ORDS · 2 CPU / 4 GiB</div>
+    <div class="stack"><span class="live"><i class="dot"></i><span id="status">checking stack…</span></span><br>Oracle AI Database 26ai Free · ORDS · MLE JavaScript</div>
   </header>
 
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">Local plan complete<br><span>cloud certification next</span></p>
-      <p class="muted">Single-player, multiplayer, exact replay, the 30-minute soak, T12.1 evidence, and the T12.2 optimization stop rule are green. P11 dry-runs and evidence inputs are ready; live cloud authority is the final dependency.</p>
+      <p class="big">MLE authority proven<br><span>integration finish next</span></p>
+      <p class="muted">The final TeaVM-generated MLE authority passes the 13,272-tic every-tic OJVM differential, 762-tic co-op route, membership recovery, calibrated 30-minute authority/standby/browser soak, and Java-free worker cutover. WAN qualification and presentation completion remain open.</p>
     </article>
     <article class="panel">
-      <h2>Canonical acceptance</h2>
-      <p><strong>P11 — ready, live not run</strong><br><span class="muted">24 seed domains · 13,272-command cloud replay · external ADB/S3 targets required</span></p>
-      <p><strong>Legacy oracle preserved</strong><br><span class="muted">P0–P7 complete · independently executable SQL differential oracle</span></p>
-      <div class="links"><a href="/health.txt">static health</a><a href="/ords/">ORDS</a></div>
+      <h2>Final pinned authority</h2>
+      <p><strong>MLE JavaScript · 1,163,182 bytes</strong><br><span class="muted"><code id="authority-sha">06ac33331d9a…</code> · DMC1 v5 · confirmed DMD1 output</span></p>
+      <p><strong>OJVM is not production</strong><br><span class="muted">OJVM oracle stays in repository/dev tooling only for future differential proof.</span></p>
+      <div class="links"><a href="/play/">single player</a><a href="/play/multiplayer.html">multiplayer</a><a href="/health.txt">health</a></div>
     </article>
   </section>
 
-  <section class="panel" aria-label="current route status">
-    <h2>Live implementation status · July 21, 2026</h2>
-    <p><strong>Multiplayer:</strong> two independent browsers create, join, ready, submit live input, and receive distinct POVs with per-listener spatial audio from one Oracle-owned co-op or deathmatch world. A live ORDS-mid-poll restart recovered both clients and reached synchronized tic 114 after guest reload. The public two-browser E1M1 co-op route presents all 762 ordered frames and reaches authentic intermission with the canonical terminal hash; a forced worker loss at tic 400 finishes with identical state/POV hashes. Two-browser deathmatch is live through tic 18; deterministic gates cover authored starts, frags, respawn, reciprocal-kill ties, suicide accounting, the frozen 10-frag/10-minute rule, authentic scoreboard/intermission, and exact worker reconstruction. Shared keys, one-winner ammo, simultaneous actions, signed command replay, and generation recovery are independently green. Create admission passes its exact 16/minute live boundary and join is capped by the frozen two-player lobby. Private authoring traces are disabled during normal play and measurement; capabilities remain redacted.</p>
-    <p class="muted"><strong>Multiplayer performance — selected clean runs:</strong> new matches use a 35 Hz <code>PACED_INPUT</code> Scheduler worker: AutoREST records dynamic input independently while Oracle samples the exact per-tic vector and publishes both authoritative POVs. Consecutive co-op runs reached 34.80–35.18 FPS and deathmatch 34.96–35.36 FPS, with 32.0–32.7 ms paint p95 and 145.3–181.9 ms input p95. The public canonical co-op route presents every tic 1–762 with its exact terminal hash and distinct player HUDs. The first long soak exposed and fixed an exact 20-minute cutoff: authenticated traffic now sparsely renews the idle lease without hot-row DML, while worker tics cannot preserve abandoned matches. The corrected 30-minute gate reached tic 59,904 with zero measured resync/neutral substitutions, 258 retained frames, two checkpoints, and bounded memory. Paint p99.9/max captured the known host stalls; stable-clock native Linux/OCI tail certification remains open.</p>
-    <p class="muted"><strong>Local timing qualification:</strong> this Colima/Lima host steps its VM clock backward about every ten seconds, matching 98.7% of 865 Oracle <code>Time stalled</code> alerts. VZ restart and an isolated QEMU profile did not remove the defect. Oracle now uses monotonic match cadence, a two-vCPU cpuset without CFS quota, and <code>SYS_NICE</code> for VKTM/LGWR. Correctness evidence remains valid, but final FPS tails require a stable-clock native Linux/OCI rerun with p99.9/max reporting. Single-player is live and its movement/fire/mouse/menu latency gate passes.</p>
-    <p><strong>Skill-3 E1M1 — complete:</strong> an authentic no-cheat run reaches intermission at tic 13,272. A fresh Oracle session replayed all 13,272 commands with zero state, frame, or response SHA mismatches. The accepted route, terminal intermission image, and repeatability ledger are frozen in the repository.</p>
-    <p><strong>Engine:</strong> all 442 pinned upstream sources plus the DoomDB adapter compile reproducibly to 830 Java 8 classes for Autonomous OJVM (JAR SHA-256 <code>a27903f2…ab</code>). Oracle verifies the 28,795,076-byte Freedoom IWAD by SHA-256 before constructing E1M1. The engine has no desktop loop, external configuration files, privileged logger setup, or host WAD file; all 18 upstream process-exit sites are fenced into catchable OJVM errors.</p>
-    <p class="muted"><strong>Bounded bridge:</strong> dynamic <code>ticcmd_t</code> input advances exactly one tic and renders a deterministic 320×200 indexed framebuffer. Tic zero hashes to <code>a1c9b037…d3b5</code>; a caller-owned Oracle BLOB receives all 64,000 pixels in 1.431 ms. A pre-warmed standby worker constructs the next engine ahead of the claim — a new game drops from ~17 s cold to ~1.4 s, byte-exact with a cold construction — and the skill menu overlaps any remaining construction with a speculative default-skill allocation.</p>
-    <p><strong>Performance:</strong> T12.1 passes its content-addressed replay, independent DMF decoder, exact 90-call cursor matrix, internal plans, and three-run chain identity. T12.2 selected a 2 ms bounded readiness quantum: serial p50 improved 28.13% to 30.060 ms and reached 31.248 FPS. A regressing 1 ms attempt and an unused redundant index were rolled back and form the first distinct consecutive sub-5% stop pair. The selected exact browser route passes at 31.81/31.59 FPS with identical 300-state/frame/payload chains; the latest full interaction gate reaches 32.07 FPS and 122.2 ms input-to-correlated-paint.</p>
-    <p><strong>Final cloud gate:</strong> deterministic S3/Autonomous/teardown dry-runs, source-policy canaries, 48 isolated evaluator mutations, and the secret audit pass. The locally exercised seed collector covers 24 populated domains and 29,596 rows; the cloud browser ledger expands the accepted no-cheat 13,272-tic completion route. The corrected deploy sequence preflights an administrator-enabled Autonomous JAVAVM, client-loads and verifies all 830 Java 8 classes plus the SHA-verified IWAD, and only then finalizes runtime call specs. A disposable-schema run proves the exact protected credential/file/OCI loader path at 830/830 valid classes; the artifact also passes the full local core suite and identical 300-frame browser chains at 32.39/35.51 FPS. Live P11 remains <code>NOT RUN</code> until an Autonomous connection, wallet, managed ORDS URL, and dedicated S3 bucket are supplied outside the repository. A local cross-origin probe found that ORDS 26.2 AutoREST returns preflight <code>200</code> without CORS allow headers, so the managed endpoint must also clear the frozen <code>204</code> CORS contract before upload.</p>
-    <p><strong>Recovery and admission (hardened July 21):</strong> exact command reconstruction, save/load lineage forking, frame replay, duplicate/AQ, concurrent sessions, forced worker restart, and GOD/ALL/NOCLIP/FULLMAP reconstruction all pass. Worker claims self-heal lost Scheduler dispatches, dead claims are reclaimed, and a full pool deterministically evicts its least-recently-active idle worker instead of refusing a new player. Expiry cleanup now force-fences an expired owner whose Scheduler session has disappeared; eight local job slaves leave dispatch and cleanup headroom around the four-worker pool. The stale-owner regression, eleven-gate Mocha suite, direct AutoREST workflow, and browser workflows are green.</p>
-    <p class="muted"><strong>Fresh-stack multiplayer hardening (July 20):</strong> an empty ORDS config volume now installs the pinned repository, republishes only the allowlisted AutoREST objects, and comes online without manual metadata repair. The persisted Oracle SPFILE reserves 256 MiB for the shared OJVM graph; lifecycle, lockstep, deadline, checkpoint, exact reconstruction, and public generation-recovery gates pass after container recreation.</p>
-    <p class="muted"><strong>Active-match storage bound (July 20):</strong> each match keeps tic zero, a 128-tic two-POV response ring, the required tic-32 checkpoint, and sparse steady checkpoints every 1,024 tics while preserving the complete compact replay ledger. Frame retirement is incremental so cleanup does not create a 32-tic burst.</p>
-    <p class="muted"><strong>Presentation contract (July 19):</strong> the DMF3 <code>complete</code> byte is populated from vanilla <code>gamestate</code>, each producer format has exactly one canonical <code>frame_sha</code> orientation (a transposed frame can no longer validate), and death presentation is no longer silently discarded. Tab opens Doom's menu, M opens the automap, and Escape exits pointer capture or fullscreen without becoming a game command. Ctrl fires on every platform; the dedicated fullscreen button is the sole fullscreen entry and opts into Keyboard Lock on supported browsers.</p>
-    <p class="muted"><strong>Signed input and terminal workflows (July 19):</strong> Mocha's v2 command envelope preserves signed mouse/demo axes while v1 remains frozen. Public AutoREST browser routes reproduce exact intermission and no-cheat death frames; death restart creates a fresh same-skill session with byte-identical canonical spawn.</p>
-    <p class="muted"><strong>Long-route hardening (July 19):</strong> a complete 6,336-command save/load lineage export replays byte-exactly through public AutoREST. It exposed a deterministic cyclic fine-angle audio lookup at tic 8,006; the clean-room overlay now masks that lookup to vanilla's fine-angle domain, and the reconstructed branch advances normally through tic 8,048. The uninterrupted no-cheat skill-3 route is complete at authentic intermission tic 13,272 with exact fresh-session replay.</p>
-    <p class="muted"><strong>Oracle MODEL fire — complete (July 19):</strong> two independent full 150×160×96 ordered cellular executions produced the same 604,369 canonical RLE rows, all 150 frame hashes, and exact animation SHA <code>b1eac353…e4ba</code>. The operation spills heavily to TEMP and is intentionally an offline capability artifact, not part of gameplay.</p>
-    <p class="muted"><strong>Current play page:</strong> new <code>/play/</code> games use Mocha Doom in OJVM through the same generated AutoREST endpoints. Reload any tab opened before cutover to start a Mocha session.</p>
+  <section class="panel" aria-label="current MLE migration status">
+    <h2>Live implementation status · July 23, 2026</h2>
+    <p><strong>Authority:</strong> one retained Oracle session owns the complete TeaVM-generated Mocha simulation, RNG, membership ordering, DMC1 checkpoints, and DMS2 replay identity. The browser receives compact, chained DMD1 transitions and never predicts, simulates ahead, reorders, or invents a tic.</p>
+    <p><strong>Determinism:</strong> the final pinned authority matches the preserved OJVM ticker-only oracle through the accepted 13,272-command E1M1 ledger with full canonical comparison after every tic. The 330-tic canonical route, 762-tic co-op route, and leave/neutral/checkpoint/rejoin membership differential also pass on the final artifact.</p>
+    <p><strong>Production-shaped soak:</strong> authority, pre-warmed standby, and two real confirmed-only browser clients ran for 300 excluded warmup seconds plus 1,800 scored seconds. Both process-memory ceilings passed with stable Oracle SPIDs; browser clients had zero reconnects and maximum confirmed lag of 18 tics.</p>
+    <p><strong>Memory:</strong> an isolated 128 MiB page-touched MLE allocation produced approximately 1:1 PSS/private visibility while Oracle PGA counters stayed flat, proving the process sampler sees the JS heap. The final authority PSS measured 464.1 MiB baseline, 518.3 MiB maximum, and 434.5 MiB end under a fixed +64 MiB ceiling.</p>
+    <p><strong>Free capacity truth:</strong> Oracle Free enforces <code>DEFAULT_CDB_PLAN</code>, 50% PDB utilization on two CPUs, and two running sessions; Resource Manager plan modification is unavailable. DMB1 permits four held poll leases from the ORDS pool, but only one poll-return path is guaranteed runnable after reserving the worker session. Local long polling is therefore default-off.</p>
+    <p><strong>Recovery:</strong> DMC1 v5 retains hidden inactive-player state and full deterministic topology. A ready standby restores and continues the exact DMD1 chain; the final soak continuously exercised periodic checkpoints and standby reconstruction. Three old/new checkpoint byte spot checks plus membership restore-and-continue differential bind the allocation-free checkpoint rewrite.</p>
+    <p><strong>Open work:</strong> injected-latency WAN qualification, the scoped production-path Java-removal audit, and the presentation/audit-DVR surfaces remain. HUD, automap, intermission, finale, and asynchronous exact audit rendering are not claimed complete. The Autonomous MLE probe remains dormant until credentials exist.</p>
+  </section>
+
+  <section class="status-grid" aria-label="machine-readable MLE status" id="mle-status-grid">
+    <article class="panel status-card" data-state="loading"><h2>Evidence feed</h2><strong id="evidence-state">loading…</strong><span class="muted">Validating <code>/mle-status.json</code></span></article>
+    <article class="panel status-card"><h2>Authority artifact</h2><strong id="authority-artifact">06ac33331d9a…</strong><span class="muted">MLE JavaScript · DMC1 v5</span></article>
+    <article class="panel status-card"><h2>Presentation artifact</h2><strong id="presentation-artifact">bd35d27784db…</strong><span class="muted">confirmed browser replica</span></article>
+    <article class="panel status-card"><h2>Every-tic ledger</h2><strong id="ledger-state">PASS · 13,272</strong><span class="muted">full canonical MLE/OJVM equality</span></article>
+    <article class="panel status-card"><h2>Final soak</h2><strong id="soak-state">PASS · 30 min</strong><span class="muted">authority + standby + 2 browsers</span></article>
+    <article class="panel status-card"><h2>Platform envelope</h2><strong id="capacity-state">1 effective PDB CPU</strong><span class="muted">2 running sessions · 1 guaranteed poll return</span></article>
   </section>
 
   <section class="panel review-grid" aria-label="Oracle MODEL fire checkpoint">
@@ -169,15 +180,15 @@
   </section>
 
   <section class="metrics" aria-label="verified metrics">
-    <div class="metric"><strong>822 / 852</strong><span class="muted">Mocha / total valid classes</span></div>
-    <div class="metric"><strong>28.8 MB</strong><span class="muted">verified IWAD BLOB</span></div>
-    <div class="metric"><strong>64,000</strong><span class="muted">indexed frame bytes</span></div>
-    <div class="metric"><strong>1.431 ms</strong><span class="muted">frame BLOB handoff</span></div>
-    <div class="metric"><strong>3.927 ms p95</strong><span class="muted">moving/combat Mocha step</span></div>
-    <div class="metric"><strong>3.191 ms p95</strong><span class="muted">controls → tic → render → BLOB</span></div>
-    <div class="metric"><strong>0.820 ms p95</strong><span class="muted">raw DMF3 codec</span></div>
-    <div class="metric"><strong>23.837 ms p95</strong><span class="muted">retained durable worker</span></div>
-    <div class="metric"><strong>32.05 FPS</strong><span class="muted">AutoREST · verified warm run</span></div>
+    <div class="metric"><strong>13,272</strong><span class="muted">final-artifact every-tic parity</span></div>
+    <div class="metric"><strong>762</strong><span class="muted">co-op tics compared every tic</span></div>
+    <div class="metric"><strong>132.9 tics/s</strong><span class="muted">dispatch A/B selected throughput</span></div>
+    <div class="metric"><strong>1.1 ms</strong><span class="muted">selected dispatch p50 reduction</span></div>
+    <div class="metric"><strong>30 min</strong><span class="muted">final production-shaped scored soak</span></div>
+    <div class="metric"><strong>18 tics</strong><span class="muted">maximum confirmed presentation lag</span></div>
+    <div class="metric"><strong>518.3 MiB</strong><span class="muted">authority maximum process PSS</span></div>
+    <div class="metric"><strong>0</strong><span class="muted">browser reconnects / legacy frames</span></div>
+    <div class="metric"><strong>1</strong><span class="muted">guaranteed concurrent poll return</span></div>
   </section>
 
   <section class="panel review-grid" aria-label="database ray diagnostic">
@@ -196,30 +207,39 @@
   </section>
 
   <section class="phases" aria-label="phase status">
-    <article class="panel phase done"><b>P0</b><span>Ground truth</span><p class="muted">Oracle and transport probes</p></article>
-    <article class="panel phase done"><b>P1</b><span>Bootstrap</span><p class="muted">local and cloud skeleton</p></article>
-    <article class="panel phase done"><b>P2</b><span>WAD ingestion</span><p class="muted">deterministic parser and seed</p></article>
-    <article class="panel phase done"><b>P3</b><span>Acceleration</span><p class="muted">BSP, graph, Spatial</p></article>
-    <article class="panel phase done"><b>P4</b><span>First light</span><p class="muted">1,667,739 assertions + visual review</p></article>
-    <article class="panel phase done"><b>P5.2</b><span>Portal world</span><p class="muted">1,856,885 assertions · 64,000 SQL pixels</p></article>
-    <article class="panel phase done"><b>P5.3</b><span>Masked world</span><p class="muted">988 assertions · sprites + transparent walls</p></article>
-    <article class="panel phase done"><b>P5.4</b><span>Presentation</span><p class="muted">HUD, weapons, menu, pause, automap, intermission</p></article>
-    <article class="panel phase done"><b>P6</b><span>Simulation</span><p class="muted">tic, movement, machines, history, replay</p></article>
-    <article class="panel phase done"><b>P7</b><span>Gameplay</span><p class="muted">weapons, monsters, pickups, audio</p></article>
-    <article class="panel phase done"><b>T12.M4</b><span>AutoREST cutover</span><p class="muted">worker, recovery, persistence, and controls green</p></article>
-    <article class="panel phase done"><b>T12.M5</b><span>Mocha selection</span><p class="muted">11-gate core + direct and 4-browser workflows green</p></article>
-    <article class="panel phase done"><b>P8</b><span>Full route matrix</span><p class="muted">13,272 tics · exact fresh-session replay</p></article>
-    <article class="panel phase done"><b>P9</b><span>MODEL fire</span><p class="muted">two full deterministic Oracle runs + visual review</p></article>
-    <article class="panel phase done"><b>P13</b><span>Multiplayer</span><p class="muted">762-tic route + 30-minute soak green</p></article>
-    <article class="panel phase done"><b>T12</b><span>Performance reverify</span><p class="muted">local protocol complete · 31.81/31.59 FPS</p></article>
-    <article class="panel phase active"><b>P11</b><span>Cloud · final</span><p class="muted">ready · awaiting real S3 + Autonomous authority</p></article>
+    <article class="panel phase done"><b>MLE</b><span>Authoritative engine</span><p class="muted">TeaVM JavaScript retained in Oracle</p></article>
+    <article class="panel phase done"><b>DET</b><span>Determinism</span><p class="muted">13,272 + 762 + membership exact</p></article>
+    <article class="panel phase done"><b>REC</b><span>Recovery</span><p class="muted">DMC1 v5 + pre-warmed standby</p></article>
+    <article class="panel phase done"><b>SOAK</b><span>Memory / backlog</span><p class="muted">calibrated 30-minute final run</p></article>
+    <article class="panel phase done"><b>DMD1</b><span>Confirmed replica</span><p class="muted">chained deltas · no prediction</p></article>
+    <article class="panel phase done"><b>CAP</b><span>Free capacity</span><p class="muted">50% / 2 sessions / 1 poll return</p></article>
+    <article class="panel phase active"><b>WAN</b><span>WAN matrix</span><p class="muted">50/100/200 ms injected profiles next</p></article>
+    <article class="panel phase next"><b>AUDIT</b><span>Java removal</span><p class="muted">production surfaces only; oracle preserved</p></article>
+    <article class="panel phase open"><b>DVR</b><span>Presentation / DVR</span><p class="muted">HUD, automap, terminal screens open</p></article>
+    <article class="panel phase dormant"><b>ADB</b><span>Autonomous probe</span><p class="muted">dormant until credentials exist</p></article>
   </section>
-  <footer><a href="/play/">Open the Mocha Doom playable client</a> · Oracle/ORDS/AutoREST only · no credentials or evaluator data are exposed to the browser.</footer>
+  <footer><a href="/play/">Open MLE single-player</a> · <a href="/play/multiplayer.html">Open MLE multiplayer</a> · Oracle/ORDS/AutoREST only · no credentials, capabilities, or evaluator data are exposed by this dashboard.</footer>
 </main>
 <script>
 fetch('/health.txt',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.text()}).then(t=>{
   document.querySelector('#status').textContent=t.trim()==='DOOMDB_ORDS_READY'?'stack online':'unexpected health response';
 }).catch(()=>document.querySelector('#status').textContent='stack unavailable');
+fetch('/mle-status.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(data=>{
+  if(data.schema!==1||data.gates?.ledgerEveryTic13272!=='PASS'||data.gates?.finalWorkerSoak!=='PASS')throw Error();
+  const authority=data.artifacts.authority.sha256,presentation=data.artifacts.presentation.sha256;
+  if(!/^[0-9a-f]{64}$/.test(authority)||!/^[0-9a-f]{64}$/.test(presentation))throw Error();
+  document.querySelector('#evidence-state').textContent=`PASS · ${data.updated}`;
+  document.querySelector('#authority-artifact').textContent=authority.slice(0,12)+'…';
+  document.querySelector('#authority-sha').textContent=authority.slice(0,12)+'…';
+  document.querySelector('#presentation-artifact').textContent=presentation.slice(0,12)+'…';
+  document.querySelector('#ledger-state').textContent='PASS · 13,272';
+  document.querySelector('#soak-state').textContent=`PASS · ${data.soak.scoredSeconds/60} min`;
+  document.querySelector('#capacity-state').textContent=`${data.capacity.effectivePdbCpu} effective PDB CPU`;
+  document.querySelector('#mle-status-grid').querySelector('[data-state]').dataset.state='pass';
+}).catch(()=>{
+  const card=document.querySelector('#mle-status-grid').querySelector('[data-state]');
+  card.dataset.state='error';document.querySelector('#evidence-state').textContent='status evidence unavailable';
+});
 fetch('/review/rays.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(data=>{
   if(data.width!==320||data.columns.length!==320) throw Error();
   const canvas=document.querySelector('#ray-view'),ctx=canvas.getContext('2d');

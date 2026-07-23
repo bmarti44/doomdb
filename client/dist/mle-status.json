@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "updated": "2026-07-23",
+  "database": {
+    "product": "Oracle AI Database 26ai Free",
+    "imageVersion": "23.26.2",
+    "cpuCount": 2,
+    "pdbUtilizationLimitPercent": 50,
+    "runningSessionsLimit": 2,
+    "resourceCapModifiable": false
+  },
+  "architecture": {
+    "authority": "TeaVM-generated MLE JavaScript in retained database sessions",
+    "livePresentation": "Browser rendering from confirmed DMD1 transitions",
+    "clientPrediction": false,
+    "productionOjvm": false
+  },
+  "artifacts": {
+    "authority": {
+      "bytes": 1163182,
+      "sha256": "06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0",
+      "profile": "simulation-engine-headless"
+    },
+    "presentation": {
+      "bytes": 1224686,
+      "sha256": "bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83",
+      "profile": "presentation-engine-headless"
+    },
+    "inputBytecodeSha256": "8cae68323d62edfa56299569d15763e6dbd24974dc3a24f3ae64961071920d8b",
+    "mochaBytecodeSha256": "6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97",
+    "tablePackSha256": "058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44",
+    "ojvmDifferentialOracleSha256": "2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74",
+    "ojvmScope": "repository/dev differential oracle only"
+  },
+  "gates": {
+    "canonical330": "PASS",
+    "coopEveryTic762": "PASS",
+    "membershipRecovery": "PASS",
+    "ledgerEveryTic13272": "PASS",
+    "finalWorkerSoak": "PASS",
+    "calibratedProcessMemory": "PASS",
+    "browserConfirmedOnly": "PASS",
+    "resourceCapDecision": "PASS"
+  },
+  "soak": {
+    "warmupSecondsExcluded": 300,
+    "scoredSeconds": 1800,
+    "maxConfirmedLagTics": 18,
+    "reconnects": 0,
+    "authorityPssBaselineBytes": 464108544,
+    "authorityPssMaximumBytes": 518277120,
+    "authorityPssEndBytes": 434509824,
+    "standbyPssBaselineBytes": 442265600,
+    "standbyPssMaximumBytes": 483700736,
+    "standbyPssEndBytes": 413642752,
+    "processMemoryMarginBytes": 67108864,
+    "ashSamples": 1486,
+    "resourceManagerCpuQuantumSamples": 0
+  },
+  "capacity": {
+    "effectivePdbCpu": 1,
+    "runningSessions": 2,
+    "heldPollLeaseLimit": 4,
+    "guaranteedConcurrentPollReturns": 1,
+    "localLongPollingDefault": false
+  },
+  "remaining": [
+    {
+      "id": "WAN",
+      "state": "NEXT",
+      "label": "Injected-latency multiplayer matrix"
+    },
+    {
+      "id": "JAVA-AUDIT",
+      "state": "NEXT",
+      "label": "Production-path Java removal audit"
+    },
+    {
+      "id": "DVR",
+      "state": "OPEN",
+      "label": "HUD, automap, intermission, finale and audit/DVR presentation"
+    },
+    {
+      "id": "ADB",
+      "state": "DORMANT",
+      "label": "Autonomous MLE performance probe; credentials required"
+    }
+  ],
+  "evidence": {
+    "soak": "artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log",
+    "ledger": "artifacts/performance/pmle-ledger-every-tic/run-final-06ac3333-2026-07-23.log"
+  }
+}

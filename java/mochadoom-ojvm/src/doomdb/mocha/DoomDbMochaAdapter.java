@@ -47,6 +47,7 @@ import savegame.VanillaDSGHeader;
 import s.DummySFX;
 import v.renderers.DoomScreen;
 import w.InputStreamSugar;
+import utils.C2JUtils;
 
 /** Catch-all SQL entry points for the pinned Mocha Doom OJVM engine. */
 public final class DoomDbMochaAdapter {
@@ -206,6 +207,45 @@ public final class DoomDbMochaAdapter {
       Engine.releaseHeadless();
       InputStreamSugar.clearInjectedResource();
       return failure("step", failure);
+    }
+  }
+
+  /** Ticker-only oracle used to compare the authoritative simulation core. */
+  public static synchronized String stepSimulationSafe(
+      int forwardMove, int sideMove, int angleTurn, int buttons) {
+    return stepCommandSimulationSafe(
+        forwardMove, sideMove, angleTurn, 0, buttons);
+  }
+
+  /** Ticker-only oracle for an exact durable ticcmd, including consistency. */
+  public static synchronized String stepCommandSimulationSafe(
+      int forwardMove, int sideMove, int angleTurn, int consistency,
+      int buttons) {
+    try {
+      if (engine == null) {
+        String initialized = initializeSafe();
+        if (!initialized.startsWith("ok|")) return initialized;
+      }
+      int buffer = (engine.gametic / engine.getTicdup())
+          % engine.netcmds[engine.consoleplayer].length;
+      doom.ticcmd_t command = engine.netcmds[engine.consoleplayer][buffer];
+      command.forwardmove = (byte) clamp(forwardMove, -127, 127);
+      command.sidemove = (byte) clamp(sideMove, -127, 127);
+      command.angleturn = (short) clamp(
+          angleTurn, Short.MIN_VALUE, Short.MAX_VALUE);
+      command.buttons = (char) (buttons & 0xff);
+      command.chatchar = 0;
+      command.lookfly = 0;
+      command.consistancy = (short) clamp(
+          consistency, Short.MIN_VALUE, Short.MAX_VALUE);
+      engine.Ticker();
+      engine.gametic++;
+      return engineStatus("simulation-stepped");
+    } catch (Throwable failure) {
+      engine = null;
+      Engine.releaseHeadless();
+      InputStreamSugar.clearInjectedResource();
+      return failure("simulation-step", failure);
     }
   }
 
@@ -523,6 +563,127 @@ public final class DoomDbMochaAdapter {
     } catch (Throwable failure) {
       return failure("save", failure);
     }
+  }
+
+  /** Canonical save-semantic identity for OJVM/TeaVM differential tests. */
+  public static synchronized String canonicalStateDigestSafe() {
+    try {
+      if (engine == null) throw new IllegalStateException("engine not initialized");
+      return "ok|" + canonicalStateDigest(engine);
+    } catch (Throwable failure) {
+      return failure("canonical-state", failure);
+    }
+  }
+
+  /** Write the canonical save/world/reference material for native DB hashing. */
+  public static synchronized String canonicalStateBlobSafe(Blob output) {
+    try {
+      if (engine == null) throw new IllegalStateException("engine not initialized");
+      if (output == null) throw new IllegalArgumentException("output BLOB required");
+      byte[] material = canonicalStateMaterial(engine);
+      writeBlob(output, material);
+      return "ok|canonicalBytes=" + material.length;
+    } catch (Throwable failure) {
+      return failure("canonical-state-blob", failure);
+    }
+  }
+
+  /**
+   * Hash the canonical material shared with the database-native comparator.
+   * The four independent 32-bit lanes make accidental differential-test
+   * collisions negligible without pulling a host crypto provider into MLE.
+   */
+  public static String canonicalStateDigest(DoomMain<?, ?> value)
+      throws Exception {
+    byte[] bytes = canonicalStateMaterial(value);
+    int[] digest = {0x811c9dc5, 0x9e3779b9, 0x7f4a7c15, 0x6a09e667};
+    for (byte current : bytes) canonicalDigestByte(digest, current & 0xff);
+    return "canonicalBytes=" + bytes.length + "|canonicalThinkers="
+        + canonicalThinkerCount(value) + "|canonicalState="
+        + canonicalDigestHex(digest);
+  }
+
+  /**
+   * Serialize every save-covered field plus identities represented by JVM
+   * pointers into one stable, runtime-independent byte sequence.
+   */
+  public static byte[] canonicalStateMaterial(DoomMain<?, ?> value)
+      throws Exception {
+    if (value == null) throw new IllegalArgumentException("engine required");
+    IDoomSaveGameHeader header = new VanillaDSGHeader();
+    header.setName("DoomDB canonical state");
+    header.setVersion("version " + data.Defines.VERSION);
+    header.setGameskill(value.gameskill);
+    header.setGameepisode(value.gameepisode);
+    header.setGamemap(value.gamemap);
+    header.setPlayeringame(value.playeringame);
+    header.setLeveltime(value.leveltime);
+    IDoomSaveGame save = new VanillaDSG<Object, Object>(
+        (DoomMain<Object, Object>) value);
+    save.setHeader(header);
+    ByteArrayOutputStream saveOutput = new ByteArrayOutputStream(256 * 1024);
+    boolean saved;
+    C2JUtils.setCanonicalSavePointers(true);
+    try (DataOutputStream data = new DataOutputStream(saveOutput)) {
+      saved = save.doSave(data);
+    } finally {
+      C2JUtils.setCanonicalSavePointers(false);
+    }
+    if (!saved) throw new IllegalStateException("canonical save codec failed");
+
+    byte[] saveBytes = saveOutput.toByteArray();
+    ArrayList<thinker_t> thinkers = new ArrayList<thinker_t>();
+    thinker_t cap = value.actions.getThinkerCap();
+    for (thinker_t current = cap.next;
+         current != null && current != cap && thinkers.size() < 1000000;
+         current = current.next) {
+      thinkers.add(current);
+    }
+
+    ByteArrayOutputStream material = new ByteArrayOutputStream(
+        saveBytes.length + thinkers.size() * 48 + 128);
+    try (DataOutputStream data = new DataOutputStream(material)) {
+      data.writeInt(0x444d5331); // DMS1 canonical-state material.
+      data.writeInt(saveBytes.length);
+      data.write(saveBytes);
+      data.writeInt(value.gametic);
+      data.writeInt(value.leveltime);
+      data.writeInt(value.random.getIndex());
+      data.writeInt(value.gamestate.ordinal());
+      data.writeInt(value.getGameAction().ordinal());
+      data.writeInt(value.totalkills);
+      data.writeInt(value.totalitems);
+      data.writeInt(value.totalsecret);
+      data.writeInt(value.totallive);
+      data.writeInt(thinkers.size());
+      for (thinker_t current : thinkers) {
+        data.writeInt(current.thinkerFunction.ordinal());
+        if (current instanceof mobj_t) {
+          mobj_t mobj = (mobj_t) current;
+          data.writeInt(1);
+          data.writeInt(canonicalThinkerIndex(thinkers, mobj.snext));
+          data.writeInt(canonicalThinkerIndex(thinkers, mobj.sprev));
+          data.writeInt(canonicalThinkerIndex(thinkers, mobj.bnext));
+          data.writeInt(canonicalThinkerIndex(thinkers, mobj.bprev));
+          data.writeInt(canonicalThinkerIndex(thinkers, mobj.target));
+          data.writeInt(canonicalThinkerIndex(thinkers, mobj.tracer));
+          data.writeInt(canonicalIdentityIndex(
+              value.levelLoader.subsectors, mobj.subsector));
+          data.writeInt(canonicalIdentityIndex(value.players, mobj.player));
+          data.writeInt((int) (mobj.angle >>> 32));
+          data.writeInt((int) (mobj.mobj_tics >>> 32));
+          data.writeInt((int) (mobj.flags >>> 32));
+        } else {
+          data.writeInt(0);
+        }
+      }
+      data.writeInt(value.players.length);
+      for (doom.player_t player : value.players) {
+        data.writeInt(canonicalThinkerIndex(thinkers, player.mo));
+        data.writeInt(canonicalThinkerIndex(thinkers, player.attacker));
+      }
+    }
+    return material.toByteArray();
   }
 
   /** Reconstruct a retained engine from a verified database checkpoint BLOB. */
@@ -902,6 +1063,80 @@ public final class DoomDbMochaAdapter {
       return failure("multiplayer-probe", failure);
     } finally {
       disposeSafe();
+    }
+  }
+
+  /** Ticker-only multiplayer initialization for the MLE migration oracle. */
+  public static synchronized String multiplayerSimulationInitializeSafe(
+      int activePlayers) {
+    return multiplayerSimulationInitializeAtSkillSafe(activePlayers, 3);
+  }
+
+  /** Ticker-only multiplayer initialization at a vanilla 1--5 skill. */
+  public static synchronized String multiplayerSimulationInitializeAtSkillSafe(
+      int activePlayers, int skill) {
+    try {
+      initializeMultiplayerEngine(activePlayers, 0, skill, 1, 1);
+      return engineStatus("multiplayer-simulation-initialized");
+    } catch (Throwable failure) {
+      disposeSafe();
+      return failure("multiplayer-simulation-initialize", failure);
+    }
+  }
+
+  /** Apply one exact active-player command vector without rendering. */
+  public static synchronized String multiplayerSimulationStepSafe(
+      int activePlayers, String commandVectorHex) {
+    try {
+      requireMultiplayerEngine(activePlayers);
+      byte[] vectors = parseHex(
+          commandVectorHex == null ? null : commandVectorHex.toLowerCase(),
+          activePlayers * doom.ticcmd_t.TICCMDLEN);
+      int buffer = (engine.gametic / engine.getTicdup())
+          % engine.netcmds[0].length;
+      for (int player = 0; player < activePlayers; player++) {
+        decodeMultiplayerCommand(engine.netcmds[player][buffer], vectors,
+            player * doom.ticcmd_t.TICCMDLEN,
+            multiplayerConsistency[player][buffer]);
+      }
+      tickMultiplayerEngine();
+      return engineStatus("multiplayer-simulation-stepped");
+    } catch (Throwable failure) {
+      disposeSafe();
+      return failure("multiplayer-simulation-step", failure);
+    }
+  }
+
+  /** Ticker-only four-slot membership oracle for MLE worker migration. */
+  public static synchronized String multiplayerSimulationMembershipStepSafe(
+      int activePlayers, int membershipMask, String commandVectorHex) {
+    try {
+      requireMultiplayerEngine(activePlayers);
+      applyMultiplayerMembership(activePlayers, membershipMask);
+      byte[] vectors = parseHex(
+          commandVectorHex == null ? null : commandVectorHex.toLowerCase(),
+          4 * doom.ticcmd_t.TICCMDLEN);
+      int buffer = (engine.gametic / engine.getTicdup())
+          % engine.netcmds[0].length;
+      for (int player = 0; player < 4; player++) {
+        int offset = player * doom.ticcmd_t.TICCMDLEN;
+        if (player >= activePlayers || !engine.playeringame[player]) {
+          for (int index = 0; index < doom.ticcmd_t.TICCMDLEN; index++) {
+            if (vectors[offset + index] != 0) {
+              throw new IllegalArgumentException(
+                  "inactive player command " + player);
+            }
+          }
+          continue;
+        }
+        decodeMultiplayerCommand(engine.netcmds[player][buffer], vectors,
+            offset, multiplayerConsistency[player][buffer]);
+      }
+      tickMultiplayerEngine();
+      return engineStatus("multiplayer-membership-stepped");
+    } catch (Throwable failure) {
+      disposeSafe();
+      return failure("multiplayer-membership-step", failure);
     }
   }
 
@@ -1595,6 +1830,63 @@ public final class DoomDbMochaAdapter {
     }
     return hex(MessageDigest.getInstance("SHA-256").digest(
         state.toString().getBytes(StandardCharsets.US_ASCII)));
+  }
+
+  private static int canonicalThinkerIndex(
+      ArrayList<thinker_t> thinkers, thinker_t target) {
+    if (target == null) return -1;
+    for (int index = 0; index < thinkers.size(); index++) {
+      if (thinkers.get(index) == target) return index;
+    }
+    return -2;
+  }
+
+  private static int canonicalThinkerCount(DoomMain<?, ?> value) {
+    int count = 0;
+    thinker_t cap = value.actions.getThinkerCap();
+    for (thinker_t current = cap.next;
+         current != null && current != cap && count < 1000000;
+         current = current.next) {
+      count++;
+    }
+    return count;
+  }
+
+  private static int canonicalIdentityIndex(Object[] values, Object target) {
+    if (target == null) return -1;
+    for (int index = 0; index < values.length; index++) {
+      if (values[index] == target) return index;
+    }
+    return -2;
+  }
+
+  private static void canonicalDigestByte(int[] digest, int value) {
+    digest[0] = (digest[0] ^ value) * 0x01000193;
+    digest[1] = Integer.rotateLeft(digest[1] + value + 0x7ed55d16, 7)
+        * 0x85ebca6b;
+    digest[2] = Integer.rotateLeft(digest[2] ^ (value * 0x27d4eb2d), 13)
+        + 0x165667b1;
+    digest[3] = (digest[3] + (value ^ 0xa5)) * 33
+        ^ (digest[3] >>> 11);
+  }
+
+  private static void canonicalDigestInt(int[] digest, int value) {
+    canonicalDigestByte(digest, value);
+    canonicalDigestByte(digest, value >>> 8);
+    canonicalDigestByte(digest, value >>> 16);
+    canonicalDigestByte(digest, value >>> 24);
+  }
+
+  private static String canonicalDigestHex(int[] digest) {
+    char[] alphabet = "0123456789abcdef".toCharArray();
+    char[] result = new char[digest.length * 8];
+    for (int lane = 0; lane < digest.length; lane++) {
+      for (int nibble = 0; nibble < 8; nibble++) {
+        result[lane * 8 + nibble] = alphabet[
+            (digest[lane] >>> (28 - nibble * 4)) & 0xf];
+      }
+    }
+    return new String(result);
   }
 
   private static int activePlayerMobjCount() {

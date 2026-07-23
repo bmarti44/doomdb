@@ -8,6 +8,10 @@ revision="c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93"
 iwad_sha="7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
 tmp="/tmp/doomdb-mocha-$$"
 adapter_only="${DOOMDB_MOCHA_ADAPTER_ONLY:-0}"
+extra_patch="${DOOMDB_MOCHA_EXTRA_PATCH:-}"
+extra_adapter_patch="${DOOMDB_MOCHA_EXTRA_ADAPTER_PATCH:-}"
+extra_adapter_source="${DOOMDB_MOCHA_EXTRA_ADAPTER_SOURCE:-}"
+skip_native_compile="${DOOMDB_MOCHA_SKIP_NATIVE_COMPILE:-0}"
 
 [[ -n "$container" ]] || { printf 'database container is not running\n' >&2; exit 1; }
 [[ "$(git -C "$root/third_party/mochadoom" rev-parse HEAD)" == "$revision" ]] || {
@@ -30,8 +34,9 @@ actual_iwad_sha="$(shasum -a 256 "$host_tmp/freedoom1.wad" | awk '{print $1}')"
   exit 1
 }
 
-mkdir -p "$host_tmp/source"
+mkdir -p "$host_tmp/source" "$host_tmp/adapter"
 cp -R "$root/third_party/mochadoom/src/." "$host_tmp/source"
+cp -R "$root/java/mochadoom-ojvm/src/." "$host_tmp/adapter"
 # Upstream contains a mix of CRLF and LF Java sources. Normalize only the
 # disposable build copy so patch overlays are portable across host tools.
 find "$host_tmp/source" -name '*.java' -exec perl -pi -e 's/\r$//' {} +
@@ -40,6 +45,18 @@ find "$host_tmp/source" -name '*.java' -exec perl -pi -e 's/\r$//' {} +
 for overlay in "$root"/patches/mochadoom/*.patch; do
   patch --batch --forward --ignore-whitespace -d "$host_tmp/source" -p2 <"$overlay"
 done
+if [[ -n "$extra_patch" ]]; then
+  [[ -f "$extra_patch" ]] || { printf 'extra Mocha patch not found: %s\n' "$extra_patch" >&2; exit 2; }
+  patch --batch --forward --ignore-whitespace -d "$host_tmp/source" -p2 <"$extra_patch"
+fi
+if [[ -n "$extra_adapter_source" ]]; then
+  [[ -d "$extra_adapter_source" ]] || { printf 'extra adapter source not found: %s\n' "$extra_adapter_source" >&2; exit 2; }
+  cp -R "$extra_adapter_source/." "$host_tmp/adapter"
+fi
+if [[ -n "$extra_adapter_patch" ]]; then
+  [[ -f "$extra_adapter_patch" ]] || { printf 'extra adapter patch not found: %s\n' "$extra_adapter_patch" >&2; exit 2; }
+  patch --batch --forward --ignore-whitespace -d "$host_tmp/adapter" -p2 <"$extra_adapter_patch"
+fi
 find "$host_tmp/source" -name '*.orig' -delete
 # OJVM System.exit can tear down a live session JVM instead of returning a
 # catchable stored-procedure error. Mechanically fence all 18 pinned upstream
@@ -54,7 +71,7 @@ fi
 
 docker exec "$container" mkdir -p "$tmp/source" "$tmp/classes" "$tmp/adapter"
 docker cp "$host_tmp/source/." "$container:$tmp/source" >/dev/null
-docker cp "$root/java/mochadoom-ojvm/src/." "$container:$tmp/adapter" >/dev/null
+docker cp "$host_tmp/adapter/." "$container:$tmp/adapter" >/dev/null
 docker cp "$root/tools/mochadoom/DoomMochaIwadLoader.java" \
   "$container:$tmp/DoomMochaIwadLoader.java" >/dev/null
 docker cp "$host_tmp/freedoom1.wad" "$container:$tmp/freedoom1.wad" >/dev/null
@@ -326,6 +343,19 @@ if ((load_status != 0)); then
     "$load_status" >&2
 fi
 
+# loadjava replaces classes but does not remove a class contributed by an
+# earlier instrumented build. Remove this known disposable recorder when the
+# normal 830-class artifact is being restored so it cannot poison the resolver
+# status gate despite being outside the production graph.
+if [[ -z "$extra_adapter_source" ]]; then
+  {
+    printf 'connect DOOM/"'
+    docker exec "$container" sh -c "tr -d '\\r\\n' < /run/secrets/doom_password"
+    printf '"@FREEPDB1\n'
+    printf '%s\n' "begin execute immediate 'drop java class \"doomdb/mocha/DoomDbDrawMetrics\"'; exception when others then if sqlcode not in(-29540,-4043) then raise; end if; end;" '/'
+  } | docker exec -i "$container" "$java_home/bin/sqlplus" -s /nolog
+fi
+
 # loadjava can return while Oracle's resolver is still finishing this 800+
 # class graph. Wait for the schema to settle instead of sampling transient
 # INVALID forward references.
@@ -368,7 +398,9 @@ done
   # package invalid until a separate full-schema deployment.
   cat "$root/sql/sim/080_unified_worker.sql"
   cat "$root/sql/rest/010_doom_api.sql"
-  cat "$root/scripts/mochadoom/compile-hot-renderer.sql"
+  if [[ "$skip_native_compile" != 1 ]]; then
+    cat "$root/scripts/mochadoom/compile-hot-renderer.sql"
+  fi
   printf '%s\n' 'select doom_mocha_probe from dual;'
   printf '%s\n' 'select doom_mocha_iwad_probe from dual;'
   printf '%s\n' "declare n number; begin select count(*) into n from user_objects where object_type in ('JAVA CLASS','JAVA RESOURCE') and status<>'VALID'; if n<>0 then raise_application_error(-20000,'invalid Java objects='||n); end if; dbms_output.put_line('PASS MOCHADOOM-OJVM-RESOLVE classes=$class_count'); end;"

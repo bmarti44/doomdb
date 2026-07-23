@@ -96,7 +96,8 @@ create or replace package doom_api authid definer as
     p_accepted          out number,
     p_effective_tic     out number,
     p_membership_epoch  out number,
-    p_generation        out number);
+    p_generation        out number,
+    p_target_tic        in  number default null);
 
   procedure match_input_frontier(
     p_match             in  varchar2,
@@ -123,6 +124,16 @@ create or replace package doom_api authid definer as
     p_first_tic         in  number,
     p_wait_ms           in  number,
     p_frame_count       in  number default 4,
+    p_current_tic       out number,
+    p_payload           out blob);
+
+  procedure poll_match_transitions(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_after_tic         in  number,
+    p_hold_ms           in  number,
+    p_max_transitions   in  number default 32,
+    p_ready             out number,
     p_current_tic       out number,
     p_payload           out blob);
 
@@ -614,8 +625,9 @@ create or replace package body doom_api as
     update doom_match set last_activity_at=l_now where match_id=p_match;
     if l_members=l_max and l_ready=l_max then
       -- Commit READY membership before Scheduler creates its retained session.
-      -- START_READY returns ACTIVE only after real Java tic-zero payloads and
-      -- their hashes/frontier are committed atomically.
+      -- START_READY returns ACTIVE only after the retained MLE engine, its
+      -- authoritative tic-zero identity/frontier, and its generation-matched
+      -- warm recovery context are all committed and ready.
       commit;
       doom_match_worker.start_ready(p_match,30000,p_match_state);
     else
@@ -648,6 +660,7 @@ create or replace package body doom_api as
   ) is
     l_state varchar2(16);l_expiry timestamp with time zone;
     l_host_salt raw(32);l_host_hash varchar2(64);
+    l_worker_status varchar2(16);
   begin
     p_match_state:=null;p_game_mode:=null;p_skill:=null;p_episode:=null;
     p_map:=null;p_max_players:=null;p_member_count:=null;p_ready_count:=null;
@@ -669,8 +682,12 @@ create or replace package body doom_api as
       where match_id=p_match and member_state<>'LEFT';
     p_match_state:=l_state;
     begin
-      select worker_mode into p_worker_mode from doom_match_worker_control
+      select worker_mode,worker_status into p_worker_mode,l_worker_status
+        from doom_match_worker_control
         where match_id=p_match;
+      if l_state='ACTIVE' and l_worker_status<>'READY' then
+        p_match_state:='STARTING';
+      end if;
     exception when no_data_found then
       select text_value into p_worker_mode from doom_config
         where config_key='MATCH_WORKER_MODE';
@@ -810,7 +827,8 @@ create or replace package body doom_api as
   procedure revise_match_input(
     p_match in varchar2,p_player_capability in varchar2,p_input_seq in number,
     p_ticcmd_hex in varchar2,p_accepted out number,p_effective_tic out number,
-    p_membership_epoch out number,p_generation out number
+    p_membership_epoch out number,p_generation out number,
+    p_target_tic in number default null
   ) is
     l_slot number;l_state varchar2(16);l_expiry timestamp with time zone;
     l_current number;l_frontier number;l_existing raw(8);l_raw raw(8);
@@ -832,6 +850,10 @@ create or replace package body doom_api as
       from doom_match where match_id=p_match for update;
     if l_state<>'ACTIVE' or l_expiry<=l_now or p_generation<1 then
       fail(c_match_auth,'match unavailable');end if;
+    if p_target_tic is not null and
+       (p_target_tic<>trunc(p_target_tic) or p_target_tic<1 or
+        p_target_tic>l_current+12) then
+      fail(c_bad_request,'invalid match input target');end if;
     l_slot:=player_capability_slot(p_match,p_player_capability);
     select worker_mode,request_status,requested_tic
       into l_worker_mode,l_request_status,l_sampling_tic
@@ -852,7 +874,7 @@ create or replace package body doom_api as
     p_effective_tic:=case when l_worker_mode='PACED_INPUT'
       then greatest(l_current+1,l_prior_effective+1,
         case when l_request_status='PROCESSING' then l_sampling_tic+1
-             else l_current+1 end)
+             else l_current+1 end,nvl(p_target_tic,l_current+1))
       else l_current+2 end;
     insert into doom_match_input_event(match_id,player_slot,input_seq,effective_tic,
       membership_epoch,generation,ticcmd_raw,command_sha,accepted_at)
@@ -1054,6 +1076,60 @@ create or replace package body doom_api as
   when others then
     rollback;p_current_tic:=null;p_payload:=null;
     raise_application_error(c_bad_request,'match batch poll rejected');
+  end;
+
+  procedure poll_match_transitions(
+    p_match in varchar2,p_player_capability in varchar2,p_after_tic in number,
+    p_hold_ms in number,p_max_transitions in number default 32,
+    p_ready out number,p_current_tic out number,p_payload out blob
+  ) is
+    l_state varchar2(16);l_expiry timestamp with time zone;
+    l_epoch number;l_generation number;l_slot number;
+    l_now timestamp with time zone:=utc_now;
+  begin
+    p_ready:=0;p_current_tic:=null;p_payload:=null;require_match_shape(p_match);
+    if p_after_tic is null or p_after_tic<>trunc(p_after_tic) or p_after_tic<0 or
+       p_hold_ms is null or p_hold_ms<>trunc(p_hold_ms) or
+       p_hold_ms not between 0 and 500 or p_max_transitions is null or
+       p_max_transitions<>trunc(p_max_transitions) or
+       p_max_transitions not between 1 and 64 then
+      fail(c_bad_request,'invalid match transition poll');
+    end if;
+    select match_state,expires_at,membership_epoch,generation,current_tic
+      into l_state,l_expiry,l_epoch,l_generation,p_current_tic
+      from doom_match where match_id=p_match;
+    if l_state<>'ACTIVE' or l_expiry<=l_now or l_generation<1 or
+       p_after_tic>p_current_tic then
+      fail(c_match_auth,'match unavailable');
+    end if;
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    doom_mle_transition_transport.poll_batch(
+      p_match,l_slot,l_epoch,l_generation,p_after_tic,p_max_transitions,
+      p_hold_ms,p_ready,p_payload);
+    select current_tic into p_current_tic from doom_match
+      where match_id=p_match and membership_epoch=l_epoch
+        and generation=l_generation;
+    l_now:=utc_now;
+    update doom_match_member set member_state='ACTIVE',last_seen_at=l_now,
+      disconnected_at=null where match_id=p_match and player_slot=l_slot
+      and member_state in('ACTIVE','DISCONNECTED')
+      and membership_epoch=l_epoch and generation=l_generation;
+    renew_match_lease(p_match,l_now);
+    commit;
+  exception when no_data_found then
+    rollback;p_ready:=0;p_current_tic:=null;p_payload:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;
+    begin
+      rollback;p_ready:=0;p_current_tic:=null;p_payload:=null;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      elsif l_code between -20999 and -20000 then
+        raise_application_error(c_bad_request,'match transition poll rejected');
+      end if;
+      raise_application_error(c_bad_request,'match transition poll rejected');
+    end;
   end;
 
   procedure poll_match_frame(

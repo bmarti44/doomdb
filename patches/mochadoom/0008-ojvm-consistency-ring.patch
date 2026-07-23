@@ -1,7 +1,7 @@
 diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
 --- a/src/doom/DoomMain.java
 +++ b/src/doom/DoomMain.java
-@@ -1531,6 +1531,15 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+@@ -1531,6 +1531,20 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
          }
      }
 
@@ -12,6 +12,11 @@ diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
 +     */
 +    public short doomdbConsistency(int player, int buffer) {
 +        return consistancy[player][buffer];
++    }
++
++    /** Restore one verified retained consistency word during checkpoint load. */
++    public void doomdbSetConsistency(int player, int buffer, short value) {
++        consistancy[player][buffer] = value;
 +    }
 +
      //

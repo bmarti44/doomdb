@@ -1,0 +1,8 @@
+PMLE_LEDGER_PROVENANCE|BEGIN
+LOG|path=artifacts/performance/pmle-ledger-every-tic/run-2026-07-22.log|bytes=42422|created=2026-07-22T22:39:49-0400|last_modified=2026-07-22T23:52:48-0400
+EXECUTION|count=1|launch_job_pid=64339|wrapper_pid=64651|sql_wrapper_pid=64653|log_mode=single_tee_truncate
+TERMINAL_MARKER|count=1|physical_lines=2|reason=SQL*Plus line wrapping|verdict=PASS|tics=13272|deep_every=1|route_runs=1152|vector_runs=1246
+INTERMEDIATE_OUTPUT|buffered=true|short_physical_lines_are_SQLPlus_wrapping_not_additional_executions=true
+HOST_CONDITION|performance_evidence=false|correctness_evidence=true|pre_directive_concurrent_builds=true
+CONFIRMATION_BASIS|single launcher PID file; one wrapper lineage recorded at completion; one terminal marker; one truncating tee target; no append-mode invocation
+PMLE_LEDGER_PROVENANCE|CONFIRMED|executions=1|terminal_markers=1

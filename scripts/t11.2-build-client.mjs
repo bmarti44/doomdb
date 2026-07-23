@@ -55,7 +55,7 @@ const files = fs.readdirSync(build, {recursive: true})
   .filter(name => fs.statSync(path.join(build, name)).isFile())
   .map(name => name.split(path.sep).join('/')).sort();
 assert.ok(files.length >= 2 && files.includes('index.html'), 'compiled artifact inventory incomplete');
-const addressed = name => /[.-]([0-9a-f]{8,64})\.(?:js|css|png|ico|svg|webmanifest)$/.exec(name);
+const addressed = name => /[.-]([0-9a-f]{8,64})\.(?:js|bin|css|png|ico|svg|webmanifest)$/.exec(name);
 const objects = files.map(key => {
   assert.ok(!key.startsWith('/') && !key.includes('..') && !key.includes('\\'), `unsafe key ${key}`);
   const lower = key.toLowerCase();
@@ -71,7 +71,9 @@ const objects = files.map(key => {
   }
   return {key, sha256: digest, bytes: bytes.length, contentType: policy.contentTypes[ext], cacheControl, nameDigestMatches};
 });
-const compiled = files.map(name => fs.readFileSync(path.join(build, name), 'utf8')).join('\n');
+const textExtensions = new Set(['.html', '.js', '.css', '.svg', '.webmanifest']);
+const compiled = files.filter(name => textExtensions.has(path.extname(name).toLowerCase()))
+  .map(name => fs.readFileSync(path.join(build, name), 'utf8')).join('\n');
 assert.ok(compiled.includes(apiBase), 'managed ORDS base was not embedded');
 assert.ok(!compiled.includes(marker), 'same-origin API fallback survived');
 assert.ok(!/(?:serviceWorker|navigator\.serviceWorker|localhost|127\.0\.0\.1|__ORDS_|runtime-config|reverse.?proxy|proxy_pass|\/api\/proxy)/i.test(compiled),

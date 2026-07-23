@@ -359,8 +359,10 @@ measured end-to-end improvement. T9.1 remains mandatory regardless.
 
 ### 1.8 MLE and UTL_TCP performance decision
 
-MLE JavaScript is not a renderer, simulation, RLE, JSON, LOB, compression, or
-tic-batching fallback. A measured local evaluation found renderer SQL
+The original constraint below is retained as historical context and is
+superseded for simulation and live presentation by the approved role-swap
+amendment later in this section. MLE JavaScript was not initially accepted as a
+renderer, simulation, RLE, JSON, LOB, compression, or tic-batching fallback. A measured local evaluation found renderer SQL
 materialization to dominate production frame latency before RLE, JSON, hashing,
 or compression begins. Wrapping that SQL in MLE does not change its plan;
 fetching its rows into JavaScript adds a language boundary, and moving render
@@ -378,15 +380,408 @@ marshaling, browser decode, and blit before proposing a codec change. Any future
 MLE experiment requires a charter amendment, fresh independent evaluation,
 local and Autonomous capability probes, and all existing goldens.
 
+**26ai MLE feasibility record — 2026-07-22 (not a charter amendment).** The replacement target is
+Oracle AI Database 26ai Free RU 23.26.2. Stored MLE module state, BLOB/RAW
+exchange, and TeaVM-generated ES modules work, but `WebAssembly` is absent.
+The earlier 640-byte cached-column prototype was only a lower bound and did
+not select a production compositor. Instrumented Mocha frames contain about
+1,416 unique columns, 667 unique spans, and 45,363 drawn pixels. At that shape,
+MLE command packing plus a native retained raster and 64,000-byte frame
+finalization measured 110/190 ms p50/p95. The TeaVM-generated real Mocha column
+and span functions measured 393.901 ms for one warmed MLE invocation. Exact
+live 30 FPS database rasterization is therefore rejected on the pinned local
+target. A guarded Autonomous 26ai MLE probe remains required because a faster
+target runtime is the only unmeasured exact-live-rendering branch.
+
+#### Approved MLE role-swap amendment — 2026-07-22
+
+Authorized by Brian Martin. This amendment changes the live presentation
+contract only; simulation authority, determinism, recovery, multiplayer
+ordering, and evidence rules are unchanged.
+
+1. The authoritative engine is the TeaVM-generated MLE JavaScript module
+   pinned in `versions.lock` (source bytecode, TeaVM version, build flags, and
+   artifact SHA-256), executing in a retained database session. It owns world
+   state, rules, RNG, replay identity, recovery, and multiplayer ordering.
+   Java/OJVM is removed from the production path.
+2. Live presentation renders in the browser from compact authoritative state
+   deltas emitted by the database. The client holds no authority: it may not
+   simulate ahead of, reorder, or reinterpret deltas.
+3. Exact database rendering is retained as an asynchronous audit/DVR tier
+   using the same pinned artifact; canonical frame evidence (SHA chains and
+   goldens) is produced there. The live "DB-rendered exact 30 FPS" gate is
+   suspended, not deleted; the 30 FPS gate is measured at the client from
+   authoritative deltas under the existing unique-moving-frame rules.
+4. Standing ADB clause: when Autonomous credentials exist, run the prepared
+   probe. Warmed arithmetic at or below 15 ns/iteration reopens exact live DB
+   rendering as a charter goal; at or above 100 ns closes it permanently;
+   between those thresholds, run the full production raster probe and decide
+   on its measured p95.
+5. Production cutover remains gated on the 30-minute retained-session complete
+   process-memory soak, the 762-tic co-op differential, persistence/worker wiring gates, and
+   the existing acceptance matrix extended with Java-removal checks.
+
+The frozen SQL/OJVM engines remain migration oracles only until those cutover
+gates pass. Evidence and the reproducible probes are in `probes/mle/` and
+`reports/performance-PMLE-mle-26ai-2026-07-22.md`.
+
+#### Approved MLE integration, observability, and WAN directive — 2026-07-22
+
+Authorized by Brian Martin after review of the first role-swap evidence. This
+directive refines the implementation gates; it does not change simulation
+authority or permit client prediction.
+
+1. The final memory soak must measure the complete owning Oracle process, not
+   only `session pga memory`. A controlled retained 64 MiB MLE allocation left
+   the reported session/process PGA near 16--17 MiB while `/proc` reported
+   roughly 284 MiB RSS and 156 MiB PSS. PGA-only no-growth evidence is invalid.
+   Every final memory harness must first prove visibility with a known touched
+   allocation, then sample RSS, PSS, private clean/dirty, anonymous memory,
+   session PGA/UGA, and the exact SID/SPID through all phases.
+2. Calls over 100 ms must record tic and start/end timestamps. The runner must
+   correlate their windows with ASH when available, session wait/event deltas,
+   and process/host observations. A tail may not be labeled GC, scheduling, or
+   log I/O without evidence.
+3. The last emitted initialization `Math.sqrt` must be removed through a
+   deterministic implementation and a pinned-JVM bit-equivalence property
+   test. The 330-tic canonical differential repeats afterward.
+4. Authoritative and presentation/audit TeaVM outputs may have different
+   artifact SHAs, but `versions.lock` must bind both to one input-bytecode SHA,
+   their exact profiles and flags, and their individual output SHAs.
+5. Node `--cpu-prof` and `--trace-gc` over the accepted ledger are candidate-
+   discovery tools only. Every optimization remains selected by Oracle MLE
+   server-wall measurements and must repeat its applicable canonical
+   differential. Production uses allocation-free bare ticker and binary DMD1
+   paths; diagnostic snapshots are on-demand. `FixedDiv`, allocation sources,
+   trait reachability, and TeaVM `FULL` are profiled/A-B candidates, never
+   assumed improvements. CPU controls and faster ADB hardware are likewise
+   measured hypotheses, not acceptance claims.
+6. Multiplayer WAN transport uses confirmed lockstep with adaptive scheduled
+   input lead, pipelined idempotent command batches, consecutive DMD1 delivery,
+   and an adaptive confirmed-state playout buffer. The client never predicts,
+   rewinds authority, or performs lag compensation. Lead derives from measured
+   delivery distribution with bounds of 2--12 tics and hysteresis; neutral
+   substitution remains the authoritative late-input rule.
+7. At most one long poll may be outstanding per client. Because an AutoREST
+   PL/SQL long poll occupies an ORDS connection and database session, the gate
+   records pool occupancy and derives a published player/concurrent-game cap;
+   prompt-return latency is measured from transition commit and may not hide
+   behind the configured maximum hold time. Immediate batched polling remains
+   the fallback when the pool-capacity result rejects long polling.
+8. WAN evidence uses pinned latency injection at 50+/-10, 100+/-20, and
+   200+/-40 ms RTT for ten-minute two-player runs. Required outcomes are zero
+   mirror poison/chain/fence failures, per-player neutral substitution below
+   0.5%, lead changes no faster than one tic per ten seconds, and fixed 35 Hz
+   playout with p99 interval error within one tic. Input-to-presentation p95 is
+   bounded by the selected lead plus measured downstream delivery and playout
+   offsets (with at most one tic processing allowance); an idle long-poll hold
+   is not added as permissible latency after a transition is committed.
+9. Audit/DVR checkpoint cadence is selected from measured random-access seek
+   time (nearest checkpoint, replay, then exact render), not from an assumed
+   35 FPS asynchronous render rate. No audit/DVR completion claim is allowed
+   until exact HUD, automap, intermission, and finale presentation is restored.
+
+#### Approved post-audit evidence amendments — 2026-07-22
+
+Authorized by Brian Martin after independent audit of the co-op, host-math,
+memory, and profile evidence.
+
+1. Emitted host math is an allowlist, not an offender denylist. Production may
+   emit only `Math.imul`, `floor`, `ceil`, `round`, `fround`, `abs`, `min`,
+   `max`, `trunc`, and `sign`; any other member or computed `Math[...]` access
+   fails the build.
+2. The final process-memory gate excludes a stated warmup from every statistic
+   and enforces absolute RSS, PSS, and private-memory ceilings for the entire
+   scored run. The local default is the first post-warmup sample plus a
+   67,108,864-byte margin. Reports include ending values and every PSS plateau
+   step of at least 8 MiB; a delta-only pass is forbidden.
+3. Node profiles rank candidates but do not discount interpreter dispatch.
+   ActiveStates method-reference dispatch receives a direct MLE wall-clock
+   microbenchmark, and long-backed mobj flag operations are investigated as a
+   two-int structural candidate. Accepted optimization batches repeat the
+   762-tic differential.
+4. The exhaustive every-tic 13,272-command differential runs as background
+   evidence before cutover. It completed PASS on 2026-07-22. Its sidecar
+   confirms exactly one execution, one terminal marker, the original wrapper
+   and SQL-wrapper PIDs, and the truthful pre-directive concurrent-build host
+   condition; wrapped SQL*Plus output does not weaken the terminal verdict.
+5. DMD1 batching and long-poll frontier semantics are frozen before the worker
+   conversion. At most four of the six local ORDS sessions may be held, leaving
+   two for input/control. At most one poll is outstanding per player, holds are
+   bounded at 500 ms, and post-commit prompt-return p95 must be at most 5 ms.
+
+#### Approved loader and dispatch amendments — 2026-07-23
+
+Authorized by Brian Martin after audit of the dispatch and loader evidence.
+All Oracle-resident artifact loaders use a 2,000-character base64 fold, retain
+the final unterminated fold line, and hard-fail on in-database byte-length or
+SHA-256 mismatch before module creation or first use. This covers the full MLE
+module, canonical table pack, dispatch/slice modules, IWAD, and derived streamed
+assets. The dispatch candidate is approved only for an uncontended deployed
+A/B followed by canonical and 762-tic differential evidence; its additive
+worker entry points are not hot-path changes. A membership leave/neutral/rejoin
+recovery differential is mandatory before worker cutover. Long-backed flag
+work remains deferred unless post-dispatch MLE evidence is at least five
+percent, and even then begins with a cast-shape microbenchmark rather than a
+field/codec rewrite.
+
+#### Approved resource and promotion amendments — 2026-07-23
+
+Authorized by Brian Martin after acceptance of the fail-closed loader packet.
+Every A/B, soak, and differential record now binds the active resource plan,
+`CPU_COUNT`, and available PDB CPU/session utilization limits. `resmgr:*`
+waits are a first-class slow-call category. Performance A/B evidence is valid
+only on a quiet host with no concurrent builds, compiles, or verifier runs,
+and must state that condition explicitly. The already-running exhaustive
+ledger is correctness evidence only and records its pre-directive concurrent
+host condition truthfully.
+
+The JDBC IWAD/derived-asset staging fence must execute live once before worker
+cutover, and fresh schema bootstrap grants `DBMS_CRYPTO` plus the resource
+metric view needed by evidence collection. Membership recovery evidence binds
+both the exact MLE artifact SHA and the OJVM oracle JAR SHA even when that
+oracle is temporary. A deathmatch membership variant is desirable but is
+explicitly deferred until after cutover. Promotion order remains fail-closed
+loader gate, dispatch A/B, canonical and 762-tic differentials, then the
+membership leave/neutral/rejoin differential.
+
+**Free resource-cap decision — 2026-07-23.** A disposable scratch container
+from the exact pinned 23.26.2 image reported `Database resource manager=FALSE`.
+Both `CREATE_CDB_PLAN` and `UPDATE_CDB_PLAN_DIRECTIVE` failed with `ORA-00439:
+feature not enabled: Database resource manager`; the evidence container was
+never changed. The local baseline is therefore permanently frozen at
+`DEFAULT_CDB_PLAN`, two CPUs, PDB utilization limit 50, and running-session
+limit 2. Earlier local measurements are annotated as 50%-cap results.
+
+DMB1 has two distinct capacity bounds on that baseline. The ORDS connection
+bound permits four held poll leases from a six-session pool while reserving
+two connections. The resource-manager runnable bound is one poll return at a
+time after reserving one of two runnable slots for the retained 35 Hz worker
+and input/control work. Four held waits are not four guaranteed prompt
+returns. WAN evidence must prove the 5 ms post-commit p95 under that runnable
+bound; otherwise clients beyond the bound use zero-hold immediate batching.
+The final soak tests the specific hypothesis that `resmgr:*` throttling under
+the enforced 50% cap contributes to over-slot tails.
+
+The frozen DMB1 v1 batch begins with a 32-byte big-endian header: magic,
+version, timeout/more flags, transition count, reserved field, current
+generation, membership epoch, requested-after tic, committed frontier tic,
+and measured hold milliseconds. It then contains up to 64 consecutive records,
+each as a four-byte length followed by one independently chained DMD1 envelope.
+An empty batch is legal only as a timeout at the requested frontier. A nonempty
+batch begins at requested-after plus one; its more flag is true exactly when
+its final record precedes the committed frontier. Decode never advances the
+client frontier; only successful confirmed-mirror application does.
+
+The live database transport gate currently reports two immediately batched
+transitions, a valid empty timeout, duplicate-poll rejection, four held-poll
+capacity with a two-session reserve, and 2.857 ms post-commit prompt return.
+`DBMS_ALERT` registration occurs before the frontier check and signals become
+visible only at the publishing commit, preventing a lost wakeup. Zero-hold
+immediate batching remains the pool-capacity fallback.
+
+The public `poll_match_transitions` database API is now bound directly to that
+transport contract with authenticated generation/epoch/player fences, a
+0--500 ms hold, and 1--64 records. The TypeScript API and strict DMB1 decoder
+consume its timeout and nonempty payloads without mutating the confirmed
+frontier during decode. The candidate worker-facing MLE export now accepts the
+durable skill/episode/map/deathmatch settings and a fixed four-slot command
+vector plus membership bitmap; it rejects nonzero commands for inactive slots.
+These exports pass the Node real-IWAD smoke but remain undeployed until the
+running exhaustive differential releases the currently pinned database module.
+
+The first full-ticker runtime gate is also complete. The current TeaVM build
+emits a 1,158,461-byte module that Oracle 26ai loads as a stored MLE module. It booted
+the pinned 28,795,076-byte IWAD and produced the same initial E1M1 state as the
+Node artifact. Thirty warmups followed by 300 changing tics measured
+10.014/18.342/32.909 ms p50/p95/p99, including construction and MLE-to-PL/SQL
+marshalling of a full diagnostic snapshot on every call. The shared-core bare
+ticker then measured 7.699/14.926/26.367 ms p50/p95/p99 over the same warmup and
+sample counts. The allocation-free, property-proved `FixedMul` build then ran
+3,000 changing tics after warmup at 8.213/13.810/17.381 ms p50/p95/p99 and
+114.314 tics/s. Only three calls exceeded the 28.57 ms slot; modeled backlog
+was 0 ms at p99, 0.737 ms maximum, and 0 ms at completion. Compact output,
+persistence, and the long worker soak remain mandatory.
+
+The first side-by-side OJVM/MLE differential ran the same low-level command
+fields in one database session. All 14 compared state fields matched through
+tic 86; at tic 87, player Y differed by one fixed-point unit while the other
+fields still matched. This blocks parity. The leading identified source is
+`Tables.InitTables()`, which procedurally generates sine, tangent, and angle
+tables through host `Math` functions; Java and JavaScript are not required to
+round those generated values identically. The corrective gate is a
+versioned/SHA-locked table pack generated by the pinned JVM build and loaded by
+MLE before any derived engine tables initialize. That 114,732-byte pack removed
+all reachable `sin`/`tan`/`atan` calls from the generated module, and the
+same-session differential then matched all 14 fields after every tic through
+330. A shared canonical material stream also matched save-semantic world state
+and stable reference topology for 219 thinkers after every ticker-only
+transition through tic 330. Oracle-native SHA-256 over its 72,418-byte tic-zero
+stream matches OJVM, and the accepted route's first ten commands pass the same
+deep comparison. The full 13,272-command generated ledger gate supports
+per-tic or periodic deep comparison. The complete route passes with deep
+canonical SHA-256 every 100 tics and at its terminal state in 5:40.29 wall
+time. The unattended exhaustive run also passed all 13,272 commands with
+`deep_every=1`; its provenance sidecar records one execution and one terminal
+marker. The legacy
+OJVM `Ticker()+Display()` call differs
+at tic 1 because presentation mutates save-serialized state; ticker-only state
+matches. The final initialization-time host `Math.sqrt` dependency is also
+closed: a host-independent implementation matched 1,000,196 pinned-JVM
+boundary/random cases bit-for-bit, the emitted artifact contains zero host
+math tokens, and the post-change four-player 330-tic canonical differential
+passes. The exhaustive every-tic ledger is complete background evidence.
+
+The canonical runtime pack now also contains the exact 65,536-byte Freedoom
+TRANMAP. Its JVM-generated bytes match the unmodified renderer's synthesis
+byte-for-byte. Direct loading removes the interpreted MLE color-distance loop,
+reduces cold initialization from 108.7--110.1 seconds to 76.124 seconds, and
+preserves the 330-tic deep differential. The repeated 3,000-tic run remains at
+111.997 tics/s with zero ending backlog. Recovery still needs a pre-warmed
+standby and retained-worker restart/rehydration evidence. The scheduled MLE
+worker now passes 33 tics, a tic-32 DMC1 checkpoint, forced generation-2
+recovery, DMD1 chain continuation, and the zero-legacy-frame production-path
+fence. The honest full boundary is 97.938 s cold start and 104.105 s cold
+recovery under the enforced 50% Free PDB cap; the previously reported 1.819 s
+timed only the final restore call after asset loading and engine initialization.
+Functional cutover is therefore proven, but the recovery SLA remains gated on
+prewarmed-context promotion. That lifecycle now passes: an exact-config
+standby reached READY independently, a forced owner loss promoted it to
+generation 2, DMC1 restored in 3.068 s, and tic 33 continued the existing DMD1
+chain with zero legacy frame rows. Generation-scoped standby Scheduler names
+allow the promoted G1 owner to arm a distinct G2 replacement. Cold recovery
+remains the fenced fallback before tic 32 or when no ready standby exists.
+Initial admission is now two-phase as well. Tic zero may become durable while
+the second retained context initializes, but the worker stays `STARTING`, the
+paced loop cannot advance, command and command-batch submission fail closed,
+and the public API continues to report `STARTING` until that exact-generation
+standby is `READY`. The strengthened live gate observed and tested this
+otherwise-hidden interval, rejected a tic-1 command, then admitted the match
+after 197,681.124 ms. Its post-admission standby wait was 0.633 ms; forced
+generation-2 recovery completed in 3,794.754 ms and preserved the DMD1 chain.
+This removes the cold-recovery hole from the advertised playable interval at
+the cost of an honestly reported roughly 198-second first admission on the
+enforced half-CPU Free baseline. A later generic standby pool may improve
+admission latency, but is not assumed by current gates.
+The final paired browser integration is now live on this boundary. Two
+independent SHA-verified TeaVM contexts per client apply only committed DMD1
+transitions: the ticker-only context is the authority verifier and the
+presentation context owns render-only `ML_MAPPED` state. The first full runs
+caught and closed a digest-record/full-snapshot mismatch, the domain-separated
+tic-1 chain root, and a DMB1 read-committed frontier race. They also proved
+that per-tic `canonicalState()` is not a live primitive: it measured 583.137 ms
+after a 6.156 ms authority step and limited play to about 1.3 FPS. The selected
+DMS2 replay-identity chain binds prior identity, membership, and the exact
+32-byte command vector; full canonical verification remains in the completed
+13,272/762/membership differentials and asynchronous audit tier.
+
+Free's two-running-session cap also rejects held long polling for two clients.
+`long_poll_enabled` is default-off locally, zero-hold DMB1 performs no
+DBMS_ALERT register/remove/signal work, and the capacity-qualified long-poll
+fixture remains separately executable. With those measured choices, two real
+Chromium clients passed at 35.042/35.034 displayed FPS, 38/35 ms p99 frame
+gaps, 110 confirmed transitions each, and a converged two-tic playout buffer.
+The exact post-change worker then passed checkpoint tic 32, 33 DMD1 rows,
+zero legacy frames, and generation-2 recovery in 3,353.507 ms. Remaining
+cutover work is the final OS-process-memory soak on this artifact, WAN latency
+profiles, Java-removal audit, and incomplete HUD/automap/intermission/finale
+presentation; the audit/DVR tier is still not claimed complete.
+
+**Final MLE authority acceptance checkpoint (2026-07-23).** The pinned
+authority is now 1,163,182 bytes at SHA-256
+`06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0`;
+the paired browser presentation module is 1,224,686 bytes at SHA-256
+`bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83`.
+They derive from input JAR
+`8cae68323d62edfa56299569d15763e6dbd24974dc3a24f3ae64961071920d8b`
+and pinned Mocha bytecode
+`6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97`;
+the permanent dev-only OJVM oracle is
+`2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74`
+and the canonical table pack remains
+`058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44`.
+The canonical 330, co-op 762 every-tic, membership recovery, stale-SHA fence,
+and a fresh no-overwrite 13,272-command every-tic ledger all pass on this final
+triple.
+
+The allocation-free checkpoint rewrite is bound end-to-end by the membership
+export/rebuild/restore/rejoin differential and by periodic checkpoint/standby
+reconstruction in the final worker soak; three identical checkpoint payloads
+at tics 32, 1,024, and 2,048 remain smoke evidence only. A 128 MiB retained
+MLE allocation increased process PSS/private by approximately 128 MiB while
+PGA stayed flat. The final authority/standby/two-browser run then excluded 300
+warmup seconds and passed 1,800 scored seconds under fixed baseline + 64 MiB
+RSS/PSS/private ceilings and stable SPIDs. Authority PSS was 464,108,544
+baseline, 518,277,120 maximum, and 434,509,824 end; standby PSS was
+442,265,600 / 483,700,736 / 413,642,752. Browser reconnects and legacy frames
+were zero; maximum confirmed lag was 18 tics. Slow-call attribution found zero
+`resmgr:cpu quantum` samples across 1,486 ASH samples, refuting that specific
+tail hypothesis for this run.
+
+The review dashboard is updated to the MLE architecture and consumes an
+evidence-validated static status document generated from `versions.lock` and
+the final ledger/soak logs. Its local Chromium gate passes. Remaining cutover
+work is the injected-latency WAN matrix, the scoped Java-removal audit, and
+presentation/audit-DVR completion. The audit removes OJVM only from production
+worker/schema/cloud surfaces and permanently preserves the repository/dev
+differential oracle. The ADB probe remains dormant until credentials exist.
+The new DMC1/v4
+checkpoint envelope preserves vanilla state plus RNG, full thinker/reference
+topology, sector/block roots, players, full-width mobj fields, multiplayer mode,
+every player's consistency ring, engine-owned consistency words, psprite states,
+and mobj floor/ceiling bounds. The v3 predecessor restored a 79,350-byte tic-40
+checkpoint in 7,884.132 ms, matched OJVM exactly,
+and remained exact through 330 continued tics. A pre-warmed-standby lifecycle
+and memory soak remain open. The stronger four-player v4 gate destroyed the
+MLE context at tic 100, rebuilt it from Oracle-resident artifacts, restored an
+89,042-byte checkpoint in 1,818.683 ms, matched OJVM immediately, and remained
+exact through 330 continued tics to tic 430.
+
+The retained MLE adapter also accepts packed command vectors for two to four
+cooperative players and maintains Doom's per-player consistency rings. The
+four-player Oracle/OJVM differential matches through 330 tics with deep state
+checks every 50. A 3,000-tic four-player run measures 8.026/14.165/20.876 ms
+p50/p95/p99, 115.03 tics/s, zero p99/ending backlog, and 8.158 ms maximum
+backlog. Multiplayer simulation therefore clears the same 35 Hz gate.
+
+The accepted skill-1 two-player co-op artifact also passes a full canonical
+comparison after every one of its 762 tics. The harness expanded 188 published
+vector runs from fixture SHA-256
+`12ceaf3e7a419ab92be370c44c2c049c1d93455cbb72934502af41e355765e61`;
+OJVM and MLE remained equal throughout the 439.88-second run.
+
+The retained-session soak gate also passes. A four-player MLE context ran for
+1,800.007 seconds and completed 230,671 tics at 128.15 tics/s. Its first-five-
+minute p99 was 15.7 ms and its last-five-minute p99 improved to 11.3 ms. There
+were 217 calls over one 28.57 ms slot and one 1,005.772 ms tail, but modeled
+backlog recovered from a 977.201 ms maximum to exactly zero. Session PGA stayed
+flat at 15,907,136 bytes with an 18,135,360-byte high-water mark. This closes
+the simulation throughput/backlog and late-tail gate, but not total-memory
+growth: the controlled allocation probe proved these PGA counters omit MLE
+heap memory. Cutover repeats the soak with OS-process memory accounting after
+the final presentation exports are pinned.
+
+The fail-closed calibration harness now makes that accounting repeatable. In a
+fresh SID 17 / SPID 47690 it touched all 67,108,864 bytes of a retained MLE
+buffer. Process PSS rose by 51,314,688 bytes and private memory by 50,880,512
+bytes, clearing the 48 MiB visibility floor, while reported session PGA fell
+from 15,841,600 to 15,382,848 bytes. `doom_teavm_sim_release` removed the live
+reference but did not immediately return the reserved heap pages to the OS.
+Consequently the final gate measures bounded/no-growth RSS, PSS, and private
+memory over time; it does not require immediate RSS reclamation after release.
+
 ## 2. Non-negotiable implementation rules
 
 1. All dynamic browser traffic uses objects enabled by `ORDS.ENABLE_OBJECT`.
 2. No `ORDS.DEFINE_MODULE`, handler, application server, or alternate API.
-3. SQL and set-based DML own simulation decisions. The approved P12.0 OJVM
-   exception may own production render/codec decisions while the SQL renderer
-   remains the exact independent oracle.
-4. PL/SQL may orchestrate a bounded list of statements per tic but may not loop
-   over pixels, walls, or live objects to implement a shadow engine.
+3. SQL/set-based DML remain the system of record. During the 26ai migration,
+   retained MLE is the candidate authoritative Doom simulation and exact frame
+   producer; SQL and OJVM output remain independent exact migration oracles
+   until all parity and performance gates pass.
+4. PL/SQL may orchestrate a bounded list of statements per tic. Native PL/SQL
+   raster code is audit/probe-only unless a target-specific gate proves it can
+   meet the complete live budget. It may not perform authoritative simulation
+   or become an unverified shadow engine.
 5. No recursive WITH in the render path. `CONNECT BY` is allowed for trees.
 6. No dynamic SQL in simulation, rendering, transport, or verification.
 7. Pose and input values are binds or table rows; never inline them into SQL.

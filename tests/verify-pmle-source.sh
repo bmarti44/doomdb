@@ -1,0 +1,340 @@
+#!/bin/sh
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+INSTALL=$ROOT/probes/mle/install.sql
+BENCHMARK=$ROOT/probes/mle/benchmark.sql
+RUNNER=$ROOT/probes/mle/run.sh
+CLEANUP=$ROOT/probes/mle/cleanup.sql
+NATIVE_INSTALL=$ROOT/probes/mle/native-install.sql
+NATIVE_BENCHMARK=$ROOT/probes/mle/native-benchmark.sql
+NATIVE_CLEANUP=$ROOT/probes/mle/native-cleanup.sql
+HYBRID_INSTALL=$ROOT/probes/mle/hybrid-install.sql
+HYBRID_BENCHMARK=$ROOT/probes/mle/hybrid-benchmark.sql
+HYBRID_CLEANUP=$ROOT/probes/mle/hybrid-cleanup.sql
+COMMAND_BENCHMARK=$ROOT/probes/mle/command-benchmark.sql
+BIND_INSTALL=$ROOT/probes/mle/bind-install.sql
+BIND_BENCHMARK=$ROOT/probes/mle/bind-benchmark.sql
+BIND_CLEANUP=$ROOT/probes/mle/bind-cleanup.sql
+ADB_INSTALL=$ROOT/probes/mle/adb-install.sql
+ADB_BENCHMARK=$ROOT/probes/mle/adb-benchmark.sql
+ADB_CLEANUP=$ROOT/probes/mle/adb-cleanup.sql
+ADB_RUNNER=$ROOT/probes/mle/run-adb.sh
+TEAVM_SIM_LOADER=$ROOT/probes/mle/teavm-engine/load-mle-module.sh
+TEAVM_SLICE_LOADER=$ROOT/probes/mle/teavm/deploy.sh
+TEAVM_SIM_CLEANUP=$ROOT/probes/mle/teavm-engine/cleanup-mle.sql
+TEAVM_LEDGER=$ROOT/probes/mle/teavm-engine/build-ledger-differential.mjs
+TEAVM_CANONICAL_BENCH=$ROOT/probes/mle/teavm-engine/benchmark-canonical-state.sql
+TEAVM_RECOVERY=$ROOT/probes/mle/teavm-engine/recovery-mle.sql
+TEAVM_MULTIPLAYER=$ROOT/probes/mle/teavm-engine/multiplayer-mle.sql
+TEAVM_MULTI_BENCH=$ROOT/probes/mle/teavm-engine/benchmark-multiplayer-mle.sql
+TEAVM_MULTI_RECOVERY=$ROOT/probes/mle/teavm-engine/recovery-multiplayer-mle.sql
+TEAVM_MULTI_SOAK=$ROOT/probes/mle/teavm-engine/soak-multiplayer-mle.sql
+TEAVM_MULTI_SOAK_RUNNER=$ROOT/probes/mle/teavm-engine/run-multiplayer-soak.sh
+TEAVM_COOP=$ROOT/probes/mle/teavm-engine/build-coop-differential.mjs
+TEAVM_MEMBERSHIP_DIFF=$ROOT/probes/mle/teavm-engine/membership-recovery-differential.sql
+TEAVM_BUILD=$ROOT/probes/mle/teavm-engine/build-simulation.sh
+TEAVM_PROFILE=$ROOT/probes/mle/teavm-engine/profile-ledger-node.mjs
+TEAVM_PATCH=$ROOT/probes/mle/teavm-engine/0002-teavm-simulation-headless.patch
+TEAVM_MEMORY_CAL=$ROOT/probes/mle/teavm-engine/run-memory-calibration.sh
+TEAVM_MEMORY_CAL_SQL=$ROOT/probes/mle/teavm-engine/calibrate-memory-mle.sql
+TEAVM_DISPATCH_BENCH=$ROOT/probes/mle/teavm-engine/benchmark-active-state-dispatch.sql
+TEAVM_DISPATCH_RUNNER=$ROOT/probes/mle/teavm-engine/run-active-state-dispatch.sh
+TEAVM_DISPATCH_AB=$ROOT/probes/mle/teavm-engine/run-dispatch-ab.sh
+TEAVM_DIFFERENTIAL_RUNNER=$ROOT/probes/mle/teavm-engine/run-differential.sh
+TEAVM_LEDGER_RUNNER=$ROOT/probes/mle/teavm-engine/run-ledger-differential.sh
+TEAVM_WORKER_CUTOVER_RUNNER=$ROOT/probes/mle/teavm-engine/run-worker-cutover.sh
+TEAVM_WAN_RUNNER=$ROOT/probes/mle/teavm-engine/run-wan-matrix.sh
+TEAVM_SIM_SOURCE=$ROOT/probes/mle/teavm-engine/src/main/java/doomdb/mle/engine/SimulationEngineReachabilityProbe.java
+REPORT=$ROOT/reports/performance-PMLE-mle-26ai-2026-07-22.md
+TEAVM_REPORT=$ROOT/probes/mle/teavm-engine/REPORT.md
+VERSIONS=$ROOT/versions.lock
+AUTHORITY_TS=$ROOT/client/src/authority.ts
+AUTHORITY_MIRROR_TS=$ROOT/client/src/authority-mirror.ts
+AUTHORITY_BATCH_TS=$ROOT/client/src/authority-batch.ts
+AUTHORITY_WAN_TS=$ROOT/client/src/authority-wan.ts
+AUTHORITY_SQL=$ROOT/sql/sim/086_mle_authority_delta.sql
+AUTHORITY_TRANSPORT=$ROOT/sql/sim/087_mle_transition_transport.sql
+AUTHORITY_TRANSPORT_SCHEMA=$ROOT/sql/schema/052_mle_authority_transport.sql
+AUTHORITY_TRANSPORT_TEST=$ROOT/tests/verify-mle-transition-transport.sql
+MLE_MATCH_RUNTIME=$ROOT/sql/sim/088_mle_match_runtime.sql
+MLE_MATCH_WORKER=$ROOT/sql/sim/084_multiplayer_worker.sql
+MLE_MATCH_WORKER_TEST=$ROOT/tests/verify-mle-match-worker-cutover.sql
+DOOM_API=$ROOT/sql/rest/010_doom_api.sql
+IWAD_LOADER=$ROOT/tools/mochadoom/DoomMochaIwadLoader.java
+RUNTIME_GRANTS=$ROOT/deploy/local/initdb/10-doom-runtime-grants.sql
+ENVIRONMENT_SQL=$ROOT/probes/mle/teavm-engine/environment-metadata.sql
+ARTIFACT_SQL=$ROOT/probes/mle/teavm-engine/artifact-metadata.sql
+AUTHORITY_TEST=$ROOT/tests/verify-authority-delta.mjs
+AUTHORITY_MIRROR_TEST=$ROOT/tests/verify-authority-mirror.mjs
+AUTHORITY_BATCH_TEST=$ROOT/tests/verify-authority-batch.mjs
+AUTHORITY_WAN_TEST=$ROOT/tests/verify-authority-wan.mjs
+WAN_PROXY=$ROOT/tests/wan-latency-proxy.mjs
+WAN_PROFILES=$ROOT/tests/fixtures/wan-profiles.json
+WAN_SOAK=$ROOT/tests/verify-p13.5-multiplayer-soak.mjs
+
+fail() {
+  printf '%s\n' "PMLE source verification: $*" >&2
+  exit 1
+}
+
+line_of() {
+  grep -n -m 1 "$1" "$2" | cut -d: -f1
+}
+
+for file in "$INSTALL" "$BENCHMARK" "$RUNNER" "$CLEANUP" \
+  "$NATIVE_INSTALL" "$NATIVE_BENCHMARK" "$NATIVE_CLEANUP" \
+  "$HYBRID_INSTALL" "$HYBRID_BENCHMARK" "$HYBRID_CLEANUP" \
+  "$COMMAND_BENCHMARK" "$BIND_INSTALL" "$BIND_BENCHMARK" "$BIND_CLEANUP" \
+  "$ADB_INSTALL" "$ADB_BENCHMARK" "$ADB_CLEANUP" "$ADB_RUNNER" \
+  "$TEAVM_SIM_LOADER" "$TEAVM_SLICE_LOADER" "$TEAVM_SIM_CLEANUP" "$TEAVM_LEDGER" \
+  "$TEAVM_CANONICAL_BENCH" "$TEAVM_RECOVERY" "$TEAVM_MULTIPLAYER" \
+  "$TEAVM_MULTI_BENCH" "$TEAVM_MULTI_RECOVERY" "$TEAVM_MULTI_SOAK" \
+  "$TEAVM_MULTI_SOAK_RUNNER" "$TEAVM_COOP" "$TEAVM_MEMBERSHIP_DIFF" "$TEAVM_BUILD" \
+  "$TEAVM_PROFILE" "$TEAVM_PATCH" "$TEAVM_MEMORY_CAL" \
+  "$TEAVM_MEMORY_CAL_SQL" "$TEAVM_DISPATCH_BENCH" \
+  "$TEAVM_DISPATCH_RUNNER" "$TEAVM_DISPATCH_AB" "$TEAVM_DIFFERENTIAL_RUNNER" \
+  "$TEAVM_WORKER_CUTOVER_RUNNER" "$TEAVM_WAN_RUNNER" \
+  "$TEAVM_SIM_SOURCE" "$REPORT" "$TEAVM_REPORT" "$VERSIONS" \
+  "$AUTHORITY_TS" "$AUTHORITY_MIRROR_TS" "$AUTHORITY_BATCH_TS" \
+  "$AUTHORITY_WAN_TS" \
+  "$AUTHORITY_SQL" "$AUTHORITY_TRANSPORT" "$AUTHORITY_TRANSPORT_SCHEMA" \
+  "$MLE_MATCH_RUNTIME" "$MLE_MATCH_WORKER" "$MLE_MATCH_WORKER_TEST" \
+  "$DOOM_API" "$IWAD_LOADER" "$RUNTIME_GRANTS" \
+  "$ENVIRONMENT_SQL" "$ARTIFACT_SQL" \
+  "$AUTHORITY_TRANSPORT_TEST" "$AUTHORITY_TEST" "$AUTHORITY_MIRROR_TEST" \
+  "$AUTHORITY_BATCH_TEST" "$AUTHORITY_WAN_TEST" "$WAN_PROXY" "$WAN_PROFILES" \
+  "$WAN_SOAK"; do
+  [ -f "$file" ] || fail "missing ${file#$ROOT/}"
+done
+[ -x "$RUNNER" ] || fail 'probe runner is not executable'
+[ -x "$ADB_RUNNER" ] || fail 'ADB probe runner is not executable'
+[ -x "$TEAVM_SIM_LOADER" ] || fail 'TeaVM simulation loader is not executable'
+[ -x "$TEAVM_MULTI_SOAK_RUNNER" ] || fail 'TeaVM multiplayer soak runner is not executable'
+[ -x "$TEAVM_MEMORY_CAL" ] || fail 'TeaVM memory calibration runner is not executable'
+[ -x "$TEAVM_DISPATCH_RUNNER" ] || fail 'TeaVM ActiveStates dispatch runner is not executable'
+[ -x "$TEAVM_DISPATCH_AB" ] || fail 'TeaVM dispatch A/B runner is not executable'
+[ -x "$TEAVM_DIFFERENTIAL_RUNNER" ] || fail 'TeaVM differential runner is not executable'
+[ -x "$TEAVM_LEDGER_RUNNER" ] || fail 'TeaVM ledger differential runner is not executable'
+[ -x "$TEAVM_WORKER_CUTOVER_RUNNER" ] || fail 'TeaVM worker cutover runner is not executable'
+[ -x "$TEAVM_WAN_RUNNER" ] || fail 'TeaVM WAN matrix runner is not executable'
+[ -x "$TEAVM_COOP" ] || fail 'TeaVM co-op differential generator is not executable'
+
+grep -qi '^create mle env doom_mle_bench_env pure' "$INSTALL" || fail 'PURE environment missing'
+grep -q 'signature.*Out<Uint8Array>' "$INSTALL" || fail 'RAW OUT call specification missing'
+grep -q '"webAssembly":"undefined"' "$RUNNER" || fail 'WebAssembly capability fence missing'
+grep -q 'c_renderer_p95_limit_ms constant number := 20' "$BENCHMARK" || fail '20 ms renderer gate missing'
+grep -q 'c_renderer_p99_limit_ms constant number := 33.3' "$BENCHMARK" || fail '33.3 ms p99 gate missing'
+grep -q 'c_full_samples.*:= 300' "$BENCHMARK" || fail '300-frame sample gate missing'
+grep -q "utl_raw.length(l_chunk0) <> c_chunk_bytes" "$BENCHMARK" || fail 'first RAW length fence missing'
+grep -q "utl_raw.length(l_chunk1) <> c_chunk_bytes" "$BENCHMARK" || fail 'second RAW length fence missing'
+grep -q 'doom_mle_bench_counter' "$BENCHMARK" || fail 'retained module-state check missing'
+grep -q 'PMLE_COLUMN_MATRIX' "$BENCHMARK" || fail 'cached/dynamic column matrix missing'
+grep -q 'dbms_utility.get_cpu_time' "$BENCHMARK" || fail 'server CPU timing missing'
+grep -q 'native-cleanup.sql' "$RUNNER" || fail 'native cleanup path missing'
+grep -q 'hybrid-cleanup.sql' "$RUNNER" || fail 'hybrid cleanup path missing'
+grep -q 'cleanup.sql' "$RUNNER" || fail 'MLE cleanup path missing'
+grep -q 'plsql_code_type=native' "$NATIVE_INSTALL" || fail 'native PL/SQL compile missing'
+grep -q 'utl_raw.translate' "$NATIVE_INSTALL" || fail 'native RAW translation missing'
+grep -q 'render_hex_block_columns' "$NATIVE_INSTALL" || fail 'native blocked gather probe missing'
+grep -q 'render_buffered_frame' "$NATIVE_INSTALL" || fail 'native framebuffer probe missing'
+grep -q 'doom_mle_bench_commands' "$COMMAND_BENCHMARK" || fail 'MLE command boundary missing'
+grep -q 'PMLE_COMMAND_GATE|PASS' "$COMMAND_BENCHMARK" || fail 'command compositor gate missing'
+grep -q 'systimestamp' "$BIND_BENCHMARK" || fail 'wall-clock bind timing missing'
+grep -q 'c_batch constant pls_integer:=20' "$BIND_BENCHMARK" || fail 'batched wall-clock bind timing missing'
+grep -q 'non_pure_session_execute_blob' "$BIND_BENCHMARK" || fail 'non-PURE bind comparison missing'
+grep -q 'create mle env doom_mle_adb_env pure' "$ADB_INSTALL" || fail 'ADB PURE environment missing'
+grep -q 'systimestamp' "$ADB_BENCHMARK" || fail 'ADB wall-clock timing missing'
+grep -q 'c_batch constant pls_integer:=20' "$ADB_BENCHMARK" || fail 'ADB timing batch missing'
+grep -q 'PMLE_ADB_DECISION|REOPEN_EXACT_RENDERER' "$ADB_BENCHMARK" || fail 'ADB reopen threshold missing'
+grep -q 'PMLE_ADB_DECISION|CLOSE_EXACT_RENDERER' "$ADB_BENCHMARK" || fail 'ADB close threshold missing'
+grep -q 'DOOMDB_CLOUD_EXECUTE.*YES' "$ADB_RUNNER" || fail 'ADB execution opt-in missing'
+grep -q 'ADB_PASSWORD' "$ADB_RUNNER" || fail 'ADB credential fence missing'
+grep -q 'adb-cleanup.sql' "$ADB_RUNNER" || fail 'ADB cleanup path missing'
+grep -q 'doom-mle-simulation-engine-headless.js' "$TEAVM_SIM_LOADER" || fail 'full-ticker TeaVM artifact missing'
+grep -q 'using blob' "$TEAVM_SIM_LOADER" || fail 'full-ticker BLOB module load missing'
+grep -q 'PMLE_TEAVM_SIMULATION_LOAD' "$TEAVM_SIM_LOADER" || fail 'full-ticker load marker missing'
+grep -q 'base64_fold_width=2000' "$TEAVM_SIM_LOADER" || fail 'full-ticker safe base64 fold missing'
+grep -Fq 'while IFS= read -r piece || [[ -n "$piece" ]]' "$TEAVM_SIM_LOADER" || fail 'full-ticker final base64 piece fence missing'
+grep -q 'PMLE_TEAVM_STAGING_GATE|PASS' "$TEAVM_SIM_LOADER" || fail 'full-ticker database staging SHA gate missing'
+grep -q 'whenever sqlerror exit sql.sqlcode rollback' "$TEAVM_SIM_LOADER" || fail 'full-ticker fail-closed SQL fence missing'
+grep -q 'dbms_crypto.hash(l_source,dbms_crypto.hash_sh256)' "$TEAVM_SIM_LOADER" || fail 'full-ticker database source hash missing'
+grep -q 'dbms_crypto.hash(l_tables,dbms_crypto.hash_sh256)' "$TEAVM_SIM_LOADER" || fail 'canonical table database hash missing'
+test "$(line_of 'PMLE_TEAVM_STAGING_GATE|PASS' "$TEAVM_SIM_LOADER")" -lt \
+  "$(line_of 'create mle module doom_teavm_simulation' "$TEAVM_SIM_LOADER")" || fail 'full-ticker staging gate runs after module creation'
+grep -q 'base64_fold_width=2000' "$TEAVM_SLICE_LOADER" || fail 'TeaVM slice safe base64 fold missing'
+grep -Fq 'while IFS= read -r piece || [[ -n "$piece" ]]' "$TEAVM_SLICE_LOADER" || fail 'TeaVM slice final base64 piece fence missing'
+grep -q 'PMLE_TEAVM_PROBE_STAGING_GATE|PASS' "$TEAVM_SLICE_LOADER" || fail 'TeaVM slice database staging SHA gate missing'
+grep -q 'whenever sqlerror exit sql.sqlcode rollback' "$TEAVM_SLICE_LOADER" || fail 'TeaVM slice fail-closed SQL fence missing'
+test "$(line_of 'PMLE_TEAVM_PROBE_STAGING_GATE|PASS' "$TEAVM_SLICE_LOADER")" -lt \
+  "$(line_of 'create mle module doom_teavm_probe' "$TEAVM_SLICE_LOADER")" || fail 'TeaVM slice staging gate runs after module creation'
+grep -q 'drop mle module doom_teavm_simulation' "$TEAVM_SIM_CLEANUP" || fail 'full-ticker cleanup missing'
+grep -q 'doom_teavm_sim_step_command' "$TEAVM_LEDGER" || fail 'exact ledger command path missing'
+grep -q 'doom_teavm_sim_canonical_chunk' "$TEAVM_LEDGER" || fail 'canonical ledger export missing'
+grep -q 'dbms_crypto.hash' "$TEAVM_LEDGER" || fail 'native canonical hash missing'
+grep -q 'stage=mle-material' "$TEAVM_CANONICAL_BENCH" || fail 'canonical stage benchmark missing'
+grep -q 'PMLE_TEAVM_RECOVERY|PASS' "$TEAVM_RECOVERY" || fail 'MLE recovery gate missing'
+grep -q 'PMLE_TEAVM_MULTIPLAYER|PASS' "$TEAVM_MULTIPLAYER" || fail 'MLE multiplayer differential missing'
+grep -q 'PMLE_TEAVM_MULTI_TICKER' "$TEAVM_MULTI_BENCH" || fail 'MLE multiplayer benchmark missing'
+grep -q 'fresh_context=1' "$TEAVM_MULTI_RECOVERY" || fail 'fresh-context multiplayer recovery gate missing'
+grep -q 'PMLE_TEAVM_MULTI_SOAK|PASS' "$TEAVM_MULTI_SOAK" || fail 'MLE multiplayer soak gate missing'
+grep -q 'session pga memory max' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'MLE soak PGA sampling missing'
+grep -q 'PMLE_TEAVM_MULTI_SOAK_SLOW' "$TEAVM_MULTI_SOAK" || fail 'MLE slow-call timestamp evidence missing'
+grep -Fq 'v\$active_session_history' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'MLE slow-call ASH correlation missing'
+grep -q 'smaps_rollup' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'MLE soak OS-process sampling missing'
+grep -q 'client_identifier' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'MLE soak exact-session identifier fence missing'
+grep -q 'DOOMDB_MLE_SOAK_WARMUP_SECONDS.*300' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'MLE soak warmup default missing'
+grep -q 'DOOMDB_MLE_SOAK_MEMORY_MARGIN_BYTES.*67108864' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'MLE soak absolute-memory margin missing'
+grep -q 'max_rss<=base_rss+margin' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'MLE soak RSS absolute ceiling missing'
+grep -q 'max_pss<=base_pss+margin' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'MLE soak PSS absolute ceiling missing'
+grep -q 'max_private<=base_private+margin' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'MLE soak private-memory absolute ceiling missing'
+grep -q 'action=TICKER' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'MLE soak scored-window memory fence missing'
+grep -q 'c_warmup_seconds constant number:=300' "$TEAVM_MULTI_SOAK" || fail 'MLE soak SQL warmup window missing'
+grep -q 'PMLE_TEAVM_COOP_DIFFERENTIAL|PASS' "$TEAVM_COOP" || fail 'MLE co-op route differential missing'
+grep -q 'doom_teavm_sim_multi_init_skill' "$TEAVM_COOP" || fail 'MLE co-op skill initialization missing'
+grep -q 'PMLE_TEAVM_MEMBERSHIP_RECOVERY_DIFFERENTIAL|PASS' "$TEAVM_MEMBERSHIP_DIFF" || fail 'MLE membership recovery differential missing'
+grep -q 'doom_mocha_multiplayer_sim_membership_step' "$TEAVM_MEMBERSHIP_DIFF" || fail 'OJVM membership oracle binding missing'
+grep -q 'doom_teavm_sim_restore' "$TEAVM_MEMBERSHIP_DIFF" || fail 'MLE membership checkpoint recovery missing'
+grep -q 'mle_sha256=' "$TEAVM_MEMBERSHIP_DIFF" || fail 'membership MLE artifact evidence missing'
+grep -q 'ojvm_jar_sha256=' "$TEAVM_MEMBERSHIP_DIFF" || fail 'membership OJVM artifact evidence missing'
+grep -q 'environment-metadata.sql' "$TEAVM_DIFFERENTIAL_RUNNER" || fail 'differential environment metadata missing'
+grep -q 'doom_teavm_sim_multi_init_game' "$TEAVM_SIM_LOADER" || fail 'MLE durable match initializer missing'
+grep -q 'initializeMultiplayerGame' "$TEAVM_SIM_LOADER" || fail 'MLE generalized multiplayer export missing'
+grep -q 'doom_teavm_sim_authority_step' "$TEAVM_SIM_LOADER" || fail 'MLE authoritative membership step missing'
+grep -q 'DeterministicSqrtPropertyTest' "$TEAVM_BUILD" || fail 'deterministic sqrt property gate missing'
+grep -q 'emitted Math member is not allowlisted' "$TEAVM_BUILD" || fail 'emitted Math allowlist gate missing'
+grep -Fq "Math.imul|Math.floor|Math.ceil|Math.round" "$TEAVM_BUILD" || fail 'exact Math operation allowlist missing'
+grep -Fq "rg -F 'Math['" "$TEAVM_BUILD" || fail 'computed Math access fence missing'
+grep -q 'Profiler.start' "$TEAVM_PROFILE" || fail 'Node ledger CPU profile missing'
+grep -q '13272' "$TEAVM_PROFILE" || fail 'Node profile ledger-size fence missing'
+grep -q 'doomdbSqrtFloat' "$TEAVM_PATCH" || fail 'deterministic float sqrt replacement missing'
+grep -q 'doomdbScaledSqrt' "$TEAVM_PATCH" || fail 'deterministic scaled sqrt replacement missing'
+grep -q 'smaps_rollup' "$TEAVM_MEMORY_CAL" || fail 'OS process memory sampler missing'
+grep -q 'minimum_visible_bytes' "$TEAVM_MEMORY_CAL" || fail 'known-allocation visibility gate missing'
+grep -q 'create mle module doom_mle_memory_cal language javascript' "$TEAVM_MEMORY_CAL_SQL" ||
+  fail 'calibration-only MLE module missing'
+grep -q 'c_allocation_bytes constant pls_integer:=134217728' "$TEAVM_MEMORY_CAL_SQL" ||
+  fail '128 MiB retained allocation calibration missing'
+grep -q 'offset += 4096' "$TEAVM_MEMORY_CAL_SQL" ||
+  fail 'retained allocation page-touch loop missing'
+grep -q "drop mle module doom_mle_memory_cal" "$TEAVM_MEMORY_CAL_SQL" ||
+  fail 'calibration-only MLE module cleanup missing'
+grep -q 'allocation_bytes=134217728' "$TEAVM_MEMORY_CAL" ||
+  fail 'calibration runner byte count differs from SQL calibration'
+grep -q 'PMLE_ACTIVE_STATE_DISPATCH' "$TEAVM_DISPATCH_BENCH" || fail 'ActiveStates MLE dispatch benchmark missing'
+grep -q 'active-state-dispatch' "$TEAVM_DISPATCH_RUNNER" || fail 'ActiveStates dispatch artifact build missing'
+grep -q 'base64_fold_width=2000' "$TEAVM_DISPATCH_RUNNER" || fail 'dispatch safe base64 fold missing'
+grep -Fq 'while IFS= read -r piece || [[ -n "$piece" ]]' "$TEAVM_DISPATCH_RUNNER" || fail 'dispatch final base64 piece fence missing'
+grep -q 'DISPATCH_SOURCE_GATE|PASS' "$TEAVM_DISPATCH_RUNNER" || fail 'dispatch database staging SHA gate missing'
+grep -q 'whenever sqlerror exit sql.sqlcode rollback' "$TEAVM_DISPATCH_RUNNER" || fail 'dispatch fail-closed SQL fence missing'
+grep -Fq "pgrep -f '[b]uild-ledger-differential.mjs'" "$TEAVM_DISPATCH_AB" || fail 'dispatch A/B ledger fence missing'
+grep -q 'PMLE_HOST_QUIESCENCE|PASS' "$TEAVM_DISPATCH_AB" || fail 'dispatch A/B host-quiescence evidence missing'
+grep -q 'log_mode=exclusive-create' "$TEAVM_LEDGER_RUNNER" || fail 'ledger no-overwrite provenance missing'
+grep -q 'PMLE_PINNED_PAIR' "$TEAVM_LEDGER_RUNNER" || fail 'ledger pinned authority/oracle evidence missing'
+grep -q 'deep-every=1' "$TEAVM_LEDGER_RUNNER" || fail 'ledger every-tic differential missing'
+grep -q 'environment-metadata.sql' "$TEAVM_DISPATCH_AB" || fail 'dispatch A/B environment metadata missing'
+test "$(line_of 'DISPATCH_SOURCE_GATE|PASS' "$TEAVM_DISPATCH_RUNNER")" -lt \
+  "$(line_of 'create mle module doom_mle_dispatch' "$TEAVM_DISPATCH_RUNNER")" || fail 'dispatch staging gate runs after module creation'
+if sed -n '/public static int stepMultiplayerBare/,/Apply one authoritative/p' "$TEAVM_SIM_SOURCE" | grep -q 'Uint8Array.create'; then
+  fail 'dispatch A/B hot path contains an additive worker allocation'
+fi
+grep -q "ascii(bytes, 0, 4) !== 'DMD1'" "$AUTHORITY_TS" || fail 'DMD1 client envelope fence missing'
+grep -q 'authority chain hash is invalid' "$AUTHORITY_TS" || fail 'DMD1 client chain verification missing'
+grep -q 'stepMultiplayerAuthoritative' "$AUTHORITY_MIRROR_TS" || fail 'confirmed TeaVM membership-aware mirror step missing'
+grep -q 'transition.membershipBitmap' "$AUTHORITY_MIRROR_TS" || fail 'confirmed TeaVM mirror membership fence missing'
+grep -q 'requires recovery' "$AUTHORITY_MIRROR_TS" || fail 'confirmed TeaVM mirror recovery fence missing'
+grep -q 'DMB1' "$AUTHORITY_BATCH_TS" || fail 'DMB1 client batch decoder missing'
+grep -q 'class ConfirmedWanPolicy' "$AUTHORITY_WAN_TS" || fail 'confirmed WAN policy missing'
+grep -q 'LEAD_HYSTERESIS_MS = 10_000' "$AUTHORITY_WAN_TS" || fail 'WAN lead hysteresis missing'
+grep -q 'MAX_INPUT_LEAD = 12' "$AUTHORITY_WAN_TS" || fail 'WAN lead bound missing'
+grep -q 'MAX_PLAYOUT_TICS = 6' "$AUTHORITY_WAN_TS" || fail 'WAN playout bound missing'
+grep -q 'transitionHoldMs, 32' "$ROOT/client/src/multiplayer.ts" ||
+  fail 'WAN bounded long-poll client binding missing'
+grep -q 'PMLE_WAN_PROXY|READY' "$WAN_PROXY" || fail 'WAN proxy readiness marker missing'
+grep -q 'PMLE_WAN_GATE|PASS' "$WAN_SOAK" || fail 'WAN browser acceptance marker missing'
+grep -q 'neutral substitution rate' "$WAN_SOAK" || fail 'WAN neutral-substitution gate missing'
+grep -q 'input/effect p95' "$WAN_SOAK" || fail 'WAN input-to-effect gate missing'
+grep -q 'presentation p99' "$WAN_SOAK" || fail 'WAN presentation-cadence gate missing'
+grep -q 'PMLE_WAN_MATRIX|PASS' "$TEAVM_WAN_RUNNER" || fail 'WAN matrix terminal marker missing'
+grep -q 'long_poll_enabled=1' "$TEAVM_WAN_RUNNER" ||
+  fail 'WAN matrix long-poll enablement missing'
+grep -q 'DOOMDB_WAN_HOLD_MS=500' "$TEAVM_WAN_RUNNER" ||
+  fail 'WAN matrix bounded hold missing'
+grep -q 'already exists:' "$TEAVM_WAN_RUNNER" ||
+  fail 'WAN matrix no-overwrite evidence fence missing'
+grep -q 'environment-metadata.sql' "$TEAVM_WAN_RUNNER" ||
+  fail 'WAN matrix environment metadata missing'
+grep -q 'artifact-metadata.sql' "$TEAVM_WAN_RUNNER" ||
+  fail 'WAN matrix artifact metadata missing'
+grep -q 'one outstanding poll per player' "$AUTHORITY_TRANSPORT" || fail 'DMB1 one-poll fence missing'
+grep -q 'c_max_held_polls constant pls_integer:=4' "$AUTHORITY_TRANSPORT" || fail 'DMB1 ORDS pool reserve missing'
+grep -q 'c_resmgr_running_sessions constant pls_integer:=2' "$AUTHORITY_TRANSPORT" || fail 'DMB1 resource-manager bound missing'
+grep -q 'c_max_concurrent_poll_returns constant pls_integer:=1' "$AUTHORITY_TRANSPORT" || fail 'DMB1 runnable reserve missing'
+grep -q 'c_max_hold_ms constant pls_integer:=500' "$AUTHORITY_TRANSPORT" || fail 'DMB1 hold bound missing'
+grep -q 'dbms_alert.waitone' "$AUTHORITY_TRANSPORT" || fail 'DMB1 prompt commit alert missing'
+grep -q 'doom_match_slow_call' "$ROOT/sql/schema/048_multiplayer_worker.sql" || fail 'worker slow-call schema missing'
+grep -q 'record_slow_call' "$ROOT/sql/sim/084_multiplayer_worker.sql" || fail 'worker post-commit slow-call attribution missing'
+grep -q 'run-memory-calibration.sh' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" || fail 'worker soak memory visibility calibration missing'
+grep -q 'PMLE_WORKER_SOAK_MEMORY' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" || fail 'worker soak absolute process-memory gate missing'
+grep -q 'resmgr:cpu quantum' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" || fail 'worker soak resource-manager attribution missing'
+grep -q 'doom_match_poll_lease' "$AUTHORITY_TRANSPORT_SCHEMA" || fail 'DMB1 poll lease schema missing'
+grep -q 'prompt_return_ms' "$AUTHORITY_TRANSPORT_TEST" || fail 'DMB1 prompt-return live gate missing'
+grep -q "utl_raw.cast_to_raw('DMD1')" "$AUTHORITY_SQL" || fail 'DMD1 SQL encoder missing'
+grep -q 'dbms_crypto.hash' "$AUTHORITY_SQL" || fail 'DMD1 SQL chain missing'
+grep -q "utl_raw.cast_to_raw('DMB1')" "$AUTHORITY_TRANSPORT" || fail 'DMB1 batch name drift'
+grep -q 'doom_teavm_sim_multi_init_game' "$MLE_MATCH_RUNTIME" || fail 'MLE worker game initialization missing'
+grep -q 'doom_teavm_sim_authority_step' "$MLE_MATCH_RUNTIME" || fail 'MLE worker authoritative step missing'
+grep -q 'doom_teavm_sim_checkpoint_chunk' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint export missing'
+grep -q 'doom_teavm_sim_restore_load' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint recovery missing'
+grep -q 'publish_initial(p_match,l_generation)' "$MLE_MATCH_WORKER" || fail 'RUN_MATCH MLE initialization missing'
+grep -q 'reconstruct_existing(p_match,l_generation' "$MLE_MATCH_WORKER" || fail 'RUN_MATCH MLE recovery missing'
+grep -q 'doom_mle_match_runtime.step_game' "$MLE_MATCH_WORKER" || fail 'MLE worker step missing'
+grep -q 'doom_mle_transition_transport.publish' "$MLE_MATCH_WORKER" || fail 'MLE worker DMD1 publication missing'
+grep -q 'doom_mle_match_runtime.save_checkpoint' "$MLE_MATCH_WORKER" || fail 'MLE worker DMC1 checkpoint missing'
+grep -q 'procedure run_standby' "$MLE_MATCH_WORKER" || fail 'MLE warm standby entry point missing'
+grep -q 'restore_checkpoint_warm' "$MLE_MATCH_WORKER" || fail 'MLE warm checkpoint promotion missing'
+grep -q "'_G'||to_char(p_generation)" "$MLE_MATCH_WORKER" || fail 'standby generation-scoped Scheduler name missing'
+grep -q 'await_initial_standby(p_match,l_generation)' "$MLE_MATCH_WORKER" || fail 'initial warm-standby admission fence missing'
+grep -q 'initial standby admission fence' "$MLE_MATCH_WORKER" || fail 'standby readiness transition fence missing'
+grep -q "if l_worker_status<>'READY'" "$MLE_MATCH_WORKER" || fail 'pre-admission command fence missing'
+grep -q "p_match_state:='STARTING'" "$DOOM_API" || fail 'public standby admission state missing'
+grep -q 'create table doom_match_standby_control' "$ROOT/sql/schema/048_multiplayer_worker.sql" || fail 'MLE standby control schema missing'
+RUN_MATCH_BODY=$(sed -n '/  procedure run_match(p_match in varchar2) is/,/  procedure recover_match(/p' "$MLE_MATCH_WORKER")
+printf '%s\n' "$RUN_MATCH_BODY" | grep -q 'process_step(p_match' || fail 'RUN_MATCH production step missing'
+if printf '%s\n' "$RUN_MATCH_BODY" | grep -q 'doom_mocha'; then
+  fail 'RUN_MATCH still reaches OJVM'
+fi
+grep -q 'PMLE_WORKER_CUTOVER|PASS' "$MLE_MATCH_WORKER_TEST" || fail 'MLE worker live cutover gate missing'
+grep -q 'warm recovery SLA' "$MLE_MATCH_WORKER_TEST" || fail 'MLE warm recovery SLA gate missing'
+grep -q 'pre_admission_command=REJECTED' "$MLE_MATCH_WORKER_TEST" || fail 'pre-admission command live gate missing'
+grep -q "l_public_state<>'STARTING'" "$MLE_MATCH_WORKER_TEST" || fail 'public STARTING live gate missing'
+grep -q 'environment-metadata.sql' "$TEAVM_WORKER_CUTOVER_RUNNER" || fail 'worker cutover environment metadata missing'
+grep -q 'artifact-metadata.sql' "$TEAVM_WORKER_CUTOVER_RUNNER" || fail 'worker cutover artifact binding missing'
+grep -q 'Oracle-resident IWAD staging mismatch' "$IWAD_LOADER" || fail 'IWAD database staging SHA gate missing'
+grep -q 'Oracle-resident asset staging mismatch' "$IWAD_LOADER" || fail 'derived asset database staging SHA gate missing'
+grep -q 'grant execute on sys.dbms_crypto to DOOM' "$RUNTIME_GRANTS" || fail 'fresh-install DBMS_CRYPTO grant missing'
+grep -Fq 'grant select on sys.v_$rsrcpdbmetric to DOOM' "$RUNTIME_GRANTS" || fail 'resource-manager PDB cap grant missing'
+grep -q 'PMLE_ENVIRONMENT|cpu_count=' "$ENVIRONMENT_SQL" || fail 'resource-manager evidence metadata missing'
+grep -q 'PMLE_ARTIFACT|source_bytes=' "$ARTIFACT_SQL" || fail 'A/B artifact evidence metadata missing'
+grep -q 'artifact-metadata.sql' "$TEAVM_DISPATCH_AB" || fail 'A/B artifact binding missing'
+grep -q 'resmgr=' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'resource-manager slow-call attribution missing'
+grep -q 'category=.*RESOURCE_MANAGER' "$TEAVM_MULTI_SOAK_RUNNER" || fail 'resource-manager wait category missing'
+grep -q 'procedure poll_match_transitions' "$DOOM_API" || fail 'DMB1 public long-poll endpoint missing'
+grep -q 'doom_mle_transition_transport.poll_batch' "$DOOM_API" || fail 'DMB1 public endpoint transport binding missing'
+grep -q '"version": "0.15.0"' "$VERSIONS" || fail 'TeaVM version pin missing'
+grep -q '"inputBytecodeSha256": "8cae68323d62edfa56299569d15763e6dbd24974dc3a24f3ae64961071920d8b"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
+grep -q '"mochaBytecodeSha256": "6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97"' "$VERSIONS" || fail 'TeaVM Mocha bytecode pin missing'
+grep -q '"outputSha256": "06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0"' "$VERSIONS" || fail 'TeaVM output pin missing'
+grep -q '"outputSha256": "bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83"' "$VERSIONS" || fail 'TeaVM presentation output pin missing'
+grep -q 'mle-js-plsql-ffi' "$HYBRID_INSTALL" || fail 'FFI comparison path missing'
+grep -q 'PMLE_GATE|PASS|scope=mechanics_only|architecture=mle_command_stream' "$RUNNER" || fail 'mechanics-only architecture marker missing'
+grep -q 'PMLE_COMMAND_GATE|PASS' "$REPORT" || fail 'measured hybrid report missing terminal marker'
+grep -q 'PMLE_TEAVM_SIMULATION_LOAD|bytes=1158461|table_pack_bytes=180272' "$REPORT" || fail 'full-ticker stored-module evidence missing'
+grep -q 'PMLE_TEAVM_TICKER|warmup=30|samples=300' "$REPORT" || fail 'real-IWAD ticker evidence missing'
+grep -q 'PMLE_TEAVM_TICKER_BARE|warmup=30|samples=300|p50_ms=7.699|p95_ms=14.926' "$REPORT" || fail 'bare ticker gate evidence missing'
+grep -q 'PMLE_TEAVM_DIFFERENTIAL|PASS|tics=330|fields=14' "$REPORT" || fail 'OJVM/MLE differential evidence missing'
+grep -q 'zero `Math.sin`' "$TEAVM_REPORT" || fail 'runtime host-math closure evidence missing'
+grep -q '1,000,196' "$TEAVM_REPORT" || fail 'deterministic sqrt property evidence missing'
+grep -q 'action/collision code at 21.3%' "$TEAVM_REPORT" || fail 'Node candidate profile evidence missing'
+
+printf '%s\n' 'PASS PMLE-SOURCE (pure MLE, native PL/SQL, FFI, command boundary, and cleanup gates)'

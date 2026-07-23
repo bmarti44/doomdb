@@ -282,13 +282,15 @@ export async function submitMatchBatchInput(match: string, playerCapability: str
 
 export async function reviseMatchInput(match: string, playerCapability: string,
                                        inputSequence: number,
-                                       ticcmdHex: string): Promise<{
+                                       ticcmdHex: string,
+                                       targetTic?: number): Promise<{
   accepted: number; effectiveTic: number;
   membershipEpoch: number; generation: number;
 }> {
   const document = await postAsync('revise_match_input', {
     p_match: match, p_player_capability: playerCapability,
-    p_input_seq: inputSequence, p_ticcmd_hex: ticcmdHex
+    p_input_seq: inputSequence, p_ticcmd_hex: ticcmdHex,
+    p_target_tic: targetTic
   });
   return {accepted: numberField(document, 'p_accepted'),
     effectiveTic: numberField(document, 'p_effective_tic'),
@@ -338,6 +340,24 @@ export async function pollMatchBatch(match: string, playerCapability: string,
   });
   return {currentTic: numberField(document, 'p_current_tic'),
     payload: stringField(document, 'p_payload')};
+}
+
+export async function pollMatchTransitions(
+  match: string, playerCapability: string, afterTic: number,
+  holdMilliseconds = 500, maxTransitions = 32
+): Promise<{currentTic: number; payload: string; ready: boolean}> {
+  const document = await postAsync('poll_match_transitions', {
+    p_match: match, p_player_capability: playerCapability,
+    p_after_tic: afterTic, p_hold_ms: holdMilliseconds,
+    p_max_transitions: maxTransitions
+  });
+  const ready = numberField(document, 'p_ready');
+  if (ready !== 0 && ready !== 1) {
+    throw new TypeError('p_ready response field is invalid');
+  }
+  // Timeout is a valid DMB1 batch with zero records, not a missing payload.
+  return {currentTic: numberField(document, 'p_current_tic'),
+    payload: stringField(document, 'p_payload'), ready: ready === 1};
 }
 
 export async function pollMatchFrame(match: string, playerCapability: string,

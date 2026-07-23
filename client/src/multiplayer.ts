@@ -1,18 +1,20 @@
 import {
-  createMatch, getAsset, joinMatch, matchStatus, pollMatchBatch,
-  matchInputFrontier, pollMatchFrame, readyMatch, submitMatchBatch,
-  submitMatchBatchInput, reviseMatchInput,
+  createMatch, getAsset, joinMatch, matchStatus, matchInputFrontier,
+  pollMatchTransitions, readyMatch, reviseMatchInput,
   type Command, type MatchStatus
 } from './api.js';
 
 import {AudioPresenter} from './audio.js';
 import {createDoomCanvas, createIndexedBlitter} from './canvas.js';
-import {decodeBytes, decodeFrameBatch, decodePayload, type Frame,
-  type FrameBatchState} from './codec.js';
+import {decodeBytes} from './codec.js';
 import {bindInput, type ControlName} from './input.js';
 import {createPalette} from './palette.js';
-
-const PACED_KEYFRAME_TICS = 32;
+import {decodeAuthorityBatch} from './authority-batch.js';
+import {ConfirmedAuthorityMirror, type ConfirmedPresentation}
+  from './authority-mirror.js';
+import {authorityRootChainSha} from './authority.js';
+import {ConfirmedWanPolicy} from './authority-wan.js';
+import {createBrowserAuthorityEngines} from './teavm-browser.js';
 
 type LocalMatch = {
   match: string;
@@ -21,6 +23,11 @@ type LocalMatch = {
   hostCapability?: string;
   joinCapability?: string;
 };
+
+const MAX_CONFIRMED_PRESENTATION_BACKLOG = 16;
+const requestedHoldMs = Number(new URLSearchParams(location.search).get('holdMs') ?? 0);
+const transitionHoldMs = Number.isInteger(requestedHoldMs) &&
+  requestedHoldMs >= 0 && requestedHoldMs <= 500 ? requestedHoldMs : 0;
 
 const style = document.createElement('style');
 style.textContent = `
@@ -130,6 +137,7 @@ let gameStarted = false;
 
 const joinUrl = (value: LocalMatch): string => {
   const url = new URL('/play/multiplayer.html', location.origin);
+  url.search = location.search;
   url.hash = `join=${value.match}.${value.joinCapability ?? ''}`;
   return url.toString();
 };
@@ -148,7 +156,7 @@ async function refreshLobby(): Promise<void> {
   if (latestStatus.state === 'ACTIVE' && !gameStarted) {
     gameStarted = true;
     window.clearInterval(lobbyTimer);
-    await startGame(local, latestStatus);
+    await startMleGame(local, latestStatus);
   }
 }
 
@@ -200,10 +208,6 @@ copyButton.addEventListener('click', () => {
 function signedByte(value: number): number {
   return Math.max(-127, Math.min(127, Math.trunc(value)));
 }
-function transientTransportFailure(cause: unknown): boolean {
-  const message = cause instanceof Error ? cause.message : String(cause);
-  return /request failed: 5\d\d|failed to fetch|networkerror|load failed|p_payload response field is invalid/i.test(message);
-}
 function ticcmd(command: Command): string {
   const bytes = new Uint8Array(8);
   bytes[0] = signedByte(Math.abs(command.forward) > 1 ? command.forward : command.forward * (command.run ? 50 : 25));
@@ -217,7 +221,172 @@ function ticcmd(command: Command): string {
   return Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
 }
 
-async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> {
+async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<void> {
+  lobby.hidden = true;game.dataset.active = '';
+  hud.textContent = 'Loading SHA-verified Doom engine and IWAD…';
+  const audio = new AudioPresenter();
+  const [paletteAsset, titleAsset, initialInputSequence, engines] = await Promise.all([
+    getAsset('PLAYPAL'), getAsset('TITLEPIC'),
+    matchInputFrontier(value.match, value.playerCapability),
+    createBrowserAuthorityEngines(status)
+  ]);
+  const blitIndexed = createIndexedBlitter(canvas,
+    createPalette(decodeBytes(paletteAsset.payload)));
+  blitIndexed(decodeBytes(titleAsset.payload));
+
+  const rootChainSha = await authorityRootChainSha(
+    value.match, status.membershipEpoch);
+  const mirror = new ConfirmedAuthorityMirror(
+    engines.verifier, engines.presenter, value.playerSlot,
+    {tic: 0, generation: 1, membershipEpoch: status.membershipEpoch,
+      chainSha: rootChainSha});
+  const wan = new ConfirmedWanPolicy();
+  const presentations = new Map<number, {
+    presentation: ConfirmedPresentation;
+    audio: Parameters<AudioPresenter['enqueue']>[0];
+  }>();
+  let latest: Command = {seq: 0, turn: 0, forward: 0, strafe: 0, run: 0,
+    fire: 0, use: 0, weapon: 0, pause: 0, automap: 0, menu: 'NONE', cheat: ''};
+  let inputSequence = initialInputSequence;
+  const inputQueue: {sequence: number; command: Command; hex: string}[] = [];
+  let inputPosting = false;
+  let polling = false;
+  let stopped = false;
+  let presentedTic = 0;
+  let serverTic = status.currentTic;
+  let nextPresentationAt = 0;
+  let presentationStarted = false;
+  const paintedAt: number[] = [];
+  const buttons = new Map<ControlName, HTMLButtonElement>();
+
+  const fail = (cause: unknown): void => {
+    stopped = true;hud.className = 'error';
+    hud.textContent = cause instanceof Error ? cause.message : String(cause);
+  };
+  const updateHud = (): void => {
+    const elapsed = paintedAt.length > 1 ? paintedAt.at(-1)! - paintedAt[0]! : 0;
+    const fps = elapsed > 0 ? (paintedAt.length - 1) * 1000 / elapsed : 0;
+    hud.textContent = `${status.mode} · PLAYER ${value.playerSlot + 1} · TIC ${presentedTic}`
+      + ` · CONFIRMED ${mirror.frontier.tic} · SERVER ${serverTic}`
+      + `\n${fps.toFixed(1)} FPS · lead ${wan.inputLeadTics}`
+      + ` · playout ${wan.playoutBufferTics} · confirmed-only`;
+  };
+
+  bindInput(canvas, buttons, command => {
+    latest = command;inputSequence += 1;
+    inputQueue.push({sequence: inputSequence, command: {...latest}, hex: ticcmd(latest)});
+    trace('input', {inputSequence, command: latest,
+      targetTic: wan.inputTargetTic(mirror.frontier.tic),
+      leadTics: wan.inputLeadTics});
+  }, () => {}, () => { void audio.enable(); });
+  canvas.addEventListener('click', () => {
+    if (document.pointerLockElement !== canvas) void canvas.requestPointerLock();
+  });
+  canvas.focus();
+
+  const postInput = (): void => {
+    if (stopped || inputPosting || inputQueue.length === 0) return;
+    inputPosting = true;
+    const input = inputQueue[0]!;
+    const started = performance.now();
+    const targetTic = wan.inputTargetTic(Math.max(serverTic, mirror.frontier.tic));
+    void reviseMatchInput(value.match, value.playerCapability,
+      input.sequence, input.hex, targetTic).then(result => {
+        const finished = performance.now();
+        wan.observeRoundTrip(finished - started, finished);
+        if (result.accepted !== 1 ||
+            result.membershipEpoch !== mirror.frontier.membershipEpoch ||
+            result.generation < mirror.frontier.generation) {
+          throw new Error('multiplayer input fence changed');
+        }
+        inputQueue.shift();
+        trace('input-effective', {inputSequence: input.sequence,
+          effectiveTic: result.effectiveTic, command: input.command,
+          targetTic, roundTripMs: finished - started,
+          leadTics: wan.inputLeadTics});
+      }).catch(fail).finally(() => { inputPosting = false; });
+  };
+
+  const poll = (): void => {
+    if (stopped || polling) return;
+    polling = true;
+    const frontier = mirror.frontier;
+    void pollMatchTransitions(value.match, value.playerCapability,
+      frontier.tic, transitionHoldMs, 32).then(async result => {
+        const batch = await decodeAuthorityBatch(result.payload, frontier);
+        serverTic = Math.max(serverTic, result.currentTic, batch.committedFrontierTic);
+        for (const transition of batch.transitions) {
+          const presentation = await mirror.apply(transition);
+          presentations.set(transition.tic, {
+            presentation, audio: transition.audio
+          });
+          wan.observeConfirmedDelivery(performance.now());
+          trace('confirmed', {tic: transition.tic, chainSha: transition.chainSha,
+            generation: transition.generation,
+            membershipEpoch: transition.membershipEpoch});
+        }
+      }).catch(fail).finally(() => {
+        polling = false;
+        // Free defaults to immediate batches. WAN-qualified deployments select
+        // a bounded hold via the page URL; the database enforces both the
+        // 500 ms ceiling and one outstanding poll per player.
+        if (!stopped) window.setTimeout(poll, 20);
+      });
+  };
+
+  const pump = (): void => {
+    if (stopped) return;
+    postInput();
+    const target = wan.presentationTargetTic(mirror.frontier.tic);
+    const now = performance.now();
+    // Engine/IWAD verification takes about two seconds on a cold browser while
+    // the authority continues at 35 Hz. Once every intervening transition has
+    // been verified and applied, begin at the confirmed playout target rather
+    // than replaying that cold-load backlog forever at the same 35 Hz rate.
+    // This discards presentation snapshots only; it never skips mirror state.
+    if (!presentationStarted && target>0 &&
+        serverTic-mirror.frontier.tic<=2 && presentations.has(target)) {
+      for (const tic of presentations.keys())
+        if (tic<target) presentations.delete(tic);
+      presentedTic=target-1;
+      presentationStarted=true;
+      trace('resync',{tic:presentedTic,reason:'confirmed-startup'});
+    }
+    if (presentationStarted &&
+        target-presentedTic>MAX_CONFIRMED_PRESENTATION_BACKLOG &&
+        presentations.has(target)) {
+      for (const tic of presentations.keys())
+        if (tic<target) presentations.delete(tic);
+      presentedTic=target-1;
+      nextPresentationAt=now;
+      trace('resync',{tic:presentedTic,reason:'confirmed-backlog'});
+    }
+    if (!presentationStarted) return;
+    const next = presentations.get(presentedTic + 1);
+    if (next !== undefined && next.presentation.tic <= target &&
+        now >= nextPresentationAt) {
+      presentations.delete(next.presentation.tic);
+      blitIndexed(next.presentation.frame);
+      audio.enqueue(next.audio, fail);
+      presentedTic = next.presentation.tic;
+      paintedAt.push(now);if (paintedAt.length > 60) paintedAt.shift();
+      nextPresentationAt = Math.max(nextPresentationAt + 1000 / 35, now);
+      trace('present', {tic: presentedTic, chainSha: next.presentation.chainSha,
+        leadTics: wan.inputLeadTics,
+        playoutTics: wan.playoutBufferTics,
+        serverTic});
+      updateHud();
+    }
+  };
+  updateHud();poll();window.setInterval(pump, 4);
+}
+
+/*
+ * Historical DB-frame polling implementation removed from the production
+ * module by the approved MLE role swap. Kept temporarily as commented migration
+ * context until the Java-removal audit deletes the old REST endpoints.
+ *
+export async function startGameLegacy(value: LocalMatch, status: MatchStatus): Promise<void> {
   lobby.hidden = true;game.dataset.active = '';
   const audio = new AudioPresenter();
   const [paletteAsset, titleAsset, initial, initialInputSequence] = await Promise.all([
@@ -461,6 +630,7 @@ async function startGame(value: LocalMatch, status: MatchStatus): Promise<void> 
   };
   updateHud();window.setInterval(pump, 4);
 }
+*/
 
 const hash = location.hash.slice(1);
 if (hash.startsWith('join=')) {

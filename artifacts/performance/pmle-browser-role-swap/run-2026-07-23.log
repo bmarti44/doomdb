@@ -1,0 +1,8 @@
+PMLE_BROWSER_DUAL_CONTEXT|PASS|elapsed_ms=2047.900|canonical_bytes=78730|frame_bytes=64000|nonzero=56005
+PMLE_WORKER_STAGE|samples=10|step_avg_ms=6.156|canonical_avg_ms=583.137
+PMLE_BROWSER_MATCH_REJECTED|transport=long_poll|fps=1.5|reason=Free two-running-session contention
+PMLE_BROWSER_MATCH_REJECTED|transport=zero_hold_alert_enabled|fps=1.334|gap_p99_ms=1324.000|reason=DBMS_ALERT UL contention in authority worker
+PMLE_BROWSER_MATCH_CLIENT|PASS|slot=0|confirmed=110|presented=83|last_confirmed=110|last_presented=83|fps=35.042|gap_p99_ms=38.000|playout_tics=2
+PMLE_BROWSER_MATCH_CLIENT|PASS|slot=1|confirmed=110|presented=99|last_confirmed=110|last_presented=99|fps=35.034|gap_p99_ms=35.000|playout_tics=2
+PMLE_BROWSER_MATCH|PASS|clients=2|identity=DMS2|transport=zero_hold|long_poll_enabled=0
+PMLE_WORKER_CUTOVER|PASS|tics=33|checkpoint_tic=32|recovery_generation=2|dmd1=33|legacy_frames=0|engine=MLE|public_admission=STANDBY_READY|pre_admission_command=REJECTED|cold_start_ms=197637.771|standby_wait_ms=1.725|warm_recovery_ms=3353.507

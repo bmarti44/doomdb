@@ -1,0 +1,16 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+PMLE_ARTIFACT|source_bytes=1162823|source_sha256=c880003976926aacbe812a32caaadaab8b9ea4c57f6fad02710e57b15965147f|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_WORKER_CUTOVER|PASS|tics=33|checkpoint_tic=32|recovery_generation=2|dmd1=33|legacy_frames=0|engine=MLE|public_admission=STANDBY_READY|pre_admission_command=REJECTED|cold_start_ms=197681.124|standby_wait_ms=.633|warm_recovery_ms=3794.754

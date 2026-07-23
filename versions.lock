@@ -37,6 +37,29 @@
     "license": "GPL-3.0-or-later",
     "javaRelease": 8
   },
+  "teaVM": {
+    "version": "0.15.0",
+    "mavenImage": "maven:3.9.11-eclipse-temurin-17",
+    "compilerRelease": 11,
+    "profile": "simulation-engine-headless",
+    "targetType": "JAVASCRIPT",
+    "moduleType": "ES2015",
+    "optimizationLevel": "ADVANCED",
+    "minifying": true,
+    "inputBytecodeSha256": "8cae68323d62edfa56299569d15763e6dbd24974dc3a24f3ae64961071920d8b",
+    "mochaBytecodeSha256": "6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97",
+    "canonicalOracleJarSha256": "2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74",
+    "checkpointEnvelope": "DMC1-v5",
+    "outputBytes": 1163182,
+    "outputSha256": "06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0",
+    "presentation": {
+      "profile": "presentation-engine-headless",
+      "inputBytecodeSha256": "8cae68323d62edfa56299569d15763e6dbd24974dc3a24f3ae64961071920d8b",
+      "mochaBytecodeSha256": "6a611ad85d09eb0fa16996cefc891e9e7dd0c7f827eaa7e93f01ccff1726bd97",
+      "outputBytes": 1224686,
+      "outputSha256": "bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83"
+    }
+  },
   "deploymentTools": {
     "awsCli": "2.34.36",
     "sqlcl": "26.2.0.181.2110"

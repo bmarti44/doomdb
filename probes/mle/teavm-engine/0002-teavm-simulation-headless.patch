@@ -1,0 +1,1291 @@
+diff --git a/src/mochadoom/Loggers.java b/src/mochadoom/Loggers.java
+--- a/src/mochadoom/Loggers.java
++++ b/src/mochadoom/Loggers.java
+@@ -25,15 +25,11 @@
+ import java.awt.AWTEvent;
+-import java.io.OutputStream;
+ import java.util.Arrays;
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.Set;
+ import java.util.function.IntFunction;
+-import java.util.logging.ConsoleHandler;
+ import java.util.logging.Level;
+ import java.util.logging.Logger;
+-import java.util.stream.Collectors;
+-import java.util.stream.Stream;
+ import p.ActiveStates;
+ import v.graphics.Patches;
+ 
+@@ -46,9 +42,7 @@
+ public class Loggers {
+     private static final Level DEFAULT_LEVEL = Level.WARNING;
+     
+-    private static final Map<Level, Logger> PARENT_LOGGERS_MAP = Stream.of(
+-            Level.FINE, Level.FINER, Level.FINEST, Level.INFO, Level.SEVERE, Level.WARNING
+-        ).collect(Collectors.toMap(l -> l, Loggers::newLoggerHandlingLevel));
++    private static final Map<Level, Logger> PARENT_LOGGERS_MAP = createParentLoggers();
+     
+     private static final Logger DEFAULT_LOGGER = PARENT_LOGGERS_MAP.get(DEFAULT_LEVEL);
+     private static final HashMap<String, Logger> INDIVIDUAL_CLASS_LOGGERS = new HashMap<>();
+@@ -64,10 +58,3 @@
+     public static Logger getLogger(final String className) {
+-        final Logger ret = Logger.getLogger(className);
+-        try {
+-            ret.setParent(INDIVIDUAL_CLASS_LOGGERS.getOrDefault(className, DEFAULT_LOGGER));
+-        } catch (SecurityException deniedInOJVM) {
+-            // OJVM schemas do not need LoggingPermission for gameplay.
+-        }
+-        
+-        return ret;
++        return Logger.getLogger(className);
+     }
+@@ -138,24 +125,16 @@
+     private Loggers() {}
+     
++    private static Map<Level, Logger> createParentLoggers() {
++        final Map<Level, Logger> ret = new HashMap<>();
++        final Level[] levels = { Level.FINE, Level.FINER, Level.FINEST,
++            Level.INFO, Level.SEVERE, Level.WARNING };
++        for (final Level level : levels) {
++            ret.put(level, newLoggerHandlingLevel(level));
++        }
++        return ret;
++    }
++
+     private static Logger newLoggerHandlingLevel(final Level l) {
+-        try {
+-            final OutHandler h = new OutHandler();
+-            h.setLevel(l);
+-            final Logger ret = Logger.getAnonymousLogger();
+-            ret.setUseParentHandlers(false);
+-            ret.setLevel(l);
+-            ret.addHandler(h);
+-            return ret;
+-        } catch (SecurityException deniedInOJVM) {
+-            return Logger.getLogger("mochadoom." + l.getName());
+-        }
++        return Logger.getLogger("mochadoom");
+     }
+-    
+-    private static final class OutHandler extends ConsoleHandler {
+-        @Override
+-        @SuppressWarnings("UseOfSystemOutOrSystemErr")
+-        protected synchronized void setOutputStream(final OutputStream out) throws SecurityException {
+-            super.setOutputStream(System.out);
+-        }
+-    }
+ }
+diff --git a/src/mochadoom/Engine.java b/src/mochadoom/Engine.java
+--- a/src/mochadoom/Engine.java
++++ b/src/mochadoom/Engine.java
+@@ -69,7 +69,7 @@ public class Engine {
+     public static DoomMain<?, ?> createHeadless(final String... argv) throws IOException {
+         synchronized (Engine.class) {
+             ResourceIO.disableExternalIO();
+-            final Engine local = new Engine(true, argv);
++            final Engine local = new Engine(argv, 0);
+             return local.DOOM;
+         }
+     }
+@@ -85,5 +85,14 @@ public class Engine {
+     private final DoomMain<?, ?> DOOM;
+     
++    /** MLE composition root with no reachable desktop constructor bytecode. */
++    private Engine(final String[] argv, final int mleMarker) throws IOException {
++        instance = this;
++        this.cvm = new CVarManager(Arrays.asList(argv));
++        this.cm = new ConfigManager();
++        this.DOOM = new DoomMain<>();
++        this.windowController = null;
++    }
++
+     @SuppressWarnings("unchecked")
+     private Engine(final String... argv) throws IOException {
+         this(false, argv);
+diff --git a/src/s/IMusic.java b/src/s/IMusic.java
+--- a/src/s/IMusic.java
++++ b/src/s/IMusic.java
+@@ -44,7 +44,3 @@ public interface IMusic {
+     public static IMusic chooseModule(CVarManager CVM) {
+-        if (CVM.bool(CommandVariable.NOMUSIC) || CVM.bool(CommandVariable.NOSOUND)) {
+-            return new DummyMusic();
+-        } else {
+-            return new DavidMusicModule();
+-        }
++        return new DummyMusic();
+     }
+diff --git a/src/s/ISoundDriver.java b/src/s/ISoundDriver.java
+--- a/src/s/ISoundDriver.java
++++ b/src/s/ISoundDriver.java
+@@ -79,25 +79,3 @@ public interface ISoundDriver {
+     public static ISoundDriver chooseModule(DoomMain<?, ?> DM, CVarManager CVM) {
+-        final ISoundDriver driver;
+-        if (CVM.bool(CommandVariable.NOSFX) || CVM.bool(CommandVariable.NOSOUND)) {
+-            driver = new DummySFX();
+-        } else {
+-            // Switch between possible sound drivers.
+-            if (CVM.bool(CommandVariable.AUDIOLINES)) { // Crudish.
+-                driver = new DavidSFXModule(DM, DM.numChannels);
+-            } else  if (CVM.bool(CommandVariable.SPEAKERSOUND)) { // PC Speaker emulation
+-                driver = new SpeakerDoomSoundDriver(DM, DM.numChannels);
+-            } else if (CVM.bool(CommandVariable.CLIPSOUND)) {
+-                driver = new ClipSFXModule(DM, DM.numChannels);
+-            } else if (CVM.bool(CommandVariable.CLASSICSOUND)) { // This is the default
+-                driver = new ClassicDoomSoundDriver(DM, DM.numChannels);
+-            } else { // This is the default
+-                driver = new SuperDoomSoundDriver(DM, DM.numChannels);
+-            }
+-        }
+-        // Check for sound init failure and revert to dummy
+-        if (!driver.InitSound()) {
+-            System.err.println("S_InitSound: failed. Reverting to dummy...\n");
+-            return new DummySFX();
+-        }
+-        return driver;
++        return new DummySFX();
+     }
+diff --git a/src/s/IDoomSound.java b/src/s/IDoomSound.java
+--- a/src/s/IDoomSound.java
++++ b/src/s/IDoomSound.java
+@@ -40,12 +40,3 @@ public interface IDoomSound {
+     static IDoomSound chooseSoundIsPresent(DoomMain<?, ?> DM, CVarManager CVM, ISoundDriver ISND) {
+-        if (!CVM.bool(CommandVariable.NOSOUND) || (ISND instanceof DummySFX && DM.music instanceof DummyMusic)) {
+-            return new AbstractDoomAudio(DM, DM.numChannels);
+-        } else {
+-            /**
+-             * Saves a lot of distance calculations,
+-             * if we're not to output any sound at all.
+-             * TODO: create a Dummy that can handle music alone.
+-             */
+-            return new DummySoundDriver();
+-        }
++        return new DummySoundDriver();
+     }
+diff --git a/src/v/renderers/BppMode.java b/src/v/renderers/BppMode.java
+--- a/src/v/renderers/BppMode.java
++++ b/src/v/renderers/BppMode.java
+@@ -20,7 +20,6 @@
+ import doom.CommandVariable;
+ import doom.DoomMain;
+ import mochadoom.Engine;
+-import java.awt.Transparency;
+ import java.util.function.Function;
+ import m.Settings;
+ import rr.SceneRenderer;
+@@ -31,10 +30,10 @@
+  * selected in config or through use of command line arguments
+  */
+ public enum BppMode {
+-    Indexed(5, BufferedRenderer::new, BppMode::SceneGen_8, Transparency.OPAQUE),
+-    HiColor(5, BufferedRenderer16::new, BppMode::SceneGen_16, Transparency.OPAQUE),
+-    TrueColor(8, BufferedRenderer32::new, BppMode::SceneGen_32, Transparency.OPAQUE),
+-    AlphaTrueColor(8, BufferedRenderer32::new, BppMode::SceneGen_32, Transparency.TRANSLUCENT);
++    Indexed(5, BufferedRenderer::new, BppMode::SceneGen_8, 1),
++    HiColor(5, BufferedRenderer::new, BppMode::SceneGen_8, 1),
++    TrueColor(8, BufferedRenderer::new, BppMode::SceneGen_8, 1),
++    AlphaTrueColor(8, BufferedRenderer::new, BppMode::SceneGen_8, 3);
+     
+     public final int transparency;
+     public final int lightBits;
+diff --git a/src/v/renderers/SceneRendererMode.java b/src/v/renderers/SceneRendererMode.java
+--- a/src/v/renderers/SceneRendererMode.java
++++ b/src/v/renderers/SceneRendererMode.java
+@@ -31,8 +31,8 @@
+  */
+ public enum SceneRendererMode {
+     Serial(UnifiedRenderer.Indexed::new, UnifiedRenderer.HiColor::new, UnifiedRenderer.TrueColor::new),
+-    Parallel(SceneRendererMode::Parallel_8, SceneRendererMode::Parallel_16, SceneRendererMode::Parallel_32),
+-    Parallel2(SceneRendererMode::Parallel2_8, SceneRendererMode::Parallel2_16, SceneRendererMode::Parallel2_32);
++    Parallel(UnifiedRenderer.Indexed::new, UnifiedRenderer.HiColor::new, UnifiedRenderer.TrueColor::new),
++    Parallel2(UnifiedRenderer.Indexed::new, UnifiedRenderer.HiColor::new, UnifiedRenderer.TrueColor::new);
+     
+     private static final boolean cVarSerial = Engine.getCVM().bool(CommandVariable.SERIALRENDERER);
+     private static final boolean cVarParallel = Engine.getCVM().present(CommandVariable.PARALLELRENDERER);
+diff --git a/src/mochadoom/Engine.java b/src/mochadoom/Engine.java
+--- a/src/mochadoom/Engine.java
++++ b/src/mochadoom/Engine.java
+@@ -200,10 +200,10 @@
+     }
+     
+     public static CVarManager getCVM() {
+-        return getEngine().cvm;
++        return instance.cvm;
+     }
+     
+     public static ConfigManager getConfig() {
+-        return getEngine().cm;
++        return instance.cm;
+     }
+ }
+diff --git a/src/utils/TraitFactory.java b/src/utils/TraitFactory.java
+--- a/src/utils/TraitFactory.java
++++ b/src/utils/TraitFactory.java
+@@ -104,6 +104,16 @@
+         return build(traitUser, usedChain.currentCapacity);
+     }
+     
++    /** TeaVM-safe equivalent of the reflective registration path. */
++    public static SharedContext buildExplicit(
++        KeyChain usedChain, ContextKey<?>... keys) {
++        final FactoryContext context = new FactoryContext(usedChain.currentCapacity);
++        for (ContextKey<?> key : keys) {
++            context.put(key, key.contextConstructor);
++        }
++        return context;
++    }
++
+     public static <T extends Trait> SharedContext build(T traitUser, int idCapacity)
+         throws IllegalArgumentException, IllegalAccessException
+     {
+diff --git a/src/p/ActionFunctions.java b/src/p/ActionFunctions.java
+--- a/src/p/ActionFunctions.java
++++ b/src/p/ActionFunctions.java
+@@ -50,12 +50,22 @@
+     }
+     
+     private SharedContext buildContext() {
+-        try {
+-            return TraitFactory.build(this, ACTION_KEY_CHAIN);
+-        } catch (IllegalArgumentException | IllegalAccessException ex) {
+-            Logger.getLogger(ActionFunctions.class.getName()).log(Level.SEVERE, null, ex);
+-            throw new RuntimeException(ex);
+-        }
++        return TraitFactory.buildExplicit(ACTION_KEY_CHAIN,
++            p.Actions.ActionTrait.KEY_SLIDEMOVE,
++            p.Actions.ActionTrait.KEY_SPECHITS,
++            p.Actions.ActionTrait.KEY_MOVEMENT,
++            p.Actions.ActionsAttacks.KEY_ATTACKS,
++            p.Actions.ActionsCeilings.KEY_CEILINGS,
++            p.Actions.ActionsEnemies.KEY_ENEMIES,
++            p.Actions.ActionsMovement.KEY_DIRTYPE,
++            p.Actions.ActionsPathTraverse.KEY_TRAVERSE,
++            p.Actions.ActionsPlats.KEY_PLATS,
++            p.Actions.ActionsSectors.KEY_RESP_QUEUE,
++            p.Actions.ActionsSectors.KEY_SPAWN,
++            p.Actions.ActionsSectors.KEY_CRUSHES,
++            p.Actions.ActionsSight.KEY_SIGHT,
++            p.Actions.ActionsSlideDoors.KEY_SLIDEDOORS,
++            p.Actions.ActiveStates.MonsterStates.HorrendousVisages.KEY_BRAIN);
+     }
+     
+     @Override
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -1193,10 +1193,6 @@
+          * 
+          * @SourceCode.Suspicious
+          */
+-        
+-        // killough 5/13/98: in case netdemo has consoleplayer other than green
+-        statusBar.Start();
+-        headsUp.Start();
+         
+         // killough: make -timedemo work on multilevel demos
+         // Move to end of function to minimize noise -- killough 2/22/98:
+@@ -1385,56 +1381,6 @@
+                 G_DoReborn: {
+                     DoReborn(i);
+                 }
+-            }
+-        }
+-
+-        // do things to change the game state
+-        while (gameaction != ga_nothing) { 
+-            switch (gameaction) { 
+-                case ga_loadlevel:
+-                    G_DoLoadLevel: {
+-                        DoLoadLevel();
+-                    }
+-                    break;
+-                case ga_newgame:
+-                    G_DoNewGame: {
+-                        DoNewGame();
+-                    }
+-                    break;
+-                case ga_loadgame:
+-                    G_DoLoadGame: {
+-                        DoLoadGame();
+-                    }
+-                    break;
+-                case ga_savegame:
+-                    G_DoSaveGame: {
+-                        DoSaveGame();
+-                    }
+-                    break;
+-                case ga_playdemo:
+-                    G_DoPlayDemo: {
+-                        DoPlayDemo();
+-                    }
+-                    break;
+-                case ga_completed:
+-                    G_DoCompleted: {
+-                        DoCompleted();
+-                    }
+-                    break;
+-                case ga_victory:
+-                    finale.StartFinale();
+-                    break;
+-                case ga_worlddone:
+-                    DoWorldDone();
+-                    break;
+-                case ga_screenshot:
+-                    ScreenShot();
+-                    gameaction = ga_nothing;
+-                    break;
+-                case ga_nothing:
+-                    break;
+-                default:
+-                	break;
+             }
+         }
+ 
+@@ -1452,14 +1398,6 @@
+                 // MAES: this is where actual demo commands are being issued or created!
+                 // Essentially, a demo is a sequence of stored ticcmd_t with a header.
+                 // Knowing that, it's possible to objectify it.
+-                if (demoplayback) {
+-                    ReadDemoTiccmd(cmd);
+-                }
+-                
+-                if (demorecording) {
+-                    WriteDemoTiccmd(cmd);
+-                }
+-
+                 // check for turbo cheats
+                 if (cmd.forwardmove > TURBOTHRESHOLD && ((gametic & 31) == 0) && ((gametic >> 5) & 3) == i) {
+                     //extern char *player_names[4];
+@@ -1507,29 +1445,8 @@
+             }
+         }
+ 
+-        // do main actions
+-        switch (gamestate) {
+-            case GS_LEVEL:
+-                actions.Ticker();
+-                statusBar.Ticker();
+-                autoMap.Ticker();
+-                headsUp.Ticker();
+-                break;
+-
+-            case GS_INTERMISSION:
+-                endLevel.Ticker();
+-                break;
+-
+-            case GS_FINALE:
+-                finale.Ticker();
+-                break;
+-
+-            case GS_DEMOSCREEN:
+-                PageTicker();
+-                break;
+-                
+-            default:
+-            	break;
++        if (gamestate == GS_LEVEL) {
++            actions.Ticker();
+         }
+     } 
+ 
+@@ -2576,20 +2493,20 @@
+         this.spriteManager = new SpriteManager<>(this);
+         
+         // Heads-up, Menu, Level Loader
+-        this.headsUp = new HU(this);
+-        this.menu = new Menu<>(this);
++        this.headsUp = null;
++        this.menu = new m.DummyMenu<>(this);
+         this.levelLoader = new BoomLevelLoader(this);
+         
+         // Renderer, Actions, StatusBar, AutoMap
+         this.sceneRenderer = bppMode.sceneRenderer(this);
+         this.actions = new ActionFunctions(this);
+-        this.statusBar = new StatusBar(this);
++        this.statusBar = null;
+ 
+         // Let the renderer pick its own. It makes linking easier.
+         this.textureManager = sceneRenderer.getTextureManager();
+         // Instantiating EndLevel, Finale
+-        this.endLevel = new EndLevel<>(this);
+-        this.finale = selectFinale();
++        this.endLevel = null;
++        this.finale = null;
+         
+         readCVars();
+         System.out.print("W_Init: Init WADfiles.\n");
+diff --git a/src/data/Tables.java b/src/data/Tables.java
+--- a/src/data/Tables.java
++++ b/src/data/Tables.java
+@@ -127,6 +127,17 @@
+ 
+     public static final String rcsid="$Id:";
+ 
++   private static final int CANONICAL_TABLE_PACK_VERSION = 2;
++   private static final int CANONICAL_TABLE_PACK_ENDIAN = 0x01020304;
++   private static final int CANONICAL_TABLE_PACK_HEADER_BYTES = 44;
++   public static final int CANONICAL_TRANMAP_BYTES = 256 * 256;
++   public static final int CANONICAL_TABLE_PACK_BYTES =
++       CANONICAL_TABLE_PACK_HEADER_BYTES
++           + (8192 + 10240 + 8192 + 2049) * 4
++           + CANONICAL_TRANMAP_BYTES;
++   private static byte[] canonicalTablePack;
++   private static byte[] canonicalTranmap;
++
+    public static final double PI =             3.141592657;
+ 
+    /** Normally set to 12, and this sets the value of other constants too.
+@@ -391,6 +402,74 @@
+     return ((a+b)&BITS32);
+ }
+ 
++/** Install one strict, versioned, big-endian canonical table pack. */
++public static void installCanonicalTablePack(byte[] pack) {
++    if (pack == null || pack.length != CANONICAL_TABLE_PACK_BYTES) {
++        throw new IllegalArgumentException("canonical table pack length");
++    }
++    if (pack[0] != 'D' || pack[1] != 'M' || pack[2] != 'L'
++        || pack[3] != 'U' || pack[4] != 'T' || pack[5] != '0'
++        || pack[6] != '0' || pack[7] != '2') {
++        throw new IllegalArgumentException("canonical table pack magic");
++    }
++    if (readCanonicalInt(pack, 8) != CANONICAL_TABLE_PACK_VERSION
++        || readCanonicalInt(pack, 12) != CANONICAL_TABLE_PACK_ENDIAN
++        || readCanonicalInt(pack, 16) != CANONICAL_TABLE_PACK_HEADER_BYTES
++        || readCanonicalInt(pack, 20) != CANONICAL_TABLE_PACK_BYTES
++        || readCanonicalInt(pack, 24) != finetangent.length
++        || readCanonicalInt(pack, 28) != finesine.length
++        || readCanonicalInt(pack, 32) != finecosine.length
++        || readCanonicalInt(pack, 36) != tantoangle.length
++        || readCanonicalInt(pack, 40) != CANONICAL_TRANMAP_BYTES) {
++        throw new IllegalArgumentException("canonical table pack header");
++    }
++    canonicalTablePack = pack;
++}
++
++/** Remove the retained pack when its owning MLE session state is released. */
++public static void clearCanonicalTablePack() {
++    canonicalTablePack = null;
++    canonicalTranmap = null;
++}
++
++/** Exact JVM-generated IWAD translucency map; callers must treat it read-only. */
++public static byte[] getCanonicalTranmap() {
++    if (canonicalTranmap == null) {
++        throw new IllegalStateException("canonical TRANMAP is not loaded");
++    }
++    return canonicalTranmap;
++}
++
++private static int readCanonicalInt(byte[] pack, int offset) {
++    return ((pack[offset] & 0xff) << 24)
++        | ((pack[offset + 1] & 0xff) << 16)
++        | ((pack[offset + 2] & 0xff) << 8)
++        | (pack[offset + 3] & 0xff);
++}
++
++private static int decodeCanonicalTable(
++    byte[] pack, int offset, int[] table) {
++    for (int i = 0; i < table.length; i++, offset += 4) {
++        table[i] = readCanonicalInt(pack, offset);
++    }
++    return offset;
++}
++
++private static void loadCanonicalTables() {
++    int offset = CANONICAL_TABLE_PACK_HEADER_BYTES;
++    offset = decodeCanonicalTable(canonicalTablePack, offset, finetangent);
++    offset = decodeCanonicalTable(canonicalTablePack, offset, finesine);
++    offset = decodeCanonicalTable(canonicalTablePack, offset, finecosine);
++    offset = decodeCanonicalTable(canonicalTablePack, offset, tantoangle);
++    canonicalTranmap = new byte[CANONICAL_TRANMAP_BYTES];
++    System.arraycopy(canonicalTablePack, offset, canonicalTranmap, 0,
++        canonicalTranmap.length);
++    offset += canonicalTranmap.length;
++    if (offset != canonicalTablePack.length) {
++        throw new IllegalStateException("canonical table pack payload");
++    }
++}
++
+ /** MAES: I brought this function "back from the dead" since
+  *  Java has some pretty low static limits for statically defined LUTs.
+  *  In order to keep the codebase clutter and static allocation to a minimum,
+@@ -410,6 +488,10 @@
+  */
+ 
+ public static void InitTables(){
++    if (canonicalTablePack != null) {
++        loadCanonicalTables();
++        return;
++    }
+     int     i;
+     float   a;
+     float   fv;
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -1193,6 +1193,9 @@
+          * 
+          * @SourceCode.Suspicious
+          */
++
++        // Preserve the lifecycle callback through the headless status bar.
++        statusBar.Start();
+         
+         // killough: make -timedemo work on multilevel demos
+         // Move to end of function to minimize noise -- killough 2/22/98:
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -2584,7 +2584,7 @@
+         // Renderer, Actions, StatusBar, AutoMap
+         this.sceneRenderer = bppMode.sceneRenderer(this);
+         this.actions = new ActionFunctions(this);
+-        this.statusBar = null;
++        this.statusBar = new st.HeadlessStatusBar(this);
+ 
+         // Let the renderer pick its own. It makes linking easier.
+         this.textureManager = sceneRenderer.getTextureManager();
+diff --git a/src/st/HeadlessStatusBar.java b/src/st/HeadlessStatusBar.java
+new file mode 100644
+--- /dev/null
++++ b/src/st/HeadlessStatusBar.java
+@@ -0,0 +1,49 @@
++package st;
++
++import doom.DoomMain;
++import doom.event_t;
++
++/** Status-bar geometry without presentation assets or AWT state. */
++public final class HeadlessStatusBar extends AbstractStatusBar {
++    public HeadlessStatusBar(DoomMain<?, ?> doom) {
++        super(doom);
++    }
++
++    @Override
++    public void NotifyAMEnter() {
++    }
++
++    @Override
++    public void NotifyAMExit() {
++    }
++
++    @Override
++    public boolean Responder(event_t event) {
++        return false;
++    }
++
++    @Override
++    public void Ticker() {
++    }
++
++    @Override
++    public void Drawer(boolean fullscreen, boolean refresh) {
++    }
++
++    @Override
++    public void Start() {
++    }
++
++    @Override
++    public void Init() {
++    }
++
++    @Override
++    public int getHeight() {
++        return 32 * DOOM.vs.getSafeScaling();
++    }
++
++    @Override
++    public void forceRefresh() {
++    }
++}
+diff --git a/src/f/Finale.java b/src/f/Finale.java
+--- a/src/f/Finale.java
++++ b/src/f/Finale.java
+@@ -675,7 +675,7 @@
+ 
+ 	public Finale(DoomMain<T, ?> DOOM) {
+ 		this.DOOM = DOOM;
+-		hu_font = DOOM.headsUp.getHUFonts();
++		hu_font = null;
+ 
+ 		//castinfo_t shit = new castinfo_t(CC_ZOMBIE, mobjtype_t.MT_POSSESSED);
+ 		castorder = new castinfo_t[]{
+diff --git a/src/p/Actions/ActionsSpawns.java b/src/p/Actions/ActionsSpawns.java
+--- a/src/p/Actions/ActionsSpawns.java
++++ b/src/p/Actions/ActionsSpawns.java
+@@ -261,10 +261,6 @@
+             ST_Start: {
+                 statusBar().Start();
+             }
+-            // wake up the heads up text
+-            HU_Start: {
+-                headsUp().Start();
+-            }
+         }
+     }
+ 
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -2001,10 +2001,7 @@
+                 }
+             }
+ 
+-            // draw the pattern into the back screen
+-            R_FillBackScreen: {
+-                sceneRenderer.FillBackScreen();
+-            }
++            // Headless simulation has no back-screen presentation surface.
+         } catch (IOException e) {
+             e.printStackTrace();
+         }
+@@ -2072,10 +2069,7 @@
+ 
+         players[consoleplayer].message = GGSAVED;
+ 
+-        // draw the pattern into the back screen
+-        R_FillBackScreen: {
+-            sceneRenderer.FillBackScreen();
+-        }
++        // Headless simulation has no back-screen presentation surface.
+     }
+ 
+     skill_t d_skill;
+diff --git a/src/f/EndLevel.java b/src/f/EndLevel.java
+--- a/src/f/EndLevel.java
++++ b/src/f/EndLevel.java
+@@ -647,8 +647,6 @@
+ 
+     protected void End() {
+         state = endlevel_state.JustShutOff;
+-        DOOM.graphicSystem.forcePalette();
+-        unloadData();
+     }
+ 
+     protected void unloadData() {
+@@ -1774,11 +1772,7 @@
+     public void Start(wbstartstruct_t wbstartstruct) {
+         WI_initVariables: {
+             initVariables(wbstartstruct);
+-        }
+-        WI_loadData: {
+-            loadData();
+         }
+-
+         if (DOOM.deathmatch) {
+             WI_initDeathmatchStats: {
+                 initDeathmatchStats();
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -2608,17 +2525,14 @@
+         System.out.print("V_Init: allocate screens.\n");
+         
+         // Disk access visualizer
+-        this.diskDrawer = new DiskDrawer(this, DiskDrawer.STDISK);
++        this.diskDrawer = null;
+         
+         // init subsystems
+         System.out.print("AM_Init: Init Automap colors - \n");
+-        this.autoMap = new automap.Map<>(this);
++        this.autoMap = null;
+ 
+-        this.wiper = graphicSystem.createWiper(random);
++        this.wiper = null;
+         
+-        // Update variables and stuff NOW.
+-        this.update();
+-
+         // Check for -file in shareware
+         CheckForPWADSInShareware();
+ 
+@@ -2652,18 +2566,10 @@
+         music.InitMusic();
+         doomSound.Init(snd_SfxVolume * 8, snd_MusicVolume * 8);
+ 
+-        System.out.print("HU_Init: Setting up heads up display.\n");
+-        headsUp.Init();
+-
+-        System.out.print("ST_Init: Init status bar.\n");
+-        statusBar.Init();
+-
+         if (statcopy != null) {
+             System.out.print("External statistics registered.\n");
+         }
+ 
+-        // NOW it's safe to init the disk reader.
+-        diskDrawer.Init();
+     }
+ 
+     @Override
+diff --git a/src/i/DoomSystem.java b/src/i/DoomSystem.java
+--- a/src/i/DoomSystem.java
++++ b/src/i/DoomSystem.java
+@@ -105,7 +105,6 @@
+ //-----------------------------------------------------------------------------
+ package i;
+ 
+-import awt.MsgBox;
+ import doom.DoomMain;
+ import doom.ticcmd_t;
+ import java.io.IOException;
+@@ -263,7 +262,7 @@
+     // This particular implementation will generate a popup box.// 
+     @Override
+     public boolean GenerateAlert(String title, String cause) {
+-        MsgBox alert = new MsgBox(null, title, cause, true);
+-        return alert.isOk();
++        System.err.println(title + ": " + cause);
++        return false;
+     }
+ }
+diff --git a/src/rr/RendererState.java b/src/rr/RendererState.java
+--- a/src/rr/RendererState.java
++++ b/src/rr/RendererState.java
+@@ -2313,8 +2313,8 @@
+         MySegs.ExecuteSetViewSize(view.width);
+     }
+     
+-    private final Rectangle backScreenRect = new Rectangle();
+-    private final Rectangle tilePatchRect = new Rectangle();
++    private final Rectangle backScreenRect = null;
++    private final Rectangle tilePatchRect = null;
+ 
+     /**
+      * R_FillBackScreen Fills the back screen with a pattern for variable screen
+diff --git a/src/v/renderers/BufferedRenderer.java b/src/v/renderers/BufferedRenderer.java
+--- a/src/v/renderers/BufferedRenderer.java
++++ b/src/v/renderers/BufferedRenderer.java
+@@ -17,29 +17,9 @@
+ 
+  package v.renderers;
+ 
+-import java.awt.Point;
+-import java.awt.image.BufferedImage;
+-import java.awt.image.DataBufferByte;
+-import java.awt.image.Raster;
+-import java.awt.image.WritableRaster;
+-
+ class BufferedRenderer extends SoftwareIndexedVideoRenderer {
+-    private final WritableRaster[] rasters = new WritableRaster[SCREENS_COUNT];
+-
+-    /**
+-     * This actually creates a raster with a fixed underlying array, but NOT the images themselves. So it's possible to
+-     * have "imageless" rasters (unless you specifically request to make them visible, of course).
+-     */
+     BufferedRenderer(RendererFactory.WithWadLoader<byte[], byte[]> rf) {
+         super(rf);
+-        for (DoomScreen s: DoomScreen.values()) {
+-            final int index = s.ordinal();
+-            // Only create non-visible data, pegged to the raster. Create visible images only on-demand.
+-            final DataBufferByte db = (DataBufferByte) newBuffer(s);
+-            // should be fully compatible with IndexColorModels from SoftwareIndexedVideoRenderer
+-            rasters[index] = Raster.createInterleavedRaster(db, width, height, width, 1, new int[]{0}, new Point(0, 0));
+-        }
+-        // Thou shalt not best nullt!!! Sets currentscreen
+         forcePalette();
+     }
+ 
+@@ -49,7 +29,7 @@
+      */
+     @Override
+     public final void forcePalette() {
+-        this.currentscreen = new BufferedImage(cmaps[usegamma][usepalette], rasters[DoomScreen.FG.ordinal()], true, null);
++        this.currentscreen = null;
+     }
+ }
+ 
+diff --git a/src/v/renderers/SoftwareIndexedVideoRenderer.java b/src/v/renderers/SoftwareIndexedVideoRenderer.java
+--- a/src/v/renderers/SoftwareIndexedVideoRenderer.java
++++ b/src/v/renderers/SoftwareIndexedVideoRenderer.java
+@@ -17,11 +17,7 @@
+ 
+ package v.renderers;
+ 
+-import java.awt.image.IndexColorModel;
+-import m.MenuMisc;
+-import v.graphics.Palettes;
+ import v.tables.BlurryTable;
+-import v.tables.GammaTables;
+ 
+ /**
+  * @author Good Sign
+@@ -29,21 +25,10 @@
+  */
+ abstract class SoftwareIndexedVideoRenderer extends SoftwareGraphicsSystem<byte[], byte[]> {
+ 
+-    /**
+-     * Indexed renderers keep separate color models for each colormap (intended as gamma levels) and palette levels
+-     */
+-    protected final IndexColorModel[][] cmaps = new IndexColorModel[GammaTables.LUT.length][Palettes.NUM_PALETTES];
+     protected final BlurryTable blurryTable;
+ 
+     SoftwareIndexedVideoRenderer(RendererFactory.WithWadLoader<byte[], byte[]> rf) {
+         super(rf, byte[].class);
+-        
+-        /**
+-         * create gamma levels
+-         * Now we can reuse existing array of cmaps, not allocating more memory
+-         * each time we change gamma or pick item
+-         */
+-        cmapIndexed(cmaps, palette);
+         blurryTable = new BlurryTable(liteColorMaps);
+     }
+ 
+@@ -57,9 +42,6 @@
+ 
+     @Override
+     public boolean writeScreenShot(String name, DoomScreen screen) {
+-        // munge planar buffer to linear
+-        //DOOM.videoInterface.ReadScreen(screens[screen.ordinal()]);
+-        MenuMisc.WritePNGfile(name, screens.get(screen), width, height, cmaps[usegamma][usepalette]);
+-        return true;
++        return false;
+     }
+ }
+diff --git a/src/w/InputStreamSugar.java b/src/w/InputStreamSugar.java
+--- a/src/w/InputStreamSugar.java
++++ b/src/w/InputStreamSugar.java
+@@ -243,20 +243,6 @@
+         
+ 
+         // Cast succeeded
+-        if (is instanceof FileInputStream) {
+-            try {
+-                ((FileInputStream) is).getChannel().position(pos);
+-                return is;
+-            } catch (IOException e) {
+-                // Ouch. Do a dumb close & reopening.
+-                is.close();
+-                is = createInputStreamFromURI(URI, null, 1);
+-                is.skip(pos);
+-                return is;
+-            }
+-        }
+-
+-        // Cast succeeded
+         if (is instanceof ZipInputStream) {
+             // ZipInputStreams are VERY dumb. so...
+                 is.close();
+@@ -309,19 +295,9 @@
+         if (is instanceof ByteArrayInputStream) {
+             return ((ByteArrayInputStream) is).available();
+         }
+-        if (is instanceof FileInputStream) {
+-            try {
+-                return ((FileInputStream) is).getChannel().size();
+-            } catch (IOException e) {
++        if (z != null)
++            return z.getSize();
+ 
+-            }
+-        }
+-
+-        if (is instanceof FileInputStream) {
+-            if (z != null)
+-                return z.getSize();
+-        }
+-
+         // Last ditch
+         try {
+             return is.available();
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -1381,6 +1381,56 @@
+                 G_DoReborn: {
+                     DoReborn(i);
+                 }
++            }
++        }
++
++        // do things to change the game state
++        while (gameaction != ga_nothing) { 
++            switch (gameaction) { 
++                case ga_loadlevel:
++                    G_DoLoadLevel: {
++                        DoLoadLevel();
++                    }
++                    break;
++                case ga_newgame:
++                    G_DoNewGame: {
++                        DoNewGame();
++                    }
++                    break;
++                case ga_loadgame:
++                    G_DoLoadGame: {
++                        DoLoadGame();
++                    }
++                    break;
++                case ga_savegame:
++                    G_DoSaveGame: {
++                        DoSaveGame();
++                    }
++                    break;
++                case ga_playdemo:
++                    G_DoPlayDemo: {
++                        DoPlayDemo();
++                    }
++                    break;
++                case ga_completed:
++                    G_DoCompleted: {
++                        DoCompleted();
++                    }
++                    break;
++                case ga_victory:
++                    finale.StartFinale();
++                    break;
++                case ga_worlddone:
++                    DoWorldDone();
++                    break;
++                case ga_screenshot:
++                    ScreenShot();
++                    gameaction = ga_nothing;
++                    break;
++                case ga_nothing:
++                    break;
++                default:
++                	break;
+             }
+         }
+ 
+@@ -1398,6 +1448,14 @@
+                 // MAES: this is where actual demo commands are being issued or created!
+                 // Essentially, a demo is a sequence of stored ticcmd_t with a header.
+                 // Knowing that, it's possible to objectify it.
++                if (demoplayback) {
++                    ReadDemoTiccmd(cmd);
++                }
++                
++                if (demorecording) {
++                    WriteDemoTiccmd(cmd);
++                }
++
+                 // check for turbo cheats
+                 if (cmd.forwardmove > TURBOTHRESHOLD && ((gametic & 31) == 0) && ((gametic >> 5) & 3) == i) {
+                     //extern char *player_names[4];
+@@ -1445,8 +1503,26 @@
+             }
+         }
+ 
+-        if (gamestate == GS_LEVEL) {
+-            actions.Ticker();
++        // do main actions
++        switch (gamestate) {
++            case GS_LEVEL:
++                actions.Ticker();
++                break;
++
++            case GS_INTERMISSION:
++                endLevel.Ticker();
++                break;
++
++            case GS_FINALE:
++                finale.Ticker();
++                break;
++
++            case GS_DEMOSCREEN:
++                PageTicker();
++                break;
++                
++            default:
++            	break;
+         }
+     } 
+ 
+@@ -2505,8 +2581,8 @@
+         // Let the renderer pick its own. It makes linking easier.
+         this.textureManager = sceneRenderer.getTextureManager();
+         // Instantiating EndLevel, Finale
+-        this.endLevel = null;
+-        this.finale = null;
++        this.endLevel = new EndLevel<>(this);
++        this.finale = selectFinale();
+         
+         readCVars();
+         System.out.print("W_Init: Init WADfiles.\n");
+diff --git a/src/data/Tables.java b/src/data/Tables.java
+--- a/src/data/Tables.java
++++ b/src/data/Tables.java
+@@ -474,75 +474,8 @@
+ public static void InitTables(){
+-    if (canonicalTablePack != null) {
+-        loadCanonicalTables();
+-        return;
+-    }
+-    int     i;
+-    float   a;
+-    float   fv;
+-    int     t;
+-    
+-    // viewangle tangent table
+-    for (i=0 ; i<FINEANGLES/2 ; i++)
+-    {
+-    a = (float)((i-FINEANGLES/4+0.5)*PI*2)/FINEANGLES;
+-    fv = (float)(FRACUNIT*Math.tan (a));
+-    t = (int)fv;
+-    finetangent[i] = t;
+-    } 
+-    
+-    // finesine table
+-    for (i=0 ; i<FINEANGLES+QUARTERMARK ; i++)
+-    {
+-    // OPTIMIZE: mirror...
+-    a = (float)((i+0.5)*PI*2)/FINEANGLES;
+-    t = (int)(FRACUNIT*Math.sin (a));
+-    finesine[i] = t;
+-    if (i>=QUARTERMARK){
+-        finecosine[i-QUARTERMARK] = t;
+-        }
+-    }
+-    
+-    // HACK: replicate part of finesine after finetangent, to
+-    // simulate overflow behavior and remove need for capping
+-    // indexes
+-    // viewangle tangent table
+-    for (i=FINEANGLES/2 ; i<FINEANGLES ; i++)
+-    {
+-    finetangent[i] = finesine[i-FINEANGLES/2];
+-    } 
+-    
+-    /* tantoangle table
+-     * There was actually no dead code for that one, so this is a close recreation.
+-     * Since there are 2049 values, and the maximum angle considered is 536870912 (0x20000000)
+-     * which is 45 degrees in BAM, we have to fill in the atan for values up to 45 degrees.
+-     * Since the argument is a slope ranging from 0...2048, we have 2049 equally spaced (?)
+-     *  values, with 2048 being being the unitary slope (0x10000 in fixed_t). That value is only
+-     *  accessed in special cases (overflow) so we only need to consider 0..2047 aka 11 bits.
+-     *  So: we take "minislopes" 0-2048, we blow them up to a full fixed_t unit with <<5.
+-     *  We make this into a float (?), then use trigonometric ATAN, and then go to BAM.
+-     *  
+-     *  Any questions?
+-     *  
+-     */    
+-    
+-    /* This is the recreated code 
+-    for (i=0 ; i<SLOPERANGE+1 ; i++)
+-    {
+-    
+-    a=(float)((i<<DBITS)/65536.0);
+-    t=(int)((float)(2*Math.atan(a)/PI)*0x40000000); 
+-    tantoangle[i] = t;
+-    } 
+-    */
+-    
+-    // This is the original R_InitPointToAngle code that created this table.
+-    for (i=0 ; i<=SLOPERANGE ; i++)
+-    {
+- a = (float) (Math.atan( (double)i/SLOPERANGE )/(3.141592657*2));
+- t = (int) (0xffffffffL*a);
+- tantoangle[i] = (int) t;
++    if (canonicalTablePack == null) {
++        throw new IllegalStateException("canonical table pack is not installed");
+     }
+-    
+-    }
++    loadCanonicalTables();
++}
+ 
+ private Tables(){
+diff --git a/src/rr/RendererState.java b/src/rr/RendererState.java
+--- a/src/rr/RendererState.java
++++ b/src/rr/RendererState.java
+@@ -2454,7 +2454,7 @@ public class RendererState<T, V> implements SceneRenderer<T, V> {
+         InitTranslationTables();
+ 
+         System.out.print("\nR_InitTranMap: ");
+-        R_InitTranMap(0);
++        main_tranmap = Tables.getCanonicalTranmap();
+ 
+         System.out.print("\nR_InitDrawingFunctions: ");
+         R_InitDrawingFunctions();
+diff --git a/src/m/fixed_t.java b/src/m/fixed_t.java
+--- a/src/m/fixed_t.java
++++ b/src/m/fixed_t.java
+@@ -87,21 +87,32 @@
+ ( fixed_t	a,
+   fixed_t	b )
+ {
+-    return (int)(((long) a.val * (long ) b.val) >>> FRACBITS);
++    return FixedMulLimb(a.val, b.val);
+ }
+ 
+ public static int FixedMul
+ ( int   a,
+   fixed_t   b )
+ {
+-    return (int)(((long) a * (long ) b.val) >>> FRACBITS);
++    return FixedMulLimb(a, b.val);
+ }
+ 
+ public static final int FixedMul
+ ( int   a,
+   int   b )
+ {
+-    return (int)(((long) a * (long ) b) >>> FRACBITS);
++    return FixedMulLimb(a, b);
++}
++
++/** Exact low 32 bits of ((long) a * b) >> 16, using int limbs only. */
++private static int FixedMulLimb(int a, int b) {
++    final int aLow = a & 0xffff;
++    final int bLow = b & 0xffff;
++    final int aHigh = a >> FRACBITS;
++    final int bHigh = b >> FRACBITS;
++    return (aHigh * bHigh << FRACBITS)
++        + aHigh * bLow + bHigh * aLow
++        + ((aLow * bLow) >>> FRACBITS);
+ }
+ 
+ 
+@@ -116,7 +127,7 @@
+ ( fixed_t   a,
+         fixed_t   b )
+ {
+-    return (int)(((long) a.val * (long ) b.val) >> FRACBITS);
++    return FixedMulLimb(a.val, b.val);
+ }
+ 
+ /** In-place c=a*b
+@@ -131,7 +142,7 @@
+         fixed_t   b,
+         fixed_t c)
+ {
+-    c.set((int)(((long) a.val * (long ) b.val) >> FRACBITS));
++    c.set(FixedMulLimb(a.val, b.val));
+ }
+ 
+ 
+@@ -145,5 +156,5 @@
+ public final void FixedMul
+ ( fixed_t   a)
+ {
+-    this.set((int)(((long) a.val * (long ) this.val) >> FRACBITS));
++    this.set(FixedMulLimb(a.val, this.val));
+ }
+
+diff --git a/src/p/BoomLevelLoader.java b/src/p/BoomLevelLoader.java
+--- a/src/p/BoomLevelLoader.java
++++ b/src/p/BoomLevelLoader.java
+@@ -439,24 +439,59 @@ public class BoomLevelLoader implements ILevelLoader {
+         return num;
+     }
+ 
++    /** Correctly rounded binary32 square root with no host sqrt dependency. */
++    private static float doomdbSqrtFloat(final float value) {
++        if (value < 0.0f || Float.isNaN(value)) return Float.NaN;
++        if (value == 0.0f || value == Float.POSITIVE_INFINITY) return value;
++        int lower = 0;
++        int upper = 0x7f7fffff;
++        while (lower + 1 < upper) {
++            final int middle = lower + ((upper - lower) >>> 1);
++            final float candidate = Float.intBitsToFloat(middle);
++            if ((double) candidate * candidate <= (double) value) lower = middle;
++            else upper = middle;
++        }
++        final float low = Float.intBitsToFloat(lower);
++        final float high = Float.intBitsToFloat(upper);
++        final double midpoint = ((double) low + (double) high) * 0.5;
++        final double boundary = midpoint * midpoint;
++        if ((double) value > boundary
++                || ((double) value == boundary && (upper & 1) == 0)) return high;
++        return low;
++    }
++
++    /** Exact truncating fixed-point result used by the original offset path. */
++    private static int doomdbScaledSqrt(final float value) {
++        if (!(value > 0.0f)) return 0;
++        final double target = (double) value * 4294967296.0;
++        final long maximum = Integer.MAX_VALUE;
++        if (target >= (double) maximum * maximum) return Integer.MAX_VALUE;
++        long lower = 0;
++        long upper = maximum;
++        while (lower + 1 < upper) {
++            final long middle = lower + ((upper - lower) >>> 1);
++            if ((double) (middle * middle) <= target) lower = middle;
++            else upper = middle;
++        }
++        return (int) lower;
++    }
++
+     public static float GetDistance(int dx, int dy) {
+         float fx = (float) (dx) / FRACUNIT, fy = (float) (dy) / FRACUNIT;
+-        return (float) Math.sqrt(fx * fx + fy * fy);
++        return doomdbSqrtFloat(fx * fx + fy * fy);
+     }
+ 
+     public static float GetTexelDistance(int dx, int dy) {
+         // return (float)((int)(GetDistance(dx, dy) + 0.5f));
+         float fx = (float) (dx) / FRACUNIT, fy = (float) (dy) / FRACUNIT;
+-        return ((int) (0.5f + (float) Math.sqrt(fx * fx + fy * fy)));
++        return ((int) (0.5f + doomdbSqrtFloat(fx * fx + fy * fy)));
+     }
+ 
+     public static int GetOffset(vertex_t v1, vertex_t v2) {
+         float a, b;
+-        int r;
+         a = (v1.x - v2.x) / (float) FRACUNIT;
+         b = (v1.y - v2.y) / (float) FRACUNIT;
+-        r = (int) (Math.sqrt(a * a + b * b) * FRACUNIT);
+-        return r;
++        return doomdbScaledSqrt(a * a + b * b);
+     }
+ 
+ 
+diff --git a/src/p/ActiveStates.java b/src/p/ActiveStates.java
+--- a/src/p/ActiveStates.java
++++ b/src/p/ActiveStates.java
+@@ -178,7 +178,29 @@ public enum ActiveStates implements ThinkerStates{
+     private final ParamClass<?> actionFunction;
+     private final Class<? extends ParamClass<?>> paramType;
+ 
++    private static final MobjConsumer[] MOBJ_DISPATCH;
++    private static final ThinkerConsumer[] THINKER_DISPATCH;
++    static {
++        MOBJ_DISPATCH = new MobjConsumer[values().length];
++        THINKER_DISPATCH = new ThinkerConsumer[values().length];
++        for (ActiveStates state : values()) {
++            if (state.paramType == MobjConsumer.class) {
++                MOBJ_DISPATCH[state.ordinal()] = (MobjConsumer) state.actionFunction;
++            } else if (state.paramType == ThinkerConsumer.class) {
++                THINKER_DISPATCH[state.ordinal()] = (ThinkerConsumer) state.actionFunction;
++            }
++        }
++    }
++
++    public static MobjConsumer mobjDispatch(final ActiveStates state) {
++        return MOBJ_DISPATCH[state.ordinal()];
++    }
++
++    public static ThinkerConsumer thinkerDispatch(final ActiveStates state) {
++        return THINKER_DISPATCH[state.ordinal()];
++    }
++
+     private <T extends ParamClass<?>> ActiveStates(final T actionFunction, final Class<T> paramType) {
+         this.actionFunction = actionFunction;
+         this.paramType = paramType;
+     }
+diff --git a/src/p/Actions/ActionsThinkers.java b/src/p/Actions/ActionsThinkers.java
+--- a/src/p/Actions/ActionsThinkers.java
++++ b/src/p/Actions/ActionsThinkers.java
+@@ -294,10 +294,14 @@ public interface ActionsThinkers extends ActionFunctions {
+                 // Z_Free (currentthinker);
+             } else {
+                 ActiveStates thinkerFunction = (ActiveStates)thinker.thinkerFunction;
+-                if (thinkerFunction.isParamType(MobjConsumer.class)) {
+-                    thinkerFunction.fun(MobjConsumer.class).accept(DOOM().actions, (mobj_t) thinker);
+-                } else if (thinkerFunction.isParamType(ThinkerConsumer.class)) {
+-                    thinkerFunction.fun(ThinkerConsumer.class).accept(DOOM().actions, thinker);
++                MobjConsumer mobjDispatch = ActiveStates.mobjDispatch(thinkerFunction);
++                if (mobjDispatch != null) {
++                    mobjDispatch.accept(DOOM().actions, (mobj_t) thinker);
++                } else {
++                    ThinkerConsumer thinkerDispatch = ActiveStates.thinkerDispatch(thinkerFunction);
++                    if (thinkerDispatch != null) {
++                        thinkerDispatch.accept(DOOM().actions, thinker);
++                    }
+                 }
+             }
+             thinker = thinker.next;

@@ -1,0 +1,40 @@
+--- a/src/rr/drawfuns/R_DrawColumnBoomOpt.java
++++ b/src/rr/drawfuns/R_DrawColumnBoomOpt.java
+@@ -156,6 +156,7 @@ public abstract class R_DrawColumnBoomOpt<T, V> extends DoomColumnFunction<T, V>
+         }
+ 
+         public void invoke() {
++            doomdb.mocha.DoomDbDrawMetrics.column(dcvars, 1);
+             int count;
+             int dest; // killough
+             int frac; // killough
+--- a/src/rr/drawfuns/R_DrawColumnBoom.java
++++ b/src/rr/drawfuns/R_DrawColumnBoom.java
+@@ -145,6 +145,7 @@ public abstract class R_DrawColumnBoom<T, V> extends DoomColumnFunction<T, V> {
+         }
+ 
+         public void invoke() {
++            doomdb.mocha.DoomDbDrawMetrics.column(dcvars, 2);
+             int count;
+             int dest; // killough
+             int frac; // killough
+--- a/src/rr/drawfuns/R_DrawTranslatedColumn.java
++++ b/src/rr/drawfuns/R_DrawTranslatedColumn.java
+@@ -121,6 +121,7 @@ public abstract class R_DrawTranslatedColumn<T, V> extends DoomColumnFunction<T,
+         }
+ 
+         public void invoke() {
++            doomdb.mocha.DoomDbDrawMetrics.column(dcvars, 3);
+             int count;
+             // MAES: you know the deal by now...
+             int dest;
+--- a/src/rr/drawfuns/R_DrawSpan.java
++++ b/src/rr/drawfuns/R_DrawSpan.java
+@@ -27,6 +27,7 @@ public abstract class R_DrawSpan<T, V> extends DoomSpanFunction<T, V> {
+ 		}
+ 
+ 		public void invoke() {
++            doomdb.mocha.DoomDbDrawMetrics.span(dsvars, 1);
+ 
+ 			int f_xfrac; // fixed_t
+ 			int f_yfrac; // fixed_t

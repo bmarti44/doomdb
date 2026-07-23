@@ -36,8 +36,8 @@ docker compose config > "${tmp_dir}/compose.config"
 
 require_text 'gvenzl/oracle-free:23.26.2-full@sha256:df18ebc6b17107081b8bb8f1ee90e8018195dc9261e288100be99ef7bef268ff' "${tmp_dir}/compose.config" 'Oracle image is not pinned to the reviewed amd64 digest'
 require_text 'container-registry.oracle.com/database/ords:26.2.0@sha256:ae9ae8cbbb0c00f25e9624e3b60ffb3838488ca1231d4c9ae4e0a2ab3f4b8930' "${tmp_dir}/compose.config" 'ORDS image is not pinned to the reviewed amd64 digest'
-require_text 'cpus: 2' "${tmp_dir}/compose.config" 'database CPU limit is not exactly two CPUs'
-require_text 'mem_limit: "2147483648"' "${tmp_dir}/compose.config" 'database memory limit is not exactly 2 GiB'
+require_text 'cpuset: 0,1' "${tmp_dir}/compose.config" 'database is not pinned to exactly two CPUs'
+require_text 'mem_limit: "4294967296"' "${tmp_dir}/compose.config" 'database memory limit is not exactly 4 GiB'
 require_text '/opt/oracle/healthcheck.sh' "${tmp_dir}/compose.config" 'database health check is missing'
 require_text 'condition: service_healthy' "${tmp_dir}/compose.config" 'ORDS is not health-gated on the database'
 require_text 'DBSERVICENAME: FREEPDB1' "${tmp_dir}/compose.config" 'ORDS is not configured for FREEPDB1'
@@ -52,7 +52,7 @@ require_text 'http://127.0.0.1:8080/health.txt' "${tmp_dir}/compose.config" 'ORD
 
 require_text 'sga_target=1024m' deploy/local/db-entrypoint.sh 'required SGA tuning is missing'
 require_text 'pga_aggregate_target=256m' deploy/local/db-entrypoint.sh 'required PGA tuning is missing'
-require_text "create spfile='%s/dbs/spfileFREE.ora'" deploy/local/db-entrypoint.sh 'SPFILE regeneration is missing'
+require_text "create spfile='%s' from pfile='/tmp/doomdb-init.ora'" deploy/local/db-entrypoint.sh 'SPFILE regeneration is missing'
 require_text 'exec /opt/oracle/container-entrypoint.sh' deploy/local/db-entrypoint.sh 'database vendor entrypoint is not retained'
 require_text 'IFS= read -r ORACLE_PWD' deploy/local/ords-entrypoint.sh 'ORDS does not read its secret from a file'
 require_text 'ords uninstall' deploy/local/ords-entrypoint.sh 'fresh ORDS repository reconciliation is missing'
@@ -91,9 +91,11 @@ trap live_cleanup EXIT INT TERM
 
 docker compose -p "${project}" up --detach --wait --wait-timeout 1800
 
-[[ "$(docker inspect "${project}-db-1" --format '{{.HostConfig.NanoCpus}}')" == 2000000000 ]] || fail 'live database CPU limit differs from two CPUs'
+[[ "$(docker inspect "${project}-db-1" --format '{{.HostConfig.NanoCpus}}')" == 0 ]] || fail 'live database unexpectedly uses a CFS CPU quota'
 pass
-[[ "$(docker inspect "${project}-db-1" --format '{{.HostConfig.Memory}}')" == 2147483648 ]] || fail 'live database memory limit differs from 2 GiB'
+[[ "$(docker inspect "${project}-db-1" --format '{{.HostConfig.CpusetCpus}}')" == '0,1' ]] || fail 'live database CPU set differs from two CPUs'
+pass
+[[ "$(docker inspect "${project}-db-1" --format '{{.HostConfig.Memory}}')" == 4294967296 ]] || fail 'live database memory limit differs from 4 GiB'
 pass
 
 sql_result=$(docker compose -p "${project}" exec -T db bash -lc "printf \"set heading off feedback off pages 0\\nselect 'DOOMDB_SQL_READY' from dual;\\nexit\\n\" | sqlplus -s / as sysdba")

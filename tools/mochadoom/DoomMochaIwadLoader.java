@@ -71,6 +71,21 @@ public final class DoomMochaIwadLoader {
           throw new IllegalStateException("IWAD insert count");
         }
       }
+      // Fail closed on the Oracle-resident bytes. JDBC streaming success and
+      // the provenance column are not substitutes for hashing the staged LOB.
+      try (PreparedStatement verify = connection.prepareStatement(
+               "select dbms_lob.getlength(payload_bytes),"
+                   + "lower(rawtohex(dbms_crypto.hash(payload_bytes,"
+                   + "4))) "
+                   + "from doom_engine_artifact where artifact_name=?")) {
+        verify.setString(1, "freedoom1.wad");
+        try (ResultSet rows = verify.executeQuery()) {
+          if (!rows.next() || rows.getLong(1) != Files.size(path)
+              || !actualSha.equals(rows.getString(2))) {
+            throw new IllegalStateException("Oracle-resident IWAD staging mismatch");
+          }
+        }
+      }
       int soundCount = loadSounds(connection, iwad);
       int menuPatchCount = loadMenuPatches(connection, iwad);
       connection.commit();
@@ -174,6 +189,7 @@ public final class DoomMochaIwadLoader {
           insert.executeUpdate();
         }
       }
+      verifyAssetBlob(connection, assetId, sound.getValue().length, sha);
     }
     return sounds.size();
   }
@@ -282,6 +298,7 @@ public final class DoomMochaIwadLoader {
           insert.executeUpdate();
         }
       }
+      verifyAssetBlob(connection, assetId, bytes.length, sha);
     }
     return patches.size();
   }
@@ -289,6 +306,25 @@ public final class DoomMochaIwadLoader {
   private static int littleInt(byte[] bytes, int offset) {
     return (bytes[offset] & 0xff) | ((bytes[offset + 1] & 0xff) << 8)
         | ((bytes[offset + 2] & 0xff) << 16) | (bytes[offset + 3] << 24);
+  }
+
+  private static void verifyAssetBlob(
+      Connection connection, int assetId, int expectedBytes, String expectedSha)
+      throws Exception {
+    try (PreparedStatement verify = connection.prepareStatement(
+             "select dbms_lob.getlength(encoded_bytes),"
+                 + "lower(rawtohex(dbms_crypto.hash(encoded_bytes,"
+                 + "4))) from doom_asset_blob "
+                 + "where asset_id=?")) {
+      verify.setInt(1, assetId);
+      try (ResultSet rows = verify.executeQuery()) {
+        if (!rows.next() || rows.getInt(1) != expectedBytes
+            || !expectedSha.equals(rows.getString(2))) {
+          throw new IllegalStateException(
+              "Oracle-resident asset staging mismatch " + assetId);
+        }
+      }
+    }
   }
 
   private static int littleShort(byte[] bytes, int offset) {

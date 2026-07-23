@@ -11,6 +11,7 @@ declare
   l_source varchar2(24);l_raw varchar2(16);l_vector varchar2(64);
   l_job varchar2(64);l_frontier number;l_frontier_state varchar2(64);
   l_recovery varchar2(32);l_count number;
+  l_target number;l_target_effective number;
 
   procedure status_ is
   begin
@@ -61,6 +62,19 @@ begin
       l_accepted,l_duplicate_tic,l_epoch,l_generation);
   exception when others then l_error:=sqlcode;end;
   if l_error=0 then raise_application_error(-20000,'mismatched retry accepted');end if;
+
+  status_;l_target:=l_tic+5;
+  doom_api.revise_match_input(l_match,l_p0,2,'0800000000000000',
+    l_accepted,l_target_effective,l_epoch,l_generation,l_target);
+  if l_accepted<>1 or l_target_effective<l_target then
+    raise_application_error(-20000,'scheduled input target ignored');end if;
+  l_error:=0;
+  begin
+    doom_api.revise_match_input(l_match,l_p0,3,'0800000000000000',
+      l_accepted,l_duplicate_tic,l_epoch,l_generation,l_tic+13);
+  exception when others then l_error:=sqlcode;end;
+  if l_error=0 then
+    raise_application_error(-20000,'out-of-window input target accepted');end if;
 
   for i in 1..1000 loop
     select current_tic into l_tic from doom_match where match_id=l_match;

@@ -1,0 +1,62 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1162821|source_sha256=4cc6da908df03fbd7217aa0005c167dcf78451d14803ffa627b0360ae69c7094|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_MLE_MEMORY_CAL_SESSION|sid=58|serial=26727|spid=83530|action=BASELINE_READY|pga=15644992|pga_max=15644992|uga=1960160|uga_max=1960160|process_pga=15703497|process_pga_max=16290457
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=BASELINE|spid=83530|rss=283340800|pss=140968960|private_clean=28921856|private_dirty=87334912|anonymous=87310336
+PMLE_MLE_MEMORY_CAL_SESSION|sid=58|serial=26727|spid=83530|action=ALLOCATED_READY|pga=15579456|pga_max=15776064|uga=1960160|uga_max=1960160|process_pga=15601985|process_pga_max=16290457
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=ALLOCATED|spid=83530|rss=361676800|pss=217894912|private_clean=29487104|private_dirty=164306944|anonymous=164282368
+PMLE_MLE_MEMORY_CAL_SESSION|sid=58|serial=26727|spid=83530|action=RELEASED_READY|pga=15579456|pga_max=15776064|uga=1960160|uga_max=1960160|process_pga=15601985|process_pga_max=16290457
+PMLE_MLE_MEMORY_CAL_PROCESS|phase=RELEASED|spid=83530|rss=362151936|pss=218188800|private_clean=29544448|private_dirty=164405248|anonymous=164380672
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_MLE_MEMORY_CAL_ALLOCATION|bytes=67108864|loaded=67108864
+PMLE_MLE_MEMORY_CAL|PASS|allocation_bytes=67108864|minimum_visible_bytes=50331648|pss_delta=76925952|private_delta=77537280|pga_is_complete=0
+PMLE_WORKER_SOAK_MATCH|BOUND|match=1aee8ceeaabac6754211511ad19dc793
+PMLE_WORKER_SOAK_WARMUP|BEGIN|seconds=0|epoch=1784795778
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|sid=47|serial=53888|spid=82196|action=MLE_STEP|pga_bytes=18363065|pga_max_bytes=72323737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=82196|sample_epoch=1784795778|rss=700805120|pss=315996160|private_clean=2789376|private_dirty=238350336|anonymous=238342144
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|sid=47|serial=53888|spid=82196|action=MLE_STEP|pga_bytes=30737505|pga_max_bytes=72323737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=82196|sample_epoch=1784795784|rss=778207232|pss=363191296|private_clean=7286784|private_dirty=271130624|anonymous=271122432
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|sid=47|serial=53888|spid=82196|action=MLE_STEP|pga_bytes=30613473|pga_max_bytes=72323737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=82196|sample_epoch=1784795790|rss=795242496|pss=377097216|private_clean=6909952|private_dirty=286003200|anonymous=285995008
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|sid=47|serial=53888|spid=82196|action=-|pga_bytes=30613473|pga_max_bytes=72323737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=82196|sample_epoch=1784795795|rss=780644352|pss=359718912|private_clean=6602752|private_dirty=268124160|anonymous=268115968
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|sid=47|serial=53888|spid=82196|action=MLE_STEP|pga_bytes=30737505|pga_max_bytes=72323737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=82196|sample_epoch=1784795801|rss=799797248|pss=375042048|private_clean=4546560|private_dirty=283852800|anonymous=283844608
+PASS P13.5-MULTIPLAYER-SOAK seconds=20 warmupSeconds=0 tics=174/168-881/875 maxLag=21 maxReconnectSeconds=0 resyncs=0/0 frames=0 checkpoints=1 bytes=0 disconnectedNeutral=0 initialNeutral=307 paint999Max=37.6/37.6,35.8/35.8
+PMLE_WORKER_SOAK_MEMORY|FAIL|role=AUTHORITY|samples=5|warmup_excluded=1|spid_stable=1|margin=67108864|rss_base=700805120|rss_max=799797248|rss_end=799797248|pss_base=315996160|pss_max=377097216|pss_end=375042048|private_base=241139712|private_max=292913152|private_end=288399360|plateau_steps_8m=3
+PMLE_WORKER_SOAK_MEMORY|FAIL|role=STANDBY|samples=0|warmup_excluded=1|spid_stable=1|margin=67108864|rss_base=0|rss_max=0|rss_end=0|pss_base=0|pss_max=0|pss_end=0|private_base=0|private_max=0|private_end=0|plateau_steps_8m=0

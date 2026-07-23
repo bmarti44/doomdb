@@ -1,0 +1,23 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+PMLE_ARTIFACT|source_bytes=1162821|source_sha256=4cc6da908df03fbd7217aa0005c167dcf78451d14803ffa627b0360ae69c7094|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+declare
+*
+ERROR at line 1:
+ORA-20796: membership MLE artifact SHA
+ORA-06512: at line 132
+ORA-06512: at line 90
+
+

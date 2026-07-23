@@ -207,10 +207,11 @@ export async function submitMatchBatchInput(match, playerCapability, firstTic, f
         generation: numberField(document, 'p_generation'),
         payload: stringField(document, 'p_payload') };
 }
-export async function reviseMatchInput(match, playerCapability, inputSequence, ticcmdHex) {
+export async function reviseMatchInput(match, playerCapability, inputSequence, ticcmdHex, targetTic) {
     const document = await postAsync('revise_match_input', {
         p_match: match, p_player_capability: playerCapability,
-        p_input_seq: inputSequence, p_ticcmd_hex: ticcmdHex
+        p_input_seq: inputSequence, p_ticcmd_hex: ticcmdHex,
+        p_target_tic: targetTic
     });
     return { accepted: numberField(document, 'p_accepted'),
         effectiveTic: numberField(document, 'p_effective_tic'),
@@ -246,6 +247,20 @@ export async function pollMatchBatch(match, playerCapability, firstTic, waitMill
     });
     return { currentTic: numberField(document, 'p_current_tic'),
         payload: stringField(document, 'p_payload') };
+}
+export async function pollMatchTransitions(match, playerCapability, afterTic, holdMilliseconds = 500, maxTransitions = 32) {
+    const document = await postAsync('poll_match_transitions', {
+        p_match: match, p_player_capability: playerCapability,
+        p_after_tic: afterTic, p_hold_ms: holdMilliseconds,
+        p_max_transitions: maxTransitions
+    });
+    const ready = numberField(document, 'p_ready');
+    if (ready !== 0 && ready !== 1) {
+        throw new TypeError('p_ready response field is invalid');
+    }
+    // Timeout is a valid DMB1 batch with zero records, not a missing payload.
+    return { currentTic: numberField(document, 'p_current_tic'),
+        payload: stringField(document, 'p_payload'), ready: ready === 1 };
 }
 export async function pollMatchFrame(match, playerCapability, tic, waitMilliseconds = 1000) {
     const document = await postAsync('poll_match_frame', {

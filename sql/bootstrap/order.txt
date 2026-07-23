@@ -22,6 +22,7 @@ sql/schema/048_multiplayer_worker.sql
 sql/schema/049_multiplayer_route_diagnostics.sql
 sql/schema/050_multiplayer_input_overlay.sql
 sql/schema/051_multiplayer_paced_input.sql
+sql/schema/052_mle_authority_transport.sql
 sql/schema/050_config.sql
 sql/engine/005_render_axes.sql
 sql/engine/010_engine_defs.sql
@@ -63,8 +64,11 @@ sql/sim/077_retained_switch_presentation.sql
 sql/sim/078_retained_render_worker.sql
 sql/sim/082_mochadoom_bridge.sql
 sql/sim/080_unified_worker.sql
-sql/sim/084_multiplayer_worker.sql
 sql/sim/085_session_cleanup.sql
+sql/sim/086_mle_authority_delta.sql
+sql/sim/087_mle_transition_transport.sql
+sql/sim/088_mle_match_runtime.sql
+sql/sim/084_multiplayer_worker.sql
 sql/render/r1/012_staged_rays_intersections.sql
 sql/render/r1/014_staged_bounded_hits.sql
 sql/render/r2/010_portal_timeline.sql

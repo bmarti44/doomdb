@@ -1,0 +1,29 @@
+--- a/src/doomdb/mocha/DoomDbMochaAdapter.java
++++ b/src/doomdb/mocha/DoomDbMochaAdapter.java
+@@ -645,6 +645,16 @@ public final class DoomDbMochaAdapter {
+     }
+   }
+ 
++  /** Test-only command-cardinality probe for sizing the MLE draw-tape port. */
++  public static synchronized String drawMetricsBenchmarkSafe(
++      int samples, int warmups, int forwardMove, int sideMove,
++      int angleTurn, int fireEvery) {
++    DoomDbDrawMetrics.beginRun();
++    String result = benchmarkSafe(samples, warmups, forwardMove, sideMove,
++        angleTurn, fireEvery);
++    return result + '|' + DoomDbDrawMetrics.finish();
++  }
++
+   /** Run a bounded moving/firing route entirely inside the retained JVM. */
+   public static synchronized String benchmarkSafe(
+       int samples, int warmups, int forwardMove, int sideMove,
+@@ -681,7 +691,9 @@ public final class DoomDbMochaAdapter {
+         lastAudioJson = DummySFX.drainEvents(engine.gametic);
+         long ticker = (System.nanoTime() - stageStarted) / 1000L;
+         stageStarted = System.nanoTime();
++        DoomDbDrawMetrics.beginFrame();
+         engine.Display();
++        DoomDbDrawMetrics.endFrame();
+         long render = (System.nanoTime() - stageStarted) / 1000L;
+         if (index >= 0) {
+           tickerMicros[index] = ticker;

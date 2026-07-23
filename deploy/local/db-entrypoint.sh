@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # The pinned image's default memory target cannot open FREEPDB1 reliably inside
-# the required 2 GiB cgroup. Recreate its SPFILE from Oracle's generated PFILE
+# the bounded local cgroup. Recreate its SPFILE from Oracle's generated PFILE
 # before the vendor entrypoint starts, using supported Oracle configuration.
 pfile_source=$(find /opt/oracle/admin/FREE/pfile -maxdepth 1 -type f -name 'init.ora.*' -print -quit)
 if [[ -z "${pfile_source}" ]]; then
