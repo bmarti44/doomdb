@@ -60,6 +60,7 @@
     "ledgerEveryTic13272": "PASS",
     "finalWorkerSoak": "RERUN_REQUIRED_AFTER_LIFECYCLE_HARDENING",
     "lifecycleHardening": "PASS",
+    "postHardeningCausalSoak": "PASS",
     "calibratedProcessMemory": "PASS",
     "browserConfirmedOnly": "PASS",
     "soloMleAuthority": "PASS",
@@ -87,7 +88,14 @@
     "promotedAttemptReason": "legacy cleanup stop/lifecycle ownership race",
     "postDietPartialAuthorityPssMinimumBytes": 262067200,
     "postDietPartialAuthorityPssMaximumBytes": 311932928,
-    "postDietPartialPlateauProven": false
+    "postDietPartialPlateauProven": false,
+    "causalSoakScoredSeconds": 180,
+    "causalSoakPresentations": [
+      6286,
+      6287
+    ],
+    "causalSoakReconnects": 0,
+    "causalSoakStableSpids": true
   },
   "capacity": {
     "effectivePdbCpu": 1,
@@ -125,7 +133,7 @@
     {
       "id": "SOAK",
       "state": "NEXT",
-      "label": "Post-hardening short reproduction, then 30-minute final soak"
+      "label": "30-minute final promoted-artifact soak"
     },
     {
       "id": "WAN",
@@ -157,6 +165,8 @@
     "initDietPromotion": "artifacts/performance/pmle-init-diet/promotion-a942cd2d-2026-07-23.log",
     "voidedPromotedSoak": "artifacts/performance/pmle-worker-soak/run-final-init-diet-a942-2026-07-23.log",
     "voidedDiagnosticSmoke": "artifacts/performance/pmle-worker-soak/run-smoke-init-diet-harness2-2026-07-23.log",
-    "lifecycleHardening": "artifacts/performance/pmle-worker-lifecycle/run-2026-07-23.log"
+    "lifecycleHardening": "artifacts/performance/pmle-worker-lifecycle/run-2026-07-23.log",
+    "causalSoak": "artifacts/performance/pmle-worker-soak/run-smoke-foreground-180-warm300-c664-2026-07-23.log",
+    "browserReplicaProfile": "artifacts/performance/pmle-browser-replica/profile-2026-07-23.log"
   }
 }

@@ -1,0 +1,12 @@
+PMLE_BROWSER_REPLICA_PROFILE|artifact_authority=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2|artifact_presentation=d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c|browser=chromium_headless|tics=5000
+PMLE_BROWSER_REPLICA_PROFILE|tic=500|verify_ms_per_tic=0.1196|present_step_ms_per_tic=0.1278|render_ms_per_tic=1.6982|total_ms_per_tic=1.9456
+PMLE_BROWSER_REPLICA_PROFILE|tic=1000|verify_ms_per_tic=0.0492|present_step_ms_per_tic=0.0462|render_ms_per_tic=1.0244|total_ms_per_tic=1.1198
+PMLE_BROWSER_REPLICA_PROFILE|tic=1500|verify_ms_per_tic=0.0424|present_step_ms_per_tic=0.0404|render_ms_per_tic=0.9858|total_ms_per_tic=1.0686
+PMLE_BROWSER_REPLICA_PROFILE|tic=2000|verify_ms_per_tic=0.0408|present_step_ms_per_tic=0.0450|render_ms_per_tic=1.0158|total_ms_per_tic=1.1016
+PMLE_BROWSER_REPLICA_PROFILE|tic=2500|verify_ms_per_tic=0.0390|present_step_ms_per_tic=0.0364|render_ms_per_tic=0.9638|total_ms_per_tic=1.0392
+PMLE_BROWSER_REPLICA_PROFILE|tic=3000|verify_ms_per_tic=0.0374|present_step_ms_per_tic=0.0392|render_ms_per_tic=1.0010|total_ms_per_tic=1.0776
+PMLE_BROWSER_REPLICA_PROFILE|tic=3500|verify_ms_per_tic=0.0364|present_step_ms_per_tic=0.0452|render_ms_per_tic=1.0088|total_ms_per_tic=1.0904
+PMLE_BROWSER_REPLICA_PROFILE|tic=4000|verify_ms_per_tic=0.0406|present_step_ms_per_tic=0.0364|render_ms_per_tic=0.9792|total_ms_per_tic=1.0562
+PMLE_BROWSER_REPLICA_PROFILE|tic=4500|verify_ms_per_tic=0.0442|present_step_ms_per_tic=0.0382|render_ms_per_tic=1.0136|total_ms_per_tic=1.0960
+PMLE_BROWSER_REPLICA_PROFILE|tic=5000|verify_ms_per_tic=0.0446|present_step_ms_per_tic=0.0478|render_ms_per_tic=1.0566|total_ms_per_tic=1.1490
+PMLE_BROWSER_REPLICA_PROFILE|VERDICT|compute_headroom=PASS|late_total_ms_per_tic=1.1490|35hz_slot_ms=28.571|observed_17fps_cause=headless_background_timer_throttling

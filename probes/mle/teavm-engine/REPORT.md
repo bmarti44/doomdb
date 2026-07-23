@@ -504,8 +504,24 @@ were rechecked after pool restart.
 Deploy prewarm now retires both old incarnations, warms authority first, admits
 when it is ready, and only then warms standby. Under the edition cap the live
 measurement was 28 seconds to first-admittable and 55 seconds total. The
-post-hardening short causal soak is next; only after it passes will the clean
-30-minute `a942cd2d…` soak be cited.
+post-hardening causal soak then passed 180 scored seconds after the required
+300-second excluded warmup: 6,286/6,287 unique client presentations (34.9
+FPS), zero reconnects, stable SPIDs/incarnations, and zero process replacement.
+Authority RSS/PSS/private ended below baseline; standby stayed within 9 MiB
+RSS and 5 MiB PSS. Shared-dirty attribution was flat enough to produce zero
+8-MiB plateau steps.
+
+Two diagnostic failures leading to that pass remain in evidence. A 60-second
+warmup put the RSS baseline before the Oracle `/SYSV` SGA working set was
+touched; the resulting 124-MiB RSS rise decomposed to only 38 MiB PSS and
+30 MiB private, with the excess confirmed in the shared SGA mapping. A later
+five-minute run exposed Chromium background-tab timer throttling because the
+two simulated user devices shared one headless browser process. A direct
+5,000-tic Chromium profile measured only 0.04 ms verifier step, 0.04 ms
+presenter step, and about 1.0 ms render per tic. The harness now disables
+background/occluded renderer throttling so both pages model foreground clients;
+no application gate or memory margin changed. The clean 30-minute
+`a942cd2d…` soak remains the next acceptance gate.
 
 The build-review dashboard now consumes a generated, evidence-validated
 `mle-status.json`, publishes the final pair and gate states, links to the MLE

@@ -1,0 +1,69 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1167197|source_sha256=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_MLE_MEMORY_CAL|SKIPPED|rehearsal_only=1
+PMLE_WORKER_SOAK_MATCH|BOUND|match=43171da667c26eec88204682d8197bad
+PMLE_WORKER_SOAK_WARMUP|BEGIN|seconds=300|epoch=1784834284
+PMLE_WORKER_SOAK_READY_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=-|pga_bytes=30926633|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_READY_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=30461761|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=-|pga_bytes=30926633|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784834590|rss=865443840|pss=318985216|pss_anon=213549056|pss_file=71673856|pss_shmem=33761280|shared_clean=242913280|shared_dirty=389926912|private_clean=18993152|private_dirty=213610496|anonymous=213549056
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=18467553|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784834590|rss=590864384|pss=248239104|pss_anon=191451136|pss_file=40251392|pss_shmem=16536576|shared_clean=195559424|shared_dirty=202481664|private_clean=1372160|private_dirty=191451136|anonymous=191451136
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=-|pga_bytes=18933545|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784834621|rss=825077760|pss=301906944|pss_anon=213925888|pss_file=54248448|pss_shmem=33732608|shared_clean=210972672|shared_dirty=390168576|private_clean=9949184|private_dirty=213987328|anonymous=213925888
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=18467553|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784834621|rss=592113664|pss=252035072|pss_anon=191451136|pss_file=43950080|pss_shmem=16633856|shared_clean=195469312|shared_dirty=203730944|private_clean=1462272|private_dirty=191451136|anonymous=191451136
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=-|pga_bytes=18933545|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784834652|rss=821325824|pss=298127360|pss_anon=209932288|pss_file=54434816|pss_shmem=33759232|shared_clean=211038208|shared_dirty=390344704|private_clean=9949184|private_dirty=209993728|anonymous=209932288
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=18467553|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784834652|rss=593154048|pss=252468224|pss_anon=191451136|pss_file=44268544|pss_shmem=16747520|shared_clean=195469312|shared_dirty=204771328|private_clean=1462272|private_dirty=191451136|anonymous=191451136
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=MLE_STEP|pga_bytes=19098865|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784834683|rss=822050816|pss=298537984|pss_anon=210567168|pss_file=54262784|pss_shmem=33708032|shared_clean=211038208|shared_dirty=390434816|private_clean=9949184|private_dirty=210628608|anonymous=210567168
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=18467553|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784834683|rss=594341888|pss=252402688|pss_anon=191451136|pss_file=44112896|pss_shmem=16837632|shared_clean=195469312|shared_dirty=205959168|private_clean=1462272|private_dirty=191451136|anonymous=191451136
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=-|pga_bytes=18844865|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784834714|rss=827904000|pss=304049152|pss_anon=215875584|pss_file=54443008|pss_shmem=33729536|shared_clean=211038208|shared_dirty=390979584|private_clean=9949184|private_dirty=215937024|anonymous=215875584
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=18467553|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784834714|rss=595582976|pss=252686336|pss_anon=191451136|pss_file=44288000|pss_shmem=16947200|shared_clean=195469312|shared_dirty=207200256|private_clean=1462272|private_dirty=191451136|anonymous=191451136
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=MLE_STEP|pga_bytes=19121929|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784834746|rss=831037440|pss=302894080|pss_anon=215281664|pss_file=53984256|pss_shmem=33627136|shared_clean=211038208|shared_dirty=394706944|private_clean=9949184|private_dirty=215343104|anonymous=215281664
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=18467553|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784834746|rss=599793664|pss=253094912|pss_anon=192180224|pss_file=43890688|pss_shmem=17024000|shared_clean=195469312|shared_dirty=210681856|private_clean=1462272|private_dirty=192180224|anonymous=192180224
+PMLE_WORKER_SOAK_BROWSER_EVIDENCE|BEGIN
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=6286|advanced=6415|resyncs=8|last_resync_at=5717
+PMLE_SOAK_BROWSER_DIAG|slot=1|presented=6287|advanced=6417|resyncs=8|last_resync_at=5699
+PASS P13.5-MULTIPLAYER-SOAK seconds=180 warmupSeconds=300 tics=10865/10863-17280/17280 maxLag=17 maxReconnectSeconds=0 resyncs=8/8 frames=0 checkpoints=2 bytes=0 disconnectedNeutral=0 initialNeutral=21718 paint999Max=64.9/421.4,56.7/98.9 memory=19511616/19839296 java=0/0 gc=0/0
+PMLE_WORKER_SOAK_BROWSER_EVIDENCE|END
+PMLE_WORKER_SOAK_MEMORY|PASS|role=AUTHORITY|samples=6|warmup_excluded=1|spid_stable=1|margin=67108864|rss_base=865443840|rss_max=865443840|rss_end=831037440|pss_base=318985216|pss_max=318985216|pss_end=302894080|private_base=232603648|private_max=232603648|private_end=225292288|pss_anon_base=213549056|pss_anon_max=215875584|pss_anon_end=215281664|shared_dirty_base=389926912|shared_dirty_max=394706944|shared_dirty_end=394706944|plateau_steps_8m=0
+PMLE_WORKER_SOAK_MEMORY|PASS|role=STANDBY|samples=6|warmup_excluded=1|spid_stable=1|margin=67108864|rss_base=590864384|rss_max=599793664|rss_end=599793664|pss_base=248239104|pss_max=253094912|pss_end=253094912|private_base=192823296|private_max=193642496|private_end=193642496|pss_anon_base=191451136|pss_anon_max=192180224|pss_anon_end=192180224|shared_dirty_base=202481664|shared_dirty_max=210681856|shared_dirty_end=210681856|plateau_steps_8m=0
+PMLE_WORKER_SOAK_SLOW|tic=3185|generation=1|elapsed_ms=255.904|started_utc=2026-07-23T19:19:05.425222Z|ended_utc=2026-07-23T19:19:05.681126Z|ash_samples=0|on_cpu=0|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=17408|generation=1|elapsed_ms=300.919|started_utc=2026-07-23T19:25:44.827263Z|ended_utc=2026-07-23T19:25:45.128182Z|ash_samples=1|on_cpu=1|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=17493|generation=1|elapsed_ms=1177.309|started_utc=2026-07-23T19:25:48.436479Z|ended_utc=2026-07-23T19:25:49.613788Z|ash_samples=3|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=17494|generation=1|elapsed_ms=648.599|started_utc=2026-07-23T19:25:50.512137Z|ended_utc=2026-07-23T19:25:51.160736Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_RES_MGR|ash_samples=131|cpu_quantum=0
+PMLE_WORKER_SOAK|PASS|duration_s=180|warmup_s=300|memory_margin=67108864|evidence=artifacts/performance/pmle-worker-soak/run-smoke-foreground-180-warm300-c664-2026-07-23.log

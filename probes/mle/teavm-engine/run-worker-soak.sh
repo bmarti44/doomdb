@@ -39,6 +39,7 @@ match=''
 browser_preserved=0
 run_terminal=0
 process_missing=0
+browser_failed=0
 
 preserve_browser_evidence() {
   ((browser_preserved == 0)) || return 0
@@ -213,10 +214,12 @@ SQL
             exit 0
           fi
           awk -v role="$1" -v spid="$2" -v sampled="$3" '\''
-            /^(Rss|Pss|Private_Clean|Private_Dirty|Anonymous):/ {value[$1]=$2*1024}
-            END {printf "PMLE_WORKER_SOAK_PROCESS|role=%s|spid=%s|sample_epoch=%s|rss=%d|pss=%d|private_clean=%d|private_dirty=%d|anonymous=%d\n",
-              role,spid,sampled,value["Rss:"],value["Pss:"],value["Private_Clean:"],
-              value["Private_Dirty:"],value["Anonymous:"]}
+            /^(Rss|Pss|Pss_Anon|Pss_File|Pss_Shmem|Shared_Clean|Shared_Dirty|Private_Clean|Private_Dirty|Anonymous):/ {value[$1]=$2*1024}
+            END {printf "PMLE_WORKER_SOAK_PROCESS|role=%s|spid=%s|sample_epoch=%s|rss=%d|pss=%d|pss_anon=%d|pss_file=%d|pss_shmem=%d|shared_clean=%d|shared_dirty=%d|private_clean=%d|private_dirty=%d|anonymous=%d\n",
+              role,spid,sampled,value["Rss:"],value["Pss:"],
+              value["Pss_Anon:"],value["Pss_File:"],value["Pss_Shmem:"],
+              value["Shared_Clean:"],value["Shared_Dirty:"],
+              value["Private_Clean:"],value["Private_Dirty:"],value["Anonymous:"]}
           '\'' "/proc/$2/smaps_rollup"
         ' _ "$role" "$spid" "$now" </dev/null)"
         printf '%s\n' "$sample_output" | tee -a "$memory_log" >>"$log"
@@ -243,12 +246,7 @@ if ((process_missing != 0)); then
   run_terminal=1
   exit 1
 fi
-if ((status != 0)); then
-  printf 'PMLE_WORKER_SOAK|FAIL|reason=browser_gate|browser_status=%s|evidence=%s\n' \
-    "$status" "${log#$root/}" | tee -a "$log"
-  run_terminal=1
-  exit "$status"
-fi
+if ((status != 0)); then browser_failed=1;fi
 
 memory_status=0
 summary="$(awk -F'|' -v margin="$margin" '
@@ -258,12 +256,16 @@ summary="$(awk -F'|' -v margin="$margin" '
   /PMLE_WORKER_SOAK_PROCESS/ {
     role="";spid="";for(i=1;i<=NF;i++){split($i,p,"=");if(p[1]=="role")role=p[2];if(p[1]=="spid")spid=p[2]}
     rss=field("rss");pss=field("pss");priv=field("private_clean")+field("private_dirty")
-    if(!(role in count)){base_rss[role]=rss;base_pss[role]=pss;base_priv[role]=priv;first_spid[role]=spid;previous[role]=pss}
+    anon=field("pss_anon");shared_dirty=field("shared_dirty")
+    if(!(role in count)){base_rss[role]=rss;base_pss[role]=pss;base_priv[role]=priv;base_anon[role]=anon;base_shared_dirty[role]=shared_dirty;first_spid[role]=spid;previous[role]=pss}
     count[role]++;if(spid!=first_spid[role])changed[role]=1
     if(rss>max_rss[role])max_rss[role]=rss;if(pss>max_pss[role])max_pss[role]=pss
     if(priv>max_priv[role])max_priv[role]=priv
+    if(anon>max_anon[role])max_anon[role]=anon
+    if(shared_dirty>max_shared_dirty[role])max_shared_dirty[role]=shared_dirty
     if(pss-previous[role]>=8388608)steps[role]++;previous[role]=pss
     end_rss[role]=rss;end_pss[role]=pss;end_priv[role]=priv
+    end_anon[role]=anon;end_shared_dirty[role]=shared_dirty
   }
   END {
     roles[1]="AUTHORITY";roles[2]="STANDBY";ok=1
@@ -271,9 +273,10 @@ summary="$(awk -F'|' -v margin="$margin" '
       r=roles[j];pass=count[r]>0&&!changed[r]&&max_rss[r]<=base_rss[r]+margin&&
         max_pss[r]<=base_pss[r]+margin&&max_priv[r]<=base_priv[r]+margin
       if(!pass)ok=0
-      printf "PMLE_WORKER_SOAK_MEMORY|%s|role=%s|samples=%d|warmup_excluded=1|spid_stable=%d|margin=%d|rss_base=%d|rss_max=%d|rss_end=%d|pss_base=%d|pss_max=%d|pss_end=%d|private_base=%d|private_max=%d|private_end=%d|plateau_steps_8m=%d\n",
+      printf "PMLE_WORKER_SOAK_MEMORY|%s|role=%s|samples=%d|warmup_excluded=1|spid_stable=%d|margin=%d|rss_base=%d|rss_max=%d|rss_end=%d|pss_base=%d|pss_max=%d|pss_end=%d|private_base=%d|private_max=%d|private_end=%d|pss_anon_base=%d|pss_anon_max=%d|pss_anon_end=%d|shared_dirty_base=%d|shared_dirty_max=%d|shared_dirty_end=%d|plateau_steps_8m=%d\n",
         pass?"PASS":"FAIL",r,count[r]+0,changed[r]?0:1,margin,base_rss[r]+0,max_rss[r]+0,end_rss[r]+0,
-        base_pss[r]+0,max_pss[r]+0,end_pss[r]+0,base_priv[r]+0,max_priv[r]+0,end_priv[r]+0,steps[r]+0
+        base_pss[r]+0,max_pss[r]+0,end_pss[r]+0,base_priv[r]+0,max_priv[r]+0,end_priv[r]+0,
+        base_anon[r]+0,max_anon[r]+0,end_anon[r]+0,base_shared_dirty[r]+0,max_shared_dirty[r]+0,end_shared_dirty[r]+0,steps[r]+0
     }
     exit(ok?0:1)
   }' "$memory_log")" || memory_status=$?
@@ -308,7 +311,12 @@ where session_id in(
 exit
 SQL
 
-if ((memory_status == 0)); then
+if ((browser_failed != 0)); then
+  printf 'PMLE_WORKER_SOAK|FAIL|reason=browser_gate|browser_status=%s|memory_status=%s|evidence=%s\n' \
+    "$status" "$memory_status" "${log#$root/}" | tee -a "$log"
+  run_terminal=1
+  exit "$status"
+elif ((memory_status == 0)); then
   printf 'PMLE_WORKER_SOAK|PASS|duration_s=%s|warmup_s=%s|memory_margin=%s|evidence=%s\n' \
     "$duration" "$warmup" "$margin" "${log#$root/}" | tee -a "$log"
   run_terminal=1

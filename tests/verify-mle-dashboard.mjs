@@ -16,6 +16,7 @@ for (const marker of [
   'separate Co-op and Multiplayer shortcuts remain on the right',
   'single normal lifecycle writer',
   'explicitly VOIDED',
+  '6,286/6,287 unique presentations',
   'WAN matrix',
   'Presentation / DVR'
 ]) {
@@ -38,6 +39,7 @@ assert.equal(status.gates.ledgerEveryTic13272, 'PASS');
 assert.equal(status.gates.finalWorkerSoak,
   'RERUN_REQUIRED_AFTER_LIFECYCLE_HARDENING');
 assert.equal(status.gates.lifecycleHardening, 'PASS');
+assert.equal(status.gates.postHardeningCausalSoak, 'PASS');
 assert.equal(status.gates.soloMleAuthority, 'PASS');
 assert.equal(status.gates.warmPoolAdmissionP95, 'PASS');
 assert.equal(status.gates.warmStandbyHealing, 'PASS');
@@ -49,6 +51,7 @@ assert.equal(status.solo.warmAdmissionSamples, 10);
 assert.equal(status.solo.sequentialAuthorityFirstAdmittableSeconds, 28);
 assert.equal(status.soak.promotedAttemptState, 'VOIDED');
 assert.equal(status.soak.postDietPartialPlateauProven, false);
+assert.deepEqual(status.soak.causalSoakPresentations, [6286, 6287]);
 assert.equal(status.architecture.productionOjvm, false);
 assert.equal(status.playModes.singlePlayer.state, 'AVAILABLE');
 assert.equal(status.playModes.coop.path, '/play/multiplayer.html#mode=COOP');

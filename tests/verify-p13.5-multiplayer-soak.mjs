@@ -42,7 +42,15 @@ const workerMemory=match=>{
   return {sessions:Number(row[1]),doomSessions:Number(row[2]),pga:Number(row[3]),
     uga:Number(row[4]),javaSession:Number(row[5]),javaCall:Number(row[6]),gc:Number(row[7])};
 };
-const browser=await chromium.launch({headless:true});
+// Both pages represent foreground clients on separate user devices. Chromium
+// otherwise begins background/occluded-tab timer throttling after five minutes
+// in one headless process, manufacturing an ~17 FPS tail that real foreground
+// clients do not experience.
+const browser=await chromium.launch({headless:true,args:[
+  '--disable-background-timer-throttling',
+  '--disable-backgrounding-occluded-windows',
+  '--disable-renderer-backgrounding'
+]});
 const contexts=await Promise.all([0,1].map(()=>browser.newContext({viewport:{width:960,height:720}})));
 const [host,guest]=await Promise.all(contexts.map(context=>context.newPage()));
 await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
@@ -168,6 +176,11 @@ try {
     return ordered[Math.max(0,Math.ceil(ordered.length*fraction)-1)];
   };
   for (let slot=0;slot<2;slot++) {
+    process.stdout.write(`PMLE_SOAK_BROWSER_DIAG|slot=${slot}`+
+      `|presented=${presented[slot].length}`+
+      `|advanced=${ends[slot]-starts[slot]}`+
+      `|resyncs=${evidence[slot].resyncs.length}`+
+      `|last_resync_at=${evidence[slot].resyncs.at(-1)?.atCount??0}\n`);
     assert.ok(presented[slot].length>=seconds*25,
       `soak player ${slot} presented ${presented[slot].length} frames`);
     assert.equal(evidence[slot].paintAt.length,presented[slot].length,

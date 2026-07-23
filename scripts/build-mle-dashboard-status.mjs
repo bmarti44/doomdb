@@ -27,6 +27,11 @@ const voidedSmokePath =
   'artifacts/performance/pmle-worker-soak/run-smoke-init-diet-harness2-2026-07-23.log';
 const lifecyclePath =
   'artifacts/performance/pmle-worker-lifecycle/run-2026-07-23.log';
+const causalSoakPath =
+  'artifacts/performance/pmle-worker-soak/' +
+  'run-smoke-foreground-180-warm300-c664-2026-07-23.log';
+const browserProfilePath =
+  'artifacts/performance/pmle-browser-replica/profile-2026-07-23.log';
 const soak = read(soakPath);
 const ledger = read(ledgerPath);
 const initDiet = read(initDietPath);
@@ -36,6 +41,8 @@ const warmPool = read(warmPoolPath);
 const voidedSoak = read(voidedSoakPath);
 const voidedSmoke = read(voidedSmokePath);
 const lifecycle = read(lifecyclePath);
+const causalSoak = read(causalSoakPath);
+const browserProfile = read(browserProfilePath);
 const authority = versions.teaVM;
 const presentation = authority.presentation;
 
@@ -100,6 +107,18 @@ contains(lifecycle,
 contains(lifecycle,
   'PMLE_PREWARM_ORDER|PASS|order=RETIRE_BOTH_THEN_AUTHORITY_THEN_STANDBY',
   'sequential authority-first prewarm');
+contains(causalSoak,
+  'PASS P13.5-MULTIPLAYER-SOAK seconds=180 warmupSeconds=300',
+  'post-hardening causal browser soak');
+contains(causalSoak,
+  'PMLE_WORKER_SOAK_MEMORY|PASS|role=AUTHORITY',
+  'post-hardening authority memory');
+contains(causalSoak,
+  'PMLE_WORKER_SOAK|PASS|duration_s=180|warmup_s=300',
+  'post-hardening causal soak');
+contains(browserProfile,
+  'PMLE_BROWSER_REPLICA_PROFILE|VERDICT|compute_headroom=PASS',
+  'browser confirmed-replica stage profile');
 
 const status = {
   schema: 1,
@@ -160,6 +179,7 @@ const status = {
     ledgerEveryTic13272: 'PASS',
     finalWorkerSoak: 'RERUN_REQUIRED_AFTER_LIFECYCLE_HARDENING',
     lifecycleHardening: 'PASS',
+    postHardeningCausalSoak: 'PASS',
     calibratedProcessMemory: 'PASS',
     browserConfirmedOnly: 'PASS',
     soloMleAuthority: 'PASS',
@@ -188,7 +208,11 @@ const status = {
     promotedAttemptReason: 'legacy cleanup stop/lifecycle ownership race',
     postDietPartialAuthorityPssMinimumBytes: 262067200,
     postDietPartialAuthorityPssMaximumBytes: 311932928,
-    postDietPartialPlateauProven: false
+    postDietPartialPlateauProven: false,
+    causalSoakScoredSeconds: 180,
+    causalSoakPresentations: [6286, 6287],
+    causalSoakReconnects: 0,
+    causalSoakStableSpids: true
   },
   capacity: {
     effectivePdbCpu: 1,
@@ -225,7 +249,7 @@ const status = {
   },
   remaining: [
     {id: 'SOAK', state: 'NEXT',
-      label: 'Post-hardening short reproduction, then 30-minute final soak'},
+      label: '30-minute final promoted-artifact soak'},
     {id: 'WAN', state: 'NEXT', label: 'Injected-latency multiplayer matrix'},
     {id: 'JAVA-AUDIT', state: 'NEXT',
       label: 'Production-path Java removal audit'},
@@ -238,7 +262,8 @@ const status = {
     soak: soakPath, ledger: ledgerPath, solo: soloPath,
     soloAdmission: soloAdmissionPath, warmPoolAdmission: warmPoolPath,
     initDietPromotion: initDietPath, voidedPromotedSoak: voidedSoakPath,
-    voidedDiagnosticSmoke: voidedSmokePath, lifecycleHardening: lifecyclePath
+    voidedDiagnosticSmoke: voidedSmokePath, lifecycleHardening: lifecyclePath,
+    causalSoak: causalSoakPath, browserReplicaProfile: browserProfilePath
   }
 };
 

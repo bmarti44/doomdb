@@ -1,0 +1,72 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1167197|source_sha256=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_MLE_MEMORY_CAL|SKIPPED|rehearsal_only=1
+PMLE_WORKER_SOAK_MATCH|BOUND|match=a9eb1d1e355f1a15ce8b97c4c8e3327e
+PMLE_WORKER_SOAK_WARMUP|BEGIN|seconds=300|epoch=1784833017
+PMLE_WORKER_SOAK_READY_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=MLE_STEP|pga_bytes=31134121|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_READY_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=30460641|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=MLE_STEP|pga_bytes=31050665|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784833330|rss=875167744|pss=337543168|pss_anon=254177280|pss_file=51453952|pss_shmem=31911936|shared_clean=253136896|shared_dirty=363876352|private_clean=3919872|private_dirty=254234624|anonymous=254177280
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=30460641|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784833330|rss=588541952|pss=253802496|pss_anon=190492672|pss_file=51301376|pss_shmem=12007424|shared_clean=234606592|shared_dirty=156647424|private_clean=6795264|private_dirty=190492672|anonymous=190492672
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=MLE_STEP|pga_bytes=31050665|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784833363|rss=857493504|pss=318638080|pss_anon=234795008|pss_file=51848192|pss_shmem=31994880|shared_clean=253513728|shared_dirty=365146112|private_clean=3981312|private_dirty=234852352|anonymous=234795008
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=30460641|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784833363|rss=590884864|pss=254191616|pss_anon=190554112|pss_file=51404800|pss_shmem=12232704|shared_clean=234733568|shared_dirty=158928896|private_clean=6668288|private_dirty=190554112|anonymous=190554112
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=MLE_STEP|pga_bytes=31091953|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784833398|rss=852602880|pss=313044992|pss_anon=229285888|pss_file=51847168|pss_shmem=31911936|shared_clean=253513728|shared_dirty=365764608|private_clean=3981312|private_dirty=229343232|anonymous=229285888
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=30460641|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784833398|rss=592920576|pss=254358528|pss_anon=190554112|pss_file=51403776|pss_shmem=12400640|shared_clean=234733568|shared_dirty=160964608|private_clean=6668288|private_dirty=190554112|anonymous=190554112
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=-|pga_bytes=31050665|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784833432|rss=874577920|pss=334309376|pss_anon=250679296|pss_file=51800064|pss_shmem=31830016|shared_clean=253513728|shared_dirty=366346240|private_clean=3981312|private_dirty=250736640|anonymous=250679296
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=30460641|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784833432|rss=594878464|pss=254480384|pss_anon=190554112|pss_file=51372032|pss_shmem=12554240|shared_clean=234733568|shared_dirty=162922496|private_clean=6668288|private_dirty=190554112|anonymous=190554112
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=MLE_STEP|pga_bytes=31050665|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784833466|rss=860217344|pss=319695872|pss_anon=236134400|pss_file=51799040|pss_shmem=31761408|shared_clean=253513728|shared_dirty=366530560|private_clean=3981312|private_dirty=236191744|anonymous=236134400
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=30460641|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784833466|rss=594829312|pss=252849152|pss_anon=188776448|pss_file=51368960|pss_shmem=12702720|shared_clean=234733568|shared_dirty=164651008|private_clean=6668288|private_dirty=188776448|anonymous=188776448
+PMLE_WORKER_SOAK_BROWSER_EVIDENCE|BEGIN
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: soak player 0 presented 3046 frames
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:171:12
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0
+PMLE_WORKER_SOAK_BROWSER_EVIDENCE|END
+PMLE_WORKER_SOAK|FAIL|reason=browser_gate|browser_status=1|evidence=artifacts/performance/pmle-worker-soak/run-smoke-lifecycle-warm300-c664-2026-07-23.log

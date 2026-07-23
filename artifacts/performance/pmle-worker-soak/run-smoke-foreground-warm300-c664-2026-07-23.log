@@ -1,0 +1,56 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1167197|source_sha256=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_MLE_MEMORY_CAL|SKIPPED|rehearsal_only=1
+PMLE_WORKER_SOAK_MATCH|BOUND|match=324cae4cfd05b06d969bb581500747d1
+PMLE_WORKER_SOAK_WARMUP|BEGIN|seconds=300|epoch=1784833856
+PMLE_WORKER_SOAK_READY_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=-|pga_bytes=30713561|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_READY_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=30461761|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_OWNER|role=AUTHORITY|control_status=READY|control_sid=227|sid=227|serial=28478|spid=141901|scheduler_running=1|action=-|pga_bytes=30928601|pga_max_bytes=39555737
+PMLE_WORKER_SOAK_PROCESS|role=AUTHORITY|spid=141901|sample_epoch=1784834163|rss=903512064|pss=352846848|pss_anon=258809856|pss_file=60361728|pss_shmem=33674240|shared_clean=257110016|shared_dirty=382431232|private_clean=5103616|private_dirty=258867200|anonymous=258809856
+PMLE_WORKER_SOAK_OWNER|role=STANDBY|control_status=READY|control_sid=214|sid=214|serial=29022|spid=145433|scheduler_running=1|action=MLE_CHECKPOINT_RESTORE|pga_bytes=30460641|pga_max_bytes=32543385
+PMLE_WORKER_SOAK_PROCESS|role=STANDBY|spid=145433|sample_epoch=1784834163|rss=633671680|pss=277352448|pss_anon=205185024|pss_file=57025536|pss_shmem=15141888|shared_clean=238092288|shared_dirty=185704448|private_clean=4689920|private_dirty=205185024|anonymous=205185024
+PMLE_WORKER_SOAK_BROWSER_EVIDENCE|BEGIN
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: soak player 1 final post-resync run is too short
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:198:12
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0
+PMLE_WORKER_SOAK_BROWSER_EVIDENCE|END
+PMLE_WORKER_SOAK|FAIL|reason=browser_gate|browser_status=1|evidence=artifacts/performance/pmle-worker-soak/run-smoke-foreground-warm300-c664-2026-07-23.log

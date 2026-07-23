@@ -49,6 +49,7 @@ TEAVM_DISPATCH_AB=$ROOT/probes/mle/teavm-engine/run-dispatch-ab.sh
 TEAVM_DIFFERENTIAL_RUNNER=$ROOT/probes/mle/teavm-engine/run-differential.sh
 TEAVM_LEDGER_RUNNER=$ROOT/probes/mle/teavm-engine/run-ledger-differential.sh
 TEAVM_WORKER_CUTOVER_RUNNER=$ROOT/probes/mle/teavm-engine/run-worker-cutover.sh
+TEAVM_BROWSER_REPLICA_PROFILE=$ROOT/probes/mle/teavm-engine/profile-browser-replica.mjs
 TEAVM_WAN_RUNNER=$ROOT/probes/mle/teavm-engine/run-wan-matrix.sh
 TEAVM_SIM_SOURCE=$ROOT/probes/mle/teavm-engine/src/main/java/doomdb/mle/engine/SimulationEngineReachabilityProbe.java
 REPORT=$ROOT/reports/performance-PMLE-mle-26ai-2026-07-22.md
@@ -103,7 +104,8 @@ for file in "$INSTALL" "$BENCHMARK" "$RUNNER" "$CLEANUP" \
   "$TEAVM_INIT_DIET_RUNNER" "$TEAVM_INIT_PROFILE" "$TEAVM_MEMORY_CAL" \
   "$TEAVM_MEMORY_CAL_SQL" "$TEAVM_DISPATCH_BENCH" \
   "$TEAVM_DISPATCH_RUNNER" "$TEAVM_DISPATCH_AB" "$TEAVM_DIFFERENTIAL_RUNNER" \
-  "$TEAVM_WORKER_CUTOVER_RUNNER" "$TEAVM_WAN_RUNNER" \
+  "$TEAVM_WORKER_CUTOVER_RUNNER" "$TEAVM_BROWSER_REPLICA_PROFILE" \
+  "$TEAVM_WAN_RUNNER" \
   "$TEAVM_SIM_SOURCE" "$REPORT" "$TEAVM_REPORT" "$VERSIONS" \
   "$AUTHORITY_TS" "$AUTHORITY_MIRROR_TS" "$AUTHORITY_BATCH_TS" \
   "$AUTHORITY_WAN_TS" \
@@ -317,6 +319,8 @@ grep -q 'PMLE_WORKER_SOAK_BROWSER_EVIDENCE|BEGIN' "$ROOT/probes/mle/teavm-engine
   fail 'worker soak pre-cleanup browser evidence preservation missing'
 grep -q 'reason=unplanned_retained_process_replacement' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" ||
   fail 'worker soak process replacement hard-fail missing'
+grep -q 'shared_dirty=' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" ||
+  fail 'worker soak shared-SGA attribution missing'
 grep -q 'PMLE_WORKER_SOAK|VOIDED|reason=harness_exit' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" ||
   fail 'worker soak harness-abort void classification missing'
 grep -q 'doom_match_poll_lease' "$AUTHORITY_TRANSPORT_SCHEMA" || fail 'DMB1 poll lease schema missing'
@@ -361,6 +365,12 @@ if printf '%s\n' "$RUN_MATCH_BODY" | grep -q 'doom_mocha'; then
   fail 'RUN_MATCH still reaches OJVM'
 fi
 grep -q 'PMLE_WORKER_CUTOVER|PASS' "$MLE_MATCH_WORKER_TEST" || fail 'MLE worker live cutover gate missing'
+grep -q 'PMLE_BROWSER_REPLICA_PROFILE' "$TEAVM_BROWSER_REPLICA_PROFILE" ||
+  fail 'browser confirmed-replica stage profiler missing'
+grep -q -- '--disable-background-timer-throttling' "$WAN_SOAK" ||
+  fail 'two-client foreground scheduling fence missing'
+grep -q 'PMLE_SOAK_BROWSER_DIAG' "$WAN_SOAK" ||
+  fail 'browser soak causal presentation diagnostics missing'
 grep -q 'warm recovery SLA' "$MLE_MATCH_WORKER_TEST" || fail 'MLE warm recovery SLA gate missing'
 grep -q 'pre_admission_command=REJECTED' "$MLE_MATCH_WORKER_TEST" || fail 'pre-admission command live gate missing'
 grep -q "l_public_state<>'STARTING'" "$MLE_MATCH_WORKER_TEST" || fail 'public STARTING live gate missing'
