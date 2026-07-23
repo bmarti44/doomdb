@@ -55,6 +55,13 @@ grep -Fq '$if $$doom_dev_ojvm $then' \
 grep -Fq '$if $$doom_dev_ojvm $then' \
   "$root/sql/sim/085_session_cleanup.sql"
 grep -q 'p_enabled=>false' "$root/sql/rest/020_ords_enable.sql"
+[[ "$(grep -c \"p_object=>'DOOM_API'\" \
+  "$root/sql/rest/020_ords_enable.sql")" -eq 1 ]]
+awk '
+  /p_object=>\047DOOM_API\047/ { doom=NR }
+  /\$if \$\$doom_dev_ojvm \$then/ { conditional=NR }
+  END { exit !(doom>0 && conditional>doom) }
+' "$root/sql/rest/020_ords_enable.sql"
 
 jq -e '.bootstrapOrder=="sql/bootstrap/production-order.txt" and
   .mle.runtime=="JavaScript" and (.ojvm|not)' "$policy" >/dev/null

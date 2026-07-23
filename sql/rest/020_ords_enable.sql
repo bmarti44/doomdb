@@ -22,7 +22,9 @@ begin
     p_url_mapping_pattern=>lower(sys_context('USERENV','CURRENT_SCHEMA')),
     p_auto_rest_auth=>false);
 
-  $if $$doom_dev_ojvm $then
+  -- DOOM_API is the production MLE transport as well as the development
+  -- facade. Keep it unconditional; only the OJVM worker-control package is
+  -- conditional.
   ords.enable_object(
     p_enabled=>true,
     p_schema=>sys_context('USERENV','CURRENT_SCHEMA'),
@@ -31,6 +33,7 @@ begin
     p_object_alias=>'doom_api',
     p_auto_rest_auth=>false);
 
+  $if $$doom_dev_ojvm $then
   ords.enable_object(
     p_enabled=>true,
     p_schema=>sys_context('USERENV','CURRENT_SCHEMA'),
