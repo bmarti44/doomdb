@@ -253,7 +253,10 @@ grep -q 'transitionHoldMs, 32' "$ROOT/client/src/multiplayer.ts" ||
 grep -q 'PMLE_WAN_PROXY|READY' "$WAN_PROXY" || fail 'WAN proxy readiness marker missing'
 grep -q 'PMLE_WAN_GATE|PASS' "$WAN_SOAK" || fail 'WAN browser acceptance marker missing'
 grep -q 'neutral substitution rate' "$WAN_SOAK" || fail 'WAN neutral-substitution gate missing'
-grep -q 'input/effect p95' "$WAN_SOAK" || fail 'WAN input-to-effect gate missing'
+grep -q 'input/presentation p95' "$WAN_SOAK" ||
+  fail 'WAN input-to-presentation gate missing'
+grep -q 'never acceptable' "$WAN_SOAK" ||
+  fail 'WAN long-poll hold exclusion missing'
 grep -q 'presentation p99' "$WAN_SOAK" || fail 'WAN presentation-cadence gate missing'
 grep -q 'PMLE_WAN_MATRIX|PASS' "$TEAVM_WAN_RUNNER" || fail 'WAN matrix terminal marker missing'
 grep -q 'long_poll_enabled=1' "$TEAVM_WAN_RUNNER" ||

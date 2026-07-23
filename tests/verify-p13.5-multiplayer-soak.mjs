@@ -52,9 +52,11 @@ await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
   window.__doomWanInputs=[];
   window.__doomWanEffective=[];
   window.__doomWanConfirmed=[];
+  window.__doomWanPresented=[];
   addEventListener('doom:multiplayer-present',event=>{
     window.__doomSoakTics.push(event.detail.tic);
     window.__doomSoakPaintAt.push(performance.now());
+    window.__doomWanPresented.push(event.detail);
   });
   addEventListener('doom:multiplayer-resync',event=>window.__doomSoakResyncs.push({
     atCount:window.__doomSoakTics.length,tic:event.detail.tic
@@ -80,7 +82,7 @@ try {
   fs.writeFileSync(matchFile,`${match}\n`,{encoding:'ascii',mode:0o600});
   await guest.goto(share,{waitUntil:'networkidle'});
   await guest.locator('[data-join] input[name=name]').fill('SOAK GUEST');
-  await guest.getByRole('button',{name:'Join co-op'}).click();
+  await guest.getByRole('button',{name:'Join match'}).click();
   await guest.locator('[data-room]').waitFor({state:'visible'});
   await guest.waitForFunction(()=>location.hash.startsWith('#resume='));
   await host.waitForFunction(()=>document.querySelector('[data-room-status]')?.textContent?.includes('2/2 joined'));
@@ -153,7 +155,9 @@ try {
         .map(value=>({...value,atCount:value.atCount-start})),
       inputs:window.__doomWanInputs.filter(value=>value.at>=measurementStart),
       effective:window.__doomWanEffective.filter(value=>value.at>=measurementStart),
-      confirmed:window.__doomWanConfirmed.filter(value=>value.at>=measurementStart)
+      confirmed:window.__doomWanConfirmed.filter(value=>value.at>=measurementStart),
+      presentedDetails:window.__doomWanPresented.filter(value=>
+        value.at>=measurementStart)
     }),{start:startCounts[slot],measurementStart:measurementStarts[slot]})));
   const presented=evidence.map(value=>value.presented);
   const paintTails=[];
@@ -209,12 +213,13 @@ try {
         }
         const input=inputBySequence.get(effective.inputSequence);
         if(input===undefined) continue;
-        const applied=evidence[slot].confirmed.find(value=>
-          value.at>=effective.at&&value.tic>=effective.effectiveTic);
-        if(applied!==undefined) effectLatencies.push(applied.at-input.at);
+        const presentedIndex=evidence[slot].presented.findIndex((tic,index)=>
+          tic>=effective.effectiveTic&&evidence[slot].paintAt[index]>=input.at);
+        if(presentedIndex>=0)
+          effectLatencies.push(evidence[slot].paintAt[presentedIndex]-input.at);
       }
       assert.ok(effectLatencies.length>=Math.max(20,seconds),
-        `WAN player ${slot} has too few input/effect pairs`);
+        `WAN player ${slot} has too few input/presentation pairs`);
       assert.ok(roundTrips.length>=Math.max(20,seconds),
         `WAN player ${slot} has too few RTT samples`);
       for(let index=1;index<evidence[slot].confirmed.length;index+=1) {
@@ -228,13 +233,21 @@ try {
       const p95=percentile(effectLatencies,.95);
       const rttP90=percentile(roundTrips,.90);
       const maxLead=Math.max(...evidence[slot].effective.map(value=>value.leadTics));
-      const limit=wanRttMs+wanJitterMs+maxLead*(1000/35)+wanHoldMs;
+      const maxPlayout=Math.max(1,...evidence[slot].presentedDetails.map(value=>
+        value.playoutTics));
+      // A configured long-poll hold is an idle timeout, never acceptable
+      // post-commit delivery delay. End-to-presentation permits the injected
+      // RTT/jitter, the selected input lead and confirmed playout offset, plus
+      // one authoritative processing tic.
+      const limit=wanRttMs+wanJitterMs+(maxLead+maxPlayout+1)*(1000/35);
       assert.ok(p95<=limit,
-        `WAN player ${slot} input/effect p95 ${p95.toFixed(1)} > ${limit.toFixed(1)}`);
+        `WAN player ${slot} input/presentation p95 `+
+        `${p95.toFixed(1)} > ${limit.toFixed(1)}`);
       const p99Interval=percentile(intervals,.99);
       assert.ok(p99Interval<=2*(1000/35),
         `WAN player ${slot} presentation p99 ${p99Interval.toFixed(1)} ms`);
-      wanMetrics.push({inputEffectP95Ms:p95,rttP90Ms:rttP90,maxLead,
+      wanMetrics.push({inputPresentationP95Ms:p95,rttP90Ms:rttP90,maxLead,
+        maxPlayout,
         leadChanges:leadChanges.length,presentationP99Ms:p99Interval});
     }
   }
@@ -293,8 +306,9 @@ try {
       `|jitter_ms=${wanJitterMs}|seconds=${seconds}`+
       `|neutral_rate=${substitutionRate.toFixed(6)}|players=`+
       `${wanMetrics.map(value=>[
-        value.inputEffectP95Ms.toFixed(1),value.rttP90Ms.toFixed(1),
-        value.maxLead,value.leadChanges,value.presentationP99Ms.toFixed(1)
+        value.inputPresentationP95Ms.toFixed(1),value.rttP90Ms.toFixed(1),
+        value.maxLead,value.maxPlayout,value.leadChanges,
+        value.presentationP99Ms.toFixed(1)
       ].join('/')).join(',')}\n`);
   }
   let memorySummary='';
