@@ -34,7 +34,6 @@ create table doom_match_worker_control (
   constraint doom_match_worker_control_pk primary key(match_id),
   constraint doom_match_worker_control_match_fk foreign key(match_id)
     references doom_match(match_id) on delete cascade,
-  constraint doom_match_worker_control_job_uq unique(job_name),
   constraint doom_match_worker_mode_ck check(
     worker_mode in('LOCKSTEP','PACED_INPUT')),
   constraint doom_match_worker_control_fence_ck check(
@@ -65,7 +64,6 @@ create table doom_match_standby_control (
   constraint doom_match_standby_pk primary key(match_id),
   constraint doom_match_standby_match_fk foreign key(match_id)
     references doom_match(match_id) on delete cascade,
-  constraint doom_match_standby_job_uq unique(job_name),
   constraint doom_match_standby_status_ck check(
     standby_status in('STARTING','READY','PROMOTING','FAILED','STOPPED')),
   constraint doom_match_standby_generation_ck check(

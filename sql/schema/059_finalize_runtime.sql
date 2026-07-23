@@ -27,3 +27,19 @@ begin
   end if;
 end;
 /
+
+-- Production bootstrap has already hash-fenced the accepted MLE module and all
+-- ten E1M1 origins. Development bootstrap may intentionally defer that load.
+declare
+  l_origins number;
+  l_runtime number;
+begin
+  select count(*) into l_origins from doom_mle_tic0_checkpoint;
+  select count(*) into l_runtime from user_objects
+    where object_name='DOOM_TEAVM_SIM_MULTI_INIT_GAME'
+      and object_type='FUNCTION' and status='VALID';
+  if l_origins=10 and l_runtime=1 then
+    doom_match_worker.start_warm_pool;
+  end if;
+end;
+/

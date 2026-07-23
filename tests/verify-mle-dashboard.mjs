@@ -12,7 +12,7 @@ for (const marker of [
   "fetch('/mle-status.json'",
   'OJVM oracle stays in repository/dev tooling only',
   'pre-optimization authority-plus-standby baseline was 248.629 seconds cold',
-  'confirmed-only game surface in 110.458 seconds',
+  'confirmed-only game surface in 3.440 seconds p95 across ten starts',
   'separate Co-op and Multiplayer shortcuts remain on the right',
   'WAN matrix',
   'Presentation / DVR'
@@ -35,9 +35,13 @@ assert.equal(status.artifacts.presentation.sha256,
 assert.equal(status.gates.ledgerEveryTic13272, 'PASS');
 assert.equal(status.gates.finalWorkerSoak, 'PASS');
 assert.equal(status.gates.soloMleAuthority, 'PASS');
+assert.equal(status.gates.warmPoolAdmissionP95, 'PASS');
+assert.equal(status.gates.warmStandbyHealing, 'PASS');
 assert.equal(status.solo.legacyEndpointCalls, 0);
-assert.equal(status.solo.startupOptimization, 'early authority admission verified');
-assert.equal(status.solo.authorityAdmissionSeconds, 110.458);
+assert.equal(status.solo.startupOptimization,
+  'deploy-time retained MLE pool plus exact tic-zero restore');
+assert.equal(status.solo.warmAdmissionP95Seconds, 3.440);
+assert.equal(status.solo.warmAdmissionSamples, 10);
 assert.equal(status.architecture.productionOjvm, false);
 assert.equal(status.playModes.singlePlayer.state, 'AVAILABLE');
 assert.equal(status.playModes.coop.path, '/play/multiplayer.html#mode=COOP');

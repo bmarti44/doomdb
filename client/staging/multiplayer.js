@@ -210,9 +210,11 @@ async function refreshLobby() {
         await readyMatch(local.match, local.playerCapability, true);
         latestStatus = await matchStatus(local.match, capability);
     }
+    const startupPhase = latestStatus.recoveryStatus === 'WARMING'
+        ? 'deploy-time MLE prewarm' : 'warm authority assignment';
     const soloProgress = soloMode && latestStatus.state === 'STARTING' ?
-        ` · cold MLE authority ${Math.floor((performance.now() - soloStartedAt) / 1000)}s`
-            + ' · local Free baseline ~110s' : '';
+        ` · ${startupPhase} ${Math.floor((performance.now() - soloStartedAt) / 1000)}s`
+            + ' · local Free deploy warmup ~120s; measured New Game p95 3.44s afterward' : '';
     const stateKey = `${latestStatus.state}|${latestStatus.memberCount}|${latestStatus.readyCount}|${latestStatus.recoveryStatus}`;
     lobbyDelay = stateKey === priorLobbyState ?
         (lobbyDelay < 2000 ? Math.min(2000, lobbyDelay * 2) : 5000) : 500;
@@ -220,7 +222,7 @@ async function refreshLobby() {
     roomStatus.textContent = `Match ${local.match} · player ${local.playerSlot + 1}\n${latestStatus.memberCount}/${latestStatus.maxPlayers} joined · ${latestStatus.readyCount} ready · ${latestStatus.state} · recovery ${latestStatus.recoveryStatus}${soloProgress}`;
     if (soloMode && latestStatus.state === 'STARTING') {
         hud.className = '';
-        hud.textContent = `SINGLE PLAYER\nInitializing authoritative MLE engine…\n${Math.floor((performance.now() - soloStartedAt) / 1000)}s elapsed · recovery ${latestStatus.recoveryStatus}`;
+        hud.textContent = `SINGLE PLAYER\n${startupPhase}…\n${Math.floor((performance.now() - soloStartedAt) / 1000)}s elapsed · recovery ${latestStatus.recoveryStatus}`;
     }
     readyButton.textContent = ready ? 'Not ready' : 'Ready';
     readyButton.disabled = latestStatus.memberCount !== latestStatus.maxPlayers;

@@ -21,6 +21,8 @@ ADB_BENCHMARK=$ROOT/probes/mle/adb-benchmark.sql
 ADB_CLEANUP=$ROOT/probes/mle/adb-cleanup.sql
 ADB_RUNNER=$ROOT/probes/mle/run-adb.sh
 TEAVM_SIM_LOADER=$ROOT/probes/mle/teavm-engine/load-mle-module.sh
+TEAVM_TIC0_BUILDER=$ROOT/probes/mle/teavm-engine/build-tic0-checkpoint-bank.mjs
+TEAVM_TIC0_LOADER=$ROOT/probes/mle/teavm-engine/load-tic0-checkpoint-bank.sh
 TEAVM_SLICE_LOADER=$ROOT/probes/mle/teavm/deploy.sh
 TEAVM_SIM_CLEANUP=$ROOT/probes/mle/teavm-engine/cleanup-mle.sql
 TEAVM_LEDGER=$ROOT/probes/mle/teavm-engine/build-ledger-differential.mjs
@@ -87,6 +89,7 @@ for file in "$INSTALL" "$BENCHMARK" "$RUNNER" "$CLEANUP" \
   "$HYBRID_INSTALL" "$HYBRID_BENCHMARK" "$HYBRID_CLEANUP" \
   "$COMMAND_BENCHMARK" "$BIND_INSTALL" "$BIND_BENCHMARK" "$BIND_CLEANUP" \
   "$ADB_INSTALL" "$ADB_BENCHMARK" "$ADB_CLEANUP" "$ADB_RUNNER" \
+  "$TEAVM_TIC0_BUILDER" "$TEAVM_TIC0_LOADER" \
   "$TEAVM_SIM_LOADER" "$TEAVM_SLICE_LOADER" "$TEAVM_SIM_CLEANUP" "$TEAVM_LEDGER" \
   "$TEAVM_CANONICAL_BENCH" "$TEAVM_RECOVERY" "$TEAVM_MULTIPLAYER" \
   "$TEAVM_MULTI_BENCH" "$TEAVM_MULTI_RECOVERY" "$TEAVM_MULTI_SOAK" \
@@ -110,6 +113,7 @@ done
 [ -x "$RUNNER" ] || fail 'probe runner is not executable'
 [ -x "$ADB_RUNNER" ] || fail 'ADB probe runner is not executable'
 [ -x "$TEAVM_SIM_LOADER" ] || fail 'TeaVM simulation loader is not executable'
+[ -x "$TEAVM_TIC0_LOADER" ] || fail 'TeaVM tic-zero bank loader is not executable'
 [ -x "$TEAVM_MULTI_SOAK_RUNNER" ] || fail 'TeaVM multiplayer soak runner is not executable'
 [ -x "$TEAVM_MEMORY_CAL" ] || fail 'TeaVM memory calibration runner is not executable'
 [ -x "$TEAVM_DISPATCH_RUNNER" ] || fail 'TeaVM ActiveStates dispatch runner is not executable'
@@ -162,6 +166,10 @@ grep -q 'dbms_crypto.hash(l_source,dbms_crypto.hash_sh256)' "$TEAVM_SIM_LOADER" 
 grep -q 'dbms_crypto.hash(l_tables,dbms_crypto.hash_sh256)' "$TEAVM_SIM_LOADER" || fail 'canonical table database hash missing'
 test "$(line_of 'PMLE_TEAVM_STAGING_GATE|PASS' "$TEAVM_SIM_LOADER")" -lt \
   "$(line_of 'create mle module doom_teavm_simulation' "$TEAVM_SIM_LOADER")" || fail 'full-ticker staging gate runs after module creation'
+grep -q 'base64_fold_width=2000' "$TEAVM_TIC0_LOADER" || fail 'tic-zero bank safe base64 fold missing'
+grep -Fq 'while IFS= read -r piece || [[ -n "$piece" ]]' "$TEAVM_TIC0_LOADER" || fail 'tic-zero bank final base64 piece fence missing'
+grep -q 'dbms_crypto.hash(checkpoint_blob,dbms_crypto.hash_sh256)' "$TEAVM_TIC0_LOADER" || fail 'tic-zero bank database SHA gate missing'
+grep -q 'PMLE_TIC0_BANK_STAGING|PASS' "$TEAVM_TIC0_LOADER" || fail 'tic-zero bank staging marker missing'
 grep -q 'base64_fold_width=2000' "$TEAVM_SLICE_LOADER" || fail 'TeaVM slice safe base64 fold missing'
 grep -Fq 'while IFS= read -r piece || [[ -n "$piece" ]]' "$TEAVM_SLICE_LOADER" || fail 'TeaVM slice final base64 piece fence missing'
 grep -q 'PMLE_TEAVM_PROBE_STAGING_GATE|PASS' "$TEAVM_SLICE_LOADER" || fail 'TeaVM slice database staging SHA gate missing'
@@ -289,7 +297,7 @@ grep -q 'doom_teavm_sim_multi_init_game' "$MLE_MATCH_RUNTIME" || fail 'MLE worke
 grep -q 'doom_teavm_sim_authority_step' "$MLE_MATCH_RUNTIME" || fail 'MLE worker authoritative step missing'
 grep -q 'doom_teavm_sim_checkpoint_chunk' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint export missing'
 grep -q 'doom_teavm_sim_restore_load' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint recovery missing'
-grep -q 'publish_initial(p_match,l_generation)' "$MLE_MATCH_WORKER" || fail 'RUN_MATCH MLE initialization missing'
+grep -q 'publish_initial(p_match,l_generation,p_warm)' "$MLE_MATCH_WORKER" || fail 'RUN_MATCH warm/cold MLE initialization missing'
 grep -q 'reconstruct_existing(p_match,l_generation' "$MLE_MATCH_WORKER" || fail 'RUN_MATCH MLE recovery missing'
 grep -q 'doom_mle_match_runtime.step_game' "$MLE_MATCH_WORKER" || fail 'MLE worker step missing'
 grep -q 'doom_mle_transition_transport.publish' "$MLE_MATCH_WORKER" || fail 'MLE worker DMD1 publication missing'
@@ -297,12 +305,13 @@ grep -q 'doom_mle_match_runtime.save_checkpoint' "$MLE_MATCH_WORKER" || fail 'ML
 grep -q 'procedure run_standby' "$MLE_MATCH_WORKER" || fail 'MLE warm standby entry point missing'
 grep -q 'restore_checkpoint_warm' "$MLE_MATCH_WORKER" || fail 'MLE warm checkpoint promotion missing'
 grep -q "'_G'||to_char(p_generation)" "$MLE_MATCH_WORKER" || fail 'standby generation-scoped Scheduler name missing'
-grep -q 'await_initial_standby(p_match,l_generation)' "$MLE_MATCH_WORKER" || fail 'initial warm-standby admission fence missing'
-grep -q 'initial standby admission fence' "$MLE_MATCH_WORKER" || fail 'standby readiness transition fence missing'
+grep -q "assigned_role='AUTHORITY'" "$MLE_MATCH_WORKER" || fail 'warm authority claim missing'
+grep -q "assigned_role='STANDBY'" "$MLE_MATCH_WORKER" || fail 'warm standby claim missing'
+grep -q 'authority admission fence' "$MLE_MATCH_WORKER" || fail 'authority readiness transition fence missing'
 grep -q "if l_worker_status<>'READY'" "$MLE_MATCH_WORKER" || fail 'pre-admission command fence missing'
 grep -q "p_match_state:='STARTING'" "$DOOM_API" || fail 'public standby admission state missing'
 grep -q 'create table doom_match_standby_control' "$ROOT/sql/schema/048_multiplayer_worker.sql" || fail 'MLE standby control schema missing'
-RUN_MATCH_BODY=$(sed -n '/  procedure run_match(p_match in varchar2) is/,/  procedure recover_match(/p' "$MLE_MATCH_WORKER")
+RUN_MATCH_BODY=$(sed -n '/  procedure run_match_core(p_match in varchar2,p_warm boolean) is/,/  procedure run_match(p_match in varchar2) is/p' "$MLE_MATCH_WORKER")
 printf '%s\n' "$RUN_MATCH_BODY" | grep -q 'process_step(p_match' || fail 'RUN_MATCH production step missing'
 if printf '%s\n' "$RUN_MATCH_BODY" | grep -q 'doom_mocha'; then
   fail 'RUN_MATCH still reaches OJVM'

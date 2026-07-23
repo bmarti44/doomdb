@@ -741,7 +741,12 @@ create or replace package body doom_api as
         from doom_match_standby_control
         where match_id=p_match and base_generation=p_generation;
     exception when no_data_found then
-      p_recovery_status:='ABSENT';
+      select case
+        when count(case when slot_status='READY' then 1 end)>0 then 'READY'
+        when count(case when slot_status='WARMING' then 1 end)>0 then 'WARMING'
+        when count(case when slot_status='FAILED' then 1 end)>0 then 'DEGRADED'
+        else 'ABSENT'
+      end into p_recovery_status from doom_mle_warm_slot;
     end;
     if l_state='LOBBY' and p_member_count=p_max_players and
        p_ready_count=p_max_players then

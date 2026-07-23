@@ -22,6 +22,8 @@ create or replace package doom_match_worker authid definer as
   procedure stop_match(p_match in varchar2,p_generation in number);
   procedure run_match(p_match in varchar2);
   procedure run_standby(p_match in varchar2);
+  procedure run_warm_slot(p_slot in number);
+  procedure start_warm_pool;
 end doom_match_worker;
 /
 
@@ -112,7 +114,9 @@ create or replace package body doom_match_worker as
 
   -- Production MLE lifecycle. The OJVM implementations retained below are
   -- named *_ojvm_oracle and are unreachable from RUN_MATCH.
-  procedure publish_initial(p_match varchar2,p_generation number) is
+  procedure publish_initial(
+    p_match varchar2,p_generation number,p_warm boolean default false
+  ) is
     l_skill number;l_episode number;l_map number;l_mode varchar2(16);
     l_epoch number;l_players number;l_state varchar2(64);
     l_now timestamp with time zone:=utc_now;
@@ -127,9 +131,15 @@ create or replace package body doom_match_worker as
     select count(*) into l_players from doom_match_member where match_id=p_match
       and member_state='READY' and membership_epoch=l_epoch;
     if l_players<>2 then raise_application_error(c_error,'membership is not ready');end if;
-    doom_mle_match_runtime.initialize_game(2,
-      case l_mode when 'DEATHMATCH' then 1 else 0 end,
-      l_skill,l_episode,l_map,l_state);
+    if p_warm then
+      doom_mle_match_runtime.prepare_origin_warm(2,
+        case l_mode when 'DEATHMATCH' then 1 else 0 end,
+        l_skill,l_episode,l_map,l_state);
+    else
+      doom_mle_match_runtime.initialize_game(2,
+        case l_mode when 'DEATHMATCH' then 1 else 0 end,
+        l_skill,l_episode,l_map,l_state);
+    end if;
     -- Cold TeaVM initialization is intentionally outside the match-row
     -- transaction. Holding this row for roughly two minutes made every
     -- authorized MATCH_STATUS lease renewal wait behind it; overlapping
@@ -926,25 +936,40 @@ create or replace package body doom_match_worker as
     commit;
   end;
 
+  procedure run_match_core(p_match in varchar2,p_warm boolean);
+
   procedure arm_standby(p_match varchar2,p_generation number) is
     l_job varchar2(64):='DOOM_MS_'||upper(p_match)||'_G'||to_char(p_generation);
-    l_count number;l_error varchar2(2000);
+    l_count number;l_error varchar2(2000);l_pool number:=0;
   begin
     select count(*) into l_count from doom_match_standby_control
       where match_id=p_match and standby_status in('STARTING','READY','PROMOTING');
     if l_count<>0 then return;end if;
-    begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
+    for slot_ in (
+      select slot_id,job_name from doom_mle_warm_slot
+        where slot_status='READY' and stop_requested=0
+        order by slot_id for update skip locked
+    ) loop
+      l_pool:=slot_.slot_id;l_job:=slot_.job_name;exit;
+    end loop;
     delete from doom_match_standby_control where match_id=p_match;
     insert into doom_match_standby_control(match_id,base_generation,job_name,
-      standby_status,heartbeat)
-    values(p_match,p_generation,l_job,'STARTING',
-      (localtimestamp at time zone 'UTC'));
+      standby_status,heartbeat,last_error)
+    values(p_match,p_generation,l_job,
+      case when l_pool=0 then 'FAILED' else 'STARTING' end,
+      (localtimestamp at time zone 'UTC'),
+      case when l_pool=0 then 'warm recovery slot unavailable' end);
+    if l_pool<>0 then
+      update doom_mle_warm_slot set slot_status='CLAIMED',
+        assigned_match=p_match,assigned_role='STANDBY',
+        heartbeat=(localtimestamp at time zone 'UTC'),last_error=null
+        where slot_id=l_pool and slot_status='READY';
+      if sql%rowcount<>1 then
+        raise_application_error(c_error,'warm standby slot claim fence');
+      end if;
+    end if;
     commit;
-    dbms_scheduler.create_job(job_name=>l_job,job_type=>'STORED_PROCEDURE',
-      job_action=>'DOOM_MATCH_WORKER.RUN_STANDBY',number_of_arguments=>1,
-      enabled=>false,auto_drop=>false);
-    dbms_scheduler.set_job_argument_value(l_job,1,p_match);
-    dbms_scheduler.enable(l_job);
+    return;
   exception when others then
     l_error:=sqlerrm;
     rollback;
@@ -956,7 +981,7 @@ create or replace package body doom_match_worker as
     exception when others then rollback;end;
   end;
 
-  procedure run_standby(p_match in varchar2) is
+  procedure run_standby_core(p_match in varchar2,p_warm boolean) is
     l_players number;l_deathmatch number;l_skill number;l_episode number;l_map number;
     l_generation number;l_promote number;l_stop number;l_state varchar2(64);
     l_expected varchar2(64);l_status varchar2(16);l_polls number:=0;
@@ -967,8 +992,13 @@ create or replace package body doom_match_worker as
       from doom_match m join doom_match_standby_control s on s.match_id=m.match_id
       where m.match_id=p_match and m.match_state='ACTIVE'
         and m.generation=s.base_generation and s.standby_status='STARTING';
-    doom_mle_match_runtime.initialize_game(l_players,l_deathmatch,l_skill,
-      l_episode,l_map,l_state);
+    if p_warm then
+      doom_mle_match_runtime.prepare_origin_warm(
+        l_players,l_deathmatch,l_skill,l_episode,l_map,l_state);
+    else
+      doom_mle_match_runtime.initialize_game(
+        l_players,l_deathmatch,l_skill,l_episode,l_map,l_state);
+    end if;
     select state_sha into l_expected from doom_match_tic
       where match_id=p_match and tic=0;
     if l_state<>l_expected then
@@ -993,7 +1023,7 @@ create or replace package body doom_match_worker as
         if sql%rowcount<>1 then
           raise_application_error(c_error,'standby promotion fence');end if;
         commit;
-        run_match(p_match);
+        run_match_core(p_match,p_warm);
         return;
       end if;
       dbms_session.sleep(.2);
@@ -1004,7 +1034,7 @@ create or replace package body doom_match_worker as
           and standby_status='READY';
       if mod(l_polls,5)=0 then commit;end if;
     end loop;
-    doom_mle_match_runtime.release;
+    if not p_warm then doom_mle_match_runtime.release;end if;
     update doom_match_standby_control set standby_status='STOPPED',
       worker_sid=null,heartbeat=(localtimestamp at time zone 'UTC')
       where match_id=p_match;
@@ -1012,7 +1042,9 @@ create or replace package body doom_match_worker as
   exception when others then
     declare l_message varchar2(2000):=sqlerrm;
     begin
-      begin doom_mle_match_runtime.release;exception when others then null;end;
+      if not p_warm then
+        begin doom_mle_match_runtime.release;exception when others then null;end;
+      end if;
       update doom_match_standby_control set standby_status='FAILED',
         worker_sid=null,heartbeat=(localtimestamp at time zone 'UTC'),
         last_error=l_message
@@ -1021,7 +1053,7 @@ create or replace package body doom_match_worker as
     exception when others then rollback;end;
   end;
 
-  procedure run_match(p_match in varchar2) is
+  procedure run_match_core(p_match in varchar2,p_warm boolean) is
     l_generation number;l_epoch number;l_status varchar2(16);l_request varchar2(16);
     l_tic number;l_stop number;l_idle number:=0;
     l_match_state varchar2(16);l_worker_mode varchar2(16);
@@ -1035,7 +1067,7 @@ create or replace package body doom_match_worker as
       from doom_match_worker_control where match_id=p_match;
     select match_state into l_match_state from doom_match where match_id=p_match;
     if l_match_state='LOBBY' then
-      publish_initial(p_match,l_generation);
+      publish_initial(p_match,l_generation,p_warm);
       arm_standby(p_match,l_generation);
       -- Tic zero is durable before admission. The generation-matched standby
       -- is armed immediately but warms in the background: Free's single
@@ -1072,7 +1104,13 @@ create or replace package body doom_match_worker as
         materialize_paced_vector(p_match,l_generation,l_epoch,l_tic);
         process_step(p_match,l_generation,l_epoch,l_tic,1);
         l_idle:=l_idle+1;
-        if mod(l_idle,35)=0 then mark_disconnected(p_match,l_generation,l_epoch);end if;
+        if mod(l_idle,35)=0 then
+          mark_disconnected(p_match,l_generation,l_epoch);
+          -- A rapid prior match can leave the second pool slot recycling for
+          -- a fraction of a second. Heal that explicitly reported degraded
+          -- window as soon as a warm slot is available.
+          arm_standby(p_match,l_generation);
+        end if;
       elsif l_request='QUEUED' then
         update doom_match_worker_control set request_status='PROCESSING',
           heartbeat=(localtimestamp at time zone 'UTC')
@@ -1094,7 +1132,7 @@ create or replace package body doom_match_worker as
         end if;
       end if;
     end loop;
-    doom_mle_match_runtime.release;
+    if not p_warm then doom_mle_match_runtime.release;end if;
     update doom_match_worker_control set worker_status='STOPPED',
       heartbeat=(localtimestamp at time zone 'UTC')
       where match_id=p_match and generation=l_generation;
@@ -1102,9 +1140,128 @@ create or replace package body doom_match_worker as
   exception when others then
     declare l_error varchar2(2000):=sqlerrm;
     begin
-      begin doom_mle_match_runtime.release;exception when others then null;end;
+      if not p_warm then
+        begin doom_mle_match_runtime.release;exception when others then null;end;
+      end if;
       fail_control(p_match,l_error);
     end;
+  end;
+
+  procedure run_match(p_match in varchar2) is
+  begin
+    run_match_core(p_match,false);
+  end;
+
+  procedure run_standby(p_match in varchar2) is
+  begin
+    run_standby_core(p_match,false);
+  end;
+
+  procedure run_warm_slot(p_slot in number) is
+    l_status varchar2(16);l_match varchar2(32);l_role varchar2(16);
+    l_stop number;l_state varchar2(64);l_polls number:=0;
+  begin
+    if p_slot not in(1,2) then
+      raise_application_error(c_error,'invalid warm slot');
+    end if;
+    update doom_mle_warm_slot set slot_status='WARMING',
+      assigned_match=null,assigned_role=null,
+      worker_sid=sys_context('USERENV','SID'),
+      heartbeat=(localtimestamp at time zone 'UTC'),
+      state_sha256=null,last_error=null,stop_requested=0
+      where slot_id=p_slot;
+    if sql%rowcount<>1 then raise_application_error(c_error,'warm slot missing');end if;
+    commit;
+    doom_mle_match_runtime.initialize_game(2,0,3,1,1,l_state);
+    update doom_mle_warm_slot set slot_status='READY',
+      heartbeat=(localtimestamp at time zone 'UTC'),
+      state_sha256=l_state where slot_id=p_slot and slot_status='WARMING';
+    if sql%rowcount<>1 then raise_application_error(c_error,'warm slot ready fence');end if;
+    commit;
+    loop
+      select slot_status,assigned_match,assigned_role,stop_requested
+        into l_status,l_match,l_role,l_stop from doom_mle_warm_slot
+        where slot_id=p_slot;
+      exit when l_stop=1;
+      if l_status='CLAIMED' then
+        update doom_mle_warm_slot set slot_status='RUNNING',
+          heartbeat=(localtimestamp at time zone 'UTC')
+          where slot_id=p_slot and slot_status='CLAIMED'
+            and assigned_match=l_match and assigned_role=l_role;
+        if sql%rowcount<>1 then
+          raise_application_error(c_error,'warm slot assignment fence');
+        end if;
+        commit;
+        if l_role='AUTHORITY' then
+          run_match_core(l_match,true);
+        elsif l_role='STANDBY' then
+          run_standby_core(l_match,true);
+        else
+          raise_application_error(c_error,'warm slot role');
+        end if;
+        -- READY means origin-restore capable, not already at one particular
+        -- origin. The next claim applies its hash-fenced DMC1 before authority;
+        -- avoiding an unnecessary restore here keeps repeated New Game inside
+        -- the same <=5 second admission budget.
+        update doom_mle_warm_slot set slot_status='READY',
+          assigned_match=null,assigned_role=null,
+          heartbeat=(localtimestamp at time zone 'UTC'),
+          state_sha256=null,last_error=null where slot_id=p_slot
+            and slot_status='RUNNING' and assigned_match=l_match;
+        if sql%rowcount<>1 then
+          raise_application_error(c_error,'warm slot recycle fence');
+        end if;
+        commit;l_polls:=0;
+      else
+        dbms_session.sleep(.2);l_polls:=l_polls+1;
+        if mod(l_polls,5)=0 then
+          update doom_mle_warm_slot set
+            heartbeat=(localtimestamp at time zone 'UTC')
+            where slot_id=p_slot and slot_status='READY';
+          commit;
+        end if;
+      end if;
+    end loop;
+    doom_mle_match_runtime.release;
+    update doom_mle_warm_slot set slot_status='STOPPED',worker_sid=null,
+      assigned_match=null,assigned_role=null,
+      heartbeat=(localtimestamp at time zone 'UTC')
+      where slot_id=p_slot;
+    commit;
+  exception when others then
+    declare l_error varchar2(2000):=sqlerrm;
+    begin
+      begin doom_mle_match_runtime.release;exception when others then null;end;
+      update doom_mle_warm_slot set slot_status='FAILED',worker_sid=null,
+        heartbeat=(localtimestamp at time zone 'UTC'),
+        last_error=l_error where slot_id=p_slot;
+      commit;
+    exception when others then rollback;end;
+  end;
+
+  procedure start_warm_pool is
+    l_job varchar2(64);
+  begin
+    for l_slot in 1..2 loop
+      l_job:='DOOM_MLE_WARM_'||to_char(l_slot,'FM00');
+      begin dbms_scheduler.stop_job(l_job,true);exception when others then null;end;
+      begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
+      update doom_mle_warm_slot set job_name=l_job,slot_status='WARMING',
+        assigned_match=null,assigned_role=null,worker_sid=null,
+        heartbeat=(localtimestamp at time zone 'UTC'),
+        state_sha256=null,last_error=null,stop_requested=0
+        where slot_id=l_slot;
+      if sql%rowcount<>1 then
+        raise_application_error(c_error,'warm pool schema missing');
+      end if;
+      commit;
+      dbms_scheduler.create_job(job_name=>l_job,job_type=>'STORED_PROCEDURE',
+        job_action=>'DOOM_MATCH_WORKER.RUN_WARM_SLOT',
+        number_of_arguments=>1,enabled=>false,auto_drop=>false);
+      dbms_scheduler.set_job_argument_value(l_job,1,to_char(l_slot));
+      dbms_scheduler.set_attribute(l_job,'restartable',true);
+      dbms_scheduler.enable(l_job);
+    end loop;
   end;
 
   procedure recover_match(
@@ -1178,7 +1335,7 @@ create or replace package body doom_match_worker as
     l_state varchar2(16);l_epoch number;l_generation number;l_count number;
     l_job varchar2(64):='DOOM_MATCH_'||upper(p_match);l_wait number;
     l_dummy number;l_worker_error varchar2(2000);l_worker_mode varchar2(16);
-    l_worker_status varchar2(16);l_match_limit number;
+    l_worker_status varchar2(16);l_match_limit number;l_pool number:=0;
     l_heartbeat timestamp with time zone;
   begin
     p_match_state:=null;l_wait:=least(greatest(coalesce(p_wait_ms,30000),0),60000);
@@ -1210,7 +1367,7 @@ create or replace package body doom_match_worker as
       raise_application_error(c_error,'match is not startable');
     end if;
     begin
-      select heartbeat into l_heartbeat from doom_match_worker_control
+      select heartbeat,job_name into l_heartbeat,l_job from doom_match_worker_control
         where match_id=p_match and worker_status='STARTING';
       select count(*) into l_count from user_scheduler_jobs where job_name=l_job;
       if l_count=1 or l_heartbeat>utc_now-interval '1' second then
@@ -1237,17 +1394,30 @@ create or replace package body doom_match_worker as
       where config_key='MATCH_WORKER_MODE';
     if l_worker_mode not in('LOCKSTEP','PACED_INPUT') then
       raise_application_error(c_error,'invalid match worker mode');end if;
-    begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
+    for slot_ in (
+      select slot_id,job_name from doom_mle_warm_slot
+        where slot_status='READY' and stop_requested=0
+        order by slot_id for update skip locked
+    ) loop
+      l_pool:=slot_.slot_id;l_job:=slot_.job_name;exit;
+    end loop;
+    if l_pool=0 then
+      -- Keep the ready lobby retryable; never create a third cold context that
+      -- would scheduler-thrash under Free's two-running-session ceiling.
+      p_match_state:='STARTING';commit;return;
+    end if;
     insert into doom_match_worker_control(match_id,generation,membership_epoch,
       job_name,worker_mode,worker_status,request_status,heartbeat)
     values(p_match,1,l_epoch,l_job,l_worker_mode,'STARTING','IDLE',
       (localtimestamp at time zone 'UTC'));
+    update doom_mle_warm_slot set slot_status='CLAIMED',
+      assigned_match=p_match,assigned_role='AUTHORITY',
+      heartbeat=(localtimestamp at time zone 'UTC'),
+      last_error=null where slot_id=l_pool and slot_status='READY';
+    if sql%rowcount<>1 then
+      raise_application_error(c_error,'warm authority slot claim fence');
+    end if;
     commit;
-    dbms_scheduler.create_job(job_name=>l_job,job_type=>'STORED_PROCEDURE',
-      job_action=>'DOOM_MATCH_WORKER.RUN_MATCH',number_of_arguments=>1,
-      enabled=>false,auto_drop=>false);
-    dbms_scheduler.set_job_argument_value(l_job,1,p_match);
-    dbms_scheduler.enable(l_job);
     for poll_ in 1..ceil(l_wait/20) loop
       begin
         select worker_status,last_error into l_state,l_worker_error

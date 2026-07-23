@@ -75,7 +75,7 @@ Numbers, measured on the local two-core Oracle Free stack:
 | --- | --- |
 | Four-player MLE simulation throughput | 132.9 tics/s |
 | Final retained-session soak | 30 min PASS |
-| Single-player early authority admission | 110.458 s cold |
+| Warm E1M1 New Game admission (p95, 10 starts) | 3.440 s |
 | Fresh-context checkpoint recovery | ~1.8 s |
 | Full E1M1 MLE/OJVM differential | 13,272/13,272 tics exact |
 | Co-op MLE/OJVM differential | 762/762 tics exact |
@@ -123,8 +123,10 @@ docker compose restart ords
 
 Then open <http://localhost:8080/play/>. New Game starts single-player by
 default. The right-side **Co-op** and **Multiplayer** buttons open two-player
-co-op and deathmatch respectively. Cold MLE construction on Oracle Free takes
-about two minutes; the loading screen reports progress while authority starts.
+co-op and deathmatch respectively. Bootstrap starts two retained E1M1
+authorities in the background; once that deployment warmup is complete, New
+Game restores a hash-fenced clean tic-zero checkpoint in about three seconds.
+The loading screen reports the current phase if the pool is still warming.
 
 **Controls:** W/S or ↑/↓ move · A/D or ←/→ turn · F or Ctrl fire · Space use ·
 Tab menu · M automap · P pause · V audio. Click the game to capture the mouse

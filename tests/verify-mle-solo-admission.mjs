@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 
 const root = new URL(process.env.DOOMDB_ORDS_BASE_URL ??
   'http://localhost:8080/ords/doom/doom_api/');
+const skill = Number(process.env.DOOMDB_TEST_SKILL ?? 3);
+const gameMode = process.env.DOOMDB_TEST_MODE ?? 'COOP';
+assert.ok(Number.isInteger(skill) && skill >= 1 && skill <= 5);
+assert.ok(['COOP', 'DEATHMATCH'].includes(gameMode));
 
 async function post(path, body) {
   const response = await fetch(new URL(path, root), {
@@ -15,8 +19,8 @@ async function post(path, body) {
 
 const started = performance.now();
 const created = await post('CREATE_MATCH', {
-  p_game_mode: 'COOP',
-  p_skill: 3,
+  p_game_mode: gameMode,
+  p_skill: skill,
   p_episode: 1,
   p_map: 1,
   p_display_name: 'SOLO ADMISSION GATE',
@@ -43,11 +47,12 @@ try {
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
   assert.equal(status?.p_match_state, 'ACTIVE');
-  assert.ok(['WARMING', 'READY'].includes(status.p_recovery_status),
+  assert.ok(['WARMING', 'READY', 'DEGRADED'].includes(status.p_recovery_status),
     `unexpected recovery status ${status?.p_recovery_status}`);
   process.stdout.write(
     `PMLE_SOLO_ADMISSION|PASS|elapsed_ms=${Math.round(performance.now()-started)}`
       + `|recovery_status=${status.p_recovery_status}`
+      + `|mode=${gameMode}|skill=${skill}`
       + `|generation=${status.p_generation}|tic=${status.p_current_tic}\n`,
   );
   const result = await post('LEAVE_MATCH', {

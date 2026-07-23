@@ -1,0 +1,15 @@
+PMLE_WARM_POOL_ARTIFACT|authority_sha256=06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0|table_pack_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44|checkpoint_bank_entries=10|scope=E1M1
+PMLE_WARM_POOL_ENVIRONMENT|database=Oracle AI Database 26ai Free|image=23.26.2|cpu_count=2|pdb_utilization_limit_percent=50|running_sessions_limit=2|host_quiescent=YES
+PMLE_WARM_POOL_SAMPLE|mode=COOP|skill=1|elapsed_ms=3100|recovery_status=WARMING
+PMLE_WARM_POOL_SAMPLE|mode=DEATHMATCH|skill=2|elapsed_ms=3440|recovery_status=WARMING
+PMLE_WARM_POOL_SAMPLE|mode=COOP|skill=3|elapsed_ms=3059|recovery_status=WARMING
+PMLE_WARM_POOL_SAMPLE|mode=DEATHMATCH|skill=4|elapsed_ms=3161|recovery_status=WARMING
+PMLE_WARM_POOL_SAMPLE|mode=COOP|skill=5|elapsed_ms=3052|recovery_status=WARMING
+PMLE_WARM_POOL_SAMPLE|mode=DEATHMATCH|skill=1|elapsed_ms=3234|recovery_status=WARMING
+PMLE_WARM_POOL_SAMPLE|mode=COOP|skill=2|elapsed_ms=3316|recovery_status=WARMING
+PMLE_WARM_POOL_SAMPLE|mode=DEATHMATCH|skill=3|elapsed_ms=3002|recovery_status=WARMING
+PMLE_WARM_POOL_SAMPLE|mode=COOP|skill=4|elapsed_ms=3133|recovery_status=WARMING
+PMLE_WARM_POOL_SAMPLE|mode=DEATHMATCH|skill=5|elapsed_ms=2985|recovery_status=WARMING
+PMLE_WARM_POOL_ADMISSION|PASS|samples=10|min_ms=2985|p50_ms=3100|p95_ms=3440|max_ms=3440|target_p95_ms=5000
+PMLE_WARM_STANDBY_HEAL|PASS|polls=8|poll_interval_ms=500|sequence=WARMING>READY
+PMLE_WARM_POOL_NOTE|CREATE_READY_AUTH_ANOMALY=NOT_REPRODUCED|fresh_cycles=11|fenced_nonviable_lobby_cleanup=1

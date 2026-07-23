@@ -10,6 +10,8 @@ const schema=fs.readFileSync('sql/schema/053_singleplayer_mle.sql','utf8');
 const rest=fs.readFileSync('sql/rest/010_doom_api.sql','utf8');
 const worker=fs.readFileSync('sql/sim/084_multiplayer_worker.sql','utf8');
 const config=fs.readFileSync('sql/schema/050_config.sql','utf8');
+const warmSchema=fs.readFileSync('sql/schema/054_mle_warm_pool.sql','utf8');
+const runtime=fs.readFileSync('sql/sim/088_mle_match_runtime.sql','utf8');
 
 assert.match(index,/src="\/play\/main\.js"/);
 assert.match(soloIndex,/<body data-doom-solo>/);
@@ -46,5 +48,11 @@ assert.match(client,/Recovering retained MLE authority…/);
 assert.match(api,/p_recovery_status/);
 assert.match(client,/recovery \$\{latestStatus\.recoveryStatus\}/);
 assert.match(client,/lobbyDelay < 2000 \? Math\.min\(2000,lobbyDelay\*2\) : 5000/);
+assert.match(warmSchema,/create table doom_mle_tic0_checkpoint/);
+assert.match(warmSchema,/create table doom_mle_warm_slot/);
+assert.match(runtime,/procedure prepare_origin_warm/);
+assert.match(worker,/procedure run_warm_slot/);
+assert.match(worker,/assigned_role='AUTHORITY'/);
+assert.match(worker,/avoiding an unnecessary restore here keeps repeated New Game/);
 
 process.stdout.write('PASS MLE-SOLO-SOURCE /play uses one-player retained MLE match authority\n');

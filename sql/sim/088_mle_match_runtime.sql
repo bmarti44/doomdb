@@ -25,6 +25,10 @@ create or replace package doom_mle_match_runtime authid definer as
     p_active_players in number,p_deathmatch in number,p_skill in number,
     p_episode in number,p_map in number,p_tic in number,p_checkpoint in blob,
     p_state_sha out varchar2);
+  -- Retarget an initialized E1M1 pool context from a hash-fenced clean origin.
+  procedure prepare_origin_warm(
+    p_active_players in number,p_deathmatch in number,p_skill in number,
+    p_episode in number,p_map in number,p_state_sha out varchar2);
   procedure release;
 end doom_mle_match_runtime;
 /
@@ -269,6 +273,43 @@ create or replace package body doom_mle_match_runtime as
         'warm MLE context is not initialized at the durable match origin');
     end if;
     restore_loaded_checkpoint(p_tic,p_checkpoint,p_state_sha);
+  exception when others then
+    clear_match_config;
+    begin doom_teavm_sim_release;exception when others then null;end;
+    raise;
+  end;
+
+  procedure prepare_origin_warm(
+    p_active_players in number,p_deathmatch in number,p_skill in number,
+    p_episode in number,p_map in number,p_state_sha out varchar2
+  ) is
+    l_checkpoint blob;l_expected_state varchar2(64);l_expected_sha varchar2(64);
+    l_actual_sha varchar2(64);l_mode varchar2(16);
+  begin
+    if g_active_players is null or g_active_players<>p_active_players
+       or g_episode<>p_episode or g_map<>p_map then
+      raise_application_error(c_error,
+        'warm MLE pool map/player configuration mismatch');
+    end if;
+    l_mode:=case p_deathmatch when 0 then 'COOP' else 'DEATHMATCH' end;
+    select checkpoint_blob,state_sha256,checkpoint_sha256
+      into l_checkpoint,l_expected_state,l_expected_sha
+      from doom_mle_tic0_checkpoint
+      where game_mode=l_mode and skill=p_skill and episode=p_episode
+        and map=p_map and active_players=p_active_players
+        and authority_sha256=
+          '06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0';
+    l_actual_sha:=lower(rawtohex(
+      dbms_crypto.hash(l_checkpoint,dbms_crypto.hash_sh256)));
+    if l_actual_sha<>l_expected_sha then
+      raise_application_error(c_error,'warm MLE origin checkpoint SHA mismatch');
+    end if;
+    restore_loaded_checkpoint(0,l_checkpoint,p_state_sha);
+    if p_state_sha<>l_expected_state then
+      raise_application_error(c_error,'warm MLE origin state mismatch');
+    end if;
+    g_deathmatch:=p_deathmatch;
+    g_skill:=p_skill;
   exception when others then
     clear_match_config;
     begin doom_teavm_sim_release;exception when others then null;end;

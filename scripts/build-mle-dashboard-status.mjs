@@ -17,10 +17,13 @@ const soloPath =
   'artifacts/performance/pmle-browser-role-swap/solo-live-2026-07-23.log';
 const soloAdmissionPath =
   'artifacts/performance/pmle-browser-role-swap/solo-admission-live-2026-07-23.log';
+const warmPoolPath =
+  'artifacts/performance/pmle-browser-role-swap/warm-pool-admission-live-2026-07-23.log';
 const soak = read(soakPath);
 const ledger = read(ledgerPath);
 const solo = read(soloPath);
 const soloAdmission = read(soloAdmissionPath);
+const warmPool = read(warmPoolPath);
 const authority = versions.teaVM;
 const presentation = authority.presentation;
 
@@ -52,6 +55,14 @@ contains(soloAdmission,
   'PMLE_SOLO_ORDS_POOL|PASS|status_poll=SINGLE_FLIGHT|' +
   'cold_match_row_lock=RELEASED|create_match_http=200',
   'solo ORDS pool correction');
+contains(warmPool,
+  'PMLE_WARM_POOL_ADMISSION|PASS|samples=10|min_ms=2985|p50_ms=3100|' +
+  'p95_ms=3440|max_ms=3440|target_p95_ms=5000',
+  'warm-pool admission');
+contains(warmPool,
+  'PMLE_WARM_STANDBY_HEAL|PASS|polls=8|poll_interval_ms=500|' +
+  'sequence=WARMING>READY',
+  'warm-pool standby healing');
 
 const status = {
   schema: 1,
@@ -114,6 +125,8 @@ const status = {
     calibratedProcessMemory: 'PASS',
     browserConfirmedOnly: 'PASS',
     soloMleAuthority: 'PASS',
+    warmPoolAdmissionP95: 'PASS',
+    warmStandbyHealing: 'PASS',
     resourceCapDecision: 'PASS'
   },
   soak: {
@@ -140,13 +153,22 @@ const status = {
   },
   solo: {
     coldStartBaselineSeconds: 248.629,
-    authorityAdmissionSeconds: 110.458,
-    admissionReductionPercent: 55.57,
+    coldAuthorityAdmissionSeconds: 100.314,
+    warmAdmissionP50Seconds: 3.100,
+    warmAdmissionP95Seconds: 3.440,
+    warmAdmissionMaximumSeconds: 3.440,
+    warmAdmissionSamples: 10,
+    warmAdmissionTargetSeconds: 5,
+    warmCheckpointBankEntries: 10,
+    warmCheckpointScope: 'E1M1; COOP/DEATHMATCH; skills 1-5',
+    admissionReductionFromColdPercent: 96.57,
     measuredFps: 34.5,
     legacyEndpointCalls: 0,
-    startupOptimization: 'early authority admission verified',
+    startupOptimization: 'deploy-time retained MLE pool plus exact tic-zero restore',
+    recoveryStatusOutput: 'ABSENT/WARMING/READY/PROMOTING/DEGRADED',
+    standbyHealing: 'WARMING to READY live gate PASS',
     ordsPoolFix: 'single outstanding status poll; cold initialization holds no match-row lock',
-    note: '248.629 seconds is the pre-optimization authority-plus-standby baseline'
+    note: 'cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline'
   },
   remaining: [
     {id: 'WAN', state: 'NEXT', label: 'Injected-latency multiplayer matrix'},
@@ -159,7 +181,7 @@ const status = {
   ],
   evidence: {
     soak: soakPath, ledger: ledgerPath, solo: soloPath,
-    soloAdmission: soloAdmissionPath
+    soloAdmission: soloAdmissionPath, warmPoolAdmission: warmPoolPath
   }
 };
 

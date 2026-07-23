@@ -676,6 +676,28 @@ An executable Node probe additionally proved that a retained E1M1 HMP co-op
 context can restore byte-identical tic-zero DMC1 state for another skill and
 for deathmatch on E1M1. A deliberately attempted E1M2 restore failed closed on
 the current pre-`InitNew` sector-count fence, so the first deploy-time prewarm
-pool is explicitly E1M1-scoped. Prewarm/clean-tic-zero restore remains the next
-product gate and must reach <=5 seconds; the current 100.314-second result is
-not represented as satisfying it.
+pool is explicitly E1M1-scoped.
+
+## Deploy-time E1M1 warm-pool admission — 2026-07-23
+
+The production bootstrap now loads a database-SHA-verified bank of ten DMC1
+tic-zero checkpoints (COOP/DEATHMATCH × skills 1–5) and starts two retained MLE
+slots. A slot is admitted only after completing the pinned authority's cold
+initialization. `CREATE_MATCH` never creates a third cold context: it either
+claims a ready slot or returns a retryable starting/capacity state. Authority
+readiness admits play while the second slot restores the same exact origin in
+the background; `MATCH_STATUS` exposes that interval as `WARMING`, then
+`READY`.
+
+Ten consecutive live create/ready/status/leave cycles covered both modes and
+all five skills. Admission measured 2,985–3,440 ms, with p50 3,100 ms and
+observed p95/max 3,440 ms against the <=5,000 ms product gate. A separate
+retained-match gate observed standby recovery transition `WARMING → READY`
+after eight 500 ms polls. The original 100.314-second cold-authority result
+remains the honest no-pool baseline; cold work has moved to deployment instead
+of being hidden or removed.
+
+The pool deliberately covers E1M1 only. Cross-map restoration remains fenced
+until a map-specific bank or post-static-state engine image is accepted. The
+next determinism-sensitive artifact batch is the headless-init diet; it is not
+part of this lifecycle-only promotion.
