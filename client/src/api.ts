@@ -98,6 +98,7 @@ export type MatchStatus = {
   generation: number;
   currentTic: number;
   workerMode: 'LOCKSTEP' | 'PACED_INPUT';
+  recoveryStatus: 'ABSENT' | 'WARMING' | 'READY' | 'PROMOTING' | 'DEGRADED';
 };
 
 export async function newGame(skill = 3): Promise<NewGameResult> {
@@ -228,7 +229,8 @@ export async function matchStatus(match: string, capability: string): Promise<Ma
     membershipEpoch: numberField(document, 'p_membership_epoch'),
     generation: numberField(document, 'p_generation'),
     currentTic: numberField(document, 'p_current_tic'),
-    workerMode: stringField(document, 'p_worker_mode') as 'LOCKSTEP' | 'PACED_INPUT'
+    workerMode: stringField(document, 'p_worker_mode') as 'LOCKSTEP' | 'PACED_INPUT',
+    recoveryStatus: stringField(document, 'p_recovery_status') as MatchStatus['recoveryStatus']
   };
 }
 

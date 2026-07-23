@@ -170,7 +170,8 @@ export async function matchStatus(match, capability) {
         membershipEpoch: numberField(document, 'p_membership_epoch'),
         generation: numberField(document, 'p_generation'),
         currentTic: numberField(document, 'p_current_tic'),
-        workerMode: stringField(document, 'p_worker_mode')
+        workerMode: stringField(document, 'p_worker_mode'),
+        recoveryStatus: stringField(document, 'p_recovery_status')
     };
 }
 export async function submitMatchStep(match, playerCapability, tic, sequence, ticcmdHex) {

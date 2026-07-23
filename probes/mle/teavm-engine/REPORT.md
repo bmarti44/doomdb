@@ -652,3 +652,30 @@ and transition loops preserve their queued input/frontier across
 429/502/503/504 recovery responses and resume without prediction. This closes
 the source-level production recovery trigger; forced live promotion remains a
 required post-deployment gate.
+
+## Authority-ready admission and initialization profile — 2026-07-23
+
+The authority-ready contract is now deployed for every live mode, not only the
+one-player wrapper. A fresh local Free solo gate reached `ACTIVE` in 100,314 ms
+at generation 1/tic 18 while the new status output reported the recovery
+context as `WARMING`. This proves admission waits for one cold authority rather
+than serializing authority and standby initialization. Match status now exposes
+`ABSENT`, `WARMING`, `READY`, `PROMOTING`, or `DEGRADED`; the browser shows that
+state and uses bounded 500 ms, 1 s, 2 s, then 5 s lobby polling.
+
+The exact deployed artifact's Node profile explains the remaining delay.
+Against a roughly 1,135 ms Node initialization, `R_InitTextures` consumed
+645 ms (57%), `InitSprites` 188 ms (17%), engine construction/class
+initialization 185 ms (16%), and duplicate WAD-directory parsing roughly
+110 ms (10%). The dominant functions were case-insensitive lump-name string
+operations, typed-array/stream allocation, and garbage collection (16.6%).
+The ratio-validated local MLE multiplier is approximately 83x, matching the
+98–100 second live cold start.
+
+An executable Node probe additionally proved that a retained E1M1 HMP co-op
+context can restore byte-identical tic-zero DMC1 state for another skill and
+for deathmatch on E1M1. A deliberately attempted E1M2 restore failed closed on
+the current pre-`InitNew` sector-count fence, so the first deploy-time prewarm
+pool is explicitly E1M1-scoped. Prewarm/clean-tic-zero restore remains the next
+product gate and must reach <=5 seconds; the current 100.314-second result is
+not represented as satisfying it.

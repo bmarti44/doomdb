@@ -182,6 +182,8 @@ let local = null;
 let latestStatus = null;
 let ready = false;
 let lobbyTimer = 0;
+let lobbyDelay = 500;
+let priorLobbyState = '';
 let gameStarted = false;
 function scheduleLobbyRefresh() {
     window.clearTimeout(lobbyTimer);
@@ -191,7 +193,7 @@ function scheduleLobbyRefresh() {
         void refreshLobby()
             .catch(soloMode ? showSoloError : showError)
             .finally(() => scheduleLobbyRefresh());
-    }, 500);
+    }, lobbyDelay);
 }
 const joinUrl = (value) => {
     const url = new URL('/play/multiplayer.html', location.origin);
@@ -211,7 +213,15 @@ async function refreshLobby() {
     const soloProgress = soloMode && latestStatus.state === 'STARTING' ?
         ` · cold MLE authority ${Math.floor((performance.now() - soloStartedAt) / 1000)}s`
             + ' · local Free baseline ~110s' : '';
-    roomStatus.textContent = `Match ${local.match} · player ${local.playerSlot + 1}\n${latestStatus.memberCount}/${latestStatus.maxPlayers} joined · ${latestStatus.readyCount} ready · ${latestStatus.state}${soloProgress}`;
+    const stateKey = `${latestStatus.state}|${latestStatus.memberCount}|${latestStatus.readyCount}|${latestStatus.recoveryStatus}`;
+    lobbyDelay = stateKey === priorLobbyState ?
+        (lobbyDelay < 2000 ? Math.min(2000, lobbyDelay * 2) : 5000) : 500;
+    priorLobbyState = stateKey;
+    roomStatus.textContent = `Match ${local.match} · player ${local.playerSlot + 1}\n${latestStatus.memberCount}/${latestStatus.maxPlayers} joined · ${latestStatus.readyCount} ready · ${latestStatus.state} · recovery ${latestStatus.recoveryStatus}${soloProgress}`;
+    if (soloMode && latestStatus.state === 'STARTING') {
+        hud.className = '';
+        hud.textContent = `SINGLE PLAYER\nInitializing authoritative MLE engine…\n${Math.floor((performance.now() - soloStartedAt) / 1000)}s elapsed · recovery ${latestStatus.recoveryStatus}`;
+    }
     readyButton.textContent = ready ? 'Not ready' : 'Ready';
     readyButton.disabled = latestStatus.memberCount !== latestStatus.maxPlayers;
     if (latestStatus.state === 'ACTIVE' && !gameStarted) {

@@ -1,0 +1,5 @@
+PMLE_SOLO_ADMISSION|PASS|elapsed_ms=100314|recovery_status=WARMING|generation=1|tic=18
+ENVIRONMENT|Oracle AI Database 26ai Free 23.26.2|CPU_COUNT=2|PDB_UTILIZATION_LIMIT=50|RUNNING_SESSIONS_LIMIT=2
+ARTIFACT|authority_sha256=06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0
+CONTRACT|tic_zero_durable_before_admission=true|authority_ready_admits=true|standby_warms_in_background=true
+NOTE|The elapsed value includes CREATE_MATCH, READY_MATCH, and one-second status polling. It replaces the earlier 110.458-second authority-only observation as the live post-deployment admission measurement. It does not satisfy the <=5-second prewarm target.

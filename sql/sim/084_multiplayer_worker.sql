@@ -32,7 +32,6 @@ create or replace package body doom_match_worker as
   c_frame_retention_tics constant pls_integer:=128;
   c_checkpoint_tics constant pls_integer:=1024;
   c_command_lead_tics constant pls_integer:=8;
-  c_initial_standby_wait_ms constant pls_integer:=180000;
   g_warm_promotion boolean:=false;
 
   -- This bounded worker advances complete two-player vectors and fills a
@@ -957,46 +956,6 @@ create or replace package body doom_match_worker as
     exception when others then rollback;end;
   end;
 
-  procedure await_initial_standby(
-    p_match varchar2,p_generation number
-  ) is
-    l_status varchar2(16);l_error varchar2(2000);l_polls number:=0;
-  begin
-    for poll_ in 1..ceil(c_initial_standby_wait_ms/200) loop
-      begin
-        select standby_status,last_error into l_status,l_error
-          from doom_match_standby_control
-          where match_id=p_match and base_generation=p_generation;
-      exception when no_data_found then
-        raise_application_error(c_error,'initial standby control disappeared');
-      end;
-      if l_status='READY' then
-        update doom_match_worker_control set worker_status='READY',
-          heartbeat=(localtimestamp at time zone 'UTC'),last_error=null
-          where match_id=p_match and generation=p_generation
-            and worker_status='STARTING';
-        if sql%rowcount<>1 then
-          raise_application_error(c_error,'initial standby admission fence');
-        end if;
-        commit;
-        return;
-      elsif l_status='FAILED' then
-        raise_application_error(c_error,
-          'initial standby failed: '||coalesce(l_error,'unknown error'));
-      end if;
-      dbms_session.sleep(.2);
-      l_polls:=l_polls+1;
-      if mod(l_polls,5)=0 then
-        update doom_match_worker_control set
-          heartbeat=(localtimestamp at time zone 'UTC')
-          where match_id=p_match and generation=p_generation
-            and worker_status='STARTING';
-        commit;
-      end if;
-    end loop;
-    raise_application_error(c_error,'initial standby readiness timeout');
-  end;
-
   procedure run_standby(p_match in varchar2) is
     l_players number;l_deathmatch number;l_skill number;l_episode number;l_map number;
     l_generation number;l_promote number;l_stop number;l_state varchar2(64);
@@ -1065,7 +1024,6 @@ create or replace package body doom_match_worker as
   procedure run_match(p_match in varchar2) is
     l_generation number;l_epoch number;l_status varchar2(16);l_request varchar2(16);
     l_tic number;l_stop number;l_idle number:=0;
-    l_solo number:=0;
     l_match_state varchar2(16);l_worker_mode varchar2(16);
     -- Pace from Oracle's monotonic hundredths clock. SYSTIMESTAMP is a ledger
     -- timestamp, not a cadence source: host/NTP backward corrections otherwise
@@ -1079,25 +1037,18 @@ create or replace package body doom_match_worker as
     if l_match_state='LOBBY' then
       publish_initial(p_match,l_generation);
       arm_standby(p_match,l_generation);
-      select count(*) into l_solo from doom_match_member
-        where match_id=p_match and display_name='SOLO NEUTRAL'
-          and capability_epoch=1;
-      if l_solo=1 then
-        -- Free has one effective PDB CPU. Requiring two cold TeaVM contexts
-        -- before solo admission doubled visible startup to 248.6 seconds.
-        -- The authority is already durable at tic zero; admit it now and let
-        -- the generation-matched recovery context finish warming in parallel.
-        update doom_match_worker_control set worker_status='READY',
-          heartbeat=(localtimestamp at time zone 'UTC'),last_error=null
-          where match_id=p_match and generation=l_generation
-            and worker_status='STARTING';
-        if sql%rowcount<>1 then
-          raise_application_error(c_error,'solo authority admission fence');
-        end if;
-        commit;
-      else
-        await_initial_standby(p_match,l_generation);
+      -- Tic zero is durable before admission. The generation-matched standby
+      -- is armed immediately but warms in the background: Free's single
+      -- effective PDB CPU must not put a second ~100 second cold start on the
+      -- user-facing path for either solo or multiplayer.
+      update doom_match_worker_control set worker_status='READY',
+        heartbeat=(localtimestamp at time zone 'UTC'),last_error=null
+        where match_id=p_match and generation=l_generation
+          and worker_status='STARTING';
+      if sql%rowcount<>1 then
+        raise_application_error(c_error,'authority admission fence');
       end if;
+      commit;
     elsif l_match_state='ACTIVE' then
       reconstruct_existing(p_match,l_generation,
         case when g_warm_promotion then 1 else 0 end);

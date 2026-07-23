@@ -76,7 +76,9 @@ assert.match(worker, /dbms_session\.sleep\(l_delay_ticks\/100\)/);
 assert.doesNotMatch(worker, /l_boundary:=utc_now/,
   'wall-clock corrections must not pace the retained worker');
 assert.match(worker, /request_status='PROCESSING'/);
-assert.match(worker, /commit;\s*end;\s*\n\s*procedure run_match/);
+assert.match(worker,
+  /raise_application_error\(c_error,'authority admission fence'\);[\s\S]+commit;[\s\S]+l_boundary_ticks:=dbms_utility\.get_time/,
+  'tic zero and authority readiness must commit before the retained tic loop');
 assert.match(worker, /l_checkpoint_status:=doom_mocha_save\(l_checkpoint\)/);
 assert.match(worker, /checkpoint locator length mismatch/);
 assert.match(worker, /procedure recover_match\(/);
@@ -87,13 +89,13 @@ assert.match(deploy, /doom_match_worker\.stop_match/);
 assert.match(deploy, /job_name like 'DOOM_MATCH_%'/);
 assert.match(worker, /recovery POV mismatch/);
 assert.match(worker, /generation=l_new/);
-assert.match(worker, /match_state='ACTIVE' then reconstruct_existing/);
+assert.match(worker, /l_match_state='ACTIVE' then\s+reconstruct_existing/);
 assert.match(worker, /doom_mocha_multiplayer_new_game/);
 assert.match(worker, /doom_mocha_multiplayer_step/);
-assert.match(worker, /l_dispose:=doom_mocha_dispose/);
-assert.match(worker, /l_ignored:=doom_mocha_dispose/);
+assert.match(worker, /doom_mle_match_runtime\.release/);
+assert.match(worker, /named \*_ojvm_oracle and are unreachable from RUN_MATCH/);
 assert.doesNotMatch(worker, /MULTI_ROOT\|'\|\|p_match/);
-assert.match(worker, /restart reconstruction remains deferred/);
+assert.match(worker, /DMC1 checkpoints and ordered-ledger reconstruction are both durable/);
 assert.match(api, /doom_match_worker\.start_ready\(p_match,30000,p_match_state\)/);
 assert.doesNotMatch(api, /insert into doom_match_(?:tic|frame|checkpoint)/);
 assert.doesNotMatch(worker, /grant |ords\.enable_object|doom_api\./i);

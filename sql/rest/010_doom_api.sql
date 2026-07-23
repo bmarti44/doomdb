@@ -50,7 +50,8 @@ create or replace package doom_api authid definer as
     p_membership_epoch  out number,
     p_generation        out number,
     p_current_tic       out number,
-    p_worker_mode       out varchar2);
+    p_worker_mode       out varchar2,
+    p_recovery_status   out varchar2);
 
   procedure submit_match_step(
     p_match             in  varchar2,
@@ -691,7 +692,7 @@ create or replace package body doom_api as
     p_map out number,p_max_players out number,p_member_count out number,
     p_ready_count out number,p_requester_slot out number,
     p_membership_epoch out number,p_generation out number,p_current_tic out number,
-    p_worker_mode out varchar2
+    p_worker_mode out varchar2,p_recovery_status out varchar2
   ) is
     l_state varchar2(16);l_expiry timestamp with time zone;
     l_host_salt raw(32);l_host_hash varchar2(64);
@@ -700,7 +701,8 @@ create or replace package body doom_api as
     p_match_state:=null;p_game_mode:=null;p_skill:=null;p_episode:=null;
     p_map:=null;p_max_players:=null;p_member_count:=null;p_ready_count:=null;
     p_requester_slot:=null;p_membership_epoch:=null;p_generation:=null;
-    p_current_tic:=null;p_worker_mode:=null;require_match_shape(p_match);
+    p_current_tic:=null;p_worker_mode:=null;p_recovery_status:=null;
+    require_match_shape(p_match);
     select match_state,game_mode,skill,episode,map,max_players,
            membership_epoch,generation,current_tic,expires_at,
            host_capability_salt,host_capability_hash
@@ -726,6 +728,20 @@ create or replace package body doom_api as
     exception when no_data_found then
       select text_value into p_worker_mode from doom_config
         where config_key='MATCH_WORKER_MODE';
+    end;
+    begin
+      select case standby_status
+        when 'READY' then 'READY'
+        when 'STARTING' then 'WARMING'
+        when 'PROMOTING' then 'PROMOTING'
+        when 'FAILED' then 'DEGRADED'
+        else 'ABSENT'
+      end
+        into p_recovery_status
+        from doom_match_standby_control
+        where match_id=p_match and base_generation=p_generation;
+    exception when no_data_found then
+      p_recovery_status:='ABSENT';
     end;
     if l_state='LOBBY' and p_member_count=p_max_players and
        p_ready_count=p_max_players then

@@ -88,11 +88,14 @@
   },
   "solo": {
     "coldStartBaselineSeconds": 248.629,
-    "authorityAdmissionSeconds": 110.458,
-    "admissionReductionPercent": 55.57,
+    "authorityAdmissionSeconds": 100.314,
+    "admissionReductionPercent": 59.65,
     "measuredFps": 34.5,
     "legacyEndpointCalls": 0,
-    "startupOptimization": "early authority admission verified",
+    "startupOptimization": "authority-ready admission deployed; E1M1 prewarm pool next",
+    "recoveryStatusOutput": "ABSENT/WARMING/READY/PROMOTING/DEGRADED",
+    "prewarmTargetSeconds": 5,
+    "crossConfigWarmRestore": "PASS for E1M1 skill and COOP/DEATHMATCH; cross-map remains fenced",
     "ordsPoolFix": "single outstanding status poll; cold initialization holds no match-row lock",
     "note": "248.629 seconds is the pre-optimization authority-plus-standby baseline"
   },
@@ -122,6 +125,6 @@
     "soak": "artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log",
     "ledger": "artifacts/performance/pmle-ledger-every-tic/run-final-06ac3333-2026-07-23.log",
     "solo": "artifacts/performance/pmle-browser-role-swap/solo-live-2026-07-23.log",
-    "soloAdmission": "artifacts/performance/pmle-browser-role-swap/solo-admission-live-2026-07-23.log"
+    "soloAdmission": "artifacts/performance/pmle-browser-role-swap/solo-authority-ready-live-2026-07-23.log"
   }
 }
