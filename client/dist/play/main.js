@@ -96,7 +96,7 @@ coop.href = '/play/multiplayer.html#mode=COOP';
 coop.textContent = 'Co-op';
 const multiplayer = document.createElement('a');
 multiplayer.dataset.doomMultiplayer = '';
-multiplayer.href = '/play/multiplayer.html';
+multiplayer.href = '/play/multiplayer.html#mode=DEATHMATCH';
 multiplayer.textContent = 'Multiplayer';
 shell.append(canvas, menu, touch.element, status, fullscreen, coop, multiplayer);
 document.head.append(stylesheet());

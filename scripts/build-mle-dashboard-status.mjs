@@ -71,6 +71,22 @@ const status = {
     clientPrediction: false,
     productionOjvm: false
   },
+  playModes: {
+    singlePlayer: {path: '/play/', authority: 'MLE', state: 'AVAILABLE'},
+    coop: {
+      path: '/play/multiplayer.html#mode=COOP',
+      players: 2,
+      authority: 'MLE',
+      state: 'AVAILABLE'
+    },
+    multiplayer: {
+      path: '/play/multiplayer.html#mode=DEATHMATCH',
+      kind: 'DEATHMATCH',
+      players: 2,
+      authority: 'MLE',
+      state: 'AVAILABLE'
+    }
+  },
   artifacts: {
     authority: {
       bytes: authority.outputBytes,

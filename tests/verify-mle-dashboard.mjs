@@ -39,5 +39,9 @@ assert.equal(status.solo.legacyEndpointCalls, 0);
 assert.equal(status.solo.startupOptimization, 'early authority admission verified');
 assert.equal(status.solo.authorityAdmissionSeconds, 110.458);
 assert.equal(status.architecture.productionOjvm, false);
+assert.equal(status.playModes.singlePlayer.state, 'AVAILABLE');
+assert.equal(status.playModes.coop.path, '/play/multiplayer.html#mode=COOP');
+assert.equal(status.playModes.multiplayer.path,
+  '/play/multiplayer.html#mode=DEATHMATCH');
 assert.equal(status.remaining.find(item => item.id === 'ADB').state, 'DORMANT');
 console.log('PASS MLE-DASHBOARD (current artifacts, evidence, links, and honesty gates)');

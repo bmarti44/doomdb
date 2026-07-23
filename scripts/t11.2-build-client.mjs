@@ -29,13 +29,13 @@ const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 const mainPath = path.join(build, 'main.js');
 let main = fs.readFileSync(mainPath, 'utf8');
 const coopMarker = "coop.href = '/play/multiplayer.html#mode=COOP';";
-const multiplayerMarker = "multiplayer.href = '/play/multiplayer.html';";
+const multiplayerMarker = "multiplayer.href = '/play/multiplayer.html#mode=DEATHMATCH';";
 assert.equal(main.split(coopMarker).length - 1, 1, 'single-player co-op link marker');
 assert.equal(main.split(multiplayerMarker).length - 1, 1,
   'single-player multiplayer link marker');
 main = main
   .replace(coopMarker, "coop.href = '/multiplayer.html#mode=COOP';")
-  .replace(multiplayerMarker, "multiplayer.href = '/multiplayer.html';");
+  .replace(multiplayerMarker, "multiplayer.href = '/multiplayer.html#mode=DEATHMATCH';");
 fs.writeFileSync(mainPath, main, {mode: 0o644});
 const multiplayerPath = path.join(build, 'multiplayer.js');
 let multiplayer = fs.readFileSync(multiplayerPath, 'utf8');

@@ -24,7 +24,7 @@ try {
   assert.equal(await page.locator('[data-doom-coop]').getAttribute('href'),
     '/play/multiplayer.html#mode=COOP');
   assert.equal(await page.locator('[data-doom-multiplayer]').getAttribute('href'),
-    '/play/multiplayer.html');
+    '/play/multiplayer.html#mode=DEATHMATCH');
   const fullscreen = page.locator('[data-doom-fullscreen]');
   await fullscreen.click();
   await page.waitForFunction(() => document.fullscreenElement
@@ -69,7 +69,23 @@ try {
     p_game_mode: 'COOP', p_skill: 4, p_episode: 1, p_map: 1,
     p_display_name: 'PLAYER 1', p_max_players: 1
   });
-  process.stdout.write('PASS PLAY-MENU title=1 main=1 skill=4 mle-solo=1 coop-button=1 multiplayer-button=1 windowed=1 fullscreen-button=1 escape-exit=1\n');
+  const coopPage = await browser.newPage();
+  await coopPage.goto(new URL('/play/multiplayer.html#mode=COOP', root).href,
+    {waitUntil: 'domcontentloaded'});
+  assert.equal(await coopPage.locator('[data-create] select[name=mode]').inputValue(),
+    'COOP');
+  assert.equal(await coopPage.getByRole('button', {name: 'Join match'}).isVisible(),
+    true);
+  await coopPage.close();
+  const multiplayerPage = await browser.newPage();
+  await multiplayerPage.goto(
+    new URL('/play/multiplayer.html#mode=DEATHMATCH', root).href,
+    {waitUntil: 'domcontentloaded'});
+  assert.equal(
+    await multiplayerPage.locator('[data-create] select[name=mode]').inputValue(),
+    'DEATHMATCH');
+  await multiplayerPage.close();
+  process.stdout.write('PASS PLAY-MENU title=1 main=1 skill=4 mle-solo=1 coop-button=1 multiplayer-button=1 coop-select=1 deathmatch-select=1 windowed=1 fullscreen-button=1 escape-exit=1\n');
 } finally {
   await browser.close();
 }

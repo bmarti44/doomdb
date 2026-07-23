@@ -66,12 +66,12 @@ document.head.append(style);
 
 const main = document.createElement('main');
 main.innerHTML = `
-  <header><h1>${soloMode ? 'DoomDB' : 'DoomDB Co-op'}</h1><p class="muted">One authoritative Doom world inside Oracle · ${soloMode ? 'confirmed-only MLE presentation' : 'two database-authored POVs'} · generated AutoREST only</p></header>
+  <header><h1>${soloMode ? 'DoomDB' : 'DoomDB Multiplayer'}</h1><p class="muted">One authoritative Doom world inside Oracle · ${soloMode ? 'confirmed-only MLE presentation' : 'co-op and deathmatch with two database-authored POVs'} · generated AutoREST only</p></header>
   <section class="panel" data-lobby>
     <div class="forms">
       <form data-create><h2>Create match</h2>
         <label>Name <input name="name" maxlength="32" value="Player 1" required></label>
-        <label>Mode <select name="mode"><option value="COOP" selected>Co-op</option><option value="DEATHMATCH">Deathmatch</option></select></label>
+        <label>Mode <select name="mode"><option value="COOP" selected>Co-op</option><option value="DEATHMATCH">Multiplayer deathmatch</option></select></label>
         <label>Skill <select name="skill"><option value="1">I'm too young to die</option><option value="2">Hey, not too rough</option><option value="3" selected>Hurt me plenty</option><option value="4">Ultra-violence</option><option value="5">Nightmare</option></select></label>
         <button>Create two-player match</button>
       </form>
@@ -79,7 +79,7 @@ main.innerHTML = `
         <label>Name <input name="name" maxlength="32" value="Player 2" required></label>
         <label>Match id <input name="match" maxlength="32" required></label>
         <label>Join capability <input name="join" maxlength="64" type="password" required></label>
-        <button>Join co-op</button>
+        <button>Join match</button>
       </form>
     </div>
     <div data-room hidden>
@@ -92,9 +92,9 @@ main.innerHTML = `
   <section data-game><div data-hud>Waiting for match…</div></section>
   <p>${soloMode ? '' : '<a href="/play/">Single-player</a> · '}<a href="/">Status dashboard</a></p>`;
 document.body.replaceChildren(main);
-if (!soloMode && requestedMode === 'COOP') {
+if (!soloMode && (requestedMode === 'COOP' || requestedMode === 'DEATHMATCH')) {
   const mode = main.querySelector<HTMLSelectElement>('select[name="mode"]');
-  if (mode !== null) mode.value = 'COOP';
+  if (mode !== null) mode.value = requestedMode;
 }
 
 const lobby = main.querySelector<HTMLElement>('[data-lobby]')!;

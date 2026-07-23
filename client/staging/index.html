@@ -76,7 +76,7 @@
       <h2>Final pinned authority</h2>
       <p><strong>MLE JavaScript · 1,163,182 bytes</strong><br><span class="muted"><code id="authority-sha">06ac33331d9a…</code> · DMC1 v5 · confirmed DMD1 output</span></p>
       <p><strong>OJVM is not production</strong><br><span class="muted">OJVM oracle stays in repository/dev tooling only for future differential proof.</span></p>
-      <div class="links"><a href="/play/">single player</a><a href="/play/multiplayer.html">multiplayer</a><a href="/health.txt">health</a></div>
+      <div class="links"><a href="/play/">single player</a><a href="/play/multiplayer.html#mode=COOP">co-op</a><a href="/play/multiplayer.html#mode=DEATHMATCH">multiplayer</a><a href="/health.txt">health</a></div>
     </article>
   </section>
 
@@ -219,7 +219,7 @@
     <article class="panel phase open"><b>DVR</b><span>Presentation / DVR</span><p class="muted">HUD, automap, terminal screens open</p></article>
     <article class="panel phase dormant"><b>ADB</b><span>Autonomous probe</span><p class="muted">dormant until credentials exist</p></article>
   </section>
-  <footer><a href="/play/">Open MLE single-player</a> · <a href="/play/multiplayer.html">Open MLE multiplayer</a> · Oracle/ORDS/AutoREST only · no credentials, capabilities, or evaluator data are exposed by this dashboard.</footer>
+  <footer><a href="/play/">Open MLE single-player</a> · <a href="/play/multiplayer.html#mode=COOP">Open MLE co-op</a> · <a href="/play/multiplayer.html#mode=DEATHMATCH">Open MLE multiplayer</a> · Oracle/ORDS/AutoREST only · no credentials, capabilities, or evaluator data are exposed by this dashboard.</footer>
 </main>
 <script>
 fetch('/health.txt',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.text()}).then(t=>{

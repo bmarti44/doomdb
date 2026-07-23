@@ -74,7 +74,7 @@ try {
   fs.writeFileSync(matchFile,`${match}\n`,{encoding:'ascii',mode:0o600});
   await guest.goto(share,{waitUntil:'networkidle'});
   await guest.locator('[data-join] input[name=name]').fill('ROUTE GUEST');
-  await guest.getByRole('button',{name:'Join co-op'}).click();
+  await guest.getByRole('button',{name:'Join match'}).click();
   await guest.locator('[data-room]').waitFor({state:'visible'});
   await host.waitForFunction(()=>document.querySelector('[data-room-status]')?.textContent?.includes('2/2 joined'));
   await Promise.all([host,guest].map(page=>page.waitForFunction(()=>{

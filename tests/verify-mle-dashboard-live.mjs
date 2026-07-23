@@ -31,8 +31,9 @@ try {
   assert.equal(await page.locator('#soak-state').textContent(), 'PASS · 30 min');
   assert.equal(await page.locator('a[href="/play/"]').first().getAttribute('href'),
     '/play/');
-  assert.equal(await page.locator('a[href="/play/multiplayer.html"]').first()
-    .getAttribute('href'), '/play/multiplayer.html');
+  assert.equal(await page.locator(
+    'a[href="/play/multiplayer.html#mode=DEATHMATCH"]').first()
+    .getAttribute('href'), '/play/multiplayer.html#mode=DEATHMATCH');
   assert.deepEqual(errors, []);
   await page.screenshot({path: screenshot, fullPage: true});
   console.log(`PASS MLE-DASHBOARD-LIVE url=${base} screenshot=${screenshot}`);
