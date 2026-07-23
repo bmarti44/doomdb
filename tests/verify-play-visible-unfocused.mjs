@@ -14,6 +14,8 @@ await page.addInitScript(() => {
 page.on('request', request => {
   if (request.method() === 'POST') requests.push(new URL(request.url()).pathname);
 });
+await page.route('**/doom_api/CREATE_MATCH', route =>
+  route.fulfill({status: 503, contentType: 'application/json', body: '{}'}));
 
 try {
   await page.goto(root, {waitUntil: 'domcontentloaded'});
@@ -41,23 +43,16 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('[data-doom-menu] h2')
     ?.textContent === 'CHOOSE SKILL LEVEL');
-  // Selecting NEW GAME is explicit intent: the client overlaps the ~10 s
-  // engine construction with the skill menu by speculatively allocating the
-  // highlighted default skill. Title and main-menu lurkers allocate nothing.
-  for (let waited = 0; waited < 5000 &&
-       !requests.some(path => path.endsWith('/NEW_GAME')); waited += 100) {
-    await page.waitForTimeout(100);
-  }
-  assert.ok(requests.some(path => path.endsWith('/NEW_GAME')),
-    'skill menu did not begin the speculative default-skill allocation');
+  assert.ok(!requests.some(path => path.endsWith('/CREATE_MATCH')),
+    'skill menu allocated a match before confirmation');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => document.querySelector('[data-doom-status]')
-    ?.textContent?.includes('pipeline active'), null, {timeout: 120_000});
-  assert.ok(requests.some(path => path.endsWith('/SUBMIT_STEP')),
-    'visible unfocused page never submitted a gameplay tic');
-  assert.ok(requests.some(path => path.endsWith('/POLL_FRAME')),
-    'visible unfocused page never polled a gameplay frame');
-  process.stdout.write('PASS PLAY-VISIBLE-UNFOCUSED\n');
+  await page.waitForURL(/\/play\/mle(?:\.html)?#solo=1&skill=3/, {timeout: 10_000});
+  assert.ok(requests.some(path => path.endsWith('/CREATE_MATCH')),
+    'confirmed skill did not create an MLE match');
+  assert.ok(!requests.some(path => path.endsWith('/NEW_GAME') ||
+    path.endsWith('/SUBMIT_STEP') || path.endsWith('/POLL_FRAME')),
+  'production single-player path called a legacy OJVM endpoint');
+  process.stdout.write('PASS PLAY-VISIBLE-UNFOCUSED mle-solo=1 legacy-calls=0\n');
 } finally {
   await browser.close();
 }

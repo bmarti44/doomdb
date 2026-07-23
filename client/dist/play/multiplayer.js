@@ -10,6 +10,13 @@ import { authorityRootChainSha } from './authority.js';
 import { ConfirmedWanPolicy } from './authority-wan.js';
 import { createBrowserAuthorityEngines } from './teavm-browser.js';
 const MAX_CONFIRMED_PRESENTATION_BACKLOG = 16;
+const soloMode = document.body.hasAttribute('data-doom-solo');
+const soloStartedAt = soloMode ? performance.now() : 0;
+const launchParameters = new URLSearchParams(location.search.length > 1 ? location.search : location.hash.slice(1));
+const requestedSkill = Number(launchParameters.get('skill') ?? 3);
+const soloSkill = Number.isInteger(requestedSkill) &&
+    requestedSkill >= 1 && requestedSkill <= 5 ? requestedSkill : 3;
+const requestedMode = launchParameters.get('mode');
 const requestedHoldMs = Number(new URLSearchParams(location.search).get('holdMs') ?? 0);
 const transitionHoldMs = Number.isInteger(requestedHoldMs) &&
     requestedHoldMs >= 0 && requestedHoldMs <= 500 ? requestedHoldMs : 0;
@@ -36,7 +43,7 @@ style.textContent = `
 document.head.append(style);
 const main = document.createElement('main');
 main.innerHTML = `
-  <header><h1>DoomDB Co-op</h1><p class="muted">One authoritative Doom world inside Oracle · two database-authored POVs · generated AutoREST only</p></header>
+  <header><h1>${soloMode ? 'DoomDB' : 'DoomDB Co-op'}</h1><p class="muted">One authoritative Doom world inside Oracle · ${soloMode ? 'confirmed-only MLE presentation' : 'two database-authored POVs'} · generated AutoREST only</p></header>
   <section class="panel" data-lobby>
     <div class="forms">
       <form data-create><h2>Create match</h2>
@@ -60,8 +67,13 @@ main.innerHTML = `
     <p data-message class="muted">Create a match, or open a private join link from the host.</p>
   </section>
   <section data-game><div data-hud>Waiting for match…</div></section>
-  <p><a href="/play/">Single-player</a> · <a href="/">Status dashboard</a></p>`;
+  <p>${soloMode ? '' : '<a href="/play/">Single-player</a> · '}<a href="/">Status dashboard</a></p>`;
 document.body.replaceChildren(main);
+if (!soloMode && requestedMode === 'COOP') {
+    const mode = main.querySelector('select[name="mode"]');
+    if (mode !== null)
+        mode.value = 'COOP';
+}
 const lobby = main.querySelector('[data-lobby]');
 const createForm = main.querySelector('[data-create]');
 const joinForm = main.querySelector('[data-join]');
@@ -119,6 +131,16 @@ let latestStatus = null;
 let ready = false;
 let lobbyTimer = 0;
 let gameStarted = false;
+function scheduleLobbyRefresh() {
+    window.clearTimeout(lobbyTimer);
+    if (gameStarted || local === null)
+        return;
+    lobbyTimer = window.setTimeout(() => {
+        void refreshLobby()
+            .catch(showError)
+            .finally(() => scheduleLobbyRefresh());
+    }, 500);
+}
 const joinUrl = (value) => {
     const url = new URL('/play/multiplayer.html', location.origin);
     url.search = location.search;
@@ -134,12 +156,14 @@ async function refreshLobby() {
         await readyMatch(local.match, local.playerCapability, true);
         latestStatus = await matchStatus(local.match, capability);
     }
-    roomStatus.textContent = `Match ${local.match} · player ${local.playerSlot + 1}\n${latestStatus.memberCount}/${latestStatus.maxPlayers} joined · ${latestStatus.readyCount} ready · ${latestStatus.state}`;
+    const soloProgress = soloMode && latestStatus.state === 'STARTING' ?
+        ` · cold authority + standby ${Math.floor((performance.now() - soloStartedAt) / 1000)}s` : '';
+    roomStatus.textContent = `Match ${local.match} · player ${local.playerSlot + 1}\n${latestStatus.memberCount}/${latestStatus.maxPlayers} joined · ${latestStatus.readyCount} ready · ${latestStatus.state}${soloProgress}`;
     readyButton.textContent = ready ? 'Not ready' : 'Ready';
     readyButton.disabled = latestStatus.memberCount !== latestStatus.maxPlayers;
     if (latestStatus.state === 'ACTIVE' && !gameStarted) {
         gameStarted = true;
-        window.clearInterval(lobbyTimer);
+        window.clearTimeout(lobbyTimer);
         await startMleGame(local, latestStatus);
     }
 }
@@ -156,9 +180,7 @@ async function enterLobby(value) {
         shareWrap.hidden = false;
     }
     await refreshLobby();
-    lobbyTimer = window.setInterval(() => {
-        void refreshLobby().catch(showError);
-    }, 500);
+    scheduleLobbyRefresh();
 }
 createForm.addEventListener('submit', event => {
     event.preventDefault();
@@ -620,7 +642,25 @@ export async function startGameLegacy(value: LocalMatch, status: MatchStatus): P
 }
 */
 const hash = location.hash.slice(1);
-if (hash.startsWith('join=')) {
+if (soloMode) {
+    createForm.hidden = true;
+    joinForm.hidden = true;
+    readyButton.hidden = true;
+    shareWrap.hidden = true;
+    message.textContent = 'Creating a one-player MLE-authoritative match inside Oracle…';
+    ready = true;
+    setBusy(true);
+    void createMatch('PLAYER 1', soloSkill, 'COOP', 1).then(async (value) => {
+        const credentials = {
+            match: value.match, playerCapability: value.playerCapability, playerSlot: 0
+        };
+        await enterLobby(credentials);
+        message.textContent = 'Starting the retained MLE authority and recovery standby…';
+        await readyMatch(value.match, value.playerCapability, true);
+        await refreshLobby();
+    }).catch(showError).finally(() => setBusy(false));
+}
+else if (hash.startsWith('join=')) {
     const [match = '', join = ''] = hash.slice(5).split('.');
     if (/^[0-9a-f]{32}$/.test(match) && /^[0-9a-f]{64}$/.test(join)) {
         joinForm.elements.namedItem('match').value = match;

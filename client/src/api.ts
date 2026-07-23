@@ -162,11 +162,12 @@ function capabilityField(document: RestDocument, name: string): string {
 }
 
 export async function createMatch(displayName: string, skill = 3,
-                                  gameMode: 'COOP' | 'DEATHMATCH' = 'COOP'):
+                                  gameMode: 'COOP' | 'DEATHMATCH' = 'COOP',
+                                  maxPlayers = 2):
                                   Promise<MatchCredentials> {
   const document = await post('create_match', {
     p_game_mode: gameMode, p_skill: skill, p_episode: 1, p_map: 1,
-    p_display_name: displayName
+    p_display_name: displayName, p_max_players: maxPlayers
   });
   const match = stringField(document, 'p_match');
   if (!/^[0-9a-f]{32}$/.test(match)) throw new TypeError('match response is invalid');

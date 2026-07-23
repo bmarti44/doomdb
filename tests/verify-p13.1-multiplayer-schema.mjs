@@ -37,6 +37,7 @@ assert.match(schema, /generation number\(12\) not null/g);
 assert.match(schema, /command_vector raw\(32\) not null/);
 assert.match(schema, /ticcmd_raw raw\(8\) not null/);
 assert.match(schema, /membership_bitmap raw\(1\) not null/);
+assert.match(schema, /max_players between 2 and 4/);
 assert.match(schema, /references doom_match\(match_id\) on delete cascade/);
 assert.match(schema, /references doom_match_member\(match_id,player_slot\) on delete cascade/);
 assert.match(schema, /references doom_match_tic\(match_id,tic\) on delete cascade/);
@@ -53,6 +54,8 @@ assert.equal(lines.filter(line => line ===
   'sql/schema/050_multiplayer_input_overlay.sql').length, 1);
 assert.equal(lines.filter(line => line ===
   'sql/schema/051_multiplayer_paced_input.sql').length, 1);
+assert.equal(lines.filter(line => line ===
+  'sql/schema/053_singleplayer_mle.sql').length, 1);
 
 const dropPositions = [
   'DOOM_MATCH_CHECKPOINT', 'DOOM_MATCH_FRAME', 'DOOM_MATCH_COMMAND',

@@ -112,7 +112,7 @@ create or replace package body doom_match_worker as
     select skill,episode,map,game_mode,membership_epoch,max_players
       into l_skill,l_episode,l_map,l_mode,l_epoch,l_players
       from doom_match where match_id=p_match and match_state='LOBBY'
-        and generation=0 for update;
+        and generation=0;
     if l_players<>2 then raise_application_error(c_error,'two-player worker required');end if;
     select count(*) into l_players from doom_match_member where match_id=p_match
       and member_state='READY' and membership_epoch=l_epoch;
@@ -120,6 +120,22 @@ create or replace package body doom_match_worker as
     doom_mle_match_runtime.initialize_game(2,
       case l_mode when 'DEATHMATCH' then 1 else 0 end,
       l_skill,l_episode,l_map,l_state);
+    -- Cold TeaVM initialization is intentionally outside the match-row
+    -- transaction. Holding this row for roughly two minutes made every
+    -- authorized MATCH_STATUS lease renewal wait behind it; overlapping
+    -- browser polls could then consume the entire six-connection ORDS pool.
+    -- Reacquire and revalidate the immutable launch identity before publishing
+    -- tic zero, so admission remains fail-closed without pinning HTTP calls.
+    select max_players into l_players from doom_match
+      where match_id=p_match and match_state='LOBBY' and generation=0
+        and membership_epoch=l_epoch and skill=l_skill and episode=l_episode
+        and map=l_map and game_mode=l_mode for update;
+    if l_players<>2 then raise_application_error(c_error,'two-player worker required');end if;
+    select count(*) into l_players from doom_match_member where match_id=p_match
+      and member_state='READY' and membership_epoch=l_epoch;
+    if l_players<>2 then
+      raise_application_error(c_error,'membership changed during initialization');
+    end if;
     l_command_sha:=sha_raw(l_vector);
     select lower(standard_hash('MLE_ROOT|'||l_mode||'|'||l_skill||'|'||
       l_episode||'|'||l_map||'|PLAYERS=2|MEMBERSHIP=03','SHA256'))
@@ -1035,6 +1051,7 @@ create or replace package body doom_match_worker as
   procedure run_match(p_match in varchar2) is
     l_generation number;l_epoch number;l_status varchar2(16);l_request varchar2(16);
     l_tic number;l_stop number;l_idle number:=0;
+    l_solo number:=0;
     l_match_state varchar2(16);l_worker_mode varchar2(16);
     -- Pace from Oracle's monotonic hundredths clock. SYSTIMESTAMP is a ledger
     -- timestamp, not a cadence source: host/NTP backward corrections otherwise
@@ -1048,7 +1065,25 @@ create or replace package body doom_match_worker as
     if l_match_state='LOBBY' then
       publish_initial(p_match,l_generation);
       arm_standby(p_match,l_generation);
-      await_initial_standby(p_match,l_generation);
+      select count(*) into l_solo from doom_match_member
+        where match_id=p_match and display_name='SOLO NEUTRAL'
+          and capability_epoch=1;
+      if l_solo=1 then
+        -- Free has one effective PDB CPU. Requiring two cold TeaVM contexts
+        -- before solo admission doubled visible startup to 248.6 seconds.
+        -- The authority is already durable at tic zero; admit it now and let
+        -- the generation-matched recovery context finish warming in parallel.
+        update doom_match_worker_control set worker_status='READY',
+          heartbeat=(localtimestamp at time zone 'UTC'),last_error=null
+          where match_id=p_match and generation=l_generation
+            and worker_status='STARTING';
+        if sql%rowcount<>1 then
+          raise_application_error(c_error,'solo authority admission fence');
+        end if;
+        commit;
+      else
+        await_initial_standby(p_match,l_generation);
+      end if;
     elsif l_match_state='ACTIVE' then
       reconstruct_existing(p_match,l_generation,
         case when g_warm_promotion then 1 else 0 end);

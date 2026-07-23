@@ -1,0 +1,4 @@
+PMLE_SOLO_ADMISSION_LIVE|PASS|elapsed_ms=110458|server_tic=12|confirmed_tic=0|errors=0|http_errors=0
+PMLE_SOLO_ADMISSION_SEMANTICS|authority=READY|standby=ASYNC_WARMING|presentation=CONFIRMED_ONLY
+PMLE_SOLO_ORDS_POOL|PASS|status_poll=SINGLE_FLIGHT|cold_match_row_lock=RELEASED|create_match_http=200
+PMLE_SOLO_BASELINE_COMPARISON|baseline_ms=248629|admission_ms=110458|reduction_percent=55.57

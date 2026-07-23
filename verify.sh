@@ -221,6 +221,8 @@ case "$1" in
         node tests/verify-authority-delta.mjs
         node tests/verify-authority-batch.mjs
         node tests/verify-authority-mirror.mjs
+        node tests/verify-authority-wan.mjs
+        node tests/verify-mle-solo-source.mjs
         scripts/db_sql.sh sql/sim/086_mle_authority_delta.sql
         scripts/db_sql.sh tests/verify-mle-authority-delta.sql
         scripts/db_sql.sh sql/sim/087_mle_transition_transport.sql

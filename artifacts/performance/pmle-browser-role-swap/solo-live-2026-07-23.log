@@ -1,0 +1,5 @@
+PMLE_SOLO_LIVE|PASS|elapsed_ms=248629|families=CREATE_MATCH,GET_ASSET,MATCH_INPUT_FRONTIER,MATCH_STATUS,POLL_MATCH_TRANSITIONS,READY_MATCH|errors=0|http_errors=0
+PMLE_SOLO_HUD|mode=COOP|player=1|tic=73|confirmed=75|server=75|lead=2|playout=2|authority=confirmed-only
+PMLE_SOLO_LEGACY_ENDPOINTS|NEW_GAME=0|SUBMIT_STEP=0|POLL_FRAME=0
+PMLE_SOLO_SHAPE|browser_players=1|authority_slots=2|slot_1=uncredentialed-neutral
+PMLE_SOLO_COLD_START|seconds=248.629|environment=26ai-Free|effective_pdb_cpu=1|authority_and_standby_admission=required

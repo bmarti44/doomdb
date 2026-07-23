@@ -54,6 +54,7 @@ aws_quiet(){ if ! aws "$@" --no-cli-pager >"$tmp/aws/aws-output.log" 2>"$tmp/aws
 "$root/probes/mle/teavm-engine/package-browser-assets.sh"
 cp "$root/client/dist/play/index.html" "$tmp/client-dist/index.html"
 cp "$root/client/staging/multiplayer.html" "$tmp/client-dist/multiplayer.html"
+cp "$root/client/staging/mle.html" "$tmp/client-dist/mle.html"
 mkdir -p "$tmp/client-dist/play"
 cp "$root/client/dist/play"/doom-mle-authority-*.js "$tmp/client-dist/play/"
 cp "$root/client/dist/play"/doom-mle-presentation-*.js "$tmp/client-dist/play/"

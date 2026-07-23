@@ -34,13 +34,17 @@ assert.match(lifecycle, /renew_match_lease\(p_match,l_now\)/);
 assert.doesNotMatch(matchWorker,/expires_at\s*=/i,
   'autonomous worker must not renew an abandoned match lease');
 assert.match(lifecycle, /upper\(p_game_mode\) not in\('COOP','DEATHMATCH'\)/);
+assert.match(lifecycle, /p_max_players not in\(1,2\)/);
+assert.match(lifecycle, /p_skill,p_episode,p_map,2,1,0,0/);
+assert.match(lifecycle, /'SOLO NEUTRAL'/);
+assert.match(lifecycle, /l_solo_capability:=null/);
 assert.match(lifecycle, /'LOBBY',upper\(p_game_mode\)/);
 assert.match(lifecycle, /interval '20' minute/);
 assert.match(lifecycle, /membership_epoch=l_epoch/);
 assert.match(lifecycle, /doom_match_worker\.start_ready\(p_match,30000,p_match_state\)/);
 assert.match(lifecycle, /doom_match_worker\.recover_match\(p_match,0,l_recovery_state\)/);
 assert.match(lifecycle, /l_worker_heartbeat<utc_now-interval '5' second/);
-assert.match(lifecycle, /returns ACTIVE only after real Java tic-zero payloads/);
+assert.match(lifecycle, /returns ACTIVE only after the retained MLE engine/);
 assert.match(lifecycle, /Supplying the previously returned player capability/);
 assert.doesNotMatch(specification, /function new_capability|function capability_hash|require_match_shape/);
 assert.doesNotMatch(lifecycle, /insert into doom_match_(?:tic|frame|checkpoint)/);

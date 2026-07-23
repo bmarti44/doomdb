@@ -11,6 +11,9 @@ for (const marker of [
   '/play/multiplayer.html',
   "fetch('/mle-status.json'",
   'OJVM oracle stays in repository/dev tooling only',
+  'pre-optimization authority-plus-standby baseline was 248.629 seconds cold',
+  'confirmed-only game surface in 110.458 seconds',
+  'separate Co-op and Multiplayer shortcuts remain on the right',
   'WAN matrix',
   'Presentation / DVR'
 ]) {
@@ -31,6 +34,10 @@ assert.equal(status.artifacts.presentation.sha256,
   'bd35d27784db2332e1c06f08a7eeb8940b1a17a732bfb45de0b4b3b42d419b83');
 assert.equal(status.gates.ledgerEveryTic13272, 'PASS');
 assert.equal(status.gates.finalWorkerSoak, 'PASS');
+assert.equal(status.gates.soloMleAuthority, 'PASS');
+assert.equal(status.solo.legacyEndpointCalls, 0);
+assert.equal(status.solo.startupOptimization, 'early authority admission verified');
+assert.equal(status.solo.authorityAdmissionSeconds, 110.458);
 assert.equal(status.architecture.productionOjvm, false);
 assert.equal(status.remaining.find(item => item.id === 'ADB').state, 'DORMANT');
 console.log('PASS MLE-DASHBOARD (current artifacts, evidence, links, and honesty gates)');

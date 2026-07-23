@@ -28,9 +28,14 @@ fs.writeFileSync(apiPath, api, {mode: 0o644});
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 const mainPath = path.join(build, 'main.js');
 let main = fs.readFileSync(mainPath, 'utf8');
-const multiplayerMarker = "coop.href = '/play/multiplayer';";
-assert.equal(main.split(multiplayerMarker).length - 1, 1, 'single-player multiplayer link marker');
-main = main.replace(multiplayerMarker, "coop.href = '/multiplayer.html';");
+const coopMarker = "coop.href = '/play/multiplayer.html?mode=COOP';";
+const multiplayerMarker = "multiplayer.href = '/play/multiplayer.html';";
+assert.equal(main.split(coopMarker).length - 1, 1, 'single-player co-op link marker');
+assert.equal(main.split(multiplayerMarker).length - 1, 1,
+  'single-player multiplayer link marker');
+main = main
+  .replace(coopMarker, "coop.href = '/multiplayer.html?mode=COOP';")
+  .replace(multiplayerMarker, "multiplayer.href = '/multiplayer.html';");
 fs.writeFileSync(mainPath, main, {mode: 0o644});
 const multiplayerPath = path.join(build, 'multiplayer.js');
 let multiplayer = fs.readFileSync(multiplayerPath, 'utf8');
@@ -42,14 +47,33 @@ let multiplayerIndex = fs.readFileSync(multiplayerIndexPath, 'utf8');
 assert.equal((multiplayerIndex.match(/\/play\/multiplayer\.js/g) ?? []).length, 1, 'multiplayer entry marker');
 multiplayerIndex = multiplayerIndex.replace('/play/multiplayer.js', '/multiplayer.js');
 fs.writeFileSync(multiplayerIndexPath, multiplayerIndex, {mode: 0o644});
+const mleIndexPath = path.join(build, 'mle.html');
+let mleIndex = fs.readFileSync(mleIndexPath, 'utf8');
+assert.equal((mleIndex.match(/\/play\/multiplayer\.js/g) ?? []).length, 1,
+  'solo MLE entry marker');
+mleIndex = mleIndex.replace('/play/multiplayer.js', '/multiplayer.js');
+fs.writeFileSync(mleIndexPath, mleIndex, {mode: 0o644});
 
-const mainBytes = fs.readFileSync(mainPath), mainDigest = sha(mainBytes);
+const mainBytes = fs.readFileSync(mainPath);
+const mainDigest = sha(mainBytes);
 const addressedMain = `main-${mainDigest.slice(0, 12)}.js`;
 fs.renameSync(mainPath, path.join(build, addressedMain));
+const multiplayerBytes = fs.readFileSync(multiplayerPath);
+const multiplayerDigest = sha(multiplayerBytes);
+const addressedMultiplayer = `multiplayer-${multiplayerDigest.slice(0, 12)}.js`;
+fs.renameSync(multiplayerPath, path.join(build, addressedMultiplayer));
 let index = fs.readFileSync(indexPath, 'utf8');
-assert.equal((index.match(/\/play\/main\.js/g) ?? []).length, 1, 'index must contain one main entry');
+assert.equal((index.match(/\/play\/main\.js/g) ?? []).length, 1,
+  'menu index must contain one main entry');
 index = index.replace('/play/main.js', `/${addressedMain}`);
 fs.writeFileSync(indexPath, index, {mode: 0o644});
+for (const entryPath of [multiplayerIndexPath,mleIndexPath]) {
+  const entry = fs.readFileSync(entryPath, 'utf8');
+  assert.equal((entry.match(/\/multiplayer\.js/g) ?? []).length, 1,
+    'MLE index must contain one client entry');
+  fs.writeFileSync(entryPath,
+    entry.replace('/multiplayer.js', `/${addressedMultiplayer}`), {mode: 0o644});
+}
 
 const files = fs.readdirSync(build, {recursive: true})
   .filter(name => fs.statSync(path.join(build, name)).isFile())

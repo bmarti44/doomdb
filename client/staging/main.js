@@ -32,7 +32,8 @@ function stylesheet() {
     [data-doom-status]{position:fixed;left:12px;top:12px;z-index:4;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.35 system-ui;white-space:pre-line;pointer-events:none}
     [data-doom-fullscreen]{position:fixed;right:12px;top:12px;z-index:5;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.2 system-ui;cursor:pointer}
     [data-doom-coop]{position:fixed;right:12px;top:54px;z-index:5;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.2 system-ui;text-decoration:none}
-    [data-doom-coop]:hover,[data-doom-coop]:focus-visible{border-color:#d7b84b;color:#fff}
+    [data-doom-multiplayer]{position:fixed;right:12px;top:96px;z-index:5;padding:8px 10px;border:1px solid #7778;border-radius:6px;background:#000c;color:#eee;font:13px/1.2 system-ui;text-decoration:none}
+    [data-doom-coop]:hover,[data-doom-coop]:focus-visible,[data-doom-multiplayer]:hover,[data-doom-multiplayer]:focus-visible{border-color:#d7b84b;color:#fff}
     [data-doom-fullscreen]:hover,[data-doom-fullscreen]:focus-visible{border-color:#d7b84b;color:#fff}
     [data-doom-control]{position:relative;min-width:40px;min-height:40px;padding:0;border:1px solid #aaa;background:#171717;color:#fff;border-radius:7px;touch-action:none}
     [data-doom-control]::before{content:attr(data-icon);font:700 21px/1 system-ui}
@@ -91,9 +92,13 @@ fullscreen.setAttribute('aria-pressed', 'false');
 fullscreen.hidden = !document.fullscreenEnabled;
 const coop = document.createElement('a');
 coop.dataset.doomCoop = '';
-coop.href = '/play/multiplayer';
-coop.textContent = '2-player co-op';
-shell.append(canvas, menu, touch.element, status, fullscreen, coop);
+coop.href = '/play/multiplayer.html?mode=COOP';
+coop.textContent = 'Co-op';
+const multiplayer = document.createElement('a');
+multiplayer.dataset.doomMultiplayer = '';
+multiplayer.href = '/play/multiplayer.html';
+multiplayer.textContent = 'Multiplayer';
+shell.append(canvas, menu, touch.element, status, fullscreen, coop, multiplayer);
 document.head.append(stylesheet());
 document.body.replaceChildren(shell);
 let pointerCapturePending = false;
@@ -418,14 +423,20 @@ async function boot() {
     status.textContent = 'Loading authentic menu patches from Oracle…';
     const menuPatches = await loadMenuPatches();
     status.style.opacity = '0';
-    const speculative = { current: null };
-    const skill = await chooseSkill(titleIndices, palette, menuPatches, () => {
-        if (speculative.current !== null)
-            return;
-        const promise = newGame(3);
-        speculative.current = { skill: 3, promise };
-        promise.catch(() => { speculative.current = null; });
-    });
+    const skill = await chooseSkill(titleIndices, palette, menuPatches, () => { });
+    // Preserve the authentic title/main/skill menus, then hand the selected
+    // game to the Java-free retained MLE authority. This relative URL works for
+    // both local /play/ hosting and the cloud root document.
+    const mleUrl = new URL('mle.html', location.href);
+    // Jetty canonicalizes *.html paths and drops their query string. A fragment
+    // survives that redirect and is private to the browser, which is appropriate
+    // for these launch-only presentation options.
+    mleUrl.hash = new URLSearchParams({ solo: '1', skill: String(skill) }).toString();
+    location.assign(mleUrl);
+    return;
+    /* Development-only legacy framebuffer client retained below as an oracle
+       UI instrument. The production /play path returns above and cannot call
+       NEW_GAME, SUBMIT_STEP, or POLL_FRAME. */
     // Mocha's authentic tic-0 framebuffer contains only the tiled border flat:
     // vanilla Display() does not render the player view until gametic advances.
     // Restore the last complete presentation while the retained worker starts.
@@ -439,15 +450,7 @@ async function boot() {
     }, 500);
     let game;
     try {
-        const prepared = speculative.current;
-        if (prepared !== null && prepared.skill === skill) {
-            game = await prepared.promise.catch(() => newGame(skill));
-        }
-        else {
-            if (prepared !== null)
-                prepared.promise.catch(() => undefined);
-            game = await newGame(skill);
-        }
+        game = await newGame(skill);
     }
     finally {
         window.clearInterval(startTicker);

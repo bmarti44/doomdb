@@ -13,8 +13,14 @@ const soakPath =
   'artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log';
 const ledgerPath =
   'artifacts/performance/pmle-ledger-every-tic/run-final-06ac3333-2026-07-23.log';
+const soloPath =
+  'artifacts/performance/pmle-browser-role-swap/solo-live-2026-07-23.log';
+const soloAdmissionPath =
+  'artifacts/performance/pmle-browser-role-swap/solo-admission-live-2026-07-23.log';
 const soak = read(soakPath);
 const ledger = read(ledgerPath);
+const solo = read(soloPath);
+const soloAdmission = read(soloAdmissionPath);
 const authority = versions.teaVM;
 const presentation = authority.presentation;
 
@@ -35,6 +41,17 @@ contains(ledger,
 contains(ledger,
   'PMLE_LEDGER_PROVENANCE|CONFIRMED|executions=1|terminal_markers=1',
   'ledger provenance');
+contains(solo, 'PMLE_SOLO_LIVE|PASS|elapsed_ms=248629', 'solo MLE browser');
+contains(solo,
+  'PMLE_SOLO_LEGACY_ENDPOINTS|NEW_GAME=0|SUBMIT_STEP=0|POLL_FRAME=0',
+  'solo Java-free endpoint path');
+contains(soloAdmission,
+  'PMLE_SOLO_ADMISSION_LIVE|PASS|elapsed_ms=110458',
+  'solo early authority admission');
+contains(soloAdmission,
+  'PMLE_SOLO_ORDS_POOL|PASS|status_poll=SINGLE_FLIGHT|' +
+  'cold_match_row_lock=RELEASED|create_match_http=200',
+  'solo ORDS pool correction');
 
 const status = {
   schema: 1,
@@ -50,6 +67,7 @@ const status = {
   architecture: {
     authority: 'TeaVM-generated MLE JavaScript in retained database sessions',
     livePresentation: 'Browser rendering from confirmed DMD1 transitions',
+    soloPresentation: 'One browser player plus an uncredentialed neutral authority slot',
     clientPrediction: false,
     productionOjvm: false
   },
@@ -79,6 +97,7 @@ const status = {
     finalWorkerSoak: 'PASS',
     calibratedProcessMemory: 'PASS',
     browserConfirmedOnly: 'PASS',
+    soloMleAuthority: 'PASS',
     resourceCapDecision: 'PASS'
   },
   soak: {
@@ -103,6 +122,16 @@ const status = {
     guaranteedConcurrentPollReturns: 1,
     localLongPollingDefault: false
   },
+  solo: {
+    coldStartBaselineSeconds: 248.629,
+    authorityAdmissionSeconds: 110.458,
+    admissionReductionPercent: 55.57,
+    measuredFps: 34.5,
+    legacyEndpointCalls: 0,
+    startupOptimization: 'early authority admission verified',
+    ordsPoolFix: 'single outstanding status poll; cold initialization holds no match-row lock',
+    note: '248.629 seconds is the pre-optimization authority-plus-standby baseline'
+  },
   remaining: [
     {id: 'WAN', state: 'NEXT', label: 'Injected-latency multiplayer matrix'},
     {id: 'JAVA-AUDIT', state: 'NEXT',
@@ -112,7 +141,10 @@ const status = {
     {id: 'ADB', state: 'DORMANT',
       label: 'Autonomous MLE performance probe; credentials required'}
   ],
-  evidence: {soak: soakPath, ledger: ledgerPath}
+  evidence: {
+    soak: soakPath, ledger: ledgerPath, solo: soloPath,
+    soloAdmission: soloAdmissionPath
+  }
 };
 
 const serialized = `${JSON.stringify(status, null, 2)}\n`;

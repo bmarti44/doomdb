@@ -19,7 +19,8 @@ create or replace package doom_api authid definer as
     p_match             out varchar2,
     p_host_capability   out varchar2,
     p_join_capability   out varchar2,
-    p_player_capability out varchar2);
+    p_player_capability out varchar2,
+    p_max_players       in  number default 2);
 
   procedure join_match(
     p_match             in     varchar2,
@@ -435,10 +436,11 @@ create or replace package body doom_api as
     p_game_mode in varchar2,p_skill in number,p_episode in number,
     p_map in number,p_display_name in varchar2,p_match out varchar2,
     p_host_capability out varchar2,p_join_capability out varchar2,
-    p_player_capability out varchar2
+    p_player_capability out varchar2,p_max_players in number default 2
   ) is
     l_now timestamp with time zone:=utc_now;
     l_host_salt raw(32);l_join_salt raw(32);l_player_salt raw(32);
+    l_solo_salt raw(32);l_solo_capability varchar2(64);l_solo_hash varchar2(64);
     l_host_hash varchar2(64);l_join_hash varchar2(64);l_player_hash varchar2(64);
     l_recent number;l_open number;l_lock number;
   begin
@@ -450,7 +452,8 @@ create or replace package body doom_api as
     if p_skill is null or p_skill<>trunc(p_skill) or p_skill not between 1 and 5 or
        p_episode is null or p_episode<>trunc(p_episode) or
        p_episode not between 1 and 9 or p_map is null or p_map<>trunc(p_map) or
-       p_map not between 1 and 99 then
+       p_map not between 1 and 99 or p_max_players is null or
+       p_max_players<>trunc(p_max_players) or p_max_players not in(1,2) then
       fail(c_bad_request,'invalid match map selection');
     end if;
     require_display_name(p_display_name);
@@ -493,6 +496,22 @@ create or replace package body doom_api as
       joined_at,last_seen_at)
     values(p_match,0,'JOINED',1,0,1,l_player_salt,l_player_hash,
       p_display_name,l_now,l_now);
+    if p_max_players=1 then
+      -- The accepted MLE authority/checkpoint format is a two-slot lockstep
+      -- world. Solo play preserves that proven identity with an uncredentialed
+      -- neutral peer; its random bearer is discarded before commit, so no
+      -- browser can join or control slot 1.
+      l_solo_salt:=dbms_crypto.randombytes(32);
+      l_solo_capability:=new_capability;
+      l_solo_hash:=capability_hash(l_solo_salt,l_solo_capability);
+      insert into doom_match_member(
+        match_id,player_slot,member_state,membership_epoch,generation,
+        capability_epoch,capability_salt,capability_hash,display_name,
+        joined_at,last_seen_at,ready_at)
+      values(p_match,1,'READY',1,0,1,l_solo_salt,l_solo_hash,
+        'SOLO NEUTRAL',l_now,l_now,l_now);
+      l_solo_capability:=null;
+    end if;
     commit;
   exception when others then
     declare l_code pls_integer:=sqlcode;l_message varchar2(1800):=substr(sqlerrm,1,1800);

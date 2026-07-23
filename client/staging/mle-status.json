@@ -12,6 +12,7 @@
   "architecture": {
     "authority": "TeaVM-generated MLE JavaScript in retained database sessions",
     "livePresentation": "Browser rendering from confirmed DMD1 transitions",
+    "soloPresentation": "One browser player plus an uncredentialed neutral authority slot",
     "clientPrediction": false,
     "productionOjvm": false
   },
@@ -40,6 +41,7 @@
     "finalWorkerSoak": "PASS",
     "calibratedProcessMemory": "PASS",
     "browserConfirmedOnly": "PASS",
+    "soloMleAuthority": "PASS",
     "resourceCapDecision": "PASS"
   },
   "soak": {
@@ -63,6 +65,16 @@
     "heldPollLeaseLimit": 4,
     "guaranteedConcurrentPollReturns": 1,
     "localLongPollingDefault": false
+  },
+  "solo": {
+    "coldStartBaselineSeconds": 248.629,
+    "authorityAdmissionSeconds": 110.458,
+    "admissionReductionPercent": 55.57,
+    "measuredFps": 34.5,
+    "legacyEndpointCalls": 0,
+    "startupOptimization": "early authority admission verified",
+    "ordsPoolFix": "single outstanding status poll; cold initialization holds no match-row lock",
+    "note": "248.629 seconds is the pre-optimization authority-plus-standby baseline"
   },
   "remaining": [
     {
@@ -88,6 +100,8 @@
   ],
   "evidence": {
     "soak": "artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log",
-    "ledger": "artifacts/performance/pmle-ledger-every-tic/run-final-06ac3333-2026-07-23.log"
+    "ledger": "artifacts/performance/pmle-ledger-every-tic/run-final-06ac3333-2026-07-23.log",
+    "solo": "artifacts/performance/pmle-browser-role-swap/solo-live-2026-07-23.log",
+    "soloAdmission": "artifacts/performance/pmle-browser-role-swap/solo-admission-live-2026-07-23.log"
   }
 }
