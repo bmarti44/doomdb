@@ -16,7 +16,8 @@ for (const marker of [
   'separate Co-op and Multiplayer shortcuts remain on the right',
   'single normal lifecycle writer',
   'explicitly VOIDED',
-  '6,286/6,287 unique presentations',
+  '58,875/58,858 confirmed presentations',
+  'hidden-tab lifecycle',
   'WAN matrix',
   'Presentation / DVR'
 ]) {
@@ -36,8 +37,7 @@ assert.equal(status.artifacts.authority.sha256,
 assert.equal(status.artifacts.presentation.sha256,
   'd45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c');
 assert.equal(status.gates.ledgerEveryTic13272, 'PASS');
-assert.equal(status.gates.finalWorkerSoak,
-  'RERUN_REQUIRED_AFTER_LIFECYCLE_HARDENING');
+assert.equal(status.gates.finalWorkerSoak, 'PASS');
 assert.equal(status.gates.lifecycleHardening, 'PASS');
 assert.equal(status.gates.postHardeningCausalSoak, 'PASS');
 assert.equal(status.gates.soloMleAuthority, 'PASS');
@@ -52,6 +52,11 @@ assert.equal(status.solo.sequentialAuthorityFirstAdmittableSeconds, 28);
 assert.equal(status.soak.promotedAttemptState, 'VOIDED');
 assert.equal(status.soak.postDietPartialPlateauProven, false);
 assert.deepEqual(status.soak.causalSoakPresentations, [6286, 6287]);
+assert.equal(status.soak.artifactSha256,
+  'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2');
+assert.deepEqual(status.soak.browserPresentations, [58875, 58858]);
+assert.equal(status.soak.maxConfirmedLagTics, 17);
+assert.equal(status.soak.resourceManagerCpuQuantumSamples, 0);
 assert.equal(status.architecture.productionOjvm, false);
 assert.equal(status.playModes.singlePlayer.state, 'AVAILABLE');
 assert.equal(status.playModes.coop.path, '/play/multiplayer.html#mode=COOP');

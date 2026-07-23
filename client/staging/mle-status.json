@@ -58,7 +58,7 @@
     "coopEveryTic762": "PASS",
     "membershipRecovery": "PASS",
     "ledgerEveryTic13272": "PASS",
-    "finalWorkerSoak": "RERUN_REQUIRED_AFTER_LIFECYCLE_HARDENING",
+    "finalWorkerSoak": "PASS",
     "lifecycleHardening": "PASS",
     "postHardeningCausalSoak": "PASS",
     "calibratedProcessMemory": "PASS",
@@ -69,20 +69,41 @@
     "resourceCapDecision": "PASS"
   },
   "soak": {
-    "artifactSha256": "06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0",
-    "supersededByAuthoritySha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
+    "artifactSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
     "warmupSecondsExcluded": 300,
     "scoredSeconds": 1800,
-    "maxConfirmedLagTics": 18,
+    "maxConfirmedLagTics": 17,
     "reconnects": 0,
-    "authorityPssBaselineBytes": 464108544,
-    "authorityPssMaximumBytes": 518277120,
-    "authorityPssEndBytes": 434509824,
-    "standbyPssBaselineBytes": 442265600,
-    "standbyPssMaximumBytes": 483700736,
-    "standbyPssEndBytes": 413642752,
+    "browserPresentations": [
+      58875,
+      58858
+    ],
+    "browserAdvancedTics": [
+      59255,
+      59256
+    ],
+    "browserResyncs": [
+      20,
+      21
+    ],
+    "browserPaintP999MaximumMs": [
+      2169.1,
+      2371.1
+    ],
+    "authorityPssBaselineBytes": 326010880,
+    "authorityPssMaximumBytes": 376375296,
+    "authorityPssEndBytes": 300486656,
+    "authorityPrivateBaselineBytes": 237096960,
+    "authorityPrivateMaximumBytes": 288854016,
+    "authorityPrivateEndBytes": 221904896,
+    "standbyPssBaselineBytes": 231512064,
+    "standbyPssMaximumBytes": 238575616,
+    "standbyPssEndBytes": 238160896,
+    "standbyPrivateBaselineBytes": 172462080,
+    "standbyPrivateMaximumBytes": 172544000,
+    "standbyPrivateEndBytes": 172335104,
     "processMemoryMarginBytes": 67108864,
-    "ashSamples": 1486,
+    "ashSamples": 1457,
     "resourceManagerCpuQuantumSamples": 0,
     "promotedAttemptState": "VOIDED",
     "promotedAttemptReason": "legacy cleanup stop/lifecycle ownership race",
@@ -132,7 +153,7 @@
   "remaining": [
     {
       "id": "SOAK",
-      "state": "NEXT",
+      "state": "PASS",
       "label": "30-minute final promoted-artifact soak"
     },
     {
@@ -167,6 +188,7 @@
     "voidedDiagnosticSmoke": "artifacts/performance/pmle-worker-soak/run-smoke-init-diet-harness2-2026-07-23.log",
     "lifecycleHardening": "artifacts/performance/pmle-worker-lifecycle/run-2026-07-23.log",
     "causalSoak": "artifacts/performance/pmle-worker-soak/run-smoke-foreground-180-warm300-c664-2026-07-23.log",
+    "finalPromotedSoak": "artifacts/performance/pmle-worker-soak/run-final-a942-lifecycle-0744-2026-07-23.log",
     "browserReplicaProfile": "artifacts/performance/pmle-browser-replica/profile-2026-07-23.log"
   }
 }

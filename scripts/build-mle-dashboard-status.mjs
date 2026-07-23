@@ -30,6 +30,9 @@ const lifecyclePath =
 const causalSoakPath =
   'artifacts/performance/pmle-worker-soak/' +
   'run-smoke-foreground-180-warm300-c664-2026-07-23.log';
+const finalPromotedSoakPath =
+  'artifacts/performance/pmle-worker-soak/' +
+  'run-final-a942-lifecycle-0744-2026-07-23.log';
 const browserProfilePath =
   'artifacts/performance/pmle-browser-replica/profile-2026-07-23.log';
 const soak = read(soakPath);
@@ -42,6 +45,7 @@ const voidedSoak = read(voidedSoakPath);
 const voidedSmoke = read(voidedSmokePath);
 const lifecycle = read(lifecyclePath);
 const causalSoak = read(causalSoakPath);
+const finalPromotedSoak = read(finalPromotedSoakPath);
 const browserProfile = read(browserProfilePath);
 const authority = versions.teaVM;
 const presentation = authority.presentation;
@@ -116,6 +120,30 @@ contains(causalSoak,
 contains(causalSoak,
   'PMLE_WORKER_SOAK|PASS|duration_s=180|warmup_s=300',
   'post-hardening causal soak');
+contains(finalPromotedSoak,
+  `PMLE_ARTIFACT|source_bytes=${authority.outputBytes}` +
+  `|source_sha256=${authority.outputSha256}` +
+  `|table_bytes=180272|table_sha256=` +
+  '058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44',
+  'final promoted soak artifact');
+contains(finalPromotedSoak,
+  'PASS P13.5-MULTIPLAYER-SOAK seconds=1800 warmupSeconds=300',
+  'final promoted browser soak');
+contains(finalPromotedSoak,
+  'PMLE_WORKER_SOAK_MEMORY|PASS|role=AUTHORITY|samples=58|' +
+  'warmup_excluded=1|spid_stable=1|margin=67108864',
+  'final promoted authority memory');
+contains(finalPromotedSoak,
+  'PMLE_WORKER_SOAK_MEMORY|PASS|role=STANDBY|samples=58|' +
+  'warmup_excluded=1|spid_stable=1|margin=67108864',
+  'final promoted standby memory');
+contains(finalPromotedSoak,
+  'PMLE_WORKER_SOAK_RES_MGR|ash_samples=1457|cpu_quantum=0',
+  'final promoted wait attribution');
+contains(finalPromotedSoak,
+  'PMLE_WORKER_SOAK|PASS|duration_s=1800|warmup_s=300|' +
+  'memory_margin=67108864',
+  'final promoted worker soak');
 contains(browserProfile,
   'PMLE_BROWSER_REPLICA_PROFILE|VERDICT|compute_headroom=PASS',
   'browser confirmed-replica stage profile');
@@ -177,7 +205,7 @@ const status = {
     coopEveryTic762: 'PASS',
     membershipRecovery: 'PASS',
     ledgerEveryTic13272: 'PASS',
-    finalWorkerSoak: 'RERUN_REQUIRED_AFTER_LIFECYCLE_HARDENING',
+    finalWorkerSoak: 'PASS',
     lifecycleHardening: 'PASS',
     postHardeningCausalSoak: 'PASS',
     calibratedProcessMemory: 'PASS',
@@ -188,21 +216,29 @@ const status = {
     resourceCapDecision: 'PASS'
   },
   soak: {
-    artifactSha256:
-      '06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0',
-    supersededByAuthoritySha256: authority.outputSha256,
+    artifactSha256: authority.outputSha256,
     warmupSecondsExcluded: 300,
     scoredSeconds: 1800,
-    maxConfirmedLagTics: 18,
+    maxConfirmedLagTics: 17,
     reconnects: 0,
-    authorityPssBaselineBytes: 464108544,
-    authorityPssMaximumBytes: 518277120,
-    authorityPssEndBytes: 434509824,
-    standbyPssBaselineBytes: 442265600,
-    standbyPssMaximumBytes: 483700736,
-    standbyPssEndBytes: 413642752,
+    browserPresentations: [58875, 58858],
+    browserAdvancedTics: [59255, 59256],
+    browserResyncs: [20, 21],
+    browserPaintP999MaximumMs: [2169.1, 2371.1],
+    authorityPssBaselineBytes: 326010880,
+    authorityPssMaximumBytes: 376375296,
+    authorityPssEndBytes: 300486656,
+    authorityPrivateBaselineBytes: 237096960,
+    authorityPrivateMaximumBytes: 288854016,
+    authorityPrivateEndBytes: 221904896,
+    standbyPssBaselineBytes: 231512064,
+    standbyPssMaximumBytes: 238575616,
+    standbyPssEndBytes: 238160896,
+    standbyPrivateBaselineBytes: 172462080,
+    standbyPrivateMaximumBytes: 172544000,
+    standbyPrivateEndBytes: 172335104,
     processMemoryMarginBytes: 67108864,
-    ashSamples: 1486,
+    ashSamples: 1457,
     resourceManagerCpuQuantumSamples: 0,
     promotedAttemptState: 'VOIDED',
     promotedAttemptReason: 'legacy cleanup stop/lifecycle ownership race',
@@ -248,7 +284,7 @@ const status = {
     note: 'cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline'
   },
   remaining: [
-    {id: 'SOAK', state: 'NEXT',
+    {id: 'SOAK', state: 'PASS',
       label: '30-minute final promoted-artifact soak'},
     {id: 'WAN', state: 'NEXT', label: 'Injected-latency multiplayer matrix'},
     {id: 'JAVA-AUDIT', state: 'NEXT',
@@ -263,7 +299,8 @@ const status = {
     soloAdmission: soloAdmissionPath, warmPoolAdmission: warmPoolPath,
     initDietPromotion: initDietPath, voidedPromotedSoak: voidedSoakPath,
     voidedDiagnosticSmoke: voidedSmokePath, lifecycleHardening: lifecyclePath,
-    causalSoak: causalSoakPath, browserReplicaProfile: browserProfilePath
+    causalSoak: causalSoakPath, finalPromotedSoak: finalPromotedSoakPath,
+    browserReplicaProfile: browserProfilePath
   }
 };
 

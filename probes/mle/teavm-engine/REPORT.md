@@ -438,10 +438,10 @@ warm admission measured 4.341 seconds and the real `/play` path reached its
 first confirmed frame 5.223 seconds after New Game confirmation.
 
 The prior 30-minute production-shaped soak remains valid evidence for its
-`06ac3333…` artifact and for the harness/platform baseline only. A rerun on
-`a942cd2d…` remains required before final cutover acceptance is claimed for
-the promoted bytes. HUD/automap/intermission/finale and asynchronous audit/DVR
-completion remain honestly open.
+`06ac3333…` artifact and for the harness/platform baseline only. The final
+promoted-artifact rerun below supersedes it for cutover evidence.
+HUD/automap/intermission/finale and asynchronous audit/DVR completion remain
+honestly open.
 
 ```text
 PMLE_TEAVM_LEDGER_DIFFERENTIAL|PASS|tics=13272|deep_every=1|route_runs=1152|vector_runs=1246
@@ -521,7 +521,50 @@ two simulated user devices shared one headless browser process. A direct
 presenter step, and about 1.0 ms render per tic. The harness now disables
 background/occluded renderer throttling so both pages model foreground clients;
 no application gate or memory margin changed. The clean 30-minute
-`a942cd2d…` soak remains the next acceptance gate.
+`a942cd2d…` soak below closes the acceptance gate.
+
+### Final promoted-artifact soak — 2026-07-23
+
+The lifecycle-hardened `a942cd2d…` authority passed the final production-shaped
+soak under a quiet host and the recorded Free-edition envelope
+(`DEFAULT_CDB_PLAN`, 50% PDB utilization on two CPUs, two running sessions).
+The run excluded 300 warmup seconds, then scored 1,800 seconds with one
+authority, one standby, and two real confirmed-only browser clients:
+
+- both retained worker SPIDs and full incarnation tuples stayed stable and
+  returned to `READY` after cleanup;
+- the clients presented 58,875 and 58,858 confirmed updates, advanced 59,255
+  and 59,256 tics, had zero reconnect time, and never exceeded 17 tics of
+  confirmed-frontier lag;
+- authority PSS was 326,010,880 baseline, 376,375,296 peak, and 300,486,656
+  end; private memory was 237,096,960 baseline, 288,854,016 peak, and
+  221,904,896 end;
+- standby PSS was 231,512,064 baseline, 238,575,616 peak, and 238,160,896
+  end; private memory was effectively flat at 172,462,080 baseline,
+  172,544,000 peak, and 172,335,104 end;
+- both roles passed the unchanged absolute `baseline + 67,108,864` byte
+  RSS/PSS/private ceiling. The authority peak was transient and ended below
+  baseline. Standby RSS growth decomposed into shared-dirty SGA pages while
+  its calibrated heap-visible PSS/private counters stayed flat.
+
+The slow-call attribution captured 1,457 ASH samples. It found zero
+`resmgr:cpu quantum` and zero commit-I/O samples; captured outliers were
+predominantly sampled `ON CPU`. The largest client paint p99.9 windows were
+2,169.1 and 2,371.1 ms, but both confirmed replicas caught up without
+reconnect, chain poison, process replacement, or ending backlog. These rare
+Free-edition presentation tails are recorded, not projected onto an uncapped
+tier.
+
+The next qualified transport run uses long-polling enabled with its
+cloud-shaped ORDS pool configuration recorded in evidence. It adds a
+backgrounded-then-refocused client scenario. Product hidden-tab behavior is:
+suspend presentation while hidden, batch catch-up on focus, checkpoint resync
+past a bounded staleness threshold, and release poll lease/capacity after
+prolonged hiding; a hidden client may never hold the guaranteed runnable
+poll-return path. Before optimizing deploy admission, the measured 28-second
+authority-first prewarm is decomposed into staging, engine initialization, and
+checkpoint-bank construction. Building only the default solo/skill-3 entry
+before admission remains optional and evidence-gated.
 
 The build-review dashboard now consumes a generated, evidence-validated
 `mle-status.json`, publishes the final pair and gate states, links to the MLE
