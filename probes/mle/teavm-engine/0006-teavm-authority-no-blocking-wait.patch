@@ -1,0 +1,20 @@
+diff --git a/src/i/DoomSystem.java b/src/i/DoomSystem.java
+--- a/src/i/DoomSystem.java
++++ b/src/i/DoomSystem.java
+@@ -183,13 +183,10 @@ public class DoomSystem implements IDoomSystem {
+     }
+ 
+     @Override
+     public void WaitVBL(int count) {
+-        try {
+-            Thread.sleep(count * 1000 / 70);
+-        } catch (InterruptedException e) {
+-            // TODO Auto-generated catch block
+-            e.printStackTrace();
+-        }
++        // The retained authority advances only from explicit database tics.
++        // It must never sleep or suspend inside the MLE execution context.
++        // Presentation pacing remains a browser concern.
+     }
+ 
+     @Override

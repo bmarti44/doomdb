@@ -41,6 +41,9 @@ TEAVM_MULTI_SOAK_RUNNER=$ROOT/probes/mle/teavm-engine/run-multiplayer-soak.sh
 TEAVM_COOP=$ROOT/probes/mle/teavm-engine/build-coop-differential.mjs
 TEAVM_MEMBERSHIP_DIFF=$ROOT/probes/mle/teavm-engine/membership-recovery-differential.sql
 TEAVM_BUILD=$ROOT/probes/mle/teavm-engine/build-simulation.sh
+TEAVM_DECPS_PATCH=$ROOT/probes/mle/teavm-engine/0006-teavm-authority-no-blocking-wait.patch
+TEAVM_DECPS_RUNNER=$ROOT/probes/mle/teavm-engine/run-decps-rank-mle.sh
+TEAVM_DECPS_PARITY=$ROOT/probes/mle/teavm-engine/run-javascript-candidate-parity.mjs
 TEAVM_PROFILE=$ROOT/probes/mle/teavm-engine/profile-ledger-node.mjs
 TEAVM_PATCH=$ROOT/probes/mle/teavm-engine/0002-teavm-simulation-headless.patch
 TEAVM_INIT_DIET_PATCH=$ROOT/probes/mle/teavm-engine/0004-teavm-authority-init-diet.patch
@@ -622,11 +625,24 @@ test "$(printf '%s\n' "$STARTUP_HOLD" | grep -n 'update doom.doom_match set' | h
   fail 'diagnostic startup hold violates match-before-member lock order'
 grep -Fq "grep -E 'ORA-[0-9]{5}'" "$ALERT_SCANNER" ||
   fail 'Oracle alert-window scanner does not fail on new ORA incidents'
+grep -q "grep -v 'ORA-00000'" "$ALERT_SCANNER" ||
+  fail 'Oracle alert-window scanner mistakes the success code for an incident'
 for long_runner in "$TEAVM_MULTI_SOAK_RUNNER" "$TEAVM_WORKER_CUTOVER_RUNNER" \
-  "$TEAVM_LEDGER_RUNNER" "$TEAVM_LIVE_MATRIX" "$HIDDEN_JIT_RUNNER"; do
+  "$TEAVM_LEDGER_RUNNER" "$TEAVM_LIVE_MATRIX" "$HIDDEN_JIT_RUNNER" \
+  "$TEAVM_DECPS_RUNNER"; do
   grep -q 'oracle-alert-window.sh' "$long_runner" ||
     fail "long diagnostic lacks Oracle alert-window gate: $long_runner"
 done
+grep -q 'DOOMDB_TEAVM_AUTHORITY_EXTRA_PATCH' "$TEAVM_BUILD" ||
+  fail 'authority candidate patch input is unavailable'
+grep -q 'Thread.sleep' "$TEAVM_DECPS_PATCH" ||
+  fail 'de-CPS patch no longer removes the blocking wait'
+grep -q 'candidate SHA mismatch' "$TEAVM_DECPS_RUNNER" ||
+  fail 'de-CPS MLE runner lacks content-addressed candidate fence'
+grep -q 'load-mle-module.sh.*--production' "$TEAVM_DECPS_RUNNER" ||
+  fail 'de-CPS MLE runner does not restore the pinned production module'
+grep -q 'compareCanonical(stepped)' "$TEAVM_DECPS_PARITY" ||
+  fail 'de-CPS Node parity does not compare every tic'
 grep -q 'PMLE_BROWSER_REPLICA_PROFILE' "$TEAVM_BROWSER_REPLICA_PROFILE" ||
   fail 'browser confirmed-replica stage profiler missing'
 grep -q -- '--disable-background-timer-throttling' "$WAN_SOAK" ||

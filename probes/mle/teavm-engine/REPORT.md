@@ -845,3 +845,31 @@ The pool deliberately covers E1M1 only. Cross-map restoration remains fenced
 until a map-specific bank or post-static-state engine image is accepted. The
 next determinism-sensitive artifact batch is the headless-init diet; it is not
 part of this lifecycle-only promotion.
+
+## De-CPS authoritative ticker rank — 2026-07-24
+
+The first source-level de-CPS candidate makes `DoomSystem.WaitVBL` a no-op in
+the headless authority only. Database calls already pace authoritative tics;
+browser presentation owns display pacing. This removes TeaVM's native-thread
+runner from the authoritative generated shape and reduces the module from
+1,171,896 to 1,081,331 bytes. Candidate SHA-256 is
+`2848ef7a8dc4799de7faa46bcf304f4ac3d351da97be94b144a53f3300607f29`.
+
+The exact preserved 5,250-tic deathmatch stream passes a full Node canonical
+differential against pinned `e485…` at tic zero and after every tic. The direct
+Oracle MLE replay then measured 19.788 tics/s, with 36.640/142.665/196.411 ms
+p50/p95/p99 and a 376.974 ms maximum. The comparable ADVANCED baseline
+measured 6.002 tics/s and 148.208/296.126 ms p50/p95, making the whole-route
+gain 3.297x.
+
+The improvement is density-shaped. Early peak windows improve 2.35–3.04x but
+still take approximately 106–141 ms/tic. Late quiet windows improve
+10.64–12.06x and take approximately 10–11 ms/tic, clearing Doom's 35 Hz slot.
+The candidate therefore qualifies for the full promotion battery but is not
+yet a production artifact and does not establish 30 FPS under combat load.
+
+Unsupported immediate and hot-threshold synchronous compilation attempts both
+remained in `MLE park` for more than five minutes without reaching a ticker
+marker. They are void diagnostics. Pinned `e485…` and two `READY` warm slots
+were restored after each attempt. The complete record is
+`artifacts/performance/pmle-decps-rank/REPORT.md`.

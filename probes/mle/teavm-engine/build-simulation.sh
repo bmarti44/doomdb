@@ -6,6 +6,7 @@ project="$root/probes/mle/teavm-engine"
 table_pack="$project/target/canonical-runtime-v2.bin"
 table_pack_sha256="058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"
 optimization_level="${DOOMDB_TEAVM_OPTIMIZATION_LEVEL:-ADVANCED}"
+authority_extra_patch="${DOOMDB_TEAVM_AUTHORITY_EXTRA_PATCH:-}"
 [[ "$optimization_level" == ADVANCED || "$optimization_level" == FULL ]] || {
   printf 'DOOMDB_TEAVM_OPTIMIZATION_LEVEL must be ADVANCED or FULL\n' >&2
   exit 2
@@ -31,7 +32,7 @@ DOOMDB_MOCHA_EXPECTED_CLASS_COUNT=830 \
   "$project/target/mochadoom-canonical-table-source.jar" \
   "$project/target/mochadoom-canonical-table-source.json"
 DOOMDB_MOCHA_EXPECTED_CLASS_COUNT=828 \
-  DOOMDB_MOCHA_EXTRA_PATCH="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch" \
+  DOOMDB_MOCHA_EXTRA_PATCH="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch${authority_extra_patch:+,$authority_extra_patch}" \
   "$root/scripts/mochadoom/build-ojvm-jar.sh" \
   "$project/target/mochadoom-mle-simulation.jar" \
   "$project/target/mochadoom-mle-simulation.json"

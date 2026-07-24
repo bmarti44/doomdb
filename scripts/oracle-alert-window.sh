@@ -44,7 +44,11 @@ case "$command" in
     }
     delta="$(docker compose -f "$root/compose.yaml" exec -T db sh -c \
       'tail -c +"$1" "$2"' _ "$((offset + 1))" "$alert")"
-    incidents="$(printf '%s\n' "$delta" | grep -E 'ORA-[0-9]{5}' || true)"
+    # ORA-00000 is Oracle's explicit successful-completion code and appears in
+    # normal ALTER SYSTEM KILL SESSION audit records as "Result = ORA-00000".
+    # Every nonzero ORA code remains a blocking incident.
+    incidents="$(printf '%s\n' "$delta" |
+      grep -E 'ORA-[0-9]{5}' | grep -v 'ORA-00000' || true)"
     if [[ -n "$incidents" ]]; then
       printf 'PMLE_ALERT_WINDOW|FAIL|label=%s|new_ora_incidents=1\n%s\n' \
         "$label" "$incidents" >&2

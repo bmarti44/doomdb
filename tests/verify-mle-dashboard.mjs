@@ -79,6 +79,12 @@ assert.equal(status.performance.compiledArithmeticThreshold, 'PASS_BELOW_15_NS')
 assert.equal(status.performance.fullArtifactCompilation,
   'DIAGNOSTIC_HANG_MLE_PARK');
 assert.equal(status.performance.hiddenCompilationProductionEnabled, false);
+assert.equal(status.performance.deCpsCandidate.canonicalParity, 'PASS');
+assert.equal(status.performance.deCpsCandidate.exactStreamTics, 5250);
+assert.equal(status.performance.deCpsCandidate.throughputTicsPerSecond, 19.788);
+assert.equal(status.performance.deCpsCandidate.routeSpeedup, 3.297);
+assert.equal(status.performance.deCpsCandidate.promotionState,
+  'FULL_GATE_BATTERY_PENDING');
 assert.equal(status.performance.requiredTicsPerSecond, 35);
 assert.equal(status.solo.measuredFps, null);
 assert.equal(status.playModes.singlePlayer.state, 'AVAILABLE');

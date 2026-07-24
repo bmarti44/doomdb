@@ -69,13 +69,19 @@ simulation requirement and below the 30 FPS presentation goal. Generated-code
 shape, hidden compilation controls, wasm2js, and a paid/ADB venue probe are
 being investigated; no 30 FPS success is claimed yet.
 
-The hidden-compilation investigation has now proved that this Free build does
-contain an optimizing MLE compiler: a deterministic integer kernel improves
-from roughly 373 ns/iteration interpreted to 2.792 ns/iteration compiled.
-Those controls are undocumented and remain diagnostic-only. The current full
-TeaVM authority cannot consume that win yet—forced compilation spends minutes
-in `MLE park` without completing the production ticker—so de-CPS/generated
-method reshaping is the immediate performance path.
+The hidden-compilation investigation proved that this Free build contains an
+optimizing MLE compiler: a deterministic integer kernel improves from roughly
+373 ns/iteration interpreted to 2.792 ns/iteration compiled. Those controls
+are undocumented and remain diagnostic-only. A first de-CPS authority
+candidate, `2848ef7a…`, removes the reachable pacing/sleep root and is
+byte-identical to pinned `e485…` after every tic of the preserved 5,250-tic
+deathmatch stream. In direct interpreted MLE it improves whole-route throughput
+from a comparable ADVANCED artifact's 6.002 to 19.788 tics/s (3.30x), with
+36.640/142.665 ms p50/p95. Quiet late-route windows now run in 10–11 ms/tic;
+peak combat remains 106–141 ms/tic. The candidate is not promoted and no
+30 FPS success is claimed. Both immediate and hot-threshold synchronous
+compiler cells still spend more than five minutes in `MLE park` without
+reaching the ticker.
 
 The first de-CPS/linear-memory spike compiled and is byte-exact when executed
 as native WebAssembly, but Binaryen 131's wasm2js translation loses mobj
@@ -100,8 +106,9 @@ Numbers, measured on the local two-core Oracle Free stack:
 | Current co-op MLE/OJVM differential | 762/762 tics exact on `e485b941…` |
 | Current maximum-distance recovery | 57.337 s estimated total at 20 awake monsters |
 | Production-shaped deathmatch throughput | 3.961 tics/s on `a942cd2d…` |
+| De-CPS diagnostic candidate | 19.788 tics/s over 5,250 tics on `2848ef7a…`; promotion battery pending |
 | Production-shaped MLE CPU | 253.6 ms/tic |
-| Peak-combat replay cost | ~290.124 ms/tic |
+| De-CPS quiet / peak windows | ~10–11 ms/tic / ~106–141 ms/tic |
 | Last fully qualified soak | 30 min PASS on superseded `a942cd2d…` |
 | Current `e485…` lifecycle/final soak | Pending |
 

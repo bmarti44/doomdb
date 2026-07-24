@@ -171,6 +171,26 @@
     "compiledArithmeticThreshold": "PASS_BELOW_15_NS",
     "fullArtifactCompilation": "DIAGNOSTIC_HANG_MLE_PARK",
     "hiddenCompilationProductionEnabled": false,
+    "deCpsCandidate": {
+      "promotionState": "FULL_GATE_BATTERY_PENDING",
+      "artifactSha256": "2848ef7a8dc4799de7faa46bcf304f4ac3d351da97be94b144a53f3300607f29",
+      "artifactBytes": 1081331,
+      "exactStreamTics": 5250,
+      "canonicalCheckpoints": 5251,
+      "canonicalParity": "PASS",
+      "throughputTicsPerSecond": 19.788,
+      "p50MillisecondsPerTic": 36.64,
+      "p95MillisecondsPerTic": 142.665,
+      "p99MillisecondsPerTic": 196.411,
+      "maximumMillisecondsPerTic": 376.974,
+      "comparableBaselineTicsPerSecond": 6.002,
+      "routeSpeedup": 3.297,
+      "quietWindowMillisecondsPerTic": "10-11",
+      "peakWindowMillisecondsPerTic": "106-141",
+      "hiddenImmediateCompilation": "VOID_MLE_PARK_NO_TICKER",
+      "hiddenHotCompilation": "VOID_MLE_PARK_NO_TICKER",
+      "evidence": "artifacts/performance/pmle-decps-rank/REPORT.md"
+    },
     "wasm2jsStatus": "REJECT_BINARYEN_131_TIC0_LONG_HIGH_WORD_LOSS",
     "wasm2jsEvidence": "artifacts/performance/pmle-wasm2js/REPORT.md",
     "requiredTicsPerSecond": 35,
@@ -186,7 +206,7 @@
     {
       "id": "SHAPE",
       "state": "ACTIVE",
-      "label": "De-CPS/generated-method reshape, then repeat direct MLE JIT rank"
+      "label": "De-CPS candidate promotion battery and peak-combat acceleration"
     },
     {
       "id": "SOAK",
