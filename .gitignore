@@ -54,6 +54,7 @@ Wallet_*.zip
 build/mochadoom-ojvm/
 probes/mle/teavm/target/
 probes/mle/teavm-engine/target/
+probes/mle/teavm-engine/wasm2js/target/
 client/dist/play/doom-mle-authority-*.js
 client/dist/play/doom-mle-presentation-*.js
 !client/dist/play/doom-mle-authority-a942cd2dcbdc.js

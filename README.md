@@ -62,7 +62,8 @@ request-local engine state, so a retained Oracle Scheduler session owns each
 MLE world and REST calls communicate through durable rows. A sparse
 four-player ticker microbenchmark reached 132.9 tics/s, but that number does
 not represent real gameplay. The production-shaped two-player deathmatch
-stream measures 3.961 tics/s on Oracle AI Database 26ai Free, with
+stream measures 3.961 tics/s on authority artifact `a942cd2d…` on Oracle AI
+Database 26ai Free, with
 253.6 ms CPU/tic and 244.672/374.710 ms p50/p95. That is below the 35 Hz
 simulation requirement and below the 30 FPS presentation goal. Generated-code
 shape, hidden compilation controls, wasm2js, and a paid/ADB venue probe are
@@ -92,7 +93,7 @@ Numbers, measured on the local two-core Oracle Free stack:
 | Full E1M1 MLE/OJVM differential | 13,272/13,272 tics exact on parent `103e15e9…` |
 | Current co-op MLE/OJVM differential | 762/762 tics exact on `e485b941…` |
 | Current maximum-distance recovery | 57.337 s estimated total at 20 awake monsters |
-| Production-shaped deathmatch throughput | 3.961 tics/s |
+| Production-shaped deathmatch throughput | 3.961 tics/s on `a942cd2d…` |
 | Production-shaped MLE CPU | 253.6 ms/tic |
 | Peak-combat replay cost | ~290.124 ms/tic |
 | Last fully qualified soak | 30 min PASS on superseded `a942cd2d…` |

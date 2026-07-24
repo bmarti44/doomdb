@@ -28,6 +28,8 @@ end doom_match_worker;
 /
 
 create or replace package body doom_match_worker as
+  -- Transaction invariant: when one transaction touches both relations,
+  -- acquire DOOM_MATCH before DOOM_MATCH_MEMBER.
   c_error constant pls_integer:=-20731;
   c_command_deadline_ms constant pls_integer:=2000;
   c_initial_command_deadline_ms constant pls_integer:=500;

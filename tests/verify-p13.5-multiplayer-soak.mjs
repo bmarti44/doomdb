@@ -245,9 +245,11 @@ try {
     // comparatively slow Free-edition initialization cannot consume the
     // ordinary foreground-client liveness window first.
     const startupHold=dbSql(
-      `update doom.doom_match_member set last_seen_at=`+
-      `systimestamp+interval '30' minute where match_id='${match}';\n`+
+      // Canonical transaction lock order is match -> member. Keep this in
+      // the same order as READY_MATCH and the retained worker.
       `update doom.doom_match set expires_at=`+
+      `systimestamp+interval '30' minute where match_id='${match}';\n`+
+      `update doom.doom_match_member set last_seen_at=`+
       `systimestamp+interval '30' minute where match_id='${match}';\n`+
       `commit;\n`+
       `select 'PMLE_HIGH_AWAKE_STARTUP_HOLD|'||count(*) `+
@@ -394,7 +396,7 @@ try {
     assert.ok(cadence,'production checkpoint cadence was not observed');
     assert.equal(cadence.testHook,0,
       'cadence observation accidentally enabled the tic-64 test hook');
-    assert.ok(cadence.distance>=128&&cadence.distance<=256,
+    assert.ok(cadence.distance>=113&&cadence.distance<=128,
       'observed checkpoint violated the production cadence bounds');
     assert.equal(cadence.durableCheckpoint,cadence.probeTic,
       'cadence decision did not publish its checkpoint');

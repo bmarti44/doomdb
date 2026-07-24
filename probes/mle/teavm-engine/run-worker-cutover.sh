@@ -3,6 +3,16 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 tag="${PMLE_EVIDENCE_TAG:-2026-07-23}"
+alert_state="$(mktemp "${TMPDIR:-/tmp}/doom-mle-worker-cutover-alert.XXXXXX")"
+finish() {
+  status=$?
+  trap - EXIT
+  "$root/scripts/oracle-alert-window.sh" end "$alert_state" WORKER_CUTOVER ||
+    status=1
+  rm -f "$alert_state"
+  exit "$status"
+}
+trap finish EXIT
 [[ "$tag" =~ ^[A-Za-z0-9._-]+$ ]] || { printf 'invalid evidence tag: %s\n' "$tag" >&2;exit 2; }
 busy_host="$(ps ax -o command= | awk '
   /[d]ocker (build|compose .* build)|[b]uild-simulation[.]sh|[m]vn .*package|[j]avac|[v]erify-local-e2e/ {print}
@@ -16,6 +26,7 @@ evidence="$root/artifacts/performance/pmle-worker-cutover"
 mkdir -p "$evidence"
 log="$evidence/run-${tag}.log"
 [[ ! -e "$log" ]] || { printf 'worker evidence already exists: %s\n' "$log" >&2;exit 1; }
+"$root/scripts/oracle-alert-window.sh" begin "$alert_state" WORKER_CUTOVER
 
 {
   printf 'PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0\n'

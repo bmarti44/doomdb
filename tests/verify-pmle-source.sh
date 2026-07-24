@@ -55,6 +55,9 @@ TEAVM_LEDGER_RUNNER=$ROOT/probes/mle/teavm-engine/run-ledger-differential.sh
 TEAVM_WORKER_CUTOVER_RUNNER=$ROOT/probes/mle/teavm-engine/run-worker-cutover.sh
 TEAVM_BROWSER_REPLICA_PROFILE=$ROOT/probes/mle/teavm-engine/profile-browser-replica.mjs
 TEAVM_WAN_RUNNER=$ROOT/probes/mle/teavm-engine/run-wan-matrix.sh
+ALERT_SCANNER=$ROOT/scripts/oracle-alert-window.sh
+TEAVM_LIVE_MATRIX=$ROOT/probes/mle/teavm-engine/run-live-command-matrix-mle.sh
+HIDDEN_JIT_RUNNER=$ROOT/probes/mle/run-hidden-jit-matrix.sh
 TEAVM_SIM_SOURCE=$ROOT/probes/mle/teavm-engine/src/main/java/doomdb/mle/engine/SimulationEngineReachabilityProbe.java
 REPORT=$ROOT/reports/performance-PMLE-mle-26ai-2026-07-22.md
 TEAVM_REPORT=$ROOT/probes/mle/teavm-engine/REPORT.md
@@ -74,6 +77,7 @@ MLE_RECOVERY_TELEMETRY_SCHEMA=$ROOT/sql/schema/064_mle_recovery_telemetry.sql
 MLE_MATCH_WORKER=$ROOT/sql/sim/084_multiplayer_worker.sql
 MLE_MATCH_WORKER_TEST=$ROOT/tests/verify-mle-match-worker-cutover.sql
 DOOM_API=$ROOT/sql/rest/010_doom_api.sql
+MULTIPLAYER_SOAK=$ROOT/tests/verify-p13.5-multiplayer-soak.mjs
 IWAD_LOADER=$ROOT/tools/mochadoom/DoomMochaIwadLoader.java
 RUNTIME_GRANTS=$ROOT/deploy/local/initdb/10-doom-runtime-grants.sql
 ENVIRONMENT_SQL=$ROOT/probes/mle/teavm-engine/environment-metadata.sql
@@ -584,6 +588,21 @@ if printf '%s\n' "$RUN_MATCH_BODY" | grep -q 'doom_mocha'; then
   fail 'RUN_MATCH still reaches OJVM'
 fi
 grep -q 'PMLE_WORKER_CUTOVER|PASS' "$MLE_MATCH_WORKER_TEST" || fail 'MLE worker live cutover gate missing'
+grep -q 'acquire DOOM_MATCH before DOOM_MATCH_MEMBER' "$DOOM_API" ||
+  fail 'API canonical match-before-member lock-order invariant missing'
+grep -q 'acquire DOOM_MATCH before DOOM_MATCH_MEMBER' "$MLE_MATCH_WORKER" ||
+  fail 'worker canonical match-before-member lock-order invariant missing'
+STARTUP_HOLD=$(sed -n '/const startupHold=dbSql(/,/PMLE_HIGH_AWAKE_STARTUP_HOLD/p' "$MULTIPLAYER_SOAK")
+test "$(printf '%s\n' "$STARTUP_HOLD" | grep -n 'update doom.doom_match set' | head -1 | cut -d: -f1)" -lt \
+  "$(printf '%s\n' "$STARTUP_HOLD" | grep -n 'update doom.doom_match_member set' | head -1 | cut -d: -f1)" ||
+  fail 'diagnostic startup hold violates match-before-member lock order'
+grep -Fq "grep -E 'ORA-[0-9]{5}'" "$ALERT_SCANNER" ||
+  fail 'Oracle alert-window scanner does not fail on new ORA incidents'
+for long_runner in "$TEAVM_MULTI_SOAK_RUNNER" "$TEAVM_WORKER_CUTOVER_RUNNER" \
+  "$TEAVM_LEDGER_RUNNER" "$TEAVM_LIVE_MATRIX" "$HIDDEN_JIT_RUNNER"; do
+  grep -q 'oracle-alert-window.sh' "$long_runner" ||
+    fail "long diagnostic lacks Oracle alert-window gate: $long_runner"
+done
 grep -q 'PMLE_BROWSER_REPLICA_PROFILE' "$TEAVM_BROWSER_REPLICA_PROFILE" ||
   fail 'browser confirmed-replica stage profiler missing'
 grep -q -- '--disable-background-timer-throttling' "$WAN_SOAK" ||

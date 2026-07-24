@@ -12,6 +12,7 @@ expected_authority_bytes='1171896'
 expected_table_pack='058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44'
 expected_oracle='2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74'
 ledger_lock="${TMPDIR:-/tmp}/doomdb-pmle-ledger-$(id -u).lock"
+alert_state="$(mktemp "${TMPDIR:-/tmp}/doom-mle-ledger-alert.XXXXXX")"
 
 if ! mkdir "$ledger_lock" 2>/dev/null; then
   printf 'another exhaustive ledger owns %s (owner %s)\n' "$ledger_lock" \
@@ -21,10 +22,19 @@ fi
 printf 'pid=%s\nstarted_utc=%s\n' "$$" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
   >"$ledger_lock/owner"
 release_ledger_lock() {
+  prior_status=$?
   rm -f "$ledger_lock/owner"
   rmdir "$ledger_lock" 2>/dev/null || true
+  if ! "$root/scripts/oracle-alert-window.sh" end "$alert_state" \
+    LEDGER_DIFFERENTIAL; then
+    prior_status=1
+  fi
+  rm -f "$alert_state"
+  trap - EXIT
+  exit "$prior_status"
 }
 trap release_ledger_lock EXIT
+"$root/scripts/oracle-alert-window.sh" begin "$alert_state" LEDGER_DIFFERENTIAL
 
 if pgrep -f '[b]uild-ledger-differential.mjs' >/dev/null; then
   printf '%s\n' 'another exhaustive ledger differential is already active' >&2

@@ -27,15 +27,24 @@ printf 'PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0\n'
 
 run_log="$(mktemp "${TMPDIR:-/tmp}/doom-mle-soak.XXXXXX")"
 memory_log="$(mktemp "${TMPDIR:-/tmp}/doom-mle-soak-memory.XXXXXX")"
+alert_state="$(mktemp "${TMPDIR:-/tmp}/doom-mle-soak-alert.XXXXXX")"
 run_pid=''
 cleanup() {
+  prior_status=$?
   if [[ -n "$run_pid" ]] && kill -0 "$run_pid" 2>/dev/null; then
     kill "$run_pid" 2>/dev/null || true
     wait "$run_pid" 2>/dev/null || true
   fi
-  rm -f "$run_log" "$memory_log"
+  if ! "$root/scripts/oracle-alert-window.sh" end "$alert_state" \
+    MULTIPLAYER_SOAK; then
+    prior_status=1
+  fi
+  rm -f "$run_log" "$memory_log" "$alert_state"
+  trap - EXIT
+  exit "$prior_status"
 }
 trap cleanup EXIT
+"$root/scripts/oracle-alert-window.sh" begin "$alert_state" MULTIPLAYER_SOAK
 
 if [[ "${DOOMDB_MLE_SOAK_CALIBRATE_MEMORY:-YES}" == YES ]]; then
   "$calibration"

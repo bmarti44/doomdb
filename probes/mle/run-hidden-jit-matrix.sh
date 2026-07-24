@@ -6,6 +6,7 @@ evidence="$root/artifacts/performance/pmle-hidden-jit"
 tag="${PMLE_EVIDENCE_TAG:-2026-07-24}"
 pool_restore_needed=0
 bench_installed=0
+alert_state="$(mktemp "${TMPDIR:-/tmp}/doom-mle-hidden-jit-alert.XXXXXX")"
 
 [[ "$tag" =~ ^[A-Za-z0-9._-]+$ ]] || {
   printf 'invalid evidence tag: %s\n' "$tag" >&2
@@ -31,9 +32,14 @@ begin doom_match_worker.start_warm_pool;end;
 SQL
       status=1
   fi
+  if ! "$root/scripts/oracle-alert-window.sh" end "$alert_state" HIDDEN_JIT; then
+    status=1
+  fi
+  rm -f "$alert_state"
   exit "$status"
 }
 trap restore_environment EXIT
+"$root/scripts/oracle-alert-window.sh" begin "$alert_state" HIDDEN_JIT
 
 busy_host="$(ps ax -o command= | awk '
   /[d]ocker (build|compose .* build)|[b]uild-simulation[.]sh|[m]vn .*package|[j]avac|[v]erify-local-e2e/ {print}

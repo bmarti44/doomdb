@@ -220,6 +220,8 @@ end doom_api;
 /
 
 create or replace package body doom_api as
+  -- Transaction invariant: when one transaction touches both relations,
+  -- acquire DOOM_MATCH before DOOM_MATCH_MEMBER.
   c_bad_request constant pls_integer := -20701;
   c_capacity    constant pls_integer := -20702;
   c_session     constant pls_integer := -20703;

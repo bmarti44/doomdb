@@ -34,6 +34,7 @@ log="$evidence/run-${tag}.log"
 match_file="$(mktemp "${TMPDIR:-/tmp}/doom-mle-worker-soak-match.XXXXXX")"
 browser_log="$(mktemp "${TMPDIR:-/tmp}/doom-mle-worker-soak-browser.XXXXXX")"
 memory_log="$(mktemp "${TMPDIR:-/tmp}/doom-mle-worker-soak-memory.XXXXXX")"
+alert_state="$(mktemp "${TMPDIR:-/tmp}/doom-mle-worker-soak-alert.XXXXXX")"
 browser_pid=''
 match=''
 browser_preserved=0
@@ -130,9 +131,14 @@ on_exit() {
       "$status" "${log#$root/}" >>"$log"
   fi
   cleanup
+  if ! "$root/scripts/oracle-alert-window.sh" end "$alert_state" WORKER_SOAK; then
+    status=1
+  fi
+  rm -f "$alert_state"
   return "$status"
 }
 trap on_exit EXIT
+"$root/scripts/oracle-alert-window.sh" begin "$alert_state" WORKER_SOAK
 
 {
   printf 'PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0\n'
