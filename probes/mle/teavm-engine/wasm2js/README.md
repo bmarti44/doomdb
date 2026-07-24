@@ -47,3 +47,25 @@ All acceptance work remains fail-closed:
 
 Build/compiler logs and generated artifacts stay under `target/`. Permanent
 measurements belong under `artifacts/performance/pmle-wasm2js/`.
+
+## Current verdict
+
+TeaVM compilation and native-Wasm tic-zero parity pass. Binaryen 131 wasm2js
+fails exact parity at tic zero by dropping mobj `long` flag high words, so the
+current translator is `REJECTED_BEFORE_MLE` and no Oracle MLE rank run was attempted. See
+`artifacts/performance/pmle-wasm2js/REPORT.md`.
+
+## Terminal result
+
+The 2026-07-24 spike is fail-closed rejected before MLE. The complete
+authority compiles and native legacy Wasm matches the parity-proven oracle at
+tic 0, but Binaryen 131 wasm2js loses Java `long` high words in canonical save
+material (236 differences beginning at byte 28,660). Stable/default,
+deterministic, Wasm `-O3`, the current 131 nightly, and TeaVM `FULL` variants
+all reproduce the same bad canonical SHA. See
+`artifacts/performance/pmle-wasm2js/REPORT.md`.
+
+The experimental `0.13.1-doomdb-singlethread` TeaVM core is reconstructed by
+`build-teavm-singlethread.sh` from a pinned upstream commit plus the tracked
+single-thread patch. It remains spike-only. No Oracle MLE load or production
+mutation was performed.

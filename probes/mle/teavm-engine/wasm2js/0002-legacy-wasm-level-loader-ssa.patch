@@ -1,0 +1,521 @@
+diff --git a/src/p/BoomLevelLoader.java b/src/p/BoomLevelLoader.java
+--- a/src/p/BoomLevelLoader.java
++++ b/src/p/BoomLevelLoader.java
+@@ -557,9 +557,13 @@ public class BoomLevelLoader extends AbstractLevelLoader {
+                 String str = "P_LoadSegs: compatibility loss - seg %d references a non-existent vertex %d\n";
+ 
+                 if (DOOM.demorecording) {
++                    int invalidVertex = v2;
++                    if (v1 >= numvertexes) {
++                        invalidVertex = v1;
++                    }
+                     DOOM.doomSystem.Error(
+                         str + "Demo recording on levels with invalid nodes is not allowed",
+-                        i, (v1 >= numvertexes ? v1 : v2)
++                        i, invalidVertex
+                     );
+                 }
+ 
+@@ -588,8 +592,12 @@ public class BoomLevelLoader extends AbstractLevelLoader {
+ 
+             // Recalculate seg offsets that are sometimes incorrect
+             // with certain nodebuilders. Fixes among others, line 20365
+             // of DV.wad, map 5
+-            li.offset = GetOffset(li.v1, (ml.side != 0 ? ldef.v2 : ldef.v1));
++            vertex_t offsetVertex = ldef.v1;
++            if (ml.side != 0) {
++                offsetVertex = ldef.v2;
++            }
++            li.offset = GetOffset(li.v1, offsetVertex);
+         }
+ 
+         DOOM.wadLoader.UnlockLumpNum(lump); // cph - release the data
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -2531,7 +2531,7 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         Arrays.fill(events, event_t.EMPTY_EVENT);
+ 
+         // Create DoomSystem
+-        this.doomSystem = new DoomSystem(this);
++        this.doomSystem = new i.DummySystem();
+         
+         // Choose bppMode depending on CVar's
+         // TODO: add config options
+diff --git a/src/i/DummySystem.java b/src/i/DummySystem.java
+--- a/src/i/DummySystem.java
++++ b/src/i/DummySystem.java
+@@ -60,14 +60,12 @@ public class DummySystem implements IDoomSystem{
+ 
+     @Override
+     public void Error(String error, Object... args) {
+-        // TODO Auto-generated method stub
+-        
++        throw new IllegalStateException(String.format(error, args));
+     }
+ 
+     @Override
+     public void Error(String error) {
+-        // TODO Auto-generated method stub
+-        
++        throw new IllegalStateException(error);
+     }
+ 
+     @Override
+diff --git a/src/doom/CVarManager.java b/src/doom/CVarManager.java
+--- a/src/doom/CVarManager.java
++++ b/src/doom/CVarManager.java
+@@ -257,19 +257,19 @@ public final class CVarManager {
+         } else if (format == String.class) {
+             return arg;
+         }
+-        try {
+-            return format.getDeclaredConstructor(String.class).newInstance(arg);
+-        } catch (
+-            NoSuchMethodException
+-            | SecurityException
+-            | InstantiationException
+-            | IllegalAccessException
+-            | IllegalArgumentException
+-            | InvocationTargetException ex
+-        ) {
+-            Loggers.getLogger(CommandVariable.class.getName()).log(Level.SEVERE, null, ex);
+-            return null;
++        if (format == Character.class) {
++            return arg.isEmpty() ? null : Character.valueOf(arg.charAt(0));
+         }
++        if (format == CommandVariable.WarpFormat.class) {
++            return new CommandVariable.WarpFormat(arg);
++        }
++        if (format == CommandVariable.MapFormat.class) {
++            return new CommandVariable.MapFormat(arg);
++        }
++        if (format == CommandVariable.ForbidFormat.class) {
++            return new CommandVariable.ForbidFormat(arg);
++        }
++        return null;
+     }
+ 
+     private boolean isCommandArgument(final String arg) {
+diff --git a/src/defines/DoomVersion.java b/src/defines/DoomVersion.java
+--- a/src/defines/DoomVersion.java
++++ b/src/defines/DoomVersion.java
+@@ -43,22 +43,8 @@ public enum DoomVersion {
+      * @return full path to the wad of success
+ 	 */
+     public static String tryAllWads(final DoomMain<?, ?> DOOM, final String doomwaddir) {
+-        for (DoomVersion v: values()) {
+-            final String vFullPath = doomwaddir + '/' + v.wadFileName;
+-            if (testReadAccess(vFullPath)) {
+-                DOOM.setGameMode(GameMode.forVersion(v));
+-                if (v == DOOM2F_WAD) {
+-                    // C'est ridicule!
+-                    // Let's handle languages in config files, okay?
+-                    DOOM.language = Language_t.french;
+-                    System.out.println("French version\n");
+-                }
+-                
+-                return vFullPath;
+-            }
+-        }
+-        
+-        return null;
++        DOOM.setGameMode(GameMode.forVersion(FREEDOOM1_WAD));
++        return doomwaddir + '/' + FREEDOOM1_WAD.wadFileName;
+     }
+ 	
+ 	/**
+@@ -76,7 +62,7 @@ public enum DoomVersion {
+             final GameMode tmp = GameMode.forVersion(v);
+             
+             // Can we read it?
+-            if (tmp != null && C2JUtils.testReadAccess(doomwaddir + iwad)) {
++            if (tmp != null) {
+                 return tmp; // Yes, so communicate the gamemode back.
+             }
+             
+diff --git a/src/rr/VisSprites.java b/src/rr/VisSprites.java
+--- a/src/rr/VisSprites.java
++++ b/src/rr/VisSprites.java
+@@ -34,8 +34,7 @@ public final class VisSprites<V>
+     protected final RendererState<?, V> rendererState;
+ 
+     public VisSprites(RendererState<?, V> rendererState) {
+-        vissprite_t<V> tmp = new vissprite_t<V>();
+-        vissprites = C2JUtils.createArrayOfObjects(tmp, MAXVISSPRITES);
++        vissprites = createVisSpriteArray(MAXVISSPRITES);
+         this.rendererState = rendererState;
+     }
+ 
+@@ -272,11 +271,9 @@ public final class VisSprites<V>
+     // UNUSED private final vissprite_t overflowsprite = new vissprite_t();
+ 
+     protected final void ResizeSprites() {
+-        vissprites =
+-            C2JUtils.resize(vissprites[0], vissprites, vissprites.length * 2); // Bye
+-                                                                               // bye,
+-                                                                               // old
+-                                                                               // vissprites.
++        vissprite_t<V>[] resized = createVisSpriteArray(vissprites.length * 2);
++        System.arraycopy(vissprites, 0, resized, 0, vissprites.length);
++        vissprites = resized;
+     }
+ 
+     /**
+@@ -303,10 +300,15 @@ public final class VisSprites<V>
+     }
+ 
+     public void resetLimits() {
+-        vissprite_t<V>[] tmp =
+-            C2JUtils.createArrayOfObjects(vissprites[0], MAXVISSPRITES);
++        vissprite_t<V>[] tmp = createVisSpriteArray(MAXVISSPRITES);
+         System.arraycopy(vissprites, 0, tmp, 0, MAXVISSPRITES);
+-
+-        // Now, that was quite a haircut!.
+-        vissprites = tmp;    }
++        vissprites = tmp;
++    }
++
++    @SuppressWarnings("unchecked")
++    private static <V> vissprite_t<V>[] createVisSpriteArray(int length) {
++        vissprite_t<V>[] result = (vissprite_t<V>[]) new vissprite_t[length];
++        Arrays.setAll(result, index -> new vissprite_t<V>());
++        return result;
++    }
+ }    
+diff --git a/src/w/WadLoader.java b/src/w/WadLoader.java
+--- a/src/w/WadLoader.java
++++ b/src/w/WadLoader.java
+@@ -405,23 +405,16 @@ public class WadLoader implements IWadLoader {
+ 
+ 		for (String s : filenames) {
+ 			if (s != null){
+-				if (C2JUtils.testReadAccess(s))
+-				{
+-				    // Resource is readable, guess type.
+-				    int type=C2JUtils.guessResourceType(s);
+-				    if (C2JUtils.flags(type,InputStreamSugar.ZIP_FILE)){
+-				        addZipFile(s, type);
+-				    } else {
+-				        this.AddFile(s,null, type);				        
+-				    }
+-				    
+-				    System.out.printf("\tadded %s (zipped: %s network: %s)\n",s,
+-				        C2JUtils.flags(type, InputStreamSugar.ZIP_FILE),
+-				        C2JUtils.flags(type, InputStreamSugar.NETWORK_FILE));
+-				    
+-				}
+-				else
+-					System.err.printf("Couldn't open resource %s\n",s);
++			    // The spike only accepts the already-injected IWAD byte array.
++			    int type = InputStreamSugar.FILE;
++			    if (C2JUtils.flags(type, InputStreamSugar.ZIP_FILE)){
++			        addZipFile(s, type);
++			    } else {
++			        this.AddFile(s, null, type);
++			    }
++			    System.out.printf("\tadded %s (zipped: %s network: %s)\n", s,
++			        C2JUtils.flags(type, InputStreamSugar.ZIP_FILE),
++			        C2JUtils.flags(type, InputStreamSugar.NETWORK_FILE));
+ 			}
+ 		}
+ 
+@@ -758,29 +751,17 @@ public class WadLoader implements IWadLoader {
+ 			if (what != null) {
+ 				try {
+ 					// Can it be uncached? If so, deserialize it.
+-
+-					if (implementsInterface(what, w.CacheableDoomObject.class)) {
+-						// MAES: this should be done whenever single lumps
+-						// are read. DO NOT DELEGATE TO THE READ OBJECTS THEMSELVES.
+-						// In case of sequential reads of similar objects, use 
+-						// CacheLumpNumIntoArray instead.
+-						thebuffer.rewind();
+-						lumpcache[lump] = (CacheableDoomObject) what.newInstance();
+-						lumpcache[lump].unpack(thebuffer);
+-						
+-						// Track it for freeing
+-						Track(lumpcache[lump],lump);
+-						
+-						if (what == patch_t.class) {
+-							((patch_t) lumpcache[lump]).name = this.lumpinfo[lump].name;
+-						}
+-					} else {
+-						// replace lump with parsed object.
+-						lumpcache[lump] = (CacheableDoomObject) thebuffer;
+-						
+-						// Track it for freeing
+-						Track((CacheableDoomObject)thebuffer,lump);
++					thebuffer.rewind();
++					lumpcache[lump] = createLumpObject(what);
++					if (lumpcache[lump] == null) {
++						throw new IllegalArgumentException(
++						    "Unsupported lump type " + what.getName());
+ 					}
++					lumpcache[lump].unpack(thebuffer);
++					Track(lumpcache[lump], lump);
++					if (what == patch_t.class) {
++						((patch_t) lumpcache[lump]).name = this.lumpinfo[lump].name;
++					}
+ 				} catch (Exception e) {
+ 					System.err.println("Could not auto-instantiate lump "
+ 							+ lump + " of class " + what);
+@@ -809,6 +790,25 @@ public class WadLoader implements IWadLoader {
+ 		return (T) lumpcache[lump];
+ 	}
+ 
++	private static CacheableDoomObject createLumpObject(Class<?> what) {
++	    if (what == patch_t.class) {
++	        return new patch_t();
++	    } else if (what == DoomBuffer.class) {
++	        return new DoomBuffer();
++	    } else if (what == demo.VanillaDoomDemo.class) {
++	        return new demo.VanillaDoomDemo();
++	    } else if (what == rr.flat_t.class) {
++	        return new rr.flat_t();
++	    } else if (what == s.SpeakerSound.class) {
++	        return new s.SpeakerSound();
++	    } else if (what == s.DMXSound.class) {
++	        return new s.DMXSound();
++	    } else if (what == boom.DeepBSPNodesV4.class) {
++	        return new boom.DeepBSPNodesV4();
++	    }
++	    return null;
++	}
++
+ 	/** A very useful method when you need to load a lump which can consist
+ 	 *  of an arbitrary number of smaller fixed-size objects (assuming that
+ 	 *  you know their number/size and the size of the lump). Practically used
+diff --git a/src/w/InputStreamSugar.java b/src/w/InputStreamSugar.java
+--- a/src/w/InputStreamSugar.java
++++ b/src/w/InputStreamSugar.java
+@@ -145,29 +145,10 @@ public class InputStreamSugar {
+     private final static InputStream getDirectInputStream(String resource) {
+-        InputStream is = null;
+-        URL u;
+-
+         synchronized (InputStreamSugar.class) {
+             if (hasInjectedResource(resource)) {
+                 return new ByteArrayInputStream(injectedResource);
+             }
+         }
+-
+-        try { // Is it a net resource?
+-            u = new URL(resource);
+-            is = u.openStream();
+-        } catch (Exception e) {
+-            // OK, not a valid URL or no network. We don't care.
+-            // Try opening as a local file.
+-            try {
+-                is = new FileInputStream(resource);
+-            } catch (FileNotFoundException e1) {
+-                // Well, it's not that either.
+-                // At this point we really ran out of options
+-                // and you'll get null
+-            }
+-        }
+-
+-        return is;
++        return null;
+     }
+ 
+     /**
+diff --git a/src/w/InputStreamSugar.java b/src/w/InputStreamSugar.java
+--- a/src/w/InputStreamSugar.java
++++ b/src/w/InputStreamSugar.java
+@@ -49,46 +49,4 @@ public class InputStreamSugar {
+     public static final InputStream createInputStreamFromURI(String resource,
+             ZipEntry entry, int type) {
+-
+-        InputStream is = null;
+-        URL u;
+-
+-        // No entry specified or no zip type, try everything BUT zip.
+-        if (entry == null || !C2JUtils.flags(type,ZIP_FILE)) {
+-            is = getDirectInputStream(resource);
+-        } else {
+-            // Entry specified AND type specified to be zip
+-            // We might want to open even a zip file without looking 
+-            // for any particular entry.
+-            if (entry != null && C2JUtils.flags(type,ZIP_FILE)) {
+-                
+-                ZipInputStream zis;
+-                // Try it as a NET zip file
+-                try {
+-                    u = new URL(resource);
+-                    zis = new ZipInputStream(u.openStream());
+-                } catch (Exception e) {
+-                    // Local zip file?
+-                    try {
+-                        // Open resource as local file-backed zip input stream, 
+-                        // and search proper entry.
+-                        zis= new ZipInputStream(new FileInputStream(resource));
+-                        }
+-                    catch (Exception e1) {
+-                        // Well, it's not that either.
+-                        // At this point we almost ran out of options
+-                        // Try a local file and that's it.
+-                        is = getDirectInputStream(resource);
+-                        return is;
+-                    }
+-                }
+-                
+-                // All OK?
+-                is=getZipEntryStream(zis, entry.getName());
+-                if (is!=null) return is; 
+-                }
+-            }
+-
+-        // At this point, you'll either get a stream or jack.
+-
+         return getDirectInputStream(resource);
+     }
+diff --git a/src/p/UnifiedGameMap.java b/src/p/UnifiedGameMap.java
+--- a/src/p/UnifiedGameMap.java
++++ b/src/p/UnifiedGameMap.java
+@@ -286,7 +286,7 @@ public abstract class UnifiedGameMap implements
+         }
+ 
+         public final void resizeLinesSpecialList() {
+-            linespeciallist = C2JUtils.resize(linespeciallist[0], linespeciallist, linespeciallist.length * 2);
++            linespeciallist = Arrays.copyOf(linespeciallist, linespeciallist.length * 2);
+         }
+         
+     }
+diff --git a/src/rr/patch_t.java b/src/rr/patch_t.java
+--- a/src/rr/patch_t.java
++++ b/src/rr/patch_t.java
+@@ -102,7 +102,7 @@ public class patch_t implements /*IReadableDoomObject,*/CacheableDoomObject{
+         // As many columns as width...right???
+         this.columnofs=new int[this.width];
+         this.columns=new column_t[this.width];
+-        C2JUtils.initArrayOfObjects( this.columns, column_t.class);
++        java.util.Arrays.setAll(this.columns, index -> new column_t());
+         
+         // Compute the ACTUAL full-column sizes.
+         int[] actualsizes=new int[columns.length];
+diff --git a/src/w/InputStreamSugar.java b/src/w/InputStreamSugar.java
+--- a/src/w/InputStreamSugar.java
++++ b/src/w/InputStreamSugar.java
+@@ -233,12 +233,6 @@ public class InputStreamSugar {
+         try { // Is it a net resource? We have to reopen it :-/
+               // long a=System.nanoTime();
+-            URL u = new URL(URI);
+-            InputStream nis = u.openStream();
+-            nis.skip(pos);
+-            is.close();
+-            // long b=System.nanoTime();
+-            // System.out.printf("Network stream seeked WITH closing %d\n",(b-a)/1000);
+-            return nis;
++            return is;
+         } catch (Exception e) {
+ 
+         }
+diff --git a/src/p/Actions/ActionTrait.java b/src/p/Actions/ActionTrait.java
+--- a/src/p/Actions/ActionTrait.java
++++ b/src/p/Actions/ActionTrait.java
+@@ -288,7 +288,7 @@ public interface ActionTrait extends ActionsSectors {
+     // so missiles don't explode against sky hack walls
+     default void ResizeSpechits() {
+         final Spechits spechits = contextRequire(KEY_SPECHITS);
+-        spechits.spechit = C2JUtils.resize(spechits.spechit[0], spechits.spechit, spechits.spechit.length * 2);
++        spechits.spechit = java.util.Arrays.copyOf(spechits.spechit, spechits.spechit.length * 2);
+     }
+     
+     /**
+diff --git a/src/p/Actions/ActionsPathTraverse.java b/src/p/Actions/ActionsPathTraverse.java
+--- a/src/p/Actions/ActionsPathTraverse.java
++++ b/src/p/Actions/ActionsPathTraverse.java
+@@ -78,7 +78,11 @@ public interface ActionsPathTraverse extends ActionTrait {
+         intercept_t[] intercepts = malloc(intercept_t::new, intercept_t[]::new, MAXINTERCEPTS);
+ 
+         void ResizeIntercepts() {
+-            intercepts = C2JUtils.resize(intercepts[0], intercepts, intercepts.length * 2);
++            int oldLength = intercepts.length;
++            intercepts = java.util.Arrays.copyOf(intercepts, oldLength * 2);
++            for (int index = oldLength; index < intercepts.length; index++) {
++                intercepts[index] = new intercept_t();
++            }
+         }
+     }
+ 
+diff --git a/src/p/Actions/ActionsCeilings.java b/src/p/Actions/ActionsCeilings.java
+--- a/src/p/Actions/ActionsCeilings.java
++++ b/src/p/Actions/ActionsCeilings.java
+@@ -224,7 +224,7 @@ public interface ActionsCeilings extends ActionsMoveEvents, ActionsUseEvents {
+             }
+         }
+         // Needs rezising
+-        setActiveceilings(C2JUtils.resize(c, activeCeilings, 2 * activeCeilings.length));
++        setActiveceilings(java.util.Arrays.copyOf(activeCeilings, 2 * activeCeilings.length));
+     }
+ 
+     //
+diff --git a/src/p/UnifiedGameMap.java b/src/p/UnifiedGameMap.java
+--- a/src/p/UnifiedGameMap.java
++++ b/src/p/UnifiedGameMap.java
+@@ -461,7 +461,11 @@ public abstract class UnifiedGameMap implements
+             // in one tic, which can't normally happen except in really pathological maps.
+             // In any case, resizing should solve this problem.
+             if (Engine.getConfig().equals(Settings.extend_button_slots_limit, Boolean.TRUE)) {
+-                buttonlist = C2JUtils.resize(buttonlist[0], buttonlist, buttonlist.length * 2);
++                int oldLength = buttonlist.length;
++                buttonlist = Arrays.copyOf(buttonlist, oldLength * 2);
++                for (int index = oldLength; index < buttonlist.length; index++) {
++                    buttonlist[index] = new button_t();
++                }
+                 // Try again
+                 StartButton(line, w, texture, time);
+             } else {
+diff --git a/src/utils/C2JUtils.java b/src/utils/C2JUtils.java
+--- a/src/utils/C2JUtils.java
++++ b/src/utils/C2JUtils.java
+@@ -377,47 +377,3 @@ public class C2JUtils {
+     public static boolean testReadAccess(String URI) {
+-        InputStream in;
+-
+-        if (InputStreamSugar.hasInjectedResource(URI)) {
+-            return true;
+-        }
+-
+-        if (ResourceIO.isExternalIODisabled()) return false;
+-
+-        // This is bullshit.
+-        if (URI == null) {
+-            return false;
+-        }
+-        if (URI.length() == 0) {
+-            return false;
+-        }
+-
+-        try {
+-            in = new FileInputStream(URI);
+-        } catch (FileNotFoundException e) {
+-            // Not a file...
+-            URL u;
+-            try {
+-                u = new URL(URI);
+-            } catch (MalformedURLException e1) {
+-                return false;
+-            }
+-            try {
+-                in = u.openConnection().getInputStream();
+-            } catch (IOException e1) {
+-                return false;
+-            }
+-
+-        }
+-
+-        if (in != null) {
+-            try {
+-                in.close();
+-            } catch (IOException e) {
+-
+-            }
+-            return true;
+-        }
+-        // All is well. Go on...
+-        return true;
+-
++        return InputStreamSugar.hasInjectedResource(URI);
+     }

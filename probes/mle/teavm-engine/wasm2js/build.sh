@@ -21,10 +21,12 @@ docker exec -u 0 "$tool_container" \
 DOOMDB_JAVA_TOOL_CONTAINER="$tool_container" \
 DOOMDB_JAVA_TOOL_HOME=/opt/java/openjdk \
 DOOMDB_MOCHA_EXPECTED_CLASS_COUNT=828 \
-DOOMDB_MOCHA_EXTRA_PATCH="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch,$spike/0001-legacy-wasm-runtime-cpu.patch" \
+DOOMDB_MOCHA_EXTRA_PATCH="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch,$spike/0001-legacy-wasm-runtime-cpu.patch,$spike/0002-legacy-wasm-level-loader-ssa.patch" \
   "$root/scripts/mochadoom/build-ojvm-jar.sh" \
   "$spike/target/mochadoom-wasm2js-simulation.jar" \
   "$spike/target/mochadoom-wasm2js-simulation.json"
+
+"$spike/build-teavm-singlethread.sh"
 
 docker run --rm \
   -v doomdb-maven-cache:/root/.m2 \

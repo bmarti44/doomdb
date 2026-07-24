@@ -66,6 +66,10 @@ assert.equal(status.soak.resourceManagerCpuQuantumSamples, 0);
 assert.equal(status.architecture.productionOjvm, false);
 assert.equal(status.performance.state, 'BELOW_30_FPS_ACCELERATION_IN_PROGRESS');
 assert.equal(status.performance.throughputTicsPerSecond, 3.961);
+assert.equal(status.performance.evidenceArtifactSha256,
+  'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2');
+assert.equal(status.performance.wasm2jsStatus,
+  'REJECT_BINARYEN_131_TIC0_LONG_HIGH_WORD_LOSS');
 assert.equal(status.performance.sessionCpuMillisecondsPerTic, 253.6);
 assert.equal(status.performance.interpretedArithmeticNanosecondsPerIteration,
   373.169);

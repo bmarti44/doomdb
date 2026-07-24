@@ -64,12 +64,13 @@
         <artifactId>teavm-maven-plugin</artifactId>
         <version>${teavm.version}</version>
         <dependencies>
-          <!-- Diagnostic override used only by this isolated spike. It adds
-               the failing method reference to legacy-Wasm compiler asserts. -->
+          <!-- Isolated single-thread legacy-Wasm toolchain fork. The full
+               headless authority has no suspension boundary; TeaVM 0.13's
+               coroutine pass nevertheless asserts on optimized Doom SSA. -->
           <dependency>
             <groupId>org.teavm</groupId>
             <artifactId>teavm-core</artifactId>
-            <version>0.13.1-doomdb-diag</version>
+            <version>0.13.1-doomdb-singlethread</version>
           </dependency>
           <dependency>
             <groupId>org.teavm</groupId>

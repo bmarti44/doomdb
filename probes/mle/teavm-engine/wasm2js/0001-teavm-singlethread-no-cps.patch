@@ -1,0 +1,16 @@
+diff --git a/core/src/main/java/org/teavm/backend/wasm/WasmTarget.java b/core/src/main/java/org/teavm/backend/wasm/WasmTarget.java
+--- a/core/src/main/java/org/teavm/backend/wasm/WasmTarget.java
++++ b/core/src/main/java/org/teavm/backend/wasm/WasmTarget.java
+@@ -466,8 +466,10 @@ public class WasmTarget implements TeaVMTarget, TeaVMTargetController, ClassHold
+     public void afterOptimizations(Program program, MethodReader method) {
+         classInitializerEliminator.apply(program);
+         classInitializerTransformer.transform(program);
+-        new CoroutineTransformation(controller.getUnprocessedClassSource(), asyncMethods, hasThreads)
+-                .apply(program, method.getReference());
++        // doomdb wasm2js feasibility spike: the headless authority is
++        // single-threaded and has no reachable suspension boundary. TeaVM
++        // 0.13's coroutine pass asserts on the optimized Doom SSA graph.
++        // Omit only that pass in this isolated generated-shape experiment.
+         shadowStackTransformer.apply(program, method);
+         writeBarrierInsertion.apply(program);
+     }

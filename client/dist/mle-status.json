@@ -171,6 +171,8 @@
     "compiledArithmeticThreshold": "PASS_BELOW_15_NS",
     "fullArtifactCompilation": "DIAGNOSTIC_HANG_MLE_PARK",
     "hiddenCompilationProductionEnabled": false,
+    "wasm2jsStatus": "REJECT_BINARYEN_131_TIC0_LONG_HIGH_WORD_LOSS",
+    "wasm2jsEvidence": "artifacts/performance/pmle-wasm2js/REPORT.md",
     "requiredTicsPerSecond": 35,
     "targetFps": 30,
     "note": "No current evidence supports an unqualified 30 FPS claim on 26ai Free"

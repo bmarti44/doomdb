@@ -3,6 +3,7 @@ set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 node "$ROOT/tests/verify-pmle-checkpoint-cadence.mjs"
+sh "$ROOT/tests/verify-pmle-wasm2js-source.sh"
 INSTALL=$ROOT/probes/mle/install.sql
 BENCHMARK=$ROOT/probes/mle/benchmark.sql
 RUNNER=$ROOT/probes/mle/run.sh
@@ -58,6 +59,12 @@ TEAVM_WAN_RUNNER=$ROOT/probes/mle/teavm-engine/run-wan-matrix.sh
 ALERT_SCANNER=$ROOT/scripts/oracle-alert-window.sh
 TEAVM_LIVE_MATRIX=$ROOT/probes/mle/teavm-engine/run-live-command-matrix-mle.sh
 HIDDEN_JIT_RUNNER=$ROOT/probes/mle/run-hidden-jit-matrix.sh
+WASM2JS_README=$ROOT/probes/mle/teavm-engine/wasm2js/README.md
+WASM2JS_PARITY=$ROOT/probes/mle/teavm-engine/wasm2js/run-node-parity.mjs
+WASM2JS_TOOLCHAIN_BUILD=$ROOT/probes/mle/teavm-engine/wasm2js/build-teavm-singlethread.sh
+WASM2JS_TOOLCHAIN_PATCH=$ROOT/probes/mle/teavm-engine/wasm2js/0001-teavm-singlethread-no-cps.patch
+WASM2JS_REPORT=$ROOT/artifacts/performance/pmle-wasm2js/REPORT.md
+WASM2JS_MARKERS=$ROOT/artifacts/performance/pmle-wasm2js/evidence-markers.log
 TEAVM_SIM_SOURCE=$ROOT/probes/mle/teavm-engine/src/main/java/doomdb/mle/engine/SimulationEngineReachabilityProbe.java
 REPORT=$ROOT/reports/performance-PMLE-mle-26ai-2026-07-22.md
 TEAVM_REPORT=$ROOT/probes/mle/teavm-engine/REPORT.md
@@ -116,6 +123,8 @@ for file in "$INSTALL" "$BENCHMARK" "$RUNNER" "$CLEANUP" \
   "$TEAVM_DISPATCH_RUNNER" "$TEAVM_DISPATCH_AB" "$TEAVM_DIFFERENTIAL_RUNNER" \
   "$TEAVM_WORKER_CUTOVER_RUNNER" "$TEAVM_BROWSER_REPLICA_PROFILE" \
   "$TEAVM_WAN_RUNNER" \
+  "$WASM2JS_README" "$WASM2JS_PARITY" "$WASM2JS_TOOLCHAIN_BUILD" \
+  "$WASM2JS_TOOLCHAIN_PATCH" "$WASM2JS_REPORT" "$WASM2JS_MARKERS" \
   "$TEAVM_SIM_SOURCE" "$REPORT" "$TEAVM_REPORT" "$VERSIONS" \
   "$AUTHORITY_TS" "$AUTHORITY_MIRROR_TS" "$AUTHORITY_BATCH_TS" \
   "$AUTHORITY_WAN_TS" \
@@ -173,6 +182,21 @@ grep -q 'systimestamp' "$ADB_BENCHMARK" || fail 'ADB wall-clock timing missing'
 grep -q 'c_batch constant pls_integer:=20' "$ADB_BENCHMARK" || fail 'ADB timing batch missing'
 grep -q 'PMLE_ADB_DECISION|REOPEN_EXACT_RENDERER' "$ADB_BENCHMARK" || fail 'ADB reopen threshold missing'
 grep -q 'PMLE_ADB_DECISION|CLOSE_EXACT_RENDERER' "$ADB_BENCHMARK" || fail 'ADB close threshold missing'
+grep -q 'REJECTED_BEFORE_MLE' "$WASM2JS_README" ||
+  fail 'wasm2js terminal rejection missing'
+grep -q 'compareCanonical(0)' "$WASM2JS_PARITY" ||
+  fail 'wasm2js tic-zero canonical gate missing'
+grep -q "commit='b3a245b7d9034ff35cdfab2def057a3d4f256efb'" \
+  "$WASM2JS_TOOLCHAIN_BUILD" ||
+  fail 'wasm2js TeaVM fork commit is not pinned'
+grep -q 'git -C "$source_dir" apply --check' "$WASM2JS_TOOLCHAIN_BUILD" ||
+  fail 'wasm2js TeaVM fork patch is not fail-closed'
+grep -q 'CoroutineTransformation' "$WASM2JS_TOOLCHAIN_PATCH" ||
+  fail 'wasm2js TeaVM single-thread patch missing'
+grep -q 'binaryen_i64_high_word_loss' "$WASM2JS_REPORT" ||
+  fail 'wasm2js structural rejection reason missing'
+grep -q 'oracle_mle_load=NOT_RUN' "$WASM2JS_MARKERS" ||
+  fail 'wasm2js no-MLE-load evidence missing'
 grep -q 'DOOMDB_CLOUD_EXECUTE.*YES' "$ADB_RUNNER" || fail 'ADB execution opt-in missing'
 grep -q 'ADB_PASSWORD' "$ADB_RUNNER" || fail 'ADB credential fence missing'
 grep -q 'adb-cleanup.sql' "$ADB_RUNNER" || fail 'ADB cleanup path missing'

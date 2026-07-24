@@ -77,6 +77,12 @@ TeaVM authority cannot consume that win yet—forced compilation spends minutes
 in `MLE park` without completing the production ticker—so de-CPS/generated
 method reshaping is the immediate performance path.
 
+The first de-CPS/linear-memory spike compiled and is byte-exact when executed
+as native WebAssembly, but Binaryen 131's wasm2js translation loses mobj
+`long` high words at tic zero. That translator is rejected and was not timed
+in MLE; a translator repair or version change must restore exact Node parity
+before the rank cell can reopen.
+
 **Multiplayer, where the database is the server.** Two browsers join one
 authoritative world living in Oracle. The engine advances once per ordered
 command vector and emits one confirmed transition chain. Each browser renders
