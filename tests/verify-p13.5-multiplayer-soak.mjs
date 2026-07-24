@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {execFileSync,spawn} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import {chromium} from 'playwright';
 
@@ -55,7 +56,10 @@ const dbContainer=execFileSync('docker',['compose','ps','-q','db'],{encoding:'ut
 assert.ok(dbContainer,'database container is unavailable');
 const dbSql=sql=>execFileSync('docker',['exec','-i',dbContainer,'sqlplus','-s',
   '/','as','sysdba'],{
-    input:`alter session set container=freepdb1;\nset heading off feedback off pagesize 0\n${sql}\n`,
+    input:`whenever oserror exit failure rollback\n`+
+      `whenever sqlerror exit sql.sqlcode rollback\n`+
+      `alter session set container=freepdb1;\n`+
+      `set heading off feedback off pagesize 0\n${sql}\n`,
     encoding:'utf8'
   });
 const dbSqlAsync=sql=>new Promise((resolve,reject)=>{
@@ -73,7 +77,9 @@ const dbSqlAsync=sql=>new Promise((resolve,reject)=>{
     if(code===0) resolve(stdout);
     else reject(new Error(`async SQL*Plus exited ${code}: ${stderr||stdout}`));
   });
-  child.stdin.end(`alter session set container=freepdb1;\n`+
+  child.stdin.end(`whenever oserror exit failure rollback\n`+
+    `whenever sqlerror exit sql.sqlcode rollback\n`+
+    `alter session set container=freepdb1;\n`+
     `set heading off feedback off pagesize 0 serveroutput on size unlimited\n`+
     `${sql}\n`);
 });
@@ -163,7 +169,8 @@ try {
   await host.locator('[data-create] input[name=name]').fill('SOAK HOST');
   process.stdout.write('PMLE_SOAK_STAGE|host_name_filled\n');
   if(highAwakeRecoveryDiagnostic) {
-    await host.locator('[data-create] select[name=mode]').selectOption('DEATHMATCH');
+    await host.locator('[data-create] select[name=mode]').selectOption('COOP');
+    await host.locator('[data-create] select[name=skill]').selectOption('5');
   }
   process.stdout.write('PMLE_SOAK_STAGE|create_click_begin\n');
   await host.getByRole('button',{name:'Create two-player match'}).click();
@@ -189,8 +196,41 @@ try {
       return button instanceof HTMLButtonElement&&!button.disabled;
     });
   }
+  if(highAwakeRecoveryDiagnostic) {
+    // This diagnostic deliberately disconnects the browsers after start. Give
+    // both lobby members a future lease before startup so the authority's
+    // comparatively slow Free-edition initialization cannot consume the
+    // ordinary foreground-client liveness window first.
+    const startupHold=dbSql(
+      `update doom.doom_match_member set last_seen_at=`+
+      `systimestamp+interval '30' minute where match_id='${match}';\n`+
+      `update doom.doom_match set expires_at=`+
+      `systimestamp+interval '30' minute where match_id='${match}';\n`+
+      `commit;\n`+
+      `select 'PMLE_HIGH_AWAKE_STARTUP_HOLD|'||count(*) `+
+      `from doom.doom_match_member where match_id='${match}' `+
+      `and last_seen_at>systimestamp;`);
+    assert.match(startupHold,/PMLE_HIGH_AWAKE_STARTUP_HOLD\|2/,
+      'high-awake diagnostic did not lease both startup members');
+  }
   await Promise.all([host,guest].map(page=>page.locator('[data-ready]').click()));
   process.stdout.write('PMLE_SOAK_STAGE|both_ready_clicked\n');
+  if(highAwakeRecoveryDiagnostic) {
+    // READY_MATCH legitimately touches last_seen_at after the lobby fence
+    // above. Renew immediately after both requests complete so slow retained
+    // authority startup cannot age either member out.
+    const readyHold=dbSql(
+      `update doom.doom_match_member set last_seen_at=`+
+      `systimestamp+interval '30' minute where match_id='${match}';\n`+
+      `update doom.doom_match set expires_at=`+
+      `systimestamp+interval '30' minute where match_id='${match}';\n`+
+      `commit;\n`+
+      `select 'PMLE_HIGH_AWAKE_READY_HOLD|'||count(*) `+
+      `from doom.doom_match_member where match_id='${match}' `+
+      `and last_seen_at>systimestamp;`);
+    assert.match(readyHold,/PMLE_HIGH_AWAKE_READY_HOLD\|2/,
+      'high-awake diagnostic did not lease both ready members');
+  }
   if(routeDiagnostics) {
     let output='';
     for(let attempt=0;attempt<100;attempt++) {
@@ -210,8 +250,35 @@ try {
       'failed to enable retained-worker stage diagnostics');
     process.stdout.write(`PMLE_ROUTE_DIAGNOSTICS|ENABLED|match=${match}\n`);
   }
-  await Promise.all([host,guest].map(page=>page.locator('[data-game][data-active]')
-    .waitFor({state:'visible',timeout:startupTimeoutMs})));
+  if(highAwakeRecoveryDiagnostic) {
+    const startupDeadline=Date.now()+startupTimeoutMs;
+    let authorityReady='';
+    let lastAuthorityState='';
+    while(Date.now()<startupDeadline) {
+      const authorityOutput=dbSql(
+        `select 'PMLE_HIGH_AWAKE_AUTHORITY_READY|'||m.match_state||'|'||`+
+        `w.worker_status||'|'||m.current_tic from doom.doom_match m join `+
+        `doom.doom_match_worker_control w on w.match_id=m.match_id `+
+        `where m.match_id='${match}';`);
+      const marker=authorityOutput.match(
+        /PMLE_HIGH_AWAKE_AUTHORITY_READY\|\w+\|\w+\|\d+/)?.[0]??'';
+      if(marker&&marker!==lastAuthorityState) {
+        process.stdout.write(marker+'\n');
+        lastAuthorityState=marker;
+      }
+      if(/PMLE_HIGH_AWAKE_AUTHORITY_READY\|ACTIVE\|READY\|\d+/.test(marker)) {
+        authorityReady=marker;
+        break;
+      }
+      await host.waitForTimeout(500);
+    }
+    assert.match(authorityReady,
+      /PMLE_HIGH_AWAKE_AUTHORITY_READY\|ACTIVE\|READY\|\d+/,
+      'high-awake diagnostic authority did not become ready');
+  } else {
+    await Promise.all([host,guest].map(page=>page.locator('[data-game][data-active]')
+      .waitFor({state:'visible',timeout:startupTimeoutMs})));
+  }
   if(cadenceObservation) {
     let cadence=null;
     const observationDeadline=Date.now()+10*60*1000;
@@ -256,32 +323,82 @@ try {
       `|distance=${cadence.distance}|awake=${cadence.awake}`+
       `|decision=${cadence.decision}|checkpoint_test_hook=0\n`);
   } else if(highAwakeRecoveryDiagnostic) {
-    // Extend membership before disconnecting the browsers. Taking them
-    // offline first races mark_disconnected and can legitimately remove the
-    // host before the diagnostic stream is installed.
-    dbSql(`update doom.doom_match_member set last_seen_at=`+
-      `systimestamp+interval '30' minute where match_id='${match}' `+
-      `and member_state='ACTIVE';\n`+
-      `update doom.doom_match set expires_at=`+
-      `systimestamp+interval '30' minute where match_id='${match}';\ncommit;`);
+    // START_READY resets last_seen_at while activating the members. Take
+    // browser traffic offline at the authoritative READY boundary, let local
+    // in-flight requests settle, then extend the member lease before the
+    // worker advances into the hot per-tic lock loop.
     await Promise.all(contexts.map(context=>context.setOffline(true)));
+    process.stdout.write('PMLE_HIGH_AWAKE_STAGE|browsers_offline\n');
+    await host.waitForTimeout(250);
+    const membershipHold=dbSql(
+      `update doom.doom_match_member set member_state='ACTIVE',`+
+      `disconnected_at=null,leave_tic=null,last_seen_at=`+
+      `systimestamp+interval '30' minute where match_id='${match}' `+
+      `and member_state in('ACTIVE','DISCONNECTED');\ncommit;\n`+
+      `select 'PMLE_HIGH_AWAKE_MEMBERSHIP_HOLD|'||count(*) `+
+      `from doom.doom_match_member where match_id='${match}' `+
+      `and member_state='ACTIVE' and last_seen_at>systimestamp;`);
+    assert.match(membershipHold,/PMLE_HIGH_AWAKE_MEMBERSHIP_HOLD\|2/,
+      'high-awake diagnostic did not retain both active members');
+    process.stdout.write('PMLE_HIGH_AWAKE_STAGE|membership_held\n');
+    // Reuse the accepted 762-tic co-op movement route at skill 5 so the map
+    // geometry and command provenance stay pinned while this diagnostic
+    // exercises E1M1's maximum monster population.
     const fixture=JSON.parse(fs.readFileSync(new URL(
-      './fixtures/mle-live-deathmatch-2026-07-23.json',import.meta.url),'utf8'));
-    assert.equal(fixture.mode,'DEATHMATCH');
-    assert.equal(fixture.players,2);
-    const feedTics=512;
-    let relativeTic=1;
-    const changes=[];
-    for(const run of fixture.runs) {
-      if(relativeTic>feedTics) break;
-      assert.match(run.command,/^[0-9a-f]{64}$/);
-      changes.push({
-        tic:relativeTic,
-        p0:run.command.slice(0,16),
-        p1:run.command.slice(16,32)
-      });
-      relativeTic+=Math.min(run.repeat,feedTics-relativeTic+1);
+      '../artifacts/p13.3-coop-e1m1-route.json',import.meta.url),'utf8'));
+    const routeBytes=fs.readFileSync(fixture.baseRoute.path);
+    assert.equal(createHash('sha256').update(routeBytes).digest('hex'),
+      fixture.baseRoute.sha256);
+    const route=JSON.parse(routeBytes);
+    const byte=value=>((value%256)+256)%256;
+    let turnHeld=0;
+    const ticcmd=command=>{
+      const forward=Math.abs(command.forward)>1?command.forward:
+        command.forward*(command.run?50:25);
+      const side=Math.abs(command.strafe)>1?command.strafe:
+        command.strafe*(command.run?40:24);
+      const mouseTurn=Math.abs(command.turn)>1;
+      if(command.turn===0||mouseTurn) turnHeld=0;else turnHeld+=1;
+      const turnMagnitude=mouseTurn?Math.abs(command.turn)*256:
+        turnHeld<6?320:(command.run?1280:640);
+      const turn=command.turn===0?0:-Math.sign(command.turn)*turnMagnitude;
+      const buttons=(command.fire?1:0)|(command.use?2:0)|
+        (command.weapon>0?4|((command.weapon-1)<<3):0);
+      return [byte(forward),byte(side),(turn>>8)&255,turn&255,0,0,0,buttons]
+        .map(value=>value.toString(16).padStart(2,'0')).join('').toUpperCase();
+    };
+    const player0=route.runs.flatMap(run=>Array.from(
+      {length:run.repeat},()=>ticcmd(run.command))).slice(0,fixture.commandCount);
+    for(const transform of fixture.player0Transforms) {
+      const offset=transform.axis==='forward'?0:2;
+      for(let tic=transform.firstTic;tic<=transform.lastTic;tic+=1) {
+        const vector=player0[tic-1];
+        const adjusted=byte(
+          Number.parseInt(vector.slice(offset,offset+2),16)+transform.delta);
+        player0[tic-1]=vector.slice(0,offset)+
+          adjusted.toString(16).padStart(2,'0').toUpperCase()+
+          vector.slice(offset+2);
+      }
     }
+    const player1=Array.from(
+      {length:fixture.commandCount},()=>'0000000000000000');
+    for(const run of fixture.player1Runs) {
+      for(let tic=run.firstTic;tic<=run.lastTic;tic+=1) {
+        player1[tic-1]=run.ticcmdHex;
+      }
+    }
+    const feedTics=Math.min(512,fixture.commandCount);
+    const changes=[];
+    let previous='';
+    for(let tic=1;tic<=feedTics;tic+=1) {
+      const vector=player0[tic-1]+player1[tic-1];
+      if(vector!==previous) {
+        changes.push({tic,p0:player0[tic-1],p1:player1[tic-1]});
+        previous=vector;
+      }
+    }
+    process.stdout.write(`PMLE_HIGH_AWAKE_STAGE|fixture_ready`+
+      `|tics=${feedTics}|changes=${changes.length}\n`);
     const feedHeader=dbSql(
       `select 'PMLE_HIGH_AWAKE_FEED|'||m.current_tic||'|'||m.generation||`+
       `'|'||m.membership_epoch||'|'||`+
@@ -293,6 +410,8 @@ try {
     const feed=feedHeader.match(
       /PMLE_HIGH_AWAKE_FEED\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)/);
     assert.ok(feed,'high-awake fixture frontier missing');
+    process.stdout.write(`PMLE_HIGH_AWAKE_STAGE|frontier_captured`+
+      `|tic=${feed[1]}|generation=${feed[2]}\n`);
     const feedBase=Number(feed[1])+12;
     const feedGeneration=Number(feed[2]);
     const feedEpoch=Number(feed[3]);
@@ -301,22 +420,30 @@ try {
     for(const [changeIndex,change] of changes.entries()) {
       for(const slot of [0,1]) {
         const raw=slot===0?change.p0:change.p1;
+        const commandSha=createHash('sha256').update(
+          Buffer.from(raw,'hex')).digest('hex');
         inserts.push(
           `insert into doom.doom_match_input_event(match_id,player_slot,`+
           `input_seq,effective_tic,membership_epoch,generation,ticcmd_raw,`+
           `command_sha,accepted_at) values('${match}',${slot},`+
           `${sequenceBase[slot]+changeIndex+1},${feedBase+change.tic-1},`+
           `${feedEpoch},${feedGeneration},hextoraw('${raw}'),`+
-          `lower(rawtohex(dbms_crypto.hash(hextoraw('${raw}'),`+
-          `dbms_crypto.hash_sh256))),systimestamp);`);
+          `'${commandSha}',systimestamp);`);
       }
     }
-    dbSql(`${inserts.join('\n')}\n`+
+    const feedReadyOutput=dbSql(`${inserts.join('\n')}\n`+
       `commit;\n`+
       `select 'PMLE_HIGH_AWAKE_FEED_READY|base=${feedBase}|changes=`+
       `${changes.length}' from dual;`);
+    assert.match(feedReadyOutput,
+      new RegExp(`PMLE_HIGH_AWAKE_FEED_READY\\|base=${feedBase}`+
+        `\\|changes=${changes.length}`),
+      'high-awake direct command feed did not commit');
+    process.stdout.write(`PMLE_HIGH_AWAKE_STAGE|feed_committed`+
+      `|base=${feedBase}|changes=${changes.length}\n`);
 
     let recoveryTarget=null;
+    let maxAwakeObserved=0;
     const observationDeadline=Date.now()+20*60*1000;
     while(Date.now()<observationDeadline) {
       const output=dbSql(
@@ -333,6 +460,10 @@ try {
         `left join doom.doom_match_checkpoint_probe p on p.match_id=m.match_id `+
         `and p.tic=(select max(q.tic) from doom.doom_match_checkpoint_probe q `+
         `where q.match_id=m.match_id) where m.match_id='${match}';`);
+      if(!output.includes('PMLE_HIGH_AWAKE_WINDOW|')) {
+        throw new Error(
+          'high-awake diagnostic match/control row disappeared before recovery target');
+      }
       const row=output.match(
         /PMLE_HIGH_AWAKE_WINDOW\|(\w+)\|([^|\r\n]+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\w+)\|(\d+)/);
       if(row) {
@@ -344,6 +475,7 @@ try {
         const awake=Number(row[9]);
         const decision=row[10];
         const sustainedSamples=Number(row[11]);
+        maxAwakeObserved=Math.max(maxAwakeObserved,awake);
         const target=Number(row[6])+16-1;
         const targetDistance=target-previousCheckpoint;
         if(decision==='DEFER_HIGH'&&targetDistance>=240&&awake>16&&
@@ -359,6 +491,11 @@ try {
             sustainedSamples
           };
           break;
+        }
+        if(frontier>=feedBase+feedTics) {
+          throw new Error(
+            `high-awake fixture did not qualify: max_awake=${maxAwakeObserved}`+
+            ` threshold=17 through_tic=${frontier}`);
         }
       }
       await host.waitForTimeout(100);
