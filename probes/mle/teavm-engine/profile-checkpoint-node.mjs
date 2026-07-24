@@ -5,13 +5,15 @@ import {createHash} from 'node:crypto';
 
 const here = new URL('./', import.meta.url);
 const modulePath = process.env.DOOMDB_MLE_CHECKPOINT_MODULE
-  ?? '../../../client/dist/play/doom-mle-authority-103e15e913b3.js';
+  ?? '../../../client/dist/play/doom-mle-authority-e485b9418e58.js';
 const iwadPath = process.env.DOOMDB_MLE_CHECKPOINT_IWAD
   ?? '../../../client/dist/play/freedoom1-7323bcc168c5.bin';
 const tablePath = process.env.DOOMDB_MLE_CHECKPOINT_TABLES
   ?? '../../../client/dist/play/canonical-runtime-v2-058cd0df9444.bin';
 const profilePath = process.env.DOOMDB_MLE_CHECKPOINT_PROFILE;
 const checkpointOutputPath = process.env.DOOMDB_MLE_CHECKPOINT_BYTES;
+const restoreEnabled = process.env.DOOMDB_MLE_CHECKPOINT_RESTORE === '1';
+const warmRestore = process.env.DOOMDB_MLE_CHECKPOINT_WARM_RESTORE === '1';
 const engine = await import(new URL(modulePath, here));
 const iwad = fs.readFileSync(new URL(iwadPath, here));
 const tables = fs.readFileSync(new URL(tablePath, here));
@@ -40,7 +42,7 @@ let session;
 const post = (method, params = {}) => new Promise((resolve, reject) =>
   session.post(method, params, (error, result) =>
     error === null ? resolve(result) : reject(error)));
-if (profilePath !== undefined) {
+if (profilePath !== undefined && !restoreEnabled) {
   session = new inspector.Session();
   session.connect();
   await post('Profiler.enable');
@@ -50,7 +52,7 @@ const started = performance.now();
 const bytes = engine.checkpointLength();
 const firstMs = performance.now() - started;
 const checkpointHash = createHash('sha256');
-const checkpointMaterial = checkpointOutputPath === undefined
+const checkpointMaterial = checkpointOutputPath === undefined && !restoreEnabled
   ? null : Buffer.alloc(bytes);
 for (let offset = 0; offset < bytes; offset += 32767) {
   const chunk = Buffer.from(engine.checkpointChunk(
@@ -59,9 +61,12 @@ for (let offset = 0; offset < bytes; offset += 32767) {
   if (checkpointMaterial !== null) chunk.copy(checkpointMaterial, offset);
 }
 const checkpointSha256 = checkpointHash.digest('hex');
-if (checkpointMaterial !== null) fs.writeFileSync(checkpointOutputPath, checkpointMaterial);
+const expectedCanonical = engine.canonicalState();
+if (checkpointOutputPath !== undefined) {
+  fs.writeFileSync(checkpointOutputPath, checkpointMaterial);
+}
 let profile;
-if (profilePath !== undefined) {
+if (profilePath !== undefined && !restoreEnabled) {
   ({profile} = await post('Profiler.stop'));
   session.disconnect();
   fs.writeFileSync(profilePath, JSON.stringify(profile));
@@ -70,8 +75,44 @@ const repeated = performance.now();
 const repeatedBytes = engine.checkpointLength();
 const repeatedMs = performance.now() - repeated;
 if (repeatedBytes !== bytes) throw new Error('checkpoint length drift');
+let restoreMs;
+if (restoreEnabled) {
+  // Production restore loads into a separately retained origin context. Reset
+  // to that exact state outside the timed region for an equivalent A/B.
+  engine.release();
+  load(iwad, engine.allocateIwad, engine.loadIwadChunk);
+  load(tables, engine.allocateTablePack, engine.loadTablePackChunk);
+  engine.initializeMultiplayerGame(2, 0, 3, 1, 1);
+  load(checkpointMaterial, engine.allocateCheckpoint, engine.loadCheckpointChunk);
+  if (profilePath !== undefined) {
+    session = new inspector.Session();
+    session.connect();
+    await post('Profiler.enable');
+    await post('Profiler.start');
+  }
+  const restoreStarted = performance.now();
+  const restoreStatus = warmRestore
+    ? engine.restoreCheckpointWarm(32)
+    : engine.restoreCheckpoint(32);
+  restoreMs = performance.now() - restoreStarted;
+  if (!restoreStatus.includes('tic=32')) {
+    throw new Error(`checkpoint restore failed: ${restoreStatus}`);
+  }
+  const actualCanonical = engine.canonicalState();
+  if (actualCanonical !== expectedCanonical) {
+    throw new Error(`checkpoint canonical divergence: expected ${expectedCanonical}`
+      + ` actual ${actualCanonical}`);
+  }
+  if (profilePath !== undefined) {
+    ({profile} = await post('Profiler.stop'));
+    session.disconnect();
+    fs.writeFileSync(profilePath, JSON.stringify(profile));
+  }
+}
 process.stdout.write(`PMLE_NODE_CHECKPOINT|PASS|tic=32|bytes=${bytes}`
   + `|first_ms=${firstMs.toFixed(3)}|repeated_ms=${repeatedMs.toFixed(3)}`
+  + `${restoreMs === undefined ? '' : `|restore_ms=${restoreMs.toFixed(3)}`}`
+  + `${restoreMs === undefined ? '' : `|restore_mode=${warmRestore ? 'warm' : 'general'}`}`
   + `|sha256=${checkpointSha256}`
   + `${profilePath === undefined ? '' : `|profile=${profilePath}`}\n`);
 engine.release();

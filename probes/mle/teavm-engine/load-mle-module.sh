@@ -5,8 +5,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 javascript="$project/target/javascript/doom-mle-simulation-engine-headless.js"
 table_pack="$project/target/canonical-runtime-v2.bin"
-expected_source_bytes=1170639
-expected_source_sha256="103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e"
+expected_source_bytes=1171896
+expected_source_sha256="e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b"
 expected_table_pack_sha256="058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"
 base64_fold_width=2000
 build=1
@@ -21,7 +21,7 @@ for option in "$@"; do
     --javascript=*) javascript="${option#--javascript=}";build=0;custom_source=1 ;;
     --table-pack=*) table_pack="${option#--table-pack=}";build=0;custom_source=1 ;;
     --production) production=1;build=0
-      javascript="$root/client/dist/play/doom-mle-authority-103e15e913b3.js"
+      javascript="$root/client/dist/play/doom-mle-authority-e485b9418e58.js"
       table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
       ;;
     *) printf 'unsupported option: %s\n' "$option" >&2;exit 2 ;;
@@ -42,6 +42,10 @@ bytes="$(wc -c <"$javascript" | tr -d '[:space:]')"
 sha256="$(shasum -a 256 "$javascript" | awk '{print $1}')"
 table_pack_bytes="$(wc -c <"$table_pack" | tr -d '[:space:]')"
 table_pack_sha256="$(shasum -a 256 "$table_pack" | awk '{print $1}')"
+has_warm_restore=0
+if rg -F 'restoreCheckpointWarm' "$javascript" >/dev/null; then
+  has_warm_restore=1
+fi
 if [[ "$production" == 1 &&
       ("$bytes" != "$expected_source_bytes" ||
        "$sha256" != "$expected_source_sha256") ]]; then
@@ -77,6 +81,8 @@ emit_sql() {
     "begin execute immediate 'drop function doom_teavm_sim_checkpoint_length'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
     '/' \
     "begin execute immediate 'drop function doom_teavm_sim_restore'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_sim_restore_warm'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
     '/' \
     "begin execute immediate 'drop function doom_teavm_sim_restore_load'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
     '/' \
@@ -208,7 +214,15 @@ emit_sql() {
     "create function doom_teavm_sim_restore_load(p_offset number,p_chunk raw) return number as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'loadCheckpointChunk(number, Uint8Array)';" \
     '/' \
     "create function doom_teavm_sim_restore(p_expected_tic number) return varchar2 as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'restoreCheckpoint(number)';" \
-    '/' \
+    '/'
+
+  if [[ "$has_warm_restore" == 1 ]]; then
+    printf '%s\n' \
+      "create function doom_teavm_sim_restore_warm(p_expected_tic number) return varchar2 as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'restoreCheckpointWarm(number)';" \
+      '/'
+  fi
+
+  printf '%s\n' \
     "create function doom_teavm_sim_memory return varchar2 as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'memoryDiagnostic()';" \
     '/' \
     "create procedure doom_teavm_sim_release as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'release()';" \

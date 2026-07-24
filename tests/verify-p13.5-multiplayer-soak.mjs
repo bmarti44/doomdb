@@ -297,11 +297,12 @@ try {
   if(highAwakeDiagnostic) {
     // READY_MATCH legitimately touches last_seen_at after the lobby fence
     // above. Renew immediately after both requests complete so slow retained
-    // authority startup cannot age either member out.
+    // authority startup cannot age either member out. Match-then-members is
+    // the worker's lock order; reversing it can deadlock with publication.
     const readyHold=dbSql(
-      `update doom.doom_match_member set last_seen_at=`+
-      `systimestamp+interval '30' minute where match_id='${match}';\n`+
       `update doom.doom_match set expires_at=`+
+      `systimestamp+interval '30' minute where match_id='${match}';\n`+
+      `update doom.doom_match_member set last_seen_at=`+
       `systimestamp+interval '30' minute where match_id='${match}';\n`+
       `commit;\n`+
       `select 'PMLE_HIGH_AWAKE_READY_HOLD|'||count(*) `+
@@ -494,8 +495,8 @@ try {
         `nvl(p.previous_checkpoint_tic,0)||'|'||nvl(p.checkpoint_distance,0)||`+
         `'|'||nvl(p.awake_monsters,0)||'|'||nvl(p.checkpoint_decision,'NONE')||`+
         `'|'||(select count(*) from doom.doom_match_checkpoint_probe q `+
-        `where q.match_id=m.match_id and q.checkpoint_decision='DEFER_HIGH' `+
-        `and q.awake_monsters>16 and q.tic between nvl(p.tic,0)-32 and `+
+        `where q.match_id=m.match_id and q.awake_monsters>16 `+
+        `and q.tic between nvl(p.tic,0)-256 and `+
         `nvl(p.tic,0)) from doom.doom_match m join `+
         `doom.doom_match_worker_control w on w.match_id=m.match_id `+
         `left join doom.doom_match_checkpoint_probe p on p.match_id=m.match_id `+
@@ -517,17 +518,20 @@ try {
         const decision=row[10];
         const sustainedSamples=Number(row[11]);
         maxAwakeObserved=Math.max(maxAwakeObserved,awake);
-        const target=Number(row[6])+16-1;
-        const targetDistance=target-previousCheckpoint;
-        if(decision==='DEFER_HIGH'&&targetDistance>=240&&awake>16&&
-            sustainedSamples>=3&&frontier>=target) {
+        // Under the fixed-128 policy, the latest FORCED_MAX probe is also the
+        // latest durable checkpoint. Kill one tic before its next hard bound.
+        const durableCheckpoint=decision==='FORCED_MAX'
+          ? Number(row[6]) : previousCheckpoint;
+        const targetDistance=frontier-durableCheckpoint;
+        if(decision==='FORCED_MAX'&&targetDistance>=127&&awake>16&&
+            sustainedSamples>=3) {
           recoveryTarget={
             frontier,
             sid:Number(row[4]),
             serial:Number(row[5]),
             probeTic:Number(row[6]),
-            previousCheckpoint,
-            distance:frontier-previousCheckpoint,
+            previousCheckpoint:durableCheckpoint,
+            distance:targetDistance,
             awake,
             sustainedSamples
           };
@@ -543,7 +547,7 @@ try {
     }
     assert.ok(recoveryTarget,
       'no sustained high-awake maximum-distance recovery window was observed');
-    assert.ok(recoveryTarget.distance>=240&&recoveryTarget.distance<=255,
+    assert.ok(recoveryTarget.distance>=112&&recoveryTarget.distance<=127,
       'authority was not killed at the maximum scheduled pre-checkpoint distance');
     const incarnationOutput=dbSql(
       `select 'PMLE_HIGH_AWAKE_KILL_INCARNATION|'||job_name||'|'||`+
@@ -573,7 +577,7 @@ try {
     const killedFrontier=Number(killed[1]);
     const killedCheckpoint=Number(killed[2]);
     const killedDistance=killedFrontier-killedCheckpoint;
-    assert.ok(killedDistance>=240&&killedDistance<=255,
+    assert.ok(killedDistance>=112&&killedDistance<=127,
       'durable kill did not occur at maximum pre-checkpoint distance');
     const recoveryOutput=await dbSqlAsync(`
 declare

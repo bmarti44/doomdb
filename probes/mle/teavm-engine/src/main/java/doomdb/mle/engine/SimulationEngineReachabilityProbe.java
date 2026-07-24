@@ -658,8 +658,22 @@ public final class SimulationEngineReachabilityProbe {
   /** Restore the resident engine from a fully transferred verified checkpoint. */
   @JSExport
   public static String restoreCheckpoint(int expectedTic) {
+    return restoreCheckpointResult(expectedTic, false);
+  }
+
+  /**
+   * Restore into a retained engine already at the checkpoint's exact origin.
+   * Fail-closed origin checks guard the InitNew omission.
+   */
+  @JSExport
+  public static String restoreCheckpointWarm(int expectedTic) {
+    return restoreCheckpointResult(expectedTic, true);
+  }
+
+  private static String restoreCheckpointResult(
+      int expectedTic, boolean requireWarmOrigin) {
     try {
-      return restoreCheckpointCore(expectedTic);
+      return restoreCheckpointCore(expectedTic, requireWarmOrigin);
     } catch (Throwable failure) {
       StringBuilder result = new StringBuilder("error|type=")
           .append(failure.getClass().getName()).append("|message=")
@@ -672,7 +686,8 @@ public final class SimulationEngineReachabilityProbe {
     }
   }
 
-  private static String restoreCheckpointCore(int expectedTic) throws Exception {
+  private static String restoreCheckpointCore(
+      int expectedTic, boolean requireWarmOrigin) throws Exception {
     if (engine == null) throw new IllegalStateException("engine is not initialized");
     if (checkpointLoadBuffer == null
         || checkpointBytesLoaded != checkpointLoadBuffer.length) {
@@ -801,6 +816,20 @@ public final class SimulationEngineReachabilityProbe {
     if (!("version " + data.Defines.VERSION).equals(header.getVersion())) {
       throw new IllegalArgumentException("checkpoint version mismatch");
     }
+    if (requireWarmOrigin) {
+      if (engine.gametic != 0
+          || engine.gameskill != header.getGameskill()
+          || engine.gameepisode != header.getGameepisode()
+          || engine.gamemap != header.getGamemap()
+          || !Arrays.equals(engine.playeringame, header.getPlayeringame())
+          || engine.netgame != checkpointNetgame
+          || engine.deathmatch != checkpointDeathmatch
+          || engine.consoleplayer != checkpointConsolePlayer
+          || engine.displayplayer != checkpointDisplayPlayer) {
+        throw new IllegalStateException(
+            "warm checkpoint origin does not match retained engine");
+      }
+    }
     engine.gameskill = header.getGameskill();
     engine.gameepisode = header.getGameepisode();
     engine.gamemap = header.getGamemap();
@@ -810,7 +839,9 @@ public final class SimulationEngineReachabilityProbe {
     engine.deathmatch = checkpointDeathmatch;
     engine.consoleplayer = checkpointConsolePlayer;
     engine.displayplayer = checkpointDisplayPlayer;
-    engine.InitNew(engine.gameskill, engine.gameepisode, engine.gamemap);
+    if (!requireWarmOrigin) {
+      engine.InitNew(engine.gameskill, engine.gameepisode, engine.gamemap);
+    }
     engine.singletics = true;
     engine.leveltime = header.getLeveltime();
     IDoomSaveGame save = new VanillaDSG<Object, Object>(

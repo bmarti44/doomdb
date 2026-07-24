@@ -14,11 +14,22 @@ const soakPath =
 const ledgerPath =
   'artifacts/performance/pmle-ledger-every-tic/run-checkpoint-map-2026-07-24.log';
 const canonicalPath =
-  'artifacts/performance/pmle-differentials/canonical-checkpoint-map-2026-07-24.log';
+  'artifacts/performance/pmle-differentials/' +
+  'canonical-warm-restore-e485-2026-07-24.log';
 const coopPath =
-  'artifacts/performance/pmle-differentials/coop-checkpoint-map-2026-07-24.log';
+  'artifacts/performance/pmle-differentials/' +
+  'coop-warm-restore-e485-2026-07-24.log';
 const membershipPath =
-  'artifacts/performance/pmle-differentials/membership-checkpoint-map-2026-07-24.log';
+  'artifacts/performance/pmle-differentials/' +
+  'membership-warm-restore-e485-2026-07-24.log';
+const warmRestorePath =
+  'artifacts/performance/pmle-warm-restore-ab/REPORT.md';
+const highAwakeRecoveryPath =
+  'artifacts/performance/pmle-worker-soak/' +
+  'high-awake-recovery-fixed128-e485-v7-2026-07-24.log';
+const warmSlotRecyclePath =
+  'artifacts/performance/pmle-worker-soak/' +
+  'warm-slot-recycle-state-e485-2026-07-24.log';
 const initDietPath =
   'artifacts/performance/pmle-init-diet/promotion-a942cd2d-2026-07-23.log';
 const soloPath =
@@ -62,8 +73,15 @@ const finalPromotedSoak = read(finalPromotedSoakPath);
 const browserProfile = read(browserProfilePath);
 const livePerformance = read(livePerformancePath);
 const componentAb = read(componentAbPath);
+const warmRestore = read(warmRestorePath);
+const highAwakeRecovery = read(highAwakeRecoveryPath);
+const warmSlotRecycle = read(warmSlotRecyclePath);
 const authority = versions.teaVM;
 const presentation = authority.presentation;
+const ledgerAuthority = {
+  bytes: 1170639,
+  sha256: '103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e'
+};
 const lastSoakedAuthority = {
   bytes: 1167197,
   sha256: 'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2'
@@ -78,9 +96,13 @@ contains(soak, 'PMLE_WORKER_SOAK_MEMORY|PASS|role=AUTHORITY', 'authority memory'
 contains(soak, 'PMLE_WORKER_SOAK_MEMORY|PASS|role=STANDBY', 'standby memory');
 contains(soak, 'PMLE_WORKER_SOAK|PASS|duration_s=1800|warmup_s=300',
   'worker soak');
-contains(ledger, `PMLE_PINNED_PAIR|authority_sha256=${authority.outputSha256}` +
+contains(ledger, `PMLE_PINNED_PAIR|authority_sha256=${ledgerAuthority.sha256}` +
   `|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44` +
   `|ojvm_jar_sha256=${authority.canonicalOracleJarSha256}`, 'ledger pinned pair');
+contains(ledger,
+  `PMLE_ARTIFACT|source_bytes=${ledgerAuthority.bytes}` +
+  `|source_sha256=${ledgerAuthority.sha256}`,
+  'ledger authority artifact');
 contains(ledger,
   'PMLE_TEAVM_LEDGER_DIFFERENTIAL|PASS|tics=13272|deep_every=1',
   'ledger every-tic');
@@ -191,6 +213,18 @@ contains(componentAb,
 contains(componentAb,
   'ae3c44e8937729a4fed42f4acb09c84121cdc964582d154cb3c978750bbaa22b',
   'current authority component A/B canonical digest');
+contains(warmRestore,
+  '18.377x', 'e485 direct MLE warm-restore A/B');
+contains(highAwakeRecovery,
+  'PMLE_HIGH_AWAKE_RECOVERY|PASS|probe_tic=512|checkpoint_tic=512|' +
+  'frontier=639|distance=127|awake=20',
+  'e485 maximum-distance recovery');
+contains(highAwakeRecovery,
+  'estimated_total_ms=57337|phase_budget_45s=PASS|sla_60s=PASS',
+  'e485 recovery SLA');
+contains(warmSlotRecycle,
+  'PMLE_WARM_SLOT_RECYCLE|PASS|slot=1|status=READY|assigned=NONE|error=NONE',
+  'e485 retained-slot recycle');
 
 const status = {
   schema: 1,
@@ -249,7 +283,10 @@ const status = {
     canonical330: 'PASS',
     coopEveryTic762: 'PASS',
     membershipRecovery: 'PASS',
-    ledgerEveryTic13272: 'PASS',
+    ledgerEveryTic13272: 'HISTORICAL_PASS_103E',
+    warmRestoreDirectMleAb: 'PASS',
+    highAwakeMaximumDistanceRecovery: 'PASS',
+    warmSlotRecycle: 'PASS',
     componentTickerParity500: 'PASS',
     finalWorkerSoak: 'PENDING_RERUN',
     lifecycleHardening: 'PENDING_RERUN',
@@ -346,9 +383,9 @@ const status = {
   },
   remaining: [
     {id: 'LIFECYCLE', state: 'NEXT',
-      label: 'Cadence, stratified recovery, admission and lifecycle rerun on 103e'},
+      label: 'Admission and full lifecycle battery on e485 fixed-128'},
     {id: 'SOAK', state: 'PENDING',
-      label: '30-minute final 103e promoted-artifact soak'},
+      label: '30-minute final e485 promoted-artifact soak'},
     {id: 'WAN', state: 'PAUSED', label: 'Injected-latency multiplayer matrix'},
     {id: 'JAVA-AUDIT', state: 'PENDING',
       label: 'Production-path Java removal audit'},
@@ -366,7 +403,10 @@ const status = {
     causalSoak: causalSoakPath, finalPromotedSoak: finalPromotedSoakPath,
     browserReplicaProfile: browserProfilePath,
     livePerformance: livePerformancePath,
-    componentTickerParity: componentAbPath
+    componentTickerParity: componentAbPath,
+    warmRestore: warmRestorePath,
+    highAwakeRecovery: highAwakeRecoveryPath,
+    warmSlotRecycle: warmSlotRecyclePath
   }
 };
 

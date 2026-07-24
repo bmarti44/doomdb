@@ -17,8 +17,8 @@ const maximum = constant('c_checkpoint_max_tics');
 const probe = constant('c_checkpoint_probe_tics');
 const lowAwake = constant('c_checkpoint_low_awake');
 
-assert.equal(minimum, 128);
-assert.equal(maximum, 256);
+assert.equal(minimum, 113);
+assert.equal(maximum, 128);
 assert.equal(probe, 16);
 assert.equal(lowAwake, 16);
 

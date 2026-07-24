@@ -1,0 +1,275 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+ITicker: Using nanosecond accuracy timer.
+FreeDoom: Phase 1	   v1.9
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors -
+===========================================================================
+Copyright © 2001-2017 Contributors to the Freedoom project.
+All rights reserved.
+See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon -
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_WARM_RESTORE_AB_CELL|PASS|mode=general|sample=1|restore_ms=13657.951|canonical_sha256=c76a014d15377f629ed69533da50b7124f3fd3512d5d00e94ccaa4465dff4ddd
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+ITicker: Using nanosecond accuracy timer.
+FreeDoom: Phase 1	   v1.9
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors -
+===========================================================================
+Copyright © 2001-2017 Contributors to the Freedoom project.
+All rights reserved.
+See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon -
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_WARM_RESTORE_AB_CELL|PASS|mode=general|sample=2|restore_ms=13446.767|canonical_sha256=c76a014d15377f629ed69533da50b7124f3fd3512d5d00e94ccaa4465dff4ddd
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+ITicker: Using nanosecond accuracy timer.
+FreeDoom: Phase 1	   v1.9
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors -
+===========================================================================
+Copyright © 2001-2017 Contributors to the Freedoom project.
+All rights reserved.
+See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon -
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_WARM_RESTORE_AB_CELL|PASS|mode=general|sample=3|restore_ms=13711.076|canonical_sha256=c76a014d15377f629ed69533da50b7124f3fd3512d5d00e94ccaa4465dff4ddd
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+ITicker: Using nanosecond accuracy timer.
+FreeDoom: Phase 1	   v1.9
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors -
+===========================================================================
+Copyright © 2001-2017 Contributors to the Freedoom project.
+All rights reserved.
+See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon -
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_WARM_RESTORE_AB_CELL|PASS|mode=warm|sample=1|restore_ms=788.509|canonical_sha256=c76a014d15377f629ed69533da50b7124f3fd3512d5d00e94ccaa4465dff4ddd
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+ITicker: Using nanosecond accuracy timer.
+FreeDoom: Phase 1	   v1.9
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors -
+===========================================================================
+Copyright © 2001-2017 Contributors to the Freedoom project.
+All rights reserved.
+See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon -
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_WARM_RESTORE_AB_CELL|PASS|mode=warm|sample=2|restore_ms=726.131|canonical_sha256=c76a014d15377f629ed69533da50b7124f3fd3512d5d00e94ccaa4465dff4ddd
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+ITicker: Using nanosecond accuracy timer.
+FreeDoom: Phase 1	   v1.9
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors -
+===========================================================================
+Copyright © 2001-2017 Contributors to the Freedoom project.
+All rights reserved.
+See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon -
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_WARM_RESTORE_AB_CELL|PASS|mode=warm|sample=3|restore_ms=706.335|canonical_sha256=c76a014d15377f629ed69533da50b7124f3fd3512d5d00e94ccaa4465dff4ddd
+PMLE_WARM_RESTORE_AB|PASS|samples=3|general_mean_ms=13605.265|warm_mean_ms=740.325|speedup=18.377

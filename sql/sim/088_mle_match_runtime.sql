@@ -207,7 +207,8 @@ create or replace package body doom_mle_match_runtime as
   end;
 
   procedure restore_loaded_checkpoint(
-    p_tic in number,p_checkpoint in blob,p_state_sha out varchar2
+    p_tic in number,p_checkpoint in blob,p_state_sha out varchar2,
+    p_warm_origin in boolean default false
   ) is
     l_length pls_integer := dbms_lob.getlength(p_checkpoint);
     l_offset pls_integer := 0;
@@ -230,7 +231,11 @@ create or replace package body doom_mle_match_runtime as
       end if;
     end loop;
     dbms_application_info.set_action('MLE_CHECKPOINT_RESTORE');
-    l_status := doom_teavm_sim_restore(p_tic);
+    if p_warm_origin then
+      l_status := doom_teavm_sim_restore_warm(p_tic);
+    else
+      l_status := doom_teavm_sim_restore(p_tic);
+    end if;
     if l_status not like 'state=restored|gametic='||to_char(p_tic)||'|%' then
       raise_application_error(c_error,'MLE checkpoint restore mismatch');
     end if;
@@ -272,7 +277,7 @@ create or replace package body doom_mle_match_runtime as
       raise_application_error(c_error,
         'warm MLE context is not initialized at the durable match origin');
     end if;
-    restore_loaded_checkpoint(p_tic,p_checkpoint,p_state_sha);
+    restore_loaded_checkpoint(p_tic,p_checkpoint,p_state_sha,true);
   exception when others then
     clear_match_config;
     begin doom_teavm_sim_release;exception when others then null;end;
@@ -284,7 +289,8 @@ create or replace package body doom_mle_match_runtime as
     p_episode in number,p_map in number,p_state_sha out varchar2
   ) is
     l_checkpoint blob;l_expected_state varchar2(64);l_expected_sha varchar2(64);
-    l_actual_sha varchar2(64);l_mode varchar2(16);
+    l_actual_sha varchar2(64);l_mode varchar2(16);l_status varchar2(32767);
+    l_same_origin boolean;
   begin
     if g_active_players is null or g_active_players<>p_active_players
        or g_episode<>p_episode or g_map<>p_map then
@@ -298,13 +304,18 @@ create or replace package body doom_mle_match_runtime as
       where game_mode=l_mode and skill=p_skill and episode=p_episode
         and map=p_map and active_players=p_active_players
         and authority_sha256=
-          '103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e';
+          'e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b';
     l_actual_sha:=lower(rawtohex(
       dbms_crypto.hash(l_checkpoint,dbms_crypto.hash_sh256)));
     if l_actual_sha<>l_expected_sha then
       raise_application_error(c_error,'warm MLE origin checkpoint SHA mismatch');
     end if;
-    restore_loaded_checkpoint(0,l_checkpoint,p_state_sha);
+    l_status:=doom_teavm_sim_state;
+    l_same_origin:=g_deathmatch=p_deathmatch and g_skill=p_skill
+      and l_status like 'state=current|gametic=0|%'
+      and status_field(l_status,'episode')=to_char(p_episode)
+      and status_field(l_status,'map')=to_char(p_map);
+    restore_loaded_checkpoint(0,l_checkpoint,p_state_sha,l_same_origin);
     if p_state_sha<>l_expected_state then
       raise_application_error(c_error,'warm MLE origin state mismatch');
     end if;

@@ -33,11 +33,14 @@ for (const stale of [
 const status = JSON.parse(fs.readFileSync('client/dist/mle-status.json', 'utf8'));
 assert.equal(status.schema, 1);
 assert.equal(status.artifacts.authority.sha256,
-  '103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e');
+  'e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b');
 assert.equal(status.artifacts.presentation.sha256,
   'e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc');
 assert.equal(status.gates.presentationHud96Tics, 'PASS');
-assert.equal(status.gates.ledgerEveryTic13272, 'PASS');
+assert.equal(status.gates.ledgerEveryTic13272, 'HISTORICAL_PASS_103E');
+assert.equal(status.gates.warmRestoreDirectMleAb, 'PASS');
+assert.equal(status.gates.highAwakeMaximumDistanceRecovery, 'PASS');
+assert.equal(status.gates.warmSlotRecycle, 'PASS');
 assert.equal(status.gates.finalWorkerSoak, 'PENDING_RERUN');
 assert.equal(status.gates.lifecycleHardening, 'PENDING_RERUN');
 assert.equal(status.gates.postHardeningCausalSoak, 'HISTORICAL_PASS');

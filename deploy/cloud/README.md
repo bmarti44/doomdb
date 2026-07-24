@@ -70,7 +70,7 @@ Production execution also requires `DOOMDB_CLOUD_EXECUTE=YES`. The canonical
 database account variable is `ADB_USERNAME` in the skeleton, production gate,
 environment report, loader, and teardown. The final catalog gate requires zero
 Java objects, Java call specs, Java dependencies, or legacy OJVM packages; one
-pinned MLE module/environment; exactly 24 MLE call specs; and database hashes
+pinned MLE module/environment; exactly 25 MLE call specs; and database hashes
 matching the deployment manifest. The OJVM oracle remains in repository/dev
 tooling and is intentionally excluded from this production path.
 

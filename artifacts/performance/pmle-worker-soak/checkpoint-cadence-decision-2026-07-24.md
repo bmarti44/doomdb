@@ -1,7 +1,65 @@
 # Checkpoint cadence decision — 2026-07-24
 
-Status: **maximum-distance evidence measured; cadence change deferred for
-restore-path optimization**.
+Status: **fixed-128 cadence accepted on the e485 warm-restore artifact**.
+
+## Superseding measured decision
+
+The earlier 128–256 candidate and the restore-path investigation below are
+preserved as decision history. They are superseded by the fail-closed warm
+restore implementation in authority artifact
+`e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b`.
+
+Production now uses:
+
+- minimum checkpoint opportunity: 113 tics;
+- hard maximum checkpoint interval: 128 tics;
+- opportunity probe cadence: 16 tics;
+- unchanged DMC1 payload format and serializer;
+- no density-based `DEFER_HIGH` extension beyond the hard maximum.
+
+Because probes occur on absolute 16-tic boundaries, these constants yield
+actual intervals of 113–128 tics for every possible prior-checkpoint offset.
+The source-derived verifier exhaustively checks all 128 offsets:
+
+```
+PASS PMLE-CHECKPOINT-CADENCE offsets=128
+  minimum=113 maximum=128 probe=16 low_awake=16
+```
+
+Recovery never requires a checkpoint older than the hard maximum interval.
+
+The accepted maximum-distance high-density run killed the authority at tic
+639, 127 tics after the forced checkpoint at tic 512, with 20 awake monsters:
+
+```
+restore_ms=4848.755
+replay_ms=34856.314
+publish_ms=63.154
+worker_total_ms=39768.223
+caller_elapsed_ms=42337
+detection_budget_ms=15000
+estimated_total_ms=57337
+phase_budget_45s=PASS
+sla_60s=PASS
+```
+
+The warm restore is guarded by exact tic-zero engine state, map, episode,
+skill, multiplayer mode, membership, console player, and display player.
+Incompatible state fails closed instead of skipping initialization. Direct
+Oracle MLE A/B measured general restore at 13,605.265 ms mean and warm restore
+at 740.325 ms mean, an 18.377x improvement. The canonical 330-tic,
+every-tic 762-tic co-op, and membership restore differentials all passed on
+e485 against the pinned OJVM oracle.
+
+The v1–v6 diagnostic attempts are retained as harness-void evidence: missing
+route setup, missing match identifier, diagnostic lock-order deadlock, a
+selector tied to the superseded cadence, and a stale retained-context
+readiness defect. Only the v7 marker is the accepted fixed-128 recovery gate.
+The retained-context defect was corrected by restoring each released slot to
+a validated tic-zero origin before it may advertise `READY`; the explicit
+slot-recycle marker passes.
+
+## Decision history
 
 The former production cadence was tic 32 followed by every 1,024 tics. At the
 measured Free-edition replay rate, 1,024 tics cannot satisfy the 60-second

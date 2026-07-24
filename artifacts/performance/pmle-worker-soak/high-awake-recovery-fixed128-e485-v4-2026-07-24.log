@@ -1,0 +1,10 @@
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_HIGH_AWAKE_STAGE|fixture_preloaded|tics=800|changes=379|generation=1
+PMLE_SOAK_STAGE|both_ready_clicked

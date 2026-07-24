@@ -28,6 +28,9 @@ exception when others then if sqlcode<>-4043 then raise;end if;end;
 begin execute immediate 'drop function doom_teavm_sim_restore';
 exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
+begin execute immediate 'drop function doom_teavm_sim_restore_warm';
+exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
 begin execute immediate 'drop function doom_teavm_sim_restore_load';
 exception when others then if sqlcode<>-4043 then raise;end if;end;
 /

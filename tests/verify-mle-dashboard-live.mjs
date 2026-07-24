@@ -23,13 +23,13 @@ try {
   await page.waitForFunction(() =>
     document.querySelector('#evidence-state')?.textContent?.startsWith('PASS'));
   assert.equal(await page.locator('#authority-artifact').textContent(),
-    '103e15e913b3…');
+    'e485b9418e58…');
   assert.equal(await page.locator('#presentation-artifact').textContent(),
     'e55d5f1138fa…');
   assert.equal(await page.locator('#ledger-state').textContent(),
     'PASS · 13,272');
   assert.equal(await page.locator('#soak-state').textContent(),
-    'PENDING · 103e RERUN');
+    'PENDING · e485 RERUN');
   assert.equal(await page.locator('a[href="/play/"]').first().getAttribute('href'),
     '/play/');
   assert.equal(await page.locator(

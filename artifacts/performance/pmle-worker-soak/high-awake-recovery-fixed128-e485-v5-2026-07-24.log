@@ -1,0 +1,16 @@
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_HIGH_AWAKE_STAGE|fixture_preloaded|tics=800|changes=379|generation=1
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_ROUTE_DIAGNOSTICS|ENABLED|match=71ab02ff337e5887454b4855b60b960c
+PMLE_HIGH_AWAKE_AUTHORITY_READY|LOBBY|STARTING|0
+PMLE_HIGH_AWAKE_AUTHORITY_READY|ACTIVE|READY|0
+PMLE_HIGH_AWAKE_STAGE|browsers_offline
+PMLE_HIGH_AWAKE_STAGE|membership_held
+PMLE_HIGH_AWAKE_STAGE|feed_active|base=1|changes=379|generation=1

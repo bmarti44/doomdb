@@ -7,8 +7,8 @@ tag="${PMLE_EVIDENCE_TAG:-final-2026-07-23}"
 [[ "$tag" =~ ^[A-Za-z0-9._-]+$ ]] ||
   { printf 'invalid evidence tag: %s\n' "$tag" >&2; exit 2; }
 
-expected_authority='103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e'
-expected_authority_bytes='1170639'
+expected_authority='e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b'
+expected_authority_bytes='1171896'
 expected_table_pack='058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44'
 expected_oracle='2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74'
 ledger_lock="${TMPDIR:-/tmp}/doomdb-pmle-ledger-$(id -u).lock"

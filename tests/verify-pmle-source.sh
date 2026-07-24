@@ -431,6 +431,12 @@ grep -q 'doom_teavm_sim_multi_init_game' "$MLE_MATCH_RUNTIME" || fail 'MLE worke
 grep -q 'doom_teavm_sim_authority_step' "$MLE_MATCH_RUNTIME" || fail 'MLE worker authoritative step missing'
 grep -q 'doom_teavm_sim_checkpoint_chunk' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint export missing'
 grep -q 'doom_teavm_sim_restore_load' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint recovery missing'
+grep -q 'doom_teavm_sim_restore_warm' "$MLE_MATCH_RUNTIME" ||
+  fail 'fail-closed warm MLE checkpoint restore missing'
+grep -q 'restoreCheckpointWarm' "$TEAVM_SIM_SOURCE" ||
+  fail 'warm checkpoint restore export missing'
+grep -q 'warm checkpoint origin does not match retained engine' "$TEAVM_SIM_SOURCE" ||
+  fail 'warm checkpoint restore origin fence missing'
 grep -q 'create table doom_worker_stop_intent' "$MLE_WORKER_LIFECYCLE_SCHEMA" ||
   fail 'durable worker stop intent schema missing'
 grep -q 'procedure reconcile_warm_slots' "$MLE_WORKER_LIFECYCLE" ||
@@ -449,9 +455,9 @@ grep -q 'reconstruct_existing(p_match,l_generation' "$MLE_MATCH_WORKER" || fail 
 grep -q 'doom_mle_match_runtime.step_game' "$MLE_MATCH_WORKER" || fail 'MLE worker step missing'
 grep -q 'doom_mle_transition_transport.publish' "$MLE_MATCH_WORKER" || fail 'MLE worker DMD1 publication missing'
 grep -q 'doom_mle_match_runtime.save_checkpoint' "$MLE_MATCH_WORKER" || fail 'MLE worker DMC1 checkpoint missing'
-grep -q 'c_checkpoint_min_tics constant pls_integer:=128' "$MLE_MATCH_WORKER" ||
+grep -q 'c_checkpoint_min_tics constant pls_integer:=113' "$MLE_MATCH_WORKER" ||
   fail 'MLE checkpoint minimum opportunity missing'
-grep -q 'c_checkpoint_max_tics constant pls_integer:=256' "$MLE_MATCH_WORKER" ||
+grep -q 'c_checkpoint_max_tics constant pls_integer:=128' "$MLE_MATCH_WORKER" ||
   fail 'MLE checkpoint recovery hard bound missing'
 grep -q 'c_checkpoint_probe_tics constant pls_integer:=16' "$MLE_MATCH_WORKER" ||
   fail 'MLE checkpoint opportunity cadence missing'
@@ -511,9 +517,9 @@ grep -Fq 'new RegExp(`^PMLE_HIGH_AWAKE_FEED_ACTIVE\\|' "$WAN_SOAK" ||
   fail 'high-awake active-feed extractor is not start-anchored'
 grep -q 'changes[.]length[*]2}[$]' "$WAN_SOAK" ||
   fail 'high-awake active-feed extractor is not end-anchored'
-grep -q "recoveryTarget.distance>=240&&recoveryTarget.distance<=255" "$WAN_SOAK" ||
+grep -q "recoveryTarget.distance>=112&&recoveryTarget.distance<=127" "$WAN_SOAK" ||
   fail 'high-awake recovery is not killed at maximum scheduled distance'
-grep -q "killedDistance>=240&&killedDistance<=255" "$WAN_SOAK" ||
+grep -q "killedDistance>=112&&killedDistance<=127" "$WAN_SOAK" ||
   fail 'high-awake recovery does not verify the durable killed distance'
 grep -q "recoveryElapsedMs<=45000" "$WAN_SOAK" ||
   fail 'high-awake recovery does not reserve the production detection budget'
@@ -543,6 +549,10 @@ if grep -q 'c_checkpoint_tics constant pls_integer:=1024' "$MLE_MATCH_WORKER"; t
 fi
 grep -q 'procedure run_standby' "$MLE_MATCH_WORKER" || fail 'MLE warm standby entry point missing'
 grep -q 'restore_checkpoint_warm' "$MLE_MATCH_WORKER" || fail 'MLE warm checkpoint promotion missing'
+grep -q "if l_runtime_status='state=uninitialized' then" "$MLE_MATCH_WORKER" ||
+  fail 'recycled warm slot does not repair a released MLE context'
+grep -q 'prepare_origin_warm(2,0,3,1,1,l_state)' "$MLE_MATCH_WORKER" ||
+  fail 'recycled warm slot is exposed without restoring its origin'
 grep -q 'RECOVERY_TIER_1' "$MLE_MATCH_WORKER" ||
   fail 'match-bound standby recovery tier missing'
 grep -q 'RECOVERY_TIER_2' "$MLE_MATCH_WORKER" ||
@@ -601,9 +611,9 @@ grep -q 'procedure match_checkpoint' "$DOOM_API" ||
 grep -q 'match checkpoint SHA fence' "$DOOM_API" ||
   fail 'confirmed browser checkpoint database SHA fence missing'
 grep -q '"version": "0.15.0"' "$VERSIONS" || fail 'TeaVM version pin missing'
-grep -q '"inputBytecodeSha256": "83ebc323785cefcacf7b2c434b856e6d62f1f9ae4f77b063e6bce1f0a0e0f099"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
+grep -q '"inputBytecodeSha256": "631f3d7657b3b9521ed800d1b4ec518d4b6f102e5bf2a9f3e7caf1cb45624ecd"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
 grep -q '"mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e"' "$VERSIONS" || fail 'TeaVM Mocha bytecode pin missing'
-grep -q '"outputSha256": "103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e"' "$VERSIONS" || fail 'TeaVM output pin missing'
+grep -q '"outputSha256": "e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b"' "$VERSIONS" || fail 'TeaVM output pin missing'
 grep -q '"outputSha256": "e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc"' "$VERSIONS" || fail 'TeaVM presentation output pin missing'
 grep -q 'mle-js-plsql-ffi' "$HYBRID_INSTALL" || fail 'FFI comparison path missing'
 grep -q 'PMLE_GATE|PASS|scope=mechanics_only|architecture=mle_command_stream' "$RUNNER" || fail 'mechanics-only architecture marker missing'

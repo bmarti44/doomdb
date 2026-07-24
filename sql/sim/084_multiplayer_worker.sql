@@ -32,8 +32,10 @@ create or replace package body doom_match_worker as
   c_command_deadline_ms constant pls_integer:=2000;
   c_initial_command_deadline_ms constant pls_integer:=500;
   c_frame_retention_tics constant pls_integer:=128;
-  c_checkpoint_min_tics constant pls_integer:=128;
-  c_checkpoint_max_tics constant pls_integer:=256;
+  -- Absolute 16-tic probes yield a 113..128 interval for every prior offset.
+  -- This is the fixed-128 hard-bound policy; density no longer defers a save.
+  c_checkpoint_min_tics constant pls_integer:=113;
+  c_checkpoint_max_tics constant pls_integer:=128;
   c_checkpoint_probe_tics constant pls_integer:=16;
   c_checkpoint_low_awake constant pls_integer:=16;
   c_command_lead_tics constant pls_integer:=8;
@@ -473,7 +475,7 @@ create or replace package body doom_match_worker as
         if p_tic-l_last_checkpoint_tic>=
             c_checkpoint_max_tics-c_checkpoint_probe_tics+1 then
           -- Probing on absolute 16-tic boundaries with this conservative
-          -- threshold guarantees no interval can exceed 256 tics, even when a
+          -- threshold guarantees no interval can exceed 128 tics, even when a
           -- membership/recovery checkpoint was created off-boundary.
           l_checkpoint_due:=1;
         elsif l_awake_monsters<=c_checkpoint_low_awake then
@@ -1361,6 +1363,7 @@ create or replace package body doom_match_worker as
   procedure run_warm_slot(p_slot in number,p_incarnation in varchar2) is
     l_status varchar2(16);l_match varchar2(32);l_role varchar2(16);
     l_stop number;l_state varchar2(64);l_polls number:=0;
+    l_runtime_status varchar2(32767);
     l_sid number;l_serial number;l_assignment number:=0;
     l_spid varchar2(24);l_job_run varchar2(64);
     l_warm_checkpoint blob;l_warm_checkpoint_sha varchar2(64);
@@ -1440,14 +1443,20 @@ create or replace package body doom_match_worker as
         else
           raise_application_error(c_error,'warm slot role');
         end if;
-        -- READY means origin-restore capable, not already at one particular
-        -- origin. The next claim applies its hash-fenced DMC1 before authority;
-        -- avoiding an unnecessary restore here keeps repeated New Game inside
-        -- the same <=5 second admission budget.
+        -- READY is a state invariant, not just a row label. Return the retained
+        -- context to the default tic-zero origin before exposing it again. An
+        -- assignment-level restore failure may have released the context, in
+        -- which case rebuild it rather than publishing a false READY slot.
+        l_runtime_status:=doom_teavm_sim_state;
+        if l_runtime_status='state=uninitialized' then
+          doom_mle_match_runtime.initialize_game(2,0,3,1,1,l_state);
+        else
+          doom_mle_match_runtime.prepare_origin_warm(2,0,3,1,1,l_state);
+        end if;
         update doom_mle_warm_slot set slot_status='READY',
           assigned_match=null,assigned_role=null,
           heartbeat=(localtimestamp at time zone 'UTC'),
-          state_sha256=null,last_error=null where slot_id=p_slot
+          state_sha256=l_state,last_error=null where slot_id=p_slot
             and slot_status='RUNNING' and assigned_match=l_match
             and assigned_role=l_role and incarnation_token=p_incarnation
             and worker_sid=l_sid and worker_serial=l_serial

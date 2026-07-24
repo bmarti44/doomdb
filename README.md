@@ -50,9 +50,10 @@ only as the permanent differential oracle.
 
 **Everything is deterministic, and I mean forensically.** Every authoritative
 game state carries a SHA-256 identity. A full no-cheat E1M1 command ledger
-runs 13,272 tics, and the current `103e15e9…` MLE authority matches the
-preserved OJVM oracle after every one. The 762-tic co-op route and a
-leave/neutral/checkpoint/rejoin membership route are also exact. OJVM is not
+runs 13,272 tics, and the promotion parent `103e15e9…` MLE authority matches
+the preserved OJVM oracle after every one. The current `e485b941…` authority
+passes the 330-tic canonical, every-tic 762-tic co-op, and
+leave/neutral/checkpoint/rejoin membership differentials. OJVM is not
 in the production path; it remains in repository/dev tooling because it is
 the differential instrument that makes future MLE changes auditable.
 
@@ -72,21 +73,22 @@ authoritative world living in Oracle. The engine advances once per ordered
 command vector and emits one confirmed transition chain. Each browser renders
 its own point of view, with per-listener positional audio. Co-op and
 deathmatch are available. The current artifact has passed deterministic
-multiplayer comparison; its density-aware recovery, lifecycle, WAN, and final
-soak gates are still in progress.
+multiplayer comparison and the maximum-distance high-density recovery gate;
+its full lifecycle battery, WAN matrix, and final soak are still in progress.
 
 Numbers, measured on the local two-core Oracle Free stack:
 
 | Measurement | Result |
 | --- | --- |
-| Current authority artifact | `103e15e9…` (1,170,639 bytes) |
-| Full E1M1 MLE/OJVM differential | 13,272/13,272 tics exact |
-| Co-op MLE/OJVM differential | 762/762 tics exact |
+| Current authority artifact | `e485b941…` (1,171,896 bytes) |
+| Full E1M1 MLE/OJVM differential | 13,272/13,272 tics exact on parent `103e15e9…` |
+| Current co-op MLE/OJVM differential | 762/762 tics exact on `e485b941…` |
+| Current maximum-distance recovery | 57.337 s estimated total at 20 awake monsters |
 | Production-shaped deathmatch throughput | 3.961 tics/s |
 | Production-shaped MLE CPU | 253.6 ms/tic |
 | Peak-combat replay cost | ~290.124 ms/tic |
 | Last fully qualified soak | 30 min PASS on superseded `a942cd2d…` |
-| Current `103e…` lifecycle/final soak | Pending |
+| Current `e485…` lifecycle/final soak | Pending |
 
 ## Architecture
 

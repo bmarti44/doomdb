@@ -55,7 +55,7 @@ grep -Fq '$if $$doom_dev_ojvm $then' \
 grep -Fq '$if $$doom_dev_ojvm $then' \
   "$root/sql/sim/085_session_cleanup.sql"
 grep -q 'p_enabled=>false' "$root/sql/rest/020_ords_enable.sql"
-[[ "$(grep -c \"p_object=>'DOOM_API'\" \
+[[ "$(grep -Fc "p_object=>'DOOM_API'" \
   "$root/sql/rest/020_ords_enable.sql")" -eq 1 ]]
 awk '
   /p_object=>\047DOOM_API\047/ { doom=NR }
@@ -72,7 +72,7 @@ grep -q 'load-mle-module.sh.*--production' "$cloud"
   "$cloud"
 grep -q "T111_JAVA_REMOVAL" \
   "$root/deploy/cloud/t11.1/catalog-observation.sql"
-grep -q "l_mle_specs<>24" \
+grep -q "l_mle_specs<>25" \
   "$root/deploy/cloud/t11.1/catalog-observation.sql"
 grep -q "LEGACY_NEW_GAME_ABSENT" "$root/scripts/t11.1-cloud-api.mjs"
 grep -q "POLL_TRANSITIONS" "$root/scripts/t11.1-cloud-api.mjs"

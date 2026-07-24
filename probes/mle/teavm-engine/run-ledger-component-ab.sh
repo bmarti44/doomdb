@@ -9,8 +9,8 @@ tag="${PMLE_EVIDENCE_TAG:-2026-07-24}"
   exit 2
 }
 evidence="$root/artifacts/performance/pmle-ledger-every-tic/component-ab-$tag"
-baseline="$root/client/dist/play/doom-mle-authority-a942cd2dcbdc.js"
-candidate="$root/client/dist/play/doom-mle-authority-103e15e913b3.js"
+baseline="$root/client/dist/play/doom-mle-authority-103e15e913b3.js"
+candidate="$root/client/dist/play/doom-mle-authority-e485b9418e58.js"
 table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
 digest_extractor="$project/extract-ledger-component-digest.sh"
 ledger_lock="${TMPDIR:-/tmp}/doomdb-pmle-ledger-$(id -u).lock"
@@ -52,9 +52,9 @@ trap restore_production_module EXIT
 }
 for artifact in "$baseline" "$candidate" "$table_pack"; do test -s "$artifact";done
 [[ "$(shasum -a 256 "$baseline" | awk '{print $1}')" == \
-  a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2 ]]
-[[ "$(shasum -a 256 "$candidate" | awk '{print $1}')" == \
   103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e ]]
+[[ "$(shasum -a 256 "$candidate" | awk '{print $1}')" == \
+  e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b ]]
 
 if [[ -d "$ledger_lock" ]] ||
     pgrep -f '[b]uild-ledger-differential.mjs' >/dev/null; then
@@ -113,9 +113,9 @@ printf '%s\n' "$park_output"
 grep -q '^PMLE_BENCHMARK_POOL|PARKED|live_slots=0$' <<<"$park_output"
 
 mkdir -p "$evidence"
-for label in a942 103e; do
+for label in 103e e485; do
   artifact="$baseline"
-  [[ "$label" == 103e ]] && artifact="$candidate"
+  [[ "$label" == e485 ]] && artifact="$candidate"
   log="$evidence/${label}.log"
   [[ ! -e "$log" ]] || { printf 'evidence exists: %s\n' "$log" >&2;exit 1; }
   restore_needed=1
@@ -133,10 +133,10 @@ for label in a942 103e; do
   grep -q '^PMLE_ARTIFACT|' "$log"
   grep -q "^PMLE_LEDGER_COMPONENT_PROFILE|PASS|label=${label}|tics=500|" "$log"
 done
-baseline_digest="$("$digest_extractor" a942 "$evidence/a942.log")"
-candidate_digest="$("$digest_extractor" 103e "$evidence/103e.log")"
+baseline_digest="$("$digest_extractor" 103e "$evidence/103e.log")"
+candidate_digest="$("$digest_extractor" e485 "$evidence/e485.log")"
 [[ -n "$baseline_digest" && "$baseline_digest" == "$candidate_digest" ]] || {
-  printf 'component A/B canonical digest mismatch: a942=%s 103e=%s\n' \
+  printf 'component A/B canonical digest mismatch: 103e=%s e485=%s\n' \
     "${baseline_digest:-MISSING}" "${candidate_digest:-MISSING}" >&2
   exit 1
 }
@@ -145,5 +145,5 @@ candidate_digest="$("$digest_extractor" 103e "$evidence/103e.log")"
 # Always restore that fail-closed pin even if a later report step fails.
 "$project/load-mle-module.sh" --production
 restore_needed=0
-printf 'PMLE_LEDGER_COMPONENT_AB|PASS|baseline=a942|candidate=103e|tics=500|canonical_sha256=%s|evidence=%s\n' \
+printf 'PMLE_LEDGER_COMPONENT_AB|PASS|baseline=103e|candidate=e485|tics=500|canonical_sha256=%s|evidence=%s\n' \
   "$candidate_digest" "${evidence#$root/}"

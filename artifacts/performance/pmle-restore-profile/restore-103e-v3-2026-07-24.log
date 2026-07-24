@@ -1,0 +1,43 @@
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+
+ITicker: Using nanosecond accuracy timer.
+                            FreeDoom: Phase 1          v1.9
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors -
+===========================================================================
+       Copyright © 2001-2017 Contributors to the Freedoom project.
+                            All rights reserved.
+     See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon -
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_NODE_CHECKPOINT|PASS|tic=32|bytes=88378|first_ms=14.423|repeated_ms=4.383|restore_ms=71.422|sha256=52486bdcbec08ea0da5084646091076982cbf316c913c2c474432ce2ef4692a2|profile=/Users/bmarti44/doomdb/artifacts/performance/pmle-restore-profile/restore-103e-v3-2026-07-24.cpuprofile
