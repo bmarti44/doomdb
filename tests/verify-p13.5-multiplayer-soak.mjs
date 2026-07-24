@@ -23,6 +23,12 @@ const doubleRecoveryDiagnostic=
   process.env.DOOMDB_DOUBLE_RECOVERY_DIAGNOSTIC==='1';
 const highAwakeRecoveryDiagnostic=
   process.env.DOOMDB_HIGH_AWAKE_RECOVERY_DIAGNOSTIC==='1';
+const highAwakeCheckpointSaveDiagnostic=
+  process.env.DOOMDB_HIGH_AWAKE_CHECKPOINT_SAVE_DIAGNOSTIC==='1';
+const highAwakeDiagnostic=
+  highAwakeRecoveryDiagnostic||highAwakeCheckpointSaveDiagnostic;
+assert.ok(!(highAwakeRecoveryDiagnostic&&highAwakeCheckpointSaveDiagnostic),
+  'high-awake recovery and checkpoint SAVE diagnostics are mutually exclusive');
 const highAwakeRecoveryGate=
   process.env.DOOMDB_HIGH_AWAKE_RECOVERY_GATE==='1';
 const cadenceObservation=
@@ -74,10 +80,10 @@ if(wanGate) {
 assert.ok([
   checkpointLivenessDiagnostic,
   doubleRecoveryDiagnostic,
-  highAwakeRecoveryDiagnostic,
+  highAwakeDiagnostic,
   cadenceObservation
 ].filter(Boolean).length<=1,'recovery diagnostics are mutually exclusive');
-if(highAwakeRecoveryDiagnostic||cadenceObservation) {
+if(highAwakeDiagnostic||cadenceObservation) {
   assert.ok(routeDiagnostics,
     'checkpoint cadence scenarios require route diagnostics');
 }
@@ -94,7 +100,7 @@ const dbSql=sql=>execFileSync('docker',['exec','-i',dbContainer,'sqlplus','-s',
     input:`whenever oserror exit failure rollback\n`+
       `whenever sqlerror exit sql.sqlcode rollback\n`+
       `alter session set container=freepdb1;\n`+
-      `set heading off feedback off pagesize 0\n${sql}\n`,
+      `set heading off feedback off pagesize 0 linesize 32767\n${sql}\n`,
     encoding:'utf8'
   });
 const dbSqlAsync=sql=>new Promise((resolve,reject)=>{
@@ -115,7 +121,8 @@ const dbSqlAsync=sql=>new Promise((resolve,reject)=>{
   child.stdin.end(`whenever oserror exit failure rollback\n`+
     `whenever sqlerror exit sql.sqlcode rollback\n`+
     `alter session set container=freepdb1;\n`+
-    `set heading off feedback off pagesize 0 serveroutput on size unlimited\n`+
+    `set heading off feedback off pagesize 0 linesize 32767 `+
+    `serveroutput on size unlimited\n`+
     `${sql}\n`);
 });
 const workerMemory=match=>{
@@ -204,7 +211,7 @@ try {
   process.stdout.write('PMLE_SOAK_STAGE|host_dom_ready\n');
   await host.locator('[data-create] input[name=name]').fill('SOAK HOST');
   process.stdout.write('PMLE_SOAK_STAGE|host_name_filled\n');
-  if(highAwakeRecoveryDiagnostic) {
+  if(highAwakeDiagnostic) {
     await host.locator('[data-create] select[name=mode]').selectOption('DEATHMATCH');
     await host.locator('[data-create] select[name=skill]').selectOption('3');
   }
@@ -232,7 +239,7 @@ try {
       return button instanceof HTMLButtonElement&&!button.disabled;
     });
   }
-  if(highAwakeRecoveryDiagnostic) {
+  if(highAwakeDiagnostic) {
     // This diagnostic deliberately disconnects the browsers after start. Give
     // both lobby members a future lease before startup so the authority's
     // comparatively slow Free-edition initialization cannot consume the
@@ -287,7 +294,7 @@ try {
   }
   await Promise.all([host,guest].map(page=>page.locator('[data-ready]').click()));
   process.stdout.write('PMLE_SOAK_STAGE|both_ready_clicked\n');
-  if(highAwakeRecoveryDiagnostic) {
+  if(highAwakeDiagnostic) {
     // READY_MATCH legitimately touches last_seen_at after the lobby fence
     // above. Renew immediately after both requests complete so slow retained
     // authority startup cannot age either member out.
@@ -308,21 +315,24 @@ try {
     for(let attempt=0;attempt<100;attempt++) {
       output=dbSql(
         `update doom.doom_match_worker_control set route_diagnostics=1,`+
-        `checkpoint_test_hook=${checkpointLivenessDiagnostic?1:0} `+
+        `checkpoint_test_hook=${highAwakeCheckpointSaveDiagnostic?2:
+          checkpointLivenessDiagnostic?1:0} `+
         `where match_id='${match}';\ncommit;\n`+
         `select 'PMLE_ROUTE_DIAGNOSTICS|'||route_diagnostics||'|'||`+
         `checkpoint_test_hook `+
         `from doom.doom_match_worker_control where match_id='${match}';`);
       if(new RegExp(`PMLE_ROUTE_DIAGNOSTICS\\|1\\|${
-        checkpointLivenessDiagnostic?1:0}`).test(output)) break;
+        highAwakeCheckpointSaveDiagnostic?2:
+          checkpointLivenessDiagnostic?1:0}`).test(output)) break;
       await host.waitForTimeout(100);
     }
     assert.match(output,new RegExp(`PMLE_ROUTE_DIAGNOSTICS\\|1\\|${
-      checkpointLivenessDiagnostic?1:0}`),
+      highAwakeCheckpointSaveDiagnostic?2:
+        checkpointLivenessDiagnostic?1:0}`),
       'failed to enable retained-worker stage diagnostics');
     process.stdout.write(`PMLE_ROUTE_DIAGNOSTICS|ENABLED|match=${match}\n`);
   }
-  if(highAwakeRecoveryDiagnostic) {
+  if(highAwakeDiagnostic) {
     const startupDeadline=Date.now()+startupTimeoutMs;
     let authorityReady='';
     let lastAuthorityState='';
@@ -394,7 +404,7 @@ try {
       `|previous_checkpoint_tic=${cadence.previousCheckpoint}`+
       `|distance=${cadence.distance}|awake=${cadence.awake}`+
       `|decision=${cadence.decision}|checkpoint_test_hook=0\n`);
-  } else if(highAwakeRecoveryDiagnostic) {
+  } else if(highAwakeDiagnostic) {
     // START_READY resets last_seen_at while activating the members. Take
     // browser traffic offline at the authoritative READY boundary, let local
     // in-flight requests settle, then extend the member lease before the
@@ -433,6 +443,46 @@ try {
       `|base=${feedBase}|changes=${changes.length}`+
       `|generation=${feedGeneration}\n`);
 
+    if(highAwakeCheckpointSaveDiagnostic) {
+      let save=null;
+      const saveDeadline=Date.now()+20*60*1000;
+      while(Date.now()<saveDeadline) {
+        const output=dbSql(
+          `select 'PMLE_HIGH_AWAKE_CHECKPOINT_SAVE|'||m.current_tic||'|'||`+
+          `(select count(*) from doom.doom_match_checkpoint cp where `+
+          `cp.match_id=m.match_id and cp.generation=m.generation and `+
+          `cp.tic=256)||'|'||nvl(p.awake_monsters,-1)||'|'||`+
+          `nvl(p.checkpoint_decision,'NONE')||'|'||`+
+          `nvl((select round(max(s.checkpoint_save_ms),3) from `+
+          `doom.doom_match_slow_call s where s.match_id=m.match_id and `+
+          `s.generation=m.generation and s.tic=256),-1)||'|'||`+
+          `nvl((select round(max(s.checkpoint_publish_ms),3) from `+
+          `doom.doom_match_slow_call s where s.match_id=m.match_id and `+
+          `s.generation=m.generation and s.tic=256),-1) from `+
+          `doom.doom_match m left join doom.doom_match_checkpoint_probe p `+
+          `on p.match_id=m.match_id and p.tic=256 `+
+          `where m.match_id='${match}';`);
+        const row=output.match(
+          /^PMLE_HIGH_AWAKE_CHECKPOINT_SAVE\|(\d+)\|(\d+)\|(-?\d+)\|(\w+)\|(-?[\d.]+)\|(-?[\d.]+)$/m);
+        if(row&&Number(row[2])===1&&Number(row[5])>0) {
+          save={
+            frontier:Number(row[1]),awake:Number(row[3]),decision:row[4],
+            saveMs:Number(row[5]),publishMs:Number(row[6])
+          };
+          break;
+        }
+        await host.waitForTimeout(100);
+      }
+      assert.ok(save,'high-awake tic-256 checkpoint SAVE was not observed');
+      assert.ok(save.awake>16,
+        'high-awake checkpoint SAVE scaffold ran outside peak density');
+      assert.equal(save.decision,'DEFER_HIGH',
+        'checkpoint SAVE scaffold contaminated the production cadence decision');
+      process.stdout.write(`PMLE_HIGH_AWAKE_CHECKPOINT_SAVE|DIAGNOSTIC_NOT_GATE`+
+        `|tic=256|frontier=${save.frontier}|awake=${save.awake}`+
+        `|decision=${save.decision}|save_ms=${save.saveMs}`+
+        `|publish_ms=${save.publishMs}\n`);
+    } else {
     let recoveryTarget=null;
     let maxAwakeObserved=0;
     const observationDeadline=Date.now()+20*60*1000;
@@ -536,6 +586,54 @@ end;
     assert.match(recoveryOutput,/PMLE_HIGH_AWAKE_RECOVERY_RESULT\|ACTIVE/,
       'maximum-distance high-awake recovery did not publish');
     const recoveryElapsedMs=Date.now()-recoveryStarted;
+    let recoveryStages=null;
+    for(let attempt=0;attempt<100;attempt+=1) {
+      const stageOutput=dbSql(
+        `select 'PMLE_HIGH_AWAKE_RECOVERY_STAGES|'||`+
+        `recovery_checkpoint_tic||'|'||recovery_frontier_tic||'|'||`+
+        `round(recovery_restore_ms,3)||'|'||round(recovery_replay_ms,3)||'|'||`+
+        `round(recovery_publish_ms,3)||'|'||round(recovery_worker_total_ms,3) `+
+        `from doom.doom_match_worker_control where match_id='${match}' `+
+        `and recovery_measured_at is not null;`);
+      const stage=stageOutput.match(
+        /^PMLE_HIGH_AWAKE_RECOVERY_STAGES\|(\d+)\|(\d+)\|([\d.]+)\|([\d.]+)\|([\d.]+)\|([\d.]+)$/m);
+      if(stage) {
+        recoveryStages={
+          checkpointTic:Number(stage[1]),frontier:Number(stage[2]),
+          restoreMs:Number(stage[3]),replayMs:Number(stage[4]),
+          publishMs:Number(stage[5]),workerTotalMs:Number(stage[6])
+        };
+        break;
+      }
+      await host.waitForTimeout(50);
+    }
+    assert.ok(recoveryStages,'recovery stage decomposition was not published');
+    assert.equal(recoveryStages.checkpointTic,killedCheckpoint);
+    assert.equal(recoveryStages.frontier,killedFrontier);
+    const stageSum=recoveryStages.restoreMs+recoveryStages.replayMs+
+      recoveryStages.publishMs;
+    assert.ok(Math.abs(stageSum-recoveryStages.workerTotalMs)<=2,
+      'recovery stage timings do not reconcile to worker total');
+    const callerOverheadMs=Math.max(
+      0,recoveryElapsedMs-recoveryStages.workerTotalMs);
+    process.stdout.write(`PMLE_HIGH_AWAKE_RECOVERY_STAGES|PASS`+
+      `|checkpoint_tic=${recoveryStages.checkpointTic}`+
+      `|frontier=${recoveryStages.frontier}`+
+      `|restore_ms=${recoveryStages.restoreMs}`+
+      `|replay_ms=${recoveryStages.replayMs}`+
+      `|publish_ms=${recoveryStages.publishMs}`+
+      `|worker_total_ms=${recoveryStages.workerTotalMs}`+
+      `|caller_overhead_ms=${callerOverheadMs.toFixed(3)}\n`);
+    const recoveredOutput=dbSql(
+      `select 'PMLE_HIGH_AWAKE_RECOVERED|'||generation||'|'||current_tic `+
+      `from doom.doom_match where match_id='${match}';`);
+    const recovered=recoveredOutput.match(
+      /^PMLE_HIGH_AWAKE_RECOVERED\|(\d+)\|(\d+)$/m);
+    assert.ok(recovered,'maximum-distance recovered frontier missing');
+    assert.equal(Number(recovered[1]),feedGeneration+1,
+      'maximum-distance recovery did not advance exactly one generation');
+    assert.ok(Number(recovered[2])>=killedFrontier,
+      'maximum-distance recovery regressed the confirmed frontier');
     // The killed retained session cannot honor its own stop intent. Reset its
     // exact dead incarnation after recovery so diagnostic cleanup cannot
     // strand a RUNNING slot or consume future match capacity.
@@ -543,14 +641,6 @@ end;
       `'${incarnation[1]}',true,'high-awake killed authority cleanup',`+
       `'${incarnation[2]}',${incarnation[3]},${incarnation[4]},`+
       `'${incarnation[5]}','${incarnation[6]}');end;\n/`);
-    const recoveredOutput=dbSql(
-      `select 'PMLE_HIGH_AWAKE_RECOVERED|'||generation||'|'||current_tic `+
-      `from doom.doom_match where match_id='${match}';`);
-    const recovered=recoveredOutput.match(
-      /PMLE_HIGH_AWAKE_RECOVERED\|(\d+)\|(\d+)/);
-    assert.ok(recovered,'maximum-distance recovered frontier missing');
-    assert.equal(Number(recovered[2]),killedFrontier,
-      'maximum-distance recovery changed the confirmed frontier');
     // This timer starts at the kill and covers restore, replay, and publish.
     // Production detection consumes up to the 15-second backstop separately,
     // leaving approximately 45 seconds of the end-to-end 60-second SLA.
@@ -573,6 +663,7 @@ end;
     if(highAwakeRecoveryGate) {
       assert.equal(recoveryPhaseVerdict,'PASS',
         'maximum-distance restore/replay/publish exceeded its 45-second phase budget');
+    }
     }
   } else if(doubleRecoveryDiagnostic) {
     // Stop client traffic first. A public poll is itself a recovery trigger,

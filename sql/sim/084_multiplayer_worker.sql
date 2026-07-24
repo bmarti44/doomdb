@@ -220,7 +220,16 @@ create or replace package body doom_match_worker as
     l_state varchar2(64);l_expected varchar2(64);l_ignored varchar2(64);
     l_checkpoint blob;
     l_count number;l_serial number;l_now timestamp with time zone:=utc_now;
+    l_diagnostics number;
+    l_recovery_started timestamp with time zone:=utc_now;
+    l_restore_ended timestamp with time zone;
+    l_replay_ended timestamp with time zone;
+    l_publish_ended timestamp with time zone;
+    l_restore_ms number;l_replay_ms number;l_publish_ms number;l_total_ms number;
   begin
+    select route_diagnostics into l_diagnostics
+      from doom_match_worker_control
+      where match_id=p_match and generation=p_generation;
     select skill,episode,map,case game_mode when 'DEATHMATCH' then 1 else 0 end,
       membership_epoch,generation,current_tic
       into l_skill,l_episode,l_map,l_deathmatch,l_epoch,l_old_generation,l_tic
@@ -252,6 +261,7 @@ create or replace package body doom_match_worker as
       if l_state<>l_expected then
         raise_application_error(c_error,'MLE recovery root mismatch');end if;
     end;
+    l_restore_ended:=utc_now;
     for step_ in (select tic,membership_bitmap,command_vector,state_sha
       from doom_match_tic where match_id=p_match
         and tic between l_checkpoint_tic+1 and l_tic order by tic) loop
@@ -263,6 +273,7 @@ create or replace package body doom_match_worker as
       if l_state<>step_.state_sha then
         raise_application_error(c_error,'MLE recovery state mismatch tic='||step_.tic);end if;
     end loop;
+    l_replay_ended:=utc_now;
     update doom_match_tic set generation=p_generation
       where match_id=p_match and tic=l_tic and generation=l_old_generation;
     update doom_match_checkpoint set generation=p_generation
@@ -291,6 +302,23 @@ create or replace package body doom_match_worker as
         and membership_epoch=l_epoch and worker_status='STARTING';
     if sql%rowcount<>1 then raise_application_error(c_error,'recovery control fence');end if;
     commit;
+    l_publish_ended:=utc_now;
+    if l_diagnostics=1 then
+      l_restore_ms:=elapsed_micros(l_recovery_started,l_restore_ended)/1000;
+      l_replay_ms:=elapsed_micros(l_restore_ended,l_replay_ended)/1000;
+      l_publish_ms:=elapsed_micros(l_replay_ended,l_publish_ended)/1000;
+      l_total_ms:=elapsed_micros(l_recovery_started,l_publish_ended)/1000;
+      update doom_match_worker_control set
+        recovery_checkpoint_tic=l_checkpoint_tic,
+        recovery_frontier_tic=l_tic,
+        recovery_restore_ms=l_restore_ms,
+        recovery_replay_ms=l_replay_ms,
+        recovery_publish_ms=l_publish_ms,
+        recovery_worker_total_ms=l_total_ms,
+        recovery_measured_at=l_publish_ended
+        where match_id=p_match and generation=p_generation;
+      commit;
+    end if;
   end;
 
   procedure record_slow_call(
@@ -426,6 +454,12 @@ create or replace package body doom_match_worker as
     if p_checkpoint_test_hook=1 and p_tic=64 then
       l_checkpoint_diagnostic:=1;
     end if;
+    -- Diagnostic-only high-density serializer measurement. Mode 2 forces one
+    -- checkpoint at tic 256 without changing the production cadence decision
+    -- or its DEFER_HIGH/FORCED_MAX evidence.
+    if p_checkpoint_test_hook=2 and p_tic=256 then
+      l_checkpoint_diagnostic:=1;
+    end if;
     if mod(p_tic,c_checkpoint_probe_tics)=0 then
       select coalesce(max(tic),0) into l_last_checkpoint_tic
         from doom_match_checkpoint where match_id=p_match
@@ -461,7 +495,7 @@ create or replace package body doom_match_worker as
         end if;
       end if;
     end if;
-    if (l_checkpoint_diagnostic=1 and p_tic=64) or l_checkpoint_due=1 then
+    if l_checkpoint_diagnostic=1 or l_checkpoint_due=1 then
       -- Checkpoint serialization is a long but healthy retained MLE call on
       -- Free. Expose that state so REST liveness checks distinguish it from
       -- a dead authority session instead of triggering a competing recovery.

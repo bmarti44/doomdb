@@ -26,7 +26,7 @@ begin
     where constraint_name='DOOM_MATCH_CHECKPOINT_HOOK_CK';
   if l_count=0 then
     execute immediate q'[alter table doom_match_worker_control add constraint
-      doom_match_checkpoint_hook_ck check(checkpoint_test_hook in(0,1))]';
+      doom_match_checkpoint_hook_ck check(checkpoint_test_hook in(0,1,2))]';
   end if;
 end;
 /

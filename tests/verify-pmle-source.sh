@@ -70,6 +70,7 @@ AUTHORITY_TRANSPORT_TEST=$ROOT/tests/verify-mle-transition-transport.sql
 MLE_MATCH_RUNTIME=$ROOT/sql/sim/088_mle_match_runtime.sql
 MLE_WORKER_LIFECYCLE=$ROOT/sql/sim/083_worker_lifecycle.sql
 MLE_WORKER_LIFECYCLE_SCHEMA=$ROOT/sql/schema/062_mle_warm_lifecycle.sql
+MLE_RECOVERY_TELEMETRY_SCHEMA=$ROOT/sql/schema/064_mle_recovery_telemetry.sql
 MLE_MATCH_WORKER=$ROOT/sql/sim/084_multiplayer_worker.sql
 MLE_MATCH_WORKER_TEST=$ROOT/tests/verify-mle-match-worker-cutover.sql
 DOOM_API=$ROOT/sql/rest/010_doom_api.sql
@@ -486,6 +487,10 @@ grep -q "assert.equal(Number(final\\[4\\]),1" "$WAN_SOAK" ||
   fail 'double-recovery gate does not require exactly one tier-2 assignment'
 grep -q 'DOOMDB_HIGH_AWAKE_RECOVERY_DIAGNOSTIC' "$WAN_SOAK" ||
   fail 'density-stratified maximum-distance recovery diagnostic missing'
+grep -q 'DOOMDB_HIGH_AWAKE_CHECKPOINT_SAVE_DIAGNOSTIC' "$WAN_SOAK" ||
+  fail 'high-awake checkpoint SAVE diagnostic missing'
+grep -q 'PMLE_HIGH_AWAKE_RECOVERY_STAGES|PASS' "$WAN_SOAK" ||
+  fail 'maximum-distance recovery stage decomposition missing'
 grep -q 'DOOMDB_CHECKPOINT_CADENCE_OBSERVATION' "$WAN_SOAK" ||
   fail 'paced production checkpoint cadence observation missing'
 grep -q 'PMLE_CHECKPOINT_CADENCE_OBSERVATION|PASS' "$WAN_SOAK" ||
@@ -515,6 +520,24 @@ grep -q "recoveryElapsedMs<=45000" "$WAN_SOAK" ||
 grep -q "maximum-distance restore/replay/publish exceeded its 45-second phase budget" \
   "$WAN_SOAK" ||
   fail 'high-awake recovery gate does not enforce the stratified SLA'
+grep -q 'p_checkpoint_test_hook=2 and p_tic=256' "$MLE_MATCH_WORKER" ||
+  fail 'high-awake checkpoint SAVE scaffold is missing'
+grep -q 'if l_checkpoint_diagnostic=1 or l_checkpoint_due=1 then' \
+  "$MLE_MATCH_WORKER" ||
+  fail 'diagnostic checkpoint flag is not wired to the firing condition'
+if grep -q 'l_checkpoint_diagnostic=1 and p_tic=64' "$MLE_MATCH_WORKER"; then
+  fail 'obsolete tic-64-only diagnostic checkpoint firing gate remains'
+fi
+grep -q 'recovery_restore_ms=l_restore_ms' "$MLE_MATCH_WORKER" ||
+  fail 'recovery restore/replay/publish instrumentation is missing'
+grep -q "add_column('RECOVERY_RESTORE_MS','number')" \
+  "$MLE_RECOVERY_TELEMETRY_SCHEMA" ||
+  fail 'in-place recovery telemetry schema upgrade is missing'
+grep -q 'highAwakeRecoveryDiagnostic&&highAwakeCheckpointSaveDiagnostic' \
+  "$WAN_SOAK" ||
+  fail 'high-awake diagnostic environment modes are not mutually exclusive'
+grep -q 'pagesize 0 linesize 32767' "$WAN_SOAK" ||
+  fail 'multiplayer evidence extractor is exposed to SQL*Plus line folding'
 if grep -q 'c_checkpoint_tics constant pls_integer:=1024' "$MLE_MATCH_WORKER"; then
   fail 'obsolete 1024-tic checkpoint interval remains'
 fi

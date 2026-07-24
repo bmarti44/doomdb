@@ -37,6 +37,13 @@ create table doom_match_worker_control (
   cpu_sample_at timestamp with time zone,
   cpu_window_ms number,
   cpu_percent number,
+  recovery_checkpoint_tic number(12),
+  recovery_frontier_tic number(12),
+  recovery_restore_ms number,
+  recovery_replay_ms number,
+  recovery_publish_ms number,
+  recovery_worker_total_ms number,
+  recovery_measured_at timestamp with time zone,
   busy_until timestamp with time zone,
   stop_requested number(1) default 0 not null,
   constraint doom_match_worker_control_pk primary key(match_id),
@@ -56,7 +63,7 @@ create table doom_match_worker_control (
     worker_status in('STARTING','READY','FAILED','STOPPED') and
     request_status in('IDLE','QUEUED','PROCESSING','FAILED') and
     stop_requested in(0,1) and route_diagnostics in(0,1) and
-    checkpoint_test_hook in(0,1))
+    checkpoint_test_hook in(0,1,2))
 );
 
 create index doom_match_worker_request_ix on doom_match_worker_control(

@@ -46,3 +46,34 @@ The next cadence decision is deferred until checkpoint `SAVE` cost is measured
 at 20 awake monsters under this same `103e…` artifact. If the serializer fix
 removed the former hitch, fixed cadence 128 is evaluated before any more
 complex awake-stratified policy.
+
+## Stage-decomposed rerun
+
+After adding diagnostic-only worker timestamps, the same maximum-distance
+scenario completed with a clean terminal record:
+
+```
+PMLE_HIGH_AWAKE_RECOVERY_STAGES|PASS|checkpoint_tic=128|frontier=383|restore_ms=18809.302|replay_ms=76065.318|publish_ms=173.251|worker_total_ms=95047.871|caller_overhead_ms=1391.129
+PMLE_HIGH_AWAKE_RECOVERY|DIAGNOSTIC_NOT_GATE|probe_tic=368|checkpoint_tic=128|frontier=383|distance=255|awake=20|sustained_samples=3|elapsed_ms=96439|detection_budget_ms=15000|estimated_total_ms=111439|phase_budget_45s=FAIL|sla_60s=FAIL
+```
+
+Replay cost is 298.3 ms/tic, close to the independently measured
+approximately 290 ms peak live-engine cost. The proposed extra
+approximately 120 ms/tic SQL replay penalty is therefore refuted. The two
+large terms are ordinary peak-density engine replay (76.065 seconds) and a
+fixed 18.809-second checkpoint restore.
+
+Projected from the measured terms:
+
+- fixed 128: approximately 58.3 seconds for the measured phase, FAIL;
+- fixed 64: approximately 39.2 seconds for the measured phase, arithmetically
+  PASS, but it would synchronously serialize for approximately 673 ms every
+  1.8 seconds and is not adopted;
+- fixed 128 becomes viable if checkpoint restore falls below approximately
+  5.5 seconds at the same peak replay rate.
+
+One pre-terminal rerun produced the same stage shape but correctly failed a
+harness assertion after the resumed paced authority advanced beyond tic 383
+using already-preloaded commands. Recovery-stage telemetry itself binds the
+published recovery frontier exactly to tic 383; the post-recovery live
+frontier is now required to be monotonic rather than artificially frozen.

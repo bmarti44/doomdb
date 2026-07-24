@@ -1,6 +1,7 @@
 # Checkpoint cadence decision — 2026-07-24
 
-Status: **source and arithmetic verified; database lifecycle evidence pending**.
+Status: **maximum-distance evidence measured; cadence change deferred for
+restore-path optimization**.
 
 The former production cadence was tic 32 followed by every 1,024 tics. At the
 measured Free-edition replay rate, 1,024 tics cannot satisfy the 60-second
@@ -72,6 +73,21 @@ Acceptance remains pending on the promoted authority artifact:
 
 The cadence constants are retuned only from the maximum-distance high-awake
 measurement, not from the average-cost estimate above.
+
+That measurement is now complete. At distance 255 and 20 awake monsters,
+restore cost 18.809 seconds, replay cost 76.065 seconds (298.3 ms/tic),
+publish cost 173 ms, and caller/orchestration overhead cost 1.391 seconds.
+Fixed 128 projects to approximately 58.3 seconds against the 45-second
+measured-phase budget and is rejected as insufficient. Fixed 64 projects to
+approximately 39.2 seconds, but the separately measured 673 ms synchronous
+SAVE every approximately 1.8 seconds would create recurring player-visible
+stalls. It is not adopted merely to make the recovery arithmetic pass.
+
+The current 128–256 candidate remains in place while the fixed
+18.809-second restore path is profiled. Reducing restore below approximately
+5.5 seconds would allow fixed 128 to satisfy the phase budget at the measured
+peak replay rate. No awake-stratified policy or codec-format change is
+authorized by this evidence.
 
 The pending measurement uses private route diagnostics without altering
 production cadence. `CHECKPOINT_TEST_HOOK` is a separate, default-off control
