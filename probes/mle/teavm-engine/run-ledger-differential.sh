@@ -7,10 +7,13 @@ tag="${PMLE_EVIDENCE_TAG:-final-2026-07-23}"
 [[ "$tag" =~ ^[A-Za-z0-9._-]+$ ]] ||
   { printf 'invalid evidence tag: %s\n' "$tag" >&2; exit 2; }
 
-expected_authority='e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b'
-expected_authority_bytes='1171896'
+pinned_authority='e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b'
+expected_authority="${PMLE_EXPECTED_AUTHORITY_SHA256:-$pinned_authority}"
+expected_authority_bytes="${PMLE_EXPECTED_AUTHORITY_BYTES:-1171896}"
+candidate_file="${PMLE_CANDIDATE_FILE:-}"
 expected_table_pack='058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44'
 expected_oracle='2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74'
+pair_class='PINNED_PRODUCTION'
 ledger_lock="${TMPDIR:-/tmp}/doomdb-pmle-ledger-$(id -u).lock"
 alert_state="$(mktemp "${TMPDIR:-/tmp}/doom-mle-ledger-alert.XXXXXX")"
 
@@ -49,7 +52,19 @@ if [[ -n "$busy_host" ]]; then
   exit 1
 fi
 
-node - "$root/versions.lock" "$expected_authority" "$expected_oracle" <<'NODE'
+if [[ "$expected_authority" != "$pinned_authority" ]]; then
+  pair_class='UNPROMOTED_CANDIDATE'
+  [[ -s "$candidate_file" ]] ||
+    { printf 'candidate ledger requires PMLE_CANDIDATE_FILE\n' >&2; exit 1; }
+  [[ "$(wc -c <"$candidate_file" | tr -d '[:space:]')" == \
+      "$expected_authority_bytes" ]] ||
+    { printf 'candidate ledger byte-length mismatch\n' >&2; exit 1; }
+  [[ "$(shasum -a 256 "$candidate_file" | awk '{print $1}')" == \
+      "$expected_authority" ]] ||
+    { printf 'candidate ledger SHA mismatch\n' >&2; exit 1; }
+fi
+
+node - "$root/versions.lock" "$pinned_authority" "$expected_oracle" <<'NODE'
 import fs from 'node:fs';
 const [path, authority, oracle] = process.argv.slice(2);
 const lock = JSON.parse(fs.readFileSync(path, 'utf8'));
@@ -73,8 +88,13 @@ started_utc=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
   printf 'PMLE_LEDGER_PROVENANCE|BEGIN|executions=1|log_mode=exclusive-create|started_utc=%s|launcher_pid=%s\n' \
     "$started_utc" "$$"
   printf 'PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0\n'
-  printf 'PMLE_PINNED_PAIR|authority_sha256=%s|table_sha256=%s|ojvm_jar_sha256=%s\n' \
-    "$expected_authority" "$expected_table_pack" "$expected_oracle"
+  if [[ "$pair_class" == PINNED_PRODUCTION ]]; then
+    printf 'PMLE_PINNED_PAIR|authority_sha256=%s|table_sha256=%s|ojvm_jar_sha256=%s\n' \
+      "$expected_authority" "$expected_table_pack" "$expected_oracle"
+  else
+    printf 'PMLE_CANDIDATE_PAIR|classification=%s|authority_sha256=%s|table_sha256=%s|ojvm_jar_sha256=%s\n' \
+      "$pair_class" "$expected_authority" "$expected_table_pack" "$expected_oracle"
+  fi
   node "$project/build-ledger-differential.mjs" --deep-every=1 --progress-every=100 |
     "$root/scripts/db_sql.sh" -
   ended_epoch=$(date +%s)
