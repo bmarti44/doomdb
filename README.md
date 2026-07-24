@@ -68,6 +68,14 @@ simulation requirement and below the 30 FPS presentation goal. Generated-code
 shape, hidden compilation controls, wasm2js, and a paid/ADB venue probe are
 being investigated; no 30 FPS success is claimed yet.
 
+The hidden-compilation investigation has now proved that this Free build does
+contain an optimizing MLE compiler: a deterministic integer kernel improves
+from roughly 373 ns/iteration interpreted to 2.792 ns/iteration compiled.
+Those controls are undocumented and remain diagnostic-only. The current full
+TeaVM authority cannot consume that win yet—forced compilation spends minutes
+in `MLE park` without completing the production ticker—so de-CPS/generated
+method reshaping is the immediate performance path.
+
 **Multiplayer, where the database is the server.** Two browsers join one
 authoritative world living in Oracle. The engine advances once per ordered
 command vector and emits one confirmed transition chain. Each browser renders

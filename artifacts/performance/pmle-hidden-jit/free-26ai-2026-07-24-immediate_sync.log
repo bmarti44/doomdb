@@ -1,0 +1,46 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+PMLE_HIDDEN_JIT_SETTINGS|cell=immediate_sync|settings=alter session set "_mle_compile_immediately"=true;
+alter session set "_mle_compilation_sync"=true;
+alter session set "_mle_compilation_errors_are_fatal"=true;
+PMLE_HIDDEN_JIT|DIAGNOSTIC_NOT_GATE|cell=immediate_sync|iterations=1000000|samples=40
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=1|elapsed_ms=5537.552|ns_per_iteration=5537.552|checksum=-1169756117
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=2|elapsed_ms=58.841|ns_per_iteration=58.841|checksum=1974097907
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=3|elapsed_ms=258.041|ns_per_iteration=258.041|checksum=1553740419
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=4|elapsed_ms=3.592|ns_per_iteration=3.592|checksum=1184088597
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=5|elapsed_ms=3.439|ns_per_iteration=3.439|checksum=82945372
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=6|elapsed_ms=3.472|ns_per_iteration=3.472|checksum=-106250813
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=7|elapsed_ms=3.312|ns_per_iteration=3.312|checksum=-2056991061
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=8|elapsed_ms=3.468|ns_per_iteration=3.468|checksum=1331244620
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=9|elapsed_ms=3.365|ns_per_iteration=3.365|checksum=-1136538474
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=10|elapsed_ms=3.406|ns_per_iteration=3.406|checksum=1111523520
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=11|elapsed_ms=3.267|ns_per_iteration=3.267|checksum=1624231957
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=12|elapsed_ms=3.165|ns_per_iteration=3.165|checksum=-141253258
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=13|elapsed_ms=2.844|ns_per_iteration=2.844|checksum=-334458853
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=14|elapsed_ms=2.876|ns_per_iteration=2.876|checksum=-2076221668
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=15|elapsed_ms=2.623|ns_per_iteration=2.623|checksum=1125616868
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=16|elapsed_ms=2.602|ns_per_iteration=2.602|checksum=1707602329
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=17|elapsed_ms=2.641|ns_per_iteration=2.641|checksum=1772693734
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=18|elapsed_ms=2.627|ns_per_iteration=2.627|checksum=-1473965924
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=19|elapsed_ms=2.902|ns_per_iteration=2.902|checksum=870250623
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=20|elapsed_ms=2.691|ns_per_iteration=2.691|checksum=-2141209144
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=21|elapsed_ms=2.678|ns_per_iteration=2.678|checksum=-162657825
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=22|elapsed_ms=2.648|ns_per_iteration=2.648|checksum=972104858
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=23|elapsed_ms=2.629|ns_per_iteration=2.629|checksum=2039866390
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=24|elapsed_ms=2.664|ns_per_iteration=2.664|checksum=-1369466368
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=25|elapsed_ms=2.914|ns_per_iteration=2.914|checksum=-1205140484
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=26|elapsed_ms=2.711|ns_per_iteration=2.711|checksum=386062180
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=27|elapsed_ms=2.643|ns_per_iteration=2.643|checksum=-1095296871
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=28|elapsed_ms=2.792|ns_per_iteration=2.792|checksum=1429380760
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=29|elapsed_ms=2.841|ns_per_iteration=2.841|checksum=171728362
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=30|elapsed_ms=2.681|ns_per_iteration=2.681|checksum=-1305165505
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=31|elapsed_ms=2.685|ns_per_iteration=2.685|checksum=-1978410103
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=32|elapsed_ms=3.082|ns_per_iteration=3.082|checksum=2081874945
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=33|elapsed_ms=3.193|ns_per_iteration=3.193|checksum=-1331346043
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=34|elapsed_ms=2.717|ns_per_iteration=2.717|checksum=-1933474229
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=35|elapsed_ms=2.630|ns_per_iteration=2.630|checksum=65734537
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=36|elapsed_ms=2.729|ns_per_iteration=2.729|checksum=-2108120239
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=37|elapsed_ms=3.020|ns_per_iteration=3.020|checksum=1143936018
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=38|elapsed_ms=2.773|ns_per_iteration=2.773|checksum=-1031503857
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=39|elapsed_ms=3.191|ns_per_iteration=3.191|checksum=2079472921
+PMLE_HIDDEN_JIT_SAMPLE|cell=immediate_sync|sample=40|elapsed_ms=2.712|ns_per_iteration=2.712|checksum=120034740
+PMLE_HIDDEN_JIT|PASS|cell=immediate_sync|terminal_samples=40|classification=DIAGNOSTIC_NOT_GATE

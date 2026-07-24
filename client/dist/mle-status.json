@@ -166,6 +166,11 @@
     "p50MillisecondsPerTic": 244.672,
     "p95MillisecondsPerTic": 374.71,
     "peakCombatMillisecondsPerTic": 290.124,
+    "interpretedArithmeticNanosecondsPerIteration": 373.169,
+    "compiledArithmeticNanosecondsPerIteration": 2.792,
+    "compiledArithmeticThreshold": "PASS_BELOW_15_NS",
+    "fullArtifactCompilation": "DIAGNOSTIC_HANG_MLE_PARK",
+    "hiddenCompilationProductionEnabled": false,
     "requiredTicsPerSecond": 35,
     "targetFps": 30,
     "note": "No current evidence supports an unqualified 30 FPS claim on 26ai Free"
@@ -175,6 +180,11 @@
       "id": "LIFECYCLE",
       "state": "NEXT",
       "label": "Admission and full lifecycle battery on e485 fixed-128"
+    },
+    {
+      "id": "SHAPE",
+      "state": "ACTIVE",
+      "label": "De-CPS/generated-method reshape, then repeat direct MLE JIT rank"
     },
     {
       "id": "SOAK",
@@ -220,6 +230,7 @@
     "browserReplicaProfile": "artifacts/performance/pmle-browser-replica/profile-2026-07-23.log",
     "livePerformance": "artifacts/performance/pmle-live-tic/matrix-parked-gate-2026-07-23.log",
     "componentTickerParity": "artifacts/performance/pmle-ledger-every-tic/component-ab-2026-07-24/REPORT.md",
+    "hiddenJit": "artifacts/performance/pmle-hidden-jit/REPORT.md",
     "warmRestore": "artifacts/performance/pmle-warm-restore-ab/REPORT.md",
     "highAwakeRecovery": "artifacts/performance/pmle-worker-soak/high-awake-recovery-fixed128-e485-v7-2026-07-24.log",
     "warmSlotRecycle": "artifacts/performance/pmle-worker-soak/warm-slot-recycle-state-e485-2026-07-24.log"

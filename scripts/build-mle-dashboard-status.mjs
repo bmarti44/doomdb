@@ -56,6 +56,8 @@ const livePerformancePath =
   'artifacts/performance/pmle-live-tic/matrix-parked-gate-2026-07-23.log';
 const componentAbPath =
   'artifacts/performance/pmle-ledger-every-tic/component-ab-2026-07-24/REPORT.md';
+const hiddenJitPath =
+  'artifacts/performance/pmle-hidden-jit/REPORT.md';
 const soak = read(soakPath);
 const ledger = read(ledgerPath);
 const canonical = read(canonicalPath);
@@ -73,6 +75,7 @@ const finalPromotedSoak = read(finalPromotedSoakPath);
 const browserProfile = read(browserProfilePath);
 const livePerformance = read(livePerformancePath);
 const componentAb = read(componentAbPath);
+const hiddenJit = read(hiddenJitPath);
 const warmRestore = read(warmRestorePath);
 const highAwakeRecovery = read(highAwakeRecoveryPath);
 const warmSlotRecycle = read(warmSlotRecyclePath);
@@ -213,6 +216,12 @@ contains(componentAb,
 contains(componentAb,
   'ae3c44e8937729a4fed42f4acb09c84121cdc964582d154cb3c978750bbaa22b',
   'current authority component A/B canonical digest');
+contains(hiddenJit,
+  '373.169 ns/iteration', 'default interpreted arithmetic');
+contains(hiddenJit,
+  '2.792', 'synchronous compiled arithmetic');
+contains(hiddenJit,
+  'compilation hang', 'full-artifact JIT disposition');
 contains(warmRestore,
   '18.377x', 'e485 direct MLE warm-restore A/B');
 contains(highAwakeRecovery,
@@ -377,6 +386,11 @@ const status = {
     p50MillisecondsPerTic: 244.672,
     p95MillisecondsPerTic: 374.710,
     peakCombatMillisecondsPerTic: 290.124,
+    interpretedArithmeticNanosecondsPerIteration: 373.169,
+    compiledArithmeticNanosecondsPerIteration: 2.792,
+    compiledArithmeticThreshold: 'PASS_BELOW_15_NS',
+    fullArtifactCompilation: 'DIAGNOSTIC_HANG_MLE_PARK',
+    hiddenCompilationProductionEnabled: false,
     requiredTicsPerSecond: 35,
     targetFps: 30,
     note: 'No current evidence supports an unqualified 30 FPS claim on 26ai Free'
@@ -384,6 +398,8 @@ const status = {
   remaining: [
     {id: 'LIFECYCLE', state: 'NEXT',
       label: 'Admission and full lifecycle battery on e485 fixed-128'},
+    {id: 'SHAPE', state: 'ACTIVE',
+      label: 'De-CPS/generated-method reshape, then repeat direct MLE JIT rank'},
     {id: 'SOAK', state: 'PENDING',
       label: '30-minute final e485 promoted-artifact soak'},
     {id: 'WAN', state: 'PAUSED', label: 'Injected-latency multiplayer matrix'},
@@ -404,6 +420,7 @@ const status = {
     browserReplicaProfile: browserProfilePath,
     livePerformance: livePerformancePath,
     componentTickerParity: componentAbPath,
+    hiddenJit: hiddenJitPath,
     warmRestore: warmRestorePath,
     highAwakeRecovery: highAwakeRecoveryPath,
     warmSlotRecycle: warmSlotRecyclePath

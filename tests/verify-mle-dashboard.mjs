@@ -67,6 +67,14 @@ assert.equal(status.architecture.productionOjvm, false);
 assert.equal(status.performance.state, 'BELOW_30_FPS_ACCELERATION_IN_PROGRESS');
 assert.equal(status.performance.throughputTicsPerSecond, 3.961);
 assert.equal(status.performance.sessionCpuMillisecondsPerTic, 253.6);
+assert.equal(status.performance.interpretedArithmeticNanosecondsPerIteration,
+  373.169);
+assert.equal(status.performance.compiledArithmeticNanosecondsPerIteration,
+  2.792);
+assert.equal(status.performance.compiledArithmeticThreshold, 'PASS_BELOW_15_NS');
+assert.equal(status.performance.fullArtifactCompilation,
+  'DIAGNOSTIC_HANG_MLE_PARK');
+assert.equal(status.performance.hiddenCompilationProductionEnabled, false);
 assert.equal(status.performance.requiredTicsPerSecond, 35);
 assert.equal(status.solo.measuredFps, null);
 assert.equal(status.playModes.singlePlayer.state, 'AVAILABLE');
