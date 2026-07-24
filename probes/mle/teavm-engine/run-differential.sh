@@ -3,6 +3,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
+membership_sql="${DOOMDB_MLE_MEMBERSHIP_SQL:-$project/membership-recovery-differential.sql}"
 mode="${1:-}"
 tag="${PMLE_EVIDENCE_TAG:-2026-07-23}"
 case "$mode" in canonical|coop|membership) ;;
@@ -37,10 +38,14 @@ run_sql() {
         "$root/scripts/db_sql.sh" -
       ;;
     membership)
+      [[ -s "$membership_sql" ]] || {
+        printf 'membership differential SQL is missing: %s\n' "$membership_sql" >&2
+        return 1
+      }
       {
         sed '/^whenever /d' "$project/environment-metadata.sql"
         sed '/^whenever /d' "$project/artifact-metadata.sql"
-        sed '/^whenever /d' "$project/membership-recovery-differential.sql"
+        sed '/^whenever /d' "$membership_sql"
       } | "$root/scripts/db_sql.sh" -
       ;;
   esac

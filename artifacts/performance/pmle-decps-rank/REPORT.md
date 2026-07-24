@@ -86,9 +86,15 @@ whole-module compilation path operational.
 
 The candidate has crossed the structural-promotion threshold: exact accepted
 stream, 3.297x full-route throughput, and more than 10x improvement in quiet
-windows. It now requires the full deterministic and lifecycle battery before
-any pin or production deployment changes. The next performance work must
-target peak monster AI/movement/sight cost; hidden JIT is not a usable fallback
-on this artifact, and the rejected Binaryen 131 wasm2js output remains closed
-until its `long` high-word corruption is fixed.
+windows. Its Oracle promotion battery now passes:
 
+- four-player 330-tic canonical differential;
+- two-player 762-tic co-op differential with deep equality every tic;
+- leave/neutral/checkpoint/rejoin membership recovery through tic 100, bound
+  to candidate `2848…` and OJVM oracle `2a102…`.
+
+The exhaustive 13,272-tic every-tic ledger, recovery/lifecycle gates, and final
+soak still remain before any pin or production deployment changes. The next
+performance work must target peak monster AI/movement/sight cost; hidden JIT is
+not a usable fallback on this artifact, and the rejected Binaryen 131 wasm2js
+output remains closed until its `long` high-word corruption is fixed.

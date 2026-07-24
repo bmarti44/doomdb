@@ -84,7 +84,10 @@ assert.equal(status.performance.deCpsCandidate.exactStreamTics, 5250);
 assert.equal(status.performance.deCpsCandidate.throughputTicsPerSecond, 19.788);
 assert.equal(status.performance.deCpsCandidate.routeSpeedup, 3.297);
 assert.equal(status.performance.deCpsCandidate.promotionState,
-  'FULL_GATE_BATTERY_PENDING');
+  'LEDGER_RECOVERY_LIFECYCLE_SOAK_PENDING');
+assert.equal(status.performance.deCpsCandidate.coopEveryTic762, 'PASS');
+assert.equal(status.performance.deCpsCandidate.membershipRecovery100, 'PASS');
+assert.equal(status.performance.deCpsCandidate.ledgerEveryTic13272, 'PENDING');
 assert.equal(status.performance.requiredTicsPerSecond, 35);
 assert.equal(status.solo.measuredFps, null);
 assert.equal(status.playModes.singlePlayer.state, 'AVAILABLE');

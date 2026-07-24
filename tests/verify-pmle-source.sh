@@ -44,6 +44,7 @@ TEAVM_BUILD=$ROOT/probes/mle/teavm-engine/build-simulation.sh
 TEAVM_DECPS_PATCH=$ROOT/probes/mle/teavm-engine/0006-teavm-authority-no-blocking-wait.patch
 TEAVM_DECPS_RUNNER=$ROOT/probes/mle/teavm-engine/run-decps-rank-mle.sh
 TEAVM_DECPS_PARITY=$ROOT/probes/mle/teavm-engine/run-javascript-candidate-parity.mjs
+TEAVM_DECPS_GATES=$ROOT/probes/mle/teavm-engine/run-decps-promotion-gates.sh
 TEAVM_PROFILE=$ROOT/probes/mle/teavm-engine/profile-ledger-node.mjs
 TEAVM_PATCH=$ROOT/probes/mle/teavm-engine/0002-teavm-simulation-headless.patch
 TEAVM_INIT_DIET_PATCH=$ROOT/probes/mle/teavm-engine/0004-teavm-authority-init-diet.patch
@@ -629,7 +630,7 @@ grep -q "grep -v 'ORA-00000'" "$ALERT_SCANNER" ||
   fail 'Oracle alert-window scanner mistakes the success code for an incident'
 for long_runner in "$TEAVM_MULTI_SOAK_RUNNER" "$TEAVM_WORKER_CUTOVER_RUNNER" \
   "$TEAVM_LEDGER_RUNNER" "$TEAVM_LIVE_MATRIX" "$HIDDEN_JIT_RUNNER" \
-  "$TEAVM_DECPS_RUNNER"; do
+  "$TEAVM_DECPS_RUNNER" "$TEAVM_DECPS_GATES"; do
   grep -q 'oracle-alert-window.sh' "$long_runner" ||
     fail "long diagnostic lacks Oracle alert-window gate: $long_runner"
 done
@@ -643,6 +644,8 @@ grep -q 'load-mle-module.sh.*--production' "$TEAVM_DECPS_RUNNER" ||
   fail 'de-CPS MLE runner does not restore the pinned production module'
 grep -q 'compareCanonical(stepped)' "$TEAVM_DECPS_PARITY" ||
   fail 'de-CPS Node parity does not compare every tic'
+grep -q 'DOOMDB_MLE_MEMBERSHIP_SQL' "$TEAVM_DECPS_GATES" ||
+  fail 'de-CPS promotion gate does not bind membership to candidate bytes'
 grep -q 'PMLE_BROWSER_REPLICA_PROFILE' "$TEAVM_BROWSER_REPLICA_PROFILE" ||
   fail 'browser confirmed-replica stage profiler missing'
 grep -q -- '--disable-background-timer-throttling' "$WAN_SOAK" ||
