@@ -1,7 +1,20 @@
 # `103e…` promotion stale-pin inventory — 2026-07-24
 
-Status: **source inventory complete; rewrite is gated on the active exhaustive
-ledger PASS**.
+Status: **promotion complete**.
+
+The promotion gates are now terminal:
+
+- exhaustive 13,272-tic every-tic differential: PASS;
+- compile/source verifier: PASS;
+- two-tic cumulative-progress smoke: PASS;
+- 500-tic component A/B: PASS with identical cumulative canonical digest;
+- ticker p50: 134.299 ms (`a942…`) to 130.152 ms (`103e…`), -3.088%;
+- ticker p95: 187.222 ms to 192.968 ms, +3.069%.
+
+Both governing ticker percentiles remain inside the approved 5% parity band,
+so the dispatch candidate is promoted. Current runtime references listed
+below have been rewritten to `103e…`; their presence here is the frozen
+pre-promotion inventory, not an outstanding-work list.
 
 Candidate authority:
 
@@ -13,11 +26,9 @@ Candidate authority:
 - input bytecode:
   `83ebc323785cefcacf7b2c434b856e6d62f1f9ae4f77b063e6bce1f0a0e0f099`.
 
-`versions.lock` already records the candidate. That is candidate provenance,
-not proof that all production consumers have been promoted. The following
-current-runtime references remain on `a942…` or `06ac…` and must change only
-after the ledger PASS, compile/source-verifier PASS, and two-tic progress
-smoke:
+`versions.lock` records the promoted artifact and its provenance. The
+following current-runtime references were audited as `103e…` consumers after
+the gates above:
 
 - `sql/sim/088_mle_match_runtime.sql`;
 - `probes/mle/teavm-engine/load-mle-module.sh`;

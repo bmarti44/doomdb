@@ -364,7 +364,9 @@ create or replace package body doom_worker_lifecycle as
       commit;return;
     end if;
     begin dbms_scheduler.stop_job(upper(p_job_name),true);
-    exception when others then if sqlcode<>-27475 then raise;end if;end;
+    exception when others then
+      if sqlcode not in(-27475,-27366) then raise;end if;
+    end;
     reject_assignment(l_slot,'forced stop intent '||l_intent);
     update doom_mle_warm_slot set slot_status='STOPPED',
       assigned_match=null,assigned_role=null,worker_sid=null,worker_serial=null,

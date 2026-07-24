@@ -12,8 +12,10 @@ evidence="$root/artifacts/performance/pmle-ledger-every-tic/component-ab-$tag"
 baseline="$root/client/dist/play/doom-mle-authority-a942cd2dcbdc.js"
 candidate="$root/client/dist/play/doom-mle-authority-103e15e913b3.js"
 table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
+digest_extractor="$project/extract-ledger-component-digest.sh"
 ledger_lock="${TMPDIR:-/tmp}/doomdb-pmle-ledger-$(id -u).lock"
 restore_needed=0
+pool_restore_needed=0
 
 restore_production_module() {
   local status=$?
@@ -25,9 +27,24 @@ restore_production_module() {
       exit 1
     fi
   fi
+  if [[ "$pool_restore_needed" == 1 ]]; then
+    if ! "$root/scripts/db_sql.sh" - >/dev/null <<'SQL'
+begin doom_match_worker.start_warm_pool;end;
+/
+SQL
+    then
+      printf '%s\n' \
+        'FATAL: failed to restore the retained warm pool after component A/B' >&2
+      exit 1
+    fi
+  fi
   exit "$status"
 }
 trap restore_production_module EXIT
+
+# Extraction is proven offline before the execution opt-in, artifact loading,
+# evidence-directory creation, or either scarce A/B evidence cell.
+"$digest_extractor" --self-test
 
 [[ "${PMLE_COMPONENT_AB_EXECUTE:-NO}" == YES ]] || {
   printf '%s\n' 'set PMLE_COMPONENT_AB_EXECUTE=YES for the post-ledger diagnostic' >&2
@@ -64,6 +81,37 @@ active="$(printf '%s\n' "$active_output" |
   exit 1
 }
 
+pool_restore_needed=1
+park_output=$("$root/scripts/db_sql.sh" - <<'SQL'
+set serveroutput on
+declare
+  l_live number;
+begin
+  for slot_ in (
+    select job_name,incarnation_token,worker_sid,worker_serial,
+      worker_spid,worker_job_run
+    from doom_mle_warm_slot
+    where slot_status in('WARMING','READY','CLAIMED','RUNNING')
+      and assigned_match is null
+  ) loop
+    doom_worker_lifecycle.stop_job(
+      slot_.job_name,true,'component A/B benchmark-mode quiescence',
+      slot_.incarnation_token,slot_.worker_sid,slot_.worker_serial,
+      slot_.worker_spid,slot_.worker_job_run);
+  end loop;
+  select count(*) into l_live from doom_mle_warm_slot
+    where slot_status in('WARMING','READY','CLAIMED','RUNNING');
+  if l_live<>0 then
+    raise_application_error(-20796,'retained warm pool did not park');
+  end if;
+  dbms_output.put_line('PMLE_BENCHMARK_POOL|PARKED|live_slots='||l_live);
+end;
+/
+SQL
+)
+printf '%s\n' "$park_output"
+grep -q '^PMLE_BENCHMARK_POOL|PARKED|live_slots=0$' <<<"$park_output"
+
 mkdir -p "$evidence"
 for label in a942 103e; do
   artifact="$baseline"
@@ -85,12 +133,8 @@ for label in a942 103e; do
   grep -q '^PMLE_ARTIFACT|' "$log"
   grep -q "^PMLE_LEDGER_COMPONENT_PROFILE|PASS|label=${label}|tics=500|" "$log"
 done
-baseline_digest="$(sed -n \
-  's/^PMLE_LEDGER_COMPONENT_PROFILE|PASS|label=a942|.*|cumulative_sha256=\\([0-9a-f]\\{64\\}\\)$/\\1/p' \
-  "$evidence/a942.log")"
-candidate_digest="$(sed -n \
-  's/^PMLE_LEDGER_COMPONENT_PROFILE|PASS|label=103e|.*|cumulative_sha256=\\([0-9a-f]\\{64\\}\\)$/\\1/p' \
-  "$evidence/103e.log")"
+baseline_digest="$("$digest_extractor" a942 "$evidence/a942.log")"
+candidate_digest="$("$digest_extractor" 103e "$evidence/103e.log")"
 [[ -n "$baseline_digest" && "$baseline_digest" == "$candidate_digest" ]] || {
   printf 'component A/B canonical digest mismatch: a942=%s 103e=%s\n' \
     "${baseline_digest:-MISSING}" "${candidate_digest:-MISSING}" >&2

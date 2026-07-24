@@ -59,6 +59,7 @@
     "coopEveryTic762": "PASS",
     "membershipRecovery": "PASS",
     "ledgerEveryTic13272": "PASS",
+    "componentTickerParity500": "PASS",
     "finalWorkerSoak": "PENDING_RERUN",
     "lifecycleHardening": "PENDING_RERUN",
     "postHardeningCausalSoak": "HISTORICAL_PASS",
@@ -214,6 +215,7 @@
     "causalSoak": "artifacts/performance/pmle-worker-soak/run-smoke-foreground-180-warm300-c664-2026-07-23.log",
     "finalPromotedSoak": "artifacts/performance/pmle-worker-soak/run-final-a942-lifecycle-0744-2026-07-23.log",
     "browserReplicaProfile": "artifacts/performance/pmle-browser-replica/profile-2026-07-23.log",
-    "livePerformance": "artifacts/performance/pmle-live-tic/matrix-parked-gate-2026-07-23.log"
+    "livePerformance": "artifacts/performance/pmle-live-tic/matrix-parked-gate-2026-07-23.log",
+    "componentTickerParity": "artifacts/performance/pmle-ledger-every-tic/component-ab-2026-07-24/REPORT.md"
   }
 }

@@ -1,0 +1,463 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_TEAVM_STAGING_GATE|PASS|source_bytes=1167197|source_sha256=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_TEAVM_SIMULATION_LOAD|bytes=1167197|table_pack_bytes=180272
+PASS PMLE-TEAVM-SIMULATION-LOAD bytes=1167197 sha256=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2 table_pack_bytes=180272 table_pack_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1167197|source_sha256=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+ITicker: Using nanosecond accuracy timer.
+FreeDoom: Phase 1	   v1.9
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors -
+===========================================================================
+Copyright © 2001-2017 Contributors to the Freedoom project.
+All rights reserved.
+See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon -
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+PMLE_LEDGER_COMPONENT_PROGRESS|label=a942|tic=100|cumulative_sha256=80937df59aec
+10a0f814ec69401ccd9760d01260a5fbd5fa8b3d428ee4b9f84a
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+PMLE_LEDGER_COMPONENT_PROGRESS|label=a942|tic=200|cumulative_sha256=c87e83c13552
+0752f401ba868cfe103805cab826e563d039db0ce2128d37a9ca
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+PMLE_LEDGER_COMPONENT_PROGRESS|label=a942|tic=300|cumulative_sha256=bd41b66661d7
+baf91d73ae2debcae57eabdb04994c2d3a5f29038e55ddf35da8
+PMLE_LEDGER_COMPONENT_PROGRESS|label=a942|tic=400|cumulative_sha256=11f58feb1b73
+1797fdd4f91f87c2407ae74efe7de0a694d9c52fd1ba4d61b5b5
+PMLE_LEDGER_COMPONENT_PROGRESS|label=a942|tic=500|cumulative_sha256=ae3c44e89377
+29a4fed42f4acb09c84121cdc964582d154cb3c978750bbaa22b
+PMLE_LEDGER_COMPONENT|label=a942|component=ticker|tics=500|total_ms=69544.87|p50
+_ms=134.299|p95_ms=187.222|p99_ms=225.188|max_ms=284.043
+PMLE_LEDGER_COMPONENT|label=a942|component=canonical_material|tics=500|total_ms=
+1113296.09|p50_ms=2209.481|p95_ms=2429.537|p99_ms=2521.703|max_ms=2735.456
+PMLE_LEDGER_COMPONENT|label=a942|component=raw_export|tics=500|total_ms=12958.40
+8|p50_ms=24.377|p95_ms=31.552|p99_ms=38.06|max_ms=159.839
+PMLE_LEDGER_COMPONENT|label=a942|component=native_hash|tics=500|total_ms=201.382
+|p50_ms=.318|p95_ms=.483|p99_ms=.573|max_ms=37.279
+PMLE_LEDGER_COMPONENT|label=a942|component=combined|tics=500|total_ms=1196000.75
+|p50_ms=2375.234|p95_ms=2617.051|p99_ms=2722.555|max_ms=2874.711
+PMLE_LEDGER_COMPONENT_PROFILE|PASS|label=a942|tics=500|wall_ms=1196075.081|cumul
+ative_sha256=ae3c44e8937729a4fed42f4acb09c84121cdc964582d154cb3c978750bbaa22b

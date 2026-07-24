@@ -43,7 +43,7 @@ for(const command of vectors) {
 
 process.stdout.write(`whenever oserror exit failure rollback
 whenever sqlerror exit sql.sqlcode rollback
-set define off echo off verify off feedback off heading off serveroutput on size unlimited
+set define off echo off verify off feedback off heading off linesize 32767 serveroutput on size unlimited
 declare
   c_limit constant pls_integer:=${limit};
   c_label constant varchar2(32):='${label}';

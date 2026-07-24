@@ -87,5 +87,14 @@ authority, so a race into the forced checkpoint cannot masquerade as a
 maximum-distance result. Only that measurement may set or retune the
 production recovery threshold. After any required retune, the same scenario
 runs with `DOOMDB_HIGH_AWAKE_RECOVERY_GATE=1`; that acceptance mode requires
-the durable kill distance to be 240–255 tics and hard-fails unless recovery is
-complete within 60 seconds.
+the durable kill distance to be 240–255 tics.
+
+The diagnostic clock is deliberately narrower than the production SLA clock.
+Its `elapsed_ms` starts immediately before the authority kill and covers
+kill, checkpoint restore, deterministic replay, and authoritative publish.
+It excludes production failure detection: the normal probe interval is 5
+seconds and the recovery backstop is 15 seconds. Consequently the measured
+phase is budgeted against approximately 45 seconds, not 60 seconds. Gate mode
+adds the 15-second detection budget explicitly and hard-fails unless both the
+restore/replay/publish phase is at most 45 seconds and the estimated end-to-end
+total is at most 60 seconds.

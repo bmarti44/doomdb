@@ -37,6 +37,20 @@ begin
     dbms_session.sleep(.1);
   end loop;
   if l_assigned<>0 then
+    for slot_ in (
+      select job_name,incarnation_token,worker_sid,worker_serial,
+        worker_spid,worker_job_run from doom_mle_warm_slot
+      where assigned_match='$match' and slot_status in('CLAIMED','RUNNING')
+    ) loop
+      doom_worker_lifecycle.stop_job(
+        slot_.job_name,true,'SOAK cleanup of dead retained incarnation',
+        slot_.incarnation_token,slot_.worker_sid,slot_.worker_serial,
+        slot_.worker_spid,slot_.worker_job_run);
+    end loop;
+  end if;
+  select count(*) into l_assigned from doom_mle_warm_slot
+    where assigned_match='$match' and slot_status in('CLAIMED','RUNNING');
+  if l_assigned<>0 then
     raise_application_error(-20796,'SOAK retained slots did not release');
   end if;
   delete from doom_match where match_id='$match';

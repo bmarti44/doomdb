@@ -43,6 +43,8 @@ const browserProfilePath =
   'artifacts/performance/pmle-browser-replica/profile-2026-07-23.log';
 const livePerformancePath =
   'artifacts/performance/pmle-live-tic/matrix-parked-gate-2026-07-23.log';
+const componentAbPath =
+  'artifacts/performance/pmle-ledger-every-tic/component-ab-2026-07-24/REPORT.md';
 const soak = read(soakPath);
 const ledger = read(ledgerPath);
 const canonical = read(canonicalPath);
@@ -59,6 +61,7 @@ const causalSoak = read(causalSoakPath);
 const finalPromotedSoak = read(finalPromotedSoakPath);
 const browserProfile = read(browserProfilePath);
 const livePerformance = read(livePerformancePath);
+const componentAb = read(componentAbPath);
 const authority = versions.teaVM;
 const presentation = authority.presentation;
 const lastSoakedAuthority = {
@@ -182,6 +185,12 @@ contains(livePerformance,
   'throughput_tps=3.961|session_cpu_ms=126800|' +
   'session_cpu_ms_per_tic=253.600',
   'production-shaped MLE performance');
+contains(componentAb,
+  'Status: **PASS — `103e…` promoted under the five-percent ticker parity rule**',
+  'current authority component A/B verdict');
+contains(componentAb,
+  'ae3c44e8937729a4fed42f4acb09c84121cdc964582d154cb3c978750bbaa22b',
+  'current authority component A/B canonical digest');
 
 const status = {
   schema: 1,
@@ -241,6 +250,7 @@ const status = {
     coopEveryTic762: 'PASS',
     membershipRecovery: 'PASS',
     ledgerEveryTic13272: 'PASS',
+    componentTickerParity500: 'PASS',
     finalWorkerSoak: 'PENDING_RERUN',
     lifecycleHardening: 'PENDING_RERUN',
     postHardeningCausalSoak: 'HISTORICAL_PASS',
@@ -355,7 +365,8 @@ const status = {
     voidedDiagnosticSmoke: voidedSmokePath, lifecycleHardening: lifecyclePath,
     causalSoak: causalSoakPath, finalPromotedSoak: finalPromotedSoakPath,
     browserReplicaProfile: browserProfilePath,
-    livePerformance: livePerformancePath
+    livePerformance: livePerformancePath,
+    componentTickerParity: componentAbPath
   }
 };
 

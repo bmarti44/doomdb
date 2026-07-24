@@ -29,6 +29,7 @@ TEAVM_SIM_CLEANUP=$ROOT/probes/mle/teavm-engine/cleanup-mle.sql
 TEAVM_LEDGER=$ROOT/probes/mle/teavm-engine/build-ledger-differential.mjs
 TEAVM_LEDGER_COMPONENTS=$ROOT/probes/mle/teavm-engine/build-ledger-component-profile.mjs
 TEAVM_LEDGER_COMPONENT_RUNNER=$ROOT/probes/mle/teavm-engine/run-ledger-component-ab.sh
+TEAVM_LEDGER_COMPONENT_EXTRACTOR=$ROOT/probes/mle/teavm-engine/extract-ledger-component-digest.sh
 TEAVM_CANONICAL_BENCH=$ROOT/probes/mle/teavm-engine/benchmark-canonical-state.sql
 TEAVM_RECOVERY=$ROOT/probes/mle/teavm-engine/recovery-mle.sql
 TEAVM_MULTIPLAYER=$ROOT/probes/mle/teavm-engine/multiplayer-mle.sql
@@ -217,6 +218,14 @@ grep -q 'PMLE_LEDGER_COMPONENT_PROFILE|PASS' "$TEAVM_LEDGER_COMPONENTS" ||
   fail 'ledger component terminal marker missing'
 grep -q 'PMLE_COMPONENT_AB_EXECUTE' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
   fail 'ledger component A/B execution opt-in missing'
+"$TEAVM_LEDGER_COMPONENT_EXTRACTOR" --self-test |
+  grep -q '^PMLE_LEDGER_COMPONENT_EXTRACTOR|PASS|' ||
+  fail 'ledger component digest extractor offline self-test failed'
+grep -q '"$digest_extractor" --self-test' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B does not dry-run its extractor before execution'
+test "$(line_of '"$digest_extractor" --self-test' "$TEAVM_LEDGER_COMPONENT_RUNNER")" -lt \
+  "$(line_of 'PMLE_COMPONENT_AB_EXECUTE' "$TEAVM_LEDGER_COMPONENT_RUNNER")" ||
+  fail 'ledger component extractor dry-run occurs after execution opt-in'
 grep -Fq "pgrep -f '[b]uild-ledger-differential.mjs'" \
   "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
   fail 'ledger component A/B is not fenced from the promotion ledger'
@@ -224,6 +233,10 @@ grep -q 'doomdb-pmle-ledger-' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
   fail 'ledger component A/B does not honor the run-lifetime ledger lock'
 grep -q 'PMLE_HOST_QUIESCENCE|PASS' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
   fail 'ledger component A/B host-quiescence evidence missing'
+grep -q 'PMLE_BENCHMARK_POOL|PARKED|live_slots=' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B does not park retained sessions before measurement'
+grep -q 'start_warm_pool' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B does not restore the retained pool'
 grep -q 'restore_production_module' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
   fail 'ledger component A/B does not fail-closed restore production'
 grep -q 'artifact-metadata.sql' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
@@ -483,11 +496,23 @@ grep -q 'DOOMDB_HIGH_AWAKE_RECOVERY_GATE' "$WAN_SOAK" ||
   fail 'density-stratified maximum-distance recovery acceptance mode missing'
 grep -q "highAwakeRecoveryGate?recoveryVerdict:'DIAGNOSTIC_NOT_GATE'" "$WAN_SOAK" ||
   fail 'high-awake recovery measurement is not honestly classified'
+grep -q 'PMLE_HIGH_AWAKE_GENERATION_ACTIVE' "$WAN_SOAK" ||
+  fail 'high-awake feed is not fenced to the activated generation'
+grep -Fq 'new RegExp(`^PMLE_HIGH_AWAKE_PRELOAD\\|' "$WAN_SOAK" ||
+  fail 'high-awake preload extractor is not start-anchored'
+grep -q 'prepared[.]changes[.]length[*]2}[$]' "$WAN_SOAK" ||
+  fail 'high-awake preload extractor is not end-anchored'
+grep -Fq 'new RegExp(`^PMLE_HIGH_AWAKE_FEED_ACTIVE\\|' "$WAN_SOAK" ||
+  fail 'high-awake active-feed extractor is not start-anchored'
+grep -q 'changes[.]length[*]2}[$]' "$WAN_SOAK" ||
+  fail 'high-awake active-feed extractor is not end-anchored'
 grep -q "recoveryTarget.distance>=240&&recoveryTarget.distance<=255" "$WAN_SOAK" ||
   fail 'high-awake recovery is not killed at maximum scheduled distance'
 grep -q "killedDistance>=240&&killedDistance<=255" "$WAN_SOAK" ||
   fail 'high-awake recovery does not verify the durable killed distance'
-grep -q "maximum-distance high-awake recovery exceeded the 60-second SLA" \
+grep -q "recoveryElapsedMs<=45000" "$WAN_SOAK" ||
+  fail 'high-awake recovery does not reserve the production detection budget'
+grep -q "maximum-distance restore/replay/publish exceeded its 45-second phase budget" \
   "$WAN_SOAK" ||
   fail 'high-awake recovery gate does not enforce the stratified SLA'
 if grep -q 'c_checkpoint_tics constant pls_integer:=1024' "$MLE_MATCH_WORKER"; then
