@@ -1,0 +1,78 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1167197|source_sha256=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_MLE_MEMORY_CAL|SKIPPED|rehearsal_only=1
+PMLE_WORKER_SOAK_MATCH|BOUND|match=52f9baced2f3821ae6d0a43d38a3a19d
+PMLE_WORKER_SOAK_BROWSER_EVIDENCE|BEGIN
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForFunction: Timeout 60000ms exceeded.
+    at /Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:131:49
+    at /Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:131:34 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v25.9.0
+PMLE_WORKER_SOAK_BROWSER_EVIDENCE|END
+PMLE_WORKER_SOAK_MEMORY|FAIL|role=AUTHORITY|samples=0|warmup_excluded=1|spid_stable=1|margin=67108864|rss_base=0|rss_max=0|rss_end=0|pss_base=0|pss_max=0|pss_end=0|private_base=0|private_max=0|private_end=0|pss_anon_base=0|pss_anon_max=0|pss_anon_end=0|shared_dirty_base=0|shared_dirty_max=0|shared_dirty_end=0|plateau_steps_8m=0
+PMLE_WORKER_SOAK_MEMORY|FAIL|role=STANDBY|samples=0|warmup_excluded=1|spid_stable=1|margin=67108864|rss_base=0|rss_max=0|rss_end=0|pss_base=0|pss_max=0|pss_end=0|private_base=0|private_max=0|private_end=0|pss_anon_base=0|pss_anon_max=0|pss_anon_end=0|shared_dirty_base=0|shared_dirty_max=0|shared_dirty_end=0|plateau_steps_8m=0
+PMLE_WORKER_SOAK_SLOW|tic=1|generation=1|elapsed_ms=1696.584|started_utc=2026-07-23T23:54:11.627094Z|ended_utc=2026-07-23T23:54:13.323678Z|ash_samples=4|on_cpu=3|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=2|generation=1|elapsed_ms=536.274|started_utc=2026-07-23T23:54:13.381518Z|ended_utc=2026-07-23T23:54:13.917792Z|ash_samples=2|on_cpu=1|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=3|generation=1|elapsed_ms=431.987|started_utc=2026-07-23T23:54:13.927129Z|ended_utc=2026-07-23T23:54:14.359116Z|ash_samples=3|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=4|generation=1|elapsed_ms=265.707|started_utc=2026-07-23T23:54:14.368399Z|ended_utc=2026-07-23T23:54:14.634106Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=5|generation=1|elapsed_ms=352.285|started_utc=2026-07-23T23:54:14.651913Z|ended_utc=2026-07-23T23:54:15.004198Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=6|generation=1|elapsed_ms=267.547|started_utc=2026-07-23T23:54:15.012806Z|ended_utc=2026-07-23T23:54:15.280353Z|ash_samples=3|on_cpu=3|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=7|generation=1|elapsed_ms=299.538|started_utc=2026-07-23T23:54:15.286454Z|ended_utc=2026-07-23T23:54:15.585992Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=8|generation=1|elapsed_ms=302.096|started_utc=2026-07-23T23:54:15.592055Z|ended_utc=2026-07-23T23:54:15.894151Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=9|generation=1|elapsed_ms=277.619|started_utc=2026-07-23T23:54:15.903607Z|ended_utc=2026-07-23T23:54:16.181226Z|ash_samples=3|on_cpu=3|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=10|generation=1|elapsed_ms=204.175|started_utc=2026-07-23T23:54:16.206735Z|ended_utc=2026-07-23T23:54:16.410910Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=11|generation=1|elapsed_ms=206.922|started_utc=2026-07-23T23:54:16.415678Z|ended_utc=2026-07-23T23:54:16.622600Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=12|generation=1|elapsed_ms=194.878|started_utc=2026-07-23T23:54:16.632802Z|ended_utc=2026-07-23T23:54:16.827680Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=13|generation=1|elapsed_ms=305.814|started_utc=2026-07-23T23:54:16.832078Z|ended_utc=2026-07-23T23:54:17.137892Z|ash_samples=3|on_cpu=3|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=14|generation=1|elapsed_ms=245.895|started_utc=2026-07-23T23:54:17.143129Z|ended_utc=2026-07-23T23:54:17.389024Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=15|generation=1|elapsed_ms=130.129|started_utc=2026-07-23T23:54:17.399770Z|ended_utc=2026-07-23T23:54:17.529899Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=16|generation=1|elapsed_ms=178.476|started_utc=2026-07-23T23:54:17.534566Z|ended_utc=2026-07-23T23:54:17.713042Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=17|generation=1|elapsed_ms=283.495|started_utc=2026-07-23T23:54:17.717629Z|ended_utc=2026-07-23T23:54:18.001124Z|ash_samples=3|on_cpu=3|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=18|generation=1|elapsed_ms=221.388|started_utc=2026-07-23T23:54:18.011422Z|ended_utc=2026-07-23T23:54:18.232810Z|ash_samples=3|on_cpu=3|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=19|generation=1|elapsed_ms=218.14|started_utc=2026-07-23T23:54:18.245855Z|ended_utc=2026-07-23T23:54:18.463995Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=20|generation=1|elapsed_ms=214.645|started_utc=2026-07-23T23:54:18.469594Z|ended_utc=2026-07-23T23:54:18.684239Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=21|generation=1|elapsed_ms=216.348|started_utc=2026-07-23T23:54:18.697091Z|ended_utc=2026-07-23T23:54:18.913439Z|ash_samples=3|on_cpu=3|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=22|generation=1|elapsed_ms=219.169|started_utc=2026-07-23T23:54:18.923845Z|ended_utc=2026-07-23T23:54:19.143014Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=23|generation=1|elapsed_ms=201.699|started_utc=2026-07-23T23:54:19.149075Z|ended_utc=2026-07-23T23:54:19.350774Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=24|generation=1|elapsed_ms=203.065|started_utc=2026-07-23T23:54:19.359991Z|ended_utc=2026-07-23T23:54:19.563056Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=25|generation=1|elapsed_ms=174.244|started_utc=2026-07-23T23:54:19.571468Z|ended_utc=2026-07-23T23:54:19.745712Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=26|generation=1|elapsed_ms=164.765|started_utc=2026-07-23T23:54:19.752024Z|ended_utc=2026-07-23T23:54:19.916789Z|ash_samples=3|on_cpu=3|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=27|generation=1|elapsed_ms=201.107|started_utc=2026-07-23T23:54:19.924170Z|ended_utc=2026-07-23T23:54:20.125277Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=28|generation=1|elapsed_ms=341.932|started_utc=2026-07-23T23:54:20.132994Z|ended_utc=2026-07-23T23:54:20.474926Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=29|generation=1|elapsed_ms=304.071|started_utc=2026-07-23T23:54:20.481688Z|ended_utc=2026-07-23T23:54:20.785759Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=30|generation=1|elapsed_ms=211.091|started_utc=2026-07-23T23:54:20.796540Z|ended_utc=2026-07-23T23:54:21.007631Z|ash_samples=3|on_cpu=3|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_SLOW|tic=31|generation=1|elapsed_ms=209.056|started_utc=2026-07-23T23:54:21.014652Z|ended_utc=2026-07-23T23:54:21.223708Z|ash_samples=2|on_cpu=2|resmgr=0|commit_io=0
+PMLE_WORKER_SOAK_RES_MGR|ash_samples=28|cpu_quantum=0
+PMLE_WORKER_SOAK|FAIL|reason=browser_gate|browser_status=1|memory_status=1|evidence=artifacts/performance/pmle-worker-soak/run-passive-standby-smoke-2026-07-23.log

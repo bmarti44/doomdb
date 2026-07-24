@@ -15,6 +15,7 @@
     <teavm.targetFile>doom-mle-engine-slice.js</teavm.targetFile>
     <teavm.minifying>true</teavm.minifying>
     <teavm.sourceMapsGenerated>false</teavm.sourceMapsGenerated>
+    <teavm.optimizationLevel>ADVANCED</teavm.optimizationLevel>
   </properties>
   <dependencies>
     <dependency>
@@ -48,7 +49,7 @@
           <targetFileName>${teavm.targetFile}</targetFileName>
           <minifying>${teavm.minifying}</minifying>
           <sourceMapsGenerated>${teavm.sourceMapsGenerated}</sourceMapsGenerated>
-          <optimizationLevel>ADVANCED</optimizationLevel>
+          <optimizationLevel>${teavm.optimizationLevel}</optimizationLevel>
         </configuration>
       </plugin>
     </plugins>

@@ -1,0 +1,20 @@
+PMLE_WAN_PROXY|READY|port=18050|upstream=http://127.0.0.1:8080|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-50-jitter-10|rtt_ms=50|jitter_ms=10|seed=351272
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.waitFor: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('[data-room]') to be visible[22m
+[2m    63 × locator resolved to hidden <div hidden="" data-room="">…</div>[22m
+
+    at /Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:108:37 {
+  log: [
+    "  - waiting for locator('[data-room]') to be visible",
+    '    63 × locator resolved to hidden <div hidden="" data-room="">…</div>'
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v25.9.0

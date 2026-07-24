@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
+import {execFileSync,spawn} from 'node:child_process';
 import fs from 'node:fs';
 import {chromium} from 'playwright';
 
@@ -7,23 +7,76 @@ const base=process.env.DOOMDB_PLAY_BASE_URL??'http://localhost:8080';
 const seconds=Number(process.env.DOOMDB_MULTIPLAYER_SOAK_SECONDS??1800);
 const warmupSeconds=Number(process.env.DOOMDB_MULTIPLAYER_SOAK_WARMUP_SECONDS??0);
 const startupTimeoutMs=Number(process.env.DOOMDB_MULTIPLAYER_STARTUP_TIMEOUT_MS??300000);
+const progressTimeoutMs=Number(process.env.DOOMDB_MULTIPLAYER_PROGRESS_TIMEOUT_MS??60000);
 const wanGate=process.env.DOOMDB_WAN_GATE==='1';
 const wanRttMs=Number(process.env.DOOMDB_WAN_RTT_MS??0);
 const wanJitterMs=Number(process.env.DOOMDB_WAN_JITTER_MS??0);
 const wanHoldMs=Number(process.env.DOOMDB_WAN_HOLD_MS??0);
 const wanBackgroundScenario=process.env.DOOMDB_WAN_BACKGROUND_SCENARIO==='1';
+const routeDiagnostics=process.env.DOOMDB_ROUTE_DIAGNOSTICS==='1';
+const checkpointLivenessDiagnostic=
+  process.env.DOOMDB_CHECKPOINT_LIVENESS_DIAGNOSTIC==='1';
+const killCheckpointDiagnostic=
+  process.env.DOOMDB_KILL_CHECKPOINT_DIAGNOSTIC==='1';
+const doubleRecoveryDiagnostic=
+  process.env.DOOMDB_DOUBLE_RECOVERY_DIAGNOSTIC==='1';
+const highAwakeRecoveryDiagnostic=
+  process.env.DOOMDB_HIGH_AWAKE_RECOVERY_DIAGNOSTIC==='1';
+const highAwakeRecoveryGate=
+  process.env.DOOMDB_HIGH_AWAKE_RECOVERY_GATE==='1';
+const cadenceObservation=
+  process.env.DOOMDB_CHECKPOINT_CADENCE_OBSERVATION==='1';
 assert.ok(Number.isInteger(seconds)&&seconds>=20&&seconds<=1800);
 assert.ok(Number.isInteger(warmupSeconds)&&warmupSeconds>=0&&warmupSeconds<=600);
 assert.ok(Number.isInteger(startupTimeoutMs)&&startupTimeoutMs>=60000&&startupTimeoutMs<=600000);
+assert.ok(Number.isInteger(progressTimeoutMs)&&progressTimeoutMs>=60000&&progressTimeoutMs<=600000);
 if(wanGate) {
   assert.ok(wanRttMs>0&&wanJitterMs>=0&&wanJitterMs<=wanRttMs);
   assert.ok(wanHoldMs>=0&&wanHoldMs<=500);
   if(wanBackgroundScenario) assert.ok(warmupSeconds>=20);
 }
+assert.ok([
+  checkpointLivenessDiagnostic,
+  doubleRecoveryDiagnostic,
+  highAwakeRecoveryDiagnostic,
+  cadenceObservation
+].filter(Boolean).length<=1,'recovery diagnostics are mutually exclusive');
+if(highAwakeRecoveryDiagnostic||cadenceObservation) {
+  assert.ok(routeDiagnostics,
+    'checkpoint cadence scenarios require route diagnostics');
+}
+if(highAwakeRecoveryGate) {
+  assert.ok(highAwakeRecoveryDiagnostic,
+    'high-awake recovery gate requires the diagnostic scenario');
+}
 const matchFile=process.env.DOOMDB_MATCH_ID_FILE;
 assert.ok(matchFile,'DOOMDB_MATCH_ID_FILE is required');
 const dbContainer=execFileSync('docker',['compose','ps','-q','db'],{encoding:'utf8'}).trim();
 assert.ok(dbContainer,'database container is unavailable');
+const dbSql=sql=>execFileSync('docker',['exec','-i',dbContainer,'sqlplus','-s',
+  '/','as','sysdba'],{
+    input:`alter session set container=freepdb1;\nset heading off feedback off pagesize 0\n${sql}\n`,
+    encoding:'utf8'
+  });
+const dbSqlAsync=sql=>new Promise((resolve,reject)=>{
+  const child=spawn('docker',
+    ['exec','-i',dbContainer,'sqlplus','-s','/','as','sysdba'],{
+      stdio:['pipe','pipe','pipe']
+    });
+  let stdout='';let stderr='';
+  child.stdout.setEncoding('utf8');
+  child.stderr.setEncoding('utf8');
+  child.stdout.on('data',chunk=>{stdout+=chunk;});
+  child.stderr.on('data',chunk=>{stderr+=chunk;});
+  child.on('error',reject);
+  child.on('close',code=>{
+    if(code===0) resolve(stdout);
+    else reject(new Error(`async SQL*Plus exited ${code}: ${stderr||stdout}`));
+  });
+  child.stdin.end(`alter session set container=freepdb1;\n`+
+    `set heading off feedback off pagesize 0 serveroutput on size unlimited\n`+
+    `${sql}\n`);
+});
 const workerMemory=match=>{
   const sql=`alter session set container=freepdb1;\n`+
     `set heading off feedback off pagesize 0 linesize 32767 trimspool on\n`+
@@ -74,6 +127,7 @@ await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
   window.__doomWanEffective=[];
   window.__doomWanConfirmed=[];
   window.__doomWanPresented=[];
+  window.__doomWanBatches=[];
   window.__doomWanVisibility=[];
   window.__doomWanLead=[];
   addEventListener('doom:multiplayer-present',event=>{
@@ -90,6 +144,8 @@ await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
     window.__doomWanEffective.push(event.detail));
   addEventListener('doom:multiplayer-confirmed',event=>
     window.__doomWanConfirmed.push(event.detail));
+  addEventListener('doom:multiplayer-batch',event=>
+    window.__doomWanBatches.push(event.detail));
   addEventListener('doom:multiplayer-visibility',event=>
     window.__doomWanVisibility.push(event.detail));
   addEventListener('doom:multiplayer-lead',event=>
@@ -99,18 +155,32 @@ let match='';
 try {
   const gameUrl=new URL('/play/multiplayer',base);
   if(wanHoldMs>0) gameUrl.searchParams.set('holdMs',String(wanHoldMs));
-  await host.goto(gameUrl.toString(),{waitUntil:'networkidle'});
+  // This page intentionally polls Oracle. Network-idle is therefore not a
+  // stable readiness contract; the create/join locators below are the actual
+  // UI readiness fences.
+  await host.goto(gameUrl.toString(),{waitUntil:'domcontentloaded'});
+  process.stdout.write('PMLE_SOAK_STAGE|host_dom_ready\n');
   await host.locator('[data-create] input[name=name]').fill('SOAK HOST');
+  process.stdout.write('PMLE_SOAK_STAGE|host_name_filled\n');
+  if(highAwakeRecoveryDiagnostic) {
+    await host.locator('[data-create] select[name=mode]').selectOption('DEATHMATCH');
+  }
+  process.stdout.write('PMLE_SOAK_STAGE|create_click_begin\n');
   await host.getByRole('button',{name:'Create two-player match'}).click();
+  process.stdout.write('PMLE_SOAK_STAGE|create_clicked\n');
   await host.locator('[data-room]').waitFor({state:'visible'});
+  process.stdout.write('PMLE_SOAK_STAGE|host_room_visible\n');
   const share=await host.locator('[data-share]').inputValue();
   match=new URL(share).hash.slice('#join='.length).split('.')[0]??'';
   assert.match(match,/^[0-9a-f]{32}$/);
   fs.writeFileSync(matchFile,`${match}\n`,{encoding:'ascii',mode:0o600});
-  await guest.goto(share,{waitUntil:'networkidle'});
+  await guest.goto(share,{waitUntil:'domcontentloaded'});
+  process.stdout.write('PMLE_SOAK_STAGE|guest_dom_ready\n');
   await guest.locator('[data-join] input[name=name]').fill('SOAK GUEST');
   await guest.getByRole('button',{name:'Join match'}).click();
+  process.stdout.write('PMLE_SOAK_STAGE|join_clicked\n');
   await guest.locator('[data-room]').waitFor({state:'visible'});
+  process.stdout.write('PMLE_SOAK_STAGE|guest_room_visible\n');
   await guest.waitForFunction(()=>location.hash.startsWith('#resume='));
   await host.waitForFunction(()=>document.querySelector('[data-room-status]')?.textContent?.includes('2/2 joined'));
   for (const page of [host,guest]) {
@@ -120,8 +190,400 @@ try {
     });
   }
   await Promise.all([host,guest].map(page=>page.locator('[data-ready]').click()));
+  process.stdout.write('PMLE_SOAK_STAGE|both_ready_clicked\n');
+  if(routeDiagnostics) {
+    let output='';
+    for(let attempt=0;attempt<100;attempt++) {
+      output=dbSql(
+        `update doom.doom_match_worker_control set route_diagnostics=1,`+
+        `checkpoint_test_hook=${checkpointLivenessDiagnostic?1:0} `+
+        `where match_id='${match}';\ncommit;\n`+
+        `select 'PMLE_ROUTE_DIAGNOSTICS|'||route_diagnostics||'|'||`+
+        `checkpoint_test_hook `+
+        `from doom.doom_match_worker_control where match_id='${match}';`);
+      if(new RegExp(`PMLE_ROUTE_DIAGNOSTICS\\|1\\|${
+        checkpointLivenessDiagnostic?1:0}`).test(output)) break;
+      await host.waitForTimeout(100);
+    }
+    assert.match(output,new RegExp(`PMLE_ROUTE_DIAGNOSTICS\\|1\\|${
+      checkpointLivenessDiagnostic?1:0}`),
+      'failed to enable retained-worker stage diagnostics');
+    process.stdout.write(`PMLE_ROUTE_DIAGNOSTICS|ENABLED|match=${match}\n`);
+  }
   await Promise.all([host,guest].map(page=>page.locator('[data-game][data-active]')
     .waitFor({state:'visible',timeout:startupTimeoutMs})));
+  if(cadenceObservation) {
+    let cadence=null;
+    const observationDeadline=Date.now()+10*60*1000;
+    while(Date.now()<observationDeadline) {
+      const output=dbSql(
+        `select 'PMLE_CADENCE_OBSERVATION|'||m.current_tic||'|'||`+
+        `nvl(p.tic,0)||'|'||nvl(p.previous_checkpoint_tic,0)||'|'||`+
+        `nvl(p.checkpoint_distance,0)||'|'||nvl(p.awake_monsters,0)||'|'||`+
+        `nvl(p.checkpoint_decision,'NONE')||'|'||`+
+        `nvl((select max(cp.tic) from doom.doom_match_checkpoint cp where `+
+        `cp.match_id=m.match_id and cp.generation=m.generation),0)||'|'||`+
+        `w.checkpoint_test_hook from doom.doom_match m join `+
+        `doom.doom_match_worker_control w on w.match_id=m.match_id `+
+        `left join doom.doom_match_checkpoint_probe p on p.match_id=m.match_id `+
+        `and p.tic=(select max(q.tic) from doom.doom_match_checkpoint_probe q `+
+        `where q.match_id=m.match_id) where m.match_id='${match}';`);
+      const row=output.match(
+        /PMLE_CADENCE_OBSERVATION\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\w+)\|(\d+)\|(\d+)/);
+      if(row&&Number(row[2])>0&&Number(row[7])>=Number(row[2])) {
+        cadence={
+          frontier:Number(row[1]),probeTic:Number(row[2]),
+          previousCheckpoint:Number(row[3]),distance:Number(row[4]),
+          awake:Number(row[5]),decision:row[6],
+          durableCheckpoint:Number(row[7]),testHook:Number(row[8])
+        };
+        break;
+      }
+      await host.waitForTimeout(100);
+    }
+    assert.ok(cadence,'production checkpoint cadence was not observed');
+    assert.equal(cadence.testHook,0,
+      'cadence observation accidentally enabled the tic-64 test hook');
+    assert.ok(cadence.distance>=128&&cadence.distance<=256,
+      'observed checkpoint violated the production cadence bounds');
+    assert.equal(cadence.durableCheckpoint,cadence.probeTic,
+      'cadence decision did not publish its checkpoint');
+    assert.ok(['LOW_AWAKE','FORCED_MAX'].includes(cadence.decision),
+      'observed cadence decision was not checkpoint-producing');
+    process.stdout.write(`PMLE_CHECKPOINT_CADENCE_OBSERVATION|PASS`+
+      `|frontier=${cadence.frontier}|checkpoint_tic=${cadence.probeTic}`+
+      `|previous_checkpoint_tic=${cadence.previousCheckpoint}`+
+      `|distance=${cadence.distance}|awake=${cadence.awake}`+
+      `|decision=${cadence.decision}|checkpoint_test_hook=0\n`);
+  } else if(highAwakeRecoveryDiagnostic) {
+    // Extend membership before disconnecting the browsers. Taking them
+    // offline first races mark_disconnected and can legitimately remove the
+    // host before the diagnostic stream is installed.
+    dbSql(`update doom.doom_match_member set last_seen_at=`+
+      `systimestamp+interval '30' minute where match_id='${match}' `+
+      `and member_state='ACTIVE';\n`+
+      `update doom.doom_match set expires_at=`+
+      `systimestamp+interval '30' minute where match_id='${match}';\ncommit;`);
+    await Promise.all(contexts.map(context=>context.setOffline(true)));
+    const fixture=JSON.parse(fs.readFileSync(new URL(
+      './fixtures/mle-live-deathmatch-2026-07-23.json',import.meta.url),'utf8'));
+    assert.equal(fixture.mode,'DEATHMATCH');
+    assert.equal(fixture.players,2);
+    const feedTics=512;
+    let relativeTic=1;
+    const changes=[];
+    for(const run of fixture.runs) {
+      if(relativeTic>feedTics) break;
+      assert.match(run.command,/^[0-9a-f]{64}$/);
+      changes.push({
+        tic:relativeTic,
+        p0:run.command.slice(0,16),
+        p1:run.command.slice(16,32)
+      });
+      relativeTic+=Math.min(run.repeat,feedTics-relativeTic+1);
+    }
+    const feedHeader=dbSql(
+      `select 'PMLE_HIGH_AWAKE_FEED|'||m.current_tic||'|'||m.generation||`+
+      `'|'||m.membership_epoch||'|'||`+
+      `nvl((select max(input_seq) from doom.doom_match_input_event i where `+
+      `i.match_id=m.match_id and i.player_slot=0),0)||'|'||`+
+      `nvl((select max(input_seq) from doom.doom_match_input_event i where `+
+      `i.match_id=m.match_id and i.player_slot=1),0) from doom.doom_match m `+
+      `where m.match_id='${match}';`);
+    const feed=feedHeader.match(
+      /PMLE_HIGH_AWAKE_FEED\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)/);
+    assert.ok(feed,'high-awake fixture frontier missing');
+    const feedBase=Number(feed[1])+12;
+    const feedGeneration=Number(feed[2]);
+    const feedEpoch=Number(feed[3]);
+    const sequenceBase=[Number(feed[4]),Number(feed[5])];
+    const inserts=[];
+    for(const [changeIndex,change] of changes.entries()) {
+      for(const slot of [0,1]) {
+        const raw=slot===0?change.p0:change.p1;
+        inserts.push(
+          `insert into doom.doom_match_input_event(match_id,player_slot,`+
+          `input_seq,effective_tic,membership_epoch,generation,ticcmd_raw,`+
+          `command_sha,accepted_at) values('${match}',${slot},`+
+          `${sequenceBase[slot]+changeIndex+1},${feedBase+change.tic-1},`+
+          `${feedEpoch},${feedGeneration},hextoraw('${raw}'),`+
+          `lower(rawtohex(dbms_crypto.hash(hextoraw('${raw}'),`+
+          `dbms_crypto.hash_sh256))),systimestamp);`);
+      }
+    }
+    dbSql(`${inserts.join('\n')}\n`+
+      `commit;\n`+
+      `select 'PMLE_HIGH_AWAKE_FEED_READY|base=${feedBase}|changes=`+
+      `${changes.length}' from dual;`);
+
+    let recoveryTarget=null;
+    const observationDeadline=Date.now()+20*60*1000;
+    while(Date.now()<observationDeadline) {
+      const output=dbSql(
+        `select 'PMLE_HIGH_AWAKE_WINDOW|'||w.worker_status||'|'||`+
+        `replace(nvl(w.last_error,'NONE'),'|','/')||'|'||m.current_tic||'|'||`+
+        `w.worker_sid||'|'||w.worker_serial||'|'||nvl(p.tic,0)||'|'||`+
+        `nvl(p.previous_checkpoint_tic,0)||'|'||nvl(p.checkpoint_distance,0)||`+
+        `'|'||nvl(p.awake_monsters,0)||'|'||nvl(p.checkpoint_decision,'NONE')||`+
+        `'|'||(select count(*) from doom.doom_match_checkpoint_probe q `+
+        `where q.match_id=m.match_id and q.checkpoint_decision='DEFER_HIGH' `+
+        `and q.awake_monsters>16 and q.tic between nvl(p.tic,0)-32 and `+
+        `nvl(p.tic,0)) from doom.doom_match m join `+
+        `doom.doom_match_worker_control w on w.match_id=m.match_id `+
+        `left join doom.doom_match_checkpoint_probe p on p.match_id=m.match_id `+
+        `and p.tic=(select max(q.tic) from doom.doom_match_checkpoint_probe q `+
+        `where q.match_id=m.match_id) where m.match_id='${match}';`);
+      const row=output.match(
+        /PMLE_HIGH_AWAKE_WINDOW\|(\w+)\|([^|\r\n]+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\w+)\|(\d+)/);
+      if(row) {
+        assert.notEqual(row[1],'FAILED',
+          `high-awake authority failed before recovery target: ${row[2]}`);
+        const frontier=Number(row[3]);
+        const previousCheckpoint=Number(row[7]);
+        const distance=Number(row[8]);
+        const awake=Number(row[9]);
+        const decision=row[10];
+        const sustainedSamples=Number(row[11]);
+        const target=Number(row[6])+16-1;
+        const targetDistance=target-previousCheckpoint;
+        if(decision==='DEFER_HIGH'&&targetDistance>=240&&awake>16&&
+            sustainedSamples>=3&&frontier>=target) {
+          recoveryTarget={
+            frontier,
+            sid:Number(row[4]),
+            serial:Number(row[5]),
+            probeTic:Number(row[6]),
+            previousCheckpoint,
+            distance:frontier-previousCheckpoint,
+            awake,
+            sustainedSamples
+          };
+          break;
+        }
+      }
+      await host.waitForTimeout(100);
+    }
+    assert.ok(recoveryTarget,
+      'no sustained high-awake maximum-distance recovery window was observed');
+    assert.ok(recoveryTarget.distance>=240&&recoveryTarget.distance<=255,
+      'authority was not killed at the maximum scheduled pre-checkpoint distance');
+    const recoveryStarted=Date.now();
+    dbSql(`alter system kill session '${recoveryTarget.sid},`+
+      `${recoveryTarget.serial}' immediate;`);
+    const killedOutput=dbSql(
+      `select 'PMLE_HIGH_AWAKE_KILLED|'||m.current_tic||'|'||`+
+      `nvl((select max(cp.tic) from doom.doom_match_checkpoint cp where `+
+      `cp.match_id=m.match_id and cp.generation=m.generation),0) `+
+      `from doom.doom_match m where m.match_id='${match}';`);
+    const killed=killedOutput.match(/PMLE_HIGH_AWAKE_KILLED\|(\d+)\|(\d+)/);
+    assert.ok(killed,'maximum-distance durable killed frontier missing');
+    const killedFrontier=Number(killed[1]);
+    const killedCheckpoint=Number(killed[2]);
+    const killedDistance=killedFrontier-killedCheckpoint;
+    assert.ok(killedDistance>=240&&killedDistance<=255,
+      'durable kill did not occur at maximum pre-checkpoint distance');
+    const recoveryOutput=await dbSqlAsync(`
+declare
+  l_state varchar2(16);
+begin
+  doom.doom_match_worker.recover_match('${match}',180000,l_state);
+  dbms_output.put_line('PMLE_HIGH_AWAKE_RECOVERY_RESULT|'||l_state);
+end;
+/`);
+    assert.match(recoveryOutput,/PMLE_HIGH_AWAKE_RECOVERY_RESULT\|ACTIVE/,
+      'maximum-distance high-awake recovery did not publish');
+    const recoveryElapsedMs=Date.now()-recoveryStarted;
+    const recoveredOutput=dbSql(
+      `select 'PMLE_HIGH_AWAKE_RECOVERED|'||generation||'|'||current_tic `+
+      `from doom.doom_match where match_id='${match}';`);
+    const recovered=recoveredOutput.match(
+      /PMLE_HIGH_AWAKE_RECOVERED\|(\d+)\|(\d+)/);
+    assert.ok(recovered,'maximum-distance recovered frontier missing');
+    assert.equal(Number(recovered[2]),killedFrontier,
+      'maximum-distance recovery changed the confirmed frontier');
+    const recoveryVerdict=recoveryElapsedMs<=60000?'PASS':'FAIL';
+    process.stdout.write(`PMLE_HIGH_AWAKE_RECOVERY|${
+      highAwakeRecoveryGate?recoveryVerdict:'DIAGNOSTIC_NOT_GATE'}`+
+      `|probe_tic=${recoveryTarget.probeTic}`+
+      `|checkpoint_tic=${killedCheckpoint}`+
+      `|frontier=${killedFrontier}`+
+      `|distance=${killedDistance}`+
+      `|awake=${recoveryTarget.awake}`+
+      `|sustained_samples=${recoveryTarget.sustainedSamples}`+
+      `|elapsed_ms=${recoveryElapsedMs}`+
+      `|sla_60s=${recoveryVerdict}\n`);
+    if(highAwakeRecoveryGate) {
+      assert.equal(recoveryVerdict,'PASS',
+        'maximum-distance high-awake recovery exceeded the 60-second SLA');
+    }
+  } else if(doubleRecoveryDiagnostic) {
+    // Stop client traffic first. A public poll is itself a recovery trigger,
+    // so leaving the browser online would contaminate the intended two-caller
+    // race with a third participant.
+    await Promise.all(contexts.map(context=>context.setOffline(true)));
+    const initialOutput=dbSql(
+      `select 'PMLE_RECOVERY_RACE_INITIAL|'||m.generation||'|'||`+
+      `w.worker_sid||'|'||w.worker_serial||'|'||`+
+      `nvl((select max(assignment_id) from `+
+      `doom.doom_mle_warm_assignment),0) from doom.doom_match m join `+
+      `doom.doom_match_worker_control w on w.match_id=m.match_id `+
+      `where m.match_id='${match}';`);
+    const initial=initialOutput.match(
+      /PMLE_RECOVERY_RACE_INITIAL\|(\d+)\|(\d+)\|(\d+)\|(\d+)/);
+    assert.ok(initial,'double-recovery initial incarnation evidence missing');
+    const initialGeneration=Number(initial[1]);
+    const authoritySid=Number(initial[2]);
+    const authoritySerial=Number(initial[3]);
+    const baselineAssignment=Number(initial[4]);
+
+    // Deliberately vacate the match-bound tier-1 standby. Its retained worker
+    // returns to READY/unbound, which makes tier 2 the highest available rung.
+    dbSql(`update doom.doom_match_standby_control set stop_requested=1 `+
+      `where match_id='${match}' and standby_status='READY';\ncommit;`);
+    let tier2Ready=false;
+    for(let attempt=0;attempt<120;attempt++) {
+      const output=dbSql(
+        `select 'PMLE_RECOVERY_RACE_TIER2|'||`+
+        `(select count(*) from doom.doom_mle_warm_slot where `+
+        `slot_status='READY' and assigned_match is null and `+
+        `assigned_role is null)||'|'||nvl((select standby_status from `+
+        `doom.doom_match_standby_control where match_id='${match}'),'NONE') `+
+        `from dual;`);
+      const row=output.match(/PMLE_RECOVERY_RACE_TIER2\|(\d+)\|(\w+)/);
+      if(row&&Number(row[1])===1&&row[2]==='STOPPED') {
+        tier2Ready=true;
+        break;
+      }
+      await host.waitForTimeout(250);
+    }
+    assert.ok(tier2Ready,'tier-2 unbound warm slot did not become ready');
+    dbSql(`alter system kill session '${authoritySid},${authoritySerial}' immediate;`);
+
+    const callerSql=caller=>`
+declare
+  l_state varchar2(16);
+begin
+  dbms_session.sleep(2);
+  doom.doom_match_worker.recover_match('${match}',180000,l_state);
+  dbms_output.put_line('PMLE_RECOVERY_RACE_CALL|caller=${caller}|result='||
+    l_state);
+exception when others then
+  dbms_output.put_line('PMLE_RECOVERY_RACE_CALL|caller=${caller}|result=ERROR'||
+    '|sqlcode='||sqlcode||'|message='||replace(substr(sqlerrm,1,300),'|','/'));
+end;
+/`;
+    const raceOutputs=await Promise.all([
+      dbSqlAsync(callerSql(1)),
+      dbSqlAsync(callerSql(2))
+    ]);
+    process.stdout.write(raceOutputs.join(''));
+
+    const finalOutput=dbSql(
+      `select 'PMLE_RECOVERY_RACE_FINAL|'||m.generation||'|'||`+
+      `w.generation||'|'||w.worker_status||'|'||`+
+      `(select count(*) from doom.doom_mle_warm_assignment a where `+
+      `a.assignment_id>${baselineAssignment} and a.match_id=m.match_id `+
+      `and a.assigned_role='AUTHORITY') from doom.doom_match m join `+
+      `doom.doom_match_worker_control w on w.match_id=m.match_id `+
+      `where m.match_id='${match}';`);
+    const final=finalOutput.match(
+      /PMLE_RECOVERY_RACE_FINAL\|(\d+)\|(\d+)\|(\w+)\|(\d+)/);
+    assert.ok(final,'double-recovery final fence evidence missing');
+    assert.equal(Number(final[1]),initialGeneration+1,
+      'double recovery advanced the match generation more than once');
+    assert.equal(Number(final[2]),initialGeneration+1,
+      'double recovery published more than one control generation');
+    assert.equal(final[3],'READY','winning tier-2 authority is not ready');
+    assert.equal(Number(final[4]),1,
+      'double recovery produced other than one tier-2 assignment');
+    const activeCalls=raceOutputs.filter(output=>
+      /PMLE_RECOVERY_RACE_CALL\|caller=\d+\|result=ACTIVE/.test(output)).length;
+    const rejectedCalls=raceOutputs.filter(output=>
+      /PMLE_RECOVERY_RACE_CALL\|caller=\d+\|result=ERROR/.test(output)).length;
+    assert.equal(activeCalls,1,'exactly one recovery caller must publish');
+    assert.equal(rejectedCalls,1,'losing recovery caller was not fenced');
+    process.stdout.write(`PMLE_DOUBLE_RECOVERY|PASS|match=${match}`+
+      `|generation=${initialGeneration}->${Number(final[1])}`+
+      `|tier2_assignments=1|winner=1|loser_fenced=1\n`);
+  } else if(checkpointLivenessDiagnostic) {
+    let frontier=0;let generation=0;let workerStatus='';let checkpointTic=0;
+    let checkpointAttemptTic=0;
+    const deadline=Date.now()+600000;
+    let killStarted=0;let killed=false;
+    while(Date.now()<deadline) {
+      const output=dbSql(
+        `select 'PMLE_CHECKPOINT_FRONTIER|'||m.current_tic||'|'||`+
+        `m.generation||'|'||w.worker_status||'|'||w.worker_sid||'|'||`+
+        `w.worker_serial||'|'||nvl((select action from v$session s where `+
+        `s.sid=w.worker_sid and s.serial#=w.worker_serial),'NO_SESSION') `+
+        `||'|'||nvl((select standby_status from `+
+        `doom.doom_match_standby_control sc where sc.match_id=m.match_id),`+
+        `'NONE')||'|'||nvl((select max(cp.tic) from `+
+        `doom.doom_match_checkpoint cp where cp.match_id=m.match_id),0) `+
+        `from doom.doom_match m join `+
+        `doom.doom_match_worker_control w on w.match_id=m.match_id `+
+        `where m.match_id='${match}';`);
+      const row=output.match(
+        /PMLE_CHECKPOINT_FRONTIER\|(\d+)\|(\d+)\|(\w+)\|(\d+)\|(\d+)\|(\w+)\|(\w+)\|(\d+)/);
+      if(row) {
+        frontier=Number(row[1]);generation=Number(row[2]);workerStatus=row[3];
+        checkpointTic=Number(row[8]);
+        if(killCheckpointDiagnostic&&!killed&&row[6]==='MLE_CHECKPOINT'&&
+            row[7]==='READY') {
+          checkpointAttemptTic=frontier+1;
+          killStarted=Date.now();
+          dbSql(`alter system kill session '${row[4]},${row[5]}' immediate;`);
+          killed=true;
+          process.stdout.write(`PMLE_CHECKPOINT_KILL|sid=${row[4]}`+
+            `|serial=${row[5]}\n`);
+        }
+        if(killCheckpointDiagnostic) {
+          if(killed&&generation>1&&frontier>=checkpointAttemptTic) break;
+        } else if((checkpointTic>0&&frontier>=checkpointTic+8)||
+            generation!==1) break;
+      }
+      await host.waitForTimeout(250);
+    }
+    const slowOutput=dbSql(
+      `select 'PMLE_CHECKPOINT_SLOW|'||tic||'|'||round(elapsed_ms,3)||'|'||`+
+      `nvl(round(pre_mle_ms,3),-1)||'|'||nvl(round(mle_ms,3),-1)||'|'||`+
+      `nvl(round(post_mle_ms,3),-1)||'|'||nvl(round(commit_ms,3),-1) `+
+      `||'|'||nvl(round(checkpoint_save_ms,3),-1)||'|'||`+
+      `nvl(round(checkpoint_publish_ms,3),-1) `+
+      `from doom.doom_match_slow_call where match_id='${match}' `+
+      `and checkpoint_save_ms is not null `+
+      `order by tic desc,generation desc fetch first 1 row only;`);
+    process.stdout.write(`PMLE_CHECKPOINT_LIVENESS|match=${match}|tic=${frontier}`+
+      `|checkpoint_tic=${checkpointTic}|checkpoint_attempt_tic=`+
+      `${checkpointAttemptTic}|generation=${generation}`+
+      `|worker=${workerStatus}\n${slowOutput}`);
+    const exercisedCheckpoint=killCheckpointDiagnostic?
+      checkpointAttemptTic:checkpointTic;
+    const minimumExpectedCheckpoint=routeDiagnostics?64:128;
+    assert.ok(exercisedCheckpoint>=minimumExpectedCheckpoint&&
+      exercisedCheckpoint<=256,
+      'authority did not exercise a checkpoint inside the cadence bound');
+    assert.ok(frontier>=exercisedCheckpoint,
+      'authority did not cross the discovered checkpoint');
+    if(killCheckpointDiagnostic) {
+      assert.ok(killed,'authority never exposed the checkpoint action');
+      assert.ok(generation>1,'killed checkpoint session did not recover');
+      const recoveryMs=Date.now()-killStarted;
+      process.stdout.write(`PMLE_CHECKPOINT_RECOVERY|elapsed_ms=${recoveryMs}\n`);
+      assert.ok(recoveryMs<=60000,
+        'killed checkpoint session exceeded the 60 s recovery bound');
+    } else {
+      assert.equal(generation,1,'REST recovered during a legitimate checkpoint');
+      const probeOutput=dbSql(
+        `select 'PMLE_LIVENESS_DECISION|'||decision from `+
+        `doom.doom_match_liveness_probe where match_id='${match}' `+
+        `order by probe_id;`);
+      process.stdout.write(probeOutput);
+      assert.match(probeOutput,/PMLE_LIVENESS_DECISION\|SUPPRESS_BUSY/,
+        'slow checkpoint did not exercise the primary busy lease');
+    }
+    assert.equal(workerStatus,'READY');
+  } else {
   await Promise.all([host,guest].map(page=>page.waitForFunction(()=>
     /TIC [1-9][0-9]*/.test(document.querySelector('[data-hud]')?.textContent??''),
     null,{timeout:30000})));
@@ -131,7 +593,7 @@ try {
     const server=Number(text.match(/SERVER (\d+)/)?.[1]??999);
     return text.includes('confirmed-only')&&window.__doomSoakTics.length>=40&&
       server-tic<=8;
-  },null,{timeout:60000})));
+  },null,{timeout:progressTimeoutMs})));
   let backgroundSummary='';
   const warmupStarted=Date.now();
   if(wanBackgroundScenario) {
@@ -250,6 +712,7 @@ try {
       effective:window.__doomWanEffective.filter(value=>value.at>=measurementStart),
       lead:window.__doomWanLead.filter(value=>value.at>=measurementStart),
       confirmed:window.__doomWanConfirmed.filter(value=>value.at>=measurementStart),
+      batches:window.__doomWanBatches.filter(value=>value.at>=measurementStart),
       presentedDetails:window.__doomWanPresented.filter(value=>
         value.at>=measurementStart)
     }),{start:startCounts[slot],measurementStart:measurementStarts[slot]})));
@@ -296,7 +759,7 @@ try {
     if(wanGate) {
       const inputBySequence=new Map(evidence[slot].inputs.map(value=>
         [value.inputSequence,value]));
-      const effectLatencies=[];const roundTrips=[];
+      const effectLatencies=[];const roundTrips=[];const latencyParts=[];
       let priorLead=null;
       for(const effective of evidence[slot].effective) {
         roundTrips.push(effective.roundTripMs);
@@ -309,10 +772,25 @@ try {
         }
         const input=inputBySequence.get(effective.inputSequence);
         if(input===undefined) continue;
+        const confirmed=evidence[slot].confirmed.find(value=>
+          value.tic>=effective.effectiveTic&&value.at>=effective.at);
         const presentedIndex=evidence[slot].presented.findIndex((tic,index)=>
           tic>=effective.effectiveTic&&evidence[slot].paintAt[index]>=input.at);
-        if(presentedIndex>=0)
-          effectLatencies.push(evidence[slot].paintAt[presentedIndex]-input.at);
+        if(presentedIndex>=0) {
+          const presentedAt=evidence[slot].paintAt[presentedIndex];
+          effectLatencies.push(presentedAt-input.at);
+          latencyParts.push({
+            queueAndPostMs:effective.at-input.at,
+            roundTripMs:effective.roundTripMs,
+            acceptedToConfirmedMs:confirmed===undefined ? null :
+              confirmed.at-effective.at,
+            confirmedToPresentedMs:confirmed===undefined ? null :
+              presentedAt-confirmed.at,
+            totalMs:presentedAt-input.at,
+            inputSequence:effective.inputSequence,
+            effectiveTic:effective.effectiveTic
+          });
+        }
       }
       assert.ok(effectLatencies.length>=Math.max(20,seconds),
         `WAN player ${slot} has too few input/presentation pairs`);
@@ -348,6 +826,34 @@ try {
       // RTT/jitter, the selected input lead and confirmed playout offset, plus
       // one authoritative processing tic.
       const limit=wanRttMs+wanJitterMs+(maxLead+maxPlayout+1)*(1000/35);
+      const numericPart=(name)=>latencyParts.map(value=>value[name])
+        .filter(value=>typeof value==='number'&&Number.isFinite(value));
+      const componentSummary={
+        samples:latencyParts.length,
+        totalP50Ms:percentile(effectLatencies,.50),
+        totalP90Ms:percentile(effectLatencies,.90),
+        totalP95Ms:p95,
+        totalMaxMs:Math.max(...effectLatencies),
+        queueAndPostP95Ms:percentile(numericPart('queueAndPostMs'),.95),
+        postRoundTripP95Ms:percentile(numericPart('roundTripMs'),.95),
+        acceptedToConfirmedP95Ms:
+          percentile(numericPart('acceptedToConfirmedMs'),.95),
+        confirmedToPresentedP95Ms:
+          percentile(numericPart('confirmedToPresentedMs'),.95),
+        batchWallP95Ms:percentile(evidence[slot].batches.map(value=>value.wallMs),.95),
+        batchHoldP95Ms:
+          percentile(evidence[slot].batches.map(value=>value.holdElapsedMs),.95),
+        batchCountP95:percentile(evidence[slot].batches.map(value=>value.count),.95),
+        presentationLagP50Tics:percentile(evidence[slot].presentedDetails.map(
+          value=>value.presentationLagTics),.50),
+        presentationLagP95Tics:percentile(evidence[slot].presentedDetails.map(
+          value=>value.presentationLagTics),.95),
+        presentationLagMaxTics:Math.max(...evidence[slot].presentedDetails.map(
+          value=>value.presentationLagTics)),
+        worst:latencyParts.toSorted((left,right)=>right.totalMs-left.totalMs).slice(0,5)
+      };
+      process.stdout.write(`PMLE_WAN_LATENCY_DIAG|slot=${slot}|`+
+        `${JSON.stringify(componentSummary)}\n`);
       assert.ok(p95<=limit,
         `WAN player ${slot} input/presentation p95 `+
         `${p95.toFixed(1)} > ${limit.toFixed(1)}`);
@@ -443,6 +949,7 @@ try {
     `frames=${frames} checkpoints=${checkpoints} bytes=${bytes} `+
     `disconnectedNeutral=${disconnectedNeutral} initialNeutral=${initialNeutral} `+
     `paint999Max=${paintTails.map(value=>`${value.p999.toFixed(1)}/${value.max.toFixed(1)}`).join(',')}${memorySummary}\n`);
+  }
 } finally {
   await browser.close();
 }

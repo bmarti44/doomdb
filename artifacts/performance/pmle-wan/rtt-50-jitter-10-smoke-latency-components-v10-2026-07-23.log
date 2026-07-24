@@ -1,0 +1,22 @@
+PMLE_WAN_PROXY|READY|port=18050|upstream=http://127.0.0.1:8080|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-50-jitter-10|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=50|hidden_ms=12308.2|checkpoint_tic=32|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=708|advanced=708|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":39,"totalP50Ms":640.3000001907349,"totalP90Ms":715.5,"totalP95Ms":723.5,"totalMaxMs":732.8000001907349,"queueAndPostP95Ms":123,"postRoundTripP95Ms":123,"acceptedToConfirmedP95Ms":277.69999980926514,"confirmedToPresentedP95Ms":576.3000001907349,"batchWallP95Ms":185.60000038146973,"batchHoldP95Ms":100,"worst":[{"queueAndPostMs":123,"roundTripMs":123,"acceptedToConfirmedMs":195.4000005722046,"confirmedToPresentedMs":414.3999996185303,"totalMs":732.8000001907349,"inputSequence":10,"effectiveTic":3447},{"queueAndPostMs":68.80000019073486,"roundTripMs":64.20000076293945,"acceptedToConfirmedMs":86.69999980926514,"confirmedToPresentedMs":568,"totalMs":723.5,"inputSequence":14,"effectiveTic":3518},{"queueAndPostMs":60.79999923706055,"roundTripMs":60.69999980926514,"acceptedToConfirmedMs":298.30000019073486,"confirmedToPresentedMs":360.19999980926514,"totalMs":719.2999992370605,"inputSequence":24,"effectiveTic":3694},{"queueAndPostMs":56.39999961853027,"roundTripMs":54.20000076293945,"acceptedToConfirmedMs":82.80000019073486,"confirmedToPresentedMs":576.3000001907349,"totalMs":715.5,"inputSequence":13,"effectiveTic":3500},{"queueAndPostMs":109.89999961853027,"roundTripMs":108.5,"acceptedToConfirmedMs":260.80000019073486,"confirmedToPresentedMs":339,"totalMs":709.6999998092651,"inputSequence":15,"effectiveTic":3535}]}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: WAN player 0 input/presentation p95 723.5 > 460.0
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:391:14
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

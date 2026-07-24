@@ -23,6 +23,20 @@ function addSample(samples, value) {
         samples.shift();
 }
 /**
+ * Presentation cadence for an already-confirmed queue.
+ *
+ * A consumer locked permanently to the simulation's 35 Hz rate can never
+ * remove backlog introduced by startup or a WAN burst. Confirmed frames may be
+ * time-compressed, but never reordered or skipped, until the requested
+ * one-frame playout horizon is restored.
+ */
+export function confirmedPlayoutIntervalMs(backlogTics) {
+    if (!Number.isInteger(backlogTics) || backlogTics < 0) {
+        throw new TypeError('confirmed playout backlog is invalid');
+    }
+    return backlogTics > 1 ? TIC_MS / 2 : TIC_MS;
+}
+/**
  * Schedules input and presentation around confirmed database frontiers.
  *
  * This policy never predicts or applies a transition. Its outputs are target

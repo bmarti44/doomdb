@@ -1,0 +1,28 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_LONG_FLAG_CAST|PASS|batches=20|iterations=200000|repeated_p50_ms=1467.633|r
+epeated_p95_ms=1546.545|hoisted_p50_ms=451.006|hoisted_p95_ms=475.236|p50_speedu
+p=3.2541|checksum=-1432869559

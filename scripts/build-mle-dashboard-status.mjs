@@ -12,7 +12,13 @@ const contains = (text, marker, label) =>
 const soakPath =
   'artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log';
 const ledgerPath =
-  'artifacts/performance/pmle-ledger-every-tic/run-init-diet-a942cd2d-2026-07-23.log';
+  'artifacts/performance/pmle-ledger-every-tic/run-checkpoint-map-2026-07-24.log';
+const canonicalPath =
+  'artifacts/performance/pmle-differentials/canonical-checkpoint-map-2026-07-24.log';
+const coopPath =
+  'artifacts/performance/pmle-differentials/coop-checkpoint-map-2026-07-24.log';
+const membershipPath =
+  'artifacts/performance/pmle-differentials/membership-checkpoint-map-2026-07-24.log';
 const initDietPath =
   'artifacts/performance/pmle-init-diet/promotion-a942cd2d-2026-07-23.log';
 const soloPath =
@@ -35,8 +41,13 @@ const finalPromotedSoakPath =
   'run-final-a942-lifecycle-0744-2026-07-23.log';
 const browserProfilePath =
   'artifacts/performance/pmle-browser-replica/profile-2026-07-23.log';
+const livePerformancePath =
+  'artifacts/performance/pmle-live-tic/matrix-parked-gate-2026-07-23.log';
 const soak = read(soakPath);
 const ledger = read(ledgerPath);
+const canonical = read(canonicalPath);
+const coop = read(coopPath);
+const membership = read(membershipPath);
 const initDiet = read(initDietPath);
 const solo = read(soloPath);
 const soloAdmission = read(soloAdmissionPath);
@@ -47,8 +58,13 @@ const lifecycle = read(lifecyclePath);
 const causalSoak = read(causalSoakPath);
 const finalPromotedSoak = read(finalPromotedSoakPath);
 const browserProfile = read(browserProfilePath);
+const livePerformance = read(livePerformancePath);
 const authority = versions.teaVM;
 const presentation = authority.presentation;
+const lastSoakedAuthority = {
+  bytes: 1167197,
+  sha256: 'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2'
+};
 
 contains(soak, 'PMLE_ARTIFACT|source_bytes=1163182|' +
   'source_sha256=06ac33331d9a9158d63fba2da4688ad5d3ff30c316b4c20c09e38d77d3fdebf0',
@@ -69,11 +85,24 @@ contains(ledger,
   'PMLE_LEDGER_PROVENANCE|CONFIRMED|executions=1|terminal_markers=1',
   'ledger provenance');
 contains(initDiet,
-  `PMLE_INIT_DIET_ARTIFACT|authority_bytes=${authority.outputBytes}` +
-  `|authority_sha256=${authority.outputSha256}` +
-  `|presentation_bytes=${presentation.outputBytes}` +
-  `|presentation_sha256=${presentation.outputSha256}`,
-  'init-diet promoted artifact');
+  `PMLE_INIT_DIET_ARTIFACT|authority_bytes=${lastSoakedAuthority.bytes}` +
+  `|authority_sha256=${lastSoakedAuthority.sha256}`,
+  'historical init-diet promoted artifact');
+for (const [evidence, marker, label] of [
+  [canonical, 'PMLE_TEAVM_MULTIPLAYER|PASS|players=4|tics=330',
+    'candidate canonical 330'],
+  [coop, 'PMLE_TEAVM_COOP_DIFFERENTIAL|PASS|players=2|skill=1|tics=762|deep_every=1',
+    'candidate co-op 762'],
+  [membership,
+    'PMLE_TEAVM_MEMBERSHIP_RECOVERY_DIFFERENTIAL|PASS|players=2',
+    'candidate membership recovery']
+]) {
+  contains(evidence,
+    `PMLE_ARTIFACT|source_bytes=${authority.outputBytes}` +
+    `|source_sha256=${authority.outputSha256}`,
+    `${label} artifact`);
+  contains(evidence, marker, label);
+}
 contains(initDiet,
   'PMLE_INIT_DIET_COLD|PASS|sample_1_ms=4541.733|sample_2_ms=4825.980',
   'init-diet cold gate');
@@ -121,8 +150,8 @@ contains(causalSoak,
   'PMLE_WORKER_SOAK|PASS|duration_s=180|warmup_s=300',
   'post-hardening causal soak');
 contains(finalPromotedSoak,
-  `PMLE_ARTIFACT|source_bytes=${authority.outputBytes}` +
-  `|source_sha256=${authority.outputSha256}` +
+  `PMLE_ARTIFACT|source_bytes=${lastSoakedAuthority.bytes}` +
+  `|source_sha256=${lastSoakedAuthority.sha256}` +
   `|table_bytes=180272|table_sha256=` +
   '058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44',
   'final promoted soak artifact');
@@ -147,10 +176,16 @@ contains(finalPromotedSoak,
 contains(browserProfile,
   'PMLE_BROWSER_REPLICA_PROFILE|VERDICT|compute_headroom=PASS',
   'browser confirmed-replica stage profile');
+contains(livePerformance,
+  'PMLE_LIVE_MATRIX|scenario=DM2_AUTHORITY_EXACT|tics=500|' +
+  'p50_ms=244.672|p95_ms=374.710|p99_ms=443.837|max_ms=508.120|' +
+  'throughput_tps=3.961|session_cpu_ms=126800|' +
+  'session_cpu_ms_per_tic=253.600',
+  'production-shaped MLE performance');
 
 const status = {
   schema: 1,
-  updated: '2026-07-23',
+  updated: '2026-07-24',
   database: {
     product: 'Oracle AI Database 26ai Free',
     imageVersion: '23.26.2',
@@ -201,22 +236,24 @@ const status = {
     ojvmScope: 'repository/dev differential oracle only'
   },
   gates: {
+    presentationHud96Tics: 'PASS',
     canonical330: 'PASS',
     coopEveryTic762: 'PASS',
     membershipRecovery: 'PASS',
     ledgerEveryTic13272: 'PASS',
-    finalWorkerSoak: 'PASS',
-    lifecycleHardening: 'PASS',
-    postHardeningCausalSoak: 'PASS',
+    finalWorkerSoak: 'PENDING_RERUN',
+    lifecycleHardening: 'PENDING_RERUN',
+    postHardeningCausalSoak: 'HISTORICAL_PASS',
     calibratedProcessMemory: 'PASS',
     browserConfirmedOnly: 'PASS',
     soloMleAuthority: 'PASS',
-    warmPoolAdmissionP95: 'PASS',
-    warmStandbyHealing: 'PASS',
+    warmPoolAdmissionP95: 'PENDING_RERUN',
+    warmStandbyHealing: 'PENDING_RERUN',
     resourceCapDecision: 'PASS'
   },
   soak: {
-    artifactSha256: authority.outputSha256,
+    qualification: 'LAST_FULLY_SOAKED_SUPERSEDED_ARTIFACT',
+    artifactSha256: lastSoakedAuthority.sha256,
     warmupSecondsExcluded: 300,
     scoredSeconds: 1800,
     maxConfirmedLagTics: 17,
@@ -268,7 +305,7 @@ const status = {
     warmCheckpointBankEntries: 10,
     warmCheckpointScope: 'E1M1; COOP/DEATHMATCH; skills 1-5',
     admissionReductionFromColdPercent: 96.57,
-    measuredFps: 34.5,
+    measuredFps: null,
     legacyEndpointCalls: 0,
     headlessAuthorityColdInitP50Seconds: 4.684,
     concurrentTwoSlotDeployReadySeconds: 34.669,
@@ -283,11 +320,27 @@ const status = {
     ordsPoolFix: 'single outstanding status poll; cold initialization holds no match-row lock',
     note: 'cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline'
   },
+  performance: {
+    state: 'BELOW_30_FPS_ACCELERATION_IN_PROGRESS',
+    evidenceArtifactSha256: lastSoakedAuthority.sha256,
+    workload: 'two-player deathmatch authoritative exact command stream',
+    tics: 500,
+    throughputTicsPerSecond: 3.961,
+    sessionCpuMillisecondsPerTic: 253.600,
+    p50MillisecondsPerTic: 244.672,
+    p95MillisecondsPerTic: 374.710,
+    peakCombatMillisecondsPerTic: 290.124,
+    requiredTicsPerSecond: 35,
+    targetFps: 30,
+    note: 'No current evidence supports an unqualified 30 FPS claim on 26ai Free'
+  },
   remaining: [
-    {id: 'SOAK', state: 'PASS',
-      label: '30-minute final promoted-artifact soak'},
-    {id: 'WAN', state: 'NEXT', label: 'Injected-latency multiplayer matrix'},
-    {id: 'JAVA-AUDIT', state: 'NEXT',
+    {id: 'LIFECYCLE', state: 'NEXT',
+      label: 'Cadence, stratified recovery, admission and lifecycle rerun on 103e'},
+    {id: 'SOAK', state: 'PENDING',
+      label: '30-minute final 103e promoted-artifact soak'},
+    {id: 'WAN', state: 'PAUSED', label: 'Injected-latency multiplayer matrix'},
+    {id: 'JAVA-AUDIT', state: 'PENDING',
       label: 'Production-path Java removal audit'},
     {id: 'DVR', state: 'OPEN',
       label: 'HUD, automap, intermission, finale and audit/DVR presentation'},
@@ -295,12 +348,14 @@ const status = {
       label: 'Autonomous MLE performance probe; credentials required'}
   ],
   evidence: {
-    soak: soakPath, ledger: ledgerPath, solo: soloPath,
+    soak: soakPath, ledger: ledgerPath, canonical: canonicalPath,
+    coop: coopPath, membership: membershipPath, solo: soloPath,
     soloAdmission: soloAdmissionPath, warmPoolAdmission: warmPoolPath,
     initDietPromotion: initDietPath, voidedPromotedSoak: voidedSoakPath,
     voidedDiagnosticSmoke: voidedSmokePath, lifecycleHardening: lifecyclePath,
     causalSoak: causalSoakPath, finalPromotedSoak: finalPromotedSoakPath,
-    browserReplicaProfile: browserProfilePath
+    browserReplicaProfile: browserProfilePath,
+    livePerformance: livePerformancePath
   }
 };
 

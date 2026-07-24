@@ -1,0 +1,51 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+PMLE_WAN_MATRIX|BEGIN|duration=20|warmup=90|profiles_sha256=ced6d7f507b1240bc14d22435f950ba1a5df040cf88a73719b3d935ebbc9190a
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1167197|source_sha256=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_WAN_TRANSPORT|long_poll=ON|hold_ms=500|ords_pool_sessions=6|pool_reserve=2|max_held_polls=4|resmgr_running_sessions=2|worker_reserve=1|max_concurrent_poll_returns=1|background_refocus=ON
+PMLE_WAN_PROXY|READY|port=18050|upstream=http://127.0.0.1:8080|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-50-jitter-10|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=50|hidden_ms=12211.1|checkpoint_tic=32|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=718|advanced=718|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":40,"totalP50Ms":378.8999996185303,"totalP90Ms":422.4000005722046,"totalP95Ms":440.5,"totalMaxMs":468.5,"queueAndPostP95Ms":91.89999961853027,"postRoundTripP95Ms":88.40000057220459,"acceptedToConfirmedP95Ms":174.19999980926514,"confirmedToPresentedP95Ms":205,"batchWallP95Ms":164.60000038146973,"batchHoldP95Ms":91,"worst":[{"queueAndPostMs":73.69999980926514,"roundTripMs":71.40000057220459,"acceptedToConfirmedMs":159.30000019073486,"confirmedToPresentedMs":235.5,"totalMs":468.5,"inputSequence":17,"effectiveTic":3604},{"queueAndPostMs":75.39999961853027,"roundTripMs":69.69999980926514,"acceptedToConfirmedMs":95.90000057220459,"confirmedToPresentedMs":284.5999994277954,"totalMs":455.8999996185303,"inputSequence":40,"effectiveTic":4012},{"queueAndPostMs":81.40000057220459,"roundTripMs":76.80000019073486,"acceptedToConfirmedMs":156.79999923706055,"confirmedToPresentedMs":202.30000019073486,"totalMs":440.5,"inputSequence":37,"effectiveTic":3958},{"queueAndPostMs":73.80000019073486,"roundTripMs":72.40000057220459,"acceptedToConfirmedMs":158.5,"confirmedToPresentedMs":193.39999961853027,"totalMs":425.69999980926514,"inputSequence":14,"effectiveTic":3552},{"queueAndPostMs":59.30000019073486,"roundTripMs":55.89999961853027,"acceptedToConfirmedMs":205.39999961853027,"confirmedToPresentedMs":157.70000076293945,"totalMs":422.4000005722046,"inputSequence":4,"effectiveTic":3376}]}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: WAN player 0 input/presentation p95 440.5 > 431.4
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:391:14
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

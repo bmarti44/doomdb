@@ -35,6 +35,7 @@ end doom_worker_lifecycle;
 create or replace package body doom_worker_lifecycle as
   c_error constant pls_integer:=-20771;
   c_stop_wait_tenths constant pls_integer:=50;
+  c_reconcile_grace_seconds constant pls_integer:=60;
 
   function requestor return varchar2 is
   begin
@@ -51,39 +52,67 @@ create or replace package body doom_worker_lifecycle as
   end;
 
   procedure reconcile_warm_slots is
-    l_count number;l_serial number;l_spid varchar2(24);l_running number;
+    l_session number;l_running number;l_assignment number;
+    l_status varchar2(16);l_token varchar2(32);l_sid number;l_serial number;
+    l_spid varchar2(24);l_run varchar2(64);l_heartbeat timestamp with time zone;
   begin
     for slot_ in (
       select slot_id,job_name,slot_status,incarnation_token,worker_sid,
-        worker_serial,worker_spid,worker_job_run
+        worker_serial,worker_spid,worker_job_run,heartbeat
       from doom_mle_warm_slot
-      where slot_status in('WARMING','READY','CLAIMED','RUNNING')
-      for update skip locked
+      where slot_status in('WARMING','READY') and assigned_match is null
+        and heartbeat<localtimestamp at time zone 'UTC'-
+          numtodsinterval(c_reconcile_grace_seconds,'SECOND')
     ) loop
-      l_count:=0;l_serial:=null;l_spid:=null;l_running:=0;
-      if slot_.worker_sid is not null then
-        begin
-          select s.serial#,p.spid into l_serial,l_spid
-          from v$session s join v$process p on p.addr=s.paddr
-          where s.sid=slot_.worker_sid;
-          l_count:=1;
-        exception when no_data_found then l_count:=0;end;
-      end if;
       select count(*) into l_running from user_scheduler_running_jobs
-        where job_name=slot_.job_name and session_id=slot_.worker_sid;
-      if slot_.incarnation_token is null or slot_.worker_serial is null or
-         slot_.worker_spid is null or slot_.worker_job_run is null or
-         l_count<>1 or l_running<>1 or l_serial<>slot_.worker_serial or
-         l_spid<>slot_.worker_spid then
-        reject_assignment(slot_.slot_id,'janitor incarnation mismatch');
-        update doom_mle_warm_slot set slot_status='FAILED',
-          assigned_match=null,assigned_role=null,worker_sid=null,
-          worker_serial=null,worker_spid=null,worker_job_run=null,
-          incarnation_token=null,stop_requested=0,heartbeat=localtimestamp at time zone 'UTC',
-          last_error='janitor: scheduler/session incarnation mismatch'
+        where job_name=slot_.job_name;
+      select count(*) into l_session
+        from v$session s join v$process p on p.addr=s.paddr
+        where s.sid=slot_.worker_sid and s.serial#=slot_.worker_serial
+          and p.spid=slot_.worker_spid;
+      if l_running=0 and l_session=0 then
+        begin
+          select slot_status,incarnation_token,worker_sid,worker_serial,
+            worker_spid,worker_job_run,heartbeat
+            into l_status,l_token,l_sid,l_serial,l_spid,l_run,l_heartbeat
+            from doom_mle_warm_slot
+            where slot_id=slot_.slot_id and slot_status=slot_.slot_status
+              and assigned_match is null
+              and nvl(incarnation_token,'-')=
+                  nvl(slot_.incarnation_token,'-')
+              and nvl(worker_sid,-1)=nvl(slot_.worker_sid,-1)
+              and nvl(worker_serial,-1)=nvl(slot_.worker_serial,-1)
+              and nvl(worker_spid,'-')=nvl(slot_.worker_spid,'-')
+              and nvl(worker_job_run,'-')=nvl(slot_.worker_job_run,'-')
+              and heartbeat=slot_.heartbeat
+              and heartbeat<localtimestamp at time zone 'UTC'-
+                numtodsinterval(c_reconcile_grace_seconds,'SECOND')
+            for update skip locked;
+        exception when no_data_found then continue;end;
+        select count(*) into l_assignment from doom_mle_warm_assignment
           where slot_id=slot_.slot_id
-            and nvl(incarnation_token,'-')=
-                nvl(slot_.incarnation_token,'-');
+            and assignment_status in('PENDING','ACCEPTED');
+        select count(*) into l_running from user_scheduler_running_jobs
+          where job_name=slot_.job_name;
+        select count(*) into l_session
+          from v$session s join v$process p on p.addr=s.paddr
+          where s.sid=l_sid and s.serial#=l_serial and p.spid=l_spid;
+        if l_assignment=0 and l_running=0 and l_session=0 then
+          reject_assignment(slot_.slot_id,'janitor stale unassigned incarnation');
+          update doom_mle_warm_slot set slot_status='FAILED',
+            assigned_match=null,assigned_role=null,worker_sid=null,
+            worker_serial=null,worker_spid=null,worker_job_run=null,
+            incarnation_token=null,stop_requested=0,
+            heartbeat=localtimestamp at time zone 'UTC',
+            last_error='janitor: stale unassigned scheduler/session absent'
+            where slot_id=slot_.slot_id and slot_status=l_status
+              and nvl(incarnation_token,'-')=nvl(l_token,'-')
+              and nvl(worker_sid,-1)=nvl(l_sid,-1)
+              and nvl(worker_serial,-1)=nvl(l_serial,-1)
+              and nvl(worker_spid,'-')=nvl(l_spid,'-')
+              and nvl(worker_job_run,'-')=nvl(l_run,'-')
+              and heartbeat=l_heartbeat;
+        end if;
       end if;
     end loop;
     commit;

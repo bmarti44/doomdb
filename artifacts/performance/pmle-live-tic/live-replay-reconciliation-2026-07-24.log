@@ -1,0 +1,13 @@
+PMLE_RECONCILIATION|date=2026-07-24|mode=COOP|host_quiet_replay=YES|resource_plan=DEFAULT_CDB_PLAN|pdb_utilization_limit=50|pdb_running_sessions_limit=2
+PMLE_RECONCILIATION|fixture=live-stage-pair-2026-07-24|tics=371|sha256=4d8e478ca9afae08ea1968d7f09a5f1e115b46eb84aceb2890f007138f17ac04
+PMLE_RECONCILIATION|paired_tics=368|live_missing_below_100ms=3|warmup_tics=50|scored_tics=318
+PMLE_RECONCILIATION|scored_live_p50_ms=143.759|scored_replay_p50_ms=138.487|p50_ratio=1.038|live_mean_ms=146.403|replay_mean_ms=134.954|mean_ratio=1.085
+PMLE_RECONCILIATION_WINDOW|tics=51-100|n=50|live_avg_ms=160.689|replay_avg_ms=138.076|ratio=1.164
+PMLE_RECONCILIATION_WINDOW|tics=101-150|n=49|live_avg_ms=143.853|replay_avg_ms=132.689|ratio=1.084
+PMLE_RECONCILIATION_WINDOW|tics=151-200|n=49|live_avg_ms=137.947|replay_avg_ms=133.047|ratio=1.037
+PMLE_RECONCILIATION_WINDOW|tics=201-250|n=50|live_avg_ms=147.259|replay_avg_ms=137.778|ratio=1.069
+PMLE_RECONCILIATION_WINDOW|tics=251-300|n=49|live_avg_ms=139.736|replay_avg_ms=134.671|ratio=1.038
+PMLE_RECONCILIATION_WINDOW|tics=301-350|n=50|live_avg_ms=150.049|replay_avg_ms=133.238|ratio=1.126
+PMLE_RECONCILIATION_WINDOW|tics=351-371|n=21|live_avg_ms=142.910|replay_avg_ms=135.274|ratio=1.056
+PMLE_RECONCILIATION_VERDICT|direct_replay_harness=CERTIFIED_GROUND_TRUTH|original_sub_100ms_claim=SLOW_CALL_TELEMETRY_ARTIFACT|reason=scored_live_and_replay_p50_agree_within_5_percent_and_window_means_within_4_to_16_percent
+PMLE_RECONCILIATION_NOTE|Per-tic wall times are scheduler-noisy and not expected to correlate individually; deterministic parity is covered by canonical state gates. Timing agreement is evaluated by paired distributions and fixed windows.

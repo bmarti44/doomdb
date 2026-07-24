@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {ConfirmedWanPolicy} from '../client/staging/authority-wan.js';
+import {ConfirmedWanPolicy,confirmedPlayoutIntervalMs}
+  from '../client/staging/authority-wan.js';
 
 const policy = new ConfirmedWanPolicy();
 assert.equal(policy.inputTargetTic(100), 102);
@@ -34,4 +35,10 @@ for (let tic = 0; tic < 1000; tic += 1) {
 assert.equal(policy.neutralSubstitutionRate, 0.004);
 assert.throws(() => policy.observeRoundTrip(-1, 0), /invalid/);
 assert.throws(() => policy.inputTargetTic(-1), /invalid/);
+assert.equal(confirmedPlayoutIntervalMs(0),1000/35);
+assert.equal(confirmedPlayoutIntervalMs(1),1000/35);
+assert.equal(confirmedPlayoutIntervalMs(2),1000/70);
+assert.equal(confirmedPlayoutIntervalMs(16),1000/70);
+assert.throws(()=>confirmedPlayoutIntervalMs(-1),/invalid/);
+assert.throws(()=>confirmedPlayoutIntervalMs(1.5),/invalid/);
 console.log('PASS confirmed WAN lead/playout/hysteresis/substitution policy');

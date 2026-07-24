@@ -81,23 +81,24 @@
   </section>
 
   <section class="panel" aria-label="current MLE migration status">
-    <h2>Live implementation status · July 23, 2026</h2>
+    <h2>Live implementation status · July 24, 2026</h2>
     <p><strong>Authority:</strong> one retained Oracle session owns the complete TeaVM-generated Mocha simulation, RNG, membership ordering, DMC1 checkpoints, and DMS2 replay identity. The browser receives compact, chained DMD1 transitions and never predicts, simulates ahead, reorders, or invents a tic.</p>
     <p><strong>Determinism:</strong> the final pinned authority matches the preserved OJVM ticker-only oracle through the accepted 13,272-command E1M1 ledger with full canonical comparison after every tic. The 330-tic canonical route, 762-tic co-op route, and leave/neutral/checkpoint/rejoin membership differential also pass on the final artifact.</p>
-    <p><strong>Production-shaped soak:</strong> the first promoted <code>a942cd2d…</code> attempt is explicitly VOIDED after exposing a dual-ownership stop race. All stops now use durable intent, full SID/serial#/SPID/job-run fencing, a single normal lifecycle writer, and a periodic janitor. The corrected final run passed 1,800 scored seconds after 300 excluded warmup seconds with 58,875/58,858 confirmed presentations, zero reconnect time, maximum 17-tic frontier lag, stable incarnations, and both process-memory gates green.</p>
+    <p><strong>Production-shaped soak:</strong> the last fully qualified artifact is the superseded <code>a942cd2d…</code> authority. Its earlier lifecycle-race attempt is explicitly VOIDED; the corrected run passed 1,800 scored seconds after 300 excluded warmup seconds with 58,875/58,858 confirmed presentations, zero reconnect time, maximum 17-tic frontier lag, stable incarnations, and both process-memory gates green. Durable stop intent, full incarnation fencing, and a single normal lifecycle writer remain the production design. The current <code>103e15e9…</code> checkpoint-map authority has passed its full correctness battery but still owes the cadence, recovery, admission, lifecycle, and final-soak reruns; those gates are not inherited from the prior binary.</p>
     <p><strong>Memory:</strong> an isolated 128 MiB page-touched MLE allocation produced approximately 1:1 PSS/private visibility while Oracle PGA counters stayed flat. Under the unchanged +64 MiB ceiling, authority PSS peaked 50,364,416 bytes above baseline and ended 25,524,224 bytes below it; authority private memory peaked 51,757,056 bytes above baseline and ended 15,192,064 bytes below it. Standby private memory was flat. Rising standby RSS was shared SGA, not retained JS-heap growth.</p>
     <p><strong>Free capacity truth:</strong> Oracle Free enforces <code>DEFAULT_CDB_PLAN</code>, 50% PDB utilization on two CPUs, and two running sessions; Resource Manager plan modification is unavailable. DMB1 permits four held poll leases from the ORDS pool, but only one poll-return path is guaranteed runnable after reserving the worker session. Local long polling is therefore default-off.</p>
-    <p><strong>Recovery:</strong> DMC1 v5 retains hidden inactive-player state and full deterministic topology. A ready standby restores and continues the exact DMD1 chain; the final soak continuously exercised periodic checkpoints and standby reconstruction. Three old/new checkpoint byte spot checks plus membership restore-and-continue differential bind the allocation-free checkpoint rewrite.</p>
+    <p><strong>Recovery:</strong> DMC1 v5 retains hidden inactive-player state and full deterministic topology. The current authority adds density-aware checkpoint opportunities, a 256-tic hard maximum, and a three-tier chooser (match standby, unbound warm slot, then cold initialization). Source compilation and exact ledger evidence pass; maximum-distance high-awake recovery, concurrent double recovery, admission, and lifecycle evidence remain pending on this artifact.</p>
     <p><strong>Single-player:</strong> <code>/play/</code> keeps the authentic title, main, and skill menus; New Game starts a one-player confirmed-only MLE match, while separate Co-op and Multiplayer shortcuts remain on the right. It no longer calls the legacy <code>NEW_GAME</code>, <code>SUBMIT_STEP</code>, or <code>POLL_FRAME</code> endpoints. The headless authority skips renderer-only texture composites, sprite definitions, colormaps, drawing tables, and screens while retaining simulation name directories, and parses the WAD once. Cold MLE initialization now measures 4.542–4.826 seconds versus 100.314 seconds before. A live warm admission completed in 4.341 seconds and the full browser reached its first confirmed frame in 5.223 seconds. A repeated New Game retires the prior solo authority first; terminal matches stop their standbys, and Free admits one retained match rather than silently scheduler-thrashing. The warm checkpoint bank covers both modes and skills 1–5 on E1M1; other maps remain fail-closed.</p>
-    <p><strong>Open work:</strong> injected-latency WAN qualification is next, including shipping long-poll/pool assumptions and a hidden-tab lifecycle scenario: hidden clients suspend presentation, catch up or checkpoint-resync on focus, and release their poll lease/capacity after prolonged hiding. The scoped production-path Java-removal audit and presentation/audit-DVR surfaces follow. HUD, automap, intermission, finale, and asynchronous exact audit rendering are not claimed complete. The Autonomous MLE probe remains dormant until credentials exist.</p>
+    <p><strong>Performance truth:</strong> the latest production-shaped two-player deathmatch stream measured 3.961 authoritative tics/s, 253.6 ms CPU/tic, and 244.672/374.710 ms p50/p95 on 26ai Free. Peak combat reached approximately 290.124 ms/tic. This is below the 35 Hz simulation requirement and does not support a 30 FPS claim. Structural acceleration work is active; WAN qualification remains paused until authoritative throughput is resolved.</p>
+    <p><strong>Open work:</strong> finish the current cadence/recovery/lifecycle battery and final soak, then resume the injected-latency WAN matrix, including its hidden-tab lifecycle scenario. The scoped production-path Java-removal audit and presentation/audit-DVR surfaces follow. HUD, automap, intermission, finale, and asynchronous exact audit rendering are not claimed complete. The Autonomous MLE probe remains dormant until credentials exist.</p>
   </section>
 
   <section class="status-grid" aria-label="machine-readable MLE status" id="mle-status-grid">
     <article class="panel status-card" data-state="loading"><h2>Evidence feed</h2><strong id="evidence-state">loading…</strong><span class="muted">Validating <code>/mle-status.json</code></span></article>
-    <article class="panel status-card"><h2>Authority artifact</h2><strong id="authority-artifact">a942cd2dcbdc…</strong><span class="muted">MLE JavaScript · DMC1 v5</span></article>
+    <article class="panel status-card"><h2>Authority artifact</h2><strong id="authority-artifact">103e15e913b3…</strong><span class="muted">MLE JavaScript · DMC1 v5</span></article>
     <article class="panel status-card"><h2>Presentation artifact</h2><strong id="presentation-artifact">e55d5f1138fa…</strong><span class="muted">full HUD + animated face · confirmed replica</span></article>
     <article class="panel status-card"><h2>Every-tic ledger</h2><strong id="ledger-state">PASS · 13,272</strong><span class="muted">full canonical MLE/OJVM equality</span></article>
-    <article class="panel status-card"><h2>Final soak</h2><strong id="soak-state">PASS · 30 MINUTES</strong><span class="muted">promoted artifact · production-shaped</span></article>
+    <article class="panel status-card"><h2>Final soak</h2><strong id="soak-state">PENDING · 103e RERUN</strong><span class="muted">last qualified: superseded a942 artifact</span></article>
     <article class="panel status-card"><h2>Platform envelope</h2><strong id="capacity-state">1 effective PDB CPU</strong><span class="muted">2 running sessions · 1 guaranteed poll return</span></article>
   </section>
 
@@ -210,11 +211,11 @@
   <section class="phases" aria-label="phase status">
     <article class="panel phase done"><b>MLE</b><span>Authoritative engine</span><p class="muted">TeaVM JavaScript retained in Oracle</p></article>
     <article class="panel phase done"><b>DET</b><span>Determinism</span><p class="muted">13,272 + 762 + membership exact</p></article>
-    <article class="panel phase done"><b>REC</b><span>Recovery</span><p class="muted">DMC1 v5 + pre-warmed standby</p></article>
-    <article class="panel phase done"><b>SOAK</b><span>Memory / backlog</span><p class="muted">30-minute promoted-artifact pass</p></article>
+    <article class="panel phase next"><b>REC</b><span>Recovery</span><p class="muted">103e cadence + stratified gates pending</p></article>
+    <article class="panel phase next"><b>SOAK</b><span>Memory / backlog</span><p class="muted">a942 pass · 103e rerun pending</p></article>
     <article class="panel phase done"><b>DMD1</b><span>Confirmed replica</span><p class="muted">chained deltas · no prediction</p></article>
     <article class="panel phase done"><b>CAP</b><span>Free capacity</span><p class="muted">50% / 2 sessions / 1 poll return</p></article>
-    <article class="panel phase next"><b>WAN</b><span>WAN matrix</span><p class="muted">50/100/200 ms after final soak</p></article>
+    <article class="panel phase dormant"><b>WAN</b><span>WAN matrix</span><p class="muted">paused behind throughput + final soak</p></article>
     <article class="panel phase next"><b>AUDIT</b><span>Java removal</span><p class="muted">production surfaces only; oracle preserved</p></article>
     <article class="panel phase open"><b>DVR</b><span>Presentation / DVR</span><p class="muted">HUD, automap, terminal screens open</p></article>
     <article class="panel phase dormant"><b>ADB</b><span>Autonomous probe</span><p class="muted">dormant until credentials exist</p></article>
@@ -226,15 +227,15 @@ fetch('/health.txt',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r
   document.querySelector('#status').textContent=t.trim()==='DOOMDB_ORDS_READY'?'stack online':'unexpected health response';
 }).catch(()=>document.querySelector('#status').textContent='stack unavailable');
 fetch('/mle-status.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(data=>{
-  if(data.schema!==1||data.gates?.ledgerEveryTic13272!=='PASS'||data.gates?.lifecycleHardening!=='PASS'||data.gates?.finalWorkerSoak!=='PASS')throw Error();
+  if(data.schema!==1||data.gates?.ledgerEveryTic13272!=='PASS'||data.gates?.finalWorkerSoak!=='PENDING_RERUN')throw Error();
   const authority=data.artifacts.authority.sha256,presentation=data.artifacts.presentation.sha256;
   if(!/^[0-9a-f]{64}$/.test(authority)||!/^[0-9a-f]{64}$/.test(presentation))throw Error();
-  document.querySelector('#evidence-state').textContent=`PASS · ${data.updated} · final soak green`;
+  document.querySelector('#evidence-state').textContent=`PASS · ${data.updated} · correctness green; lifecycle pending`;
   document.querySelector('#authority-artifact').textContent=authority.slice(0,12)+'…';
   document.querySelector('#authority-sha').textContent=authority.slice(0,12)+'…';
   document.querySelector('#presentation-artifact').textContent=presentation.slice(0,12)+'…';
   document.querySelector('#ledger-state').textContent='PASS · 13,272';
-  document.querySelector('#soak-state').textContent='PASS · 30 MINUTES';
+  document.querySelector('#soak-state').textContent='PENDING · 103e RERUN';
   document.querySelector('#capacity-state').textContent=`${data.capacity.effectivePdbCpu} effective PDB CPU`;
   document.querySelector('#mle-status-grid').querySelector('[data-state]').dataset.state='pass';
 }).catch(()=>{

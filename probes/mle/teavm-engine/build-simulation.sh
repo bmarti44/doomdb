@@ -5,6 +5,11 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 table_pack="$project/target/canonical-runtime-v2.bin"
 table_pack_sha256="058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"
+optimization_level="${DOOMDB_TEAVM_OPTIMIZATION_LEVEL:-ADVANCED}"
+[[ "$optimization_level" == ADVANCED || "$optimization_level" == FULL ]] || {
+  printf 'DOOMDB_TEAVM_OPTIMIZATION_LEVEL must be ADVANCED or FULL\n' >&2
+  exit 2
+}
 container="${DOOMDB_JAVA_TOOL_CONTAINER:-$(docker compose -f "$root/compose.yaml" ps -q db)}"
 java_home="${DOOMDB_JAVA_TOOL_HOME:-/opt/oracle/product/26ai/dbhomeFree}"
 remote="/tmp/doomdb-mle-table-pack-$$"
@@ -41,6 +46,8 @@ docker cp "$project/src/build/java/doomdb/mle/engine/CanonicalTablePackGenerator
   "$container:$remote/CanonicalTablePackGenerator.java" >/dev/null
 docker cp "$project/src/build/java/doomdb/mle/engine/FixedMulPropertyTest.java" \
   "$container:$remote/FixedMulPropertyTest.java" >/dev/null
+docker cp "$project/src/build/java/doomdb/mle/engine/FixedDivPropertyTest.java" \
+  "$container:$remote/FixedDivPropertyTest.java" >/dev/null
 docker cp "$project/src/build/java/doomdb/mle/engine/CanonicalTranmapPropertyTest.java" \
   "$container:$remote/CanonicalTranmapPropertyTest.java" >/dev/null
 docker cp "$project/src/build/java/doomdb/mle/engine/DeterministicSqrtPropertyTest.java" \
@@ -49,12 +56,14 @@ docker exec -u 0 "$container" chmod 644 \
   "$remote/mochadoom-canonical-table-source.jar" \
   "$remote/mochadoom-mle-simulation.jar" \
   "$remote/CanonicalTablePackGenerator.java" "$remote/FixedMulPropertyTest.java" \
+  "$remote/FixedDivPropertyTest.java" \
   "$remote/CanonicalTranmapPropertyTest.java"
 docker exec -u 0 "$container" chmod 644 "$remote/DeterministicSqrtPropertyTest.java"
 docker exec "$container" "$java_home/jdk/bin/javac" --release 8 \
   -cp "$remote/mochadoom-canonical-table-source.jar" \
   -d "$remote/classes" \
   "$remote/CanonicalTablePackGenerator.java" "$remote/FixedMulPropertyTest.java" \
+  "$remote/FixedDivPropertyTest.java" \
   "$remote/CanonicalTranmapPropertyTest.java"
 docker exec "$container" "$java_home/jdk/bin/javac" --release 8 \
   -cp "$remote/mochadoom-mle-simulation.jar:$remote/classes" -d "$remote/classes" \
@@ -72,14 +81,24 @@ fixed_mul_property_output="$(docker exec "$container" "$java_home/jdk/bin/java" 
   -cp "$remote/classes:$remote/mochadoom-mle-simulation.jar" \
   doomdb.mle.engine.FixedMulPropertyTest)"
 printf '%s\n' "$fixed_mul_property_output"
+fixed_div_property_output="$(docker exec "$container" "$java_home/jdk/bin/java" \
+  -cp "$remote/classes:$remote/mochadoom-mle-simulation.jar" \
+  doomdb.mle.engine.FixedDivPropertyTest)"
+printf '%s\n' "$fixed_div_property_output"
 docker exec "$container" "$java_home/jdk/bin/java" \
   -cp "$remote/classes:$remote/mochadoom-mle-simulation.jar" \
   doomdb.mle.engine.DeterministicSqrtPropertyTest \
   "$remote/freedoom1.wad" "$remote/canonical-runtime-v2.bin"
 fixed_mul_checksum="$(printf '%s\n' "$fixed_mul_property_output" \
   | awk -F'checksum=' '/^PASS FIXED_MUL_PROPERTY / {print $2}')"
+fixed_div_checksum="$(printf '%s\n' "$fixed_div_property_output" \
+  | awk -F'checksum=' '/^PASS FIXED_DIV_PROPERTY / {print $2}')"
 [[ "$fixed_mul_checksum" =~ ^-?[0-9]+$ ]] || {
   printf 'invalid FixedMul property checksum: %s\n' "$fixed_mul_checksum" >&2
+  exit 1
+}
+[[ "$fixed_div_checksum" =~ ^-?[0-9]+$ ]] || {
+  printf 'invalid FixedDiv property checksum: %s\n' "$fixed_div_checksum" >&2
   exit 1
 }
 actual_table_pack_sha256="$(shasum -a 256 "$table_pack" | awk '{print $1}')"
@@ -90,7 +109,8 @@ actual_table_pack_sha256="$(shasum -a 256 "$table_pack" | awk '{print $1}')"
 }
 docker run --rm -v doomdb-maven-cache:/root/.m2 -v "$root:/work" \
   -w /work/probes/mle/teavm-engine maven:3.9.11-eclipse-temurin-17 \
-  mvn -B -DskipTests -Psimulation-engine-headless package
+  mvn -B -DskipTests "-Dteavm.optimizationLevel=$optimization_level" \
+  -Psimulation-engine-headless package
 test -s "$project/target/javascript/doom-mle-simulation-engine-headless.js"
 artifact="$project/target/javascript/doom-mle-simulation-engine-headless.js"
 mapfile -t emitted_math < <((rg -o 'Math\.[A-Za-z_$][A-Za-z0-9_$]*' "$artifact" || true) | sort -u)
@@ -111,8 +131,9 @@ fi
 math_allowlist="$(IFS=,; printf '%s' "${emitted_math[*]}")"
 node "$project/run-simulation-node.mjs" \
   "$project/target/iwad-smoke/freedoom1.wad" "$table_pack" \
-  "$fixed_mul_checksum"
-printf 'PASS PMLE-TEAVM-SIMULATION-BUILD bytes=%s table_pack_bytes=%s table_pack_sha256=%s fixed_mul_checksum=%s runtime_math_allowlist=%s\n' \
+  "$fixed_mul_checksum" "$fixed_div_checksum"
+printf 'PASS PMLE-TEAVM-SIMULATION-BUILD optimization_level=%s bytes=%s table_pack_bytes=%s table_pack_sha256=%s fixed_mul_checksum=%s fixed_div_checksum=%s runtime_math_allowlist=%s\n' \
+  "$optimization_level" \
   "$(wc -c <"$project/target/javascript/doom-mle-simulation-engine-headless.js" | tr -d '[:space:]')" \
   "$(wc -c <"$table_pack" | tr -d '[:space:]')" "$actual_table_pack_sha256" \
-  "$fixed_mul_checksum" "$math_allowlist"
+  "$fixed_mul_checksum" "$fixed_div_checksum" "$math_allowlist"

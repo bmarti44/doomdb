@@ -750,6 +750,12 @@ Its presentation Mocha JAR is
 Both are pinned in `versions.lock`, copied under content-addressed browser
 names, and verified byte-for-byte when served by ORDS.
 
+This is a recorded presentation-only promotion from the init-diet artifact
+`d45863e0c1be8fabdc63086fafc5d9d57193c4ed5758f259cd92af360426b39c`,
+not unexplained pin drift. The decision, input lineage, binary hashes, and HUD
+semantic goldens are consolidated in
+`artifacts/performance/pmle-browser-replica/presentation-pin-lineage-2026-07-24.md`.
+
 Repeated TeaVM 0.15 invocations over unchanged class files produced equal-size,
 semantically passing modules with different function order and SHA-256, with
 both minification enabled and disabled. Consequently, the record distinguishes

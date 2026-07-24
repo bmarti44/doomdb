@@ -11,9 +11,9 @@ assert.equal(mleArtifact.targetType,'JAVASCRIPT');
 assert.equal(mleArtifact.moduleType,'ES2015');
 assert.match(mleArtifact.inputBytecodeSha256,/^[0-9a-f]{64}$/);
 assert.match(mleArtifact.mochaBytecodeSha256,/^[0-9a-f]{64}$/);
-assert.equal(mleArtifact.authority.bytes,1167197);
+assert.equal(mleArtifact.authority.bytes,1170639);
 assert.equal(mleArtifact.authority.sha256,
-  'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2');
+  '103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e');
 assert.equal(mleArtifact.tablePack.bytes,180272);
 assert.equal(mleArtifact.tablePack.sha256,
   '058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44');

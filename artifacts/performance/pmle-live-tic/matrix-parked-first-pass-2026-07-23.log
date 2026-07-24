@@ -1,0 +1,8 @@
+PMLE_LIVE_MATRIX_EVIDENCE|date=2026-07-23|classification=DIAGNOSTIC_NOT_GATE|warm_slots=PARKED|host_quiescent=YES
+PMLE_ENVIRONMENT|database=Oracle_AI_Database_26ai_Free|image=23.26.2|cpu_count=2|resource_plan=DEFAULT_PLAN|pdb_plan=DEFAULT_CDB_PLAN|pdb_utilization_limit=50|pdb_running_sessions_limit=2
+PMLE_COMMAND_STREAM|name=live-dm-2026-07-23|captured_tics=5250|matrix_tics=500|expanded_sha256=fa7637570c30d3a33cbf8456e98268890e9f5bd82f5ba39fd7f69b139ddc4085
+PMLE_LIVE_MATRIX_INIT|mode=DEATHMATCH|players=2|wall_ms=41471.489
+PMLE_LIVE_MATRIX|scenario=DM2_AUTHORITY_EXACT|tics=500|p50_ms=358.690|p95_ms=729.307|p99_ms=941.086|max_ms=1319.497|throughput_tps=2.585
+PMLE_LIVE_MATRIX|scenario=DM2_BARE_EXACT|tics=500|p50_ms=270.065|p95_ms=439.397|p99_ms=550.621|max_ms=781.271|throughput_tps=3.590
+PMLE_LIVE_MATRIX_MEMORY|iwadBytes=28795076|frameBytes=64000|thinkers=248|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_LIVE_MATRIX_NOTE|The host was quiet and both warm slots were stopped. This first-pass run is diagnostic rather than the contention gate because the authoritative arm ran before any exact-stream warmup, while the bare arm ran after engine/checkpoint caches had already traversed the same 500 tics. The harness now performs an unscored 500-tic authority warmup, restores tic zero, and records aggregate session CPU as well as wall time before comparing cells.

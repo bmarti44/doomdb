@@ -13,6 +13,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IdentityHashMap;
 import mochadoom.Engine;
 import m.fixed_t;
 import org.teavm.jso.JSExport;
@@ -30,6 +31,7 @@ import w.InputStreamSugar;
 public final class SimulationEngineReachabilityProbe {
   private static final int MAX_IWAD_BYTES = 64 * 1024 * 1024;
   private static final int FIXED_MUL_RANDOM_PAIRS = 1_000_000;
+  private static final int FIXED_DIV_RANDOM_PAIRS = 2_000_000;
   private static final int[] FIXED_MUL_BOUNDARIES = {
       Integer.MIN_VALUE, Integer.MIN_VALUE + 1,
       -0x40000001, -0x40000000, -0x10001, -0x10000, -0xffff,
@@ -37,6 +39,14 @@ public final class SimulationEngineReachabilityProbe {
       0x7fff, 0x8000, 0xffff, 0x10000, 0x10001,
       0x3fffffff, 0x40000000, Integer.MAX_VALUE - 1, Integer.MAX_VALUE
   };
+  private static final int[] FIXED_DIV_BOUNDARIES = {
+      Integer.MIN_VALUE, Integer.MIN_VALUE + 1,
+      -0x40000001, -0x40000000, -0x10001, -0x10000, -0xffff,
+      -0x8001, -0x8000, -0x4001, -0x4000, -2, -1, 0, 1, 2,
+      0x3fff, 0x4000, 0x7fff, 0x8000, 0xffff, 0x10000, 0x10001,
+      0x3fffffff, 0x40000000, Integer.MAX_VALUE - 1, Integer.MAX_VALUE
+  };
+  private static final long[] LONG_FLAG_PROBE_VALUES = buildLongFlagProbeValues();
   private static byte[] iwad;
   private static byte[] tablePack;
   private static int tablePackBytesLoaded;
@@ -69,6 +79,73 @@ public final class SimulationEngineReachabilityProbe {
       state = nextFixedMulValue(state);
       int b = state;
       checksum = mixFixedMul(checksum, a, b, fixed_t.FixedMul(a, b));
+    }
+    return checksum;
+  }
+
+  /** Cross-runtime checksum for the allocation-free FixedDiv intrinsic. */
+  @JSExport
+  public static int fixedDivChecksum() {
+    int checksum = 0x2468ace1;
+    for (int a : FIXED_DIV_BOUNDARIES) {
+      for (int b : FIXED_DIV_BOUNDARIES) {
+        checksum = mixFixedMul(checksum, a, b, fixedDivChecksumValue(a, b));
+      }
+    }
+    for (int b = -65536; b <= 65536; b++) {
+      int magnitude = Math.abs(b) << 14;
+      for (int delta = -3; delta <= 3; delta++) {
+        int positive = magnitude + delta;
+        int negative = -magnitude + delta;
+        checksum = mixFixedMul(
+            checksum, positive, b, fixedDivChecksumValue(positive, b));
+        checksum = mixFixedMul(
+            checksum, negative, b, fixedDivChecksumValue(negative, b));
+      }
+    }
+    int state = 0x51ed270b;
+    for (int i = 0; i < FIXED_DIV_RANDOM_PAIRS; i++) {
+      state = nextFixedMulValue(state);
+      int a = state;
+      state = nextFixedMulValue(state);
+      int b = state;
+      checksum = mixFixedMul(checksum, a, b, fixedDivChecksumValue(a, b));
+    }
+    return checksum;
+  }
+
+  private static int fixedDivChecksumValue(int a, int b) {
+    if (a == Integer.MIN_VALUE && b == 0) {
+      // The JVM property test separately verifies the legacy exception. Avoid
+      // invoking TeaVM's host BigInt divide-by-zero while computing a portable
+      // checksum for every non-exceptional result.
+      return 0x4d494e30;
+    }
+    return fixed_t.FixedDiv(a, b);
+  }
+
+  /** Baseline shape: repeat low-bit tests against a Java long field value. */
+  @JSExport
+  public static int longFlagRepeatedChecksum(int iterations) {
+    int checksum = 0x10203040;
+    for (int i = 0; i < iterations; i++) {
+      long flags = LONG_FLAG_PROBE_VALUES[i & 255];
+      if ((flags & 0x01000000L) != 0) checksum ^= i + 1;
+      if ((flags & 0x00400000L) != 0) checksum += i ^ 0x55aa;
+      if ((flags & 0x00004000L) != 0) checksum = checksum * 33 + i;
+    }
+    return checksum;
+  }
+
+  /** Candidate shape: cast once, then perform all low-word tests as ints. */
+  @JSExport
+  public static int longFlagHoistedChecksum(int iterations) {
+    int checksum = 0x10203040;
+    for (int i = 0; i < iterations; i++) {
+      int flagsLow = (int) LONG_FLAG_PROBE_VALUES[i & 255];
+      if ((flagsLow & 0x01000000) != 0) checksum ^= i + 1;
+      if ((flagsLow & 0x00400000) != 0) checksum += i ^ 0x55aa;
+      if ((flagsLow & 0x00004000) != 0) checksum = checksum * 33 + i;
     }
     return checksum;
   }
@@ -426,6 +503,10 @@ public final class SimulationEngineReachabilityProbe {
     if (!saved) throw new IllegalStateException("Mocha checkpoint save failed");
     int vanillaLength = vanillaCheckpointOutput.size();
     ArrayList<thinker_t> thinkers = checkpointThinkers();
+    IdentityHashMap<thinker_t, Integer> thinkerIndices =
+        checkpointIdentityMap(thinkers);
+    IdentityHashMap<Object, Integer> subsectorIndices =
+        checkpointIdentityMap(engine.levelLoader.subsectors);
     int envelopeCapacity = vanillaLength + thinkers.size() * 80 + 8192;
     if (envelopeCheckpointOutput == null) {
       envelopeCheckpointOutput = new ReusableByteArrayOutputStream(envelopeCapacity);
@@ -485,14 +566,14 @@ public final class SimulationEngineReachabilityProbe {
         if (thinker instanceof p.mobj_t) {
           p.mobj_t mobj = (p.mobj_t) thinker;
           envelope.writeInt(1);
-          envelope.writeInt(checkpointThinkerIndex(thinkers, mobj.snext));
-          envelope.writeInt(checkpointThinkerIndex(thinkers, mobj.sprev));
-          envelope.writeInt(checkpointThinkerIndex(thinkers, mobj.bnext));
-          envelope.writeInt(checkpointThinkerIndex(thinkers, mobj.bprev));
-          envelope.writeInt(checkpointThinkerIndex(thinkers, mobj.target));
-          envelope.writeInt(checkpointThinkerIndex(thinkers, mobj.tracer));
+          envelope.writeInt(checkpointIdentityIndex(thinkerIndices, mobj.snext));
+          envelope.writeInt(checkpointIdentityIndex(thinkerIndices, mobj.sprev));
+          envelope.writeInt(checkpointIdentityIndex(thinkerIndices, mobj.bnext));
+          envelope.writeInt(checkpointIdentityIndex(thinkerIndices, mobj.bprev));
+          envelope.writeInt(checkpointIdentityIndex(thinkerIndices, mobj.target));
+          envelope.writeInt(checkpointIdentityIndex(thinkerIndices, mobj.tracer));
           envelope.writeInt(checkpointIdentityIndex(
-              engine.levelLoader.subsectors, mobj.subsector));
+              subsectorIndices, mobj.subsector));
           envelope.writeInt(checkpointIdentityIndex(engine.players, mobj.player));
           envelope.writeLong(mobj.angle);
           envelope.writeLong(mobj.mobj_tics);
@@ -505,16 +586,16 @@ public final class SimulationEngineReachabilityProbe {
       }
       envelope.writeInt(engine.players.length);
       for (player_t player : engine.players) {
-        envelope.writeInt(checkpointThinkerIndex(thinkers, player.mo));
-        envelope.writeInt(checkpointThinkerIndex(thinkers, player.attacker));
+        envelope.writeInt(checkpointIdentityIndex(thinkerIndices, player.mo));
+        envelope.writeInt(checkpointIdentityIndex(thinkerIndices, player.attacker));
       }
       envelope.writeInt(engine.levelLoader.sectors.length);
       for (rr.sector_t sector : engine.levelLoader.sectors) {
-        envelope.writeInt(checkpointThinkerIndex(thinkers, sector.thinglist));
+        envelope.writeInt(checkpointIdentityIndex(thinkerIndices, sector.thinglist));
       }
       envelope.writeInt(engine.levelLoader.blocklinks.length);
       for (p.mobj_t root : engine.levelLoader.blocklinks) {
-        envelope.writeInt(checkpointThinkerIndex(thinkers, root));
+        envelope.writeInt(checkpointIdentityIndex(thinkerIndices, root));
       }
     }
     checkpointCacheBytes = envelopeCheckpointOutput.size();
@@ -858,11 +939,30 @@ public final class SimulationEngineReachabilityProbe {
   public static String memoryDiagnostic() {
     if (engine == null) return "state=uninitialized";
     int thinkers = 0;
+    int mobjs = 0;
+    int killMonsters = 0;
+    int livingMonsters = 0;
+    int awakeMonsters = 0;
+    int movingMonsters = 0;
+    final long mfCountKill = 0x00400000L;
     thinker_t cap = engine.actions.getThinkerCap();
     for (thinker_t thinker = cap.next;
         thinker != null && thinker != cap && thinkers < 1000000;
         thinker = thinker.next) {
       thinkers++;
+      if (thinker instanceof p.mobj_t) {
+        p.mobj_t mobj = (p.mobj_t) thinker;
+        mobjs++;
+        if ((mobj.flags & mfCountKill) != 0) {
+          killMonsters++;
+          if (mobj.health > 0) livingMonsters++;
+          if (mobj.health > 0 && mobj.target != null) awakeMonsters++;
+          if (mobj.health > 0
+              && (mobj.momx != 0 || mobj.momy != 0 || mobj.momz != 0)) {
+            movingMonsters++;
+          }
+        }
+      }
     }
     Object foreground = engine.graphicSystem.getScreen(
         v.renderers.DoomScreen.FG);
@@ -870,6 +970,11 @@ public final class SimulationEngineReachabilityProbe {
     return "iwadBytes=" + (iwad == null ? 0 : iwad.length)
         + "|frameBytes=" + frameBytes
         + "|thinkers=" + thinkers
+        + "|mobjs=" + mobjs
+        + "|killMonsters=" + killMonsters
+        + "|livingMonsters=" + livingMonsters
+        + "|awakeMonsters=" + awakeMonsters
+        + "|movingMonsters=" + movingMonsters
         + "|vertexes=" + engine.levelLoader.numvertexes
         + "|segs=" + engine.levelLoader.numsegs
         + "|sectors=" + engine.levelLoader.numsectors
@@ -1126,6 +1231,19 @@ public final class SimulationEngineReachabilityProbe {
     return value;
   }
 
+  private static long[] buildLongFlagProbeValues() {
+    long[] values = new long[256];
+    int state = 0x7f4a7c15;
+    for (int i = 0; i < values.length; i++) {
+      state = nextFixedMulValue(state);
+      long low = state & 0xffffffffL;
+      state = nextFixedMulValue(state);
+      long high = ((long) state & 0x7fL) << 32;
+      values[i] = high | low;
+    }
+    return values;
+  }
+
   private static int mixFixedMul(int checksum, int a, int b, int result) {
     checksum = checksum * 16777619 ^ a;
     checksum = checksum * 16777619 ^ b;
@@ -1162,6 +1280,33 @@ public final class SimulationEngineReachabilityProbe {
       if (thinkers.get(index) == target) return index;
     }
     return -2;
+  }
+
+  private static IdentityHashMap<thinker_t, Integer> checkpointIdentityMap(
+      ArrayList<thinker_t> values) {
+    IdentityHashMap<thinker_t, Integer> result =
+        new IdentityHashMap<thinker_t, Integer>(values.size() * 2);
+    for (int index = 0; index < values.size(); index++) {
+      result.put(values.get(index), index);
+    }
+    return result;
+  }
+
+  private static IdentityHashMap<Object, Integer> checkpointIdentityMap(
+      Object[] values) {
+    IdentityHashMap<Object, Integer> result =
+        new IdentityHashMap<Object, Integer>(values.length * 2);
+    for (int index = 0; index < values.length; index++) {
+      result.put(values[index], index);
+    }
+    return result;
+  }
+
+  private static int checkpointIdentityIndex(
+      IdentityHashMap<?, Integer> values, Object target) {
+    if (target == null) return -1;
+    Integer index = values.get(target);
+    return index == null ? -2 : index.intValue();
   }
 
   private static int checkpointIdentityIndex(Object[] values, Object target) {

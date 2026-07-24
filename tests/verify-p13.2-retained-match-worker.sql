@@ -2,6 +2,9 @@ whenever sqlerror exit failure rollback
 set serveroutput on size unlimited feedback off verify off
 
 declare
+  c_checkpoint_tic constant pls_integer:=256;
+  c_post_recovery_tic constant pls_integer:=c_checkpoint_tic+1;
+  c_public_recovery_tic constant pls_integer:=c_checkpoint_tic+2;
   match1_ varchar2(32);host1_ varchar2(64);join1_ varchar2(64);
   p10_ varchar2(64);p11_ varchar2(64);match2_ varchar2(32);
   host2_ varchar2(64);join2_ varchar2(64);p20_ varchar2(64);p21_ varchar2(64);
@@ -151,7 +154,7 @@ begin
 
   -- Cadence checkpoints are native Mocha saves written directly to a durable
   -- locator in the same transaction as the selected tic frontier.
-  for target_ in 3..32 loop
+  for target_ in 3..c_checkpoint_tic loop
     doom_match_worker.submit_command(match1_,0,epoch1_,generation1_,target_,target_,
       hextoraw('0800000000000000'),accepted_);
     doom_match_worker.submit_command(match1_,1,epoch1_,generation1_,target_,target_,
@@ -170,12 +173,14 @@ begin
   select count(*) into count_ from doom_match_checkpoint checkpoint_
     join doom_match_tic tic_ on tic_.match_id=checkpoint_.match_id
       and tic_.tic=checkpoint_.tic
-    where checkpoint_.match_id=match1_ and checkpoint_.tic=32
+    where checkpoint_.match_id=match1_ and checkpoint_.tic=c_checkpoint_tic
       and checkpoint_.state_sha=tic_.state_sha
       and checkpoint_.checkpoint_bytes=dbms_lob.getlength(checkpoint_.checkpoint_blob)
       and checkpoint_.checkpoint_bytes>1000
       and regexp_like(checkpoint_.checkpoint_sha,'^[0-9a-f]{64}$');
-  if count_<>1 then raise_application_error(-20000,'tic32 checkpoint absent');end if;
+  if count_<>1 then
+    raise_application_error(-20000,'hard-bound checkpoint absent');
+  end if;
 
   -- A fresh session-private engine rebuilt only from the ordered durable
   -- vectors must reproduce the selected state and both POV hashes exactly.
@@ -189,14 +194,14 @@ begin
   select state_sha into root1_ from doom_match_tic
     where match_id=match1_ and tic=0;
   select state_sha into final_state_ from doom_match_tic
-    where match_id=match1_ and tic=32;
+    where match_id=match1_ and tic=c_checkpoint_tic;
   select frame_sha into frame0_ from doom_match_frame
-    where match_id=match1_ and tic=32 and player_slot=0;
+    where match_id=match1_ and tic=c_checkpoint_tic and player_slot=0;
   select frame_sha into frame1_ from doom_match_frame
-    where match_id=match1_ and tic=32 and player_slot=1;
+    where match_id=match1_ and tic=c_checkpoint_tic and player_slot=1;
   dbms_lob.createtemporary(stream_,true,dbms_lob.call);
   for vector_ in (select membership_bitmap,command_vector from doom_match_tic
-    where match_id=match1_ and tic between 1 and 32 order by tic) loop
+    where match_id=match1_ and tic between 1 and c_checkpoint_tic order by tic) loop
     dbms_lob.writeappend(stream_,33,
       utl_raw.concat(vector_.membership_bitmap,vector_.command_vector));
   end loop;
@@ -215,20 +220,23 @@ begin
   doom_match_worker.recover_match(match1_,180000,state_);
   if state_<>'ACTIVE' then raise_application_error(-20000,'recovery did not publish');end if;
   status_(match1_,host1_);
-  if generation1_<>2 or tic_<>32 then
+  if generation1_<>2 or tic_<>c_checkpoint_tic then
     raise_application_error(-20000,'recovery generation/frontier mismatch');
   end if;
   select min(frame_sha),max(frame_sha) into root1_,root2_
-    from doom_match_frame where match_id=match1_ and tic=32;
+    from doom_match_frame where match_id=match1_ and tic=c_checkpoint_tic;
   if root1_<>least(frame0_,frame1_) or root2_<>greatest(frame0_,frame1_) then
     raise_application_error(-20000,'recovery changed selected POVs');
   end if;
-  doom_match_worker.submit_command(match1_,0,epoch1_,generation1_,33,33,
+  doom_match_worker.submit_command(match1_,0,epoch1_,generation1_,
+    c_post_recovery_tic,c_post_recovery_tic,
     hextoraw('0800000000000000'),accepted_);
-  doom_match_worker.submit_command(match1_,1,epoch1_,generation1_,33,33,
+  doom_match_worker.submit_command(match1_,1,epoch1_,generation1_,
+    c_post_recovery_tic,c_post_recovery_tic,
     hextoraw('0000000000000000'),accepted_);
   for poll_ in 1..1000 loop
-    doom_match_worker.poll_frame(match1_,0,epoch1_,generation1_,33,ready_,payload0_);
+    doom_match_worker.poll_frame(match1_,0,epoch1_,generation1_,
+      c_post_recovery_tic,ready_,payload0_);
     exit when ready_=1;dbms_session.sleep(.01);
   end loop;
   if ready_<>1 then
@@ -247,9 +255,11 @@ begin
   update doom_match_worker_control set heartbeat=systimestamp-interval '10' second
     where match_id=match1_ and generation=generation1_;
   commit;
-  doom_api.submit_match_step(match1_,p10_,34,34,'0800000000000000',
+  doom_api.submit_match_step(match1_,p10_,c_public_recovery_tic,
+    c_public_recovery_tic,'0800000000000000',
     accepted_,epoch1_,generation1_);
-  doom_api.poll_match_frame(match1_,p10_,34,0,ready_,tic_,payload0_);
+  doom_api.poll_match_frame(match1_,p10_,c_public_recovery_tic,0,
+    ready_,tic_,payload0_);
   for poll_ in 1..1800 loop
     status_(match1_,host1_);
     exit when generation1_=3 and state_='ACTIVE';dbms_session.sleep(.1);
@@ -258,12 +268,16 @@ begin
     raise_application_error(-20000,'public recovery did not publish');
   end if;
   for poll_ in 1..1000 loop
-    doom_api.poll_match_frame(match1_,p10_,34,100,ready_,tic_,payload0_);
+    doom_api.poll_match_frame(match1_,p10_,c_public_recovery_tic,100,
+      ready_,tic_,payload0_);
     exit when ready_=1;dbms_session.sleep(.01);
   end loop;
-  if ready_<>1 or tic_<>34 then raise_application_error(-20000,'public recovery frame timeout');end if;
+  if ready_<>1 or tic_<>c_public_recovery_tic then
+    raise_application_error(-20000,'public recovery frame timeout');
+  end if;
   select count(*) into count_ from doom_match_command where match_id=match1_
-    and tic=34 and player_slot=0 and command_source='SUBMITTED' and generation=3;
+    and tic=c_public_recovery_tic and player_slot=0
+    and command_source='SUBMITTED' and generation=3;
   if count_<>1 then raise_application_error(-20000,'partial recovery command lost');end if;
 
   start_('WORKER_B',match2_,host2_,join2_,p20_,p21_,epoch2_,generation2_);

@@ -9,6 +9,7 @@ import {
   checkpointChunk,
   checkpointLength,
   currentState,
+  fixedDivChecksum,
   fixedMulChecksum,
   initialize,
   initializeMultiplayer,
@@ -28,9 +29,12 @@ import {
 const iwadPath = process.argv[2];
 const tablePackPath = process.argv[3];
 const expectedFixedMulChecksum = Number(process.argv[4]);
-if (!iwadPath || !tablePackPath || !Number.isInteger(expectedFixedMulChecksum)) {
+const expectedFixedDivChecksum = Number(process.argv[5]);
+if (!iwadPath || !tablePackPath || !Number.isInteger(expectedFixedMulChecksum)
+    || !Number.isInteger(expectedFixedDivChecksum)) {
   throw new Error(
-    'usage: node run-simulation-node.mjs IWAD CANONICAL_TABLE_PACK FIXED_MUL_CHECKSUM',
+    'usage: node run-simulation-node.mjs IWAD CANONICAL_TABLE_PACK'
+      + ' FIXED_MUL_CHECKSUM FIXED_DIV_CHECKSUM',
   );
 }
 const iwad = fs.readFileSync(iwadPath);
@@ -42,6 +46,13 @@ if (actualFixedMulChecksum !== expectedFixedMulChecksum) {
   throw new Error(`TeaVM FixedMul checksum mismatch: ${JSON.stringify({
     expected: expectedFixedMulChecksum,
     actual: actualFixedMulChecksum,
+  })}`);
+}
+const actualFixedDivChecksum = fixedDivChecksum();
+if (actualFixedDivChecksum !== expectedFixedDivChecksum) {
+  throw new Error(`TeaVM FixedDiv checksum mismatch: ${JSON.stringify({
+    expected: expectedFixedDivChecksum,
+    actual: actualFixedDivChecksum,
   })}`);
 }
 

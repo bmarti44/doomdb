@@ -2,6 +2,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+node "$ROOT/tests/verify-pmle-checkpoint-cadence.mjs"
 INSTALL=$ROOT/probes/mle/install.sql
 BENCHMARK=$ROOT/probes/mle/benchmark.sql
 RUNNER=$ROOT/probes/mle/run.sh
@@ -26,6 +27,8 @@ TEAVM_TIC0_LOADER=$ROOT/probes/mle/teavm-engine/load-tic0-checkpoint-bank.sh
 TEAVM_SLICE_LOADER=$ROOT/probes/mle/teavm/deploy.sh
 TEAVM_SIM_CLEANUP=$ROOT/probes/mle/teavm-engine/cleanup-mle.sql
 TEAVM_LEDGER=$ROOT/probes/mle/teavm-engine/build-ledger-differential.mjs
+TEAVM_LEDGER_COMPONENTS=$ROOT/probes/mle/teavm-engine/build-ledger-component-profile.mjs
+TEAVM_LEDGER_COMPONENT_RUNNER=$ROOT/probes/mle/teavm-engine/run-ledger-component-ab.sh
 TEAVM_CANONICAL_BENCH=$ROOT/probes/mle/teavm-engine/benchmark-canonical-state.sql
 TEAVM_RECOVERY=$ROOT/probes/mle/teavm-engine/recovery-mle.sql
 TEAVM_MULTIPLAYER=$ROOT/probes/mle/teavm-engine/multiplayer-mle.sql
@@ -80,6 +83,7 @@ AUTHORITY_WAN_TEST=$ROOT/tests/verify-authority-wan.mjs
 WAN_PROXY=$ROOT/tests/wan-latency-proxy.mjs
 WAN_PROFILES=$ROOT/tests/fixtures/wan-profiles.json
 WAN_SOAK=$ROOT/tests/verify-p13.5-multiplayer-soak.mjs
+RETAINED_WORKER_TEST=$ROOT/tests/verify-p13.2-retained-match-worker.sql
 
 fail() {
   printf '%s\n' "PMLE source verification: $*" >&2
@@ -169,6 +173,11 @@ grep -q 'adb-cleanup.sql' "$ADB_RUNNER" || fail 'ADB cleanup path missing'
 grep -q 'doom-mle-simulation-engine-headless.js' "$TEAVM_SIM_LOADER" || fail 'full-ticker TeaVM artifact missing'
 grep -q 'using blob' "$TEAVM_SIM_LOADER" || fail 'full-ticker BLOB module load missing'
 grep -q 'PMLE_TEAVM_SIMULATION_LOAD' "$TEAVM_SIM_LOADER" || fail 'full-ticker load marker missing'
+grep -q -- '--javascript=' "$TEAVM_SIM_LOADER" ||
+  fail 'MLE diagnostic loader cannot select an exact A/B artifact'
+grep -q 'production load cannot override content-addressed artifacts' \
+  "$TEAVM_SIM_LOADER" ||
+  fail 'MLE production loader permits diagnostic artifact overrides'
 grep -q 'base64_fold_width=2000' "$TEAVM_SIM_LOADER" || fail 'full-ticker safe base64 fold missing'
 grep -Fq 'while IFS= read -r piece || [[ -n "$piece" ]]' "$TEAVM_SIM_LOADER" || fail 'full-ticker final base64 piece fence missing'
 grep -q 'PMLE_TEAVM_STAGING_GATE|PASS' "$TEAVM_SIM_LOADER" || fail 'full-ticker database staging SHA gate missing'
@@ -192,7 +201,37 @@ test "$(line_of 'PMLE_TEAVM_PROBE_STAGING_GATE|PASS' "$TEAVM_SLICE_LOADER")" -lt
 grep -q 'drop mle module doom_teavm_simulation' "$TEAVM_SIM_CLEANUP" || fail 'full-ticker cleanup missing'
 grep -q 'doom_teavm_sim_step_command' "$TEAVM_LEDGER" || fail 'exact ledger command path missing'
 grep -q 'doom_teavm_sim_canonical_chunk' "$TEAVM_LEDGER" || fail 'canonical ledger export missing'
+grep -q 'PMLE_LEDGER_PROGRESS' "$TEAVM_LEDGER" || fail 'ledger cumulative progress marker missing'
+grep -q 'l_progress_digest' "$TEAVM_LEDGER" || fail 'ledger cumulative digest state missing'
+if grep -Eq 'doom_teavm_sim_(checkpoint|restore)|doom_mocha_[a-z_]*(checkpoint|restore)' "$TEAVM_LEDGER"; then
+  fail 'promotion ledger must not checkpoint or restore'
+fi
 grep -q 'dbms_crypto.hash' "$TEAVM_LEDGER" || fail 'native canonical hash missing'
+grep -q "emit_summary('ticker'" "$TEAVM_LEDGER_COMPONENTS" ||
+  fail 'ledger component ticker attribution missing'
+grep -q "emit_summary('canonical_material'" "$TEAVM_LEDGER_COMPONENTS" ||
+  fail 'ledger component canonical attribution missing'
+grep -q "emit_summary('raw_export'" "$TEAVM_LEDGER_COMPONENTS" ||
+  fail 'ledger component export attribution missing'
+grep -q 'PMLE_LEDGER_COMPONENT_PROFILE|PASS' "$TEAVM_LEDGER_COMPONENTS" ||
+  fail 'ledger component terminal marker missing'
+grep -q 'PMLE_COMPONENT_AB_EXECUTE' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B execution opt-in missing'
+grep -Fq "pgrep -f '[b]uild-ledger-differential.mjs'" \
+  "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B is not fenced from the promotion ledger'
+grep -q 'doomdb-pmle-ledger-' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B does not honor the run-lifetime ledger lock'
+grep -q 'PMLE_HOST_QUIESCENCE|PASS' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B host-quiescence evidence missing'
+grep -q 'restore_production_module' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B does not fail-closed restore production'
+grep -q 'artifact-metadata.sql' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B exact deployed artifact evidence missing'
+grep -q 'component A/B canonical digest mismatch' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B does not bind both artifacts to one state digest'
+grep -q -- '--production' "$TEAVM_LEDGER_COMPONENT_RUNNER" ||
+  fail 'ledger component A/B does not restore production module'
 grep -q 'stage=mle-material' "$TEAVM_CANONICAL_BENCH" || fail 'canonical stage benchmark missing'
 grep -q 'PMLE_TEAVM_RECOVERY|PASS' "$TEAVM_RECOVERY" || fail 'MLE recovery gate missing'
 grep -q 'PMLE_TEAVM_MULTIPLAYER|PASS' "$TEAVM_MULTIPLAYER" || fail 'MLE multiplayer differential missing'
@@ -263,10 +302,19 @@ grep -Fq 'while IFS= read -r piece || [[ -n "$piece" ]]' "$TEAVM_DISPATCH_RUNNER
 grep -q 'DISPATCH_SOURCE_GATE|PASS' "$TEAVM_DISPATCH_RUNNER" || fail 'dispatch database staging SHA gate missing'
 grep -q 'whenever sqlerror exit sql.sqlcode rollback' "$TEAVM_DISPATCH_RUNNER" || fail 'dispatch fail-closed SQL fence missing'
 grep -Fq "pgrep -f '[b]uild-ledger-differential.mjs'" "$TEAVM_DISPATCH_AB" || fail 'dispatch A/B ledger fence missing'
+grep -q 'doomdb-pmle-ledger-' "$TEAVM_DISPATCH_AB" ||
+  fail 'dispatch A/B does not honor the run-lifetime ledger lock'
 grep -q 'PMLE_HOST_QUIESCENCE|PASS' "$TEAVM_DISPATCH_AB" || fail 'dispatch A/B host-quiescence evidence missing'
 grep -q 'log_mode=exclusive-create' "$TEAVM_LEDGER_RUNNER" || fail 'ledger no-overwrite provenance missing'
+grep -Fq "pgrep -f '[b]uild-ledger-differential.mjs'" "$TEAVM_LEDGER_RUNNER" ||
+  fail 'ledger runner does not reject a concurrent promotion ledger'
+grep -q 'doomdb-pmle-ledger-' "$TEAVM_LEDGER_RUNNER" ||
+  fail 'ledger runner does not hold a run-lifetime lock'
+grep -q 'PMLE_LEDGER_RUNTIME' "$TEAVM_LEDGER_RUNNER" ||
+  fail 'ledger elapsed-time provenance missing'
 grep -q 'PMLE_PINNED_PAIR' "$TEAVM_LEDGER_RUNNER" || fail 'ledger pinned authority/oracle evidence missing'
 grep -q 'deep-every=1' "$TEAVM_LEDGER_RUNNER" || fail 'ledger every-tic differential missing'
+grep -q 'progress-every=100' "$TEAVM_LEDGER_RUNNER" || fail 'ledger progress cadence missing'
 grep -q 'environment-metadata.sql' "$TEAVM_DISPATCH_AB" || fail 'dispatch A/B environment metadata missing'
 test "$(line_of 'DISPATCH_SOURCE_GATE|PASS' "$TEAVM_DISPATCH_RUNNER")" -lt \
   "$(line_of 'create mle module doom_mle_dispatch' "$TEAVM_DISPATCH_RUNNER")" || fail 'dispatch staging gate runs after module creation'
@@ -327,6 +375,28 @@ grep -q 'c_max_hold_ms constant pls_integer:=500' "$AUTHORITY_TRANSPORT" || fail
 grep -q 'dbms_alert.waitone' "$AUTHORITY_TRANSPORT" || fail 'DMB1 prompt commit alert missing'
 grep -q 'doom_match_slow_call' "$ROOT/sql/schema/048_multiplayer_worker.sql" || fail 'worker slow-call schema missing'
 grep -q 'record_slow_call' "$ROOT/sql/sim/084_multiplayer_worker.sql" || fail 'worker post-commit slow-call attribution missing'
+grep -q 'cpu_sample_tic number(12)' "$ROOT/sql/schema/048_multiplayer_worker.sql" ||
+  fail 'authority CPU telemetry schema missing'
+grep -q 'procedure sample_authority_cpu' "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
+  fail 'authority CPU telemetry sampler missing'
+grep -q 'dbms_utility.get_cpu_time' "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
+  fail 'authority session CPU source missing'
+grep -q "set_action('MLE_CHECKPOINT')" "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
+  fail 'authority checkpoint liveness action missing'
+grep -q 'function worker_liveness_suppresses' "$DOOM_API" ||
+  fail 'REST checkpoint liveness discriminator missing'
+grep -q 'where sid=p_sid and serial#=p_serial' "$DOOM_API" ||
+  fail 'REST checkpoint discriminator is not bound to SID+serial'
+grep -q "'SUPPRESS_BUSY'" "$DOOM_API" ||
+  fail 'REST checkpoint busy lease is not the primary discriminator'
+grep -q 'doom_match_liveness_probe' "$DOOM_API" ||
+  fail 'REST recovery decisions are not attributed'
+grep -q 'c_worker_stale_seconds constant pls_integer := 15' "$DOOM_API" ||
+  fail 'REST worker timeout does not clear measured checkpoint duration'
+grep -q 'c_worker_probe_seconds constant pls_integer := 5' "$DOOM_API" ||
+  fail 'REST busy lease is not probed during measured checkpoint calls'
+grep -q "'DEFER_BACKSTOP'" "$DOOM_API" ||
+  fail 'REST liveness probe does not distinguish threshold backstop'
 grep -q 'run-memory-calibration.sh' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" || fail 'worker soak memory visibility calibration missing'
 grep -q 'PMLE_WORKER_SOAK_MEMORY' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" || fail 'worker soak absolute process-memory gate missing'
 grep -q 'resmgr:cpu quantum' "$ROOT/probes/mle/teavm-engine/run-worker-soak.sh" || fail 'worker soak resource-manager attribution missing'
@@ -365,8 +435,84 @@ grep -q 'reconstruct_existing(p_match,l_generation' "$MLE_MATCH_WORKER" || fail 
 grep -q 'doom_mle_match_runtime.step_game' "$MLE_MATCH_WORKER" || fail 'MLE worker step missing'
 grep -q 'doom_mle_transition_transport.publish' "$MLE_MATCH_WORKER" || fail 'MLE worker DMD1 publication missing'
 grep -q 'doom_mle_match_runtime.save_checkpoint' "$MLE_MATCH_WORKER" || fail 'MLE worker DMC1 checkpoint missing'
+grep -q 'c_checkpoint_min_tics constant pls_integer:=128' "$MLE_MATCH_WORKER" ||
+  fail 'MLE checkpoint minimum opportunity missing'
+grep -q 'c_checkpoint_max_tics constant pls_integer:=256' "$MLE_MATCH_WORKER" ||
+  fail 'MLE checkpoint recovery hard bound missing'
+grep -q 'c_checkpoint_probe_tics constant pls_integer:=16' "$MLE_MATCH_WORKER" ||
+  fail 'MLE checkpoint opportunity cadence missing'
+grep -q "l_memory_status,'awakeMonsters'" "$MLE_MATCH_WORKER" ||
+  fail 'MLE low-awake checkpoint placement missing'
+grep -q 'c_checkpoint_low_awake constant pls_integer:=16' "$MLE_MATCH_WORKER" ||
+  fail 'MLE low-awake threshold missing'
+grep -q 'Test scaffold only: CHECKPOINT_TEST_HOOK may force a tic-64 checkpoint' "$MLE_MATCH_WORKER" ||
+  fail 'tic-64 checkpoint scaffold is not fenced from production cadence'
+grep -q 'checkpoint_test_hook number(1) default 0 not null' \
+  "$ROOT/sql/schema/048_multiplayer_worker.sql" ||
+  fail 'checkpoint liveness test hook is not separately fenced'
+grep -q 'create table doom_match_checkpoint_probe' \
+  "$ROOT/sql/schema/048_multiplayer_worker.sql" ||
+  fail 'density-stratified checkpoint probe evidence table missing'
+grep -q "'DEFER_HIGH'" "$MLE_MATCH_WORKER" ||
+  fail 'high-awake checkpoint deferral evidence missing'
+grep -q 'p_checkpoint_test_hook=1 and p_tic=64' "$MLE_MATCH_WORKER" ||
+  fail 'tic-64 scaffold is not isolated from route diagnostics'
+grep -q 'route_diagnostics,checkpoint_test_hook' "$MLE_MATCH_WORKER" ||
+  fail 'retained worker does not refresh diagnostic controls at runtime'
+grep -q 'c_checkpoint_tic constant pls_integer:=256' "$RETAINED_WORKER_TEST" ||
+  fail 'retained-worker lifecycle test does not reach the checkpoint hard bound'
+grep -q 'checkpoint_save_ms is not null' "$WAN_SOAK" ||
+  fail 'checkpoint liveness diagnostic is pinned to an obsolete fixed tic'
+grep -q 'checkpointAttemptTic=frontier+1' "$WAN_SOAK" ||
+  fail 'killed-checkpoint diagnostic does not preserve the attempted tic'
+grep -q 'DOOMDB_DOUBLE_RECOVERY_DIAGNOSTIC' "$WAN_SOAK" ||
+  fail 'concurrent double-recovery diagnostic missing'
+grep -q 'PMLE_DOUBLE_RECOVERY|PASS' "$WAN_SOAK" ||
+  fail 'concurrent double-recovery terminal marker missing'
+grep -q "assert.equal(Number(final\\[4\\]),1" "$WAN_SOAK" ||
+  fail 'double-recovery gate does not require exactly one tier-2 assignment'
+grep -q 'DOOMDB_HIGH_AWAKE_RECOVERY_DIAGNOSTIC' "$WAN_SOAK" ||
+  fail 'density-stratified maximum-distance recovery diagnostic missing'
+grep -q 'DOOMDB_CHECKPOINT_CADENCE_OBSERVATION' "$WAN_SOAK" ||
+  fail 'paced production checkpoint cadence observation missing'
+grep -q 'PMLE_CHECKPOINT_CADENCE_OBSERVATION|PASS' "$WAN_SOAK" ||
+  fail 'paced checkpoint cadence observation terminal marker missing'
+grep -q "assert.equal(cadence.testHook,0" "$WAN_SOAK" ||
+  fail 'paced cadence observation is contaminated by the test hook'
+grep -q 'DOOMDB_HIGH_AWAKE_RECOVERY_GATE' "$WAN_SOAK" ||
+  fail 'density-stratified maximum-distance recovery acceptance mode missing'
+grep -q "highAwakeRecoveryGate?recoveryVerdict:'DIAGNOSTIC_NOT_GATE'" "$WAN_SOAK" ||
+  fail 'high-awake recovery measurement is not honestly classified'
+grep -q "recoveryTarget.distance>=240&&recoveryTarget.distance<=255" "$WAN_SOAK" ||
+  fail 'high-awake recovery is not killed at maximum scheduled distance'
+grep -q "killedDistance>=240&&killedDistance<=255" "$WAN_SOAK" ||
+  fail 'high-awake recovery does not verify the durable killed distance'
+grep -q "maximum-distance high-awake recovery exceeded the 60-second SLA" \
+  "$WAN_SOAK" ||
+  fail 'high-awake recovery gate does not enforce the stratified SLA'
+if grep -q 'c_checkpoint_tics constant pls_integer:=1024' "$MLE_MATCH_WORKER"; then
+  fail 'obsolete 1024-tic checkpoint interval remains'
+fi
 grep -q 'procedure run_standby' "$MLE_MATCH_WORKER" || fail 'MLE warm standby entry point missing'
 grep -q 'restore_checkpoint_warm' "$MLE_MATCH_WORKER" || fail 'MLE warm checkpoint promotion missing'
+grep -q 'RECOVERY_TIER_1' "$MLE_MATCH_WORKER" ||
+  fail 'match-bound standby recovery tier missing'
+grep -q 'RECOVERY_TIER_2' "$MLE_MATCH_WORKER" ||
+  fail 'unbound warm-slot recovery tier missing'
+grep -q 'RECOVERY_TIER_3' "$MLE_MATCH_WORKER" ||
+  fail 'cold recovery tier missing'
+test "$(line_of 'RECOVERY_TIER_1' "$MLE_MATCH_WORKER")" -lt \
+  "$(line_of 'RECOVERY_TIER_2' "$MLE_MATCH_WORKER")" ||
+  fail 'recovery preference does not prioritize match-bound standby'
+test "$(line_of 'RECOVERY_TIER_2' "$MLE_MATCH_WORKER")" -lt \
+  "$(line_of 'RECOVERY_TIER_3' "$MLE_MATCH_WORKER")" ||
+  fail 'recovery preference does not reserve cold init for last'
+grep -q 'case when p_warm or g_warm_promotion then 1 else 0 end' "$MLE_MATCH_WORKER" ||
+  fail 'unbound retained recovery does not select warm checkpoint restore'
+grep -q 'c_standby_poll_seconds constant number:=1' "$MLE_MATCH_WORKER" ||
+  fail 'active-match standby coarse poll missing'
+grep -q 'performs no checkpoint restore or simulation work until promotion' "$MLE_MATCH_WORKER" ||
+  fail 'active-match standby passive contract missing'
 grep -q "'_G'||to_char(p_generation)" "$MLE_MATCH_WORKER" || fail 'standby generation-scoped Scheduler name missing'
 grep -q "p_match,'AUTHORITY',l_pool,l_job" "$MLE_MATCH_WORKER" || fail 'warm authority assignment request missing'
 grep -q "p_match,'STANDBY',l_pool,l_job" "$MLE_MATCH_WORKER" || fail 'warm standby assignment request missing'
@@ -407,9 +553,9 @@ grep -q 'procedure match_checkpoint' "$DOOM_API" ||
 grep -q 'match checkpoint SHA fence' "$DOOM_API" ||
   fail 'confirmed browser checkpoint database SHA fence missing'
 grep -q '"version": "0.15.0"' "$VERSIONS" || fail 'TeaVM version pin missing'
-grep -q '"inputBytecodeSha256": "5194b73d7196804957221216052b552305632c943e8ea402327a220b326d0e06"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
+grep -q '"inputBytecodeSha256": "83ebc323785cefcacf7b2c434b856e6d62f1f9ae4f77b063e6bce1f0a0e0f099"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
 grep -q '"mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e"' "$VERSIONS" || fail 'TeaVM Mocha bytecode pin missing'
-grep -q '"outputSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2"' "$VERSIONS" || fail 'TeaVM output pin missing'
+grep -q '"outputSha256": "103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e"' "$VERSIONS" || fail 'TeaVM output pin missing'
 grep -q '"outputSha256": "e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc"' "$VERSIONS" || fail 'TeaVM presentation output pin missing'
 grep -q 'mle-js-plsql-ffi' "$HYBRID_INSTALL" || fail 'FFI comparison path missing'
 grep -q 'PMLE_GATE|PASS|scope=mechanics_only|architecture=mle_command_stream' "$RUNNER" || fail 'mechanics-only architecture marker missing'

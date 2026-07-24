@@ -12,8 +12,10 @@ const value = name => process.argv.find(argument => argument.startsWith(`--${nam
   ?.slice(name.length + 3);
 const limit = Number(value('limit') ?? route.commandCount);
 const deepEvery = Number(value('deep-every') ?? 1);
+const progressEvery = Number(value('progress-every') ?? 100);
 assert.ok(Number.isInteger(limit) && limit > 0 && limit <= route.commandCount);
 assert.ok(Number.isInteger(deepEvery) && deepEvery > 0);
+assert.ok(Number.isInteger(progressEvery) && progressEvery > 0);
 assert.equal(route.skill, 3, 'MLE fixture currently initializes skill 3');
 
 let turnHeld = 0;
@@ -50,10 +52,74 @@ ${artifactSql}
 whenever oserror exit failure rollback
 whenever sqlerror exit sql.sqlcode rollback
 set define off echo off verify off feedback off heading off serveroutput on size unlimited
+variable ledger_tic number
+variable ledger_digest varchar2(64)
+begin
+  :ledger_tic:=0;
+  :ledger_digest:=rpad('0',64,'0');
+end;
+/
 declare
-  c_tics constant pls_integer:=${limit};c_deep_every constant pls_integer:=${deepEvery};
   l_wad blob;l_table_pack blob;l_length pls_integer;l_offset pls_integer;l_chunk raw(32767);
-  l_loaded number;l_mle_tic number;l_java varchar2(32767);l_tic pls_integer:=0;
+  l_loaded number;l_java varchar2(32767);
+  procedure compare_initial is
+    l_mle_blob blob;l_java_blob blob;l_size pls_integer;l_at pls_integer:=0;
+    l_raw raw(32767);l_status varchar2(32767);l_mle_sha raw(32);l_java_sha raw(32);
+  begin
+    dbms_lob.createtemporary(l_mle_blob,true,dbms_lob.call);
+    dbms_lob.createtemporary(l_java_blob,true,dbms_lob.call);
+    l_size:=doom_teavm_sim_canonical_length;
+    while l_at<l_size loop
+      l_raw:=doom_teavm_sim_canonical_chunk(l_at,least(32767,l_size-l_at));
+      dbms_lob.writeappend(l_mle_blob,utl_raw.length(l_raw),l_raw);
+      l_at:=l_at+utl_raw.length(l_raw);
+    end loop;
+    l_status:=doom_mocha_canonical_blob(l_java_blob);
+    if l_status not like 'ok|%' then raise_application_error(-20795,l_status);end if;
+    if dbms_lob.getlength(l_java_blob)<>l_size then
+      raise_application_error(-20796,'tic 0 canonical length mismatch');
+    end if;
+    l_mle_sha:=dbms_crypto.hash(l_mle_blob,dbms_crypto.hash_sh256);
+    l_java_sha:=dbms_crypto.hash(l_java_blob,dbms_crypto.hash_sh256);
+    if l_mle_sha<>l_java_sha then raise_application_error(-20796,
+      'tic 0 canonical SHA MLE='||lower(rawtohex(l_mle_sha))||
+      ' OJVM='||lower(rawtohex(l_java_sha)));end if;
+    dbms_lob.freetemporary(l_mle_blob);dbms_lob.freetemporary(l_java_blob);
+  exception when others then
+    if dbms_lob.istemporary(l_mle_blob)=1 then dbms_lob.freetemporary(l_mle_blob);end if;
+    if dbms_lob.istemporary(l_java_blob)=1 then dbms_lob.freetemporary(l_java_blob);end if;
+    raise;
+  end;
+begin
+  l_java:=doom_mocha_dispose;doom_teavm_sim_release;
+  select payload_bytes into l_wad from doom_engine_artifact where artifact_name='freedoom1.wad';
+  l_length:=dbms_lob.getlength(l_wad);l_loaded:=doom_teavm_sim_allocate(l_length);l_offset:=0;
+  while l_offset<l_length loop
+    l_chunk:=dbms_lob.substr(l_wad,least(32767,l_length-l_offset),l_offset+1);
+    l_loaded:=doom_teavm_sim_load(l_offset,l_chunk);l_offset:=l_offset+utl_raw.length(l_chunk);
+  end loop;
+  select table_pack_blob into l_table_pack from doom_teavm_sim_source;
+  l_length:=dbms_lob.getlength(l_table_pack);l_loaded:=doom_teavm_sim_table_allocate(l_length);l_offset:=0;
+  while l_offset<l_length loop
+    l_chunk:=dbms_lob.substr(l_table_pack,least(32767,l_length-l_offset),l_offset+1);
+    l_loaded:=doom_teavm_sim_table_load(l_offset,l_chunk);l_offset:=l_offset+utl_raw.length(l_chunk);
+  end loop;
+  l_java:=doom_teavm_sim_initialize;l_java:=doom_mocha_initialize;compare_initial;
+end;
+/
+`);
+
+for (let batchAt = 0; batchAt < vectors.length; batchAt += progressEvery) {
+  const batchRuns = [];
+  for (const command of vectors.slice(batchAt, batchAt + progressEvery)) {
+    const key = JSON.stringify(command);
+    if (batchRuns.at(-1)?.key === key) batchRuns.at(-1).repeat += 1;
+    else batchRuns.push({key, command, repeat: 1});
+  }
+  process.stdout.write(`declare
+  c_tics constant pls_integer:=${limit};c_deep_every constant pls_integer:=${deepEvery};
+  l_mle_tic number;l_java varchar2(32767);l_tic pls_integer:=:ledger_tic;
+  l_progress_digest raw(32):=hextoraw(:ledger_digest);
   procedure compare_canonical(p_tic number) is
     l_mle_blob blob;l_java_blob blob;l_size pls_integer;l_at pls_integer:=0;
     l_raw raw(32767);l_status varchar2(32767);l_mle_sha raw(32);l_java_sha raw(32);
@@ -76,6 +142,9 @@ declare
     if l_mle_sha<>l_java_sha then raise_application_error(-20796,
       'tic '||p_tic||' canonical SHA MLE='||lower(rawtohex(l_mle_sha))||
       ' OJVM='||lower(rawtohex(l_java_sha)));end if;
+    l_progress_digest:=dbms_crypto.hash(
+      utl_raw.concat(l_progress_digest,utl_raw.cast_from_binary_integer(p_tic,1),l_mle_sha),
+      dbms_crypto.hash_sh256);
     dbms_lob.freetemporary(l_mle_blob);dbms_lob.freetemporary(l_java_blob);
   exception when others then
     if dbms_lob.istemporary(l_mle_blob)=1 then dbms_lob.freetemporary(l_mle_blob);end if;
@@ -98,27 +167,27 @@ declare
     end loop;
   end;
 begin
-  l_java:=doom_mocha_dispose;doom_teavm_sim_release;
-  select payload_bytes into l_wad from doom_engine_artifact where artifact_name='freedoom1.wad';
-  l_length:=dbms_lob.getlength(l_wad);l_loaded:=doom_teavm_sim_allocate(l_length);l_offset:=0;
-  while l_offset<l_length loop
-    l_chunk:=dbms_lob.substr(l_wad,least(32767,l_length-l_offset),l_offset+1);
-    l_loaded:=doom_teavm_sim_load(l_offset,l_chunk);l_offset:=l_offset+utl_raw.length(l_chunk);
-  end loop;
-  select table_pack_blob into l_table_pack from doom_teavm_sim_source;
-  l_length:=dbms_lob.getlength(l_table_pack);l_loaded:=doom_teavm_sim_table_allocate(l_length);l_offset:=0;
-  while l_offset<l_length loop
-    l_chunk:=dbms_lob.substr(l_table_pack,least(32767,l_length-l_offset),l_offset+1);
-    l_loaded:=doom_teavm_sim_table_load(l_offset,l_chunk);l_offset:=l_offset+utl_raw.length(l_chunk);
-  end loop;
-  l_java:=doom_teavm_sim_initialize;l_java:=doom_mocha_initialize;compare_canonical(0);
 `);
-for (const {command, repeat} of runs) {
-  process.stdout.write(`  step_run(${repeat},${command.forward},${command.side},${command.turn},${command.consistency},${command.buttons});\n`);
+  for (const {command, repeat} of batchRuns) {
+    process.stdout.write(`  step_run(${repeat},${command.forward},${command.side},${command.turn},${command.consistency},${command.buttons});\n`);
+  }
+  process.stdout.write(`  :ledger_tic:=l_tic;
+  :ledger_digest:=lower(rawtohex(l_progress_digest));
+  dbms_output.put_line('PMLE_LEDGER_PROGRESS|tic='||l_tic||
+    '|cumulative_sha256='||:ledger_digest);
+end;
+/
+`);
 }
-process.stdout.write(`  if l_tic<>c_tics then raise_application_error(-20797,'ledger length '||l_tic);end if;
+
+process.stdout.write(`declare
+  c_tics constant pls_integer:=${limit};
+  l_java varchar2(32767);
+begin
+  if :ledger_tic<>c_tics then raise_application_error(-20797,'ledger length '||:ledger_tic);end if;
   dbms_output.put_line('PMLE_TEAVM_LEDGER_DIFFERENTIAL|PASS|tics='||c_tics||
-    '|deep_every='||c_deep_every||'|route_runs=${route.runs.length}|vector_runs=${runs.length}');
+    '|deep_every=${deepEvery}|route_runs=${route.runs.length}|vector_runs=${runs.length}'||
+    '|cumulative_sha256='||:ledger_digest);
   doom_teavm_sim_release;l_java:=doom_mocha_dispose;
 exception when others then
   begin doom_teavm_sim_release;exception when others then null;end;

@@ -1165,7 +1165,6 @@ diff --git a/src/m/fixed_t.java b/src/m/fixed_t.java
 -    this.set((int)(((long) a.val * (long ) this.val) >> FRACBITS));
 +    this.set(FixedMulLimb(a.val, this.val));
  }
-
 diff --git a/src/p/BoomLevelLoader.java b/src/p/BoomLevelLoader.java
 --- a/src/p/BoomLevelLoader.java
 +++ b/src/p/BoomLevelLoader.java

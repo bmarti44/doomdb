@@ -1,0 +1,11 @@
+PMLE_LIVE_MATRIX_EVIDENCE|date=2026-07-23|classification=GATE_CONTENTION|warm_slots=READY_2|host_quiescent=YES
+PMLE_ENVIRONMENT|database=Oracle_AI_Database_26ai_Free|image=23.26.2|cpu_count=2|resource_plan=DEFAULT_PLAN|pdb_plan=DEFAULT_CDB_PLAN|pdb_utilization_limit=50|pdb_running_sessions_limit=2
+PMLE_COMMAND_STREAM|name=live-dm-2026-07-23|captured_tics=5250|warmup_tics=500|matrix_tics=500|expanded_sha256=fa7637570c30d3a33cbf8456e98268890e9f5bd82f5ba39fd7f69b139ddc4085
+PMLE_LIVE_MATRIX_INIT|mode=DEATHMATCH|players=2|wall_ms=37020.498
+PMLE_LIVE_MATRIX_WARMUP|scenario=DM2_AUTHORITY_EXACT|tics=500|wall_ms=130270.919
+PMLE_LIVE_MATRIX|scenario=DM2_AUTHORITY_EXACT|tics=500|p50_ms=266.769|p95_ms=421.787|p99_ms=519.812|max_ms=542.619|throughput_tps=3.608|session_cpu_ms=138970|session_cpu_ms_per_tic=277.940
+PMLE_LIVE_MATRIX|scenario=DM2_BARE_EXACT|tics=500|p50_ms=263.092|p95_ms=390.966|p99_ms=465.616|max_ms=521.615|throughput_tps=3.756|session_cpu_ms=134300|session_cpu_ms_per_tic=268.600
+PMLE_LIVE_MATRIX_MEMORY|iwadBytes=28795076|frameBytes=64000|thinkers=248|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_CONTENTION_RESULT|parked_authority_tps=3.961|warm_slots_authority_tps=3.608|parked_speedup=1.098|parked_p95_ms=374.710|warm_slots_p95_ms=421.787|p95_multiplier=1.126
+PMLE_REQUIRED_ENGINE_SPEEDUP|from_parked_throughput=8.836|from_parked_p95=13.115|required_tps=35|required_p95_ms_max=28.571
+PMLE_LIVE_MATRIX_NOTE|Both retained production slots were READY throughout this quiet-host cell. The identical harness and stream were used for the parked baseline. Parking READY sleepers recovers about 9.8% throughput, not 2x. Contention is real but does not explain the populated-ticker collapse; required code/venue speedup remains 8.84x by sustained throughput and 13.12x by p95 from the parked baseline.

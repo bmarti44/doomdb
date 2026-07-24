@@ -5,11 +5,13 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 phase="${1:-}"
 tag="${PMLE_EVIDENCE_TAG:-2026-07-23}"
+ledger_lock="${TMPDIR:-/tmp}/doomdb-pmle-ledger-$(id -u).lock"
 case "$phase" in baseline|candidate) ;;
   *) printf 'usage: %s baseline|candidate\n' "$0" >&2;exit 2;;
 esac
 [[ "$tag" =~ ^[A-Za-z0-9._-]+$ ]] || { printf 'invalid evidence tag: %s\n' "$tag" >&2;exit 2; }
-if pgrep -f '[b]uild-ledger-differential.mjs' >/dev/null; then
+if [[ -d "$ledger_lock" ]] ||
+    pgrep -f '[b]uild-ledger-differential.mjs' >/dev/null; then
   printf 'exhaustive ledger differential is still active; A/B is fenced\n' >&2
   exit 1
 fi

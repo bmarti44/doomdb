@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>doomdb</groupId>
+  <artifactId>mochadoom-wasm2js-spike</artifactId>
+  <version>1.0.0</version>
+
+  <!--
+    TeaVM 0.14 removed the legacy, linear-memory WebAssembly backend. 0.13.1
+    is therefore the newest TeaVM release whose output can be consumed by
+    Binaryen wasm2js. This is an isolated feasibility probe, not a production
+    artifact or a change to the pinned TeaVM 0.15 JavaScript authority.
+  -->
+  <properties>
+    <maven.compiler.release>11</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <teavm.version>0.13.1</teavm.version>
+    <teavm.optimizationLevel>ADVANCED</teavm.optimizationLevel>
+    <teavm.wasmExceptionsUsed>false</teavm.wasmExceptionsUsed>
+    <teavm.mainClass>doomdb.mle.wasm2js.Wasm2JsAuthorityProbe</teavm.mainClass>
+    <teavm.targetFile>doom-wasm2js-authority.wasm</teavm.targetFile>
+    <mochadoom.jar>${project.basedir}/target/mochadoom-wasm2js-simulation.jar</mochadoom.jar>
+  </properties>
+
+  <dependencies>
+    <!-- Legacy Wasm's runtime layout classes live in teavm-core and must be
+         visible to the application dependency analyzer. -->
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-core</artifactId>
+      <version>${teavm.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-classlib</artifactId>
+      <version>${teavm.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.teavm</groupId>
+      <artifactId>teavm-interop</artifactId>
+      <version>${teavm.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>doomdb</groupId>
+      <artifactId>mochadoom-pinned</artifactId>
+      <version>1</version>
+      <scope>system</scope>
+      <systemPath>${mochadoom.jar}</systemPath>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <directory>${project.basedir}/target</directory>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+      </plugin>
+      <plugin>
+        <groupId>org.teavm</groupId>
+        <artifactId>teavm-maven-plugin</artifactId>
+        <version>${teavm.version}</version>
+        <dependencies>
+          <!-- Diagnostic override used only by this isolated spike. It adds
+               the failing method reference to legacy-Wasm compiler asserts. -->
+          <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-core</artifactId>
+            <version>0.13.1-doomdb-diag</version>
+          </dependency>
+          <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-interop</artifactId>
+            <version>${teavm.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-metaprogramming-api</artifactId>
+            <version>${teavm.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-relocated-libs-asm-commons</artifactId>
+            <version>${teavm.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-relocated-libs-asm-util</artifactId>
+            <version>${teavm.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-relocated-libs-hppc</artifactId>
+            <version>${teavm.version}</version>
+          </dependency>
+          <dependency>
+            <groupId>org.teavm</groupId>
+            <artifactId>teavm-relocated-libs-rhino</artifactId>
+            <version>${teavm.version}</version>
+          </dependency>
+        </dependencies>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals><goal>compile</goal></goals>
+          </execution>
+        </executions>
+        <configuration>
+          <mainClass>${teavm.mainClass}</mainClass>
+          <targetType>WEBASSEMBLY</targetType>
+          <targetDirectory>${project.build.directory}/wasm</targetDirectory>
+          <targetFileName>${teavm.targetFile}</targetFileName>
+          <minifying>true</minifying>
+          <sourceMapsGenerated>false</sourceMapsGenerated>
+          <optimizationLevel>${teavm.optimizationLevel}</optimizationLevel>
+          <minHeapSize>64</minHeapSize>
+          <maxHeapSize>512</maxHeapSize>
+          <wasmExceptionsUsed>${teavm.wasmExceptionsUsed}</wasmExceptionsUsed>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

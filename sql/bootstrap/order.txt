@@ -26,6 +26,7 @@ sql/schema/052_mle_authority_transport.sql
 sql/schema/053_singleplayer_mle.sql
 sql/schema/054_mle_warm_pool.sql
 sql/schema/062_mle_warm_lifecycle.sql
+sql/schema/063_mle_cpu_telemetry.sql
 sql/schema/050_config.sql
 sql/engine/005_render_axes.sql
 sql/engine/010_engine_defs.sql

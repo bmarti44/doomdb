@@ -7,7 +7,7 @@ import { createPalette } from './palette.js';
 import { decodeAuthorityBatch } from './authority-batch.js';
 import { ConfirmedAuthorityMirror } from './authority-mirror.js';
 import { authorityRootChainSha } from './authority.js';
-import { ConfirmedWanPolicy } from './authority-wan.js';
+import { ConfirmedWanPolicy, confirmedPlayoutIntervalMs } from './authority-wan.js';
 import { createBrowserAuthorityEngines, restoreBrowserAuthorityCheckpoint } from './teavm-browser.js';
 const MAX_CONFIRMED_PRESENTATION_BACKLOG = 16;
 const HIDDEN_CHECKPOINT_THRESHOLD_MS = 5_000;
@@ -45,6 +45,11 @@ style.textContent = `
   body[data-doom-solo] header,body[data-doom-solo] main>p{display:none}
   body[data-doom-solo] [data-game][data-active]{width:100vw;height:100vh}
   body[data-doom-solo] canvas{width:min(100vw,160vh);max-width:100vw;max-height:100vh}
+  [data-solo-modes]{position:fixed;right:12px;top:12px;z-index:4;width:150px;
+    padding:10px;background:#080808e8;border:1px solid #7778}
+  [data-solo-modes] strong,[data-solo-modes] small{display:block}
+  [data-solo-modes] small{color:#aaa;margin:4px 0 8px}
+  [data-solo-modes] button{display:block;width:100%;margin-top:6px}
   @media(max-width:700px){.forms{grid-template-columns:1fr}body{padding:8px}}
 `;
 document.head.append(style);
@@ -75,6 +80,12 @@ main.innerHTML = `
     <p data-message class="muted">Create a match, or open a private join link from the host.</p>
   </section>
   <section data-game><div data-hud>Waiting for match…</div></section>
+  ${soloMode ? `<aside data-solo-modes>
+    <strong>Private single-player</strong>
+    <small>The neutral lockstep peer cannot be joined.</small>
+    <button type="button" data-switch-mode="COOP">Start co-op</button>
+    <button type="button" data-switch-mode="DEATHMATCH">Start deathmatch</button>
+  </aside>` : ''}
   <p>${soloMode ? '' : '<a href="/play/">Single-player</a> · '}<a href="/">Status dashboard</a></p>`;
 document.body.replaceChildren(main);
 if (!soloMode && (requestedMode === 'COOP' || requestedMode === 'DEATHMATCH')) {
@@ -204,6 +215,31 @@ let lobbyDelay = 500;
 let priorLobbyState = '';
 let gameStarted = false;
 let admissionController = null;
+for (const button of main.querySelectorAll('[data-switch-mode]')) {
+    button.addEventListener('click', () => {
+        const mode = button.dataset.switchMode;
+        if ((mode !== 'COOP' && mode !== 'DEATHMATCH') || local === null)
+            return;
+        for (const candidate of main.querySelectorAll('[data-switch-mode]'))
+            candidate.disabled = true;
+        const prior = local;
+        // Signal any duplicate solo tab before ending its authority. Release the
+        // match first so Free's single-game slot is available to the lobby below.
+        for (const store of [localStorage, sessionStorage]) {
+            store.removeItem(soloCurrentKey);
+        }
+        void leaveMatch(prior.match, prior.playerCapability).then(() => {
+            for (const store of [localStorage, sessionStorage]) {
+                store.removeItem(storageKey(prior.match));
+            }
+            location.assign(`/play/multiplayer.html?mode=${mode}`);
+        }).catch(cause => {
+            for (const candidate of main.querySelectorAll('[data-switch-mode]'))
+                candidate.disabled = false;
+            showSoloError(cause);
+        });
+    });
+}
 const admissionDelay = (milliseconds, signal) => new Promise((resolve, reject) => {
     const timer = window.setTimeout(resolve, milliseconds);
     signal.addEventListener('abort', () => {
@@ -458,10 +494,12 @@ async function startMleGame(value, status) {
     bindInput(canvas, buttons, command => {
         latest = command;
         inputSequence += 1;
-        inputQueue.push({ sequence: inputSequence, command: { ...latest }, hex: ticcmd(latest) });
+        const leadTics = wan.inputLeadTics;
+        const targetTic = wan.inputTargetTic(mirror.frontier.tic);
+        inputQueue.push({ sequence: inputSequence, command: { ...latest },
+            hex: ticcmd(latest), targetTic, leadTics });
         trace('input', { inputSequence, command: latest,
-            targetTic: wan.inputTargetTic(mirror.frontier.tic),
-            leadTics: wan.inputLeadTics });
+            targetTic, leadTics });
     }, () => { }, () => { void audio.enable(); });
     canvas.addEventListener('click', () => {
         if (document.pointerLockElement !== canvas)
@@ -478,7 +516,7 @@ async function startMleGame(value, status) {
         // The chartered lockstep contract schedules from the client's verified
         // confirmed frontier. Adding a separately advertised server frontier here
         // double-counts delivery lag and inflates every input by the backlog.
-        const targetTic = wan.inputTargetTic(mirror.frontier.tic);
+        const targetTic = input.targetTic;
         void reviseMatchInput(value.match, value.playerCapability, input.sequence, input.hex, targetTic).then(result => {
             const finished = performance.now();
             observeWanRoundTrip(finished - started, finished);
@@ -491,7 +529,7 @@ async function startMleGame(value, status) {
             trace('input-effective', { inputSequence: input.sequence,
                 effectiveTic: result.effectiveTic, command: input.command,
                 targetTic, roundTripMs: finished - started,
-                leadTics: wan.inputLeadTics });
+                leadTics: input.leadTics });
         }).catch(cause => {
             if (transientAuthorityFailure(cause)) {
                 trace('recovery-wait', { path: 'input', message: String(cause) });
@@ -680,6 +718,13 @@ async function startMleGame(value, status) {
         const next = presentations.get(presentedTic + 1);
         if (next !== undefined && next.presentation.tic <= target &&
             now >= nextPresentationAt) {
+            // Keep the playout clock on its original 35 Hz timeline. Resetting it
+            // to `now` after a delayed callback permanently preserved every
+            // transport/event-loop stall as additional presentation lag. One frame
+            // per pump lets a confirmed-only client drain that backlog without
+            // reordering, predicting, or inventing a tic.
+            if (nextPresentationAt <= 0)
+                nextPresentationAt = now;
             presentations.delete(next.presentation.tic);
             blitIndexed(next.presentation.frame);
             audio.enqueue(next.audio, fail);
@@ -687,10 +732,16 @@ async function startMleGame(value, status) {
             paintedAt.push(now);
             if (paintedAt.length > 60)
                 paintedAt.shift();
-            nextPresentationAt = Math.max(nextPresentationAt + 1000 / 35, now);
+            // A fixed-rate consumer preserves any startup or WAN burst backlog
+            // forever. Time-compress already-confirmed frames at at most 2x until
+            // the configured playout offset is restored, then resume native 35 Hz.
+            // This changes presentation timing only; no transition is skipped.
+            nextPresentationAt += confirmedPlayoutIntervalMs(target - presentedTic);
             trace('present', { tic: presentedTic, chainSha: next.presentation.chainSha,
                 leadTics: wan.inputLeadTics,
                 playoutTics: wan.playoutBufferTics,
+                confirmedFrontierTic: mirror.frontier.tic,
+                presentationLagTics: mirror.frontier.tic - presentedTic,
                 serverTic });
             updateHud();
         }

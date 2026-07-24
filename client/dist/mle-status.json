@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-07-23",
+  "updated": "2026-07-24",
   "database": {
     "product": "Oracle AI Database 26ai Free",
     "imageVersion": "23.26.2",
@@ -38,41 +38,39 @@
   },
   "artifacts": {
     "authority": {
-      "bytes": 1167197,
-      "sha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
+      "bytes": 1170639,
+      "sha256": "103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e",
       "profile": "simulation-engine-headless"
     },
     "presentation": {
       "bytes": 1250529,
       "sha256": "e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc",
-      "profile": "presentation-engine-headless",
-      "inputBytecodeSha256": "595a9a39bafe3aa6e3bbd2405fb1ca17f3bfa081dbf098360503ba3ab32d859b",
-      "mochaBytecodeSha256": "bdef8440d129c3b1bd334c9ebe66c4d2d1f0d803939d9a1c29b7191c98b16bb3",
-      "hud": "full vanilla widgets and animated Doomguy face"
+      "profile": "presentation-engine-headless"
     },
-    "inputBytecodeSha256": "5194b73d7196804957221216052b552305632c943e8ea402327a220b326d0e06",
+    "inputBytecodeSha256": "83ebc323785cefcacf7b2c434b856e6d62f1f9ae4f77b063e6bce1f0a0e0f099",
     "mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e",
     "tablePackSha256": "058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44",
     "ojvmDifferentialOracleSha256": "2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74",
     "ojvmScope": "repository/dev differential oracle only"
   },
   "gates": {
+    "presentationHud96Tics": "PASS",
     "canonical330": "PASS",
     "coopEveryTic762": "PASS",
     "membershipRecovery": "PASS",
     "ledgerEveryTic13272": "PASS",
-    "finalWorkerSoak": "PASS",
-    "lifecycleHardening": "PASS",
-    "postHardeningCausalSoak": "PASS",
+    "finalWorkerSoak": "PENDING_RERUN",
+    "lifecycleHardening": "PENDING_RERUN",
+    "postHardeningCausalSoak": "HISTORICAL_PASS",
     "calibratedProcessMemory": "PASS",
     "browserConfirmedOnly": "PASS",
-    "presentationHud96Tics": "PASS",
     "soloMleAuthority": "PASS",
-    "warmPoolAdmissionP95": "PASS",
-    "warmStandbyHealing": "PASS",
+    "warmPoolAdmissionP95": "PENDING_RERUN",
+    "warmStandbyHealing": "PENDING_RERUN",
     "resourceCapDecision": "PASS"
   },
   "soak": {
+    "qualification": "LAST_FULLY_SOAKED_SUPERSEDED_ARTIFACT",
     "artifactSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
     "warmupSecondsExcluded": 300,
     "scoredSeconds": 1800,
@@ -140,7 +138,7 @@
     "warmCheckpointBankEntries": 10,
     "warmCheckpointScope": "E1M1; COOP/DEATHMATCH; skills 1-5",
     "admissionReductionFromColdPercent": 96.57,
-    "measuredFps": 34.5,
+    "measuredFps": null,
     "legacyEndpointCalls": 0,
     "headlessAuthorityColdInitP50Seconds": 4.684,
     "concurrentTwoSlotDeployReadySeconds": 34.669,
@@ -154,20 +152,39 @@
     "ordsPoolFix": "single outstanding status poll; cold initialization holds no match-row lock",
     "note": "cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline"
   },
+  "performance": {
+    "state": "BELOW_30_FPS_ACCELERATION_IN_PROGRESS",
+    "evidenceArtifactSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
+    "workload": "two-player deathmatch authoritative exact command stream",
+    "tics": 500,
+    "throughputTicsPerSecond": 3.961,
+    "sessionCpuMillisecondsPerTic": 253.6,
+    "p50MillisecondsPerTic": 244.672,
+    "p95MillisecondsPerTic": 374.71,
+    "peakCombatMillisecondsPerTic": 290.124,
+    "requiredTicsPerSecond": 35,
+    "targetFps": 30,
+    "note": "No current evidence supports an unqualified 30 FPS claim on 26ai Free"
+  },
   "remaining": [
     {
+      "id": "LIFECYCLE",
+      "state": "NEXT",
+      "label": "Cadence, stratified recovery, admission and lifecycle rerun on 103e"
+    },
+    {
       "id": "SOAK",
-      "state": "PASS",
-      "label": "30-minute final promoted-artifact soak"
+      "state": "PENDING",
+      "label": "30-minute final 103e promoted-artifact soak"
     },
     {
       "id": "WAN",
-      "state": "NEXT",
+      "state": "PAUSED",
       "label": "Injected-latency multiplayer matrix"
     },
     {
       "id": "JAVA-AUDIT",
-      "state": "NEXT",
+      "state": "PENDING",
       "label": "Production-path Java removal audit"
     },
     {
@@ -183,7 +200,10 @@
   ],
   "evidence": {
     "soak": "artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log",
-    "ledger": "artifacts/performance/pmle-ledger-every-tic/run-init-diet-a942cd2d-2026-07-23.log",
+    "ledger": "artifacts/performance/pmle-ledger-every-tic/run-checkpoint-map-2026-07-24.log",
+    "canonical": "artifacts/performance/pmle-differentials/canonical-checkpoint-map-2026-07-24.log",
+    "coop": "artifacts/performance/pmle-differentials/coop-checkpoint-map-2026-07-24.log",
+    "membership": "artifacts/performance/pmle-differentials/membership-checkpoint-map-2026-07-24.log",
     "solo": "artifacts/performance/pmle-browser-role-swap/solo-live-2026-07-23.log",
     "soloAdmission": "artifacts/performance/pmle-browser-role-swap/solo-admission-live-2026-07-23.log",
     "warmPoolAdmission": "artifacts/performance/pmle-browser-role-swap/warm-pool-admission-live-2026-07-23.log",
@@ -193,6 +213,7 @@
     "lifecycleHardening": "artifacts/performance/pmle-worker-lifecycle/run-2026-07-23.log",
     "causalSoak": "artifacts/performance/pmle-worker-soak/run-smoke-foreground-180-warm300-c664-2026-07-23.log",
     "finalPromotedSoak": "artifacts/performance/pmle-worker-soak/run-final-a942-lifecycle-0744-2026-07-23.log",
-    "browserReplicaProfile": "artifacts/performance/pmle-browser-replica/profile-2026-07-23.log"
+    "browserReplicaProfile": "artifacts/performance/pmle-browser-replica/profile-2026-07-23.log",
+    "livePerformance": "artifacts/performance/pmle-live-tic/matrix-parked-gate-2026-07-23.log"
   }
 }

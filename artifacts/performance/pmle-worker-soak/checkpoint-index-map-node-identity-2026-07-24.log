@@ -1,0 +1,2 @@
+/tmp/checkpoint-candidate.log:PMLE_NODE_CHECKPOINT|PASS|tic=32|bytes=88378|first_ms=12.131|repeated_ms=4.047|sha256=52486bdcbec08ea0da5084646091076982cbf316c913c2c474432ce2ef4692a2
+/tmp/checkpoint-baseline.log:PMLE_NODE_CHECKPOINT|PASS|tic=32|bytes=88378|first_ms=13.362|repeated_ms=4.619|sha256=5777287c9ed0ed048fedd25e6a6bb8a612d3cca3c99f8795863fd89acb404a4b

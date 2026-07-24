@@ -1,0 +1,9 @@
+{
+  "name": "doomdb-mle-wasm2js-spike",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Pinned Binaryen translator for the isolated TeaVM legacy-Wasm feasibility probe",
+  "devDependencies": {
+    "binaryen": "131.0.0"
+  }
+}

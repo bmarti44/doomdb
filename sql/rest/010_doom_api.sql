@@ -225,6 +225,13 @@ create or replace package body doom_api as
   c_session     constant pls_integer := -20703;
   c_asset       constant pls_integer := -20704;
   c_match_auth  constant pls_integer := -20713;
+  -- Free-edition checkpoint serialization has a measured 8.56 s legitimate
+  -- call. Recovery must not classify that as a dead authority. Fifteen
+  -- seconds leaves explicit margin while remaining well inside the 60 s
+  -- recovery bound; calls beyond it still use the exact SID+serial action
+  -- discriminator below.
+  c_worker_stale_seconds constant pls_integer := 15;
+  c_worker_probe_seconds constant pls_integer := 5;
 
   procedure fail(p_code pls_integer, p_message varchar2) is
   begin
@@ -290,6 +297,67 @@ create or replace package body doom_api as
   function utc_now return timestamp with time zone is
   begin
     return localtimestamp at time zone 'UTC';
+  end;
+
+  procedure record_liveness_probe(
+    p_match varchar2,p_generation number,p_endpoint varchar2,
+    p_sid number,p_serial number,p_heartbeat timestamp with time zone,
+    p_busy_until timestamp with time zone,p_session_found number,
+    p_action varchar2,p_checkpoint number,p_decision varchar2
+  ) is
+    pragma autonomous_transaction;
+  begin
+    insert into doom_match_liveness_probe(
+      match_id,generation,endpoint,worker_sid,worker_serial,
+      heartbeat_age_ms,busy_until,session_found,observed_action,
+      checkpoint_action,decision)
+    select p_match,p_generation,p_endpoint,p_sid,p_serial,
+      case when p_heartbeat is not null then
+        round((cast(localtimestamp at time zone 'UTC' as date)-
+          cast(p_heartbeat as date))*86400000) end,
+      p_busy_until,p_session_found,p_action,p_checkpoint,p_decision
+    from dual where not exists(
+      select 1 from doom_match_liveness_probe
+      where match_id=p_match and generation=p_generation
+        and decision=p_decision and observed_at>
+          (localtimestamp at time zone 'UTC')-interval '1' second);
+    commit;
+  end;
+
+  function worker_liveness_suppresses(
+    p_match varchar2,p_generation number,p_endpoint varchar2,
+    p_sid number,p_serial number,p_heartbeat timestamp with time zone,
+    p_busy_until timestamp with time zone
+  ) return boolean is
+    l_count number:=0;l_action varchar2(64);l_checkpoint number:=0;
+    l_busy number:=0;l_backstop number:=0;l_decision varchar2(32);
+  begin
+    if p_sid is not null and p_serial is not null then
+      select count(*),max(action) into l_count,l_action from v$session
+        where sid=p_sid and serial#=p_serial
+          and username=sys_context('USERENV','CURRENT_SCHEMA');
+    end if;
+    if l_count=1 and p_busy_until is not null and p_busy_until>utc_now then
+      l_busy:=1;
+    end if;
+    if l_count=1 and l_action='MLE_CHECKPOINT' and p_heartbeat is not null and
+       p_heartbeat>=utc_now-interval '60' second then
+      l_checkpoint:=1;
+    end if;
+    if p_heartbeat is not null and p_heartbeat>
+       utc_now-numtodsinterval(c_worker_stale_seconds,'SECOND') then
+      l_backstop:=1;
+    end if;
+    l_decision:=case
+      when l_busy=1 then 'SUPPRESS_BUSY'
+      when l_checkpoint=1 then 'SUPPRESS_ACTION'
+      when l_count=0 then 'RECOVER_SESSION_GONE'
+      when l_backstop=1 then 'DEFER_BACKSTOP'
+      else 'RECOVER_STALE' end;
+    record_liveness_probe(p_match,p_generation,p_endpoint,p_sid,p_serial,
+      p_heartbeat,p_busy_until,l_count,l_action,l_checkpoint,l_decision);
+    return l_busy=1 or l_checkpoint=1 or
+      (l_count=1 and l_backstop=1);
   end;
 
   -- expires_at is an idle lease, not an absolute match-duration limit. Renew
@@ -1245,6 +1313,9 @@ create or replace package body doom_api as
     l_epoch number;l_generation number;l_slot number;
     l_now timestamp with time zone:=utc_now;
     l_worker_status varchar2(16);l_worker_heartbeat timestamp with time zone;
+    l_worker_sid number;l_worker_serial number;
+    l_busy_until timestamp with time zone;
+    l_checkpoint_call boolean:=false;
     l_recovery_state varchar2(16);
   begin
     p_ready:=0;p_current_tic:=null;p_payload:=null;require_match_shape(p_match);
@@ -1263,12 +1334,21 @@ create or replace package body doom_api as
       fail(c_match_auth,'match unavailable');
     end if;
     l_slot:=player_capability_slot(p_match,p_player_capability);
-    select worker_status,heartbeat into l_worker_status,l_worker_heartbeat
+    select worker_status,heartbeat,worker_sid,worker_serial,busy_until
+      into l_worker_status,l_worker_heartbeat,l_worker_sid,l_worker_serial,
+        l_busy_until
       from doom_match_worker_control where match_id=p_match
         and generation=l_generation;
+    if l_worker_status='READY' and l_worker_heartbeat<
+       l_now-numtodsinterval(c_worker_probe_seconds,'SECOND') then
+      l_checkpoint_call:=worker_liveness_suppresses(
+        p_match,l_generation,'DMD1_POLL',l_worker_sid,l_worker_serial,
+        l_worker_heartbeat,l_busy_until);
+    end if;
     if l_worker_status in('FAILED','STOPPED') or
-       (l_worker_status='READY' and
-        l_worker_heartbeat<l_now-interval '5' second) then
+      (l_worker_status='READY' and l_worker_heartbeat<
+        l_now-numtodsinterval(c_worker_stale_seconds,'SECOND') and
+        not l_checkpoint_call) then
       -- DMD1 is the production presentation path, so it owns the recovery
       -- trigger formerly carried only by the retired frame endpoint.
       doom_match_worker.recover_match(p_match,20,l_recovery_state);
@@ -1322,6 +1402,9 @@ create or replace package body doom_api as
     l_epoch number;l_generation number;l_wait number;
     l_deadline timestamp with time zone;l_now timestamp with time zone:=utc_now;
     l_worker_status varchar2(16);l_worker_heartbeat timestamp with time zone;
+    l_worker_sid number;l_worker_serial number;
+    l_busy_until timestamp with time zone;
+    l_checkpoint_call boolean:=false;
     l_recovery_state varchar2(16);
   begin
     p_ready:=0;p_current_tic:=null;p_payload:=null;require_match_shape(p_match);
@@ -1346,11 +1429,20 @@ create or replace package body doom_api as
     end loop;
     if p_ready=0 then
       begin
-        select worker_status,heartbeat into l_worker_status,l_worker_heartbeat
+        select worker_status,heartbeat,worker_sid,worker_serial,busy_until
+          into l_worker_status,l_worker_heartbeat,l_worker_sid,l_worker_serial,
+            l_busy_until
           from doom_match_worker_control where match_id=p_match;
+        if l_worker_status='READY' and l_worker_heartbeat<
+           utc_now-numtodsinterval(c_worker_probe_seconds,'SECOND') then
+          l_checkpoint_call:=worker_liveness_suppresses(
+            p_match,l_generation,'FRAME_POLL',l_worker_sid,l_worker_serial,
+            l_worker_heartbeat,l_busy_until);
+        end if;
         if l_worker_status in('FAILED','STOPPED') or
-           (l_worker_status='READY' and
-            l_worker_heartbeat<utc_now-interval '5' second) then
+           (l_worker_status='READY' and l_worker_heartbeat<
+            utc_now-numtodsinterval(c_worker_stale_seconds,'SECOND') and
+            not l_checkpoint_call) then
           doom_match_worker.recover_match(p_match,0,l_recovery_state);
         end if;
       exception when no_data_found then null;end;

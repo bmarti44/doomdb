@@ -1,0 +1,10 @@
+--- a/src/m/Settings.java
++++ b/src/m/Settings.java
+@@ -122,7 +122,7 @@ public enum Settings {
+     semi_translucent_fuzz(FILE_MOCHADOOM, false), // only works in AlphaTrueColor mode. Also ignored with fuzz_mix = true
+     fuzz_mix(FILE_MOCHADOOM, false), // Maes unique features on Fuzz effect. Vanilla dont have that, so they are switched off by default
+-    parallelism_realcolor_tint(FILE_MOCHADOOM, Runtime.getRuntime().availableProcessors()), // Used for real color tinting to speed up
++    parallelism_realcolor_tint(FILE_MOCHADOOM, 1), // Legacy TeaVM Wasm has no Runtime.availableProcessors; headless authority never uses tint workers.
+     parallelism_patch_columns(FILE_MOCHADOOM, 0), // When drawing screen graphics patches, this speeds up column drawing, <= 0 is serial
+     greyscale_filter(FILE_MOCHADOOM, GreyscaleFilter.Luminance), // Used for FUZZ effect or with -greypal comand line argument (for test)
+     scene_renderer_mode(FILE_MOCHADOOM, SceneRendererMode.Serial), // In vanilla, scene renderer is serial. Parallel can be faster

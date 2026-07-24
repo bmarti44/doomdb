@@ -91,6 +91,12 @@ begin
 
   create_sleep_job(2);
   dbms_session.sleep(3);
+  -- The conservative janitor requires both absence predicates and an expired
+  -- grace period. Age only the fixture row; production writers never do this.
+  update doom_mle_warm_slot set
+    heartbeat=systimestamp-numtodsinterval(61,'SECOND')
+    where slot_id=1;
+  commit;
   doom_worker_lifecycle.reconcile_warm_slots;
   select slot_status into l_status from doom_mle_warm_slot where slot_id=1;
   if l_status<>'FAILED' then
@@ -121,13 +127,53 @@ begin
   dbms_output.put_line(
     'PMLE_WARM_LIFECYCLE|PASS|scenario=force_path_reset');
 
+  -- Promotion-race fence: even an identity-less, grace-expired row must be a
+  -- hard janitor no-op while an assignment owns CLAIMED/RUNNING lifecycle.
+  for i in 1..20 loop
+    update doom_mle_warm_slot set slot_status=
+        case when mod(i,2)=0 then 'RUNNING' else 'CLAIMED' end,
+      assigned_match=rpad(to_char(i,'FM00'),32,'0'),
+      assigned_role='STANDBY',
+      heartbeat=systimestamp-numtodsinterval(120,'SECOND')
+      where slot_id=1;
+    commit;
+    for janitor_ in 1..10 loop
+      doom_worker_lifecycle.reconcile_warm_slots;
+    end loop;
+    select slot_status into l_status from doom_mle_warm_slot where slot_id=1;
+    if l_status not in('CLAIMED','RUNNING') then
+      raise_application_error(-20000,
+        'janitor mutated assigned promotion iteration '||i);
+    end if;
+  end loop;
+  update doom_mle_warm_slot set slot_status='STOPPED',
+    assigned_match=null,assigned_role=null,heartbeat=systimestamp
+    where slot_id=1;
+  commit;
+  dbms_output.put_line(
+    'PMLE_WARM_LIFECYCLE|PASS|scenario=promotion_race_20');
+
   begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
   doom_match_worker.start_warm_pool;
   dbms_output.put_line(
-    'PMLE_WARM_LIFECYCLE|PASS|scenarios=4|pool_restored=1');
+    'PMLE_WARM_LIFECYCLE|PASS|scenarios=5|pool_restored=1');
 exception when others then
-  begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
-  begin doom_match_worker.start_warm_pool;exception when others then null;end;
-  raise;
+  declare
+    l_error number:=sqlcode;
+    l_message varchar2(2000):=sqlerrm;
+  begin
+    begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
+    begin
+      update doom_mle_warm_slot set slot_status='STOPPED',
+        assigned_match=null,assigned_role=null,worker_sid=null,
+        worker_serial=null,worker_spid=null,worker_job_run=null,
+        incarnation_token=null,heartbeat=systimestamp where slot_id=1;
+      commit;
+    exception when others then rollback;end;
+    begin doom_match_worker.start_warm_pool;exception when others then null;end;
+    raise_application_error(
+      case when l_error between -20999 and -20000 then l_error else -20000 end,
+      substr(l_message,1,1800));
+  end;
 end;
 /

@@ -1,0 +1,32 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1167197|source_sha256=a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_MLE_MEMORY_CAL|SKIPPED|rehearsal_only=1
+PMLE_WORKER_SOAK_MATCH|BOUND|match=3460868145b0053afa5a8e34e539661f
+PMLE_WORKER_SOAK_BROWSER_EVIDENCE|BEGIN
+PMLE_WORKER_SOAK_BROWSER_EVIDENCE|END
+PMLE_WORKER_SOAK|VOIDED|reason=harness_exit|exit_status=0|evidence=artifacts/performance/pmle-worker-soak/run-passive-standby-smoke-v2-2026-07-23.log

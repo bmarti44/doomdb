@@ -1,0 +1,21 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_WARM_LIFECYCLE|PASS|scenario=incarnation_mismatch_rejected
+PMLE_WARM_LIFECYCLE|PASS|scenario=stop_intent_honored
+PMLE_WARM_LIFECYCLE|PASS|scenario=stale_row_reconciled
+PMLE_WARM_LIFECYCLE|PASS|scenario=force_path_reset
+PMLE_WARM_LIFECYCLE|PASS|scenario=promotion_race_20
+PMLE_WARM_LIFECYCLE|PASS|scenarios=5|pool_restored=1
+
+PL/SQL procedure successfully completed.
+
