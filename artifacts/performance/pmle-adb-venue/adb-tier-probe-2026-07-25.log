@@ -1,0 +1,6 @@
+PMLE_ADB_VENUE|provider=OCI|region=us-ashburn-1|instance=doomdb-adb|db_name=DOOMDB|service_alias=doomdb_tp|edition=EE|database=26ai|release=23.26.3.1.0|always_free=1|compute_model=ECPU|compute_count=1|workload=OLTP
+PMLE_ADB_INITIAL_AUDIT|arithmetic_warmed_ns_per_iteration=171..173|gather_ns_per_byte=91|consecutive_calls_stable=1|compilation_step_down=0
+PMLE_ADB_REPROBE|sample=1|iterations=1000000|batch=20|wall_ns_per_iteration=189.328|checksum=1553740419
+PMLE_ADB_REPROBE|sample=2|iterations=1000000|batch=20|wall_ns_per_iteration=188.638|checksum=1553740419
+PMLE_ADB_DECISION|CLOSE_EXACT_RENDERER|threshold_ns=100|default_async_jit=INERT
+PMLE_ADB_CLEANUP|PASS|probe_objects_removed=1

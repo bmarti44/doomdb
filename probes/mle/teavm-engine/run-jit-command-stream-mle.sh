@@ -81,7 +81,8 @@ busy_host="$(ps ax -o command= | awk '
 active_output="$("$root/scripts/db_sql.sh" - <<'SQL'
 set heading off feedback off pagesize 0
 select 'ACTIVE_MATCHES='||count(*) from doom_match
-where match_state='ACTIVE' and expires_at>(localtimestamp at time zone 'UTC');
+where match_state in('LOBBY','ACTIVE')
+  and expires_at>(localtimestamp at time zone 'UTC');
 SQL
 )"
 active="$(awk -F= '/^ACTIVE_MATCHES=/{print $2}' <<<"$active_output")"

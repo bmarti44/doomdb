@@ -756,13 +756,14 @@ not unexplained pin drift. The decision, input lineage, binary hashes, and HUD
 semantic goldens are consolidated in
 `artifacts/performance/pmle-browser-replica/presentation-pin-lineage-2026-07-24.md`.
 
-Repeated TeaVM 0.15 invocations over unchanged class files produced equal-size,
-semantically passing modules with different function order and SHA-256, with
-both minification enabled and disabled. Consequently, the record distinguishes
-the exact promoted artifact SHA from source/toolchain provenance; it does not
-claim that TeaVM 0.15 reproduces bit-identical JavaScript. The pinned output is
-the deployable binary, and every replacement still requires the complete
-semantic and differential gate battery.
+The earlier input adapter JAR embedded Maven's wall-clock archive timestamps.
+Changing or rebuilding any `@JSExport` class could therefore perturb TeaVM's
+root/minifier ordering even when the selected main class was unchanged. The
+final build pins `project.build.outputTimestamp`; two consecutive builds of
+the de-CPS successor reproduced the exact same input JAR and JavaScript SHA.
+The preserved pre-fix presentation artifact remains valid historical evidence,
+while every promoted replacement still requires byte reproduction plus the
+complete semantic and differential gate battery.
 
 ## Live match-admission contention correction — 2026-07-23
 
@@ -868,8 +869,66 @@ still take approximately 106–141 ms/tic. Late quiet windows improve
 The candidate therefore qualifies for the full promotion battery but is not
 yet a production artifact and does not establish 30 FPS under combat load.
 
+Post-ledger reproducibility work found that the exact input JAR for
+`2848ef7a…` had not been retained and could not reproduce that minified byte
+sequence. The reproducible successor is 1,081,335 bytes with SHA-256
+`5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3`.
+Two consecutive builds reproduced it exactly, and it matched `2848ef7a…`
+across 5,250 tics and 5,251 complete canonical-state comparisons. It is
+undergoing a fresh 13,272-tic every-tic Oracle differential; no evidence is
+inherited merely because the generated source is semantically equivalent.
+
 Unsupported immediate and hot-threshold synchronous compilation attempts both
 remained in `MLE park` for more than five minutes without reaching a ticker
 marker. They are void diagnostics. Pinned `e485…` and two `READY` warm slots
 were restored after each attempt. The complete record is
 `artifacts/performance/pmle-decps-rank/REPORT.md`.
+
+## Exact-frame database egress candidate
+
+The exact presentation rank includes a supported RAW baseline and a
+database-session egress capability probe. Both shapes use a non-PURE MLE
+wrapper module which imports the exact generated presentation module through
+an MLE environment and imports the built-in
+`mle-js-oracledb` driver directly. All initialization, ticker, render, and
+persist call specifications target that wrapper and environment, so they share
+one retained execution context. The RAW arm retains the existing 64,000-byte
+`renderPlayerFrame` result in JavaScript and returns two bounded views; it does
+not add presentation-only Java exports, because TeaVM treats every
+`@JSExport` in the input JAR as an authority root. The primary capability arm
+binds the complete
+64,000-byte `Uint8Array` directly into the target BLOB. It uses
+`DB_TYPE_BLOB` when the running driver exposes that Node-driver-shaped
+constant; otherwise it exercises Oracle 26ai's documented
+`Uint8Array`-to-BLOB mapping with target-column type inference. A one-byte
+probe is deliberately forbidden because it could succeed through RAW
+conversion and misclassify the real frame shape. The installer records the
+supported mode rather than assuming API equivalence. If the full-frame direct
+operation is unsupported, the harness selects the documented fallback: update
+to `empty_blob()`, return the locator as
+`oracledb.ORACLE_BLOB`, write the frame into that `OracleBlob`, and close it in
+a `finally` block. The Node alias `oracledb.BLOB` and streaming LOB API are
+explicitly unsupported and never used. No frame bytes cross a call
+specification in either arm.
+The relevant primary references are:
+
+- https://docs.oracle.com/en/database/oracle/oracle-database/26/mlejs/large-objects-lob-mle.html
+- https://docs.oracle.com/en/database/oracle/oracle-database/26/mlejs/api-differences-node-oracledb-and-mle-js-oracledb.html
+- https://docs.oracle.com/en/database/oracle/oracle-database/26/mlejs/mle-type-conversions.html
+
+The bind cell is not allowed to infer correctness from a row count. After every
+timed render-and-persist call, PL/SQL verifies the stored BLOB length, hashes
+the database-resident bytes, and extends the same unique-frame SHA chain used
+by the pinned browser artifact and RAW cell. Hashing is excluded from pipeline
+timing; the SQL-driver update is included. Both transports compute the 30 FPS
+verdict from authoritative-step entry through completed frame egress, and only
+a 300-frame/30-warmup cell may emit an acceptance marker. This candidate is
+source-only until the active de-CPS promotion ledger releases the evidence
+host. Its wrapper source is loaded through a BLOB staging table only after an
+in-database SHA-256 comparison, and the same gate independently verifies the
+SHA of the imported presentation engine before module creation. Before either
+presentation cell is built, the runner also rebuilds the de-CPS authority from
+the shared adapter source and requires byte identity with `5ec18cbe…`.
+Authority, presentation baseline, and presentation de-CPS build markers must
+then report one identical adapter input-JAR SHA. Presentation-only exports
+therefore cannot silently invalidate the authority differential evidence.

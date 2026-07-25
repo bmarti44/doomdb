@@ -5,8 +5,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 javascript="$project/target/javascript/doom-mle-simulation-engine-headless.js"
 table_pack="$project/target/canonical-runtime-v2.bin"
-expected_source_bytes=1171896
-expected_source_sha256="e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b"
+expected_source_bytes=1081335
+expected_source_sha256="5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3"
 expected_table_pack_sha256="058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"
 base64_fold_width=2000
 build=1
@@ -21,7 +21,7 @@ for option in "$@"; do
     --javascript=*) javascript="${option#--javascript=}";build=0;custom_source=1 ;;
     --table-pack=*) table_pack="${option#--table-pack=}";build=0;custom_source=1 ;;
     --production) production=1;build=0
-      javascript="$root/client/dist/play/doom-mle-authority-e485b9418e58.js"
+      javascript="$root/client/dist/play/doom-mle-authority-5ec18cbe4cff.js"
       table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
       ;;
     *) printf 'unsupported option: %s\n' "$option" >&2;exit 2 ;;
@@ -46,6 +46,11 @@ has_warm_restore=0
 if rg -F 'restoreCheckpointWarm' "$javascript" >/dev/null; then
   has_warm_restore=1
 fi
+has_presentation_frame=0
+if rg -F 'renderPlayerFrameLength' "$javascript" >/dev/null &&
+    rg -F 'renderPlayerFrameChunk' "$javascript" >/dev/null; then
+  has_presentation_frame=1
+fi
 if [[ "$production" == 1 &&
       ("$bytes" != "$expected_source_bytes" ||
        "$sha256" != "$expected_source_sha256") ]]; then
@@ -64,9 +69,49 @@ emit_sql() {
     'whenever oserror exit failure rollback' \
     'whenever sqlerror exit sql.sqlcode rollback' \
     'set define off echo off verify off feedback off heading off pages 0 lines 32767 trimspool on serveroutput on size unlimited' \
+    "begin execute immediate 'drop procedure doom_teavm_bind_release'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_probe_direct'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_direct_mode'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_persist_locator'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_persist_direct'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_persist'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_frame_chunk'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_frame_length'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_authority_step'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_multi_init_game'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_table_load'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_table_allocate'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_load'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_bind_allocate'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop mle module doom_teavm_presentation_bind'; exception when others then if sqlcode not in (-4080,-4103) then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop mle env doom_teavm_presentation_bind_env'; exception when others then if sqlcode not in (-4080,-4103,-4104,-4105) then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop table doom_teavm_frame_sink purge'; exception when others then if sqlcode <> -942 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop table doom_teavm_bind_source purge'; exception when others then if sqlcode <> -942 then raise; end if; end;" \
+    '/' \
     "begin execute immediate 'drop procedure doom_teavm_sim_release'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
     '/' \
     "begin execute immediate 'drop function doom_teavm_sim_memory'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_sim_frame_chunk'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_sim_frame_length'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
     '/' \
     "begin execute immediate 'drop function doom_teavm_sim_state'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
     '/' \
@@ -219,6 +264,14 @@ emit_sql() {
   if [[ "$has_warm_restore" == 1 ]]; then
     printf '%s\n' \
       "create function doom_teavm_sim_restore_warm(p_expected_tic number) return varchar2 as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'restoreCheckpointWarm(number)';" \
+      '/'
+  fi
+
+  if [[ "$has_presentation_frame" == 1 ]]; then
+    printf '%s\n' \
+      "create function doom_teavm_sim_frame_length(p_player_slot number) return number as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'renderPlayerFrameLength(number)';" \
+      '/' \
+      "create function doom_teavm_sim_frame_chunk(p_offset number,p_length number) return raw as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'renderPlayerFrameChunk(number, number)';" \
       '/'
   fi
 

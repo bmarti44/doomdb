@@ -1,0 +1,39 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1081335|source_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=1|ready_to_active_ms=4525|elapsed_ms=4704|recovery_status=READY|mode=COOP|skill=3|generation=1|tic=0|create_ms=180|ready_ms=35|status_ms=767|status_polls=38|poll_cadence_ms=100
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=2|ready_to_active_ms=4900|elapsed_ms=5081|recovery_status=READY|mode=COOP|skill=3|generation=1|tic=0|create_ms=181|ready_ms=41|status_ms=831|status_polls=41|poll_cadence_ms=100
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=3|ready_to_active_ms=4725|elapsed_ms=4946|recovery_status=READY|mode=COOP|skill=3|generation=0|tic=0|create_ms=221|ready_ms=34|status_ms=767|status_polls=40|poll_cadence_ms=100
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=4|ready_to_active_ms=4906|elapsed_ms=5092|recovery_status=READY|mode=COOP|skill=3|generation=1|tic=0|create_ms=186|ready_ms=38|status_ms=844|status_polls=41|poll_cadence_ms=100
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=5|ready_to_active_ms=4571|elapsed_ms=4757|recovery_status=READY|mode=COOP|skill=3|generation=1|tic=0|create_ms=186|ready_ms=33|status_ms=712|status_polls=39|poll_cadence_ms=100
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=6|ready_to_active_ms=4418|elapsed_ms=4593|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=0|create_ms=175|ready_ms=34|status_ms=661|status_polls=38|poll_cadence_ms=100
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=7|ready_to_active_ms=4473|elapsed_ms=4645|recovery_status=READY|mode=COOP|skill=3|generation=1|tic=0|create_ms=171|ready_ms=34|status_ms=721|status_polls=38|poll_cadence_ms=100
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=8|ready_to_active_ms=4723|elapsed_ms=4889|recovery_status=READY|mode=COOP|skill=3|generation=0|tic=0|create_ms=166|ready_ms=34|status_ms=760|status_polls=40|poll_cadence_ms=100
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=9|ready_to_active_ms=4599|elapsed_ms=4788|recovery_status=READY|mode=COOP|skill=3|generation=1|tic=0|create_ms=189|ready_ms=43|status_ms=735|status_polls=39|poll_cadence_ms=100
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=10|ready_to_active_ms=4899|elapsed_ms=5087|recovery_status=READY|mode=COOP|skill=3|generation=1|tic=0|create_ms=188|ready_ms=37|status_ms=836|status_polls=41|poll_cadence_ms=100
+PMLE_WARM_POOL_ADMISSION|PASS|metric=browser_ready_click_to_first_active|poll_cadence_ms=100|samples=10|min_ms=4418|p50_ms=4599|p95_ms=4906|max_ms=4906|target_p95_ms=5000
+PMLE_ALERT_WINDOW|PASS|label=DECPS_ADMISSION|new_ora_incidents=0|bytes=0

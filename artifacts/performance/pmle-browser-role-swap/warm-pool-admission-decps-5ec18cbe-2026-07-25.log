@@ -1,0 +1,39 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1081335|source_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=1|elapsed_ms=5421|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=1
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=2|elapsed_ms=5151|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=3
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=3|elapsed_ms=5106|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=0
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=4|elapsed_ms=5199|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=1
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=5|elapsed_ms=5312|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=0
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=6|elapsed_ms=5433|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=0
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=7|elapsed_ms=5220|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=0
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=8|elapsed_ms=5544|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=3
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=9|elapsed_ms=5213|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=1
+PMLE_SOLO_ADMISSION_SAMPLE|PASS|sample=10|elapsed_ms=5339|recovery_status=WARMING|mode=COOP|skill=3|generation=1|tic=1
+PMLE_WARM_POOL_ADMISSION|FAIL|samples=10|min_ms=5106|p50_ms=5220|p95_ms=5544|max_ms=5544|target_p95_ms=5000
+PMLE_ALERT_WINDOW|PASS|label=DECPS_ADMISSION|new_ora_incidents=0|bytes=0

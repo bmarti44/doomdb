@@ -77,11 +77,11 @@ This bound is density-stratified, not flat. The 128–256-tic bracket came from
 the approximately 150 ms/tic average replay cost. At the measured sustained
 peak of approximately 290 ms/tic, replaying a maximum-distance checkpoint can
 take roughly 74 seconds before detection and restore are included. The
-worst-case total can therefore reach approximately 80–90 seconds. The current
-constants are an implementation candidate, not yet proof of the 60-second
-contract at peak density.
+worst-case total can therefore reach approximately 80–90 seconds. Those
+superseded constants were an implementation candidate, not proof of the
+60-second contract at peak density.
 
-The production source now uses:
+That superseded candidate used:
 
 - minimum checkpoint opportunity: 128 tics;
 - hard maximum checkpoint interval: 256 tics;
@@ -141,11 +141,12 @@ approximately 39.2 seconds, but the separately measured 673 ms synchronous
 SAVE every approximately 1.8 seconds would create recurring player-visible
 stalls. It is not adopted merely to make the recovery arithmetic pass.
 
-The current 128–256 candidate remains in place while the fixed
-18.809-second restore path is profiled. Reducing restore below approximately
-5.5 seconds would allow fixed 128 to satisfy the phase budget at the measured
-peak replay rate. No awake-stratified policy or codec-format change is
-authorized by this evidence.
+At this point in the preserved investigation, the 128–256 candidate remained
+in place while the fixed 18.809-second restore path was profiled. Reducing
+restore below approximately 5.5 seconds was the condition for fixed 128 to
+satisfy the phase budget at the measured peak replay rate. The superseding
+warm-restore result above met that condition; no awake-stratified policy or
+codec-format change was needed.
 
 The pending measurement uses private route diagnostics without altering
 production cadence. `CHECKPOINT_TEST_HOOK` is a separate, default-off control
@@ -159,9 +160,10 @@ and reports the measured restore/replay duration as `DIAGNOSTIC_NOT_GATE`.
 It re-reads the durable frontier and newest checkpoint after killing the
 authority, so a race into the forced checkpoint cannot masquerade as a
 maximum-distance result. Only that measurement may set or retune the
-production recovery threshold. After any required retune, the same scenario
-runs with `DOOMDB_HIGH_AWAKE_RECOVERY_GATE=1`; that acceptance mode requires
-the durable kill distance to be 240–255 tics.
+production recovery threshold. After the eventual fixed-128 retune, the same
+scenario ran with `DOOMDB_HIGH_AWAKE_RECOVERY_GATE=1`; its accepted v7 mode
+requires a durable kill distance of 112–127 tics. The former 240–255 range
+applied only to the superseded 256-tic maximum.
 
 The diagnostic clock is deliberately narrower than the production SLA clock.
 Its `elapsed_ms` starts immediately before the authority kill and covers

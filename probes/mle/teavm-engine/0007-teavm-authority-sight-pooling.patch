@@ -1,0 +1,103 @@
+diff --git a/src/p/Actions/ActionsSight.java b/src/p/Actions/ActionsSight.java
+--- a/src/p/Actions/ActionsSight.java
++++ b/src/p/Actions/ActionsSight.java
+@@ -39,7 +39,9 @@ public interface ActionsSight extends ActionsSectors {
+ 
+         int sightzstart; // eye z of looker
+         divline_t strace = new divline_t();
+-        ; // from t1 to t2
++        divline_t segmentTrace = new divline_t();
++        int[] bspStack = new int[0];
++        // strace is from t1 to t2
+         int t2x, t2y;
+         int[] sightcounts = new int[2];
+     }
+@@ -96,6 +98,12 @@ public interface ActionsSight extends ActionsSectors {
+         sight.strace.dy = t2.y - t1.y;
+ 
+         // the head node is the last node output
++        // A binary BSP with N internal nodes has N+1 leaves. Retain one
++        // traversal stack per level context so sight checks allocate nothing
++        // in the hot path.
++        if (sight.bspStack.length < ll.numnodes + 1) {
++            sight.bspStack = new int[ll.numnodes + 1];
++        }
+         return CrossBSPNode(ll.numnodes - 1);
+     }
+ 
+@@ -117,7 +125,7 @@ public interface ActionsSight extends ActionsSectors {
+         @fixed_t
+         int opentop;
+         int openbottom;
+-        divline_t divl = new divline_t();
++        final divline_t divl = sight.segmentTrace;
+         //vertex_t v1;
+         //vertex_t v2;
+         @fixed_t
+@@ -237,40 +245,37 @@ public interface ActionsSight extends ActionsSectors {
+      * successfully.
+      */
+     default boolean CrossBSPNode(int bspnum) {
+         final AbstractLevelLoader ll = levelLoader();
+         final Sight sight = contextRequire(KEY_SIGHT);
+-
+-        node_t bsp;
+-        int side;
+-
+-        if (eval(bspnum & NF_SUBSECTOR)) {
+-            if (bspnum == -1) {
+-                return CrossSubsector(0);
+-            } else {
+-                return CrossSubsector(bspnum & (~NF_SUBSECTOR));
++        final int[] stack = sight.bspStack;
++        int stackSize = 0;
++
++        stack[stackSize++] = bspnum;
++        while (stackSize > 0) {
++            final int current = stack[--stackSize];
++            if (eval(current & NF_SUBSECTOR)) {
++                if (!CrossSubsector(current == -1
++                    ? 0
++                    : current & (~NF_SUBSECTOR))) {
++                    return false;
++                }
++                continue;
+             }
+-        }
+-
+-        bsp = ll.nodes[bspnum];
+ 
+-        // decide which side the start point is on
+-        side = bsp.DivlineSide(sight.strace.x, sight.strace.y);
+-        if (side == 2) {
+-            side = 0; // an "on" should cross both sides
+-        }
++            final node_t bsp = ll.nodes[current];
++            int side = bsp.DivlineSide(sight.strace.x, sight.strace.y);
++            if (side == 2) {
++                side = 0; // an "on" should cross both sides
++            }
+ 
+-        // cross the starting side
+-        if (!CrossBSPNode(bsp.children[side])) {
+-            return false;
+-        }
++            // Stack is LIFO: queue the ending side first so the starting side
++            // is still visited first, exactly matching the recursive walk.
++            if (side != bsp.DivlineSide(sight.t2x, sight.t2y)) {
++                stack[stackSize++] = bsp.children[side ^ 1];
++            }
++            stack[stackSize++] = bsp.children[side];
++        }
+ 
+-        // the partition plane is crossed here
+-        if (side == bsp.DivlineSide(sight.t2x, sight.t2y)) {
+-            // the line doesn't touch the other side
+-            return true;
+-        }
+-
+-        // cross the ending side
+-        return CrossBSPNode(bsp.children[side ^ 1]);
++        return true;
+     }
+ }

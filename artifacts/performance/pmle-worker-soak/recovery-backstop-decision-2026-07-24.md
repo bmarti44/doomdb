@@ -23,3 +23,16 @@ without adding an unsupported 15 seconds to stale-worker detection. The
 constant and source verifier are pinned to 15 seconds. Final acceptance still
 requires the slow-checkpoint and killed-session adversarial recovery gates on
 the promoted checkpoint artifact.
+
+## Post-READY degraded-redundancy window
+
+The 2026-07-25 async-admission contract durably publishes the authority's
+tic-zero state and marks the match `ACTIVE` before assigning its standby.
+This ordering is intentional: it keeps browser admission off the
+Free-edition two-running-session Resource Manager contention path. From that
+commit until `arm_standby` reaches `READY`, the match is explicitly
+degraded-redundancy. If the authority fails in that interval, the recovery
+chooser uses TIER_2 (claim any unbound READY warm slot and restore/replay) or,
+if none exists, TIER_3 (cold initialization). The redundant-state recovery
+SLA does not apply during this window; the separately measured degraded
+TIER_2/TIER_3 latency does.

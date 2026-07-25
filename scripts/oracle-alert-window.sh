@@ -47,15 +47,33 @@ case "$command" in
     # ORA-00000 is Oracle's explicit successful-completion code and appears in
     # normal ALTER SYSTEM KILL SESSION audit records as "Result = ORA-00000".
     # Every nonzero ORA code remains a blocking incident.
+    expected_code="${DOOMDB_ALERT_EXPECT_CODE:-}"
+    expected_count=0
+    if [[ -n "$expected_code" ]]; then
+      [[ "$expected_code" =~ ^ORA-[0-9]{5}$ && "$expected_code" != ORA-00000 ]] || {
+        printf 'PMLE_ALERT_WINDOW|FAIL|label=%s|reason=invalid_expected_code\n' \
+          "$label" >&2
+        exit 1
+      }
+      expected_count="$(printf '%s\n' "$delta" |
+        grep -Eo "$expected_code" | wc -l | tr -d '[:space:]')"
+      [[ "$expected_count" == 1 ]] || {
+        printf 'PMLE_ALERT_WINDOW|FAIL|label=%s|expected_code=%s|expected_count=%s\n' \
+          "$label" "$expected_code" "$expected_count" >&2
+        exit 1
+      }
+    fi
     incidents="$(printf '%s\n' "$delta" |
-      grep -E 'ORA-[0-9]{5}' | grep -v 'ORA-00000' || true)"
+      grep -E 'ORA-[0-9]{5}' | grep -v 'ORA-00000' |
+      { if [[ -n "$expected_code" ]]; then grep -v "$expected_code"; else cat; fi; } ||
+      true)"
     if [[ -n "$incidents" ]]; then
       printf 'PMLE_ALERT_WINDOW|FAIL|label=%s|new_ora_incidents=1\n%s\n' \
         "$label" "$incidents" >&2
       exit 1
     fi
-    printf 'PMLE_ALERT_WINDOW|PASS|label=%s|new_ora_incidents=0|bytes=%s\n' \
-      "$label" "$((current - offset))"
+    printf 'PMLE_ALERT_WINDOW|PASS|label=%s|new_ora_incidents=0|bytes=%s|expected_code=%s|expected_count=%s\n' \
+      "$label" "$((current - offset))" "${expected_code:-NONE}" "$expected_count"
     ;;
   *)
     usage

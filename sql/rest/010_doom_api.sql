@@ -832,12 +832,13 @@ create or replace package body doom_api as
       where match_id=p_match and member_state='READY';
     update doom_match set last_activity_at=l_now where match_id=p_match;
     if l_members=l_max and l_ready=l_max then
-      -- Commit READY membership before Scheduler creates its retained session.
-      -- START_READY returns ACTIVE only after the retained MLE engine, its
-      -- authoritative tic-zero identity/frontier, and its generation-matched
-      -- warm recovery context are all committed and ready.
+      -- Commit READY membership before dispatching the retained session.
+      -- Do not hold this ORDS session while the authority is assigned under
+      -- Free's two-running-session cage. START_READY durably claims the slot
+      -- and returns STARTING; MATCH_STATUS remains the authority-readiness
+      -- fence and returns ACTIVE only after tic zero and worker READY commit.
       commit;
-      doom_match_worker.start_ready(p_match,30000,p_match_state);
+      doom_match_worker.start_ready(p_match,0,p_match_state);
     else
       p_match_state:='LOBBY';commit;
     end if;
@@ -869,6 +870,7 @@ create or replace package body doom_api as
     l_state varchar2(16);l_expiry timestamp with time zone;
     l_host_salt raw(32);l_host_hash varchar2(64);
     l_worker_status varchar2(16);
+    l_now timestamp with time zone:=utc_now;
   begin
     p_match_state:=null;p_game_mode:=null;p_skill:=null;p_episode:=null;
     p_map:=null;p_max_players:=null;p_member_count:=null;p_ready_count:=null;
@@ -894,7 +896,18 @@ create or replace package body doom_api as
       select worker_mode,worker_status into p_worker_mode,l_worker_status
         from doom_match_worker_control
         where match_id=p_match;
-      if l_state='ACTIVE' and l_worker_status<>'READY' then
+      if l_state='ACTIVE' and l_worker_status='FAILED' and
+         p_current_tic=0 then
+        update doom_match set match_state='CANCELLED',
+          finished_at=l_now,last_activity_at=l_now
+          where match_id=p_match and match_state='ACTIVE'
+            and generation=p_generation and current_tic=0;
+        update doom_match_standby_control set stop_requested=1,
+          heartbeat=l_now where match_id=p_match
+          and standby_status in('STARTING','READY');
+        p_match_state:='CANCELLED';
+        commit;
+      elsif l_state='ACTIVE' and l_worker_status<>'READY' then
         p_match_state:='STARTING';
       end if;
     exception when no_data_found then

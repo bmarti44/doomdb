@@ -1,0 +1,87 @@
+diff --git a/src/p/Actions/ActiveStates/Ai.java b/src/p/Actions/ActiveStates/Ai.java
+--- a/src/p/Actions/ActiveStates/Ai.java
++++ b/src/p/Actions/ActiveStates/Ai.java
+@@ -216,8 +216,10 @@ public interface Ai extends Monsters, Sounds {
+     //P_MobjThinker
+     //
+     default void P_MobjThinker(mobj_t mobj) {
++        // All Doom gameplay flags tested here are in the low 32-bit word.
++        final int entryFlagsLow = (int) mobj.flags;
+         // momentum movement
+-        if (mobj.momx != 0 || mobj.momy != 0 || (eval(mobj.flags & MF_SKULLFLY))) {
++        if (mobj.momx != 0 || mobj.momy != 0 || eval(entryFlagsLow & MF_SKULLFLY)) {
+             getAttacks().XYMovement(mobj);
+ 
+             if (mobj.thinkerFunction.ordinal() == 0) {
+@@ -245,7 +247,7 @@ public interface Ai extends Monsters, Sounds {
+             }
+         } else {
+             // check for nightmare respawn
+-            if (!eval(mobj.flags & MF_COUNTKILL)) {
++            if (!eval(((int) mobj.flags) & MF_COUNTKILL)) {
+                 return;
+             }
+ 
+diff --git a/src/p/mobj_t.java b/src/p/mobj_t.java
+--- a/src/p/mobj_t.java
++++ b/src/p/mobj_t.java
+@@ -332,6 +332,9 @@ public class mobj_t extends thinker_t implements ISoundOrigin, Interceptable,
+ 
+ 	public void ZMovement() {
+ 		@fixed_t int dist, delta;
++		// Preserve the long field/codec, but keep repeated low-word tests in
++		// allocation-free int arithmetic on TeaVM's JavaScript backend.
++		final int flagsLow = (int) flags;
+ 
+ 		// check for smooth step up
+ 		if ((player != null) && z < floorz) {
+@@ -342,9 +345,9 @@ public class mobj_t extends thinker_t implements ISoundOrigin, Interceptable,
+ 		// adjust height
+ 		z += momz;
+ 
+-		if (((flags & MF_FLOAT) != 0) && target != null) {
++		if (((flagsLow & MF_FLOAT) != 0) && target != null) {
+ 			// float down towards target if too close
+-			if ((flags & MF_SKULLFLY) == 0 && (flags & MF_INFLOAT) == 0) {
++			if ((flagsLow & MF_SKULLFLY) == 0 && (flagsLow & MF_INFLOAT) == 0) {
+ 				dist = AproxDistance(x - target.x, y - target.y);
+ 
+ 				delta = (target.z + (height >> 1)) - z;
+@@ -364,7 +367,7 @@ public class mobj_t extends thinker_t implements ISoundOrigin, Interceptable,
+ 			// Note (id):
+ 			// somebody left this after the setting momz to 0,
+ 			// kinda useless there.
+-			if ((flags & MF_SKULLFLY) != 0) {
++			if ((flagsLow & MF_SKULLFLY) != 0) {
+ 				// the skull slammed into something
+ 				momz = -momz;
+ 			}
+@@ -382,11 +385,11 @@ public class mobj_t extends thinker_t implements ISoundOrigin, Interceptable,
+ 			}
+ 			z = floorz;
+ 
+-			if ((flags & MF_MISSILE) != 0 && (flags & MF_NOCLIP) == 0) {
++			if ((flagsLow & MF_MISSILE) != 0 && (flagsLow & MF_NOCLIP) == 0) {
+ 				A.ExplodeMissile(this);
+ 				return;
+ 			}
+-		} else if ((flags & MF_NOGRAVITY) == 0) {
++		} else if ((flagsLow & MF_NOGRAVITY) == 0) {
+ 			if (momz == 0)
+ 				momz = -GRAVITY * 2;
+ 			else
+@@ -401,12 +404,12 @@ public class mobj_t extends thinker_t implements ISoundOrigin, Interceptable,
+ 				z = ceilingz - height;
+ 			}
+ 
+-			if ((flags & MF_SKULLFLY) != 0) { // the skull slammed into
++			if ((flagsLow & MF_SKULLFLY) != 0) { // the skull slammed into
+ 												// something
+ 				momz = -momz;
+ 			}
+ 
+-			if ((flags & MF_MISSILE) != 0 && (flags & MF_NOCLIP) == 0) {
++			if ((flagsLow & MF_MISSILE) != 0 && (flagsLow & MF_NOCLIP) == 0) {
+ 				A.ExplodeMissile(this);
+ 			}
+ 		}

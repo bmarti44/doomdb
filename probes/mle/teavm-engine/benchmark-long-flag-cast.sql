@@ -1,6 +1,7 @@
 whenever oserror exit failure rollback
 whenever sqlerror exit sql.sqlcode rollback
-set define off echo off verify off feedback off heading off pages 0 serveroutput on size unlimited
+set define off echo off verify off feedback off heading off pages 0
+set linesize 32767 trimspool on serveroutput on size unlimited
 
 begin
   execute immediate 'drop function doom_mle_flag_repeated';
@@ -71,5 +72,10 @@ begin
     '|hoisted_p95_ms='||round(l_hoisted(19),3)||
     '|p50_speedup='||round(l_repeated(10)/l_hoisted(10),4)||
     '|checksum='||l_a);
+end;
+/
+begin
+  execute immediate 'drop function doom_mle_flag_repeated';
+  execute immediate 'drop function doom_mle_flag_hoisted';
 end;
 /

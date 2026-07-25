@@ -1,0 +1,32 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+DB_OUTPUT_HELPER|PASS|wide_linesize=32767|wrap_normalization=1|adversarial_self_test=1
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1081335|source_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_ASYNC_ADMISSION_RACE|PASS|scenario=ready_status_claim_storm|pollers=8|authority_claims=1
+PMLE_ASYNC_ADMISSION_RACE|PASS|scenario=member_leave_during_starting|terminal=CANCELLED|capacity_released=1
+PMLE_ASYNC_ADMISSION_RACE|PASS|scenario=failed_during_starting|terminal=CANCELLED|bounded_ms=5000
+PMLE_ALERT_WINDOW|PASS|label=DECPS_ASYNC_ADMISSION_RACES|new_ora_incidents=0|bytes=336

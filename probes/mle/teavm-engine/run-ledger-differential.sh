@@ -7,9 +7,9 @@ tag="${PMLE_EVIDENCE_TAG:-final-2026-07-23}"
 [[ "$tag" =~ ^[A-Za-z0-9._-]+$ ]] ||
   { printf 'invalid evidence tag: %s\n' "$tag" >&2; exit 2; }
 
-pinned_authority='e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b'
+pinned_authority='5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3'
 expected_authority="${PMLE_EXPECTED_AUTHORITY_SHA256:-$pinned_authority}"
-expected_authority_bytes="${PMLE_EXPECTED_AUTHORITY_BYTES:-1171896}"
+expected_authority_bytes="${PMLE_EXPECTED_AUTHORITY_BYTES:-1081335}"
 candidate_file="${PMLE_CANDIDATE_FILE:-}"
 expected_table_pack='058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44'
 expected_oracle='2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74'

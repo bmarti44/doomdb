@@ -1,0 +1,41 @@
+diff --git a/src/doomdb/mocha/DoomDbMochaAdapter.java b/src/doomdb/mocha/DoomDbMochaAdapter.java
+--- a/src/doomdb/mocha/DoomDbMochaAdapter.java
++++ b/src/doomdb/mocha/DoomDbMochaAdapter.java
+@@ -598,6 +598,24 @@ public final class DoomDbMochaAdapter {
+         + canonicalDigestHex(digest);
+   }
+ 
++  /*
++   * Legacy Wasm's JavaScript lowering returns the high half of an i64 through
++   * scratch state. Keep each field load and shift in the same method and
++   * cross the serializer call boundary as i32 only. This is a wasm2js-only
++   * generated-shape workaround; it does not change the canonical byte format.
++   */
++  private static int canonicalAngleHigh(mobj_t value) {
++    return (int) (value.angle >>> 32);
++  }
++
++  private static int canonicalMobjTicsHigh(mobj_t value) {
++    return (int) (value.mobj_tics >>> 32);
++  }
++
++  private static int canonicalFlagsHigh(mobj_t value) {
++    return (int) (value.flags >>> 32);
++  }
++
+   /**
+    * Serialize every save-covered field plus identities represented by JVM
+    * pointers into one stable, runtime-independent byte sequence.
+@@ -667,9 +685,9 @@ public final class DoomDbMochaAdapter {
+           data.writeInt(canonicalIdentityIndex(
+               value.levelLoader.subsectors, mobj.subsector));
+           data.writeInt(canonicalIdentityIndex(value.players, mobj.player));
+-          data.writeInt((int) (mobj.angle >>> 32));
+-          data.writeInt((int) (mobj.mobj_tics >>> 32));
+-          data.writeInt((int) (mobj.flags >>> 32));
++          data.writeInt(canonicalAngleHigh(mobj));
++          data.writeInt(canonicalMobjTicsHigh(mobj));
++          data.writeInt(canonicalFlagsHigh(mobj));
+         } else {
+           data.writeInt(0);
+         }

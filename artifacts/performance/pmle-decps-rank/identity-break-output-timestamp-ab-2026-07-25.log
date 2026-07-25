@@ -1,0 +1,118 @@
+PMLE_DECPS_IDENTITY_BREAK_AB|BEGIN|variable=project.build.outputTimestamp|authority_sources=unchanged_from_b8065ce|mocha_patches=unchanged_from_b8065ce
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< doomdb:mochadoom-mle-engine-slice >------------------
+[INFO] Building mochadoom-mle-engine-slice 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ mochadoom-mle-engine-slice ---
+[INFO] skip non existing resourceDirectory /work/probes/mle/teavm-engine/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ mochadoom-mle-engine-slice ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ mochadoom-mle-engine-slice ---
+[INFO] skip non existing resourceDirectory /work/probes/mle/teavm-engine/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ mochadoom-mle-engine-slice ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ mochadoom-mle-engine-slice ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.4.1:jar (default-jar) @ mochadoom-mle-engine-slice ---
+[INFO] 
+[INFO] --- org.teavm:teavm-maven-plugin:0.15.0:compile (default) @ mochadoom-mle-engine-slice ---
+[INFO] Preparing classpath for TeaVM
+[INFO] Using the following classpath for TeaVM: /root/.m2/repository/org/teavm/teavm-classlib/0.15.0/teavm-classlib-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-core/0.15.0/teavm-core-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-interop/0.15.0/teavm-interop-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-metaprogramming-api/0.15.0/teavm-metaprogramming-api-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-extension-apis/0.15.0/teavm-extension-apis-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-platform/0.15.0/teavm-platform-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-jso-apis/0.15.0/teavm-jso-apis-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-jso-impl/0.15.0/teavm-jso-impl-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-metaprogramming-impl/0.15.0/teavm-metaprogramming-impl-0.15.0.jar:/root/.m2/repository/com/jcraft/jzlib/1.1.3/jzlib-1.1.3.jar:/root/.m2/repository/joda-time/joda-time/2.12.2/joda-time-2.12.2.jar:/root/.m2/repository/org/teavm/teavm-jso/0.15.0/teavm-jso-0.15.0.jar:/work/probes/mle/teavm-engine/target/mochadoom-mle-simulation.jar:/work/probes/mle/teavm-engine/target/classes
+[INFO] Running TeaVM
+[INFO] Output file successfully built
+[INFO] Classes compiled: 1278
+[INFO] Methods compiled: 8586
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  34.647 s
+[INFO] Finished at: 2026-07-25T13:09:24Z
+[INFO] ------------------------------------------------------------------------
+PMLE_DECPS_IDENTITY_BREAK_CELL|timestamp=2026-07-25T00:00:00Z|input_sha256=2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914|output_bytes=1081340|output_sha256=09295542c2355e1e0d9de86344dd85d6e0d3d76d549c01fbdac5a5db292feed8
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< doomdb:mochadoom-mle-engine-slice >------------------
+[INFO] Building mochadoom-mle-engine-slice 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ mochadoom-mle-engine-slice ---
+[INFO] skip non existing resourceDirectory /work/probes/mle/teavm-engine/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ mochadoom-mle-engine-slice ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ mochadoom-mle-engine-slice ---
+[INFO] skip non existing resourceDirectory /work/probes/mle/teavm-engine/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ mochadoom-mle-engine-slice ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ mochadoom-mle-engine-slice ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.4.1:jar (default-jar) @ mochadoom-mle-engine-slice ---
+[INFO] 
+[INFO] --- org.teavm:teavm-maven-plugin:0.15.0:compile (default) @ mochadoom-mle-engine-slice ---
+[INFO] Preparing classpath for TeaVM
+[INFO] Using the following classpath for TeaVM: /root/.m2/repository/org/teavm/teavm-classlib/0.15.0/teavm-classlib-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-core/0.15.0/teavm-core-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-interop/0.15.0/teavm-interop-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-metaprogramming-api/0.15.0/teavm-metaprogramming-api-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-extension-apis/0.15.0/teavm-extension-apis-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-platform/0.15.0/teavm-platform-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-jso-apis/0.15.0/teavm-jso-apis-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-jso-impl/0.15.0/teavm-jso-impl-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-metaprogramming-impl/0.15.0/teavm-metaprogramming-impl-0.15.0.jar:/root/.m2/repository/com/jcraft/jzlib/1.1.3/jzlib-1.1.3.jar:/root/.m2/repository/joda-time/joda-time/2.12.2/joda-time-2.12.2.jar:/root/.m2/repository/org/teavm/teavm-jso/0.15.0/teavm-jso-0.15.0.jar:/work/probes/mle/teavm-engine/target/mochadoom-mle-simulation.jar:/work/probes/mle/teavm-engine/target/classes
+[INFO] Running TeaVM
+[INFO] Output file successfully built
+[INFO] Classes compiled: 1278
+[INFO] Methods compiled: 8586
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  42.580 s
+[INFO] Finished at: 2026-07-25T13:10:11Z
+[INFO] ------------------------------------------------------------------------
+PMLE_DECPS_IDENTITY_BREAK_CELL|timestamp=2026-07-24T00:00:00Z|input_sha256=2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914|output_bytes=1081337|output_sha256=333fc7939580e19366213e576d447a985037669ff04591d32418417b860ab525
+PMLE_DECPS_IDENTITY_BREAK_AB|PASS|output_identity=DIFFERENT|classification=OUTPUT_TIMESTAMP_CAUSAL
+PMLE_DECPS_IDENTITY_BREAK_REPEAT|BEGIN|timestamp=2026-07-24T00:00:00Z
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< doomdb:mochadoom-mle-engine-slice >------------------
+[INFO] Building mochadoom-mle-engine-slice 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ mochadoom-mle-engine-slice ---
+[INFO] skip non existing resourceDirectory /work/probes/mle/teavm-engine/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ mochadoom-mle-engine-slice ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ mochadoom-mle-engine-slice ---
+[INFO] skip non existing resourceDirectory /work/probes/mle/teavm-engine/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ mochadoom-mle-engine-slice ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ mochadoom-mle-engine-slice ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.4.1:jar (default-jar) @ mochadoom-mle-engine-slice ---
+[INFO] 
+[INFO] --- org.teavm:teavm-maven-plugin:0.15.0:compile (default) @ mochadoom-mle-engine-slice ---
+[INFO] Preparing classpath for TeaVM
+[INFO] Using the following classpath for TeaVM: /root/.m2/repository/org/teavm/teavm-classlib/0.15.0/teavm-classlib-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-core/0.15.0/teavm-core-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-interop/0.15.0/teavm-interop-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-metaprogramming-api/0.15.0/teavm-metaprogramming-api-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-extension-apis/0.15.0/teavm-extension-apis-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-platform/0.15.0/teavm-platform-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-jso-apis/0.15.0/teavm-jso-apis-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-jso-impl/0.15.0/teavm-jso-impl-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-metaprogramming-impl/0.15.0/teavm-metaprogramming-impl-0.15.0.jar:/root/.m2/repository/com/jcraft/jzlib/1.1.3/jzlib-1.1.3.jar:/root/.m2/repository/joda-time/joda-time/2.12.2/joda-time-2.12.2.jar:/root/.m2/repository/org/teavm/teavm-jso/0.15.0/teavm-jso-0.15.0.jar:/work/probes/mle/teavm-engine/target/mochadoom-mle-simulation.jar:/work/probes/mle/teavm-engine/target/classes
+[INFO] Running TeaVM
+[INFO] Output file successfully built
+[INFO] Classes compiled: 1278
+[INFO] Methods compiled: 8586
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  39.882 s
+[INFO] Finished at: 2026-07-25T13:11:19Z
+[INFO] ------------------------------------------------------------------------
+PMLE_DECPS_IDENTITY_BREAK_REPEAT|timestamp=2026-07-24T00:00:00Z|input_sha256=2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914|output_bytes=1081337|output_sha256=333fc7939580e19366213e576d447a985037669ff04591d32418417b860ab525
+PMLE_DECPS_IDENTITY_BREAK_REPEAT|PASS|same_timestamp_identity=SAME|classification=TIMESTAMP_CAUSAL_REMAINS_PLAUSIBLE

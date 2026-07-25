@@ -1,0 +1,56 @@
+PMLE_DECPS_SOURCE_PROMOTION|BEGIN|bytes=1081335|sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3
+PMLE_DECPS_PROMOTION_PLAN|PASS|files=23|candidate_bytes=1081335|candidate_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|input_bytecode_sha256=2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914|mocha_bytecode_sha256=c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4|patch_set_sha256=6c14bdeaf107bf27a954afd99023f4cb2f9c45d179e957341acafd2537415bae
+PMLE_DECPS_PROMOTION_REWRITE|client/dist/mle-status.json:Mocha bytecode SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/dist/mle-status.json:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/dist/mle-status.json:authority byte count|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/dist/mle-status.json:input bytecode SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/dist/play/teavm-browser.js:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/dist/play/teavm-browser.js:authority artifact name|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/src/teavm-browser.ts:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/src/teavm-browser.ts:authority artifact name|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/staging/mle-status.json:Mocha bytecode SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/staging/mle-status.json:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/staging/mle-status.json:authority byte count|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/staging/mle-status.json:input bytecode SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/staging/teavm-browser.js:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|client/staging/teavm-browser.js:authority artifact name|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|deploy/cloud/t11.1/catalog-observation.sql:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|deploy/cloud/t11.1/catalog-observation.sql:authority byte count|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|deploy/cloud/t11.1/source-policy.json:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|deploy/cloud/t11.1/source-policy.json:authority byte count|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/benchmark-warm-restore-mle.sql:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/load-mle-module.sh:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/load-mle-module.sh:authority artifact name|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/load-mle-module.sh:authority byte count|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/load-tic0-checkpoint-bank.sh:authority artifact name|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/membership-recovery-differential.sql:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/package-browser-assets.sh:authority SHA|occurrences=2
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/package-browser-assets.sh:authority artifact name|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/profile-checkpoint-node.mjs:authority artifact name|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/profile-command-stream-node.mjs:authority artifact name|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/run-javascript-candidate-parity.mjs:authority artifact name|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/run-ledger-differential.sh:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/run-ledger-differential.sh:authority byte count|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|probes/mle/teavm-engine/wasm2js/run-node-parity.mjs:authority artifact name|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|scripts/t11.1-build-evidence.mjs:authority byte count|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|scripts/t11.1-deployment-manifest.mjs:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|scripts/t11.1-deployment-manifest.mjs:authority byte count|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|sql/sim/088_mle_match_runtime.sql:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|tests/verify-pmle-source.sh:Mocha bytecode SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|tests/verify-pmle-source.sh:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|tests/verify-pmle-source.sh:input bytecode SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|tests/verify-t11.1-source.sh:Mocha bytecode SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|tests/verify-t11.1-source.sh:authority SHA|occurrences=1
+PMLE_DECPS_PROMOTION_REWRITE|tests/verify-t11.1-source.sh:authority byte count|occurrences=2
+PMLE_DECPS_PROMOTION_REWRITE|tests/verify-t11.1-source.sh:input bytecode SHA|occurrences=1
+PMLE_DECPS_INPUT_PROVENANCE_TRANSITION|PASS|from_input_bytecode_sha256=631f3d7657b3b9521ed800d1b4ec518d4b6f102e5bf2a9f3e7caf1cb45624ecd|to_input_bytecode_sha256=2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914|authority_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|reviewed_sources=1|presentation_source_sha256=69e148efbc23bdca004f9e726980b33747209a27c707298bdcc73596dee018e4|simulation_source_sha256=0f2adb87c4a755e8a110854fc7b85c48f4fdbbf3abd1a2bc5bdc14cc4b09b173
+PMLE_DECPS_PROMOTION_SELFTEST|PASS
+PMLE_DECPS_PROMOTION_CANDIDATE|PASS|bytes=1081335|sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3
+PMLE_DECPS_PROMOTION_DIFFERENTIALS|PASS|canonical=330|coop=762|membership=100
+PMLE_DECPS_PROMOTION_RANK|PASS|node_tics=5250|canonical_checkpoints=5251|valid_mle_samples=5248|mle_p50_ms=37.238|mle_p95_ms=141.499|p50_delta_pct=-1.241|p95_delta_pct=-0.819|monotonic_tps=19.828|clock_source=DUAL_GET_TIME_PRIMARY
+PMLE_DECPS_PROMOTION_INVENTORY|PASS|runtime_rewrite=17|historical_preserve=16|artifact_runtime_rewrite=10|artifact_historical_preserve=2|byte_runtime_rewrite=10|byte_historical_preserve=8|mocha_runtime_rewrite=5|mocha_historical_preserve=9|input_runtime_rewrite=5|input_historical_preserve=2
+PMLE_DECPS_PROMOTION_LEDGER|PASS|tics=13272|deep_every=1|executions=1|terminal_markers=1|postflight=PASS
+PMLE_DECPS_PROMOTION_REPRODUCIBILITY|PASS|input_bytecode_sha256=2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914|mocha_bytecode_sha256=c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4|patch_set_sha256=6c14bdeaf107bf27a954afd99023f4cb2f9c45d179e957341acafd2537415bae
+PMLE_DECPS_PROMOTION_READINESS|PASS|candidate_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3
+PMLE_DECPS_SOURCE_PROMOTION_VERIFIERS|PASS|pmle_source=PASS|java_removal=PASS|t11_1=PASS|dashboard=PASS
+PMLE_DECPS_SOURCE_PROMOTION|PASS|bytes=1081335|sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3

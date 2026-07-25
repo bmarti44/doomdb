@@ -27,7 +27,8 @@ deathmatch=1
 active="$("$root/scripts/db_sql.sh" - <<SQL | awk -F= '/^ACTIVE_MATCHES=/{print $2}'
 set heading off feedback off pagesize 0
 select 'ACTIVE_MATCHES='||count(*) from doom_match
-where match_state='ACTIVE' and expires_at>(localtimestamp at time zone 'UTC');
+where match_state in('LOBBY','ACTIVE')
+  and expires_at>(localtimestamp at time zone 'UTC');
 SQL
 )"
 [[ "$active" == 0 ]] || {

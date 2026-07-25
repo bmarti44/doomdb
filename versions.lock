@@ -46,21 +46,31 @@
     "moduleType": "ES2015",
     "optimizationLevel": "ADVANCED",
     "minifying": true,
-    "inputBytecodeSha256": "631f3d7657b3b9521ed800d1b4ec518d4b6f102e5bf2a9f3e7caf1cb45624ecd",
-    "mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e",
+    "inputBytecodeSha256": "2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914",
+    "mochaBytecodeSha256": "c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4",
     "canonicalOracleJarSha256": "2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74",
     "checkpointEnvelope": "DMC1-v5",
     "canonicalTablePackBytes": 180272,
     "canonicalTablePackSha256": "058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44",
-    "outputBytes": 1171896,
-    "outputSha256": "e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b",
+    "outputBytes": 1081335,
+    "outputSha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
     "presentation": {
       "profile": "presentation-engine-headless",
       "inputBytecodeSha256": "595a9a39bafe3aa6e3bbd2405fb1ca17f3bfa081dbf098360503ba3ab32d859b",
       "mochaBytecodeSha256": "bdef8440d129c3b1bd334c9ebe66c4d2d1f0d803939d9a1c29b7191c98b16bb3",
       "outputBytes": 1250529,
       "outputSha256": "e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc"
-    }
+    },
+    "authorityExtraPatchSetSha256": "6c14bdeaf107bf27a954afd99023f4cb2f9c45d179e957341acafd2537415bae",
+    "authorityExtraPatches": [
+      "probes/mle/teavm-engine/0006-teavm-authority-no-blocking-wait.patch"
+    ],
+    "mochaSourcePatches": [
+      "probes/mle/teavm-engine/0002-teavm-simulation-headless.patch",
+      "probes/mle/teavm-engine/0003-teavm-presentation-compat.patch",
+      "probes/mle/teavm-engine/0004-teavm-authority-init-diet.patch",
+      "probes/mle/teavm-engine/0006-teavm-authority-no-blocking-wait.patch"
+    ]
   },
   "deploymentTools": {
     "awsCli": "2.34.36",

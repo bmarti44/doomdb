@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import inspector from 'node:inspector';
 
 const modulePath=process.env.DOOMDB_MLE_PROFILE_MODULE ??
-  '../../../client/dist/play/doom-mle-authority-e485b9418e58.js';
+  '../../../client/dist/play/doom-mle-authority-5ec18cbe4cff.js';
 const iwadPath=process.env.DOOMDB_MLE_PROFILE_IWAD ??
   '../../../client/dist/play/freedoom1-7323bcc168c5.bin';
 const tablePath=process.env.DOOMDB_MLE_PROFILE_TABLES ??

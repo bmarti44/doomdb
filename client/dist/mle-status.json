@@ -38,17 +38,19 @@
   },
   "artifacts": {
     "authority": {
-      "bytes": 1171896,
-      "sha256": "e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b",
-      "profile": "simulation-engine-headless"
+      "bytes": 1081335,
+      "sha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
+      "profile": "simulation-engine-headless",
+      "deploymentQualification": "DATABASE_DEPLOYED_LIFECYCLE_RERUN_PENDING",
+      "deploymentInterventionReason": null
     },
     "presentation": {
       "bytes": 1250529,
       "sha256": "e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc",
       "profile": "presentation-engine-headless"
     },
-    "inputBytecodeSha256": "631f3d7657b3b9521ed800d1b4ec518d4b6f102e5bf2a9f3e7caf1cb45624ecd",
-    "mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e",
+    "inputBytecodeSha256": "2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914",
+    "mochaBytecodeSha256": "c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4",
     "tablePackSha256": "058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44",
     "ojvmDifferentialOracleSha256": "2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74",
     "ojvmScope": "repository/dev differential oracle only"
@@ -58,20 +60,23 @@
     "canonical330": "PASS",
     "coopEveryTic762": "PASS",
     "membershipRecovery": "PASS",
-    "ledgerEveryTic13272": "HISTORICAL_PASS_103E",
-    "warmRestoreDirectMleAb": "PASS",
-    "highAwakeMaximumDistanceRecovery": "PASS",
-    "warmSlotRecycle": "PASS",
+    "ledgerEveryTic13272": "PASS_CURRENT_AUTHORITY",
+    "warmRestoreDirectMleAb": "HISTORICAL_PASS_E485_PENDING_RERUN",
+    "highAwakeMaximumDistanceRecovery": "HISTORICAL_PASS_E485_PENDING_RERUN",
+    "warmSlotRecycle": "HISTORICAL_PASS_E485_PENDING_RERUN",
     "componentTickerParity500": "PASS",
     "finalWorkerSoak": "PENDING_RERUN",
     "lifecycleHardening": "PENDING_RERUN",
+    "asyncAdmissionRaces": "PASS_CURRENT_AUTHORITY",
+    "warmSlotLifecycle": "PASS_CURRENT_AUTHORITY",
     "postHardeningCausalSoak": "HISTORICAL_PASS",
     "calibratedProcessMemory": "PASS",
     "browserConfirmedOnly": "PASS",
     "soloMleAuthority": "PASS",
     "warmPoolAdmissionP95": "PENDING_RERUN",
     "warmStandbyHealing": "PENDING_RERUN",
-    "resourceCapDecision": "PASS"
+    "resourceCapDecision": "PASS",
+    "databaseAuthorityDeployment": "PASS"
   },
   "soak": {
     "qualification": "LAST_FULLY_SOAKED_SUPERSEDED_ARTIFACT",
@@ -134,9 +139,9 @@
   "solo": {
     "coldStartBaselineSeconds": 248.629,
     "coldAuthorityAdmissionSeconds": 100.314,
-    "warmAdmissionP50Seconds": 3.1,
-    "warmAdmissionP95Seconds": 3.44,
-    "warmAdmissionMaximumSeconds": 3.44,
+    "warmAdmissionP50Seconds": 4.599,
+    "warmAdmissionP95Seconds": 4.906,
+    "warmAdmissionMaximumSeconds": 4.906,
     "warmAdmissionSamples": 10,
     "warmAdmissionTargetSeconds": 5,
     "warmCheckpointBankEntries": 10,
@@ -158,30 +163,50 @@
   },
   "performance": {
     "state": "BELOW_30_FPS_ACCELERATION_IN_PROGRESS",
-    "evidenceArtifactSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
+    "evidenceArtifactSha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
     "workload": "two-player deathmatch authoritative exact command stream",
-    "tics": 500,
-    "throughputTicsPerSecond": 3.961,
-    "sessionCpuMillisecondsPerTic": 253.6,
-    "p50MillisecondsPerTic": 244.672,
-    "p95MillisecondsPerTic": 374.71,
-    "peakCombatMillisecondsPerTic": 290.124,
+    "tics": 5250,
+    "throughputTicsPerSecond": 19.788,
+    "p50MillisecondsPerTic": 36.64,
+    "p95MillisecondsPerTic": 142.665,
+    "peakCombatMillisecondsPerTic": "106-141",
+    "historicalPreDeCps": {
+      "artifactSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
+      "throughputTicsPerSecond": 3.961,
+      "sessionCpuMillisecondsPerTic": 253.6,
+      "p50MillisecondsPerTic": 244.672,
+      "p95MillisecondsPerTic": 374.71
+    },
     "interpretedArithmeticNanosecondsPerIteration": 373.169,
     "compiledArithmeticNanosecondsPerIteration": 2.792,
     "compiledArithmeticThreshold": "PASS_BELOW_15_NS",
     "fullArtifactCompilation": "DIAGNOSTIC_HANG_MLE_PARK",
     "hiddenCompilationProductionEnabled": false,
+    "autonomousVenue": {
+      "provider": "OCI",
+      "region": "us-ashburn-1",
+      "database": "doomdb-adb",
+      "tier": "Always Free 26ai",
+      "arithmeticNanosecondsPerIteration": "171-189",
+      "gatherNanosecondsPerByte": 91,
+      "jitVerdict": "CLOSED_ABOVE_100_NS",
+      "liveExactDatabaseRendering": "CLOSED",
+      "note": "venue uplift is capacity evidence, not a 35 Hz claim",
+      "evidence": "artifacts/performance/pmle-adb-venue/adb-tier-probe-2026-07-25.log"
+    },
     "deCpsCandidate": {
-      "promotionState": "LEDGER_RECOVERY_LIFECYCLE_SOAK_PENDING",
-      "artifactSha256": "2848ef7a8dc4799de7faa46bcf304f4ac3d351da97be94b144a53f3300607f29",
-      "artifactBytes": 1081331,
+      "promotionState": "PROMOTED_RECOVERY_LIFECYCLE_SOAK_PENDING",
+      "artifactSha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
+      "artifactBytes": 1081335,
+      "performanceMeasurementArtifactSha256": "2848ef7a8dc4799de7faa46bcf304f4ac3d351da97be94b144a53f3300607f29",
+      "finalArtifactRankState": "PASS_WITHIN_5_PERCENT",
       "exactStreamTics": 5250,
       "canonicalCheckpoints": 5251,
       "canonicalParity": "PASS",
       "canonical330": "PASS",
       "coopEveryTic762": "PASS",
       "membershipRecovery100": "PASS",
-      "ledgerEveryTic13272": "PENDING",
+      "ledgerEveryTic13272": "PASS",
       "throughputTicsPerSecond": 19.788,
       "p50MillisecondsPerTic": 36.64,
       "p95MillisecondsPerTic": 142.665,
@@ -193,6 +218,34 @@
       "peakWindowMillisecondsPerTic": "106-141",
       "hiddenImmediateCompilation": "VOID_MLE_PARK_NO_TICKER",
       "hiddenHotCompilation": "VOID_MLE_PARK_NO_TICKER",
+      "nodeProfile": {
+        "state": "PASS",
+        "sampledMilliseconds": 542.891,
+        "tickerSampledMilliseconds": 462.148,
+        "profilerControlMilliseconds": 80.743,
+        "sightBspPercent": 23.558,
+        "sightEligible": false,
+        "mobjFlagLongPercent": 14.042,
+        "activeStateDispatchPercent": 9.299,
+        "movementAiPercent": 8.368,
+        "selectedCategoriesAmdahlCeiling": 2.235,
+        "mobjLowWordCandidate": {
+          "state": "REJECT_BELOW_5_PERCENT",
+          "p50ImprovementPercent": 1.035,
+          "p95ImprovementPercent": 4.122,
+          "throughputImprovementPercent": 2.707,
+          "peakMedianImprovementPercent": 1.401
+        },
+        "defaultAsyncJit": {
+          "state": "LANDING_SIGNAL_REPRODUCTION_PENDING",
+          "landingWindowThroughTic": 800,
+          "wallMedianImprovementPercent": 25.501,
+          "monotonicThroughputImprovementPercent": 41.079,
+          "clockExclusions": 4,
+          "clockSamples": 10500
+        },
+        "nextMeasuredCandidate": "DEFAULT_ASYNC_FRESH_SESSION_REPRODUCTION"
+      },
       "evidence": "artifacts/performance/pmle-decps-rank/REPORT.md"
     },
     "wasm2jsStatus": "REJECT_BINARYEN_131_TIC0_LONG_HIGH_WORD_LOSS",
@@ -205,17 +258,17 @@
     {
       "id": "LIFECYCLE",
       "state": "NEXT",
-      "label": "Admission and full lifecycle battery on e485 fixed-128"
+      "label": "Recovery and final soak remain; async and warm-slot race batteries pass"
     },
     {
       "id": "SHAPE",
-      "state": "ACTIVE",
-      "label": "De-CPS candidate promotion battery and peak-combat acceleration"
+      "state": "PROMOTED",
+      "label": "De-CPS authority promoted; peak-combat acceleration active"
     },
     {
       "id": "SOAK",
       "state": "PENDING",
-      "label": "30-minute final e485 promoted-artifact soak"
+      "label": "30-minute promoted-artifact soak pending"
     },
     {
       "id": "WAN",
@@ -234,16 +287,16 @@
     },
     {
       "id": "ADB",
-      "state": "DORMANT",
-      "label": "Autonomous MLE performance probe; credentials required"
+      "state": "DONE",
+      "label": "OCI Always Free probe: interpreter tier; live exact DB rendering closed"
     }
   ],
   "evidence": {
     "soak": "artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log",
-    "ledger": "artifacts/performance/pmle-ledger-every-tic/run-checkpoint-map-2026-07-24.log",
-    "canonical": "artifacts/performance/pmle-differentials/canonical-warm-restore-e485-2026-07-24.log",
-    "coop": "artifacts/performance/pmle-differentials/coop-warm-restore-e485-2026-07-24.log",
-    "membership": "artifacts/performance/pmle-differentials/membership-warm-restore-e485-2026-07-24.log",
+    "ledger": "artifacts/performance/pmle-ledger-every-tic/run-decps-reproducible-5ec18cbe-2026-07-25.log",
+    "canonical": "artifacts/performance/pmle-differentials/canonical-decps-reproducible-5ec18cbe-2026-07-25.log",
+    "coop": "artifacts/performance/pmle-differentials/coop-decps-reproducible-5ec18cbe-2026-07-25.log",
+    "membership": "artifacts/performance/pmle-differentials/membership-decps-reproducible-5ec18cbe-2026-07-25.log",
     "solo": "artifacts/performance/pmle-browser-role-swap/solo-live-2026-07-23.log",
     "soloAdmission": "artifacts/performance/pmle-browser-role-swap/solo-admission-live-2026-07-23.log",
     "warmPoolAdmission": "artifacts/performance/pmle-browser-role-swap/warm-pool-admission-live-2026-07-23.log",
@@ -259,6 +312,16 @@
     "hiddenJit": "artifacts/performance/pmle-hidden-jit/REPORT.md",
     "warmRestore": "artifacts/performance/pmle-warm-restore-ab/REPORT.md",
     "highAwakeRecovery": "artifacts/performance/pmle-worker-soak/high-awake-recovery-fixed128-e485-v7-2026-07-24.log",
-    "warmSlotRecycle": "artifacts/performance/pmle-worker-soak/warm-slot-recycle-state-e485-2026-07-24.log"
+    "warmSlotRecycle": "artifacts/performance/pmle-worker-soak/warm-slot-recycle-state-e485-2026-07-24.log",
+    "deCpsSourcePromotion": "artifacts/performance/pmle-decps-rank/promotion-5ec18cbe-2026-07-25.log",
+    "deCpsDatabaseDeployment": "artifacts/performance/pmle-decps-rank/deploy-decps-reproducible-5ec18cbe-2026-07-25-v3.log",
+    "autonomousVenue": "artifacts/performance/pmle-adb-venue/adb-tier-probe-2026-07-25.log",
+    "currentAdmission": "artifacts/performance/pmle-browser-role-swap/warm-pool-admission-decps-5ec18cbe-bank-yield100ms-2026-07-25.log",
+    "asyncAdmissionRaces": "artifacts/performance/pmle-worker-lifecycle/async-admission-races-decps-5ec18cbe-2026-07-25-v5.log",
+    "currentWarmLifecycle": "artifacts/performance/pmle-worker-lifecycle/run-decps-5ec18cbe-2026-07-25-v2.log",
+    "deCpsNodeProfile": "artifacts/performance/pmle-decps-rank/node-decps-peak-5ec18cbe4cff-v3.log",
+    "mobjLowWordDecision": "artifacts/performance/pmle-decps-rank/mobj-low-word-decision-2026-07-25.md",
+    "asyncJitDecision": "artifacts/performance/pmle-decps-rank/async-jit-decision-2026-07-25.md",
+    "deCpsDatabaseDeploymentState": "artifacts/performance/pmle-decps-rank/database-deployment-state.json"
   }
 }

@@ -49,11 +49,11 @@ has to match it exactly. The old OJVM adapter remains in repository/dev tooling
 only as the permanent differential oracle.
 
 **Everything is deterministic, and I mean forensically.** Every authoritative
-game state carries a SHA-256 identity. A full no-cheat E1M1 command ledger
-runs 13,272 tics, and the promotion parent `103e15e9…` MLE authority matches
-the preserved OJVM oracle after every one. The current `e485b941…` authority
-passes the 330-tic canonical, every-tic 762-tic co-op, and
-leave/neutral/checkpoint/rejoin membership differentials. OJVM is not
+game state carries a SHA-256 identity. The final reproducible authority
+`5ec18cbe…` matches the preserved OJVM oracle after every one of the 13,272
+no-cheat E1M1 ledger tics. It also passes the 330-tic canonical, every-tic
+762-tic co-op, and leave/neutral/checkpoint/rejoin membership differentials.
+OJVM is not
 in the production path; it remains in repository/dev tooling because it is
 the differential instrument that makes future MLE changes auditable.
 
@@ -61,56 +61,88 @@ the differential instrument that makes future MLE changes auditable.
 request-local engine state, so a retained Oracle Scheduler session owns each
 MLE world and REST calls communicate through durable rows. A sparse
 four-player ticker microbenchmark reached 132.9 tics/s, but that number does
-not represent real gameplay. The production-shaped two-player deathmatch
-stream measures 3.961 tics/s on authority artifact `a942cd2d…` on Oracle AI
-Database 26ai Free, with
-253.6 ms CPU/tic and 244.672/374.710 ms p50/p95. That is below the 35 Hz
-simulation requirement and below the 30 FPS presentation goal. Generated-code
-shape, hidden compilation controls, wasm2js, and a paid/ADB venue probe are
-being investigated; no 30 FPS success is claimed yet.
+not represent real gameplay. Removing TeaVM's reachable coroutine/pacing shape
+raised the exact 5,250-tic production deathmatch stream from 6.002 to 19.788
+tics/s on Oracle AI Database 26ai Free. Quiet windows now clear 35 Hz, while
+20-awake-monster peak windows remain about 7–9 tics/s (106–141 ms/tic).
+A fresh peak-weighted Node profile on the final `5ec18cbe…` lineage assigns
+23.6% of ticker work to sight/BSP, 14.0% to mobj long/flag handling, 9.3% to
+action dispatch, and 8.4% to movement/AI after excluding profiler-control
+overhead. A property-tested narrow flag optimization was exact but improved
+real MLE throughput by only 2.7% (1.4% median in high-awake windows), so it was
+rejected under the predeclared 5% rule. The final-artifact hidden-JIT closeout
+then found one default-configuration matched window improving 25.5% by
+corrected wall median and 41.1% by monotonic throughput. That is a localized
+compiler landing signal awaiting independent reproduction, not a 30 FPS
+success. OCI Always Free 26ai measured
+171–189 ns per warmed
+arithmetic iteration and 91 ns per gathered byte. That permanently closes the
+ADB-JIT and exact live database-rendering branches under the approved 100 ns
+rule; its 1.7–2.5x venue uplift is capacity evidence, not a 35 Hz claim.
 
 The hidden-compilation investigation proved that this Free build contains an
 optimizing MLE compiler: a deterministic integer kernel improves from roughly
 373 ns/iteration interpreted to 2.792 ns/iteration compiled. Those controls
-are undocumented and remain diagnostic-only. A first de-CPS authority
-candidate, `2848ef7a…`, removes the reachable pacing/sleep root and is
-byte-identical to pinned `e485…` after every tic of the preserved 5,250-tic
-deathmatch stream. In direct interpreted MLE it improves whole-route throughput
+are undocumented and remain diagnostic-only. The first measured de-CPS
+authority, `2848ef7a…`, removes the reachable pacing/sleep root and matches
+pinned `e485…` after every tic of the preserved 5,250-tic deathmatch stream.
+In direct interpreted MLE it improves whole-route throughput
 from a comparable ADVANCED artifact's 6.002 to 19.788 tics/s (3.30x), with
 36.640/142.665 ms p50/p95. Quiet late-route windows now run in 10–11 ms/tic;
-peak combat remains 106–141 ms/tic. The candidate is not promoted and no
-30 FPS success is claimed. Both immediate and hot-threshold synchronous
-compiler cells still spend more than five minutes in `MLE park` without
-reaching the ticker.
+peak combat remains 106–141 ms/tic. No 30 FPS success is claimed.
+
+Post-ledger hardening found that `2848ef7a…`'s timestamp-bearing input JAR was
+not retained and could not reproduce that exact minified byte sequence. The
+build now pins its archive timestamp. Two consecutive builds produced the same
+1,081,335-byte successor, `5ec18cbe…`, which matches `2848ef7a…` across 5,250
+tics and 5,251 full canonical-state comparisons. Its fresh 13,272-tic every-tic
+Oracle differential passed, source promotion and database deployment completed,
+and the dashboard remains fail-closed on the recovery/final-soak gates that
+still must be rerun for this artifact. Evidence is never inherited across
+artifact SHAs. The generated
+`client/dist/mle-status.json` is the authoritative live
+source/deployment/lifecycle state after those transitions, avoiding a prose
+claim that can silently outlive a deployment. Both immediate and hot-threshold
+synchronous compiler cells still spend more than five minutes in `MLE park`
+without reaching the ticker.
 
 The first de-CPS/linear-memory spike compiled and is byte-exact when executed
 as native WebAssembly, but Binaryen 131's wasm2js translation loses mobj
 `long` high words at tic zero. That translator is rejected and was not timed
-in MLE; a translator repair or version change must restore exact Node parity
-before the rank cell can reopen.
+in MLE. The queued reduction now distinguishes optimizer effects, field
+loads, and i64 call-boundary loss; only a confirmed call-boundary failure may
+try the tracked int-high-word serializer workaround, and exact tic-zero plus
+100-tic parity still precedes any rank cell.
+
+Exact live database rendering is closed on both measured Free venues. Exact
+MLE rendering remains the asynchronous audit/DVR tier. Live presentation is a
+confirmed-only browser renderer consuming chained authoritative deltas; it
+does not simulate ahead, reorder, or reinterpret database state.
 
 **Multiplayer, where the database is the server.** Two browsers join one
 authoritative world living in Oracle. The engine advances once per ordered
 command vector and emits one confirmed transition chain. Each browser renders
 its own point of view, with per-listener positional audio. Co-op and
-deathmatch are available. The current artifact has passed deterministic
-multiplayer comparison and the maximum-distance high-density recovery gate;
-its full lifecycle battery, WAN matrix, and final soak are still in progress.
+deathmatch are available. Deterministic multiplayer gates are bound to their
+recorded artifact SHA; the pre-de-CPS `e485…` authority passed the
+maximum-distance high-density recovery gate, while every promoted replacement
+must rerun recovery, lifecycle, and final-soak qualification. The WAN matrix
+is still in progress.
 
 Numbers, measured on the local two-core Oracle Free stack:
 
 | Measurement | Result |
 | --- | --- |
-| Current authority artifact | `e485b941…` (1,171,896 bytes) |
-| Full E1M1 MLE/OJVM differential | 13,272/13,272 tics exact on parent `103e15e9…` |
-| Current co-op MLE/OJVM differential | 762/762 tics exact on `e485b941…` |
-| Current maximum-distance recovery | 57.337 s estimated total at 20 awake monsters |
-| Production-shaped deathmatch throughput | 3.961 tics/s on `a942cd2d…` |
-| De-CPS diagnostic candidate | 19.788 tics/s over 5,250 tics on `2848ef7a…`; promotion battery pending |
-| Production-shaped MLE CPU | 253.6 ms/tic |
+| Current database authority | `5ec18cbe…` (1,081,335 bytes) |
+| Full E1M1 MLE/OJVM differential | 13,272/13,272 tics exact on current `5ec18cbe…` |
+| Current co-op MLE/OJVM differential | 762/762 tics exact on `5ec18cbe…` |
+| Pre-deCPS maximum-distance recovery | 57.337 s estimated total at 20 awake monsters |
+| Production-shaped deathmatch throughput | 19.788 tics/s whole-route on de-CPS; peak windows ~7–9 tics/s |
+| De-CPS current build | `5ec18cbe…`, promoted and deployed after every-tic ledger PASS |
+| Pre-de-CPS production-shaped MLE CPU | 253.6 ms/tic on `a942cd2d…` (historical) |
 | De-CPS quiet / peak windows | ~10–11 ms/tic / ~106–141 ms/tic |
 | Last fully qualified soak | 30 min PASS on superseded `a942cd2d…` |
-| Current `e485…` lifecycle/final soak | Pending |
+| Pre-deCPS `e485…` lifecycle/final soak | Not reusable as de-CPS cutover evidence |
 
 ## Architecture
 
@@ -181,9 +213,12 @@ a repeatable acceptance gate:
 
 [PLAN.md](PLAN.md) is the implementation contract — task cards, measurements,
 rejected alternatives, and the honest list of what remains. The current
-critical path is MLE throughput plus the `103e…` recovery/lifecycle/final-soak
-battery. The managed-cloud probe is staged and waiting on real Autonomous
-Database credentials. Deep-dive evidence lives in
+reproducible `5ec18cbe…` every-tic ledger and source/database promotion have
+passed. The current critical path is a fresh de-CPS Node profile, Amdahl
+ceiling, and one directly ranked peak-combat batch, followed by the remaining
+lifecycle/final-soak and WAN qualification on that exact artifact. The OCI
+Always Free probe is complete and interpreter-tier; cloud qualification now
+uses OCI CLI and the existing `doomdb-adb` target. Deep-dive evidence lives in
 [artifacts/performance/](artifacts/performance/) and [reports/](reports/).
 
 ## Credits

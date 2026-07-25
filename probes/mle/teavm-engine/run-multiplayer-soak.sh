@@ -15,6 +15,14 @@ run_identifier="DOOM_MLE_SOAK_$$_$RANDOM"
 [[ "$interval" =~ ^[1-9][0-9]*$ ]] || { printf 'invalid sample interval: %s\n' "$interval" >&2; exit 2; }
 [[ "$memory_margin" =~ ^[1-9][0-9]*$ ]] || { printf 'invalid memory margin: %s\n' "$memory_margin" >&2; exit 2; }
 
+competing_gate="$(ps ax -o command= | awk '
+  /[r]un-ledger-differential|[r]un-decps-ledger|[b]uild-ledger-differential|[r]un-worker-soak|[r]un-differential[.]sh|[r]un-worker-cutover|[r]un-decps-rank-mle|[r]un-presentation-decps-rank/ {print}
+')"
+[[ -z "$competing_gate" ]] || {
+  printf 'MLE multiplayer soak refuses a competing evidence gate:\n%s\n' \
+    "$competing_gate" >&2
+  exit 1
+}
 busy_host="$(ps ax -o command= | awk '
   /[d]ocker (build|compose .* build)|[b]uild-simulation[.]sh|[m]vn .*package|[j]avac|[v]erify-local-e2e/ {print}
 ')"

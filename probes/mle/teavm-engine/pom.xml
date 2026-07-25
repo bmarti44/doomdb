@@ -9,6 +9,7 @@
   <properties>
     <maven.compiler.release>11</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.build.outputTimestamp>2026-07-24T00:00:00Z</project.build.outputTimestamp>
     <teavm.version>0.15.0</teavm.version>
     <mochadoom.jar>${project.basedir}/target/mochadoom-ojvm.jar</mochadoom.jar>
     <teavm.mainClass>doomdb.mle.engine.EngineSliceProbe</teavm.mainClass>

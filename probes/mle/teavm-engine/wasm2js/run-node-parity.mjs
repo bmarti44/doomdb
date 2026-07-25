@@ -7,7 +7,7 @@ const here = new URL('./', import.meta.url);
 const artifactPath = process.env.DOOMDB_WASM2JS_ARTIFACT
   ?? 'target/wasm/doom-wasm2js-authority.bundle.mjs';
 const oraclePath = process.env.DOOMDB_WASM2JS_ORACLE
-  ?? '../../../../client/dist/play/doom-mle-authority-e485b9418e58.js';
+  ?? '../../../../client/dist/play/doom-mle-authority-5ec18cbe4cff.js';
 const iwadPath = process.env.DOOMDB_WASM2JS_IWAD
   ?? '../../../../client/dist/play/freedoom1-7323bcc168c5.bin';
 const tablePath = process.env.DOOMDB_WASM2JS_TABLES
@@ -24,6 +24,37 @@ const [engine, oracle] = await Promise.all([
 const iwad = fs.readFileSync(resolve(iwadPath));
 const tables = fs.readFileSync(resolve(tablePath));
 const fixture = JSON.parse(fs.readFileSync(resolve(fixturePath), 'utf8'));
+
+const i64Reductions = [
+  ['constant', 'doom_i64_constant_high', 15],
+  ['field', 'doom_i64_field_high', 15],
+  ['field_copy', 'doom_i64_field_copy_high', 23],
+  ['array', 'doom_i64_array_high', 7],
+  ['call', 'doom_i64_call_high', 15],
+  ['flag_or', 'doom_i64_flag_or_high', 15],
+];
+const i64ReductionFailures = [];
+for (const [label, exportName, expected] of i64Reductions) {
+  const actual = typeof engine[exportName] === 'function'
+    ? engine[exportName]()
+    : 'MISSING';
+  const verdict = actual === expected ? 'PASS' : 'FAIL';
+  process.stdout.write(
+    `PMLE_WASM2JS_I64_REDUCTION_CASE|${verdict}|case=${label}`
+    + `|export=${exportName}|expected=${expected}|actual=${actual}\n`,
+  );
+  if (verdict === 'FAIL') {
+    i64ReductionFailures.push(`${label}:${actual}!=${expected}`);
+  }
+}
+if (i64ReductionFailures.length !== 0) {
+  throw new Error(
+    `wasm2js i64 reduction failures: ${i64ReductionFailures.join(',')}`,
+  );
+}
+process.stdout.write(
+  `PMLE_WASM2JS_I64_REDUCTION|PASS|cases=${i64Reductions.length}\n`,
+);
 
 function sha256(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');
@@ -107,9 +138,8 @@ assert.match(oracle.initializeMultiplayerGame(
   fixture.skill, fixture.episode, fixture.map),
 /state=multiplayer-initialized\|gametic=0\|/);
 
-compareCanonical(0);
+let canonical = compareCanonical(0);
 const commandView = wasmArray(engine.doom_command_ref(), 32);
-let canonical;
 let stepped = 0;
 for (const run of fixture.runs) {
   const command = Uint8Array.from(Buffer.from(run.command, 'hex'));

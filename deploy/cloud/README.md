@@ -1,5 +1,37 @@
 # Cloud bootstrap skeleton
 
+## OCI Autonomous Database production target
+
+The active production venue is OCI Autonomous AI Transaction Processing
+Always Free in `us-ashburn-1`, using Oracle AI Database **26ai**. The existing
+resource is `doomdb-adb` / database name `DOOMDB`; OCI CLI is the provisioning
+and lifecycle control surface. Its current envelope is:
+
+- workload `OLTP`;
+- database version `26ai`;
+- 1 ECPU;
+- 20 GB database storage;
+- Always Free;
+- compute and storage autoscaling disabled;
+- the shortest permitted automatic-backup retention compatible with the
+  production recovery policy.
+
+The OCI profile is configured locally and the database is `AVAILABLE`.
+Wallets and passwords remain under ignored `secrets/` paths. Repository
+automation must use OCI CLI and OCI Object Storage; the older AWS/S3 scripts
+are historical scaffolding and are not the active deployment path.
+
+The database tier is Always Free, so its compute/storage baseline is $0/month
+within OCI Free Tier limits. The MLE arithmetic probe is complete:
+171–189 ns/iteration, above the 100 ns closure threshold. The venue is
+interpreter-tier and does not reopen exact live database rendering.
+
+References:
+
+- <https://docs.aws.amazon.com/odb/latest/UserGuide/getting-started.html>
+- <https://docs.aws.amazon.com/odb/latest/APIReference/API_CreateAutonomousDatabase.html>
+- <https://docs.oracle.com/en-us/iaas/Content/database-at-aws-exadata-awscr/awscr-create-autonomous-ai-database-serverless.html>
+
 All commands default to dry-run and perform no network operation. Dry-run output
 is deterministic for a fixed environment and contains the explicit S3 HTTPS
 object URL and Autonomous Database managed ORDS health URL.
@@ -33,6 +65,12 @@ SHA-256 documents, not an evaluator grant. `health.sql` verifies SHA-256 before
 creating or exposing an ORDS object and aborts deployment if the capability is
 absent. A tenant administrator must grant it according to that tenant's
 Autonomous Database policy before running `--execute`.
+
+The exact-frame presentation acceptance harness also records
+`V$TEMPORARY_LOBS` before and after its 300-frame BLOB transport gate. A tenant
+administrator must grant the deployment owner read access to
+`SYS.V_$TEMPORARY_LOBS` when running that qualification. Live simulation and
+rendering do not depend on this diagnostic view.
 
 The production target requires Oracle MLE JavaScript; Oracle JVM is neither
 required nor permitted in the application schema. The gate uses

@@ -6,7 +6,7 @@ declare
   c_iterations constant pls_integer:=1000000;
   c_batch constant pls_integer:=20;
   l_started timestamp with time zone;l_interval interval day to second;
-  l_seconds number;l_value number;l_ns number;
+  l_seconds number;l_value number;l_ns number;l_version varchar2(128);
 begin
   for i in 1..5 loop l_value:=doom_mle_adb_arithmetic(c_iterations,i);end loop;
   l_started:=systimestamp;
@@ -18,7 +18,9 @@ begin
     extract(hour from l_interval)*3600+extract(minute from l_interval)*60+
     extract(second from l_interval);
   l_ns:=l_seconds*1000000000/(c_iterations*c_batch);
-  dbms_output.put_line('PMLE_ADB_VERSION|version='||dbms_db_version.version_full||
+  select version into l_version from product_component_version
+    where product like 'Oracle%' and rownum=1;
+  dbms_output.put_line('PMLE_ADB_VERSION|version='||l_version||
     '|db='||sys_context('USERENV','DB_NAME')||
     '|service='||sys_context('USERENV','SERVICE_NAME'));
   dbms_output.put_line('PMLE_ADB_ARITH|iterations='||c_iterations||

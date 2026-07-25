@@ -30,7 +30,59 @@ public final class Wasm2JsAuthorityProbe {
   private static byte[] commandVector;
   private static short[][] multiplayerConsistency;
 
+  private static final class LongHolder {
+    long value;
+  }
+
   private Wasm2JsAuthorityProbe() {}
+
+  /*
+   * Reduced i64 lowering diagnostics. These exports are spike-only and keep
+   * every JS-facing signature i32. The full native-Wasm authority already
+   * proves the source semantics; wasm2js must return the stated high words
+   * before Doom initialization or the translator is rejected.
+   */
+  @Export(name = "doom_i64_constant_high")
+  public static int i64ConstantHigh() {
+    return (int) (0x0000000f12345678L >>> 32);
+  }
+
+  @Export(name = "doom_i64_field_high")
+  public static int i64FieldHigh() {
+    LongHolder holder = new LongHolder();
+    holder.value = 0x0000000f12345678L;
+    return (int) (holder.value >>> 32);
+  }
+
+  @Export(name = "doom_i64_field_copy_high")
+  public static int i64FieldCopyHigh() {
+    LongHolder source = new LongHolder();
+    LongHolder destination = new LongHolder();
+    source.value = 0x0000001712345678L;
+    destination.value = source.value;
+    return (int) (destination.value >>> 32);
+  }
+
+  @Export(name = "doom_i64_array_high")
+  public static int i64ArrayHigh() {
+    long[] values = new long[] {0L, 0x0000000712345678L};
+    return (int) (values[1] >>> 32);
+  }
+
+  @Export(name = "doom_i64_call_high")
+  public static int i64CallHigh() {
+    return highWord(0x0000000f12345678L);
+  }
+
+  @Export(name = "doom_i64_flag_or_high")
+  public static int i64FlagOrHigh() {
+    long flags = 0x12345678L;
+    flags |= 1L << 32;
+    flags |= 1L << 33;
+    flags |= 1L << 34;
+    flags |= 1L << 35;
+    return (int) (flags >>> 32);
+  }
 
   @Export(name = "doom_allocate_iwad")
   public static int allocateIwad(int length) {
@@ -190,5 +242,9 @@ public final class Wasm2JsAuthorityProbe {
 
   private static int clamp(int value, int minimum, int maximum) {
     return Math.max(minimum, Math.min(maximum, value));
+  }
+
+  private static int highWord(long value) {
+    return (int) (value >>> 32);
   }
 }

@@ -304,7 +304,7 @@ create or replace package body doom_mle_match_runtime as
       where game_mode=l_mode and skill=p_skill and episode=p_episode
         and map=p_map and active_players=p_active_players
         and authority_sha256=
-          'e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b';
+          '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3';
     l_actual_sha:=lower(rawtohex(
       dbms_crypto.hash(l_checkpoint,dbms_crypto.hash_sh256)));
     if l_actual_sha<>l_expected_sha then

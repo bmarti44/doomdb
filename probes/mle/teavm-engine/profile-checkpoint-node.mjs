@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 
 const here = new URL('./', import.meta.url);
 const modulePath = process.env.DOOMDB_MLE_CHECKPOINT_MODULE
-  ?? '../../../client/dist/play/doom-mle-authority-e485b9418e58.js';
+  ?? '../../../client/dist/play/doom-mle-authority-5ec18cbe4cff.js';
 const iwadPath = process.env.DOOMDB_MLE_CHECKPOINT_IWAD
   ?? '../../../client/dist/play/freedoom1-7323bcc168c5.bin';
 const tablePath = process.env.DOOMDB_MLE_CHECKPOINT_TABLES

@@ -93,7 +93,7 @@ begin
     where game_mode='COOP' and skill=3 and episode=1 and map=1
       and active_players=2
       and authority_sha256=
-        'e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b';
+        '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3';
 
   for sample in 1..c_samples loop
     initialize_origin;

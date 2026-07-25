@@ -1,0 +1,286 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+PMLE_DECPS_ARTIFACT|sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|bytes=1081335|phase=dual-clock
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+ITicker: Using nanosecond accuracy timer.
+FreeDoom: Phase 1	   v1.9
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors -
+===========================================================================
+Copyright © 2001-2017 Contributors to the Freedoom project.
+All rights reserved.
+See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon -
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_LIVE_REPLAY_INIT|stream=live-dm-2026-07-23|wall_ms=40621.242
+PMLE_LIVE_REPLAY_TIC|tic=1|mle_ms=65.264|monotonic_ms=60|clock_delta_ms=5.264|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=2|mle_ms=34.869|monotonic_ms=40|clock_delta_ms=5.131|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=3|mle_ms=21.924|monotonic_ms=20|clock_delta_ms=1.924|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=4|mle_ms=48.958|monotonic_ms=50|clock_delta_ms=1.042|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=5|mle_ms=15.436|monotonic_ms=20|clock_delta_ms=4.564|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=6|mle_ms=29.261|monotonic_ms=30|clock_delta_ms=.739|clo
+ck_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=7|mle_ms=87.193|monotonic_ms=80|clock_delta_ms=7.193|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=8|mle_ms=34.083|monotonic_ms=40|clock_delta_ms=5.917|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=9|mle_ms=72.265|monotonic_ms=70|clock_delta_ms=2.265|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=10|mle_ms=141.275|monotonic_ms=140|clock_delta_ms=1.275
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=11|mle_ms=50.052|monotonic_ms=50|clock_delta_ms=.052|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=12|mle_ms=33.039|monotonic_ms=30|clock_delta_ms=3.039|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=13|mle_ms=82.659|monotonic_ms=90|clock_delta_ms=7.341|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=14|mle_ms=77.197|monotonic_ms=70|clock_delta_ms=7.197|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=15|mle_ms=91.786|monotonic_ms=100|clock_delta_ms=8.214|
+clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=16|mle_ms=112.207|monotonic_ms=110|clock_delta_ms=2.207
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=17|mle_ms=60.272|monotonic_ms=60|clock_delta_ms=.272|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=18|mle_ms=77.812|monotonic_ms=80|clock_delta_ms=2.188|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=19|mle_ms=68.402|monotonic_ms=60|clock_delta_ms=8.402|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=20|mle_ms=40.55|monotonic_ms=50|clock_delta_ms=9.45|clo
+ck_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=21|mle_ms=137.805|monotonic_ms=130|clock_delta_ms=7.805
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=22|mle_ms=81.319|monotonic_ms=80|clock_delta_ms=1.319|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=23|mle_ms=48.026|monotonic_ms=50|clock_delta_ms=1.974|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=24|mle_ms=-38.319|monotonic_ms=80|clock_delta_ms=118.31
+9|clock_suspect=1
+PMLE_LIVE_REPLAY_TIC|tic=25|mle_ms=60.286|monotonic_ms=60|clock_delta_ms=.286|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=26|mle_ms=48.549|monotonic_ms=50|clock_delta_ms=1.451|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=27|mle_ms=69.461|monotonic_ms=70|clock_delta_ms=.539|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=28|mle_ms=85.463|monotonic_ms=90|clock_delta_ms=4.537|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=29|mle_ms=33.579|monotonic_ms=30|clock_delta_ms=3.579|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=30|mle_ms=52.735|monotonic_ms=50|clock_delta_ms=2.735|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=31|mle_ms=110.761|monotonic_ms=120|clock_delta_ms=9.239
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=32|mle_ms=34.806|monotonic_ms=30|clock_delta_ms=4.806|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=33|mle_ms=71.127|monotonic_ms=70|clock_delta_ms=1.127|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=34|mle_ms=87.416|monotonic_ms=90|clock_delta_ms=2.584|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=35|mle_ms=27.379|monotonic_ms=30|clock_delta_ms=2.621|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=36|mle_ms=54.547|monotonic_ms=50|clock_delta_ms=4.547|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=37|mle_ms=135.357|monotonic_ms=140|clock_delta_ms=4.643
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=38|mle_ms=52.427|monotonic_ms=50|clock_delta_ms=2.427|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=39|mle_ms=49.664|monotonic_ms=50|clock_delta_ms=.336|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=40|mle_ms=141.989|monotonic_ms=140|clock_delta_ms=1.989
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=41|mle_ms=69.19|monotonic_ms=70|clock_delta_ms=.81|cloc
+k_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=42|mle_ms=46.645|monotonic_ms=50|clock_delta_ms=3.355|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=43|mle_ms=109.786|monotonic_ms=110|clock_delta_ms=.214|
+clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=44|mle_ms=56.541|monotonic_ms=50|clock_delta_ms=6.541|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=45|mle_ms=45.363|monotonic_ms=50|clock_delta_ms=4.637|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=46|mle_ms=112.137|monotonic_ms=110|clock_delta_ms=2.137
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=47|mle_ms=54.427|monotonic_ms=60|clock_delta_ms=5.573|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=48|mle_ms=69.383|monotonic_ms=60|clock_delta_ms=9.383|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=49|mle_ms=85.074|monotonic_ms=90|clock_delta_ms=4.926|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=50|mle_ms=48.934|monotonic_ms=50|clock_delta_ms=1.066|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=51|mle_ms=90.361|monotonic_ms=90|clock_delta_ms=.361|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=52|mle_ms=83.135|monotonic_ms=80|clock_delta_ms=3.135|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=53|mle_ms=36.892|monotonic_ms=40|clock_delta_ms=3.108|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=54|mle_ms=65.83|monotonic_ms=70|clock_delta_ms=4.17|clo
+ck_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=55|mle_ms=90.199|monotonic_ms=90|clock_delta_ms=.199|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=56|mle_ms=45.738|monotonic_ms=40|clock_delta_ms=5.738|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=57|mle_ms=54.644|monotonic_ms=60|clock_delta_ms=5.356|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=58|mle_ms=111.933|monotonic_ms=110|clock_delta_ms=1.933
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=59|mle_ms=22.558|monotonic_ms=20|clock_delta_ms=2.558|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=60|mle_ms=172.322|monotonic_ms=170|clock_delta_ms=2.322
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=61|mle_ms=131.247|monotonic_ms=130|clock_delta_ms=1.247
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=62|mle_ms=33.429|monotonic_ms=40|clock_delta_ms=6.571|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=63|mle_ms=57.189|monotonic_ms=60|clock_delta_ms=2.811|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=64|mle_ms=128.963|monotonic_ms=120|clock_delta_ms=8.963
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=65|mle_ms=22.648|monotonic_ms=30|clock_delta_ms=7.352|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=66|mle_ms=95.86|monotonic_ms=90|clock_delta_ms=5.86|clo
+ck_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=67|mle_ms=110.037|monotonic_ms=110|clock_delta_ms=.037|
+clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=68|mle_ms=38.151|monotonic_ms=40|clock_delta_ms=1.849|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=69|mle_ms=40.532|monotonic_ms=40|clock_delta_ms=.532|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=70|mle_ms=90.126|monotonic_ms=90|clock_delta_ms=.126|cl
+ock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=71|mle_ms=71.586|monotonic_ms=70|clock_delta_ms=1.586|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=72|mle_ms=42.629|monotonic_ms=50|clock_delta_ms=7.371|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=73|mle_ms=122.526|monotonic_ms=120|clock_delta_ms=2.526
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=74|mle_ms=45.943|monotonic_ms=50|clock_delta_ms=4.057|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=75|mle_ms=53.123|monotonic_ms=50|clock_delta_ms=3.123|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=76|mle_ms=103.2|monotonic_ms=100|clock_delta_ms=3.2|clo
+ck_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=77|mle_ms=51.106|monotonic_ms=50|clock_delta_ms=1.106|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=78|mle_ms=52.851|monotonic_ms=60|clock_delta_ms=7.149|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=79|mle_ms=93.598|monotonic_ms=90|clock_delta_ms=3.598|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=80|mle_ms=32.122|monotonic_ms=30|clock_delta_ms=2.122|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=81|mle_ms=120.283|monotonic_ms=120|clock_delta_ms=.283|
+clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=82|mle_ms=114.319|monotonic_ms=120|clock_delta_ms=5.681
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=83|mle_ms=49.01|monotonic_ms=50|clock_delta_ms=.99|cloc
+k_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=84|mle_ms=68.205|monotonic_ms=60|clock_delta_ms=8.205|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=85|mle_ms=100.299|monotonic_ms=100|clock_delta_ms=.299|
+clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=86|mle_ms=55.787|monotonic_ms=60|clock_delta_ms=4.213|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=87|mle_ms=75.722|monotonic_ms=80|clock_delta_ms=4.278|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=88|mle_ms=122.678|monotonic_ms=120|clock_delta_ms=2.678
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=89|mle_ms=45.098|monotonic_ms=40|clock_delta_ms=5.098|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=90|mle_ms=72.05|monotonic_ms=80|clock_delta_ms=7.95|clo
+ck_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=91|mle_ms=189.963|monotonic_ms=190|clock_delta_ms=.037|
+clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=92|mle_ms=48.172|monotonic_ms=40|clock_delta_ms=8.172|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=93|mle_ms=60.868|monotonic_ms=70|clock_delta_ms=9.132|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=94|mle_ms=100.369|monotonic_ms=100|clock_delta_ms=.369|
+clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=95|mle_ms=27.815|monotonic_ms=20|clock_delta_ms=7.815|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=96|mle_ms=63.495|monotonic_ms=70|clock_delta_ms=6.505|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=97|mle_ms=118.515|monotonic_ms=120|clock_delta_ms=1.485
+|clock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=98|mle_ms=45.97|monotonic_ms=40|clock_delta_ms=5.97|clo
+ck_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=99|mle_ms=31.012|monotonic_ms=30|clock_delta_ms=1.012|c
+lock_suspect=0
+PMLE_LIVE_REPLAY_TIC|tic=100|mle_ms=99.713|monotonic_ms=100|clock_delta_ms=.287|
+clock_suspect=0
+PMLE_LIVE_REPLAY_CLOCK|tics=100|disagreement_limit_ms=30|suspects=1|maximum_susp
+ects=0|verdict=FAIL
+PMLE_LIVE_REPLAY_TICKER|stream=live-dm-2026-07-23|tics=100|p50_ms=63.495|p95_ms=
+135.357|p99_ms=172.322|max_ms=189.963|throughput_tps=13.885|monotonic_centisecon
+ds=728|monotonic_tps=13.736
+PMLE_LIVE_REPLAY_WINDOW|through_tic=100|tics=100|wall_ms=7164.376|monotonic_cent
+iseconds=724|monotonic_tps=13.812|memory=iwadBytes=28795076|frameBytes=64000|thi
+nkers=247|mobjs=238|killMonsters=29|livingMonsters=29|awakeMonsters=9|movingMons
+ters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|s
+ides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_LIVE_REPLAY_MEMORY|iwadBytes=28795076|frameBytes=64000|thinkers=247|mobjs=2
+38|killMonsters=29|livingMonsters=29|awakeMonsters=9|movingMonsters=0|vertexes=1
+196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockma
+pInts=3764|blocklinks=864|rejectBytes=4141
+P_GetNodesVersion: using normal BSP nodes
+Max size 65990
+PMLE_LIVE_REPLAY_WARM_PREFIX|after_full_tics=100|tics=500|p50_ms=107.721|p95_ms=
+206.497|p99_ms=257.386|max_ms=297.599|throughput_tps=8.741|monotonic_centisecond
+s=5779|monotonic_tps=8.652

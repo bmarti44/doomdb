@@ -42,6 +42,9 @@ create or replace package body doom_match_worker as
   c_checkpoint_low_awake constant pls_integer:=16;
   c_command_lead_tics constant pls_integer:=8;
   c_standby_poll_seconds constant number:=1;
+  -- Scheduling heuristic only: admission correctness never depends on this.
+  -- Keep explicit so deployment evidence can A/B the Free-edition value.
+  c_post_ready_yield_seconds constant number:=.1;
   g_warm_promotion boolean:=false;
 
   -- This bounded worker advances complete two-player vectors and fills a
@@ -101,8 +104,13 @@ create or replace package body doom_match_worker as
 
   procedure fail_control(p_match varchar2,p_error varchar2) is
     l_now timestamp with time zone:=(localtimestamp at time zone 'UTC');
+    l_prior_status varchar2(16);
   begin
     rollback;
+    begin
+      select worker_status into l_prior_status
+        from doom_match_worker_control where match_id=p_match for update;
+    exception when no_data_found then l_prior_status:=null;end;
     update doom_match_worker_control set worker_status='FAILED',
       request_status='FAILED',heartbeat=l_now,
       last_error=substr(p_error,1,2000)
@@ -114,6 +122,15 @@ create or replace package body doom_match_worker as
       update doom_match set match_state='FINISHED',finished_at=l_now,
         last_activity_at=l_now,expires_at=l_now
         where match_id=p_match and match_state='ACTIVE';
+      update doom_match_standby_control set stop_requested=1,heartbeat=l_now
+        where match_id=p_match and standby_status in('STARTING','READY');
+    elsif l_prior_status='STARTING' then
+      -- A worker that fails before its first READY admission has no live
+      -- frontier to recover. Publish a bounded terminal state instead of
+      -- making authorized clients poll STARTING or receive 555 forever.
+      update doom_match set match_state='CANCELLED',finished_at=l_now,
+        last_activity_at=l_now
+        where match_id=p_match and match_state in('LOBBY','ACTIVE');
       update doom_match_standby_control set stop_requested=1,heartbeat=l_now
         where match_id=p_match and standby_status in('STARTING','READY');
     end if;
@@ -145,17 +162,30 @@ create or replace package body doom_match_worker as
       doom_mle_match_runtime.prepare_origin_warm(2,
         case l_mode when 'DEATHMATCH' then 1 else 0 end,
         l_skill,l_episode,l_map,l_state);
+      -- Deployment proves every bank entry byte-identical to a fresh
+      -- serialization by this exact authority. Reuse that durable DMC1 BLOB
+      -- instead of immediately serializing the just-restored tic-zero state
+      -- again on the user-facing admission path.
+      select checkpoint_blob,checkpoint_sha256,
+        dbms_lob.getlength(checkpoint_blob)
+        into l_origin_checkpoint,l_origin_checkpoint_sha,
+          l_origin_checkpoint_bytes
+        from doom_mle_tic0_checkpoint
+        where game_mode=l_mode and skill=l_skill and episode=l_episode
+          and map=l_map and active_players=2
+          and authority_sha256=
+            '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3';
     else
       doom_mle_match_runtime.initialize_game(2,
         case l_mode when 'DEATHMATCH' then 1 else 0 end,
         l_skill,l_episode,l_map,l_state);
+      dbms_application_info.set_action('MLE_ORIGIN_CHECKPOINT');
+      doom_mle_match_runtime.save_checkpoint(
+        l_origin_checkpoint,l_origin_checkpoint_sha,l_origin_checkpoint_bytes);
     end if;
     -- Recovery must never depend on the first gameplay checkpoint surviving.
-    -- Serialize the exact tic-zero origin before taking the match-row lock;
-    -- the match is not ACTIVE until this DMC1 payload is durably inserted.
-    dbms_application_info.set_action('MLE_ORIGIN_CHECKPOINT');
-    doom_mle_match_runtime.save_checkpoint(
-      l_origin_checkpoint,l_origin_checkpoint_sha,l_origin_checkpoint_bytes);
+    -- The exact tic-zero DMC1 payload is durable before taking the match-row
+    -- lock and the match is not ACTIVE until it is inserted.
     -- Cold TeaVM initialization is intentionally outside the match-row
     -- transaction. Holding this row for roughly two minutes made every
     -- authorized MATCH_STATUS lease renewal wait behind it; overlapping
@@ -1263,11 +1293,11 @@ create or replace package body doom_match_worker as
     select match_state into l_match_state from doom_match where match_id=p_match;
     if l_match_state='LOBBY' then
       publish_initial(p_match,l_generation,p_warm);
-      arm_standby(p_match,l_generation);
       -- Tic zero is durable before admission. The generation-matched standby
-      -- is armed immediately but warms in the background: Free's single
-      -- effective PDB CPU must not put a second ~100 second cold start on the
-      -- user-facing path for either solo or multiplayer.
+      -- warms in the background only after authority readiness is committed:
+      -- under Free's two-running-session cage, assigning the standby first
+      -- can delay the waiting ORDS admission call by a Resource Manager
+      -- quantum even though the authority is already ready.
       update doom_match_worker_control set worker_status='READY',
         heartbeat=(localtimestamp at time zone 'UTC'),last_error=null
         where match_id=p_match and generation=l_generation
@@ -1276,6 +1306,15 @@ create or replace package body doom_match_worker as
         raise_application_error(c_error,'authority admission fence');
       end if;
       commit;
+      -- Admission truth is now durable. An optional short scheduling yield
+      -- can let the waiting ORDS call observe it before this authority and
+      -- the second retained slot resume background work under Free's
+      -- two-running-session Resource Manager cage. It is a measured tuning
+      -- heuristic, never part of the correctness fence.
+      if c_post_ready_yield_seconds>0 then
+        dbms_session.sleep(c_post_ready_yield_seconds);
+      end if;
+      arm_standby(p_match,l_generation);
     elsif l_match_state='ACTIVE' then
       reconstruct_existing(p_match,l_generation,
         case when p_warm or g_warm_promotion then 1 else 0 end);
@@ -1688,7 +1727,7 @@ create or replace package body doom_match_worker as
     l_job varchar2(64):='DOOM_MATCH_'||upper(p_match);l_wait number;
     l_dummy number;l_worker_error varchar2(2000);l_worker_mode varchar2(16);
     l_worker_status varchar2(16);l_match_limit number;l_pool number:=0;
-    l_heartbeat timestamp with time zone;
+    l_heartbeat timestamp with time zone;l_abandoned number:=0;
   begin
     p_match_state:=null;l_wait:=least(greatest(coalesce(p_wait_ms,30000),0),60000);
     select number_value into l_dummy from doom_config
@@ -1721,7 +1760,18 @@ create or replace package body doom_match_worker as
     begin
       select heartbeat,job_name into l_heartbeat,l_job from doom_match_worker_control
         where match_id=p_match and worker_status='STARTING';
-      select count(*) into l_count from user_scheduler_jobs where job_name=l_job;
+      select count(*) into l_count
+        from doom_mle_warm_assignment a
+        join doom_mle_warm_slot s on s.slot_id=a.slot_id
+          and s.incarnation_token=a.incarnation_token
+          and s.worker_sid=a.worker_sid and s.worker_serial=a.worker_serial
+          and s.worker_spid=a.worker_spid and s.worker_job_run=a.worker_job_run
+        join user_scheduler_running_jobs r on r.job_name=s.job_name
+          and r.session_id=s.worker_sid
+        join v$session v on v.sid=s.worker_sid and v.serial#=s.worker_serial
+        join v$process p on p.addr=v.paddr and p.spid=s.worker_spid
+        where a.match_id=p_match and a.assigned_role='AUTHORITY'
+          and a.assignment_status in('PENDING','ACCEPTED');
       if l_count=1 or
          l_heartbeat>(localtimestamp at time zone 'UTC')-interval '1' second then
         p_match_state:='STARTING';commit;return;
@@ -1729,6 +1779,10 @@ create or replace package body doom_match_worker as
       -- Scheduler job creation follows the durable claim. If dispatch loses
       -- that job entirely, a later authorized status poll reclaims the stale
       -- STARTING row instead of leaving the ready lobby permanently wedged.
+      doom_worker_lifecycle.abandon_stale_assignment(p_match,l_abandoned);
+      if l_abandoned=0 then
+        p_match_state:='STARTING';commit;return;
+      end if;
       delete from doom_match_worker_control where match_id=p_match
         and worker_status='STARTING' and heartbeat=l_heartbeat;
     exception when no_data_found then null;end;

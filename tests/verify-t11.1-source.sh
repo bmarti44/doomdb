@@ -17,6 +17,15 @@ grep -q 'chown -R oracle:oinstall' "$root/scripts/load-cloud-assets.sh"
 grep -q "plsql_ccflags='doom_dev_ojvm:false'" \
   "$root/scripts/verify-cloud-database.sh"
 for source in t11.1-cloud-api.mjs t11.1-build-evidence.mjs t11.1-deployment-manifest.mjs; do node --check "$root/scripts/$source";done
+grep -q 'l_mle_specs<>25' \
+  "$root/deploy/cloud/t11.1/catalog-observation.sql"
+grep -q 'mleCallSpecs:25' "$root/scripts/t11.1-build-evidence.mjs"
+grep -q 'e.catalog.javaObjects,0' "$root/evaluator/t11.1/reference.mjs"
+grep -q 'e.catalog.mleCallSpecs,25' "$root/evaluator/t11.1/reference.mjs"
+grep -q "case'javaProductionLeak':e.catalog.javaObjects=1" \
+  "$root/evaluator/t11.1/mutation-self-check.mjs"
+grep -q "case'mleSpecDrift':e.catalog.mleCallSpecs=24" \
+  "$root/evaluator/t11.1/mutation-self-check.mjs"
 T111_REQUIRE_PRODUCTION=1 node "$root/evaluator/t11.1/source-audit.mjs"
 node "$root/evaluator/t11.1/self-check.mjs"
 node "$root/evaluator/t11.1/mutation-self-check.mjs"
@@ -52,9 +61,9 @@ printf '%s\n' \
   'seed|sql/seed/b.sql|bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' \
   'engine|sql/engine/c.sql|cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' \
   'rest|sql/rest/d.sql|dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd' >"$tmp/ledger"
-printf '%s\n' '{"schema":1,"runtime":"MLE_JAVASCRIPT","teaVMVersion":"0.15.0","compilerRelease":11,"targetType":"JAVASCRIPT","moduleType":"ES2015","optimizationLevel":"ADVANCED","minifying":true,"profile":"simulation-engine-headless","inputBytecodeSha256":"631f3d7657b3b9521ed800d1b4ec518d4b6f102e5bf2a9f3e7caf1cb45624ecd","mochaBytecodeSha256":"42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e","authority":{"bytes":1171896,"sha256":"e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b"},"tablePack":{"bytes":180272,"sha256":"058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"},"iwadSha256":"7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"}' >"$tmp/mle.json"
+printf '%s\n' '{"schema":1,"runtime":"MLE_JAVASCRIPT","teaVMVersion":"0.15.0","compilerRelease":11,"targetType":"JAVASCRIPT","moduleType":"ES2015","optimizationLevel":"ADVANCED","minifying":true,"profile":"simulation-engine-headless","inputBytecodeSha256":"2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914","mochaBytecodeSha256":"c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4","authority":{"bytes":1081335,"sha256":"5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3"},"tablePack":{"bytes":180272,"sha256":"058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"},"iwadSha256":"7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"}' >"$tmp/mle.json"
 node "$root/scripts/t11.1-deployment-manifest.mjs" "$tmp/ledger" "$tmp/manifest.json" "$tmp/mle.json"
-jq -e '(.domains|map(.domain)==["schema","seed","engine","rest"] and map(.order)==[1,2,3,4] and all(.files==1)) and .mleArtifact.runtime=="MLE_JAVASCRIPT" and .mleArtifact.authority.bytes==1171896 and (.javaArtifact|not)' "$tmp/manifest.json" >/dev/null
+jq -e '(.domains|map(.domain)==["schema","seed","engine","rest"] and map(.order)==[1,2,3,4] and all(.files==1)) and .mleArtifact.runtime=="MLE_JAVASCRIPT" and .mleArtifact.authority.bytes==1081335 and (.javaArtifact|not)' "$tmp/manifest.json" >/dev/null
 cp "$tmp/ledger" "$tmp/mutant";printf '%s\n' 'rest|../escape.sql|eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' >>"$tmp/mutant"
 if node "$root/scripts/t11.1-deployment-manifest.mjs" "$tmp/mutant" "$tmp/mutant.json" "$tmp/mle.json" >/dev/null 2>&1; then printf 'unsafe deployment mutation survived\n' >&2;exit 1;fi
-printf 'PASS T11.1-SOURCE-FIRST (shell/static/self 22/22; mutations 24/24; guards fail closed)\n'
+printf 'PASS T11.1-SOURCE-FIRST (shell/static/self 22/22; mutations 26/26; guards fail closed)\n'

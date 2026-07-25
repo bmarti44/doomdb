@@ -3,11 +3,12 @@ set -Eeuo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
-candidate="$root/artifacts/performance/pmle-decps-rank/authority-candidate-2848ef7a8dc4.js"
+candidate="${PMLE_CANDIDATE_FILE:-$root/artifacts/performance/pmle-decps-rank/authority-candidate-5ec18cbe4cff.js}"
 tables="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
-candidate_sha="2848ef7a8dc4799de7faa46bcf304f4ac3d351da97be94b144a53f3300607f29"
+candidate_sha="${PMLE_EXPECTED_AUTHORITY_SHA256:-5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3}"
 pinned_sha="e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b"
-tag="${PMLE_EVIDENCE_TAG:-decps-2848ef7a-2026-07-24}"
+tag="${PMLE_EVIDENCE_TAG:-decps-reproducible-5ec18cbe-2026-07-25}"
+modes="${PMLE_PROMOTION_MODES:-canonical coop membership}"
 alert_state="$(mktemp "${TMPDIR:-/tmp}/doomdb-decps-gates-alert.XXXXXX")"
 membership_sql="$(mktemp "${TMPDIR:-/tmp}/doomdb-decps-membership.XXXXXX.sql")"
 pool_parked=0
@@ -17,6 +18,24 @@ candidate_loaded=0
   printf 'invalid evidence tag: %s\n' "$tag" >&2
   exit 2
 }
+[[ -n "$modes" && "$modes" != *"  "* ]] || {
+  printf 'invalid or duplicate promotion mode sequence: %s\n' "$modes" >&2
+  exit 2
+}
+seen_modes=' '
+for mode in $modes; do
+  case "$mode" in
+    canonical|coop|membership) ;;
+    *) printf 'invalid promotion mode: %s\n' "$mode" >&2; exit 2 ;;
+  esac
+  case "$seen_modes" in
+    *" $mode "*)
+      printf 'invalid or duplicate promotion mode sequence: %s\n' "$modes" >&2
+      exit 2
+      ;;
+  esac
+  seen_modes+="$mode "
+done
 [[ "$(shasum -a 256 "$candidate" | awk '{print $1}')" == "$candidate_sha" ]] ||
   { printf 'de-CPS candidate SHA mismatch\n' >&2; exit 1; }
 sed "s/$pinned_sha/$candidate_sha/g" \
@@ -89,10 +108,14 @@ SQL
   "--javascript=$candidate" "--table-pack=$tables" >/dev/null
 candidate_loaded=1
 
-PMLE_EVIDENCE_TAG="$tag" "$project/run-differential.sh" canonical
-PMLE_EVIDENCE_TAG="$tag" "$project/run-differential.sh" coop
-DOOMDB_MLE_MEMBERSHIP_SQL="$membership_sql" PMLE_EVIDENCE_TAG="$tag" \
-  "$project/run-differential.sh" membership
+for mode in $modes; do
+  if [[ "$mode" == membership ]]; then
+    DOOMDB_MLE_MEMBERSHIP_SQL="$membership_sql" PMLE_EVIDENCE_TAG="$tag" \
+      "$project/run-differential.sh" membership
+  else
+    PMLE_EVIDENCE_TAG="$tag" "$project/run-differential.sh" "$mode"
+  fi
+done
 
-printf 'PASS PMLE-DECPS-PROMOTION-BATTERY candidate_sha256=%s tag=%s\n' \
-  "$candidate_sha" "$tag"
+printf 'PASS PMLE-DECPS-PROMOTION-BATTERY candidate_sha256=%s tag=%s modes=%s\n' \
+  "$candidate_sha" "$tag" "${modes// /,}"

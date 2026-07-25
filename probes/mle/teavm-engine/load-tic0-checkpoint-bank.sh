@@ -5,12 +5,19 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 builder="$root/probes/mle/teavm-engine/build-tic0-checkpoint-bank.mjs"
 table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
 iwad_zip="$root/vendor/freedoom/0.13.0/freedoom-0.13.0.zip"
-authority="$root/client/dist/play/doom-mle-authority-e485b9418e58.js"
+authority="${DOOMDB_TIC0_AUTHORITY:-$root/client/dist/play/doom-mle-authority-5ec18cbe4cff.js}"
 authority_sha256="$(shasum -a 256 "$authority" | awk '{print $1}')"
+equivalent_authority_sha256="${DOOMDB_TIC0_EXPECT_EQUIVALENT_AUTHORITY_SHA:-}"
 base64_fold_width=2000
 emit_only=0
 [[ "${1:-}" == "--emit-sql" ]] && emit_only=1
 [[ $# -le 1 ]] || { printf 'usage: %s [--emit-sql]\n' "$0" >&2;exit 2; }
+[[ -z "$equivalent_authority_sha256" ||
+    "$equivalent_authority_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+  printf '%s\n' \
+    'DOOMDB_TIC0_EXPECT_EQUIVALENT_AUTHORITY_SHA must be lowercase SHA-256' >&2
+  exit 2
+}
 
 for tool in node unzip base64 fold shasum; do
   command -v "$tool" >/dev/null || { printf '%s is unavailable\n' "$tool" >&2;exit 2; }
@@ -25,8 +32,32 @@ emit_sql() {
   printf '%s\n' \
     'whenever oserror exit failure rollback' \
     'whenever sqlerror exit sql.sqlcode rollback' \
-    'set define off echo off verify off feedback off heading off pages 0 lines 32767 trimspool on serveroutput on size unlimited' \
-    'delete from doom_mle_tic0_checkpoint;'
+    'set define off echo off verify off feedback off heading off pages 0 lines 32767 trimspool on serveroutput on size unlimited'
+  if [[ -n "$equivalent_authority_sha256" ]]; then
+    local eq_mode eq_skill eq_episode eq_map eq_players eq_bytes eq_sha
+    local eq_state_sha eq_filename eq_count=0
+    while IFS=$'\t' read -r eq_mode eq_skill eq_episode eq_map eq_players \
+        eq_bytes eq_sha eq_state_sha eq_filename || [[ -n "${eq_mode:-}" ]]; do
+      [[ "$eq_mode" =~ ^(COOP|DEATHMATCH)$ ]]
+      [[ "$eq_skill" =~ ^[1-5]$ && "$eq_episode" == 1 &&
+          "$eq_map" == 1 && "$eq_players" == 2 ]]
+      [[ "$eq_bytes" =~ ^[1-9][0-9]*$ ]]
+      [[ "$eq_sha" =~ ^[0-9a-f]{64}$ &&
+          "$eq_state_sha" =~ ^[0-9a-f]{64}$ ]]
+      eq_count=$((eq_count+1))
+      printf '%s\n' \
+        'declare l_count number;begin' \
+        "select count(*) into l_count from doom_mle_tic0_checkpoint where game_mode='$eq_mode' and skill=$eq_skill and episode=$eq_episode and map=$eq_map and active_players=$eq_players and checkpoint_bytes=$eq_bytes and dbms_lob.getlength(checkpoint_blob)=$eq_bytes and checkpoint_sha256='$eq_sha' and lower(rawtohex(dbms_crypto.hash(checkpoint_blob,dbms_crypto.hash_sh256)))='$eq_sha' and state_sha256='$eq_state_sha' and authority_sha256='$equivalent_authority_sha256';" \
+        "if l_count<>1 then raise_application_error(-20796,'tic-zero checkpoint equivalence mismatch mode=$eq_mode skill=$eq_skill');end if;" \
+        'end;' \
+        '/'
+    done <"$tmp/bank/manifest.tsv"
+    [[ "$eq_count" == 10 ]]
+    printf '%s\n' \
+      "begin dbms_output.put_line('PMLE_TIC0_BANK_EQUIVALENCE|PASS|entries=10|from_authority_sha256=$equivalent_authority_sha256|to_authority_sha256=$authority_sha256');end;" \
+      '/'
+  fi
+  printf '%s\n' 'delete from doom_mle_tic0_checkpoint;'
   local mode skill episode map players bytes sha state_sha filename file actual
   while IFS=$'\t' read -r mode skill episode map players bytes sha state_sha filename ||
       [[ -n "${mode:-}" ]]; do

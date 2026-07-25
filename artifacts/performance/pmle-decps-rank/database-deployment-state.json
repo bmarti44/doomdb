@@ -1,0 +1,6 @@
+{
+  "schema": 1,
+  "authoritySha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
+  "state": "DATABASE_DEPLOYED_LIFECYCLE_RERUN_PENDING",
+  "evidence": "artifacts/performance/pmle-decps-rank/deploy-decps-reproducible-5ec18cbe-2026-07-25-v3.log"
+}

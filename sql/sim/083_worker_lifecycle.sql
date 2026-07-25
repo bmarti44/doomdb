@@ -17,6 +17,8 @@ create or replace package doom_worker_lifecycle authid definer as
   procedure finish_assignment(
     p_assignment in number,p_status in varchar2,
     p_detail in varchar2 default null);
+  procedure abandon_stale_assignment(
+    p_match in varchar2,p_abandoned out number);
   function pending_stop(
     p_slot in number,p_incarnation in varchar2,p_sid in number,
     p_serial in number,p_spid in varchar2,p_job_run in varchar2)
@@ -230,6 +232,66 @@ create or replace package body doom_worker_lifecycle as
     if sql%rowcount<>1 then
       raise_application_error(c_error,'warm assignment finish fence');
     end if;
+  end;
+
+  procedure abandon_stale_assignment(
+    p_match in varchar2,p_abandoned out number
+  ) is
+    l_assignment number;l_slot number;l_token varchar2(32);l_sid number;
+    l_serial number;l_spid varchar2(24);l_run varchar2(64);l_job varchar2(64);
+    l_live number;
+  begin
+    p_abandoned:=0;
+    begin
+      select min(assignment_id) into l_assignment
+        from doom_mle_warm_assignment
+        where match_id=p_match and assigned_role='AUTHORITY'
+          and assignment_status in('PENDING','ACCEPTED');
+      if l_assignment is null then raise no_data_found;end if;
+      select slot_id,incarnation_token,worker_sid,worker_serial,
+        worker_spid,worker_job_run,job_name
+        into l_slot,l_token,l_sid,l_serial,l_spid,l_run,l_job
+        from doom_mle_warm_assignment
+        where assignment_id=l_assignment
+          and assignment_status in('PENDING','ACCEPTED')
+        for update;
+    exception when no_data_found then
+      -- Distinguish an already-removed/rejected dispatch from a still-live
+      -- one. Both are safe outcomes, but only the former permits the caller
+      -- to delete the stale STARTING control and claim a replacement slot.
+      p_abandoned:=2;
+      return;
+    end;
+    select count(*) into l_live
+      from doom_mle_warm_slot s
+      join user_scheduler_running_jobs r
+        on r.job_name=s.job_name and r.session_id=s.worker_sid
+      join v$session v
+        on v.sid=s.worker_sid and v.serial#=s.worker_serial
+      join v$process p on p.addr=v.paddr and p.spid=s.worker_spid
+      where s.slot_id=l_slot and s.job_name=l_job
+        and s.incarnation_token=l_token and s.worker_sid=l_sid
+        and s.worker_serial=l_serial and s.worker_spid=l_spid
+        and s.worker_job_run=l_run;
+    if l_live<>0 then
+      return;
+    end if;
+    update doom_mle_warm_assignment set assignment_status='FAILED',
+      finished_at=localtimestamp at time zone 'UTC',
+      failure_detail='status poll abandoned dead STARTING dispatch'
+      where assignment_id=l_assignment
+        and assignment_status in('PENDING','ACCEPTED');
+    if sql%rowcount<>1 then return;end if;
+    update doom_mle_warm_slot set slot_status='FAILED',
+      assigned_match=null,assigned_role=null,worker_sid=null,
+      worker_serial=null,worker_spid=null,worker_job_run=null,
+      incarnation_token=null,stop_requested=0,
+      heartbeat=localtimestamp at time zone 'UTC',
+      last_error='status poll abandoned dead STARTING dispatch'
+      where slot_id=l_slot and incarnation_token=l_token
+        and worker_sid=l_sid and worker_serial=l_serial
+        and worker_spid=l_spid and worker_job_run=l_run;
+    p_abandoned:=1;
   end;
 
   function pending_stop(

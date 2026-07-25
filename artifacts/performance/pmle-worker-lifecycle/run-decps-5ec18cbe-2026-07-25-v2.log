@@ -1,0 +1,50 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+DB_OUTPUT_HELPER|PASS|wide_linesize=32767|wrap_normalization=1|adversarial_self_test=1
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1081335|source_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_WARM_LIFECYCLE|PASS|scenario=incarnation_mismatch_rejected
+PMLE_WARM_LIFECYCLE|PASS|scenario=stop_intent_honored
+PMLE_WARM_LIFECYCLE|PASS|scenario=stale_row_reconciled
+PMLE_WARM_LIFECYCLE|PASS|scenario=force_path_reset
+PMLE_WARM_LIFECYCLE|PASS|scenario=promotion_race_20
+PMLE_WARM_LIFECYCLE|PASS|scenarios=5|pool_restored=1
+
+PL/SQL procedure successfully completed.
+
+PMLE_ALERT_WINDOW|PASS|label=DECPS_WARM_LIFECYCLE|new_ora_incidents=0|bytes=168|expected_code=NONE|expected_count=0

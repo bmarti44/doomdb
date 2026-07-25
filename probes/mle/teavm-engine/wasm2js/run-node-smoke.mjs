@@ -20,6 +20,17 @@ const iwad = fs.readFileSync(resolve(iwadPath));
 const tables = fs.readFileSync(resolve(tablePath));
 const fixture = JSON.parse(fs.readFileSync(resolve(fixturePath), 'utf8'));
 
+for (const [exportName, expected] of [
+  ['doom_i64_constant_high', 15],
+  ['doom_i64_field_high', 15],
+  ['doom_i64_field_copy_high', 23],
+  ['doom_i64_array_high', 7],
+  ['doom_i64_call_high', 15],
+  ['doom_i64_flag_or_high', 15],
+]) {
+  assert.equal(engine[exportName](), expected, `${exportName} lowering failed`);
+}
+
 function byteArrayView(reference, expectedLength) {
   assert.ok(reference > 0, `invalid TeaVM array reference ${reference}`);
   assert.equal(engine.teavm_arrayLength(reference), expectedLength);

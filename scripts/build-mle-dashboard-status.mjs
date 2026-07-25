@@ -5,23 +5,146 @@ import path from 'node:path';
 
 const root = path.resolve(new URL('..', import.meta.url).pathname);
 const versions = JSON.parse(fs.readFileSync(path.join(root, 'versions.lock'), 'utf8'));
+const authority = versions.teaVM;
+const presentation = authority.presentation;
+const deCpsAuthority = {
+  bytes: 1081335,
+  sha256: '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3'
+};
+const adbVenueEvidencePath =
+  'artifacts/performance/pmle-adb-venue/adb-tier-probe-2026-07-25.log';
+const deCpsPromoted = authority.outputSha256 === deCpsAuthority.sha256;
+const deCpsPromotionPath =
+  'artifacts/performance/pmle-decps-rank/' +
+  'promotion-5ec18cbe-2026-07-25.log';
+const deCpsPrePromotionPath =
+  'artifacts/performance/pmle-decps-rank/REPORT.md';
+const deCpsStatePath =
+  'artifacts/performance/pmle-decps-rank/database-deployment-state.json';
+const deCpsState = fs.existsSync(path.join(root, deCpsStatePath))
+  ? JSON.parse(fs.readFileSync(path.join(root, deCpsStatePath), 'utf8'))
+  : null;
+if (deCpsState !== null) {
+  assert.ok(deCpsPromoted,
+    'de-CPS deployment state cannot outlive its source pin');
+  assert.equal(deCpsState.schema, 1);
+  assert.equal(deCpsState.authoritySha256, deCpsAuthority.sha256);
+}
+const deCpsDeploymentState = deCpsPromoted
+  ? (deCpsState?.state ?? 'SOURCE_PINNED_DATABASE_DEPLOYMENT_PENDING')
+  : 'DATABASE_DEPLOYED_LIFECYCLE_RERUN_PENDING';
+const deCpsInterventionRequired =
+  deCpsDeploymentState.startsWith('INTERVENTION_REQUIRED_');
+const deCpsSourceEvidencePath = deCpsPromoted
+  ? deCpsPromotionPath
+  : deCpsPrePromotionPath;
+const deCpsStateEvidencePath =
+  deCpsState?.evidence ?? deCpsSourceEvidencePath;
+if (deCpsPromoted && deCpsState === null) {
+  const promotionEvidence = fs.readFileSync(
+    path.join(root, deCpsSourceEvidencePath),
+    'utf8',
+  );
+  const promotionBegin =
+    'PMLE_DECPS_SOURCE_PROMOTION|BEGIN|bytes=1081335'
+    + `|sha256=${deCpsAuthority.sha256}`;
+  const promotionPass =
+    'PMLE_DECPS_SOURCE_PROMOTION|PASS|bytes=1081335'
+    + `|sha256=${deCpsAuthority.sha256}`;
+  assert.equal(
+    promotionEvidence.split(/\r?\n/).filter(
+      line => line === promotionBegin,
+    ).length,
+    1,
+    'source-pinned dashboard lacks exactly one promotion BEGIN',
+  );
+  if (process.env.PMLE_DECPS_SOURCE_PROMOTION_IN_PROGRESS !== 'YES') {
+    assert.equal(
+      promotionEvidence.split(/\r?\n/).filter(
+        line => line === promotionPass,
+      ).length,
+      1,
+      'source-pinned dashboard lacks exactly one completed promotion PASS',
+    );
+  }
+}
+const finalCapacityEvidence = () => {
+  const lines = fs.readFileSync(
+    path.join(root, deCpsStateEvidencePath),
+    'utf8',
+  ).split(/\r?\n/).filter(
+    line => line.startsWith('PMLE_DECPS_DEPLOY_CAPACITY|'),
+  );
+  assert.ok(lines.length > 0, 'intervention state lacks capacity evidence');
+  const line = lines.at(-1);
+  const match = line.match(
+    /^PMLE_DECPS_DEPLOY_CAPACITY\|(HELD_CLOSED|UNPROVEN)\|reason=([a-z0-9_]+)$/,
+  );
+  assert.ok(match, 'final intervention capacity evidence is malformed');
+  assert.equal(deCpsState?.interventionReason, match[2],
+    'dashboard intervention reason does not match final capacity evidence');
+  return {kind: match[1], reason: match[2]};
+};
+if (deCpsPromoted && deCpsDeploymentState ===
+    'DATABASE_DEPLOYED_LIFECYCLE_RERUN_PENDING') {
+  const stateEvidence = fs.readFileSync(
+    path.join(root, deCpsStateEvidencePath),
+    'utf8',
+  );
+  assert.ok(stateEvidence.includes(
+    `PMLE_DECPS_DEPLOY_DATABASE|READY|sha256=${deCpsAuthority.sha256}`),
+  'database-deployed state lacks the database-ready marker');
+} else if (deCpsPromoted && deCpsDeploymentState ===
+    'INTERVENTION_REQUIRED_CAPACITY_HELD_CLOSED') {
+  assert.equal(finalCapacityEvidence().kind, 'HELD_CLOSED',
+    'intervention state lacks a final held-closed marker');
+} else if (deCpsPromoted && deCpsDeploymentState ===
+    'INTERVENTION_REQUIRED_CAPACITY_UNPROVEN') {
+  assert.equal(finalCapacityEvidence().kind, 'UNPROVEN',
+    'unproven-capacity intervention lacks a final uncertainty marker');
+} else if (deCpsState !== null && deCpsDeploymentState ===
+    'SOURCE_PINNED_DATABASE_DEPLOYMENT_PENDING') {
+  assert.ok(fs.readFileSync(
+    path.join(root, deCpsStateEvidencePath),
+    'utf8',
+  ).includes('PMLE_DECPS_DEPLOY_ROLLBACK|PASS|'),
+  'source-pinned deployment state lacks a verified rollback');
+} else if (deCpsPromoted && deCpsDeploymentState ===
+    'DATABASE_DEPLOYED_LIFECYCLE_QUALIFIED') {
+  assert.match(deCpsState?.evidenceCommit ?? '', /^[0-9a-f]{40}$/);
+} else if (deCpsPromoted && deCpsState !== null) {
+  throw new Error(`unsupported de-CPS deployment state: ${
+    deCpsDeploymentState}`);
+}
+const deCpsDatabaseDeployed = [
+  'DATABASE_DEPLOYED_LIFECYCLE_RERUN_PENDING',
+  'DATABASE_DEPLOYED_LIFECYCLE_QUALIFIED',
+].includes(deCpsDeploymentState);
+const deCpsLifecycleQualified =
+  deCpsDeploymentState === 'DATABASE_DEPLOYED_LIFECYCLE_QUALIFIED';
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 const contains = (text, marker, label) =>
   assert.ok(text.includes(marker), `${label} marker missing: ${marker}`);
 
 const soakPath =
   'artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log';
-const ledgerPath =
-  'artifacts/performance/pmle-ledger-every-tic/run-checkpoint-map-2026-07-24.log';
-const canonicalPath =
-  'artifacts/performance/pmle-differentials/' +
-  'canonical-warm-restore-e485-2026-07-24.log';
-const coopPath =
-  'artifacts/performance/pmle-differentials/' +
-  'coop-warm-restore-e485-2026-07-24.log';
-const membershipPath =
-  'artifacts/performance/pmle-differentials/' +
-  'membership-warm-restore-e485-2026-07-24.log';
+const ledgerPath = deCpsPromoted
+  ? 'artifacts/performance/pmle-ledger-every-tic/' +
+    'run-decps-reproducible-5ec18cbe-2026-07-25.log'
+  : 'artifacts/performance/pmle-ledger-every-tic/' +
+    'run-checkpoint-map-2026-07-24.log';
+const canonicalPath = 'artifacts/performance/pmle-differentials/' +
+  (deCpsPromoted
+    ? 'canonical-decps-reproducible-5ec18cbe-2026-07-25.log'
+    : 'canonical-warm-restore-e485-2026-07-24.log');
+const coopPath = 'artifacts/performance/pmle-differentials/' +
+  (deCpsPromoted
+    ? 'coop-decps-reproducible-5ec18cbe-2026-07-25.log'
+    : 'coop-warm-restore-e485-2026-07-24.log');
+const membershipPath = 'artifacts/performance/pmle-differentials/' +
+  (deCpsPromoted
+    ? 'membership-decps-reproducible-5ec18cbe-2026-07-25.log'
+    : 'membership-warm-restore-e485-2026-07-24.log');
 const warmRestorePath =
   'artifacts/performance/pmle-warm-restore-ab/REPORT.md';
 const highAwakeRecoveryPath =
@@ -44,6 +167,24 @@ const voidedSmokePath =
   'artifacts/performance/pmle-worker-soak/run-smoke-init-diet-harness2-2026-07-23.log';
 const lifecyclePath =
   'artifacts/performance/pmle-worker-lifecycle/run-2026-07-23.log';
+const currentAdmissionPath =
+  'artifacts/performance/pmle-browser-role-swap/' +
+  'warm-pool-admission-decps-5ec18cbe-bank-yield100ms-2026-07-25.log';
+const asyncAdmissionRacePath =
+  'artifacts/performance/pmle-worker-lifecycle/' +
+  'async-admission-races-decps-5ec18cbe-2026-07-25-v5.log';
+const currentWarmLifecyclePath =
+  'artifacts/performance/pmle-worker-lifecycle/' +
+  'run-decps-5ec18cbe-2026-07-25-v2.log';
+const nodeProfilePath =
+  'artifacts/performance/pmle-decps-rank/' +
+  'node-decps-peak-5ec18cbe4cff-v3.log';
+const mobjLowWordDecisionPath =
+  'artifacts/performance/pmle-decps-rank/' +
+  'mobj-low-word-decision-2026-07-25.md';
+const asyncJitDecisionPath =
+  'artifacts/performance/pmle-decps-rank/' +
+  'async-jit-decision-2026-07-25.md';
 const causalSoakPath =
   'artifacts/performance/pmle-worker-soak/' +
   'run-smoke-foreground-180-warm300-c664-2026-07-23.log';
@@ -70,6 +211,10 @@ const warmPool = read(warmPoolPath);
 const voidedSoak = read(voidedSoakPath);
 const voidedSmoke = read(voidedSmokePath);
 const lifecycle = read(lifecyclePath);
+const currentAdmission = read(currentAdmissionPath);
+const asyncAdmissionRace = read(asyncAdmissionRacePath);
+const currentWarmLifecycle = read(currentWarmLifecyclePath);
+const nodeProfile = read(nodeProfilePath);
 const causalSoak = read(causalSoakPath);
 const finalPromotedSoak = read(finalPromotedSoakPath);
 const browserProfile = read(browserProfilePath);
@@ -79,9 +224,7 @@ const hiddenJit = read(hiddenJitPath);
 const warmRestore = read(warmRestorePath);
 const highAwakeRecovery = read(highAwakeRecoveryPath);
 const warmSlotRecycle = read(warmSlotRecyclePath);
-const authority = versions.teaVM;
-const presentation = authority.presentation;
-const ledgerAuthority = {
+const ledgerAuthority = deCpsPromoted ? deCpsAuthority : {
   bytes: 1170639,
   sha256: '103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e'
 };
@@ -99,7 +242,9 @@ contains(soak, 'PMLE_WORKER_SOAK_MEMORY|PASS|role=AUTHORITY', 'authority memory'
 contains(soak, 'PMLE_WORKER_SOAK_MEMORY|PASS|role=STANDBY', 'standby memory');
 contains(soak, 'PMLE_WORKER_SOAK|PASS|duration_s=1800|warmup_s=300',
   'worker soak');
-contains(ledger, `PMLE_PINNED_PAIR|authority_sha256=${ledgerAuthority.sha256}` +
+contains(ledger, `${deCpsPromoted
+  ? 'PMLE_CANDIDATE_PAIR|classification=UNPROMOTED_CANDIDATE'
+  : 'PMLE_PINNED_PAIR'}|authority_sha256=${ledgerAuthority.sha256}` +
   `|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44` +
   `|ojvm_jar_sha256=${authority.canonicalOracleJarSha256}`, 'ledger pinned pair');
 contains(ledger,
@@ -168,6 +313,21 @@ contains(lifecycle,
 contains(lifecycle,
   'PMLE_PREWARM_ORDER|PASS|order=RETIRE_BOTH_THEN_AUTHORITY_THEN_STANDBY',
   'sequential authority-first prewarm');
+contains(currentAdmission,
+  'PMLE_WARM_POOL_ADMISSION|PASS|metric=browser_ready_click_to_first_active|' +
+  'poll_cadence_ms=100|samples=10|min_ms=4418|p50_ms=4599|' +
+  'p95_ms=4906|max_ms=4906|target_p95_ms=5000',
+  'current async admission');
+contains(asyncAdmissionRace,
+  'PMLE_ASYNC_ADMISSION_RACES|PASS|scenario_set=ALL|scenarios=4|' +
+  'db_output_helper=self_tested',
+  'current async-admission race battery');
+contains(currentWarmLifecycle,
+  'PMLE_WARM_LIFECYCLE|PASS|scenarios=5|pool_restored=1',
+  'current warm-slot lifecycle battery');
+contains(nodeProfile,
+  `PMLE_DECPS_NODE_PROFILE|PASS|authority_sha256=${deCpsAuthority.sha256}`,
+  'current de-CPS Node profile');
 contains(causalSoak,
   'PASS P13.5-MULTIPLAYER-SOAK seconds=180 warmupSeconds=300',
   'post-hardening causal browser soak');
@@ -273,7 +433,10 @@ const status = {
     authority: {
       bytes: authority.outputBytes,
       sha256: authority.outputSha256,
-      profile: authority.profile
+      profile: authority.profile,
+      deploymentQualification: deCpsDeploymentState,
+      deploymentInterventionReason:
+        deCpsInterventionRequired ? deCpsState?.interventionReason : null
     },
     presentation: {
       bytes: presentation.outputBytes,
@@ -292,20 +455,49 @@ const status = {
     canonical330: 'PASS',
     coopEveryTic762: 'PASS',
     membershipRecovery: 'PASS',
-    ledgerEveryTic13272: 'HISTORICAL_PASS_103E',
-    warmRestoreDirectMleAb: 'PASS',
-    highAwakeMaximumDistanceRecovery: 'PASS',
-    warmSlotRecycle: 'PASS',
+    ledgerEveryTic13272: deCpsPromoted
+      ? 'PASS_CURRENT_AUTHORITY'
+      : 'HISTORICAL_PASS_103E',
+    warmRestoreDirectMleAb: deCpsPromoted
+      ? (deCpsLifecycleQualified
+        ? 'PASS_CURRENT_AUTHORITY'
+        : 'HISTORICAL_PASS_E485_PENDING_RERUN')
+      : 'PASS',
+    highAwakeMaximumDistanceRecovery: deCpsPromoted
+      ? (deCpsLifecycleQualified
+        ? 'PASS_CURRENT_AUTHORITY'
+        : 'HISTORICAL_PASS_E485_PENDING_RERUN')
+      : 'PASS',
+    warmSlotRecycle: deCpsPromoted
+      ? (deCpsLifecycleQualified
+        ? 'PASS_CURRENT_AUTHORITY'
+        : 'HISTORICAL_PASS_E485_PENDING_RERUN')
+      : 'PASS',
     componentTickerParity500: 'PASS',
-    finalWorkerSoak: 'PENDING_RERUN',
-    lifecycleHardening: 'PENDING_RERUN',
+    finalWorkerSoak: deCpsLifecycleQualified
+      ? 'PASS_CURRENT_AUTHORITY'
+      : 'PENDING_RERUN',
+    lifecycleHardening: deCpsLifecycleQualified
+      ? 'PASS_CURRENT_AUTHORITY'
+      : 'PENDING_RERUN',
+    asyncAdmissionRaces: 'PASS_CURRENT_AUTHORITY',
+    warmSlotLifecycle: 'PASS_CURRENT_AUTHORITY',
     postHardeningCausalSoak: 'HISTORICAL_PASS',
     calibratedProcessMemory: 'PASS',
     browserConfirmedOnly: 'PASS',
     soloMleAuthority: 'PASS',
-    warmPoolAdmissionP95: 'PENDING_RERUN',
-    warmStandbyHealing: 'PENDING_RERUN',
-    resourceCapDecision: 'PASS'
+    warmPoolAdmissionP95: deCpsLifecycleQualified
+      ? 'PASS_CURRENT_AUTHORITY'
+      : 'PENDING_RERUN',
+    warmStandbyHealing: deCpsLifecycleQualified
+      ? 'PASS_CURRENT_AUTHORITY'
+      : 'PENDING_RERUN',
+    resourceCapDecision: 'PASS',
+    databaseAuthorityDeployment: deCpsPromoted
+      ? (deCpsInterventionRequired
+        ? 'INTERVENTION_REQUIRED'
+        : (deCpsDatabaseDeployed ? 'PASS' : 'PENDING'))
+      : 'PASS'
   },
   soak: {
     qualification: 'LAST_FULLY_SOAKED_SUPERSEDED_ARTIFACT',
@@ -353,9 +545,9 @@ const status = {
   solo: {
     coldStartBaselineSeconds: 248.629,
     coldAuthorityAdmissionSeconds: 100.314,
-    warmAdmissionP50Seconds: 3.100,
-    warmAdmissionP95Seconds: 3.440,
-    warmAdmissionMaximumSeconds: 3.440,
+    warmAdmissionP50Seconds: 4.599,
+    warmAdmissionP95Seconds: 4.906,
+    warmAdmissionMaximumSeconds: 4.906,
     warmAdmissionSamples: 10,
     warmAdmissionTargetSeconds: 5,
     warmCheckpointBankEntries: 10,
@@ -378,31 +570,61 @@ const status = {
   },
   performance: {
     state: 'BELOW_30_FPS_ACCELERATION_IN_PROGRESS',
-    evidenceArtifactSha256: lastSoakedAuthority.sha256,
+    evidenceArtifactSha256: deCpsAuthority.sha256,
     workload: 'two-player deathmatch authoritative exact command stream',
-    tics: 500,
-    throughputTicsPerSecond: 3.961,
-    sessionCpuMillisecondsPerTic: 253.600,
-    p50MillisecondsPerTic: 244.672,
-    p95MillisecondsPerTic: 374.710,
-    peakCombatMillisecondsPerTic: 290.124,
+    tics: 5250,
+    throughputTicsPerSecond: 19.788,
+    p50MillisecondsPerTic: 36.640,
+    p95MillisecondsPerTic: 142.665,
+    peakCombatMillisecondsPerTic: '106-141',
+    historicalPreDeCps: {
+      artifactSha256: lastSoakedAuthority.sha256,
+      throughputTicsPerSecond: 3.961,
+      sessionCpuMillisecondsPerTic: 253.600,
+      p50MillisecondsPerTic: 244.672,
+      p95MillisecondsPerTic: 374.710
+    },
     interpretedArithmeticNanosecondsPerIteration: 373.169,
     compiledArithmeticNanosecondsPerIteration: 2.792,
     compiledArithmeticThreshold: 'PASS_BELOW_15_NS',
     fullArtifactCompilation: 'DIAGNOSTIC_HANG_MLE_PARK',
     hiddenCompilationProductionEnabled: false,
+    autonomousVenue: {
+      provider: 'OCI',
+      region: 'us-ashburn-1',
+      database: 'doomdb-adb',
+      tier: 'Always Free 26ai',
+      arithmeticNanosecondsPerIteration: '171-189',
+      gatherNanosecondsPerByte: 91,
+      jitVerdict: 'CLOSED_ABOVE_100_NS',
+      liveExactDatabaseRendering: 'CLOSED',
+      note: 'venue uplift is capacity evidence, not a 35 Hz claim',
+      evidence: adbVenueEvidencePath
+    },
     deCpsCandidate: {
-      promotionState: 'LEDGER_RECOVERY_LIFECYCLE_SOAK_PENDING',
+      promotionState: deCpsPromoted
+        ? (deCpsDeploymentState ===
+            'SOURCE_PINNED_DATABASE_DEPLOYMENT_PENDING'
+          ? 'PROMOTED_SOURCE_DATABASE_DEPLOYMENT_PENDING'
+          : (deCpsInterventionRequired
+            ? `PROMOTED_${deCpsDeploymentState}`
+            : (deCpsLifecycleQualified
+              ? 'PROMOTED_LIFECYCLE_QUALIFIED_PEAK_ACCELERATION_ACTIVE'
+              : 'PROMOTED_RECOVERY_LIFECYCLE_SOAK_PENDING')))
+        : 'LEDGER_RECOVERY_LIFECYCLE_SOAK_PENDING',
       artifactSha256:
+        '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3',
+      artifactBytes: 1081335,
+      performanceMeasurementArtifactSha256:
         '2848ef7a8dc4799de7faa46bcf304f4ac3d351da97be94b144a53f3300607f29',
-      artifactBytes: 1081331,
+      finalArtifactRankState: 'PASS_WITHIN_5_PERCENT',
       exactStreamTics: 5250,
       canonicalCheckpoints: 5251,
       canonicalParity: 'PASS',
       canonical330: 'PASS',
       coopEveryTic762: 'PASS',
       membershipRecovery100: 'PASS',
-      ledgerEveryTic13272: 'PENDING',
+      ledgerEveryTic13272: deCpsPromoted ? 'PASS' : 'PENDING',
       throughputTicsPerSecond: 19.788,
       p50MillisecondsPerTic: 36.640,
       p95MillisecondsPerTic: 142.665,
@@ -414,6 +636,34 @@ const status = {
       peakWindowMillisecondsPerTic: '106-141',
       hiddenImmediateCompilation: 'VOID_MLE_PARK_NO_TICKER',
       hiddenHotCompilation: 'VOID_MLE_PARK_NO_TICKER',
+      nodeProfile: {
+        state: 'PASS',
+        sampledMilliseconds: 542.891,
+        tickerSampledMilliseconds: 462.148,
+        profilerControlMilliseconds: 80.743,
+        sightBspPercent: 23.558,
+        sightEligible: false,
+        mobjFlagLongPercent: 14.042,
+        activeStateDispatchPercent: 9.299,
+        movementAiPercent: 8.368,
+        selectedCategoriesAmdahlCeiling: 2.235,
+        mobjLowWordCandidate: {
+          state: 'REJECT_BELOW_5_PERCENT',
+          p50ImprovementPercent: 1.035,
+          p95ImprovementPercent: 4.122,
+          throughputImprovementPercent: 2.707,
+          peakMedianImprovementPercent: 1.401
+        },
+        defaultAsyncJit: {
+          state: 'LANDING_SIGNAL_REPRODUCTION_PENDING',
+          landingWindowThroughTic: 800,
+          wallMedianImprovementPercent: 25.501,
+          monotonicThroughputImprovementPercent: 41.079,
+          clockExclusions: 4,
+          clockSamples: 10500
+        },
+        nextMeasuredCandidate: 'DEFAULT_ASYNC_FRESH_SESSION_REPRODUCTION'
+      },
       evidence: 'artifacts/performance/pmle-decps-rank/REPORT.md'
     },
     wasm2jsStatus: 'REJECT_BINARYEN_131_TIC0_LONG_HIGH_WORD_LOSS',
@@ -424,19 +674,27 @@ const status = {
     note: 'No current evidence supports an unqualified 30 FPS claim on 26ai Free'
   },
   remaining: [
-    {id: 'LIFECYCLE', state: 'NEXT',
-      label: 'Admission and full lifecycle battery on e485 fixed-128'},
-    {id: 'SHAPE', state: 'ACTIVE',
-      label: 'De-CPS candidate promotion battery and peak-combat acceleration'},
-    {id: 'SOAK', state: 'PENDING',
-      label: '30-minute final e485 promoted-artifact soak'},
+    {id: 'LIFECYCLE', state: deCpsLifecycleQualified ? 'DONE' : 'NEXT',
+      label: deCpsPromoted
+        ? (deCpsLifecycleQualified
+          ? 'Admission and full lifecycle battery passed on de-CPS authority'
+          : 'Recovery and final soak remain; async and warm-slot race batteries pass')
+        : 'Admission and full lifecycle battery on e485 fixed-128'},
+    {id: 'SHAPE', state: deCpsPromoted ? 'PROMOTED' : 'ACTIVE',
+      label: deCpsPromoted
+        ? 'De-CPS authority promoted; peak-combat acceleration active'
+        : 'De-CPS candidate promotion battery and peak-combat acceleration'},
+    {id: 'SOAK', state: deCpsLifecycleQualified ? 'DONE' : 'PENDING',
+      label: deCpsLifecycleQualified
+        ? '30-minute de-CPS promoted-artifact soak passed'
+        : '30-minute promoted-artifact soak pending'},
     {id: 'WAN', state: 'PAUSED', label: 'Injected-latency multiplayer matrix'},
     {id: 'JAVA-AUDIT', state: 'PENDING',
       label: 'Production-path Java removal audit'},
     {id: 'DVR', state: 'OPEN',
       label: 'HUD, automap, intermission, finale and audit/DVR presentation'},
-    {id: 'ADB', state: 'DORMANT',
-      label: 'Autonomous MLE performance probe; credentials required'}
+    {id: 'ADB', state: 'DONE',
+      label: 'OCI Always Free probe: interpreter tier; live exact DB rendering closed'}
   ],
   evidence: {
     soak: soakPath, ledger: ledgerPath, canonical: canonicalPath,
@@ -451,7 +709,18 @@ const status = {
     hiddenJit: hiddenJitPath,
     warmRestore: warmRestorePath,
     highAwakeRecovery: highAwakeRecoveryPath,
-    warmSlotRecycle: warmSlotRecyclePath
+    warmSlotRecycle: warmSlotRecyclePath,
+    deCpsSourcePromotion: deCpsSourceEvidencePath,
+    deCpsDatabaseDeployment: deCpsStateEvidencePath,
+    autonomousVenue: adbVenueEvidencePath,
+    currentAdmission: currentAdmissionPath,
+    asyncAdmissionRaces: asyncAdmissionRacePath,
+    currentWarmLifecycle: currentWarmLifecyclePath,
+    deCpsNodeProfile: nodeProfilePath,
+    mobjLowWordDecision: mobjLowWordDecisionPath,
+    asyncJitDecision: asyncJitDecisionPath,
+    deCpsDatabaseDeploymentState:
+      deCpsState === null ? deCpsSourceEvidencePath : deCpsStatePath
   }
 };
 

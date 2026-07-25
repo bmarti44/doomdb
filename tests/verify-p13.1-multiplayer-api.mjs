@@ -26,13 +26,16 @@ assert.match(lifecycle, /dbms_crypto\.randombytes\(32\)/);
 assert.match(lifecycle, /utl_raw\.concat\(p_salt,hextoraw\(p_capability\)\)/);
 assert.match(lifecycle, /match unavailable/g);
 assert.match(lifecycle, /for update/g);
-assert.match(lifecycle, /l_recent>=16 or l_open>=32/);
+assert.match(lifecycle, /l_recent>=16 or l_open>=l_match_limit/);
 assert.match(api, /procedure renew_match_lease/);
 assert.match(api, /expires_at=p_now\+interval '20' minute/);
 assert.match(api, /expires_at<p_now\+interval '10' minute/);
 assert.match(lifecycle, /renew_match_lease\(p_match,l_now\)/);
-assert.doesNotMatch(matchWorker,/expires_at\s*=/i,
-  'autonomous worker must not renew an abandoned match lease');
+assert.doesNotMatch(matchWorker,
+  /expires_at\s*=\s*(?:l_now|utc_now|localtimestamp)[^;\n]*\+/i,
+  'autonomous worker must not extend an abandoned match lease');
+assert.match(matchWorker, /expires_at=l_now/,
+  'terminal worker cleanup must be allowed to expire a failed match now');
 assert.match(lifecycle, /upper\(p_game_mode\) not in\('COOP','DEATHMATCH'\)/);
 assert.match(lifecycle, /p_max_players not in\(1,2\)/);
 assert.match(lifecycle, /p_skill,p_episode,p_map,2,1,0,0/);
@@ -41,10 +44,11 @@ assert.match(lifecycle, /l_solo_capability:=null/);
 assert.match(lifecycle, /'LOBBY',upper\(p_game_mode\)/);
 assert.match(lifecycle, /interval '20' minute/);
 assert.match(lifecycle, /membership_epoch=l_epoch/);
-assert.match(lifecycle, /doom_match_worker\.start_ready\(p_match,30000,p_match_state\)/);
+assert.match(lifecycle, /doom_match_worker\.start_ready\(p_match,0,p_match_state\)/);
 assert.match(lifecycle, /doom_match_worker\.recover_match\(p_match,0,l_recovery_state\)/);
-assert.match(lifecycle, /l_worker_heartbeat<utc_now-interval '5' second/);
-assert.match(lifecycle, /returns ACTIVE only after the retained MLE engine/);
+assert.match(lifecycle,
+  /l_worker_heartbeat<\s*utc_now-numtodsinterval\(c_worker_probe_seconds,'SECOND'\)/);
+assert.match(lifecycle, /MATCH_STATUS remains the authority-readiness/);
 assert.match(lifecycle, /Supplying the previously returned player capability/);
 assert.doesNotMatch(specification, /function new_capability|function capability_hash|require_match_shape/);
 assert.doesNotMatch(lifecycle, /insert into doom_match_(?:tic|frame|checkpoint)/);

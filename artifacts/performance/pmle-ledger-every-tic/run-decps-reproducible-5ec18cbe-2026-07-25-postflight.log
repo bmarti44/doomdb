@@ -1,0 +1,17 @@
+PMLE_DECPS_LEDGER_WRAPPER|TERMINATED_ENVIRONMENT_VERIFIED|wrapper_pid=53541|launcher_pid=53640
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1171896|source_sha256=e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+PMLE_DECPS_LEDGER_POOL|PASS|slots=2|ready=2|bound=0
+PMLE_ALERT_WINDOW|PASS|label=DECPS_LEDGER|new_ora_incidents=0|bytes=55445
+PMLE_DECPS_LEDGER_POSTFLIGHT|PASS|authority_sha256=e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b|slots=2|alert_offset=823833|alert_started_utc=2026-07-25T07:02:32Z|ledger_started_utc=2026-07-25T07:02:45Z

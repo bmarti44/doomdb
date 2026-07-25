@@ -1,0 +1,2 @@
+PMLE_DECPS_DUAL_CLOCK_VOID|artifact_sha256=2848ef7a8dc4799de7faa46bcf304f4ac3d351da97be94b144a53f3300607f29|tics=5250|suspects=27|maximum_suspects=26|classification=VOID_DUAL_TIME_OWNER|threshold_changed=NO|raw_log=dual-clock-2848ef7a8dc4-5250-void-dual-time-owner.log
+PMLE_DECPS_CLOCK_ROOT_CAUSE|PASS|lima_guestagent_sync_interval_s=10|lima_observed_step_ms=120.969..130.316|systemd_timesyncd_frequency_ppm=500.000|classification=DUAL_VM_TIME_OWNERS|remediation=SYSTEMD_TIMESYNCD_DISABLED_LIMA_GUESTAGENT_RETAINED

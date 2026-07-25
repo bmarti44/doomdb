@@ -8,10 +8,29 @@ This document is the implementation contract. A task is not complete because a
 demo looks plausible or because a subset passes. It is complete only when its
 listed acceptance command succeeds without weakening an existing check.
 
-## Status summary (updated 2026-07-21)
+## Status summary (updated 2026-07-25)
 
 Orientation only; the task cards and dated checkpoints in Section 7 are the
 authoritative record.
+
+- **Current MLE direction:** the approved role swap is active. The
+  TeaVM-generated `5ec18cbe…` MLE JavaScript authority is promoted and
+  deployed; live rendering consumes confirmed database deltas in the browser,
+  while exact database rendering remains asynchronous audit/DVR work. The
+  final artifact passes the 13,272-tic every-tic ledger, canonical, 762-tic
+  co-op, membership, async-admission race, and warm-slot lifecycle gates.
+  Artifact-specific recovery/final soak, WAN qualification, presentation
+  completion, and OCI cloud acceptance remain.
+- **Performance truth:** the de-CPS exact-stream result is 19.788 tics/s
+  whole-route, with quiet windows above 35 Hz and peak-combat windows around
+  7–9 tics/s. OCI Always Free 26ai's 171–189 ns/op arithmetic closes the
+  live exact database-rendering/JIT branch. Fresh profile ranking puts
+  sight/BSP below its selection threshold. The exact narrow long/flag
+  candidate improved real-MLE throughput only 2.707% and high-awake median
+  only 1.401%, so it is rejected under the standing 5% rule. Final-artifact
+  default-async closeout produced one localized landing window (25.501% wall
+  median / 41.079% monotonic throughput); independent fresh-session
+  reproduction and persistence are next before any compiler claim.
 
 - **Complete:** P0–P7 (SQL engine, frozen as the differential/visual oracle),
   P12.0 (pulled-forward 30 FPS enabling gate), T12.M1–T12.M4 (pinned Mocha
@@ -562,6 +581,95 @@ returns. WAN evidence must prove the 5 ms post-commit p95 under that runnable
 bound; otherwise clients beyond the bound use zero-hold immediate batching.
 The final soak tests the specific hypothesis that `resmgr:*` throttling under
 the enforced 50% cap contributes to over-slot tails.
+
+#### Approved de-CPS promotion and acceleration directive — 2026-07-24
+
+Authorized by Brian Martin after review of the de-CPS rank, hidden-compiler,
+wasm2js, recovery, and promotion evidence. The first de-CPS authority candidate
+is 1,081,331 bytes at SHA-256
+`2848ef7a8dc4799de7faa46bcf304f4ac3d351da97be94b144a53f3300607f29`.
+It is not production until every transition below completes.
+
+1. The 13,272-tic every-tic OJVM/MLE ledger is the promotion blocker and must
+   reach its original terminal marker without restart. Periodic cumulative
+   digests are observability only; this gate may not resume from checkpoints.
+2. Promotion is two-phase and fail-closed. Source promotion first proves a
+   byte-identical rebuild, the exact input/Mocha/patch-set provenance, all
+   readiness evidence, the content-addressed browser copy, and every runtime
+   pin. Its promotion evidence is part of the same rollback transaction:
+   source-pinned dashboard truth requires the terminal promotion PASS and every
+   dashboard evidence link must already resolve. An intentional
+   presentation-only adapter change may advance the shared input-JAR digest
+   only when the two complete adapter source SHAs are reviewed and the rebuild
+   still emits the byte-identical authority; that transition is recorded in
+   promotion evidence and `versions.lock`, never treated as an ignored digest
+   mismatch. Database deployment is
+   separately authorized and verifies the module,
+   canonical table pack, all ten tic-zero bank entries, worker contract, and
+   Oracle alert window before capacity returns. Any failure restores and
+   independently re-verifies the retiring module, bank, and worker SHA.
+3. Dashboard deployment truth is a closed state machine:
+   `SOURCE_PINNED_DATABASE_DEPLOYMENT_PENDING`,
+   `DATABASE_DEPLOYED_LIFECYCLE_RERUN_PENDING`,
+   `DATABASE_DEPLOYED_LIFECYCLE_QUALIFIED`, or
+   `INTERVENTION_REQUIRED_CAPACITY_HELD_CLOSED`. If the lifecycle stop path
+   itself cannot prove the pool parked, the distinct
+   `INTERVENTION_REQUIRED_CAPACITY_UNPROVEN` state reports that uncertainty
+   instead of falsely claiming a capacity hold. The lifecycle-pending state
+   clears only from one committed manifest containing exact, single-line PASS
+   evidence for recovery, admission, lifecycle, and the final soak. Failed
+   rollback, alert validation, dashboard update, or capacity restart holds
+   capacity closed when the lifecycle mechanism proves the hold; otherwise
+   the exceptional unproven state is mandatory.
+4. After lifecycle qualification, a fresh Node CPU/allocation profile ranks
+   candidates, but exactly one measured batch is selected by direct MLE A/B
+   and repeats the full applicable differential battery. Maximum-density
+   35 Hz remains the claim gate on every venue. A Free-edition density envelope
+   may be published only after the approved Amdahl escalation rule fires; it
+   does not weaken the gate.
+5. Hidden-JIT work is diagnostic. The default asynchronous cell is two
+   consecutive full 5,250-tic passes with matched 100-tic medians and a
+   compiler-thread census: at least 20 percent improvement in any matched
+   window is a landing signal, less than 10 percent in every window is inert,
+   and the cell is capped at 60 minutes. TeaVM `SIMPLE` is an unpromotable
+   JIT-digestibility diagnostic. Only a positive SIMPLE signal permits
+   debug-function-size-ranked `org.teavm.interop.NoInline` experiments.
+   Unsupported hidden parameters never become production configuration.
+6. wasm2js remains a structural reserve. Its `-O0`/`wasm-dis` reduction must
+   first prove and correct the i64 serializer call-boundary high-word defect,
+   then pass tic-zero and every-tic 100-tic Node/OJVM parity. The isolated
+   Oracle rank compares the exact 5,250-tic stream and matched quiet/peak
+   windows: at least 2x in both advances to full parity integration, below
+   1.5x in either rejects, and 1.5--2x escalates for a charter decision.
+7. Exact database rendering remains a live acceptance path. The primary egress
+   inserts the 64,000-byte `Uint8Array` directly as a BLOB inside MLE. The
+   production-acceptable fallback reuses one persistent BLOB row, reacquires
+   its locator per transaction, writes and closes it before commit, and creates
+   no temporary LOB. The selected path must produce 300 unique exact 320x200
+   frames with every commit in the timed pipeline, zero net
+   `V$TEMPORARY_LOBS` growth, and p95 at or below 33.333 ms.
+8. The sequence is fixed: ledger, reproducibility, source promotion, database
+   deployment, recovery/admission/lifecycle/final-soak qualification, fresh
+   profile, then one evidence-ranked batch. Presentation/DVR completion,
+   Java-production-path removal audit, WAN qualification, and the Autonomous
+   probe remain required. ADB behavior is not assumed before credentials and
+   measurements exist.
+
+**De-CPS reproducibility correction — 2026-07-25.** The measured
+`2848ef7a…` module completed its 13,272-tic ledger, but its exact
+timestamp-bearing input adapter JAR was not retained and the module could not
+be rebuilt byte-for-byte. TeaVM also proved that presentation-only
+`@JSExport` additions participate in the authority root set. No exception was
+made to item 2. Both Java reachability adapters were restored to the measured
+export surface, database-frame adaptation moved into the isolated JavaScript
+wrapper, and Maven now pins `project.build.outputTimestamp`. Two consecutive
+builds produced the same 1,081,335-byte module at
+`5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3`;
+it passed 5,250 tics and 5,251 full canonical-state comparisons against
+`2848ef7a…`. This reproducible successor receives its own complete every-tic
+ledger, promotion differentials, direct-MLE rank, source promotion, deployment,
+and lifecycle battery. The predecessor's evidence remains historical and is
+not relabeled as final-artifact evidence.
 
 The frozen DMB1 v1 batch begins with a 32-byte big-endian header: magic,
 version, timeout/more flags, transition count, reserved field, current

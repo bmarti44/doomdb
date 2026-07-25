@@ -3,11 +3,11 @@ set -Eeuo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
-candidate="$root/artifacts/performance/pmle-decps-rank/authority-candidate-2848ef7a8dc4.js"
+candidate="${PMLE_CANDIDATE_FILE:-$root/artifacts/performance/pmle-decps-rank/authority-candidate-5ec18cbe4cff.js}"
 tables="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
-candidate_sha="2848ef7a8dc4799de7faa46bcf304f4ac3d351da97be94b144a53f3300607f29"
-candidate_bytes=1081331
-tag="${PMLE_EVIDENCE_TAG:-decps-2848ef7a-2026-07-24}"
+candidate_sha="${PMLE_EXPECTED_AUTHORITY_SHA256:-5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3}"
+candidate_bytes="${PMLE_EXPECTED_AUTHORITY_BYTES:-1081335}"
+tag="${PMLE_EVIDENCE_TAG:-decps-reproducible-5ec18cbe-2026-07-25}"
 alert_state="$(mktemp "${TMPDIR:-/tmp}/doomdb-decps-ledger-alert.XXXXXX")"
 pool_parked=0
 candidate_loaded=0

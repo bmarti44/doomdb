@@ -11,6 +11,14 @@ case "$mode" in canonical|coop|membership) ;;
 esac
 [[ "$tag" =~ ^[A-Za-z0-9._-]+$ ]] || { printf 'invalid evidence tag: %s\n' "$tag" >&2;exit 2; }
 
+competing_gate="$(ps ax -o command= | awk '
+  /[r]un-ledger-differential|[r]un-decps-ledger|[b]uild-ledger-differential|[r]un-worker-soak|[r]un-worker-cutover|[r]un-decps-rank-mle|[r]un-presentation-decps-rank/ {print}
+')"
+[[ -z "$competing_gate" ]] || {
+  printf 'MLE differential refuses a competing evidence gate:\n%s\n' \
+    "$competing_gate" >&2
+  exit 1
+}
 busy_host="$(ps ax -o command= | awk '
   /[d]ocker (build|compose .* build)|[b]uild-simulation[.]sh|[m]vn .*package|[j]avac|[v]erify-local-e2e/ {print}
 ')"

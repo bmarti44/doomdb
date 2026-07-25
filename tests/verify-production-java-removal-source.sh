@@ -45,6 +45,27 @@ for forbidden in \
   }
 done
 
+# A filename denylist is not a complete production fence: a new bootstrap
+# entry could otherwise introduce a differently named Java call spec. Scan the
+# resolved SQL order as well. The purge script is the sole intentional source
+# of the LANGUAGE-JAVA vocabulary because it detects and removes old call
+# specs before the MLE-only schema is installed.
+while IFS= read -r entry || [[ -n "$entry" ]]; do
+  [[ -z "$entry" || "$entry" == \#* || "$entry" == @* ]] && continue
+  [[ "$entry" =~ ^sql/[A-Za-z0-9._/-]+\.sql$ &&
+      "$entry" != *..* && -f "$root/$entry" ]] || {
+    printf 'invalid production bootstrap entry: %s\n' "$entry" >&2
+    exit 1
+  }
+  [[ "$entry" == sql/bootstrap/001_purge_production_ojvm.sql ]] && continue
+  if grep -Eiq \
+      'LANGUAGE[[:space:]]+JAVA|CREATE[[:space:]]+(OR[[:space:]]+REPLACE[[:space:]]+)?JAVA|LOADJAVA' \
+      "$root/$entry"; then
+    printf 'production bootstrap contains Java/OJVM DDL: %s\n' "$entry" >&2
+    exit 1
+  fi
+done <"$order"
+
 grep -q "object_type like 'JAVA%'" "$purge"
 grep -q "LANGUAGE\\[\\[:space:\\]\\].*JAVA" "$purge"
 grep -q "production OJVM purge failed" "$purge"

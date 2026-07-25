@@ -1,0 +1,149 @@
+PMLE_HOST_CONTEXT|phase=BEFORE_PROFILE|utc=2026-07-25T18:04:16Z|uname=Darwin macbookpro.lan 24.6.0 Darwin Kernel Version 24.6.0: Wed Nov  5 21:30:23 PST 2025; root:xnu-11417.140.69.705.2~1/RELEASE_X86_64 x86_64
+PMLE_HOST_CONTEXT|phase=BEFORE_PROFILE|model=MacBookPro15,1|logical_cpu=12
+PMLE_HOST_THERMAL|phase=BEFORE_PROFILE|Note: No thermal warning level has been recorded
+PMLE_HOST_THERMAL|phase=BEFORE_PROFILE|Note: No performance warning level has been recorded
+PMLE_HOST_THERMAL|phase=BEFORE_PROFILE|2026-07-25 14:04:16 -0400 CPU Power notify
+PMLE_HOST_THERMAL|phase=BEFORE_PROFILE|	CPU_Scheduler_Limit 	= 100
+PMLE_HOST_THERMAL|phase=BEFORE_PROFILE|	CPU_Available_CPUs 	= 12
+PMLE_HOST_THERMAL|phase=BEFORE_PROFILE|	CPU_Speed_Limit 	= 100
+PMLE_DECPS_NODE_PROFILE|START|authority_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|profile_artifact_sha256=00c5e7c59f5283db35d18c4ed06fb56b41b027bfc9c5eacbae922118a2faa650|stream_sha256=fa7637570c30d3a33cbf8456e98268890e9f5bd82f5ba39fd7f69b139ddc4085|tics=5250|host_quiet=YES
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+
+ITicker: Using nanosecond accuracy timer.
+                            FreeDoom: Phase 1          v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+       Copyright © 2001-2017 Contributors to the Freedoom project.
+                            All rights reserved.
+     See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_NODE_COMMAND_STREAM|PASS|mode=DEATHMATCH|tics=5250|p50_ms=0.049|p95_ms=0.262|p99_ms=0.616|max_ms=5.239|throughput_tps=11579.472|profile=/Users/bmarti44/doomdb/artifacts/performance/pmle-decps-rank/node-decps-peak-5ec18cbe4cff-v3.cpuprofile
+PMLE_NODE_COMMAND_WINDOW|through_tic=100|tics=100|wall_ms=51.389|tps=1945.942|iwadBytes=28795076|frameBytes=64000|thinkers=247|mobjs=238|killMonsters=29|livingMonsters=29|awakeMonsters=9|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=200|tics=100|wall_ms=37.051|tps=2698.960|iwadBytes=28795076|frameBytes=64000|thinkers=254|mobjs=243|killMonsters=29|livingMonsters=28|awakeMonsters=20|movingMonsters=2|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=300|tics=100|wall_ms=34.365|tps=2909.970|iwadBytes=28795076|frameBytes=64000|thinkers=253|mobjs=243|killMonsters=29|livingMonsters=28|awakeMonsters=20|movingMonsters=1|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=400|tics=100|wall_ms=24.677|tps=4052.409|iwadBytes=28795076|frameBytes=64000|thinkers=250|mobjs=240|killMonsters=29|livingMonsters=28|awakeMonsters=20|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=500|tics=100|wall_ms=20.345|tps=4915.175|iwadBytes=28795076|frameBytes=64000|thinkers=248|mobjs=239|killMonsters=29|livingMonsters=28|awakeMonsters=20|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=600|tics=100|wall_ms=15.053|tps=6643.259|iwadBytes=28795076|frameBytes=64000|thinkers=247|mobjs=238|killMonsters=29|livingMonsters=28|awakeMonsters=20|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=700|tics=100|wall_ms=22.883|tps=4370.005|iwadBytes=28795076|frameBytes=64000|thinkers=249|mobjs=239|killMonsters=29|livingMonsters=28|awakeMonsters=20|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=800|tics=100|wall_ms=13.635|tps=7334.066|iwadBytes=28795076|frameBytes=64000|thinkers=240|mobjs=231|killMonsters=29|livingMonsters=28|awakeMonsters=20|movingMonsters=2|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=900|tics=100|wall_ms=11.125|tps=8988.723|iwadBytes=28795076|frameBytes=64000|thinkers=241|mobjs=232|killMonsters=29|livingMonsters=27|awakeMonsters=19|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=1000|tics=100|wall_ms=12.995|tps=7695.114|iwadBytes=28795076|frameBytes=64000|thinkers=241|mobjs=231|killMonsters=29|livingMonsters=26|awakeMonsters=18|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=1100|tics=100|wall_ms=10.104|tps=9897.196|iwadBytes=28795076|frameBytes=64000|thinkers=238|mobjs=228|killMonsters=29|livingMonsters=24|awakeMonsters=18|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=1200|tics=100|wall_ms=8.557|tps=11686.878|iwadBytes=28795076|frameBytes=64000|thinkers=244|mobjs=234|killMonsters=29|livingMonsters=21|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=1300|tics=100|wall_ms=5.321|tps=18793.573|iwadBytes=28795076|frameBytes=64000|thinkers=237|mobjs=227|killMonsters=29|livingMonsters=21|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=1400|tics=100|wall_ms=3.996|tps=25022.282|iwadBytes=28795076|frameBytes=64000|thinkers=237|mobjs=227|killMonsters=29|livingMonsters=21|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=1500|tics=100|wall_ms=8.275|tps=12084.994|iwadBytes=28795076|frameBytes=64000|thinkers=235|mobjs=226|killMonsters=29|livingMonsters=21|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=1600|tics=100|wall_ms=7.123|tps=14039.155|iwadBytes=28795076|frameBytes=64000|thinkers=239|mobjs=229|killMonsters=29|livingMonsters=21|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=1700|tics=100|wall_ms=11.614|tps=8610.198|iwadBytes=28795076|frameBytes=64000|thinkers=239|mobjs=229|killMonsters=29|livingMonsters=19|awakeMonsters=17|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=1800|tics=100|wall_ms=6.503|tps=15378.112|iwadBytes=28795076|frameBytes=64000|thinkers=242|mobjs=232|killMonsters=29|livingMonsters=18|awakeMonsters=16|movingMonsters=1|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=1900|tics=100|wall_ms=8.843|tps=11308.312|iwadBytes=28795076|frameBytes=64000|thinkers=235|mobjs=226|killMonsters=29|livingMonsters=18|awakeMonsters=16|movingMonsters=1|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=2000|tics=100|wall_ms=7.025|tps=14235.722|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=2100|tics=100|wall_ms=5.796|tps=17254.653|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=2200|tics=100|wall_ms=5.625|tps=17776.861|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=2300|tics=100|wall_ms=8.711|tps=11479.861|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=2400|tics=100|wall_ms=6.130|tps=16314.486|iwadBytes=28795076|frameBytes=64000|thinkers=235|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=2500|tics=100|wall_ms=6.031|tps=16581.686|iwadBytes=28795076|frameBytes=64000|thinkers=237|mobjs=227|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=2600|tics=100|wall_ms=5.679|tps=17609.106|iwadBytes=28795076|frameBytes=64000|thinkers=238|mobjs=228|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=2700|tics=100|wall_ms=6.727|tps=14866.393|iwadBytes=28795076|frameBytes=64000|thinkers=236|mobjs=227|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=2800|tics=100|wall_ms=6.429|tps=15554.949|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=2900|tics=100|wall_ms=5.315|tps=18814.856|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=3000|tics=100|wall_ms=5.186|tps=19281.539|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=3100|tics=100|wall_ms=6.429|tps=15555.303|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=3200|tics=100|wall_ms=5.041|tps=19837.838|iwadBytes=28795076|frameBytes=64000|thinkers=236|mobjs=226|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=3300|tics=100|wall_ms=5.412|tps=18478.205|iwadBytes=28795076|frameBytes=64000|thinkers=236|mobjs=226|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=3400|tics=100|wall_ms=4.103|tps=24371.181|iwadBytes=28795076|frameBytes=64000|thinkers=235|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=3500|tics=100|wall_ms=7.341|tps=13622.675|iwadBytes=28795076|frameBytes=64000|thinkers=240|mobjs=231|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=3600|tics=100|wall_ms=5.076|tps=19699.139|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=3700|tics=100|wall_ms=4.449|tps=22478.866|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=3800|tics=100|wall_ms=4.066|tps=24591.408|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=3900|tics=100|wall_ms=3.870|tps=25838.859|iwadBytes=28795076|frameBytes=64000|thinkers=235|mobjs=226|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=4000|tics=100|wall_ms=4.568|tps=21891.222|iwadBytes=28795076|frameBytes=64000|thinkers=236|mobjs=227|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=4100|tics=100|wall_ms=3.927|tps=25464.206|iwadBytes=28795076|frameBytes=64000|thinkers=236|mobjs=227|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=4200|tics=100|wall_ms=2.201|tps=45431.561|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=4300|tics=100|wall_ms=1.813|tps=55168.913|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=4400|tics=100|wall_ms=2.067|tps=48389.103|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=4500|tics=100|wall_ms=2.290|tps=43670.830|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=4600|tics=100|wall_ms=1.666|tps=60020.227|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=4700|tics=100|wall_ms=1.889|tps=52929.292|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=4800|tics=100|wall_ms=1.691|tps=59139.264|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=4900|tics=100|wall_ms=1.683|tps=59417.706|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=5000|tics=100|wall_ms=1.675|tps=59693.474|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=5100|tics=100|wall_ms=1.649|tps=60644.616|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=5200|tics=100|wall_ms=1.729|tps=57848.409|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_WINDOW|through_tic=5250|tics=50|wall_ms=0.834|tps=59960.450|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_NODE_COMMAND_MEMORY|iwadBytes=28795076|frameBytes=64000|thinkers=234|mobjs=225|killMonsters=29|livingMonsters=17|awakeMonsters=15|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_DECPS_NODE_PROFILE_CATEGORY|name=sight_bsp|self_ms=108.871|self_pct=20.054
+PMLE_DECPS_NODE_PROFILE_CATEGORY|name=movement_ai|self_ms=38.673|self_pct=7.124
+PMLE_DECPS_NODE_PROFILE_CATEGORY|name=mobj_flag_long|self_ms=64.894|self_pct=11.953
+PMLE_DECPS_NODE_PROFILE_CATEGORY|name=garbage_collection|self_ms=5.218|self_pct=0.961
+PMLE_DECPS_NODE_PROFILE_CATEGORY|name=other|self_ms=325.235|self_pct=59.908
+PMLE_DECPS_NODE_PROFILE_TOP|function=post|self_ms=80.743|self_pct=14.873
+PMLE_DECPS_NODE_PROFILE_TOP|function=pA_ActionsSight_CrossSubsector|self_ms=47.522|self_pct=8.754
+PMLE_DECPS_NODE_PROFILE_TOP|function=p_ActiveStates$_clinit_$lambda$_9_75_accept|self_ms=42.975|self_pct=7.916
+PMLE_DECPS_NODE_PROFILE_TOP|function=pA_ActionsThinkers_Ticker|self_ms=29.071|self_pct=5.355
+PMLE_DECPS_NODE_PROFILE_TOP|function=pA_ActionsSight_CrossBSPNode|self_ms=28.629|self_pct=5.273
+PMLE_DECPS_NODE_PROFILE_TOP|function=Long_fromInt|self_ms=23.794|self_pct=4.383
+PMLE_DECPS_NODE_PROFILE_TOP|function=d_DoomMain_Ticker|self_ms=17.813|self_pct=3.281
+PMLE_DECPS_NODE_PROFILE_TOP|function=pA_ActionsMovement_TryMove|self_ms=12.136|self_pct=2.235
+PMLE_DECPS_NODE_PROFILE_TOP|function=p_divline_t_DivlineSide|self_ms=11.951|self_pct=2.201
+PMLE_DECPS_NODE_PROFILE_TOP|function=pA_ActionTrait_CheckLine|self_ms=10.118|self_pct=1.864
+PMLE_DECPS_NODE_PROFILE_TOP|function=p_AbstractLevelLoader_PointInSubsector|self_ms=10.109|self_pct=1.862
+PMLE_DECPS_NODE_PROFILE_TOP|function=u_TraitFactory$FactoryContext_get|self_ms=9.903|self_pct=1.824
+PMLE_DECPS_NODE_PROFILE_TOP|function=Long_lo|self_ms=9.184|self_pct=1.692
+PMLE_DECPS_NODE_PROFILE_TOP|function=Long_and|self_ms=8.905|self_pct=1.640
+PMLE_DECPS_NODE_PROFILE_TOP|function=jl_Object|self_ms=8.733|self_pct=1.609
+PMLE_DECPS_NODE_PROFILE_TOP|function=r_node_t_DivlineSide|self_ms=7.853|self_pct=1.447
+PMLE_DECPS_NODE_PROFILE_TOP|function=p_divline_t|self_ms=7.494|self_pct=1.380
+PMLE_DECPS_NODE_PROFILE_TOP|function=(anonymous)|self_ms=7.392|self_pct=1.362
+PMLE_DECPS_NODE_PROFILE_TOP|function=pA_ActionTrait_CheckPosition|self_ms=7.141|self_pct=1.315
+PMLE_DECPS_NODE_PROFILE_TOP|function=(program)|self_ms=6.123|self_pct=1.128
+PMLE_DECPS_NODE_PROFILE_TOP|function=Long_create|self_ms=5.642|self_pct=1.039
+PMLE_DECPS_NODE_PROFILE_TOP|function=pA_ActionsThings_CheckThing|self_ms=5.582|self_pct=1.028
+PMLE_DECPS_NODE_PROFILE_TOP|function=pA_ActionTrait_BlockLinesIterator|self_ms=5.509|self_pct=1.015
+PMLE_DECPS_NODE_PROFILE_TOP|function=(garbage collector)|self_ms=5.218|self_pct=0.961
+PMLE_DECPS_NODE_PROFILE_TOP|function=dme_SimulationEngineReachabilityProbe_stepMultiplayerAuthoritative|self_ms=4.821|self_pct=0.888
+PMLE_DECPS_NODE_PROFILE_TOP|function=p_mobj_t_SetMobjState|self_ms=4.750|self_pct=0.875
+PMLE_DECPS_NODE_PROFILE_TOP|function=pA_ActionsSight_CheckSight|self_ms=4.439|self_pct=0.818
+PMLE_DECPS_NODE_PROFILE_TOP|function=pAA_Ai_A_Chase|self_ms=4.311|self_pct=0.794
+PMLE_DECPS_NODE_PROFILE_TOP|function=d_player_t_PlayerThink|self_ms=3.980|self_pct=0.733
+PMLE_DECPS_NODE_PROFILE_TOP|function=pA_ActionTrait_BlockThingsIterator|self_ms=3.929|self_pct=0.724
+PMLE_DECPS_NODE_PROFILE_RANK|PASS|samples=411|sampled_ms=542.891|sight_bsp_pct=20.054|sight_bsp_eligible=NO|movement_ai_pct=7.124|mobj_flag_long_pct=11.953
+PMLE_HOST_CONTEXT|phase=AFTER_PROFILE|utc=2026-07-25T18:04:17Z
+PMLE_HOST_THERMAL|phase=AFTER_PROFILE|Note: No thermal warning level has been recorded
+PMLE_HOST_THERMAL|phase=AFTER_PROFILE|Note: No performance warning level has been recorded
+PMLE_HOST_THERMAL|phase=AFTER_PROFILE|2026-07-25 14:04:17 -0400 CPU Power notify
+PMLE_HOST_THERMAL|phase=AFTER_PROFILE|	CPU_Scheduler_Limit 	= 100
+PMLE_HOST_THERMAL|phase=AFTER_PROFILE|	CPU_Available_CPUs 	= 12
+PMLE_HOST_THERMAL|phase=AFTER_PROFILE|	CPU_Speed_Limit 	= 100
+PMLE_DECPS_NODE_PROFILE|PASS|authority_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|profile_sha256=192f90deb4b4b285e59cfd2786b79cd921bd10edb7e29f29bf5aa8a82ff8f0c9
+PMLE_DECPS_NODE_PROFILE_VALIDATED|PASS|authority_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|samples=411|profile_sha256=192f90deb4b4b285e59cfd2786b79cd921bd10edb7e29f29bf5aa8a82ff8f0c9

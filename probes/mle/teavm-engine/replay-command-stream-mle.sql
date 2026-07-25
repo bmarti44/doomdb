@@ -5,15 +5,23 @@ declare
   c_stream constant varchar2(64):='__STREAM_NAME__';
   c_deathmatch constant pls_integer:=__DEATHMATCH__;
   c_limit constant pls_integer:=__TIC_LIMIT__;
+  c_clock_disagreement_ms constant pls_integer:=30;
+  c_max_clock_suspects constant pls_integer:=floor(c_limit*.005);
   type values_t is table of number index by pls_integer;
+  type integer_values_t is table of pls_integer index by pls_integer;
   type text_values_t is table of varchar2(4000) index by pls_integer;
   l_samples values_t;l_sorted values_t;l_windows values_t;
+  l_monotonic_samples values_t;l_clock_suspect integer_values_t;
+  l_window_centiseconds values_t;
   l_window_memory text_values_t;
   l_wad blob;l_pack blob;l_origin blob;l_chunk raw(32767);l_length pls_integer;
   l_offset pls_integer;l_loaded number;l_state varchar2(32767);
   l_started timestamp with time zone;l_total_started timestamp with time zone;
   l_total_ms number;l_elapsed number;l_count pls_integer:=0;
   l_window_started timestamp with time zone;l_window_count pls_integer:=0;
+  l_total_tick_started number;l_total_tick_centiseconds number;
+  l_window_tick_started number;l_tick_started number;l_tick_done number;
+  l_monotonic_ms number;l_clock_delta_ms number;l_suspect_count pls_integer:=0;
   l_value number;l_j pls_integer;l_tic number;
 
   function elapsed_ms(p_value interval day to second)return number is
@@ -22,6 +30,15 @@ declare
       extract(hour from p_value)*3600000+
       extract(minute from p_value)*60000+
       extract(second from p_value)*1000;
+  end;
+
+  function elapsed_centiseconds(p_started number,p_done number)return number is
+    l_result number:=p_done-p_started;
+  begin
+    -- DBMS_UTILITY.GET_TIME is a signed 32-bit hundredths counter.
+    -- Preserve its monotonic delta across the documented wrap.
+    if l_result<0 then l_result:=l_result+4294967296;end if;
+    return l_result;
   end;
 
   procedure capture_origin is
@@ -87,6 +104,8 @@ begin
   capture_origin;
 
   l_count:=0;l_total_started:=systimestamp;l_window_started:=l_total_started;
+  l_total_tick_started:=dbms_utility.get_time;
+  l_window_tick_started:=l_total_tick_started;
   for command_ in (
     select tic,to_number(rawtohex(membership_bitmap),'XX') membership,
       command_vector
@@ -97,33 +116,57 @@ begin
     if command_.tic<>l_count+1 then
       raise_application_error(-20796,'command replay tic gap');
     end if;
-    l_started:=systimestamp;
+    l_tick_started:=dbms_utility.get_time;l_started:=systimestamp;
     l_tic:=doom_teavm_sim_authority_step(
       2,command_.membership,command_.command_vector);
     l_elapsed:=elapsed_ms(systimestamp-l_started);
+    l_tick_done:=dbms_utility.get_time;
+    l_monotonic_ms:=elapsed_centiseconds(l_tick_started,l_tick_done)*10;
+    l_clock_delta_ms:=abs(l_elapsed-l_monotonic_ms);
     l_count:=l_count+1;l_samples(l_count):=l_elapsed;l_sorted(l_count):=l_elapsed;
+    l_monotonic_samples(l_count):=l_monotonic_ms;
+    l_clock_suspect(l_count):=
+      case when l_clock_delta_ms>c_clock_disagreement_ms then 1 else 0 end;
+    l_suspect_count:=l_suspect_count+l_clock_suspect(l_count);
     if l_tic<>command_.tic then
       raise_application_error(-20796,'command replay frontier mismatch');
     end if;
     if mod(l_count,100)=0 then
       l_window_count:=l_window_count+1;
       l_windows(l_window_count):=elapsed_ms(systimestamp-l_window_started);
+      l_window_centiseconds(l_window_count):=
+        elapsed_centiseconds(l_window_tick_started,dbms_utility.get_time);
       l_window_memory(l_window_count):=doom_teavm_sim_memory;
       l_window_started:=systimestamp;
+      l_window_tick_started:=dbms_utility.get_time;
     end if;
   end loop;
   if mod(l_count,100)<>0 then
     l_window_count:=l_window_count+1;
     l_windows(l_window_count):=elapsed_ms(systimestamp-l_window_started);
+    l_window_centiseconds(l_window_count):=
+      elapsed_centiseconds(l_window_tick_started,dbms_utility.get_time);
     l_window_memory(l_window_count):=doom_teavm_sim_memory;
   end if;
   l_total_ms:=elapsed_ms(systimestamp-l_total_started);
+  l_total_tick_centiseconds:=
+    elapsed_centiseconds(l_total_tick_started,dbms_utility.get_time);
   -- Emit only after the measured loop so DBMS_OUTPUT formatting cannot alter
   -- the per-tic wall-clock samples being compared with the live worker.
   for i in 1..l_count loop
     dbms_output.put_line('PMLE_LIVE_REPLAY_TIC|tic='||i||
-      '|mle_ms='||round(l_samples(i),3));
+      '|mle_ms='||round(l_samples(i),3)||
+      '|monotonic_ms='||round(l_monotonic_samples(i),3)||
+      '|clock_delta_ms='||
+        round(abs(l_samples(i)-l_monotonic_samples(i)),3)||
+      '|clock_suspect='||l_clock_suspect(i));
   end loop;
+  dbms_output.put_line('PMLE_LIVE_REPLAY_CLOCK|tics='||l_count||
+    '|disagreement_limit_ms='||c_clock_disagreement_ms||
+    '|suspects='||l_suspect_count||
+    '|maximum_suspects='||c_max_clock_suspects||
+    '|verdict='||
+      case when l_suspect_count<=c_max_clock_suspects then 'PASS' else 'FAIL' end);
 
   for i in 2..l_count loop
     l_value:=l_sorted(i);l_j:=i-1;
@@ -138,18 +181,32 @@ begin
     '|p95_ms='||round(l_sorted(ceil(l_count*.95)),3)||
     '|p99_ms='||round(l_sorted(ceil(l_count*.99)),3)||
     '|max_ms='||round(l_sorted(l_count),3)||
-    '|throughput_tps='||round(l_count*1000/l_total_ms,3));
+    '|throughput_tps='||round(l_count*1000/l_total_ms,3)||
+    '|monotonic_centiseconds='||l_total_tick_centiseconds||
+    '|monotonic_tps='||
+      case when l_total_tick_centiseconds>0
+        then to_char(round(l_count*100/l_total_tick_centiseconds,3))
+        else 'INVALID' end);
   for i in 1..l_window_count loop
     dbms_output.put_line('PMLE_LIVE_REPLAY_WINDOW|through_tic='||
       least(i*100,l_count)||'|tics='||
       case when i<l_window_count or mod(l_count,100)=0
         then 100 else mod(l_count,100) end||
       '|wall_ms='||round(l_windows(i),3)||
+      '|monotonic_centiseconds='||l_window_centiseconds(i)||
+      '|monotonic_tps='||
+        case when l_window_centiseconds(i)>0
+          then to_char(round(
+            (case when i<l_window_count or mod(l_count,100)=0
+              then 100 else mod(l_count,100) end)*100/
+              l_window_centiseconds(i),3))
+          else 'INVALID' end||
       '|memory='||l_window_memory(i));
   end loop;
   dbms_output.put_line('PMLE_LIVE_REPLAY_MEMORY|'||doom_teavm_sim_memory);
   restore_origin;
   l_count:=0;l_total_started:=systimestamp;
+  l_total_tick_started:=dbms_utility.get_time;
   for command_ in (
     select tic,to_number(rawtohex(membership_bitmap),'XX') membership,
       command_vector
@@ -167,6 +224,8 @@ begin
     end if;
   end loop;
   l_total_ms:=elapsed_ms(systimestamp-l_total_started);
+  l_total_tick_centiseconds:=
+    elapsed_centiseconds(l_total_tick_started,dbms_utility.get_time);
   for i in 2..l_count loop
     l_value:=l_sorted(i);l_j:=i-1;
     while l_j>=1 and l_sorted(l_j)>l_value loop
@@ -180,7 +239,18 @@ begin
     '|p95_ms='||round(l_sorted(ceil(l_count*.95)),3)||
     '|p99_ms='||round(l_sorted(ceil(l_count*.99)),3)||
     '|max_ms='||round(l_sorted(l_count),3)||
-    '|throughput_tps='||round(l_count*1000/l_total_ms,3));
+    '|throughput_tps='||round(l_count*1000/l_total_ms,3)||
+    '|monotonic_centiseconds='||l_total_tick_centiseconds||
+    '|monotonic_tps='||
+      case when l_total_tick_centiseconds>0
+        then to_char(round(l_count*100/l_total_tick_centiseconds,3))
+        else 'INVALID' end);
+  if l_suspect_count>c_max_clock_suspects then
+    raise_application_error(
+      -20796,
+      'dual-clock suspect cap exceeded: '||l_suspect_count||'>'||
+        c_max_clock_suspects);
+  end if;
   if dbms_lob.istemporary(l_origin)=1 then dbms_lob.freetemporary(l_origin);end if;
   doom_teavm_sim_release;
 exception when others then

@@ -96,7 +96,7 @@ assert.match(worker, /doom_mle_match_runtime\.release/);
 assert.match(worker, /named \*_ojvm_oracle and are unreachable from RUN_MATCH/);
 assert.doesNotMatch(worker, /MULTI_ROOT\|'\|\|p_match/);
 assert.match(worker, /DMC1 checkpoints and ordered-ledger reconstruction are both durable/);
-assert.match(api, /doom_match_worker\.start_ready\(p_match,30000,p_match_state\)/);
+assert.match(api, /doom_match_worker\.start_ready\(p_match,0,p_match_state\)/);
 assert.doesNotMatch(api, /insert into doom_match_(?:tic|frame|checkpoint)/);
 assert.doesNotMatch(worker, /grant |ords\.enable_object|doom_api\./i);
 assert.match(api, /Request-time cascade deletion made NEW_GAME block for minutes/);

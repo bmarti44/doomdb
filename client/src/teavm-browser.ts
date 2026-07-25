@@ -15,8 +15,8 @@ type TeaVmModule = TeaVmAuthorityVerifier & TeaVmAuthorityPresenter & {
 };
 
 const AUTHORITY = {
-  url: '/play/doom-mle-authority-e485b9418e58.js',
-  sha: 'e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b'
+  url: '/play/doom-mle-authority-5ec18cbe4cff.js',
+  sha: '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3'
 };
 const PRESENTATION = {
   url: '/play/doom-mle-presentation-e55d5f1138fa.js',

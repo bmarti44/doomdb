@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const staging = fs.readFileSync('client/staging/index.html', 'utf8');
 const dist = fs.readFileSync('client/dist/index.html', 'utf8');
+const versions = JSON.parse(fs.readFileSync('versions.lock', 'utf8'));
 assert.equal(dist, staging, 'published dashboard differs from staging source');
 for (const marker of [
   'Oracle AI Database 26ai Free',
@@ -19,38 +20,98 @@ for (const marker of [
   '58,875/58,858 confirmed presentations',
   'hidden-tab lifecycle',
   'WAN matrix',
-  'Presentation / DVR'
+  'Presentation / DVR',
+  'capacity held closed; operator intervention required',
+  'capacity state unproven; operator intervention required',
+  'id="performance-truth"',
+  "data.gates.ledgerEveryTic13272==='PASS_CURRENT_AUTHORITY'",
+  "const deCps=data.performance.deCpsCandidate",
+  "deCpsLive?'source-pinned':'unpromoted'",
+  'id="authority-summary"',
+  'id="determinism-truth"',
+  'browser renderer pin · audit/DVR incomplete',
+  'no gate is inherited across an authority pin change'
 ]) {
   assert.ok(staging.includes(marker), `dashboard marker missing: ${marker}`);
 }
 for (const stale of [
   'new games use Mocha Doom in OJVM',
   'cloud certification next',
-  'Current play page:</strong> new <code>/play/</code> games use Mocha Doom in OJVM'
+  'Current play page:</strong> new <code>/play/</code> games use Mocha Doom in OJVM',
+  "document.querySelector('#ledger-state').textContent='PASS · 13,272'",
+  '<h2>Final pinned authority</h2>',
+  'full HUD + animated face · confirmed replica',
+  '<strong id="ledger-state">PASS · 13,272</strong>',
+  '<strong id="authority-artifact">e485b9418e58…</strong>'
 ]) {
   assert.ok(!staging.includes(stale), `stale dashboard claim survived: ${stale}`);
 }
 const status = JSON.parse(fs.readFileSync('client/dist/mle-status.json', 'utf8'));
+const deCpsPromoted = versions.teaVM.outputSha256 ===
+  '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3';
 assert.equal(status.schema, 1);
 assert.equal(status.artifacts.authority.sha256,
-  'e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b');
+  versions.teaVM.outputSha256);
 assert.equal(status.artifacts.presentation.sha256,
   'e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc');
 assert.equal(status.gates.presentationHud96Tics, 'PASS');
-assert.equal(status.gates.ledgerEveryTic13272, 'HISTORICAL_PASS_103E');
-assert.equal(status.gates.warmRestoreDirectMleAb, 'PASS');
-assert.equal(status.gates.highAwakeMaximumDistanceRecovery, 'PASS');
-assert.equal(status.gates.warmSlotRecycle, 'PASS');
-assert.equal(status.gates.finalWorkerSoak, 'PENDING_RERUN');
-assert.equal(status.gates.lifecycleHardening, 'PENDING_RERUN');
+assert.equal(status.gates.ledgerEveryTic13272, deCpsPromoted
+  ? 'PASS_CURRENT_AUTHORITY'
+  : 'HISTORICAL_PASS_103E');
+if (!deCpsPromoted) {
+  assert.equal(status.gates.databaseAuthorityDeployment, 'PASS');
+  assert.equal(status.artifacts.authority.deploymentQualification,
+    'DATABASE_DEPLOYED_LIFECYCLE_RERUN_PENDING');
+} else if (status.gates.databaseAuthorityDeployment === 'PENDING') {
+  assert.equal(status.artifacts.authority.deploymentQualification,
+    'SOURCE_PINNED_DATABASE_DEPLOYMENT_PENDING');
+} else if (status.gates.databaseAuthorityDeployment ===
+    'INTERVENTION_REQUIRED') {
+  assert.ok([
+    'INTERVENTION_REQUIRED_CAPACITY_HELD_CLOSED',
+    'INTERVENTION_REQUIRED_CAPACITY_UNPROVEN',
+  ].includes(status.artifacts.authority.deploymentQualification));
+  assert.match(
+    status.artifacts.authority.deploymentInterventionReason,
+    /^[a-z0-9_]+$/,
+  );
+} else {
+  assert.equal(status.gates.databaseAuthorityDeployment, 'PASS');
+  assert.ok([
+    'DATABASE_DEPLOYED_LIFECYCLE_RERUN_PENDING',
+    'DATABASE_DEPLOYED_LIFECYCLE_QUALIFIED',
+  ].includes(status.artifacts.authority.deploymentQualification));
+}
+for (const gate of [
+  'warmRestoreDirectMleAb',
+  'highAwakeMaximumDistanceRecovery',
+  'warmSlotRecycle',
+]) {
+  assert.equal(status.gates[gate], deCpsPromoted
+    ? (status.artifacts.authority.deploymentQualification ===
+        'DATABASE_DEPLOYED_LIFECYCLE_QUALIFIED'
+      ? 'PASS_CURRENT_AUTHORITY'
+      : 'HISTORICAL_PASS_E485_PENDING_RERUN')
+    : 'PASS');
+}
+const lifecycleQualified = status.artifacts.authority.deploymentQualification ===
+  'DATABASE_DEPLOYED_LIFECYCLE_QUALIFIED';
+assert.equal(status.gates.finalWorkerSoak,
+  lifecycleQualified ? 'PASS_CURRENT_AUTHORITY' : 'PENDING_RERUN');
+assert.equal(status.gates.lifecycleHardening,
+  lifecycleQualified ? 'PASS_CURRENT_AUTHORITY' : 'PENDING_RERUN');
+assert.equal(status.gates.asyncAdmissionRaces, 'PASS_CURRENT_AUTHORITY');
+assert.equal(status.gates.warmSlotLifecycle, 'PASS_CURRENT_AUTHORITY');
 assert.equal(status.gates.postHardeningCausalSoak, 'HISTORICAL_PASS');
 assert.equal(status.gates.soloMleAuthority, 'PASS');
-assert.equal(status.gates.warmPoolAdmissionP95, 'PENDING_RERUN');
-assert.equal(status.gates.warmStandbyHealing, 'PENDING_RERUN');
+assert.equal(status.gates.warmPoolAdmissionP95,
+  lifecycleQualified ? 'PASS_CURRENT_AUTHORITY' : 'PENDING_RERUN');
+assert.equal(status.gates.warmStandbyHealing,
+  lifecycleQualified ? 'PASS_CURRENT_AUTHORITY' : 'PENDING_RERUN');
 assert.equal(status.solo.legacyEndpointCalls, 0);
 assert.equal(status.solo.startupOptimization,
   'deploy-time retained MLE pool, exact tic-zero restore, and headless init diet');
-assert.equal(status.solo.warmAdmissionP95Seconds, 3.440);
+assert.equal(status.solo.warmAdmissionP95Seconds, 4.906);
 assert.equal(status.solo.warmAdmissionSamples, 10);
 assert.equal(status.solo.sequentialAuthorityFirstAdmittableSeconds, 28);
 assert.equal(status.soak.promotedAttemptState, 'VOIDED');
@@ -65,12 +126,14 @@ assert.equal(status.soak.maxConfirmedLagTics, 17);
 assert.equal(status.soak.resourceManagerCpuQuantumSamples, 0);
 assert.equal(status.architecture.productionOjvm, false);
 assert.equal(status.performance.state, 'BELOW_30_FPS_ACCELERATION_IN_PROGRESS');
-assert.equal(status.performance.throughputTicsPerSecond, 3.961);
+assert.equal(status.performance.throughputTicsPerSecond, 19.788);
 assert.equal(status.performance.evidenceArtifactSha256,
-  'a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2');
+  '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3');
 assert.equal(status.performance.wasm2jsStatus,
   'REJECT_BINARYEN_131_TIC0_LONG_HIGH_WORD_LOSS');
-assert.equal(status.performance.sessionCpuMillisecondsPerTic, 253.6);
+assert.equal(
+  status.performance.historicalPreDeCps.sessionCpuMillisecondsPerTic,
+  253.6);
 assert.equal(status.performance.interpretedArithmeticNanosecondsPerIteration,
   373.169);
 assert.equal(status.performance.compiledArithmeticNanosecondsPerIteration,
@@ -83,16 +146,40 @@ assert.equal(status.performance.deCpsCandidate.canonicalParity, 'PASS');
 assert.equal(status.performance.deCpsCandidate.exactStreamTics, 5250);
 assert.equal(status.performance.deCpsCandidate.throughputTicsPerSecond, 19.788);
 assert.equal(status.performance.deCpsCandidate.routeSpeedup, 3.297);
+assert.equal(status.performance.deCpsCandidate.finalArtifactRankState,
+  'PASS_WITHIN_5_PERCENT');
+assert.equal(status.performance.deCpsCandidate.nodeProfile.sightEligible, false);
+assert.equal(status.performance.deCpsCandidate.nodeProfile.mobjFlagLongPercent,
+  14.042);
 assert.equal(status.performance.deCpsCandidate.promotionState,
-  'LEDGER_RECOVERY_LIFECYCLE_SOAK_PENDING');
+  deCpsPromoted
+    ? (status.gates.databaseAuthorityDeployment === 'PENDING'
+      ? 'PROMOTED_SOURCE_DATABASE_DEPLOYMENT_PENDING'
+      : (status.gates.databaseAuthorityDeployment === 'INTERVENTION_REQUIRED'
+        ? `PROMOTED_${status.artifacts.authority.deploymentQualification}`
+        : (lifecycleQualified
+          ? 'PROMOTED_LIFECYCLE_QUALIFIED_PEAK_ACCELERATION_ACTIVE'
+          : 'PROMOTED_RECOVERY_LIFECYCLE_SOAK_PENDING')))
+    : 'LEDGER_RECOVERY_LIFECYCLE_SOAK_PENDING');
 assert.equal(status.performance.deCpsCandidate.coopEveryTic762, 'PASS');
 assert.equal(status.performance.deCpsCandidate.membershipRecovery100, 'PASS');
-assert.equal(status.performance.deCpsCandidate.ledgerEveryTic13272, 'PENDING');
+assert.equal(status.performance.deCpsCandidate.ledgerEveryTic13272,
+  deCpsPromoted ? 'PASS' : 'PENDING');
+assert.equal(status.remaining.find(item => item.id === 'SHAPE').state,
+  deCpsPromoted ? 'PROMOTED' : 'ACTIVE');
 assert.equal(status.performance.requiredTicsPerSecond, 35);
 assert.equal(status.solo.measuredFps, null);
 assert.equal(status.playModes.singlePlayer.state, 'AVAILABLE');
 assert.equal(status.playModes.coop.path, '/play/multiplayer.html#mode=COOP');
 assert.equal(status.playModes.multiplayer.path,
   '/play/multiplayer.html#mode=DEATHMATCH');
-assert.equal(status.remaining.find(item => item.id === 'ADB').state, 'DORMANT');
+assert.equal(status.remaining.find(item => item.id === 'ADB').state, 'DONE');
+for (const [name, relativePath] of Object.entries(status.evidence)) {
+  assert.match(relativePath, /^[a-zA-Z0-9._/-]+$/,
+    `dashboard evidence path is malformed: ${name}`);
+  assert.ok(!relativePath.split('/').includes('..'),
+    `dashboard evidence path escapes the repository: ${name}`);
+  assert.ok(fs.existsSync(relativePath),
+    `dashboard evidence path is missing: ${name}=${relativePath}`);
+}
 console.log('PASS MLE-DASHBOARD (current artifacts, evidence, links, and honesty gates)');

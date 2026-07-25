@@ -5,15 +5,18 @@ Oracle is constrained to exactly two CPUs and 4 GiB. The database entrypoint
 regenerates the vendor SPFILE with `sga_target=1024m`,
 `pga_aggregate_target=256m`, and OJVM-aware shared/Java/buffer-cache floors
 of 256/256/256 MiB before handing control back to the vendor entrypoint. The
-Java floor leaves verified headroom above the roughly 117 MiB shared Mocha
-class graph when two retained match sessions initialize concurrently. Oracle
-Free rebalances above those floors as the OJVM classes, shared cursors, and game
-ledgers become hot; the explicit buffer-cache request protects the per-tic
-ledger and frontier working set without hard-coding one observed component
-split.
+Java floor is retained only for the local development container's permanent
+OJVM differential oracle; the production worker is MLE JavaScript and loads
+no Java schema objects. Oracle Free rebalances above those floors as retained
+MLE contexts, shared cursors, and game ledgers become hot; the explicit
+buffer-cache request protects the per-tic ledger and frontier working set
+without hard-coding one observed component split.
 The first-database initialization hook grants the fixed `DOOM` owner direct
 `EXECUTE` capability on `SYS.DBMS_CRYPTO`, which DoomDB requires for canonical
-SHA-256 documents. The same first-database hook presizes the USERS datafile to
+SHA-256 documents, and read access to `SYS.V_$TEMPORARY_LOBS` for the
+presentation transport's 300-frame temporary-LOB evidence. The latter is
+diagnostic telemetry, not a production rendering dependency. The same
+first-database hook presizes the USERS datafile to
 4 GiB with 512 MiB growth increments and replaces the image's 200 MiB redo logs
 with three 1 GiB groups. This prevents per-second datafile growth and roughly
 per-minute log switches under the retained worker's durable write rate. These

@@ -5,6 +5,8 @@ import {pathToFileURL} from 'node:url';
 
 const artifactPath = process.argv[4]
   ?? './target/javascript/doom-mle-presentation-engine-headless.js';
+const presentationModule = await import(pathToFileURL(path.resolve(
+  import.meta.dirname, artifactPath)).href);
 const {
   allocateIwad,
   allocateTablePack,
@@ -19,8 +21,22 @@ const {
   release,
   renderPlayerFrame,
   stepMultiplayerAuthoritative,
-} = await import(pathToFileURL(path.resolve(
-  import.meta.dirname, artifactPath)).href);
+} = presentationModule;
+
+let retainedDatabaseFrame;
+function renderPlayerFrameDatabaseView(playerSlot) {
+  retainedDatabaseFrame = renderPlayerFrame(playerSlot);
+  return retainedDatabaseFrame;
+}
+function renderPlayerFrameLength(playerSlot) {
+  return renderPlayerFrameDatabaseView(playerSlot).byteLength;
+}
+function renderPlayerFrameChunk(offset, length) {
+  if (!(retainedDatabaseFrame instanceof Uint8Array)) {
+    throw new Error('no rendered database frame is retained');
+  }
+  return retainedDatabaseFrame.subarray(offset, offset + length);
+}
 
 const iwadPath = process.argv[2];
 const tablePackPath = process.argv[3];
@@ -97,6 +113,8 @@ release();
 initialize();
 const frameHashes = [new Set(), new Set()];
 const firstFrameStats = [];
+const retainedBrowserFrames = [];
+const retainedBrowserFrameHashes = [];
 let renderCanonicalMutations = 0;
 let firstRenderMismatches = [];
 let mappedResidueBytes = 0;
@@ -135,8 +153,37 @@ for (let tic = 1; tic <= sampleTics; tic += 1) {
     mappedResidueMax = Math.max(mappedResidueMax, mismatchCount);
   }
   for (let player = 0; player < 2; player += 1) {
-    const frame = renderPlayerFrame(player);
-    if (!(frame instanceof Uint8Array) || frame.length !== 320 * 200) {
+    const frameLength = renderPlayerFrameLength(player);
+    if (frameLength !== 320 * 200) {
+      throw new Error(`invalid player ${player} retained frame length at tic ${tic}`);
+    }
+    const frame = Buffer.alloc(frameLength);
+    for (let offset = 0; offset < frameLength; offset += 32767) {
+      const size = Math.min(32767, frameLength - offset);
+      const chunk = renderPlayerFrameChunk(offset, size);
+      if (!(chunk instanceof Uint8Array) || chunk.length !== size) {
+        throw new Error(
+          `invalid player ${player} retained frame chunk at tic ${tic}/${offset}`,
+        );
+      }
+      frame.set(chunk, offset);
+    }
+    if (tic === 1) {
+      const databaseView = renderPlayerFrameDatabaseView(player);
+      if (!(databaseView instanceof Uint8Array)
+          || !Buffer.from(databaseView).equals(frame)) {
+        throw new Error(`database-view/chunked frame mismatch for player ${player}`);
+      }
+      const directFrame = renderPlayerFrame(player);
+      if (!(directFrame instanceof Uint8Array)
+          || !Buffer.from(directFrame).equals(frame)) {
+        throw new Error(`direct/chunked frame mismatch for player ${player}`);
+      }
+      retainedBrowserFrames[player] = directFrame;
+      retainedBrowserFrameHashes[player] =
+        createHash('sha256').update(directFrame).digest('hex');
+    }
+    if (frame.length !== 320 * 200) {
       throw new Error(`invalid player ${player} frame at tic ${tic}`);
     }
     frameHashes[player].add(createHash('sha256').update(frame).digest('hex'));
@@ -179,6 +226,15 @@ for (let tic = 1; tic <= sampleTics; tic += 1) {
 if (frameHashes[0].size < 2 || frameHashes[1].size < 2) {
   throw new Error(`presentation frames are not moving: ${
     frameHashes[0].size}/${frameHashes[1].size} ${JSON.stringify(firstFrameStats)}`);
+}
+for (let player = 0; player < retainedBrowserFrames.length; player += 1) {
+  const finalHash = createHash('sha256')
+    .update(retainedBrowserFrames[player]).digest('hex');
+  if (finalHash !== retainedBrowserFrameHashes[player]) {
+    throw new Error(
+      `browser frame mutated after later renders for player ${player}`,
+    );
+  }
 }
 for (let player = 0; player < 2; player += 1) {
   if (firstFrameStats[player].hudDistinct < 16

@@ -1,0 +1,25 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+create mle module doom_mle_clock_probe language javascript using q'~
+                                                                 *
+ERROR at line 1:
+ORA-00922: missing or invalid option
+Help: https://docs.oracle.com/error-help/db/ora-00922/
+
+
