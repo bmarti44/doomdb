@@ -1,0 +1,148 @@
+PASS MOCHADOOM-OJVM-ARTIFACT classes=828 release=8 sha256=0c4c97dc003b97ea849b48c72326ff73d3bd833152321d1f208a87f266a1e7a1
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< doomdb:mochadoom-mle-engine-slice >------------------
+[INFO] Building mochadoom-mle-engine-slice 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ mochadoom-mle-engine-slice ---
+[INFO] skip non existing resourceDirectory /work/probes/mle/teavm-engine/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ mochadoom-mle-engine-slice ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ mochadoom-mle-engine-slice ---
+[INFO] skip non existing resourceDirectory /work/probes/mle/teavm-engine/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ mochadoom-mle-engine-slice ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ mochadoom-mle-engine-slice ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.4.1:jar (default-jar) @ mochadoom-mle-engine-slice ---
+[INFO] 
+[INFO] --- org.teavm:teavm-maven-plugin:0.15.0:compile (default) @ mochadoom-mle-engine-slice ---
+[INFO] Preparing classpath for TeaVM
+[INFO] Using the following classpath for TeaVM: /root/.m2/repository/org/teavm/teavm-classlib/0.15.0/teavm-classlib-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-core/0.15.0/teavm-core-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-interop/0.15.0/teavm-interop-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-metaprogramming-api/0.15.0/teavm-metaprogramming-api-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-extension-apis/0.15.0/teavm-extension-apis-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-platform/0.15.0/teavm-platform-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-jso-apis/0.15.0/teavm-jso-apis-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-jso-impl/0.15.0/teavm-jso-impl-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-metaprogramming-impl/0.15.0/teavm-metaprogramming-impl-0.15.0.jar:/root/.m2/repository/com/jcraft/jzlib/1.1.3/jzlib-1.1.3.jar:/root/.m2/repository/joda-time/joda-time/2.12.2/joda-time-2.12.2.jar:/root/.m2/repository/org/teavm/teavm-jso/0.15.0/teavm-jso-0.15.0.jar:/work/probes/mle/teavm-engine/target/mochadoom-mle-presentation.jar:/work/probes/mle/teavm-engine/target/classes
+[INFO] Running TeaVM
+[INFO] Output file successfully built
+[INFO] Classes compiled: 1312
+[INFO] Methods compiled: 8772
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  22.686 s
+[INFO] Finished at: 2026-07-26T05:37:54Z
+[INFO] ------------------------------------------------------------------------
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_TEAVM_PRESENTATION|PASS|tics=96|pov0_unique=93|pov1_unique=93|pov0_hud_sha256=dd2e30a5ca3d0ecdfbce78bf82bdc03898bffc19d201e571fee769eea50bf032|pov0_hud_distinct=75|pov0_hud_nonzero=10240|pov1_hud_sha256=96882b5d2d1fceed8d83437b13f3976eec2c140ee2b3d8c2cbaada0af665a0af|pov1_hud_distinct=73|pov1_hud_nonzero=10240|render_canonical_mutations=18|mapped_line_residue_bytes=12227|mapped_line_residue_max=142|next_tic_world_residue=0|presentation=fullHeight=false|fullScreen=false|setSizeNeeded=false|statusHeight=32|fgHud=10240|statusBuffer=10240|statusPatch=320x32|statusColumns=320|statusPosts=320|statusPixels=10240|statusData=11520|memory=iwadBytes=28795076|frameBytes=64000|thinkers=248|mobjs=239|killMonsters=29|livingMonsters=29|awakeMonsters=0|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PASS PMLE-TEAVM-PRESENTATION-BUILD bytes=1167481 sha256=41282bddc228d455f844f53cd78d558f30650137736407fd2d378487c9d97513 input_bytecode_sha256=2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914 mocha_bytecode_sha256=0c4c97dc003b97ea849b48c72326ff73d3bd833152321d1f208a87f266a1e7a1 profile=presentation-engine-headless classification=UNPROMOTED_CANDIDATE candidate_reason=oci-decps-frame-chunk patch_set_sha256=6c14bdeaf107bf27a954afd99023f4cb2f9c45d179e957341acafd2537415bae

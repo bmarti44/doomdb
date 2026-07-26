@@ -14,7 +14,7 @@ import {decodeAuthorityBatch} from './authority-batch.js';
 import {ConfirmedAuthorityMirror, type ConfirmedPresentation}
   from './authority-mirror.js';
 import {authorityRootChainSha} from './authority.js';
-import {ConfirmedWanPolicy, confirmedPlayoutIntervalMs}
+import {ConfirmedWanPolicy, confirmedPlayoutDecision}
   from './authority-wan.js';
 import {createBrowserAuthorityEngines, restoreBrowserAuthorityCheckpoint}
   from './teavm-browser.js';
@@ -28,10 +28,8 @@ type LocalMatch = {
 };
 
 // Ordinary internet stalls are drained from the already-confirmed queue at
-// the bounded 2x playout rate. Do not skip presentation snapshots for a
-// sub-second WAN pause: the release contract requires sequential unique
-// moving frames. Hidden tabs use the explicit checkpoint-resync path instead.
-const MAX_CONFIRMED_PRESENTATION_BACKLOG = 64;
+// the bounded 2x playout rate. Visible clients never discard presentation
+// snapshots; hidden tabs use the explicit checkpoint-resync path instead.
 const HIDDEN_CHECKPOINT_THRESHOLD_MS = 5_000;
 const HIDDEN_POLL_LEASE_RELEASE_MS = 1_500;
 const soloMode = document.body.hasAttribute('data-doom-solo');
@@ -479,6 +477,7 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
   let serverTic = status.currentTic;
   let nextPresentationAt = 0;
   let presentationStarted = false;
+  let playoutMode:'ACCELERATE'|'FREE'|'DECELERATE'='FREE';
   const paintedAt: number[] = [];
   const buttons = new Map<ControlName, HTMLButtonElement>();
   const observeWanRoundTrip = (roundTripMs: number, nowMs: number,
@@ -613,7 +612,7 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
           observeWanRoundTrip(
             Math.max(0,pollFinished-pollStarted-batch.holdElapsedMs),
             pollFinished,
-            batch.committedFrontierTic-frontier.tic+1);
+            batch.committedFrontierTic-mirror.frontier.tic+1);
         }
       trace('batch',{holdElapsedMs:batch.holdElapsedMs,
         wallMs:pollFinished-pollStarted,count:batch.transitions.length,
@@ -655,11 +654,12 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
           // repeatedly and halve paint cadence. Offer the already-confirmed
           // frame directly after each completed transition.
           requestPresentationPump();
-          // Promise continuations alone remain in the microtask queue. Pace
-          // catch-up apply work to the existing 2x presentation ceiling so
-          // every generated confirmed frame gets a paint opportunity instead
-          // of racing ahead and being cleared at the visual-debt bound.
-          const yieldMs=Math.max(0,Math.min(1000/70,
+          // Promise continuations alone remain in the microtask queue. Give
+          // every generated frame a paint opportunity, but let confirmed
+          // mirror apply catch up at 4x. Visible presentation retains its
+          // separate 2x ceiling below; this only shortens verification/render
+          // preparation backlog and never skips or presents a transition.
+          const yieldMs=Math.max(0,Math.min(1000/140,
             nextPresentationAt-performance.now()));
           await new Promise<void>(resolve=>window.setTimeout(resolve,yieldMs));
         }
@@ -668,6 +668,10 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
           // the same response as a zero-gap network arrival falsely inflates
           // jitter and then drains the resulting buffer at 2x.
           wan.observeConfirmedDelivery(performance.now());
+          trace('playout',{
+            selectedTics:wan.playoutBufferTics,
+            preClampDesiredTics:wan.preClampPlayoutBufferTics
+          });
         }
         trace('apply-batch',{count:batch.transitions.length,
           wallMs:performance.now()-applyBatchStarted,
@@ -741,6 +745,7 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
       presentations.clear();
       presentedTic = checkpoint.checkpointTic;
       presentationStarted = false;nextPresentationAt = 0;
+      playoutMode='FREE';
       trace('resync',{tic:presentedTic,reason:'confirmed-checkpoint'});
       trace('visibility',{state:'visible',strategy:'checkpoint-resync',
         hiddenMs:hiddenMilliseconds,frontierTic:presentedTic});
@@ -801,21 +806,12 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
         if (tic<target) presentations.delete(tic);
       presentedTic=target-1;
       presentationStarted=true;
+      playoutMode='FREE';
       trace('resync',{tic:presentedTic,reason:'confirmed-startup'});
-    }
-    if (presentationStarted &&
-        target-presentedTic>MAX_CONFIRMED_PRESENTATION_BACKLOG &&
-        presentations.has(target)) {
-      for (const tic of presentations.keys())
-        if (tic<target) presentations.delete(tic);
-      presentedTic=target-1;
-      nextPresentationAt=now;
-      trace('resync',{tic:presentedTic,reason:'confirmed-backlog'});
     }
     if (!presentationStarted) return;
     const next = presentations.get(presentedTic + 1);
-    if (next !== undefined && next.presentation.tic <= target &&
-        now >= nextPresentationAt) {
+    if (next !== undefined && now >= nextPresentationAt) {
       // Keep the playout clock on its original 35 Hz timeline. Resetting it
       // to `now` after a delayed callback permanently preserved every
       // transport/event-loop stall as additional presentation lag. One frame
@@ -827,20 +823,26 @@ async function startMleGame(value: LocalMatch, status: MatchStatus): Promise<voi
       audio.enqueue(next.audio, fail);
       presentedTic = next.presentation.tic;
       paintedAt.push(now);if (paintedAt.length > 60) paintedAt.shift();
-      // A fixed-rate consumer preserves any startup or WAN burst backlog
-      // forever. Time-compress already-confirmed frames at at most 2x until
-      // the configured playout offset is restored, then resume native 35 Hz.
-      // This changes presentation timing only; no transition is skipped.
-      const playoutInterval =
-        confirmedPlayoutIntervalMs(target-presentedTic);
-      // Never leave the deadline in the past. Doing so lets a 4 ms pump
-      // burst through a confirmed batch, empty the jitter buffer, and then
-      // expose the next ORDS round trip as a 60–80 ms visual stall.
+      // The free-running playout clock spends only already-applied confirmed
+      // frames. Buffer occupancy, not a frozen frontier-relative target,
+      // controls bounded acceleration/deceleration.
+      const bufferOccupancy=mirror.frontier.tic-presentedTic;
+      const playoutDecision =
+        confirmedPlayoutDecision(bufferOccupancy,wan.playoutBufferTics,
+          playoutMode);
+      playoutMode=playoutDecision.mode;
+      const playoutInterval=playoutDecision.intervalMs;
+      // Recover clock debt at no more than the approved 2x visible ceiling.
+      // Waiting a fresh 28.6 ms after every late callback adds an avoidable
+      // fractional tic to confirmed-to-presented latency; using the original
+      // deadline while retaining a 14.3 ms floor preserves the ceiling.
       nextPresentationAt=Math.max(
-        nextPresentationAt+playoutInterval,now+playoutInterval);
+        nextPresentationAt+playoutInterval,now+1000/70);
       trace('present', {tic: presentedTic, chainSha: next.presentation.chainSha,
         leadTics: wan.inputLeadTics,
         playoutTics: wan.playoutBufferTics,
+        bufferOccupancy,
+        playoutMode,
         confirmedFrontierTic: mirror.frontier.tic,
         presentationLagTics: mirror.frontier.tic-presentedTic,
         serverTic});

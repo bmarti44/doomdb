@@ -4,15 +4,17 @@ set -Eeuo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 evidence="$root/artifacts/performance/pmle-hidden-jit"
-profile_log="$root/artifacts/performance/pmle-decps-rank/node-decps-peak-2848ef7a8dc4.log"
-profile="$root/artifacts/performance/pmle-decps-rank/node-decps-peak-2848ef7a8dc4.cpuprofile"
+profile_log="$root/artifacts/performance/pmle-decps-rank/node-decps-peak-5ec18cbe4cff-v3.log"
+profile="$root/artifacts/performance/pmle-decps-rank/node-decps-peak-5ec18cbe4cff-v3.cpuprofile"
 profile_validator="$project/validate-decps-node-profile.mjs"
 artifact="$project/target/javascript/doom-mle-simulation-engine-headless.js"
 patch="$project/0006-teavm-authority-no-blocking-wait.patch"
+pinned="$root/client/dist/play/doom-mle-authority-5ec18cbe4cff.js"
+landing="$root/artifacts/performance/pmle-decps-rank/default-async-pair-5ec18cbe4cff-5250-final-artifact-repro-2026-07-25-comparison.log"
 saved="$(mktemp "${TMPDIR:-/tmp}/doomdb-simple-jit-authority.XXXXXX")"
-build_log="$evidence/simple-jit-build-2026-07-24.log"
-parity_log="$evidence/simple-jit-parity-2026-07-24.log"
-verdict_log="$evidence/simple-jit-verdict-2026-07-24.log"
+build_log="$evidence/simple-jit-build-5ec18cbe-2026-07-25.log"
+parity_log="$evidence/simple-jit-parity-5ec18cbe-2026-07-25.log"
+verdict_log="$evidence/simple-jit-verdict-5ec18cbe-2026-07-25.log"
 
 restore() {
   local status=$?
@@ -41,6 +43,12 @@ if ! node "$profile_validator" "$profile_log" "$profile"; then
   printf '%s\n' 'fresh de-CPS Node profile must precede SIMPLE JIT work' >&2
   exit 1
 fi
+grep -Fq \
+  'PMLE_DECPS_ASYNC_JIT|PASS|passes=2|tics_per_pass=5250|authority_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3' \
+  "$landing"
+grep -Fq '|verdict=LANDING_SIGNAL' "$landing"
+[[ "$(shasum -a 256 "$pinned" | awk '{print $1}')" == \
+  5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3 ]]
 for output in "$build_log" "$parity_log" "$verdict_log"; do
   [[ ! -e "$output" ]] || {
     printf 'SIMPLE JIT evidence exists: %s\n' "$output" >&2
@@ -63,9 +71,10 @@ simple_sha="$(shasum -a 256 "$artifact" | awk '{print $1}')"
 simple_bytes="$(wc -c <"$artifact" | tr -d '[:space:]')"
 
 DOOMDB_MLE_CANDIDATE="$artifact" \
+DOOMDB_MLE_ORACLE="$pinned" \
   node "$project/run-javascript-candidate-parity.mjs" | tee "$parity_log"
 grep -Fq \
-  " candidate_sha256=$simple_sha oracle_sha256=e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b" \
+  " candidate_sha256=$simple_sha oracle_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3" \
   "$parity_log"
 
 set +e

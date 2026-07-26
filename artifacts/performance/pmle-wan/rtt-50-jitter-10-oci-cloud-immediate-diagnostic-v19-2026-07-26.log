@@ -1,0 +1,34 @@
+PMLE_WAN_PROXY|READY|port=18050|upstream_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-50-jitter-10|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_clients_presenting
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=50|hidden_ms=29506.0|checkpoint_tic=1280|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=678|advanced=678|confirmed=678|batches=199|batch_transitions=679|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":39,"totalP50Ms":200.39999961853027,"totalP90Ms":248.79999923706055,"totalP95Ms":293.80000019073486,"totalMaxMs":399.5,"queueAndPostP95Ms":124.5,"postRoundTripP95Ms":122.60000038146973,"acceptedToConfirmedP95Ms":175.5999994277954,"confirmedToPresentedP95Ms":345.1000003814697,"batchWallP95Ms":125.20000076293945,"batchHoldP95Ms":1,"batchCountP95":4,"presentationLagP50Tics":10,"presentationLagP95Tics":12,"presentationLagMaxTics":12,"worst":[{"queueAndPostMs":105.10000038146973,"roundTripMs":104,"acceptedToConfirmedMs":295.5,"confirmedToPresentedMs":197.5,"totalMs":399.5,"inputSequence":1,"effectiveTic":2384},{"queueAndPostMs":124.5,"roundTripMs":122.60000038146973,"acceptedToConfirmedMs":171.19999980926514,"confirmedToPresentedMs":276.0999994277954,"totalMs":293.80000019073486,"inputSequence":26,"effectiveTic":2813},{"queueAndPostMs":105.20000076293945,"roundTripMs":101.5,"acceptedToConfirmedMs":175.5999994277954,"confirmedToPresentedMs":218.80000019073486,"totalMs":277.0999994277954,"inputSequence":4,"effectiveTic":2436},{"queueAndPostMs":94.30000019073486,"roundTripMs":92.09999942779541,"acceptedToConfirmedMs":156.69999980926514,"confirmedToPresentedMs":215.60000038146973,"totalMs":248.79999923706055,"inputSequence":28,"effectiveTic":2842},{"queueAndPostMs":95.59999942779541,"roundTripMs":95.09999942779541,"acceptedToConfirmedMs":148.5,"confirmedToPresentedMs":275.4000005722046,"totalMs":243.5999994277954,"inputSequence":25,"effectiveTic":2795}]}
+PMLE_SOAK_BROWSER_DIAG|slot=1|presented=677|advanced=677|confirmed=677|batches=198|batch_transitions=679|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=1|{"samples":39,"totalP50Ms":196.39999961853027,"totalP90Ms":281.69999980926514,"totalP95Ms":306.19999980926514,"totalMaxMs":416.0999994277954,"queueAndPostP95Ms":122.60000038146973,"postRoundTripP95Ms":122.10000038146973,"acceptedToConfirmedP95Ms":209.80000019073486,"confirmedToPresentedP95Ms":346.29999923706055,"batchWallP95Ms":117,"batchHoldP95Ms":1,"batchCountP95":4,"presentationLagP50Tics":10,"presentationLagP95Tics":12,"presentationLagMaxTics":13,"worst":[{"queueAndPostMs":118.19999980926514,"roundTripMs":117.39999961853027,"acceptedToConfirmedMs":298.69999980926514,"confirmedToPresentedMs":216.69999980926514,"totalMs":416.0999994277954,"inputSequence":1,"effectiveTic":2385},{"queueAndPostMs":96.5,"roundTripMs":96.39999961853027,"acceptedToConfirmedMs":209.80000019073486,"confirmedToPresentedMs":199.39999961853027,"totalMs":306.19999980926514,"inputSequence":7,"effectiveTic":2486},{"queueAndPostMs":119.19999980926514,"roundTripMs":116.60000038146973,"acceptedToConfirmedMs":188.0999994277954,"confirmedToPresentedMs":276,"totalMs":304.69999980926514,"inputSequence":26,"effectiveTic":2813},{"queueAndPostMs":97.69999980926514,"roundTripMs":97.09999942779541,"acceptedToConfirmedMs":184.60000038146973,"confirmedToPresentedMs":214.0999994277954,"totalMs":281.69999980926514,"inputSequence":4,"effectiveTic":2436},{"queueAndPostMs":76.30000019073486,"roundTripMs":76.30000019073486,"acceptedToConfirmedMs":187.29999923706055,"confirmedToPresentedMs":268.20000076293945,"totalMs":263.5999994277954,"inputSequence":34,"effectiveTic":2946}]}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: WAN neutral substitution rate 0.023443504996156803
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:1221:12
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

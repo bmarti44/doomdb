@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "updated": "2026-07-24",
+  "updated": "2026-07-26",
   "database": {
     "product": "Oracle AI Database 26ai Free",
     "imageVersion": "23.26.2",
@@ -162,14 +162,22 @@
     "note": "cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline"
   },
   "performance": {
-    "state": "BELOW_30_FPS_ACCELERATION_IN_PROGRESS",
+    "state": "OCI_RELEASE_GATES_AND_WAN_QUALIFICATION_PASS",
     "evidenceArtifactSha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
     "workload": "two-player deathmatch authoritative exact command stream",
     "tics": 5250,
-    "throughputTicsPerSecond": 19.788,
-    "p50MillisecondsPerTic": 36.64,
-    "p95MillisecondsPerTic": 142.665,
-    "peakCombatMillisecondsPerTic": "106-141",
+    "throughputTicsPerSecond": 302.419,
+    "slowestPeakTicsPerSecond": 140.845,
+    "routePassTicsPerSecond": [
+      317.029,
+      302.419
+    ],
+    "digestBinding": "FULL_PER_TIC_CHAIN_PASS",
+    "cumulativeDigestSha256": "36b454b6eeda79e4f6869ba2b29eab4a885fd1970b972b7daad6ce5b692012ee",
+    "browserUniqueMovingFps": 35.41772781893915,
+    "browserUniqueMovingP95Milliseconds": 32.60000038146973,
+    "localDevelopmentThroughputTicsPerSecond": 19.788,
+    "localDevelopmentPeakCombatMillisecondsPerTic": "106-141",
     "historicalPreDeCps": {
       "artifactSha256": "a942cd2dcbdc8fa523a51af27aefc778ea9fbbebfe93f0a03fe4856c6df6c8e2",
       "throughputTicsPerSecond": 3.961,
@@ -190,9 +198,26 @@
       "arithmeticNanosecondsPerIteration": "171-189",
       "gatherNanosecondsPerByte": 91,
       "jitVerdict": "CLOSED_ABOVE_100_NS",
-      "liveExactDatabaseRendering": "CLOSED",
-      "note": "venue uplift is capacity evidence, not a 35 Hz claim",
-      "evidence": "artifacts/performance/pmle-adb-venue/adb-tier-probe-2026-07-25.log"
+      "authorityTicker35Hz": "PASS",
+      "authorityRouteMinimumTicsPerSecond": 302.419,
+      "authoritySlowestPeakTicsPerSecond": 140.845,
+      "liveExactDatabaseRendering": "CLOSED_FINAL_DECPS_COMPILED_VENUE",
+      "exactFramePersistenceP95Milliseconds": 212.095,
+      "deCpsPresentationDiagnostic": {
+        "classification": "DIAGNOSTIC_NOT_GATE",
+        "artifactSha256": "118c37717b362d9e7669b5a3a1e73c87b3916479b6e53651f08e85be9ae8f2d3",
+        "samples": 100,
+        "uniqueFrames": 100,
+        "exactNodeFrameChain": "PASS",
+        "pipelineP95Milliseconds": 191.276,
+        "exact30Fps": "FAIL",
+        "temporaryLobsDelta": 2,
+        "locatorHygiene": "FAIL",
+        "frame300": "NOT_RUN_100_FRAME_MISS",
+        "evidence": "artifacts/performance/pmle-presentation-decps/REPORT.md"
+      },
+      "note": "authority, database-hosted browser, complete WAN qualification, and production Java-removal audit pass",
+      "evidence": "artifacts/performance/pmle-decps-rank/oci-adb-release-venue-verdict-2026-07-26.md"
     },
     "deCpsCandidate": {
       "promotionState": "PROMOTED_RECOVERY_LIFECYCLE_SOAK_PENDING",
@@ -252,7 +277,37 @@
     "wasm2jsEvidence": "artifacts/performance/pmle-wasm2js/REPORT.md",
     "requiredTicsPerSecond": 35,
     "targetFps": 30,
-    "note": "No current evidence supports an unqualified 30 FPS claim on 26ai Free"
+    "wanQualification": {
+      "state": "PASS",
+      "transport": "WAIT_FREE_IMMEDIATE_BATCHING",
+      "transportLegs": 2,
+      "selectedPlayoutDepthTics": 6,
+      "profiles": [
+        "50+/-10 ms",
+        "100+/-20 ms",
+        "200+/-40 ms"
+      ],
+      "scoredSecondsPerProfile": 600,
+      "warmupSecondsPerProfile": 90,
+      "cadenceP99Milliseconds": "34.5-36.2",
+      "occupancyMedianTics": "4-5",
+      "maximumNeutralSubstitutionPercent": 0.071,
+      "mirrorPoisons": 0,
+      "presentationResyncs": 0,
+      "evidence": "artifacts/performance/pmle-wan/oci-wait-free-setpoint-depth6-qualification-v2-pass-2026-07-26.md"
+    },
+    "productionJavaRemovalAudit": {
+      "state": "PASS",
+      "javaObjects": 0,
+      "javaSpecs": 0,
+      "javaDependencies": 0,
+      "legacyApiObjects": 0,
+      "mleModules": 1,
+      "mleEnvironments": 1,
+      "mleCallSpecs": 25,
+      "evidence": "artifacts/performance/pmle-cloud/oci-exact-release-java-removal-2026-07-26.log"
+    },
+    "note": "OCI authority, confirmed browser presentation, WAN qualification, and Java-removal audit pass"
   },
   "remaining": [
     {
@@ -262,8 +317,8 @@
     },
     {
       "id": "SHAPE",
-      "state": "PROMOTED",
-      "label": "De-CPS authority promoted; peak-combat acceleration active"
+      "state": "DONE",
+      "label": "De-CPS authority promoted; OCI route and peak 35 Hz gates passed"
     },
     {
       "id": "SOAK",
@@ -272,13 +327,13 @@
     },
     {
       "id": "WAN",
-      "state": "PAUSED",
-      "label": "Injected-latency multiplayer matrix"
+      "state": "DONE",
+      "label": "Wait-free immediate batching passed all three 10-minute OCI WAN profiles"
     },
     {
       "id": "JAVA-AUDIT",
-      "state": "PENDING",
-      "label": "Production-path Java removal audit"
+      "state": "DONE",
+      "label": "Production Java-removal source and exact-release OCI catalog audits pass"
     },
     {
       "id": "DVR",
@@ -288,7 +343,7 @@
     {
       "id": "ADB",
       "state": "DONE",
-      "label": "OCI Always Free probe: interpreter tier; live exact DB rendering closed"
+      "label": "OCI authority 35 Hz, full digest chain, hosted statics, and browser 30 FPS passed"
     }
   ],
   "evidence": {
@@ -317,11 +372,18 @@
     "deCpsDatabaseDeployment": "artifacts/performance/pmle-decps-rank/deploy-decps-reproducible-5ec18cbe-2026-07-25-v3.log",
     "autonomousVenue": "artifacts/performance/pmle-adb-venue/adb-tier-probe-2026-07-25.log",
     "currentAdmission": "artifacts/performance/pmle-browser-role-swap/warm-pool-admission-decps-5ec18cbe-bank-yield100ms-2026-07-25.log",
-    "asyncAdmissionRaces": "artifacts/performance/pmle-worker-lifecycle/async-admission-races-decps-5ec18cbe-2026-07-25-v5.log",
+    "asyncAdmissionRaces": "artifacts/performance/pmle-worker-lifecycle/async-admission-races-decps-5ec18cbe-oci-ticker-pass-cleanup-v2-2026-07-25.log",
     "currentWarmLifecycle": "artifacts/performance/pmle-worker-lifecycle/run-decps-5ec18cbe-2026-07-25-v2.log",
     "deCpsNodeProfile": "artifacts/performance/pmle-decps-rank/node-decps-peak-5ec18cbe4cff-v3.log",
     "mobjLowWordDecision": "artifacts/performance/pmle-decps-rank/mobj-low-word-decision-2026-07-25.md",
     "asyncJitDecision": "artifacts/performance/pmle-decps-rank/async-jit-decision-2026-07-25.md",
+    "ociReleaseVenue": "artifacts/performance/pmle-decps-rank/oci-adb-release-venue-verdict-2026-07-26.md",
+    "ociHostedBrowser": "artifacts/performance/pmle-cloud/oci-hosted-browser-verdict-2026-07-26.log",
+    "ociHostedBrowserFullEvidence": "artifacts/performance/pmle-cloud/t11.2-oci-hosted-depth6-setpoint-evidence-2026-07-26.json",
+    "ociHostedBrowserScoringIncident": "artifacts/performance/pmle-cloud/t11.2-moving-input-scoring-incident-2026-07-26.md",
+    "ociWaitFreeWanQualification": "artifacts/performance/pmle-wan/oci-wait-free-setpoint-depth6-qualification-v2-pass-2026-07-26.md",
+    "ociJavaRemovalAudit": "artifacts/performance/pmle-cloud/oci-exact-release-java-removal-2026-07-26.log",
+    "ociDeCpsPresentationDiagnostic": "artifacts/performance/pmle-presentation-decps/REPORT.md",
     "deCpsDatabaseDeploymentState": "artifacts/performance/pmle-decps-rank/database-deployment-state.json"
   }
 }

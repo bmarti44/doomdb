@@ -8,6 +8,7 @@ tic_limit="${2:-5250}"
 candidate="${DOOMDB_DECPS_CANDIDATE:-$project/target/javascript/doom-mle-simulation-engine-headless.js}"
 candidate_sha="${DOOMDB_DECPS_EXPECTED_SHA:-5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3}"
 rank_tag="${PMLE_RANK_TAG:-}"
+plateau_passes="${PMLE_ASYNC_PLATEAU_PASSES:-4}"
 [[ -z "$rank_tag" || "$rank_tag" =~ ^[A-Za-z0-9._-]+$ ]] ||
   { printf 'invalid de-CPS rank tag: %s\n' "$rank_tag" >&2; exit 2; }
 rank_suffix="${rank_tag:+-$rank_tag}"
@@ -20,14 +21,20 @@ candidate_loaded=0
 compiler_census_pid=
 
 case "$phase" in
-  interpreter|dual-clock|default-async|default-async-pair|hidden-jit|hidden-jit-hot|hidden-jit-heap|simple-jit) ;;
-  *) printf 'usage: %s interpreter|dual-clock|default-async|default-async-pair|hidden-jit|hidden-jit-hot|hidden-jit-heap|simple-jit [TIC_LIMIT]\n' \
+  interpreter|dual-clock|default-async|default-async-pair|default-async-plateau|hidden-jit|hidden-jit-hot|hidden-jit-heap|simple-jit) ;;
+  *) printf 'usage: %s interpreter|dual-clock|default-async|default-async-pair|default-async-plateau|hidden-jit|hidden-jit-hot|hidden-jit-heap|simple-jit [TIC_LIMIT]\n' \
       "$0" >&2; exit 2 ;;
 esac
 [[ "$tic_limit" =~ ^[1-9][0-9]{1,5}$ && "$tic_limit" -le 5250 ]] || {
   printf 'tic limit must be between 10 and 5250\n' >&2
   exit 2
 }
+if [[ "$phase" == default-async-plateau ]]; then
+  [[ "$tic_limit" == 5250 ]] ||
+    { printf 'async plateau requires the exact 5250-tic stream\n' >&2; exit 2; }
+  [[ "$plateau_passes" =~ ^[4-6]$ ]] ||
+    { printf 'async plateau pass count must be between 4 and 6\n' >&2; exit 2; }
+fi
 [[ -s "$candidate" ]] || { printf 'candidate missing: %s\n' "$candidate" >&2; exit 1; }
 [[ "$(shasum -a 256 "$candidate" | awk '{print $1}')" == "$candidate_sha" ]] || {
   printf 'de-CPS candidate SHA mismatch\n' >&2
@@ -157,7 +164,7 @@ SQL
   "--javascript=$candidate" "--table-pack=$tables" >/dev/null
 candidate_loaded=1
 mkdir -p "$evidence"
-if [[ "$phase" == default-async-pair ]]; then
+if [[ "$phase" == default-async-pair || "$phase" == default-async-plateau ]]; then
   compiler_census="$evidence/${phase}-${candidate_sha:0:12}-${tic_limit}${rank_suffix}-compiler-threads.log"
   [[ ! -e "$compiler_census" ]] || {
     printf 'async-JIT compiler census exists: %s\n' "$compiler_census" >&2
@@ -165,15 +172,32 @@ if [[ "$phase" == default-async-pair ]]; then
   }
   (
     while true; do
-      names="$(
+      thread_rows="$(
         docker compose -f "$root/compose.yaml" exec -T db sh -c \
-          'for f in /proc/[0-9]*/task/[0-9]*/comm; do cat "$f" 2>/dev/null || true; done' |
-          rg -i 'mle|graal|truffle|compiler' || true
+          'for f in /proc/[0-9]*/task/[0-9]*/comm; do
+             name=$(cat "$f" 2>/dev/null) || continue
+             echo "$name" | grep -Eiq "mle|graal|truffle|compiler" || continue
+             stat=${f%/comm}/stat
+             values=$(cat "$stat" 2>/dev/null) || continue
+             set -- $values
+             echo "$name|$((${14}+${15}))"
+           done' || true
       )"
-      count="$(grep -c . <<<"$names" || true)"
-      printf 'PMLE_DECPS_ASYNC_JIT_COMPILER_CENSUS|utc=%s|matching_threads=%s|names=%s\n' \
-        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$count" \
-        "$(tr '\n' ',' <<<"$names" | sed 's/,$//')"
+      count="$(grep -c . <<<"$thread_rows" || true)"
+      names="$(cut -d'|' -f1 <<<"$thread_rows" | tr '\n' ',' | sed 's/,$//')"
+      compiler_ticks="$(awk -F'|' '{sum+=$2} END{print sum+0}' <<<"$thread_rows")"
+      cpu_line="$(
+        docker compose -f "$root/compose.yaml" exec -T db \
+          sh -c 'head -1 /proc/stat'
+      )"
+      read -r _ user nice system idle iowait irq softirq steal _ \
+        <<<"$cpu_line"
+      busy_ticks=$((user + nice + system + irq + softirq + steal))
+      total_ticks=$((busy_ticks + idle + iowait))
+      printf 'PMLE_DECPS_ASYNC_JIT_COMPILER_CENSUS|utc=%s|matching_threads=%s|compiler_cpu_ticks=%s|names=%s\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$count" "$compiler_ticks" "$names"
+      printf 'PMLE_DECPS_ASYNC_JIT_HOST_CPU|utc=%s|busy_ticks=%s|total_ticks=%s\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$busy_ticks" "$total_ticks"
       sleep 30
     done
   ) >"$compiler_census" 2>&1 &
@@ -211,14 +235,29 @@ fi
         -e "s/__TIC_LIMIT__/$tic_limit/g" \
         "$project/replay-command-stream-mle.sql"
     )"
-    printf '%s\n' "$replay"
+    if [[ "$phase" == default-async-plateau ]]; then
+      printf '%s\n' \
+        "select 'PMLE_DECPS_ASYNC_PLATEAU_PASS|pass=1|event=BEGIN|utc='||to_char(systimestamp at time zone 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.FF3\"Z\"') from dual;" \
+        "$replay" \
+        "select 'PMLE_DECPS_ASYNC_PLATEAU_PASS|pass=1|event=END|utc='||to_char(systimestamp at time zone 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.FF3\"Z\"') from dual;"
+    else
+      printf '%s\n' "$replay"
+    fi
     if [[ "$phase" == default-async-pair ]]; then
       printf '%s\n' "$replay"
+    elif [[ "$phase" == default-async-plateau ]]; then
+      for pass in $(seq 2 "$plateau_passes"); do
+        printf '%s\n' \
+          "select 'PMLE_DECPS_ASYNC_PLATEAU_PASS|pass=$pass|event=BEGIN|utc='||to_char(systimestamp at time zone 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.FF3\"Z\"') from dual;" \
+          "$replay" \
+          "select 'PMLE_DECPS_ASYNC_PLATEAU_PASS|pass=$pass|event=END|utc='||to_char(systimestamp at time zone 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.FF3\"Z\"') from dual;"
+      done
     fi
     printf '%s\n' 'exit success rollback'
   } | timeout --signal=TERM \
-      "$([[ "$phase" == default-async-pair || "$phase" == simple-jit ]] &&
-        printf 3600 || printf 1800)" \
+      "$([[ "$phase" == default-async-plateau ]] && printf 7200 ||
+        ([[ "$phase" == default-async-pair || "$phase" == simple-jit ]] &&
+          printf 3600 || printf 1800))" \
       "$root/scripts/db_sql.sh" -
 } | tee "$log"
 if [[ -n "$compiler_census_pid" ]]; then
@@ -230,6 +269,7 @@ fi
 
 expected_tickers=1
 [[ "$phase" == default-async-pair ]] && expected_tickers=2
+[[ "$phase" == default-async-plateau ]] && expected_tickers="$plateau_passes"
 [[ "$(grep -c "^PMLE_LIVE_REPLAY_TICKER|stream=live-dm-2026-07-23|tics=$tic_limit|" \
   "$log")" == "$expected_tickers" ]]
 if [[ "$phase" == default-async-pair ]]; then
@@ -239,6 +279,14 @@ if [[ "$phase" == default-async-pair ]]; then
     exit 1
   }
   node "$project/compare-decps-async-jit.mjs" "$log" | tee "$comparison"
+elif [[ "$phase" == default-async-plateau ]]; then
+  comparison="$evidence/${phase}-${candidate_sha:0:12}-${tic_limit}${rank_suffix}-comparison.log"
+  [[ ! -e "$comparison" ]] || {
+    printf 'async plateau comparison evidence exists: %s\n' "$comparison" >&2
+    exit 1
+  }
+  node "$project/compare-decps-async-plateau.mjs" \
+    "$log" "$plateau_passes" | tee "$comparison"
 fi
 printf 'PASS PMLE-DECPS-RANK phase=%s tics=%s evidence=%s\n' \
   "$phase" "$tic_limit" "${log#"$root"/}"

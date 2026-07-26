@@ -1,0 +1,153 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+PMLE_WAN_MATRIX|BEGIN|duration=20|warmup=30|profiles_sha256=ced6d7f507b1240bc14d22435f950ba1a5df040cf88a73719b3d935ebbc9190a
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+trimspool not found
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+trimspool not found
+PMLE_WAN_TRANSPORT|long_poll=OFF|hold_ms=0|transport_legs=2|classification=DIAGNOSTIC_NOT_GATE|ords_pool_sessions=6|pool_reserve=2|max_held_polls=4|resmgr_running_sessions=2|worker_reserve=1|max_concurrent_poll_returns=1|background_refocus=ON
+PMLE_WAN_PROXY|READY|port=18050|upstream_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-50-jitter-10|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_clients_presenting
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=50|hidden_ms=31761.6|checkpoint_tic=1536|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=678|advanced=678|confirmed=678|batches=194|batch_transitions=677|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":59,"totalP50Ms":190.10000038146973,"totalP90Ms":275.0999994277954,"totalP95Ms":319.6000003814697,"totalMaxMs":446.6000003814697,"queueAndPostP95Ms":127.09999942779541,"postRoundTripP95Ms":123.5,"acceptedToConfirmedP95Ms":223.10000038146973,"confirmedToPresentedP95Ms":347.9000005722046,"batchWallP95Ms":122,"batchHoldP95Ms":1,"batchCountP95":5,"presentationLagP50Tics":10,"presentationLagP95Tics":12,"presentationLagMaxTics":13,"worst":[{"queueAndPostMs":82,"roundTripMs":82,"acceptedToConfirmedMs":364.6000003814697,"confirmedToPresentedMs":170.5999994277954,"totalMs":446.6000003814697,"inputSequence":119,"effectiveTic":3201},{"queueAndPostMs":84.69999980926514,"roundTripMs":83.90000057220459,"acceptedToConfirmedMs":279,"confirmedToPresentedMs":200.39999961853027,"totalMs":362.9000005722046,"inputSequence":75,"effectiveTic":2700},{"queueAndPostMs":100,"roundTripMs":96.5,"acceptedToConfirmedMs":223.10000038146973,"confirmedToPresentedMs":211.19999980926514,"totalMs":319.6000003814697,"inputSequence":85,"effectiveTic":2816},{"queueAndPostMs":181.4000005722046,"roundTripMs":179.10000038146973,"acceptedToConfirmedMs":112.89999961853027,"confirmedToPresentedMs":244.80000019073486,"totalMs":292,"inputSequence":83,"effectiveTic":2789},{"queueAndPostMs":97.69999980926514,"roundTripMs":97.5,"acceptedToConfirmedMs":188.10000038146973,"confirmedToPresentedMs":241.39999961853027,"totalMs":285.6000003814697,"inputSequence":96,"effectiveTic":2944}],"transportLegs":2,"limitMs":447}
+PMLE_SOAK_BROWSER_DIAG|slot=1|presented=679|advanced=679|confirmed=677|batches=193|batch_transitions=677|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=1|{"samples":51,"totalP50Ms":195.19999980926514,"totalP90Ms":256.5,"totalP95Ms":293.8999996185303,"totalMaxMs":429.1000003814697,"queueAndPostP95Ms":181.20000076293945,"postRoundTripP95Ms":124.90000057220459,"acceptedToConfirmedP95Ms":197.4000005722046,"confirmedToPresentedP95Ms":356.3999996185303,"batchWallP95Ms":115.40000057220459,"batchHoldP95Ms":1,"batchCountP95":4,"presentationLagP50Tics":11,"presentationLagP95Tics":13,"presentationLagMaxTics":13,"worst":[{"queueAndPostMs":87.90000057220459,"roundTripMs":86.70000076293945,"acceptedToConfirmedMs":342.3999996185303,"confirmedToPresentedMs":175.19999980926514,"totalMs":429.1000003814697,"inputSequence":80,"effectiveTic":3201},{"queueAndPostMs":101.39999961853027,"roundTripMs":97.89999961853027,"acceptedToConfirmedMs":262.1000003814697,"confirmedToPresentedMs":215.5,"totalMs":360,"inputSequence":63,"effectiveTic":2949},{"queueAndPostMs":181.20000076293945,"roundTripMs":177.80000019073486,"acceptedToConfirmedMs":116.09999942779541,"confirmedToPresentedMs":229.60000038146973,"totalMs":293.8999996185303,"inputSequence":50,"effectiveTic":2789},{"queueAndPostMs":96.29999923706055,"roundTripMs":95.59999942779541,"acceptedToConfirmedMs":197.4000005722046,"confirmedToPresentedMs":234.80000019073486,"totalMs":293,"inputSequence":42,"effectiveTic":2700},{"queueAndPostMs":137.5999994277954,"roundTripMs":121.39999961853027,"acceptedToConfirmedMs":136.9000005722046,"confirmedToPresentedMs":257.0999994277954,"totalMs":258.30000019073486,"inputSequence":55,"effectiveTic":2856}],"transportLegs":2,"limitMs":478.37142971583773}
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+SOAK_DB|tic=3977|frames=0|checkpoints=2|commands=7954|bytes=0|disconnectedNeutral=0|deadlineNeutral=0|leftNeutral=0|initialNeutral=161|sampled=2614|neutral=0|worker=READY
+
+SOAK_PLAYER|0|1311|0                                                                                                                                                                                                                                           
+SOAK_PLAYER|1|1329|0                                                                                                                                                                                                                                           
+PMLE_WAN_GATE|PASS|rtt_ms=50|jitter_ms=10|seconds=20|transport_legs=2|neutral_rate=0.000000/0.000000|players=319.6/107.8/6/6/2/33.2,293.9/106.2/7/6/2/33.7 hiddenMs=31761.6 checkpointTic=1536 leasesAfter2s=0 resumed=1
+PASS P13.5-MULTIPLAYER-SOAK seconds=20 warmupSeconds=30 tics=2672/2671-3350/3350 maxLag=15 maxReconnectSeconds=0 resyncs=0/0 frames=0 checkpoints=2 bytes=0 disconnectedNeutral=0 initialNeutral=161 paint999Max=109.0/109.0,91.3/91.3
+PMLE_WAN_PROFILE|PASS|name=rtt-50-jitter-10
+PMLE_WAN_PROXY|READY|port=18100|upstream_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8|rtt_ms=100|jitter_ms=20|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-100-jitter-20|rtt_ms=100|jitter_ms=20|seed=351272
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_clients_presenting
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=100|hidden_ms=29350.5|checkpoint_tic=1152|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=684|advanced=684|confirmed=686|batches=106|batch_transitions=688|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":39,"totalP50Ms":342.6000003814697,"totalP90Ms":561,"totalP95Ms":569.8999996185303,"totalMaxMs":710.3999996185303,"queueAndPostP95Ms":320.20000076293945,"postRoundTripP95Ms":312.6000003814697,"acceptedToConfirmedP95Ms":405.8999996185303,"confirmedToPresentedP95Ms":373,"batchWallP95Ms":336.19999980926514,"batchHoldP95Ms":1,"batchCountP95":12,"presentationLagP50Tics":11,"presentationLagP95Tics":13,"presentationLagMaxTics":14,"worst":[{"queueAndPostMs":169.60000038146973,"roundTripMs":169.5,"acceptedToConfirmedMs":540.8999996185303,"confirmedToPresentedMs":207.10000038146973,"totalMs":710.3999996185303,"inputSequence":77,"effectiveTic":2563},{"queueAndPostMs":348.8999996185303,"roundTripMs":345.3999996185303,"acceptedToConfirmedMs":224.5,"confirmedToPresentedMs":254.30000019073486,"totalMs":569.8999996185303,"inputSequence":89,"effectiveTic":2778},{"queueAndPostMs":164.80000019073486,"roundTripMs":161.30000019073486,"acceptedToConfirmedMs":405.8999996185303,"confirmedToPresentedMs":213.10000038146973,"totalMs":567.1999998092651,"inputSequence":81,"effectiveTic":2634},{"queueAndPostMs":254.5,"roundTripMs":253.79999923706055,"acceptedToConfirmedMs":307.20000076293945,"confirmedToPresentedMs":283.79999923706055,"totalMs":561,"inputSequence":67,"effectiveTic":2395},{"queueAndPostMs":320.20000076293945,"roundTripMs":312.6000003814697,"acceptedToConfirmedMs":247.89999961853027,"confirmedToPresentedMs":207.10000038146973,"totalMs":560.5,"inputSequence":72,"effectiveTic":2479}],"transportLegs":2,"limitMs":910.9142864772252}
+PMLE_SOAK_BROWSER_DIAG|slot=1|presented=684|advanced=685|confirmed=685|batches=109|batch_transitions=684|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=1|{"samples":39,"totalP50Ms":324.5000009536743,"totalP90Ms":525.8999996185303,"totalP95Ms":596.5999994277954,"totalMaxMs":823,"queueAndPostP95Ms":326.69999980926514,"postRoundTripP95Ms":324.8999996185303,"acceptedToConfirmedP95Ms":417.79999923706055,"confirmedToPresentedP95Ms":389.69999980926514,"batchWallP95Ms":317.0999994277954,"batchHoldP95Ms":1,"batchCountP95":10,"presentationLagP50Tics":11,"presentationLagP95Tics":13,"presentationLagMaxTics":14,"worst":[{"queueAndPostMs":255.0999994277954,"roundTripMs":254.19999980926514,"acceptedToConfirmedMs":568.8000001907349,"confirmedToPresentedMs":224.19999980926514,"totalMs":823,"inputSequence":39,"effectiveTic":2395},{"queueAndPostMs":182.10000038146973,"roundTripMs":178.80000019073486,"acceptedToConfirmedMs":417.79999923706055,"confirmedToPresentedMs":239.4000005722046,"totalMs":596.5999994277954,"inputSequence":40,"effectiveTic":2412},{"queueAndPostMs":354.19999980926514,"roundTripMs":352.9000005722046,"acceptedToConfirmedMs":236.89999961853027,"confirmedToPresentedMs":258.9000005722046,"totalMs":589.8000001907349,"inputSequence":61,"effectiveTic":2778},{"queueAndPostMs":326.69999980926514,"roundTripMs":324.8999996185303,"acceptedToConfirmedMs":201,"confirmedToPresentedMs":235.70000076293945,"totalMs":525.8999996185303,"inputSequence":50,"effectiveTic":2581},{"queueAndPostMs":300.5,"roundTripMs":300,"acceptedToConfirmedMs":212.80000019073486,"confirmedToPresentedMs":193.39999961853027,"totalMs":512.8000001907349,"inputSequence":58,"effectiveTic":2718}],"transportLegs":2,"limitMs":935.5142849513463}
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+SOAK_DB|tic=3660|frames=0|checkpoints=2|commands=7320|bytes=0|disconnectedNeutral=0|deadlineNeutral=0|leftNeutral=0|initialNeutral=169|sampled=2606|neutral=0|worker=READY
+
+SOAK_PLAYER|0|1306|0                                                                                                                                                                                                                                           
+SOAK_PLAYER|1|1324|0                                                                                                                                                                                                                                           
+PMLE_WAN_GATE|PASS|rtt_ms=100|jitter_ms=20|seconds=20|transport_legs=2|neutral_rate=0.000000/0.000000|players=569.9/286.7/9/6/2/52.1,596.6/300.0/9/6/2/33.3 hiddenMs=29350.5 checkpointTic=1152 leasesAfter2s=0 resumed=1
+PASS P13.5-MULTIPLAYER-SOAK seconds=20 warmupSeconds=30 tics=2358/2358-3042/3043 maxLag=14 maxReconnectSeconds=0 resyncs=0/0 frames=0 checkpoints=2 bytes=0 disconnectedNeutral=0 initialNeutral=169 paint999Max=359.3/359.3,272.0/272.0
+PMLE_WAN_PROFILE|PASS|name=rtt-100-jitter-20
+PMLE_WAN_PROXY|READY|port=18200|upstream_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8|rtt_ms=200|jitter_ms=40|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-200-jitter-40|rtt_ms=200|jitter_ms=40|seed=351272
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_clients_presenting
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=200|hidden_ms=29602.7|checkpoint_tic=1152|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=673|advanced=674|confirmed=671|batches=80|batch_transitions=671|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":46,"totalP50Ms":458,"totalP90Ms":548,"totalP95Ms":554.8000001907349,"totalMaxMs":620.0999994277954,"queueAndPostP95Ms":469.6000003814697,"postRoundTripP95Ms":276.5,"acceptedToConfirmedP95Ms":320.80000019073486,"confirmedToPresentedP95Ms":384.69999980926514,"batchWallP95Ms":282.8999996185303,"batchHoldP95Ms":1,"batchCountP95":10,"presentationLagP50Tics":11,"presentationLagP95Tics":13,"presentationLagMaxTics":14,"worst":[{"queueAndPostMs":207.5,"roundTripMs":206.79999923706055,"acceptedToConfirmedMs":413.30000019073486,"confirmedToPresentedMs":273.80000019073486,"totalMs":620.0999994277954,"inputSequence":68,"effectiveTic":2425},{"queueAndPostMs":469.6000003814697,"roundTripMs":231,"acceptedToConfirmedMs":347,"confirmedToPresentedMs":360.69999980926514,"totalMs":578,"inputSequence":102,"effectiveTic":2945},{"queueAndPostMs":265.9000005722046,"roundTripMs":261.30000019073486,"acceptedToConfirmedMs":293.5,"confirmedToPresentedMs":235.89999961853027,"totalMs":554.8000001907349,"inputSequence":107,"effectiveTic":3000},{"queueAndPostMs":249.10000038146973,"roundTripMs":232.89999961853027,"acceptedToConfirmedMs":320.80000019073486,"confirmedToPresentedMs":190,"totalMs":553.6999998092651,"inputSequence":103,"effectiveTic":2948},{"queueAndPostMs":259,"roundTripMs":254.5,"acceptedToConfirmedMs":293.5,"confirmedToPresentedMs":256.3999996185303,"totalMs":548,"inputSequence":101,"effectiveTic":2936}],"transportLegs":2,"limitMs":895.8571428571429}
+PMLE_SOAK_BROWSER_DIAG|slot=1|presented=673|advanced=673|confirmed=673|batches=80|batch_transitions=667|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=1|{"samples":39,"totalP50Ms":455.19999980926514,"totalP90Ms":518.5999994277954,"totalP95Ms":540.4000005722046,"totalMaxMs":570.1999998092651,"queueAndPostP95Ms":292.79999923706055,"postRoundTripP95Ms":280.69999980926514,"acceptedToConfirmedP95Ms":298.80000019073486,"confirmedToPresentedP95Ms":389.70000076293945,"batchWallP95Ms":285.5999994277954,"batchHoldP95Ms":1,"batchCountP95":10,"presentationLagP50Tics":11,"presentationLagP95Tics":13,"presentationLagMaxTics":14,"worst":[{"queueAndPostMs":239.9000005722046,"roundTripMs":236.60000038146973,"acceptedToConfirmedMs":333.5999994277954,"confirmedToPresentedMs":202.30000019073486,"totalMs":570.1999998092651,"inputSequence":46,"effectiveTic":2561},{"queueAndPostMs":264.30000019073486,"roundTripMs":261.6000003814697,"acceptedToConfirmedMs":278.80000019073486,"confirmedToPresentedMs":307.79999923706055,"totalMs":540.4000005722046,"inputSequence":38,"effectiveTic":2426},{"queueAndPostMs":271.5,"roundTripMs":270.19999980926514,"acceptedToConfirmedMs":258.20000076293945,"confirmedToPresentedMs":281.5999994277954,"totalMs":528.4000005722046,"inputSequence":41,"effectiveTic":2476},{"queueAndPostMs":311.70000076293945,"roundTripMs":308.30000019073486,"acceptedToConfirmedMs":210.29999923706055,"confirmedToPresentedMs":333.4000005722046,"totalMs":518.5999994277954,"inputSequence":68,"effectiveTic":2939},{"queueAndPostMs":220.19999980926514,"roundTripMs":218.10000038146973,"acceptedToConfirmedMs":298.80000019073486,"confirmedToPresentedMs":250.30000019073486,"totalMs":516.9000005722046,"inputSequence":53,"effectiveTic":2683}],"transportLegs":2,"limitMs":833.514286858695}
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+SOAK_DB|tic=3684|frames=0|checkpoints=2|commands=7368|bytes=0|disconnectedNeutral=0|deadlineNeutral=0|leftNeutral=0|initialNeutral=160|sampled=2594|neutral=0|worker=READY
+
+SOAK_PLAYER|0|1302|0                                                                                                                                                                                                                                           
+SOAK_PLAYER|1|1317|0                                                                                                                                                                                                                                           
+PMLE_WAN_GATE|PASS|rtt_ms=200|jitter_ms=40|seconds=20|transport_legs=2|neutral_rate=0.000000/0.000000|players=554.8/272.8/11/6/2/33.7,540.4/270.2/9/6/2/33.4 hiddenMs=29602.7 checkpointTic=1152 leasesAfter2s=0 resumed=1
+PASS P13.5-MULTIPLAYER-SOAK seconds=20 warmupSeconds=30 tics=2388/2388-3062/3061 maxLag=21 maxReconnectSeconds=0 resyncs=0/0 frames=0 checkpoints=2 bytes=0 disconnectedNeutral=0 initialNeutral=160 paint999Max=138.5/138.5,101.5/101.5
+PMLE_WAN_PROFILE|PASS|name=rtt-200-jitter-40
+PMLE_WAN_MATRIX|PASS|profiles=3|duration=20|warmup=30

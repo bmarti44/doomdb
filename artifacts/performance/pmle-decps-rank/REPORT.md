@@ -160,6 +160,14 @@ Every rank cell restores the pinned production module and validates its Oracle
 alert window before restarting the warm pool; failed session cleanup, module
 restoration, or alert validation holds capacity closed.
 
+The final debug-named function-size-census JavaScript is deliberately retained
+with its build log as evidence, rather than ignored as a generic target
+directory. It is an unpromoted diagnostic artifact, but preserving its exact
+3,700,971 bytes and SHA-256 makes the census independently reproducible.
+Ordinary Maven/TeaVM target directories and wasm2js intermediates remain
+ignored; the selected non-reproducible presentation candidate is likewise
+retained because its exact SHA is the subject of the OCI rank evidence.
+
 ## Maximum-density acceptance and Free envelope
 
 The claim gate remains 35 authoritative tics/second at the maximum measured

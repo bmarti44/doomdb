@@ -1,0 +1,39 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+      command_vector from doom_mle_perf_vector
+                          *
+ERROR at line 86:
+ORA-06550: line 86, column 27:
+PL/SQL: ORA-00942: table or view does not exist
+ORA-06550: line 85, column 5:
+PL/SQL: SQL Statement ignored
+ORA-06550: line 90, column 8:
+PLS-00364: loop index variable 'COMMAND_' use is invalid
+ORA-06550: line 90, column 5:
+PL/SQL: Statement ignored
+ORA-06550: line 93, column 8:
+PLS-00364: loop index variable 'COMMAND_' use is invalid
+ORA-06550: line 93, column 5:
+PL/SQL: Statement ignored
+ORA-06550: line 100, column 9:
+PLS-00364: loop index variable 'COMMAND_' use is invalid
+ORA-06550: line 99, column 5:
+PL/SQL: Statement ignored
+Help: https://docs.oracle.com/error-help/db/ora-06550/
+

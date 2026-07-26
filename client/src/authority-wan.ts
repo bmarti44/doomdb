@@ -3,6 +3,9 @@ const MIN_INPUT_LEAD = 2;
 const MAX_INPUT_LEAD = 12;
 const MIN_PLAYOUT_TICS = 1;
 const MAX_PLAYOUT_TICS = 6;
+const PLAYOUT_ACCELERATION_MARGIN_TICS = 2;
+const PLAYOUT_DECELERATION_MARGIN_TICS = 2;
+const MAX_DECELERATED_PLAYOUT_INTERVAL_MS = 31.4;
 const MAX_SAMPLES = 64;
 const LEAD_HYSTERESIS_MS = 10_000;
 
@@ -36,11 +39,40 @@ export function confirmedPlayoutIntervalMs(backlogTics: number): number {
   if (!Number.isInteger(backlogTics) || backlogTics < 0) {
     throw new TypeError('confirmed playout backlog is invalid');
   }
-  // Ordinary two-to-six-tic WAN batches are the playout buffer, not debt.
-  // Draining those at 2x creates an empty-buffer stall on every network
-  // round trip. Time-compress only a backlog deeper than the maximum
-  // chartered jitter buffer.
+  // Preserve the exact maximum/maximum+1 boundary as a standalone primitive.
+  // The production controller below adds hysteresis around its selected-depth
+  // occupancy setpoint.
   return backlogTics > MAX_PLAYOUT_TICS ? TIC_MS / 2 : TIC_MS;
+}
+
+export function confirmedPlayoutDecision(
+    bufferedFrames: number, selectedDepth: number,
+    priorMode: 'ACCELERATE'|'FREE'|'DECELERATE'):
+    {intervalMs: number; mode: 'ACCELERATE'|'FREE'|'DECELERATE'} {
+  if (!Number.isInteger(bufferedFrames) || bufferedFrames < 0 ||
+      !Number.isInteger(selectedDepth) || selectedDepth < MIN_PLAYOUT_TICS ||
+      selectedDepth > MAX_PLAYOUT_TICS ||
+      !['ACCELERATE','FREE','DECELERATE'].includes(priorMode)) {
+    throw new TypeError('confirmed playout occupancy is invalid');
+  }
+  const accelerationEntry =
+    selectedDepth + PLAYOUT_ACCELERATION_MARGIN_TICS;
+  const decelerationEntry = Math.max(0,
+    selectedDepth - PLAYOUT_DECELERATION_MARGIN_TICS);
+  let mode=priorMode;
+  if (mode==='ACCELERATE' && bufferedFrames<=selectedDepth) mode='FREE';
+  if (mode==='DECELERATE' && bufferedFrames>=selectedDepth) mode='FREE';
+  if (mode==='FREE' && bufferedFrames>accelerationEntry) mode='ACCELERATE';
+  if (mode==='FREE' && bufferedFrames<decelerationEntry) mode='DECELERATE';
+  let intervalMs=TIC_MS;
+  if (mode==='ACCELERATE') {
+    intervalMs=TIC_MS/2;
+  } else if (mode==='DECELERATE') {
+    // Spend confirmed state no more than ten percent below native cadence
+    // while occupancy is below the selected-depth setpoint.
+    intervalMs=MAX_DECELERATED_PLAYOUT_INTERVAL_MS;
+  }
+  return {intervalMs,mode};
 }
 
 /**
@@ -54,6 +86,7 @@ export class ConfirmedWanPolicy {
   private readonly deliveryIntervals: number[] = [];
   private inputLead = MIN_INPUT_LEAD;
   private playoutTics = MIN_PLAYOUT_TICS;
+  private desiredPlayoutTics = MIN_PLAYOUT_TICS;
   private lastLeadAdjustmentMs = Number.NEGATIVE_INFINITY;
   private lastDeliveryMs: number | undefined;
   private substituted = 0;
@@ -61,6 +94,7 @@ export class ConfirmedWanPolicy {
 
   get inputLeadTics(): number { return this.inputLead; }
   get playoutBufferTics(): number { return this.playoutTics; }
+  get preClampPlayoutBufferTics(): number { return this.desiredPlayoutTics; }
   get neutralSubstitutionRate(): number {
     return this.scheduled === 0 ? 0 : this.substituted / this.scheduled;
   }
@@ -87,8 +121,10 @@ export class ConfirmedWanPolicy {
     if (!Number.isFinite(nowMs)) throw new TypeError('WAN clock is invalid');
     if (this.lastDeliveryMs !== undefined) {
       addSample(this.deliveryIntervals, Math.abs(nowMs - this.lastDeliveryMs - TIC_MS));
+      this.desiredPlayoutTics =
+        Math.ceil(percentile(this.deliveryIntervals, 0.90) / TIC_MS) + 1;
       this.playoutTics = clamp(
-        Math.ceil(percentile(this.deliveryIntervals, 0.90) / TIC_MS) + 1,
+        this.desiredPlayoutTics,
         MIN_PLAYOUT_TICS, MAX_PLAYOUT_TICS);
     }
     this.lastDeliveryMs = nowMs;

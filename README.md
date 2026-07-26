@@ -57,7 +57,7 @@ OJVM is not
 in the production path; it remains in repository/dev tooling because it is
 the differential instrument that makes future MLE changes auditable.
 
-**The performance result is honest, not finished.** ORDS does not preserve
+**The performance result is honest and venue-qualified.** ORDS does not preserve
 request-local engine state, so a retained Oracle Scheduler session owns each
 MLE world and REST calls communicate through durable rows. A sparse
 four-player ticker microbenchmark reached 132.9 tics/s, but that number does
@@ -65,6 +65,14 @@ not represent real gameplay. Removing TeaVM's reachable coroutine/pacing shape
 raised the exact 5,250-tic production deathmatch stream from 6.002 to 19.788
 tics/s on Oracle AI Database 26ai Free. Quiet windows now clear 35 Hz, while
 20-awake-monster peak windows remain about 7–9 tics/s (106–141 ms/tic).
+Those local numbers are development/capacity evidence, not the release venue:
+the same pinned `5ec18cbe…` artifact ran two complete passes on OCI Autonomous
+Always Free 26ai at 317.029 and 302.419 tics/s. Its slowest preselected
+awake-20 peak window was 140.845 tics/s, more than 4x the 35 Hz requirement,
+with zero clock suspects. A full canonical digest chain matched Node at every
+500-tic checkpoint and at the terminal, binding the venue result to the exact
+authority and command stream. No further local engine optimization is on the
+release path.
 A fresh peak-weighted Node profile on the final `5ec18cbe…` lineage assigns
 23.6% of ticker work to sight/BSP, 14.0% to mobj long/flag handling, 9.3% to
 action dispatch, and 8.4% to movement/AI after excluding profiler-control
@@ -74,11 +82,13 @@ rejected under the predeclared 5% rule. The final-artifact hidden-JIT closeout
 then found one default-configuration matched window improving 25.5% by
 corrected wall median and 41.1% by monotonic throughput. That is a localized
 compiler landing signal awaiting independent reproduction, not a 30 FPS
-success. OCI Always Free 26ai measured
-171–189 ns per warmed
-arithmetic iteration and 91 ns per gathered byte. That permanently closes the
-ADB-JIT and exact live database-rendering branches under the approved 100 ns
-rule; its 1.7–2.5x venue uplift is capacity evidence, not a 35 Hz claim.
+success. OCI Always Free 26ai's earlier isolated arithmetic probe measured
+171–189 ns per warmed iteration and 91 ns per gathered byte, but the complete
+ticker result demonstrates that isolated-kernel timing did not predict the
+compiled full workload. A separate on-venue exact-frame persistence diagnostic
+still failed the live-render bar: the best 300-frame arm measured 212.095 ms
+p95 for 300/300 unique, Node-chain-identical frames. Browser rendering remains
+the release architecture.
 
 The hidden-compilation investigation proved that this Free build contains an
 optimizing MLE compiler: a deterministic integer kernel improves from roughly
@@ -114,10 +124,18 @@ loads, and i64 call-boundary loss; only a confirmed call-boundary failure may
 try the tracked int-high-word serializer workaround, and exact tic-zero plus
 100-tic parity still precedes any rank cell.
 
-Exact live database rendering is closed on both measured Free venues. Exact
-MLE rendering remains the asynchronous audit/DVR tier. Live presentation is a
-confirmed-only browser renderer consuming chained authoritative deltas; it
-does not simulate ahead, reorder, or reinterpret database state.
+The final de-CPS OCI presentation measurement also missed the live-render bar:
+191.276 ms p95 over 100 exact unique frames on the locator arm, versus
+33.333 ms, with exact Node-chain identity and zero clock exclusions. The
+render itself measured 11.058 ms p95; durable BLOB persistence measured
+180.003 ms p95 and is the bottleneck. Per the predeclared rule, the 300-frame
+arm was not run and live exact database rendering is closed on this artifact
+and persistence shape. This does not change the release architecture: exact
+MLE rendering is the asynchronous audit/DVR tier, while live presentation is
+a confirmed-only browser renderer consuming chained authoritative deltas
+without simulating ahead, reordering, or reinterpreting database state. A
+post-release, separately gated compression/batched-persistence workstream is
+authorized for the DVR tier only.
 
 **Multiplayer, where the database is the server.** Two browsers join one
 authoritative world living in Oracle. The engine advances once per ordered
@@ -126,8 +144,18 @@ its own point of view, with per-listener positional audio. Co-op and
 deathmatch are available. Deterministic multiplayer gates are bound to their
 recorded artifact SHA; the pre-de-CPS `e485…` authority passed the
 maximum-distance high-density recovery gate, while every promoted replacement
-must rerun recovery, lifecycle, and final-soak qualification. The WAN matrix
-is still in progress.
+must rerun recovery, lifecycle, and final-soak qualification. Held
+`DBMS_ALERT` polls requested for 500 ms resumed at 7,575 ms p95 under
+Autonomous Resource Manager and were rejected. Brian approved the
+`WAIT_FREE_IMMEDIATE_BATCHING` two-leg transport instead. Its final
+depth-6 confirmed-state setpoint controller passed the complete OCI WAN
+qualification: two browser processes at each of 50±10, 100±20, and 200±40 ms,
+with 90-second warmup plus 10 scored minutes per profile. Each player produced
+more than 20,100 sequential unique moving frames per profile; cadence p99 was
+34.5–36.2 ms, median buffered occupancy was 4–5 tics, and there were no chain
+poisons, generation regressions, or presentation resyncs. One 4.045-second
+transport stall caused 15 neutral tics for one player (0.0710%, below the
+0.5% gate), followed by exact reactivation without resync.
 
 Numbers, measured on the local two-core Oracle Free stack:
 
@@ -137,7 +165,13 @@ Numbers, measured on the local two-core Oracle Free stack:
 | Full E1M1 MLE/OJVM differential | 13,272/13,272 tics exact on current `5ec18cbe…` |
 | Current co-op MLE/OJVM differential | 762/762 tics exact on `5ec18cbe…` |
 | Pre-deCPS maximum-distance recovery | 57.337 s estimated total at 20 awake monsters |
-| Production-shaped deathmatch throughput | 19.788 tics/s whole-route on de-CPS; peak windows ~7–9 tics/s |
+| OCI production-shaped deathmatch throughput | 302.419 tics/s slower full pass; 140.845 tics/s slowest selected peak |
+| OCI correctness binding | 5,250-tic full canonical digest chain PASS vs Node |
+| OCI hosted browser | Latest depth-6 build: 300/300 sequential unique frames; 35.418 FPS; 32.6 ms p95 |
+| OCI wait-free WAN qualification | PASS; 3 profiles × 2 clients × 10 scored minutes; cadence p99 34.5–36.2 ms |
+| OCI production Java-removal audit | PASS; zero Java objects/specs/dependencies and zero legacy API objects |
+| Local production-shaped throughput | 19.788 tics/s whole-route; development/capacity evidence only |
+| OCI exact frame persistence diagnostic | Final de-CPS arm: 191.276 ms p95; 100/100 exact unique; live DB rendering CLOSED |
 | De-CPS current build | `5ec18cbe…`, promoted and deployed after every-tic ledger PASS |
 | Pre-de-CPS production-shaped MLE CPU | 253.6 ms/tic on `a942cd2d…` (historical) |
 | De-CPS quiet / peak windows | ~10–11 ms/tic / ~106–141 ms/tic |
@@ -163,7 +197,11 @@ Oracle Database
 ```
 
 ORDS is the only HTTP surface. Oracle is the only server runtime. The client
-is static files.
+is static files. On OCI those files are themselves database-resident BLOBs
+served by a dedicated managed-ORDS PL/SQL module with explicit stored MIME,
+class-specific cache policy, strong SHA-256 ETags, and empty-body conditional
+304 responses. The page and game API share one `oraclecloudapps.com` origin
+without a storage bucket, proxy, or CORS bridge.
 
 ## Run it
 
@@ -212,13 +250,19 @@ a repeatable acceptance gate:
 ```
 
 [PLAN.md](PLAN.md) is the implementation contract — task cards, measurements,
-rejected alternatives, and the honest list of what remains. The current
-reproducible `5ec18cbe…` every-tic ledger and source/database promotion have
-passed. The current critical path is a fresh de-CPS Node profile, Amdahl
-ceiling, and one directly ranked peak-combat batch, followed by the remaining
-lifecycle/final-soak and WAN qualification on that exact artifact. The OCI
-Always Free probe is complete and interpreter-tier; cloud qualification now
-uses OCI CLI and the existing `doomdb-adb` target. Deep-dive evidence lives in
+rejected alternatives, and the honest list of what remains. The reproducible
+`5ec18cbe…` authority has passed its every-tic ledger, OCI digest-bound
+throughput gate, and lifecycle race battery. T11.1's clean/idempotent managed
+schema gate, T11.2's database-hosted browser gate, the complete OCI WAN
+qualification, and the production Java-removal catalog audit are green. The
+latest hosted client presents 300 sequential unique frames at 35.418 FPS.
+Local throughput is no longer on the release path. The remaining release
+bookkeeping is to freeze, commit, push, and reverify this evidence unit. The
+artifact-specific 30-minute soak and unfinished HUD/automap/intermission/finale
+surfaces remain explicitly separate open work. Once the release unit is
+terminal, the authorized frame-compression/batched-persistence investigation
+begins for the asynchronous DVR tier. Cloud qualification uses OCI CLI and the
+existing `doomdb-adb` Autonomous Database. Deep-dive evidence lives in
 [artifacts/performance/](artifacts/performance/) and [reports/](reports/).
 
 ## Credits

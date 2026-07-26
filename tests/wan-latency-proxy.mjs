@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import http from 'node:http';
+import https from 'node:https';
 
 const value = name => process.argv.find(argument => argument.startsWith(`--${name}=`))
   ?.slice(name.length + 3);
@@ -13,7 +15,8 @@ assert.ok(Number.isInteger(listenPort) && listenPort > 1024 && listenPort < 6553
 assert.ok(Number.isFinite(rttMs) && rttMs >= 0 && rttMs <= 2000);
 assert.ok(Number.isFinite(jitterMs) && jitterMs >= 0 && jitterMs <= rttMs);
 assert.ok(Number.isInteger(seedValue) && seedValue > 0);
-assert.equal(upstream.protocol, 'http:');
+assert.ok(['http:','https:'].includes(upstream.protocol));
+const requestUpstream=upstream.protocol==='https:' ? https.request : http.request;
 
 let randomState = seedValue | 0;
 const random = () => {
@@ -35,7 +38,7 @@ const server = http.createServer(async (incoming, outgoing) => {
   const headers = {...incoming.headers, host: upstream.host};
   delete headers['content-length'];
   const target = new URL(incoming.url ?? '/', upstream);
-  const proxied = http.request(target, {
+  const proxied = requestUpstream(target, {
     method: incoming.method,
     headers: {...headers, 'content-length': String(body.length)}
   }, response => {
@@ -62,7 +65,9 @@ const server = http.createServer(async (incoming, outgoing) => {
 });
 
 server.listen(listenPort, '127.0.0.1', () => {
-  process.stdout.write(`PMLE_WAN_PROXY|READY|port=${listenPort}|upstream=${upstream.origin}` +
+  const upstreamSha=crypto.createHash('sha256').update(upstream.origin).digest('hex');
+  process.stdout.write(`PMLE_WAN_PROXY|READY|port=${listenPort}` +
+    `|upstream_origin_sha256=${upstreamSha}` +
     `|rtt_ms=${rttMs}|jitter_ms=${jitterMs}|seed=${seedValue}\n`);
 });
 

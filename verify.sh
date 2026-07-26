@@ -208,7 +208,7 @@ case "$1" in
       P11)
         "$0" task T11.1
         "$0" task T11.2
-        printf 'PASS P11 (live Autonomous Database, managed ORDS, and S3 browser gates)\n'
+        printf 'PASS P11 (live Autonomous Database schema and database-hosted managed-ORDS browser gates)\n'
         ;;
       P13) bash tests/verify-phase-p13.sh ;;
       PMLE)
@@ -222,6 +222,7 @@ case "$1" in
         node tests/verify-authority-batch.mjs
         node tests/verify-authority-mirror.mjs
         node tests/verify-authority-wan.mjs
+        bash tests/verify-wan-qualification-preflight.sh
         node tests/verify-mle-solo-source.mjs
         scripts/db_sql.sh sql/sim/086_mle_authority_delta.sql
         scripts/db_sql.sh tests/verify-mle-authority-delta.sql

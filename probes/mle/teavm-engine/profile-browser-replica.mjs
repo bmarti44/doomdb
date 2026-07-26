@@ -20,8 +20,10 @@ try {
     const commands=new Uint8Array(32);
     const windows=[];
     let verifyMs=0,presentStepMs=0,renderMs=0;
+    let ticSamples=[];
     for(let tic=1;tic<=count;tic+=1){
       commands[1]=(tic%35)<18?25:0;
+      const ticStarted=performance.now();
       let started=performance.now();
       engines.verifier.stepMultiplayerAuthoritative(2,3,commands);
       verifyMs+=performance.now()-started;
@@ -31,9 +33,16 @@ try {
       started=performance.now();
       engines.presenter.renderPlayerFrame(0);
       renderMs+=performance.now()-started;
+      ticSamples.push(performance.now()-ticStarted);
       if(tic%500===0){
-        windows.push({tic,verifyMs,presentStepMs,renderMs});
+        ticSamples.sort((left,right)=>left-right);
+        const pick=fraction=>ticSamples[
+          Math.max(0,Math.ceil(ticSamples.length*fraction)-1)];
+        windows.push({tic,verifyMs,presentStepMs,renderMs,
+          totalP95Ms:pick(.95),totalP99Ms:pick(.99),
+          totalMaxMs:ticSamples.at(-1)});
         verifyMs=0;presentStepMs=0;renderMs=0;
+        ticSamples=[];
         await new Promise(resolve=>setTimeout(resolve,0));
       }
     }
@@ -45,7 +54,10 @@ try {
       `|present_step_ms_per_tic=${(window.presentStepMs/500).toFixed(4)}`+
       `|render_ms_per_tic=${(window.renderMs/500).toFixed(4)}`+
       `|total_ms_per_tic=${((window.verifyMs+window.presentStepMs+
-        window.renderMs)/500).toFixed(4)}\n`);
+        window.renderMs)/500).toFixed(4)}`+
+      `|total_p95_ms=${window.totalP95Ms.toFixed(4)}`+
+      `|total_p99_ms=${window.totalP99Ms.toFixed(4)}`+
+      `|total_max_ms=${window.totalMaxMs.toFixed(4)}\n`);
   }
 } finally {
   await browser.close();

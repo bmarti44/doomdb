@@ -1,0 +1,32 @@
+PMLE_WAN_PROXY|READY|port=18200|upstream_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8|rtt_ms=200|jitter_ms=40|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-200-jitter-40|rtt_ms=200|jitter_ms=40|seed=351272
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_clients_presenting
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=200|hidden_ms=30808.6|checkpoint_tic=1280|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=4065|advanced=4065|confirmed=4074|batches=465|batch_transitions=4074|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":250,"totalP50Ms":424.20000076293945,"totalP90Ms":537.3000001907349,"totalP95Ms":571.3999996185303,"totalMaxMs":5805.199999809265,"queueAndPostP95Ms":463.29999923706055,"postRoundTripP95Ms":307.80000019073486,"acceptedToConfirmedP95Ms":301.5,"confirmedToPresentedP95Ms":725.8000001907349,"batchWallP95Ms":301.0999994277954,"batchHoldP95Ms":1,"batchCountP95":11,"presentationLagP50Tics":20,"presentationLagP95Tics":25,"presentationLagMaxTics":58,"worst":[{"queueAndPostMs":5154.900000572205,"roundTripMs":5154.699999809265,"acceptedToConfirmedMs":650.5,"confirmedToPresentedMs":735.1999998092651,"totalMs":5805.199999809265,"inputSequence":238,"effectiveTic":5401},{"queueAndPostMs":330.0999994277954,"roundTripMs":239.5999994277954,"acceptedToConfirmedMs":466.20000076293945,"confirmedToPresentedMs":789.8999996185303,"totalMs":705.8000001907349,"inputSequence":239,"effectiveTic":5408},{"queueAndPostMs":427.80000019073486,"roundTripMs":419.1000003814697,"acceptedToConfirmedMs":253,"confirmedToPresentedMs":542.1999998092651,"totalMs":672.1000003814697,"inputSequence":173,"effectiveTic":3870},{"queueAndPostMs":496.4000005722046,"roundTripMs":493,"acceptedToConfirmedMs":163.89999961853027,"confirmedToPresentedMs":615.1000003814697,"totalMs":656.8999996185303,"inputSequence":281,"effectiveTic":6112},{"queueAndPostMs":424.80000019073486,"roundTripMs":420.69999980926514,"acceptedToConfirmedMs":229.10000038146973,"confirmedToPresentedMs":558,"totalMs":649.8000001907349,"inputSequence":224,"effectiveTic":4891}],"transportLegs":2,"limitMs":987.0285718100412}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: WAN player 0 confirmed/presented p95 725.8 > 714.3 ms
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:1223:14
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

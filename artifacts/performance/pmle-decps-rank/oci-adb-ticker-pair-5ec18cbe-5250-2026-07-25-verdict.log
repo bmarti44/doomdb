@@ -1,0 +1,17 @@
+PMLE_OCI_ADB_TICKER_RESULT|pass=1|route_monotonic_tps=317.029|peak_minimum_monotonic_tps=140.845|clock_suspects=0|route_verdict=PASS|peak_verdict=PASS
+PMLE_OCI_ADB_PEAK_WINDOW|pass=1|through_tic=200|monotonic_tps=169.492
+PMLE_OCI_ADB_PEAK_WINDOW|pass=1|through_tic=300|monotonic_tps=140.845
+PMLE_OCI_ADB_PEAK_WINDOW|pass=1|through_tic=400|monotonic_tps=163.934
+PMLE_OCI_ADB_PEAK_WINDOW|pass=1|through_tic=500|monotonic_tps=172.414
+PMLE_OCI_ADB_PEAK_WINDOW|pass=1|through_tic=600|monotonic_tps=192.308
+PMLE_OCI_ADB_PEAK_WINDOW|pass=1|through_tic=700|monotonic_tps=175.439
+PMLE_OCI_ADB_PEAK_WINDOW|pass=1|through_tic=800|monotonic_tps=263.158
+PMLE_OCI_ADB_TICKER_RESULT|pass=2|route_monotonic_tps=302.419|peak_minimum_monotonic_tps=151.515|clock_suspects=0|route_verdict=PASS|peak_verdict=PASS
+PMLE_OCI_ADB_PEAK_WINDOW|pass=2|through_tic=200|monotonic_tps=188.679
+PMLE_OCI_ADB_PEAK_WINDOW|pass=2|through_tic=300|monotonic_tps=151.515
+PMLE_OCI_ADB_PEAK_WINDOW|pass=2|through_tic=400|monotonic_tps=153.846
+PMLE_OCI_ADB_PEAK_WINDOW|pass=2|through_tic=500|monotonic_tps=166.667
+PMLE_OCI_ADB_PEAK_WINDOW|pass=2|through_tic=600|monotonic_tps=178.571
+PMLE_OCI_ADB_PEAK_WINDOW|pass=2|through_tic=700|monotonic_tps=163.934
+PMLE_OCI_ADB_PEAK_WINDOW|pass=2|through_tic=800|monotonic_tps=256.410
+PMLE_OCI_ADB_TICKER_GATE|PASS|authority_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|passes=2|tics_per_pass=5250|route_threshold_tps=35.000|peak_threshold_tps=35.000|route_verdict=PASS|peak_verdict=PASS|client_unique_fps=NOT_YET_MEASURED|release_verdict=TICKER_PASS_CLIENT_PENDING

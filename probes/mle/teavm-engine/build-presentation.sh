@@ -8,6 +8,7 @@ presentation_mocha_jar="$project/target/mochadoom-mle-presentation.jar"
 presentation_extra_patch="${DOOMDB_TEAVM_PRESENTATION_EXTRA_PATCH:-}"
 presentation_candidate="${PMLE_PRESENTATION_CANDIDATE_BUILD:-NO}"
 presentation_candidate_reason="${PMLE_PRESENTATION_CANDIDATE_REASON:-}"
+presentation_minifying="${DOOMDB_TEAVM_PRESENTATION_MINIFYING:-true}"
 candidate_patch_set_sha="none"
 table_pack="$project/target/canonical-runtime-v2.bin"
 iwad="$project/target/iwad-smoke/freedoom1.wad"
@@ -22,6 +23,11 @@ expected_output_sha="$(node -e \
   "const fs=require('fs');const v=JSON.parse(fs.readFileSync('$root/versions.lock'));process.stdout.write(v.teaVM.presentation.outputSha256)")"
 [[ "$presentation_candidate" == NO || "$presentation_candidate" == YES ]] || {
   printf 'PMLE_PRESENTATION_CANDIDATE_BUILD must be YES or NO\n' >&2
+  exit 2
+}
+[[ "$presentation_minifying" == true ||
+    "$presentation_minifying" == false ]] || {
+  printf 'DOOMDB_TEAVM_PRESENTATION_MINIFYING must be true or false\n' >&2
   exit 2
 }
 if [[ -n "$presentation_extra_patch" ]]; then
@@ -69,6 +75,7 @@ fi
 docker run --rm -v doomdb-maven-cache:/root/.m2 -v "$root:/work" \
   -w /work/probes/mle/teavm-engine maven:3.9.11-eclipse-temurin-17 \
   mvn -B -DskipTests -Ppresentation-engine-headless \
+  -Dteavm.minifying="$presentation_minifying" \
   -Dmochadoom.jar=/work/probes/mle/teavm-engine/target/mochadoom-mle-presentation.jar \
   package
 test -s "$artifact"
@@ -104,8 +111,8 @@ if rg -F 'Math[' "$artifact" >/dev/null; then
 fi
 
 node "$project/run-presentation-node.mjs" "$iwad" "$table_pack"
-printf 'PASS PMLE-TEAVM-PRESENTATION-BUILD bytes=%s sha256=%s input_bytecode_sha256=%s mocha_bytecode_sha256=%s profile=presentation-engine-headless classification=%s candidate_reason=%s patch_set_sha256=%s\n' \
-  "$artifact_bytes" "$artifact_sha" \
+printf 'PASS PMLE-TEAVM-PRESENTATION-BUILD optimization_level=ADVANCED minifying=%s bytes=%s sha256=%s input_bytecode_sha256=%s mocha_bytecode_sha256=%s profile=presentation-engine-headless classification=%s candidate_reason=%s patch_set_sha256=%s\n' \
+  "$presentation_minifying" "$artifact_bytes" "$artifact_sha" \
   "$actual_input_sha" "$actual_mocha_sha" \
   "$([[ "$presentation_candidate" == YES ]] && printf UNPROMOTED_CANDIDATE || printf PINNED)" \
   "$([[ "$presentation_candidate" == YES ]] && printf '%s' "${presentation_candidate_reason:-extra-patch}" || printf none)" \

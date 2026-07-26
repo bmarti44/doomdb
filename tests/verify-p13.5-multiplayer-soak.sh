@@ -11,7 +11,7 @@ cleanup() {
     printf 'PMLE_SOAK_CLEANUP|PRESERVED|match=%s\n' "$match"
     return 0
   fi
-  scripts/db_sql.sh - >/dev/null <<SQL
+  "${DOOMDB_DB_SQL_CLIENT:-scripts/db_sql.sh}" - >/dev/null <<SQL
 declare
   l_generation number;
   l_owned number;
@@ -62,8 +62,9 @@ end;
 SQL
 }
 trap cleanup EXIT
+health_url="${DOOMDB_SOAK_HEALTH_URL:-http://localhost:8080/health.txt}"
 for _ in $(seq 1 120); do
-  curl --fail --silent http://localhost:8080/health.txt >/dev/null && break
+  curl --fail --silent "$health_url" >/dev/null && break
   sleep .25
 done
 DOOMDB_MATCH_ID_FILE="$match_file" node tests/verify-p13.5-multiplayer-soak.mjs

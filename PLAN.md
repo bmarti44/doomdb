@@ -8,7 +8,7 @@ This document is the implementation contract. A task is not complete because a
 demo looks plausible or because a subset passes. It is complete only when its
 listed acceptance command succeeds without weakening an existing check.
 
-## Status summary (updated 2026-07-25)
+## Status summary (updated 2026-07-26)
 
 Orientation only; the task cards and dated checkpoints in Section 7 are the
 authoritative record.
@@ -19,12 +19,21 @@ authoritative record.
   while exact database rendering remains asynchronous audit/DVR work. The
   final artifact passes the 13,272-tic every-tic ledger, canonical, 762-tic
   co-op, membership, async-admission race, and warm-slot lifecycle gates.
-  Artifact-specific recovery/final soak, WAN qualification, presentation
-  completion, and OCI cloud acceptance remain.
-- **Performance truth:** the de-CPS exact-stream result is 19.788 tics/s
-  whole-route, with quiet windows above 35 Hz and peak-combat windows around
-  7–9 tics/s. OCI Always Free 26ai's 171–189 ns/op arithmetic closes the
-  live exact database-rendering/JIT branch. Fresh profile ranking puts
+  T11.1's 684-assertion clean/idempotent OCI schema gate and T11.2's
+  database-hosted browser gate pass. The latest depth-6 hosted build produced
+  300/300 sequential unique moving frames at 35.418 FPS with 32.6 ms p95
+  cadence. The complete three-profile OCI WAN qualification and exact-release
+  Java-removal catalog audit also pass. Artifact-specific final soak and full
+  HUD/automap/intermission/finale presentation completion remain separate.
+- **Performance truth:** the OCI release venue passes the engine gate. Two
+  exact 5,250-tic passes on Always Free 26ai produced 317.029 and 302.419
+  tics/s whole-route; the slowest selected awake-20 peak was 140.845 tics/s.
+  The full per-tic cumulative canonical digest matched Node. Local de-CPS
+  throughput (19.788 tics/s whole-route, peak 7–9 tics/s) is development and
+  capacity evidence only; no further local engine optimization is planned.
+  Exact live database rendering is finally closed after the authorized de-CPS
+  OCI rerank measured 191.276 ms p95 over 100/100 exact unique frames, with
+  two temporary LOBs; the predeclared 300-frame arm was not run. Fresh profile ranking puts
   sight/BSP below its selection threshold. The exact narrow long/flag
   candidate improved real-MLE throughput only 2.707% and high-awake median
   only 1.401%, so it is rejected under the standing 5% rule. Final-artifact
@@ -65,18 +74,26 @@ authoritative record.
   extreme-tail sample is retained for final P11 cloud certification. The
   verified v1 production cap is two players; three/four-player transport is
   explicitly deferred.
-- **Active/last:** P11 real S3 + Autonomous Database deployment. The finished
-  single-player + multiplayer build has passed the local T12.1/T12.2 protocol;
-  the final stable-host tails travel with the identical managed-ORDS sample.
-  Deterministic dry-runs, source/evaluator mutation gates, the fresh 24-domain
-  local seed observation, and the approved 13,272-command completion ledger are
-  ready. Live execution requires the external Autonomous wallet/target,
-  managed ORDS origin, pinned SQLcl, and target S3 bucket. The production gate
-  now also builds and content-addresses the complete 830-class Java 8 OJVM
-  artifact, verifies JAVAVM/JDK availability before mutation, loads the classes
-  and pinned IWAD client-side, and finalizes runtime call specs only afterward.
-  A full local Java 8 reload passed the eleven-gate core suite and identical
-  300-frame browser chains at 32.39/35.51 FPS.
+- **Active/last:** P11 OCI Autonomous Database deployment with one managed-ORDS
+  origin. The reproducible TeaVM/MLE authority `5ec18cbe…` passed the
+  13,272-tic every-tic differential, OCI canonical digest binding, lifecycle
+  race battery, and the release venue's 35-Hz authority bar (302.419 tics/s
+  slower whole-route pass; 140.845 tics/s slowest selected awake-20 peak).
+  T11.1's full-clean schema/API idempotency gate passes 684/684 assertions.
+  T11.2 serves its exact 24-object payload from database BLOBs through the
+  dedicated `doom.hosted.app` PL/SQL module; live MIME/cache/ETag/304 evidence
+  and the deployed-browser 300-unique-frame/30-FPS gate pass. No S3, Object
+  Storage, CDN, proxy, CORS bridge, OJVM production object, or custom server
+  runtime is in the active release path. The real-Ashburn WAN investigation
+  rejected managed ADB held polling after a 500 ms request resumed at
+  7,575 ms p95. Brian approved wait-free immediate batching, and the final
+  depth-6 setpoint controller passed the full 3×10-minute qualification at
+  50±10, 100±20, and 200±40 ms with two clients, more than 20,100 sequential
+  unique frames per player/profile, cadence p99 of 34.5–36.2 ms, and no
+  chain poison or resync. The production catalog audit found zero Java
+  objects/specs/dependencies and zero legacy API objects. The final de-CPS
+  presentation diagnostic closes live exact database-frame persistence on
+  this shape; the exact renderer remains the asynchronous audit/DVR tier.
 - **Admission repair (2026-07-21):** `/play/` fresh-game admission is green
   after reproducing a dead Scheduler session whose fenced owner row survived.
   Expiry cleanup now force-stops and reclaims only expired owners after a
@@ -101,6 +118,12 @@ authoritative record.
   a fully occupied pool still pay the cold cost.
 
 ## 0. Charter
+
+The original charter text below is preserved as the historical baseline. Its
+OJVM/framebuffer clauses are superseded by the explicit
+[approved MLE role-swap amendment](#approved-mle-role-swap-amendment--2026-07-22);
+the active deployment venue is OCI Autonomous Database with database-hosted
+managed-ORDS statics, as recorded in the current-status block above.
 
 ### 0.1 Mission
 
@@ -153,8 +176,9 @@ All of the following are core scope:
 9. Save/load, arbitrary-tic rewind, deterministic recording, and replay.
 10. Cheats needed for verification and demonstration: god, all keys/weapons,
     noclip, and full automap.
-11. Local Oracle Free + ORDS deployment and a real S3 + Autonomous Database
-    deployment using managed ORDS.
+11. Local Oracle Free + ORDS deployment and a real OCI Autonomous Database
+    deployment using one managed-ORDS origin for the API and database-hosted
+    static client.
 12. Deterministic visible and held-back verification, mutation testing, and
     Playwright canvas validation.
 

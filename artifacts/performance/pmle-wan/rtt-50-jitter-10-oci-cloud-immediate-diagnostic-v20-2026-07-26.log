@@ -1,0 +1,55 @@
+PMLE_WAN_PROXY|READY|port=18050|upstream_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-50-jitter-10|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_clients_presenting
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=50|hidden_ms=30477.2|checkpoint_tic=1408|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=681|advanced=681|confirmed=682|batches=203|batch_transitions=682|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":39,"totalP50Ms":186.5,"totalP90Ms":233,"totalP95Ms":283.8999996185303,"totalMaxMs":424.70000076293945,"queueAndPostP95Ms":112.10000038146973,"postRoundTripP95Ms":108.69999980926514,"acceptedToConfirmedP95Ms":206.29999923706055,"confirmedToPresentedP95Ms":341.5,"batchWallP95Ms":112.20000076293945,"batchHoldP95Ms":1,"batchCountP95":4,"presentationLagP50Tics":10,"presentationLagP95Tics":12,"presentationLagMaxTics":13,"worst":[{"queueAndPostMs":163.19999980926514,"roundTripMs":162.10000038146973,"acceptedToConfirmedMs":262.6000003814697,"confirmedToPresentedMs":206.5,"totalMs":424.70000076293945,"inputSequence":1,"effectiveTic":2527},{"queueAndPostMs":80.40000057220459,"roundTripMs":77.60000038146973,"acceptedToConfirmedMs":206.29999923706055,"confirmedToPresentedMs":214.70000076293945,"totalMs":283.8999996185303,"inputSequence":3,"effectiveTic":2560},{"queueAndPostMs":99.39999961853027,"roundTripMs":96.39999961853027,"acceptedToConfirmedMs":138.60000038146973,"confirmedToPresentedMs":284.19999980926514,"totalMs":235,"inputSequence":33,"effectiveTic":3072},{"queueAndPostMs":104.10000038146973,"roundTripMs":103.10000038146973,"acceptedToConfirmedMs":129.89999961853027,"confirmedToPresentedMs":285.20000076293945,"totalMs":233,"inputSequence":21,"effectiveTic":2865},{"queueAndPostMs":94.80000019073486,"roundTripMs":93.5,"acceptedToConfirmedMs":134.5,"confirmedToPresentedMs":216.5,"totalMs":228,"inputSequence":26,"effectiveTic":2949}]}
+PMLE_SOAK_BROWSER_DIAG|slot=1|presented=681|advanced=681|confirmed=683|batches=202|batch_transitions=683|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=1|{"samples":39,"totalP50Ms":187.69999980926514,"totalP90Ms":226.89999961853027,"totalP95Ms":263.69999980926514,"totalMaxMs":392.6000003814697,"queueAndPostP95Ms":163,"postRoundTripP95Ms":162.69999980926514,"acceptedToConfirmedP95Ms":171.0999994277954,"confirmedToPresentedP95Ms":344.9000005722046,"batchWallP95Ms":112,"batchHoldP95Ms":1,"batchCountP95":4,"presentationLagP50Tics":10,"presentationLagP95Tics":12,"presentationLagMaxTics":13,"worst":[{"queueAndPostMs":163,"roundTripMs":162.69999980926514,"acceptedToConfirmedMs":229.9000005722046,"confirmedToPresentedMs":227.30000019073486,"totalMs":392.6000003814697,"inputSequence":1,"effectiveTic":2527},{"queueAndPostMs":96.20000076293945,"roundTripMs":92.60000038146973,"acceptedToConfirmedMs":171.0999994277954,"confirmedToPresentedMs":280.6000003814697,"totalMs":263.69999980926514,"inputSequence":3,"effectiveTic":2561},{"queueAndPostMs":103.69999980926514,"roundTripMs":101.30000019073486,"acceptedToConfirmedMs":138.30000019073486,"confirmedToPresentedMs":265.19999980926514,"totalMs":239.60000038146973,"inputSequence":33,"effectiveTic":3072},{"queueAndPostMs":101.30000019073486,"roundTripMs":97,"acceptedToConfirmedMs":129.89999961853027,"confirmedToPresentedMs":274,"totalMs":226.89999961853027,"inputSequence":37,"effectiveTic":3140},{"queueAndPostMs":134.5,"roundTripMs":134.30000019073486,"acceptedToConfirmedMs":91.30000019073486,"confirmedToPresentedMs":319.5,"totalMs":225.60000038146973,"inputSequence":35,"effectiveTic":3106}]}
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+SOAK_DB|tic=3789|frames=0|checkpoints=2|commands=7578|bytes=0|disconnectedNeutral=0|deadlineNeutral=0|leftNeutral=0|initialNeutral=3919|sampled=2526|neutral=68|worker=READY
+
+SOAK_PLAYER|0|1266|34                                                                                                                                                                                                                                          
+SOAK_PLAYER|1|1282|33                                                                                                                                                                                                                                          
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: WAN player 0 neutral substitution rate 0.026153846153846153
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:1234:14
+    at Array.map (<anonymous>)
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:1230:40
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

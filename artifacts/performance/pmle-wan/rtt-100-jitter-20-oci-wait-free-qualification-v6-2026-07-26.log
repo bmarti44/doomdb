@@ -1,0 +1,34 @@
+PMLE_WAN_PROXY|READY|port=18100|upstream_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8|rtt_ms=100|jitter_ms=20|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-100-jitter-20|rtt_ms=100|jitter_ms=20|seed=351272
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_clients_presenting
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=100|hidden_ms=30428.7|checkpoint_tic=1408|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=20270|advanced=20270|confirmed=20271|batches=3827|batch_transitions=20274|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":1560,"totalP50Ms":280.30000019073486,"totalP90Ms":391.79999923706055,"totalP95Ms":576.1000003814697,"totalMaxMs":3605.800000190735,"queueAndPostP95Ms":261.69999980926514,"postRoundTripP95Ms":176.30000019073486,"acceptedToConfirmedP95Ms":337.3999996185303,"confirmedToPresentedP95Ms":376.5,"batchWallP95Ms":176.5,"batchHoldP95Ms":1,"batchCountP95":6,"presentationLagP50Tics":11,"presentationLagP95Tics":13,"presentationLagMaxTics":14,"worst":[{"queueAndPostMs":156.10000038146973,"roundTripMs":154.80000019073486,"acceptedToConfirmedMs":3451,"confirmedToPresentedMs":205.19999980926514,"totalMs":3605.800000190735,"inputSequence":257,"effectiveTic":6157},{"queueAndPostMs":142.60000038146973,"roundTripMs":142.39999961853027,"acceptedToConfirmedMs":3230.0999994277954,"confirmedToPresentedMs":226.69999980926514,"totalMs":3372.4999990463257,"inputSequence":258,"effectiveTic":6174},{"queueAndPostMs":1751.8000001907349,"roundTripMs":1750.5,"acceptedToConfirmedMs":1460.1999998092651,"confirmedToPresentedMs":225.19999980926514,"totalMs":3210.699999809265,"inputSequence":1179,"effectiveTic":18325},{"queueAndPostMs":145,"roundTripMs":144.89999961853027,"acceptedToConfirmedMs":3016.699999809265,"confirmedToPresentedMs":224,"totalMs":3161.5999994277954,"inputSequence":259,"effectiveTic":6192},{"queueAndPostMs":139.70000076293945,"roundTripMs":137.5,"acceptedToConfirmedMs":2792.199999809265,"confirmedToPresentedMs":223.30000019073486,"totalMs":2929.699999809265,"inputSequence":260,"effectiveTic":6209}],"transportLegs":2,"limitMs":638.3142860957555}
+PMLE_SOAK_BROWSER_DIAG|slot=1|presented=20269|advanced=20269|confirmed=20269|batches=3824|batch_transitions=20269|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=1|{"samples":1541,"totalP50Ms":280.3999996185303,"totalP90Ms":428.3999996185303,"totalP95Ms":711.8999996185303,"totalMaxMs":4685.800000190735,"queueAndPostP95Ms":263.69999980926514,"postRoundTripP95Ms":179.0999994277954,"acceptedToConfirmedP95Ms":445.1000003814697,"confirmedToPresentedP95Ms":379,"batchWallP95Ms":174.5,"batchHoldP95Ms":1,"batchCountP95":6,"presentationLagP50Tics":11,"presentationLagP95Tics":14,"presentationLagMaxTics":14,"worst":[{"queueAndPostMs":2876.1000003814697,"roundTripMs":2732.699999809265,"acceptedToConfirmedMs":1953.1000003814697,"confirmedToPresentedMs":229.79999923706055,"totalMs":4685.800000190735,"inputSequence":828,"effectiveTic":14602},{"queueAndPostMs":141.69999980926514,"roundTripMs":141.69999980926514,"acceptedToConfirmedMs":4427.300000190735,"confirmedToPresentedMs":200.30000019073486,"totalMs":4569,"inputSequence":213,"effectiveTic":6128},{"queueAndPostMs":122,"roundTripMs":119.59999942779541,"acceptedToConfirmedMs":4179.700000762939,"confirmedToPresentedMs":226.5999994277954,"totalMs":4299.300000190735,"inputSequence":214,"effectiveTic":6143},{"queueAndPostMs":2537.8999996185303,"roundTripMs":2399.3999996185303,"acceptedToConfirmedMs":1675.6999998092651,"confirmedToPresentedMs":227.19999980926514,"totalMs":4075.0999994277954,"inputSequence":717,"effectiveTic":13023},{"queueAndPostMs":143.19999980926514,"roundTripMs":139.69999980926514,"acceptedToConfirmedMs":3881.699999809265,"confirmedToPresentedMs":223.60000038146973,"totalMs":4021.3999996185303,"inputSequence":215,"effectiveTic":6157}],"transportLegs":2,"limitMs":672.485713141305}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: WAN player 1 input/mirror p95 711.9 > 672.5
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:1187:14
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

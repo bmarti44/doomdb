@@ -1,0 +1,96 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+PMLE_WAN_MATRIX|BEGIN|duration=120|warmup=30|profiles_sha256=ced6d7f507b1240bc14d22435f950ba1a5df040cf88a73719b3d935ebbc9190a
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=OLTP_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=3.13|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ARTIFACT|source_bytes=1081335|source_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+
+PMLE_WAN_TRANSPORT|long_poll=OFF|hold_ms=0|transport_legs=2|classification=DIAGNOSTIC_NOT_GATE|approval_sha256=NONE|ords_pool_sessions=6|pool_reserve=2|max_held_polls=4|resmgr_running_sessions=2|worker_reserve=1|max_concurrent_poll_returns=1|background_refocus=ON
+PMLE_WAN_PRESENTATION_CONTRACT|max_playout_tics=12|low_rtt_max_selected_tics=6|controller=FREE_CLOCK_CONFIRMED_OCCUPANCY|low_occupancy_floor_tics=2|max_decelerated_interval_ms=31.4|presentation_lag_p95_formula=selected_max+batch_count_p95+2|confirmed_to_presented_p95_formula=(selected_max+batch_count_p95+2)*1000/35|presentation_interval_p99_ms=57.143|depth_comparison=12_THEN_6_ON_PASS
+PMLE_WAN_PROXY|READY|port=18200|upstream_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8|rtt_ms=200|jitter_ms=40|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-200-jitter-40|rtt_ms=200|jitter_ms=40|seed=351272
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_clients_presenting
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=200|hidden_ms=30141.3|checkpoint_tic=1280|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=4056|advanced=4056|confirmed=4057|batches=465|batch_transitions=4057|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":260,"totalP50Ms":438.69999980926514,"totalP90Ms":536.8999996185303,"totalP95Ms":584.5,"totalMaxMs":818.2000007629395,"queueAndPostP95Ms":445.5,"postRoundTripP95Ms":287.70000076293945,"acceptedToConfirmedP95Ms":308.5,"confirmedToPresentedP95Ms":314.5999994277954,"batchWallP95Ms":306.80000019073486,"batchHoldP95Ms":1,"batchCountP95":10,"applyBatchWallP95Ms":96.89999961853027,"applyStepMaxP95Ms":3,"applyStepObservedMaxMs":6.09999942779541,"longTaskCount":1,"longTaskP95Ms":397,"longTaskMaxMs":397,"presentationLagP50Tics":5,"presentationLagP95Tics":11,"presentationLagMaxTics":21,"bufferOccupancyP50Tics":5,"bufferOccupancyP95Tics":11,"bufferOccupancyMinTics":0,"worst":[{"queueAndPostMs":265.8999996185303,"roundTripMs":262.80000019073486,"acceptedToConfirmedMs":555.4000005722046,"confirmedToPresentedMs":30.799999237060547,"totalMs":818.2000007629395,"inputSequence":111,"effectiveTic":3187},{"queueAndPostMs":230.60000038146973,"roundTripMs":228.29999923706055,"acceptedToConfirmedMs":569,"confirmedToPresentedMs":0.39999961853027344,"totalMs":797.2999992370605,"inputSequence":328,"effectiveTic":6532},{"queueAndPostMs":467,"roundTripMs":465,"acceptedToConfirmedMs":244.5999994277954,"confirmedToPresentedMs":115.5,"totalMs":709.5999994277954,"inputSequence":146,"effectiveTic":3669},{"queueAndPostMs":469.0999994277954,"roundTripMs":468.5999994277954,"acceptedToConfirmedMs":221.60000038146973,"confirmedToPresentedMs":216.19999980926514,"totalMs":690.1999998092651,"inputSequence":121,"effectiveTic":3360},{"queueAndPostMs":251,"roundTripMs":247.39999961853027,"acceptedToConfirmedMs":410.19999980926514,"confirmedToPresentedMs":0.40000057220458984,"totalMs":657.5999994277954,"inputSequence":316,"effectiveTic":6329}],"transportLegs":2,"limitMs":946.8285729544504}
+PMLE_WAN_PLAYOUT|OBSERVED|rtt_ms=200|slot=0|desired_p90=12|selected_p90=12|selected_max=12|batch_count_p95=10|presentation_interval_p99_ms=55.3|buffer_occupancy_p50_tics=5|buffer_occupancy_p95_tics=11|buffer_occupancy_min_tics=0|presentation_lag_p95_tics=11|authoritative_display_delay_p95_ms=314.3|presentation_lag_bound_tics=24|confirmed_to_presented_p95_ms=314.6|confirmed_to_presented_bound_ms=685.7
+PMLE_WAN_PLAYOUT|PASS|rtt_ms=200|slot=0|desired_p90=12|selected_p90=12|selected_max=12|batch_count_p95=10|presentation_interval_p99_ms=55.3|buffer_occupancy_p50_tics=5|buffer_occupancy_p95_tics=11|buffer_occupancy_min_tics=0|presentation_lag_p95_tics=11|authoritative_display_delay_p95_ms=314.3|presentation_lag_bound_tics=24|confirmed_to_presented_p95_ms=314.6|confirmed_to_presented_bound_ms=685.7
+PMLE_SOAK_BROWSER_DIAG|slot=1|presented=4067|advanced=4067|confirmed=4063|batches=463|batch_transitions=4063|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=1|{"samples":260,"totalP50Ms":440.29999923706055,"totalP90Ms":545,"totalP95Ms":600.3000001907349,"totalMaxMs":772.5,"queueAndPostP95Ms":421,"postRoundTripP95Ms":303,"acceptedToConfirmedP95Ms":319.30000019073486,"confirmedToPresentedP95Ms":284.19999980926514,"batchWallP95Ms":304.5999994277954,"batchHoldP95Ms":1,"batchCountP95":11,"applyBatchWallP95Ms":103.10000038146973,"applyStepMaxP95Ms":3.1999998092651367,"applyStepObservedMaxMs":5.899999618530273,"longTaskCount":1,"longTaskP95Ms":397,"longTaskMaxMs":397,"presentationLagP50Tics":5,"presentationLagP95Tics":10,"presentationLagMaxTics":24,"bufferOccupancyP50Tics":5,"bufferOccupancyP95Tics":10,"bufferOccupancyMinTics":0,"worst":[{"queueAndPostMs":301.5,"roundTripMs":257.70000076293945,"acceptedToConfirmedMs":514.7999992370605,"confirmedToPresentedMs":0.40000057220458984,"totalMs":772.5,"inputSequence":92,"effectiveTic":3189},{"queueAndPostMs":445.80000019073486,"roundTripMs":444.5,"acceptedToConfirmedMs":281.19999980926514,"confirmedToPresentedMs":50.89999961853027,"totalMs":725.6999998092651,"inputSequence":214,"effectiveTic":5433},{"queueAndPostMs":366.20000076293945,"roundTripMs":209.89999961853027,"acceptedToConfirmedMs":468.69999980926514,"confirmedToPresentedMs":6,"totalMs":678.5999994277954,"inputSequence":65,"effectiveTic":2882},{"queueAndPostMs":384.9000005722046,"roundTripMs":384.80000019073486,"acceptedToConfirmedMs":266.29999923706055,"confirmedToPresentedMs":41.40000057220459,"totalMs":651.0999994277954,"inputSequence":168,"effectiveTic":4299},{"queueAndPostMs":250.30000019073486,"roundTripMs":246.80000019073486,"acceptedToConfirmedMs":391.30000019073486,"confirmedToPresentedMs":66.09999942779541,"totalMs":638.1000003814697,"inputSequence":44,"effectiveTic":2621}],"transportLegs":2,"limitMs":987.8285710471017}
+PMLE_WAN_PLAYOUT|OBSERVED|rtt_ms=200|slot=1|desired_p90=12|selected_p90=12|selected_max=12|batch_count_p95=11|presentation_interval_p99_ms=46.9|buffer_occupancy_p50_tics=5|buffer_occupancy_p95_tics=10|buffer_occupancy_min_tics=0|presentation_lag_p95_tics=10|authoritative_display_delay_p95_ms=285.7|presentation_lag_bound_tics=25|confirmed_to_presented_p95_ms=284.2|confirmed_to_presented_bound_ms=714.3
+PMLE_WAN_PLAYOUT|PASS|rtt_ms=200|slot=1|desired_p90=12|selected_p90=12|selected_max=12|batch_count_p95=11|presentation_interval_p99_ms=46.9|buffer_occupancy_p50_tics=5|buffer_occupancy_p95_tics=10|buffer_occupancy_min_tics=0|presentation_lag_p95_tics=10|authoritative_display_delay_p95_ms=285.7|presentation_lag_bound_tics=25|confirmed_to_presented_p95_ms=284.2|confirmed_to_presented_bound_ms=714.3
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+SOAK_DB|tic=7242|frames=0|checkpoints=2|commands=14484|bytes=0|disconnectedNeutral=0|deadlineNeutral=0|leftNeutral=0|initialNeutral=171|sampled=9526|neutral=0|worker=READY
+
+SOAK_PLAYER|0|4764|0                                                                                                                                                                                                                                           
+SOAK_PLAYER|1|4785|0                                                                                                                                                                                                                                           
+PMLE_WAN_GATE|PASS|rtt_ms=200|jitter_ms=40|seconds=120|transport_legs=2|neutral_rate=0.000000/0.000000|players=584.5/280.8/12/12/12/12/11/55.3,600.3/280.8/12/12/12/12/11/46.9 hiddenMs=30141.3 checkpointTic=1280 leasesAfter2s=0 resumed=1
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: DOOM sessions grew baseline=18 final=20
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:1389:12
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

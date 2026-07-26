@@ -1,0 +1,5 @@
+PMLE_DECPS_ASYNC_PLATEAU_CPU|pass=1|samples=14|host_busy_pct=30.370
+PMLE_DECPS_ASYNC_PLATEAU_CPU|pass=2|samples=14|host_busy_pct=31.461
+PMLE_DECPS_ASYNC_PLATEAU_CPU|pass=3|samples=14|host_busy_pct=30.632
+PMLE_DECPS_ASYNC_PLATEAU_CPU|pass=4|samples=14|host_busy_pct=30.539
+PMLE_DECPS_ASYNC_PLATEAU_ATTRIBUTION|PASS|maximum_named_compiler_threads=0|maximum_named_compiler_cpu_ticks=0|host_busy_spread_points=1.091|compiler_cpu_theft=NOT_OBSERVED|deopt_churn=UNPROVEN_NO_DIRECT_SURFACE

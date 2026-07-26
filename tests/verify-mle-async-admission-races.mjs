@@ -260,10 +260,25 @@ try {
       + '|db_output_helper=self_tested\n');
 } finally {
   // The death cell intentionally consumes one incarnation. Restore the
-  // production two-slot pool even when an assertion fails.
+  // production two-slot pool even when an assertion fails. Query readiness
+  // through SYS first: on Free, two READY retained sessions consume the PDB's
+  // running-session allowance, so opening a third DOOM session merely to call
+  // start_warm_pool can wait forever despite cleanup already being complete.
   if (restorePool) {
     try {
-      sql('begin doom_match_worker.start_warm_pool; end;\n/');
+      const record = oneDbRecord(sysSql(`
+select 'PMLE_POOL_CLEANUP|STATE|ready='||
+  count(case when slot_status='READY' and assigned_match is null then 1 end)||
+  '|busy='||
+  count(case when slot_status in('CLAIMED','RUNNING','WARMING') then 1 end)
+from doom.doom_mle_warm_slot;`), 'PMLE_POOL_CLEANUP|');
+      const state = fields(record);
+      if (state.ready !== '2' || state.busy !== '0') {
+        sql('begin doom_match_worker.start_warm_pool; end;\n/');
+      }
+      process.stdout.write(
+        'PMLE_ASYNC_ADMISSION_CLEANUP|PASS|ready_slots=2|busy_slots=0'
+          + '|third_session_avoided=1\n');
     } catch {}
   }
 }

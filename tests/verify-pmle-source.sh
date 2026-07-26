@@ -2,6 +2,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+node "$ROOT/tests/verify-production-drop-inventory.mjs"
 node "$ROOT/tests/verify-pmle-checkpoint-cadence.mjs"
 sh "$ROOT/tests/verify-pmle-wasm2js-source.sh"
 INSTALL=$ROOT/probes/mle/install.sql
@@ -60,6 +61,7 @@ TEAVM_DECPS_WARM_LIFECYCLE=$ROOT/probes/mle/teavm-engine/run-decps-warm-lifecycl
 TEAVM_DECPS_NODE_PROFILE_RANK=$ROOT/probes/mle/teavm-engine/rank-decps-node-profile.mjs
 TEAVM_DECPS_NODE_PROFILE_VALIDATE=$ROOT/probes/mle/teavm-engine/validate-decps-node-profile.mjs
 TEAVM_DECPS_ASYNC_JIT_COMPARE=$ROOT/probes/mle/teavm-engine/compare-decps-async-jit.mjs
+TEAVM_DECPS_ASYNC_PLATEAU_COMPARE=$ROOT/probes/mle/teavm-engine/compare-decps-async-plateau.mjs
 TEAVM_DECPS_RANK_COMPARE=$ROOT/probes/mle/teavm-engine/compare-decps-rank.mjs
 TEAVM_DECPS_DUAL_CLOCK_COMPARE=$ROOT/probes/mle/teavm-engine/compare-decps-dual-clock-rank.mjs
 TEAVM_LONG_FLAG_BENCH=$ROOT/probes/mle/teavm-engine/benchmark-long-flag-cast.sql
@@ -116,6 +118,8 @@ TEAVM_PRESENTATION_BIND_INSTALL=$ROOT/probes/mle/teavm-engine/install-presentati
 TEAVM_PRESENTATION_BIND_BENCH=$ROOT/probes/mle/teavm-engine/benchmark-presentation-bind-mle.sql
 TEAVM_PRESENTATION_BIND_CLEANUP=$ROOT/probes/mle/teavm-engine/cleanup-presentation-bind-wrapper.sql
 TEAVM_PRESENTATION_DECPS_RUNNER=$ROOT/probes/mle/teavm-engine/run-presentation-decps-rank.sh
+TEAVM_OCI_PRESENTATION_DECPS_RUNNER=$ROOT/probes/mle/teavm-engine/run-oci-presentation-decps-rank.sh
+TEAVM_OCI_PRESENTATION_DECPS_EVALUATOR=$ROOT/probes/mle/teavm-engine/evaluate-oci-presentation-decps.mjs
 REPORT=$ROOT/reports/performance-PMLE-mle-26ai-2026-07-22.md
 TEAVM_REPORT=$ROOT/probes/mle/teavm-engine/REPORT.md
 VERSIONS=$ROOT/versions.lock
@@ -171,7 +175,8 @@ for file in "$INSTALL" "$BENCHMARK" "$RUNNER" "$CLEANUP" \
   "$TEAVM_DECPS_REPRODUCIBILITY" \
   "$TEAVM_DECPS_NODE_PROFILE" "$TEAVM_DECPS_WARM_LIFECYCLE" \
   "$TEAVM_DECPS_NODE_PROFILE_RANK" "$TEAVM_DECPS_NODE_PROFILE_VALIDATE" \
-  "$TEAVM_DECPS_ASYNC_JIT_COMPARE" "$TEAVM_DECPS_RANK_COMPARE" \
+  "$TEAVM_DECPS_ASYNC_JIT_COMPARE" "$TEAVM_DECPS_ASYNC_PLATEAU_COMPARE" \
+  "$TEAVM_DECPS_RANK_COMPARE" \
   "$TEAVM_DECPS_DUAL_CLOCK_COMPARE" \
   "$TEAVM_LONG_FLAG_BENCH" "$TEAVM_LONG_FLAG_RUNNER" \
   "$TEAVM_MOBJ_LOW_WORD_PATCH" "$TEAVM_MOBJ_LOW_WORD_PROPERTY" \
@@ -245,6 +250,8 @@ node "$TEAVM_DECPS_PROMOTION" --self-test >/dev/null ||
   fail 'mobj low-word candidate runner is not executable'
 node "$TEAVM_MOBJ_LOW_WORD_COMPARE" --self-test >/dev/null ||
   fail 'mobj low-word rank comparator self-test failed'
+node "$TEAVM_DECPS_ASYNC_PLATEAU_COMPARE" --self-test >/dev/null ||
+  fail 'de-CPS async plateau comparator self-test failed'
 [ -x "$TEAVM_DEPLOYMENT_STATE" ] ||
   fail 'de-CPS deployment state transition tool is not executable'
 [ -x "$TEAVM_LIFECYCLE_MANIFEST" ] ||
@@ -572,6 +579,8 @@ grep -q 'class ConfirmedWanPolicy' "$AUTHORITY_WAN_TS" || fail 'confirmed WAN po
 grep -q 'LEAD_HYSTERESIS_MS = 10_000' "$AUTHORITY_WAN_TS" || fail 'WAN lead hysteresis missing'
 grep -q 'MAX_INPUT_LEAD = 12' "$AUTHORITY_WAN_TS" || fail 'WAN lead bound missing'
 grep -q 'MAX_PLAYOUT_TICS = 6' "$AUTHORITY_WAN_TS" || fail 'WAN playout bound missing'
+grep -q 'server-tic<=25' "$WAN_SOAK" ||
+  fail 'WAN startup convergence fence is not pinned to playout plus batch'
 grep -q 'transitionHoldMs, 32' "$ROOT/client/src/multiplayer.ts" ||
   fail 'WAN bounded long-poll client binding missing'
 grep -q 'HIDDEN_CHECKPOINT_THRESHOLD_MS = 5_000' "$ROOT/client/src/multiplayer.ts" ||
@@ -580,25 +589,88 @@ grep -q "strategy:'poll-lease-released'" "$ROOT/client/src/multiplayer.ts" ||
   fail 'WAN hidden-tab poll lease release missing'
 grep -q "reason:'confirmed-checkpoint'" "$ROOT/client/src/multiplayer.ts" ||
   fail 'WAN hidden-tab checkpoint resync missing'
+grep -q 'batch.committedFrontierTic-mirror.frontier.tic+1' \
+  "$ROOT/client/src/multiplayer.ts" ||
+  fail 'WAN input lead is not bound to the confirmed-mirror backlog'
+grep -q 'Math.min(1000/140' "$ROOT/client/src/multiplayer.ts" ||
+  fail 'WAN confirmed-mirror apply catch-up ceiling regressed'
+grep -q 'confirmedPlayoutDecision(bufferOccupancy,wan.playoutBufferTics' \
+  "$ROOT/client/src/multiplayer.ts" &&
+  grep -q "mode==='ACCELERATE' && bufferedFrames<=selectedDepth" \
+    "$ROOT/client/src/authority-wan.ts" ||
+  fail 'WAN confirmed-presentation catch-up latch regressed'
+grep -q 'PLAYOUT_ACCELERATION_MARGIN_TICS = 2' \
+    "$ROOT/client/src/authority-wan.ts" &&
+  grep -q 'PLAYOUT_DECELERATION_MARGIN_TICS = 2' \
+    "$ROOT/client/src/authority-wan.ts" &&
+  grep -q 'MAX_DECELERATED_PLAYOUT_INTERVAL_MS = 31.4' \
+    "$ROOT/client/src/authority-wan.ts" &&
+  grep -q "mode==='DECELERATE' && bufferedFrames>=selectedDepth" \
+    "$ROOT/client/src/authority-wan.ts" ||
+  fail 'WAN confirmed-presentation setpoint or bounded margins regressed'
+grep -q 'MANAGED_ORDS_SESSION_GROWTH_CAP=6' "$WAN_SOAK" &&
+  grep -q 'ordsSessionGrowthCap=' "$WAN_SOAK" ||
+  fail 'WAN managed-ORDS pooled-session postflight bound regressed'
+grep -q 'MAX_PRESENTATION_OCCUPANCY_EXCURSION_MS=5_000' "$WAN_SOAK" &&
+  grep -q 'occupancy_excursion_max_ms=' "$WAN_SOAK" &&
+  grep -q 'occupancyExcursionMaxMs<=' "$WAN_SOAK" ||
+  fail 'WAN bounded confirmed-occupancy excursion gate regressed'
+if grep -q 'presentationLag<=64+playout' "$WAN_SOAK"; then
+  fail 'WAN phase-dependent instantaneous occupancy assertion returned'
+fi
+if grep -q 'next.presentation.tic <= target\\|confirmed-backlog\\|MAX_CONFIRMED_PRESENTATION_BACKLOG' \
+    "$ROOT/client/src/multiplayer.ts"; then
+  fail 'WAN free-running confirmed playout regained a frontier clamp or skip path'
+fi
 grep -q 'restoreBrowserAuthorityCheckpoint' "$ROOT/client/src/teavm-browser.ts" ||
   fail 'browser DMC1 restore binding missing'
 grep -q 'PMLE_WAN_PROXY|READY' "$WAN_PROXY" || fail 'WAN proxy readiness marker missing'
 grep -q 'PMLE_WAN_GATE|PASS' "$WAN_SOAK" || fail 'WAN browser acceptance marker missing'
 grep -q 'neutral substitution rate' "$WAN_SOAK" || fail 'WAN neutral-substitution gate missing'
-grep -q 'input/presentation p95' "$WAN_SOAK" ||
-  fail 'WAN input-to-presentation gate missing'
+grep -q 'input/mirror p95' "$WAN_SOAK" ||
+  fail 'WAN input-to-confirmed-mirror gate missing'
+grep -q 'DOOMDB_WAN_TRANSPORT_LEGS??1' "$WAN_SOAK" ||
+  fail 'WAN topology-aware diagnostic default missing'
+grep -q 'queueInput(latest)' "$ROOT/client/src/multiplayer.ts" ||
+  fail 'WAN authored-neutral input heartbeat missing'
 grep -q 'never acceptable' "$WAN_SOAK" ||
   fail 'WAN long-poll hold exclusion missing'
 grep -q 'presentation p99' "$WAN_SOAK" || fail 'WAN presentation-cadence gate missing'
+grep -q 'PMLE_WAN_PLAYOUT|PASS' "$WAN_SOAK" &&
+  grep -q 'desired_p90=' "$WAN_SOAK" &&
+  grep -q 'confirmed_to_presented_p95_ms=' "$WAN_SOAK" &&
+  grep -q 'maxPlayout<=6' "$WAN_SOAK" ||
+  fail 'WAN playout amendment cost and low-RTT isolation gates are missing'
+grep -Fq 'PMLE_WAN_PRESENTATION_CONTRACT|max_playout_tics=6|low_rtt_max_selected_tics=6|controller=FREE_CLOCK_CONFIRMED_OCCUPANCY_SETPOINT|setpoint=selected_depth|acceleration_margin_tics=2|deceleration_margin_tics=2|max_decelerated_interval_ms=31.4|presentation_lag_p95_formula=selected_max+batch_count_p95+2' \
+  "$TEAVM_WAN_RUNNER" ||
+  fail 'WAN presentation-cost verdict rule is not predeclared'
+grep -q 'PMLE_WAN_STALL_RECOVERY|PASS' "$WAN_SOAK" &&
+  grep -q 'maximumObservedTransportStall>=3000' "$WAN_SOAK" &&
+  grep -q 'rate<.005' "$WAN_SOAK" ||
+  fail 'WAN implicit recovery is not bound to a measured stall and fairness gate'
 grep -q 'PMLE_WAN_MATRIX|PASS' "$TEAVM_WAN_RUNNER" || fail 'WAN matrix terminal marker missing'
-grep -q 'long_poll_enabled=1' "$TEAVM_WAN_RUNNER" ||
-  fail 'WAN matrix long-poll enablement missing'
-grep -q 'DOOMDB_WAN_HOLD_MS=500' "$TEAVM_WAN_RUNNER" ||
+grep -q 'DOOMDB_WAN_QUALIFICATION:-NO' "$TEAVM_WAN_RUNNER" &&
+  grep -q 'wait-free charter approval artifact is absent' \
+    "$TEAVM_WAN_RUNNER" &&
+  grep -q 'qualification is authorized only for wait-free transport' \
+    "$TEAVM_WAN_RUNNER" &&
+  grep -q 'qualification may not filter WAN profiles' \
+    "$TEAVM_WAN_RUNNER" &&
+  grep -q 'classification=QUALIFICATION' "$TEAVM_WAN_RUNNER" &&
+  grep -q 'approval_sha256=' "$TEAVM_WAN_RUNNER" ||
+  fail 'WAN qualification does not fail closed on charter approval and topology'
+grep -q 'DOOMDB_WAN_LONG_POLL_ENABLED:-1' "$TEAVM_WAN_RUNNER" ||
+  fail 'WAN matrix long-poll default missing'
+grep -q 'DOOMDB_WAN_HOLD_MS:-500' "$TEAVM_WAN_RUNNER" ||
   fail 'WAN matrix bounded hold missing'
 grep -q 'DOOMDB_WAN_BACKGROUND_SCENARIO=1' "$TEAVM_WAN_RUNNER" ||
   fail 'WAN matrix background/refocus scenario missing'
-grep -q 'PMLE_WAN_TRANSPORT|long_poll=ON' "$TEAVM_WAN_RUNNER" ||
+grep -q 'PMLE_WAN_TRANSPORT|long_poll=$mode' "$TEAVM_WAN_RUNNER" ||
   fail 'WAN matrix cloud-shaped pool metadata missing'
+grep -q 'DOOMDB_MANAGED_ADB=1' "$TEAVM_WAN_RUNNER" &&
+  grep -q 'SOAK_ADB_RESOURCE' "$WAN_SOAK" &&
+  grep -q 'memoryGate=SEPARATE_RETAINED_SESSION_SOAK' "$WAN_SOAK" ||
+  fail 'WAN managed-ADB telemetry contract missing'
 grep -q 'PMLE_PREWARM_DECOMPOSITION|PASS' \
   "$ROOT/probes/mle/teavm-engine/run-prewarm-decomposition.sh" ||
   fail 'deploy prewarm composition harness missing'
@@ -613,6 +685,8 @@ grep -q 'c_max_held_polls constant pls_integer:=4' "$AUTHORITY_TRANSPORT" || fai
 grep -q 'c_resmgr_running_sessions constant pls_integer:=2' "$AUTHORITY_TRANSPORT" || fail 'DMB1 resource-manager bound missing'
 grep -q 'c_max_concurrent_poll_returns constant pls_integer:=1' "$AUTHORITY_TRANSPORT" || fail 'DMB1 runnable reserve missing'
 grep -q 'c_max_hold_ms constant pls_integer:=500' "$AUTHORITY_TRANSPORT" || fail 'DMB1 hold bound missing'
+grep -q 'c_wan_min_batch_transitions constant pls_integer:=8' "$AUTHORITY_TRANSPORT" || fail 'DMB1 WAN batch floor missing'
+grep -q 'exit when l_count>=l_ready_count or elapsed_ms(l_started)>=l_hold' "$AUTHORITY_TRANSPORT" || fail 'DMB1 WAN batch readiness fence missing'
 grep -q 'dbms_alert.waitone' "$AUTHORITY_TRANSPORT" || fail 'DMB1 prompt commit alert missing'
 grep -q 'doom_match_slow_call' "$ROOT/sql/schema/048_multiplayer_worker.sql" || fail 'worker slow-call schema missing'
 grep -q 'record_slow_call' "$ROOT/sql/sim/084_multiplayer_worker.sql" || fail 'worker post-commit slow-call attribution missing'
@@ -893,6 +967,10 @@ grep -q 'classification=%s' "$TEAVM_PRESENTATION_BUILD" ||
   fail 'presentation build does not classify candidate output'
 grep -q 'patch_set_sha256=%s' "$TEAVM_PRESENTATION_BUILD" ||
   fail 'presentation candidate patch set is not content-addressed'
+grep -q 'DOOMDB_TEAVM_PRESENTATION_MINIFYING' \
+    "$TEAVM_PRESENTATION_BUILD" &&
+  grep -q 'minifying=%s' "$TEAVM_PRESENTATION_BUILD" ||
+  fail 'presentation build cannot classify debug-named reproduction output'
 if rg -q 'renderPlayerFrame(DatabaseView|Length|Chunk)' \
     "$TEAVM_PRESENTATION_SOURCE"; then
   fail 'presentation-only Java exports can silently reshape the authority root'
@@ -1339,9 +1417,46 @@ grep -q 'bind_install_evidence=%s' "$TEAVM_PRESENTATION_DECPS_RUNNER" ||
   fail 'presentation terminal marker omits database loader evidence'
 grep -q 'PMLE_PRESENTATION_TEMP_LOB_GRANT|PASS' \
   "$TEAVM_PRESENTATION_DECPS_RUNNER" &&
-  grep -q 'temporary_lob_grant_evidence=%s' \
+grep -q 'temporary_lob_grant_evidence=%s' \
     "$TEAVM_PRESENTATION_DECPS_RUNNER" ||
   fail 'presentation rank does not prove temporary-LOB telemetry access'
+node "$TEAVM_OCI_PRESENTATION_DECPS_EVALUATOR" --self-test >/dev/null
+grep -Eq 'normalizeDbOutput|oneDbRecord' \
+  "$TEAVM_OCI_PRESENTATION_DECPS_EVALUATOR" ||
+  fail 'OCI presentation evaluator bypasses the shared DB-output parser'
+grep -q 'candidate_sha=118c37717b362d9e7669b5a3a1e73c87b3916479b6e53651f08e85be9ae8f2d3' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q 'require-db-record.mjs' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q '"$record_parser" --self-test' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q 'OCI_PRESENTATION_LOCATOR_100' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q 'OCI_PRESENTATION_LOCATOR_300' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" ||
+  fail 'OCI de-CPS presentation rank is not candidate-bound and staged'
+grep -q 'PMLE_OCI_PRESENTATION_ROLLBACK_CONTRACT|PASS' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q 'alter package doom_mle_match_runtime compile body' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q 'PMLE_OCI_PRESENTATION_ROLLBACK_COMPILE|PASS|status=VALID' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q 'artifact-metadata.sql' "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q 'doom_match_worker.start_warm_pool' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" ||
+  fail 'OCI presentation diagnostic lacks verified capacity-last rollback'
+grep -q 'emit-command-stream-sql.mjs.*"$fixture"' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q 'PMLE_OCI_COMMAND_STREAM|PASS|stream=live-dm-2026-07-23|tics=5250|bytes=173250|sha256=fa7637570c30d3a33cbf8456e98268890e9f5bd82f5ba39fd7f69b139ddc4085' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q "drop table doom_mle_perf_vector purge" \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" ||
+  fail 'OCI presentation diagnostic does not stage, bind, and clean its command stream'
+grep -q 'persistent_returning_oracle_blob' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_EVALUATOR" &&
+  grep -q 'temporary_lobs_delta' "$TEAVM_OCI_PRESENTATION_DECPS_EVALUATOR" &&
+  grep -q 'p95 <= 33.333' "$TEAVM_OCI_PRESENTATION_DECPS_EVALUATOR" ||
+  fail 'OCI presentation locator verdict is not independently recomputed'
 grep -q 'bind_install_pattern=' "$TEAVM_PRESENTATION_DECPS_RUNNER" ||
   fail 'presentation bind terminal extractor lacks an offline dry-run'
 test "$(line_of 'bind_install_pattern=' "$TEAVM_PRESENTATION_DECPS_RUNNER")" -lt \
@@ -1386,6 +1501,19 @@ grep -q 'const landing = windows.some' "$TEAVM_DECPS_ASYNC_JIT_COMPARE" &&
   grep -Fq '[r]un-decps-ledger' "$TEAVM_DECPS_RUNNER" &&
   grep -q 'printf 3600' "$TEAVM_DECPS_RUNNER" ||
   fail 'de-CPS async JIT pair lacks its matched-window/60-minute contract'
+grep -q 'default-async-plateau' "$TEAVM_DECPS_RUNNER" &&
+  grep -q 'PMLE_ASYNC_PLATEAU_PASSES' "$TEAVM_DECPS_RUNNER" &&
+  grep -q 'async plateau pass count must be between 4 and 6' \
+    "$TEAVM_DECPS_RUNNER" &&
+  grep -q 'printf 7200' "$TEAVM_DECPS_RUNNER" &&
+  grep -q 'PMLE_DECPS_ASYNC_JIT_HOST_CPU' "$TEAVM_DECPS_RUNNER" &&
+  grep -q 'compiler_cpu_ticks=' "$TEAVM_DECPS_RUNNER" &&
+  grep -q 'compare-decps-async-plateau.mjs' "$TEAVM_DECPS_RUNNER" &&
+  grep -q 'warmSpread <= 10' "$TEAVM_DECPS_ASYNC_PLATEAU_COMPARE" &&
+  grep -q 'deopt_attribution=NO_DIRECT_SURFACE' \
+    "$TEAVM_DECPS_ASYNC_PLATEAU_COMPARE" &&
+  grep -q 'markers are out of order' "$TEAVM_DECPS_ASYNC_PLATEAU_COMPARE" ||
+  fail 'de-CPS async plateau lacks its 4-6 pass/CPU/clock attribution contract'
 grep -q 'safe_to_start_pool=1' "$TEAVM_DECPS_RUNNER" &&
   grep -q 'cleanup_restore_or_alert_unproven' "$TEAVM_DECPS_RUNNER" &&
   grep -q '"$alert_state" DECPS_RANK' "$TEAVM_DECPS_RUNNER" ||
@@ -1399,6 +1527,13 @@ decps_rank_pool_line=$(grep -n 'doom_match_worker.start_warm_pool' \
 grep -q 'DOOMDB_TEAVM_OPTIMIZATION_LEVEL=SIMPLE' \
     "$TEAVM_DECPS_SIMPLE_JIT" &&
   grep -q 'fresh de-CPS Node profile must precede SIMPLE JIT work' \
+    "$TEAVM_DECPS_SIMPLE_JIT" &&
+  grep -q 'node-decps-peak-5ec18cbe4cff-v3' \
+    "$TEAVM_DECPS_SIMPLE_JIT" &&
+  grep -q 'final-artifact-repro-2026-07-25-comparison.log' \
+    "$TEAVM_DECPS_SIMPLE_JIT" &&
+  grep -q 'verdict=LANDING_SIGNAL' "$TEAVM_DECPS_SIMPLE_JIT" &&
+  grep -q 'oracle_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3' \
     "$TEAVM_DECPS_SIMPLE_JIT" &&
   grep -q 'validate-decps-node-profile.mjs' "$TEAVM_DECPS_SIMPLE_JIT" &&
   grep -q 'validate-decps-node-profile.mjs' "$TEAVM_DECPS_NODE_PROFILE" &&

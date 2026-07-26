@@ -18,15 +18,15 @@ for (const marker of [
   'single normal lifecycle writer',
   'explicitly VOIDED',
   '58,875/58,858 confirmed presentations',
-  'hidden-tab lifecycle',
-  'WAN matrix',
+  'three-profile WAN qualification',
+  '50/100/200 ms profiles',
   'Presentation / DVR',
   'capacity held closed; operator intervention required',
   'capacity state unproven; operator intervention required',
   'id="performance-truth"',
   "data.gates.ledgerEveryTic13272==='PASS_CURRENT_AUTHORITY'",
   "const deCps=data.performance.deCpsCandidate",
-  "deCpsLive?'source-pinned':'unpromoted'",
+  'passed two complete',
   'id="authority-summary"',
   'id="determinism-truth"',
   'browser renderer pin · audit/DVR incomplete',
@@ -125,8 +125,17 @@ assert.deepEqual(status.soak.browserPresentations, [58875, 58858]);
 assert.equal(status.soak.maxConfirmedLagTics, 17);
 assert.equal(status.soak.resourceManagerCpuQuantumSamples, 0);
 assert.equal(status.architecture.productionOjvm, false);
-assert.equal(status.performance.state, 'BELOW_30_FPS_ACCELERATION_IN_PROGRESS');
-assert.equal(status.performance.throughputTicsPerSecond, 19.788);
+assert.equal(status.performance.state,
+  'OCI_RELEASE_GATES_AND_WAN_QUALIFICATION_PASS');
+assert.equal(status.performance.throughputTicsPerSecond, 302.419);
+assert.equal(status.performance.slowestPeakTicsPerSecond, 140.845);
+assert.equal(status.performance.digestBinding, 'FULL_PER_TIC_CHAIN_PASS');
+assert.equal(
+  status.performance.browserUniqueMovingFps,
+  35.41772781893915);
+assert.equal(
+  status.performance.browserUniqueMovingP95Milliseconds,
+  32.60000038146973);
 assert.equal(status.performance.evidenceArtifactSha256,
   '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3');
 assert.equal(status.performance.wasm2jsStatus,
@@ -142,6 +151,27 @@ assert.equal(status.performance.compiledArithmeticThreshold, 'PASS_BELOW_15_NS')
 assert.equal(status.performance.fullArtifactCompilation,
   'DIAGNOSTIC_HANG_MLE_PARK');
 assert.equal(status.performance.hiddenCompilationProductionEnabled, false);
+assert.equal(status.performance.autonomousVenue.authorityTicker35Hz, 'PASS');
+assert.equal(
+  status.performance.autonomousVenue.exactFramePersistenceP95Milliseconds,
+  212.095);
+assert.equal(status.performance.autonomousVenue.liveExactDatabaseRendering,
+  'CLOSED_FINAL_DECPS_COMPILED_VENUE');
+assert.equal(
+  status.performance.autonomousVenue.deCpsPresentationDiagnostic
+    .pipelineP95Milliseconds,
+  191.276);
+assert.equal(
+  status.performance.autonomousVenue.deCpsPresentationDiagnostic
+    .exactNodeFrameChain,
+  'PASS');
+assert.equal(
+  status.performance.autonomousVenue.deCpsPresentationDiagnostic.exact30Fps,
+  'FAIL');
+assert.equal(
+  status.performance.autonomousVenue.deCpsPresentationDiagnostic
+    .locatorHygiene,
+  'FAIL');
 assert.equal(status.performance.deCpsCandidate.canonicalParity, 'PASS');
 assert.equal(status.performance.deCpsCandidate.exactStreamTics, 5250);
 assert.equal(status.performance.deCpsCandidate.throughputTicsPerSecond, 19.788);
@@ -166,7 +196,7 @@ assert.equal(status.performance.deCpsCandidate.membershipRecovery100, 'PASS');
 assert.equal(status.performance.deCpsCandidate.ledgerEveryTic13272,
   deCpsPromoted ? 'PASS' : 'PENDING');
 assert.equal(status.remaining.find(item => item.id === 'SHAPE').state,
-  deCpsPromoted ? 'PROMOTED' : 'ACTIVE');
+  deCpsPromoted ? 'DONE' : 'ACTIVE');
 assert.equal(status.performance.requiredTicsPerSecond, 35);
 assert.equal(status.solo.measuredFps, null);
 assert.equal(status.playModes.singlePlayer.state, 'AVAILABLE');
@@ -174,6 +204,21 @@ assert.equal(status.playModes.coop.path, '/play/multiplayer.html#mode=COOP');
 assert.equal(status.playModes.multiplayer.path,
   '/play/multiplayer.html#mode=DEATHMATCH');
 assert.equal(status.remaining.find(item => item.id === 'ADB').state, 'DONE');
+assert.equal(
+  status.remaining.find(item => item.id === 'WAN').state,
+  'DONE');
+assert.equal(
+  status.remaining.find(item => item.id === 'JAVA-AUDIT').state,
+  'DONE');
+assert.equal(status.performance.wanQualification.state, 'PASS');
+assert.equal(
+  status.performance.wanQualification.selectedPlayoutDepthTics,
+  6);
+assert.equal(
+  status.performance.wanQualification.maximumNeutralSubstitutionPercent,
+  0.071);
+assert.equal(status.performance.productionJavaRemovalAudit.state, 'PASS');
+assert.equal(status.performance.productionJavaRemovalAudit.javaObjects, 0);
 for (const [name, relativePath] of Object.entries(status.evidence)) {
   assert.match(relativePath, /^[a-zA-Z0-9._/-]+$/,
     `dashboard evidence path is malformed: ${name}`);

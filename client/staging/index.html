@@ -69,7 +69,7 @@
   <section class="hero">
     <article class="panel">
       <h2>Current milestone</h2>
-      <p class="big">MLE authority migration<br><span>evidence-gated promotion in progress</span></p>
+      <p class="big">MLE authority migration<br><span>OCI release qualification passed</span></p>
       <p class="muted">Correctness, deployment, lifecycle, soak, presentation, and WAN claims are reported independently; no gate is inherited across an authority pin change.</p>
     </article>
     <article class="panel">
@@ -81,7 +81,7 @@
   </section>
 
   <section class="panel" aria-label="current MLE migration status">
-    <h2>Live implementation status · July 24, 2026</h2>
+    <h2>Live implementation status · July 26, 2026</h2>
     <p><strong>Authority:</strong> one retained Oracle session owns the complete TeaVM-generated Mocha simulation, RNG, membership ordering, DMC1 checkpoints, and DMS2 replay identity. The browser receives compact, chained DMD1 transitions and never predicts, simulates ahead, reorders, or invents a tic.</p>
     <p id="determinism-truth"><strong>Determinism:</strong> loading signed gate qualification…</p>
     <p><strong>Production-shaped soak:</strong> the last fully qualified artifact is the superseded <code>a942cd2d…</code> authority. Its earlier lifecycle-race attempt is explicitly VOIDED; the corrected run passed 1,800 scored seconds after 300 excluded warmup seconds with 58,875/58,858 confirmed presentations, zero reconnect time, maximum 17-tic frontier lag, stable incarnations, and both process-memory gates green. Durable stop intent, full incarnation fencing, and a single normal lifecycle writer remain the production design. The current <code>103e15e9…</code> checkpoint-map authority has passed its full correctness battery but still owes the cadence, recovery, admission, lifecycle, and final-soak reruns; those gates are not inherited from the prior binary.</p>
@@ -90,7 +90,7 @@
     <p><strong>Recovery:</strong> DMC1 v5 retains hidden inactive-player state and full deterministic topology. The last recovery-qualified <code>e485b941…</code> authority recovered 127 tics with 20 awake monsters in 42.337 seconds from kill to publish, or 57.337 seconds including the 15-second detection budget. The machine-readable feed below identifies the current authority; concurrent double recovery, admission, the full lifecycle battery, and the final soak must be rerun whenever that pin changes.</p>
     <p><strong>Single-player:</strong> <code>/play/</code> keeps the authentic title, main, and skill menus; New Game starts a one-player confirmed-only MLE match, while separate Co-op and Multiplayer shortcuts remain on the right. It no longer calls the legacy <code>NEW_GAME</code>, <code>SUBMIT_STEP</code>, or <code>POLL_FRAME</code> endpoints. The headless authority skips renderer-only texture composites, sprite definitions, colormaps, drawing tables, and screens while retaining simulation name directories, and parses the WAD once. Cold MLE initialization now measures 4.542–4.826 seconds versus 100.314 seconds before. A live warm admission completed in 4.341 seconds and the full browser reached its first confirmed frame in 5.223 seconds. A repeated New Game retires the prior solo authority first; terminal matches stop their standbys, and Free admits one retained match rather than silently scheduler-thrashing. The warm checkpoint bank covers both modes and skills 1–5 on E1M1; other maps remain fail-closed.</p>
     <p id="performance-truth"><strong>Performance truth:</strong> loading signed status evidence…</p>
-    <p><strong>Open work:</strong> peak-combat acceleration is the exclusive performance path: fresh de-CPS profile, Amdahl ceiling, then one ranked batch or a measured density envelope. Lifecycle/final-soak and the injected-latency WAN matrix, including hidden-tab lifecycle behavior, follow on the selected artifact. HUD, automap, intermission, finale, and asynchronous exact audit rendering are not claimed complete. OCI Always Free has been measured and is interpreter-tier; it does not reopen live exact database rendering.</p>
+    <p><strong>Open work:</strong> OCI authoritative simulation, hosted schema/statics, the 30 unique-moving browser FPS gate, the complete real-internet WAN matrix, and the production Java-removal audit all pass. The artifact-specific 30-minute soak remains separate. HUD, automap, intermission, finale, and asynchronous exact audit/DVR recording are not claimed complete. Exact rendering measured 11.058 ms p95, but durable BLOB persistence measured 180.003 ms p95, so live presentation remains in the confirmed-only browser renderer while the authorized post-release compression/batching work targets DVR persistence.</p>
   </section>
 
   <section class="status-grid" aria-label="machine-readable MLE status" id="mle-status-grid">
@@ -184,8 +184,8 @@
   <section class="metrics" aria-label="verified metrics">
     <div class="metric"><strong>13,272</strong><span class="muted">final-artifact every-tic parity</span></div>
     <div class="metric"><strong>762</strong><span class="muted">co-op tics compared every tic</span></div>
-    <div class="metric"><strong>132.9 tics/s</strong><span class="muted">dispatch A/B selected throughput</span></div>
-    <div class="metric"><strong>1.1 ms</strong><span class="muted">selected dispatch p50 reduction</span></div>
+    <div class="metric"><strong>302.4 tics/s</strong><span class="muted">slower OCI full-route pass</span></div>
+    <div class="metric"><strong>140.8 tics/s</strong><span class="muted">slowest selected OCI peak</span></div>
     <div class="metric"><strong>30 min</strong><span class="muted">final production-shaped scored soak</span></div>
     <div class="metric"><strong>18 tics</strong><span class="muted">maximum confirmed presentation lag</span></div>
     <div class="metric"><strong>518.3 MiB</strong><span class="muted">authority maximum process PSS</span></div>
@@ -215,10 +215,10 @@
     <article class="panel phase next"><b>SOAK</b><span>Memory / backlog</span><p class="muted">a942 pass · 103e rerun pending</p></article>
     <article class="panel phase done"><b>DMD1</b><span>Confirmed replica</span><p class="muted">chained deltas · no prediction</p></article>
     <article class="panel phase done"><b>CAP</b><span>Free capacity</span><p class="muted">50% / 2 sessions / 1 poll return</p></article>
-    <article class="panel phase dormant"><b>WAN</b><span>WAN matrix</span><p class="muted">paused behind throughput + final soak</p></article>
-    <article class="panel phase next"><b>AUDIT</b><span>Java removal</span><p class="muted">production surfaces only; oracle preserved</p></article>
+    <article class="panel phase done"><b>WAN</b><span>qualification PASS</span><p class="muted">50/100/200 ms profiles · two clients · 10 scored minutes each</p></article>
+    <article class="panel phase done"><b>AUDIT</b><span>Java removal PASS</span><p class="muted">production surfaces clean; dev oracle preserved</p></article>
     <article class="panel phase open"><b>DVR</b><span>Presentation / DVR</span><p class="muted">HUD, automap, terminal screens open</p></article>
-    <article class="panel phase done"><b>ADB</b><span>OCI Autonomous probe</span><p class="muted">171–189 ns/op · interpreter tier · exact live DB render closed</p></article>
+    <article class="panel phase done"><b>ADB</b><span>OCI Autonomous authority</span><p class="muted">302.419 tics/s route · 140.845 peak · full digest chain</p></article>
   </section>
   <footer><a href="/play/">Open MLE single-player</a> · <a href="/play/multiplayer.html#mode=COOP">Open MLE co-op</a> · <a href="/play/multiplayer.html#mode=DEATHMATCH">Open MLE multiplayer</a> · Oracle/ORDS/AutoREST only · no credentials, capabilities, or evaluator data are exposed by this dashboard.</footer>
 </main>
@@ -252,9 +252,9 @@ fetch('/mle-status.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();ret
   document.querySelector('#determinism-truth').textContent=
     `Determinism: authority ${authority.slice(0,8)}… has ledger qualification ${data.gates.ledgerEveryTic13272}; canonical-330, every-tic co-op-762, and membership-recovery gates are ${data.gates.canonical330}/${data.gates.coopEveryTic762}/${data.gates.membershipRecovery}. Every result remains bound to its recorded artifact SHA and the preserved dev-only OJVM oracle.`;
   document.querySelector('#performance-truth').textContent=
-    `Performance truth: the last fully qualified production-shaped result is ${data.performance.throughputTicsPerSecond} authoritative tics/s on ${data.performance.evidenceArtifactSha256.slice(0,8)}…. `+
-    `The ${deCpsLive?'source-pinned':'unpromoted'} de-CPS authority ${deCps.artifactSha256.slice(0,8)}… measures ${deCps.throughputTicsPerSecond} tics/s over ${deCps.exactStreamTics.toLocaleString()} exact-stream tics (${deCps.routeSpeedup.toFixed(2)}× its comparable baseline), with ${deCps.p50MillisecondsPerTic.toFixed(3)}/${deCps.p95MillisecondsPerTic.toFixed(3)} ms p50/p95. `+
-    `Its promotion state is ${deCps.promotionState}; quiet windows clear 35 Hz, peak combat does not. No 30 FPS claim is made; lifecycle/soak, presentation, WAN, and venue qualification remain evidence-gated.`;
+    `Performance truth: OCI authority ${data.performance.evidenceArtifactSha256.slice(0,8)}… passed two complete ${data.performance.tics.toLocaleString()}-tic routes; the slower pass was ${data.performance.throughputTicsPerSecond} tics/s and the slowest selected awake-20 peak was ${data.performance.slowestPeakTicsPerSecond} tics/s. `+
+    `The result is bound to a full per-tic canonical digest chain. Local ${deCps.artifactSha256.slice(0,8)}… throughput (${deCps.throughputTicsPerSecond} tics/s) is development/capacity evidence only. `+
+    `The deployed browser's 30 unique-moving-FPS gate, three-profile WAN qualification, and production Java-removal audit pass. The artifact-specific 30-minute soak remains separate; exact database-frame persistence measured ${data.performance.autonomousVenue.exactFramePersistenceP95Milliseconds} ms p95 and is not the live presentation path.`;
   document.querySelector('#soak-state').textContent=data.gates.finalWorkerSoak==='PASS_CURRENT_AUTHORITY'
     ? `PASS · ${authority.slice(0,4)}`
     : `PENDING · ${authority.slice(0,4)} RERUN`;

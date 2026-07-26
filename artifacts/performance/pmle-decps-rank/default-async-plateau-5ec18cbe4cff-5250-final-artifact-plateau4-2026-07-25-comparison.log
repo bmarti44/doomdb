@@ -1,0 +1,8 @@
+PMLE_DECPS_ASYNC_PLATEAU_TRANSITION|from=1|to=2|route_wall_improvement_pct=-6.722|route_monotonic_improvement_pct=-3.716|median_window_wall_improvement_pct=-4.551|median_window_monotonic_improvement_pct=-4.136|joint_landing_windows=0|joint_regression_windows=1
+PMLE_DECPS_ASYNC_PLATEAU_TRANSITION|from=2|to=3|route_wall_improvement_pct=1.541|route_monotonic_improvement_pct=3.185|median_window_wall_improvement_pct=0.480|median_window_monotonic_improvement_pct=2.036|joint_landing_windows=1|joint_regression_windows=0
+PMLE_DECPS_ASYNC_PLATEAU_TRANSITION|from=3|to=4|route_wall_improvement_pct=0.327|route_monotonic_improvement_pct=-1.173|median_window_wall_improvement_pct=-0.627|median_window_monotonic_improvement_pct=-1.427|joint_landing_windows=0|joint_regression_windows=1
+PMLE_DECPS_ASYNC_PLATEAU_PASS_RESULT|pass=1|wall_p50_ms=38.284|monotonic_tps=18.622|clock_exclusions=2
+PMLE_DECPS_ASYNC_PLATEAU_PASS_RESULT|pass=2|wall_p50_ms=40.858|monotonic_tps=17.930|clock_exclusions=1
+PMLE_DECPS_ASYNC_PLATEAU_PASS_RESULT|pass=3|wall_p50_ms=40.228|monotonic_tps=18.501|clock_exclusions=2
+PMLE_DECPS_ASYNC_PLATEAU_PASS_RESULT|pass=4|wall_p50_ms=40.097|monotonic_tps=18.284|clock_exclusions=1
+PMLE_DECPS_ASYNC_PLATEAU|PASS|passes=4|tics_per_pass=5250|authority_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|clock_exclusions=6|clock_exclusion_cap=105|landing_transitions=1|regression_transitions=2|warm_route_tps_spread_pct=3.123|plateau=STABLE|compiler_cpu_attribution=EXTERNAL_CENSUS|deopt_attribution=NO_DIRECT_SURFACE

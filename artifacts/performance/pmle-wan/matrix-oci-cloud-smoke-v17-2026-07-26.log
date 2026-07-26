@@ -1,0 +1,65 @@
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+PMLE_WAN_MATRIX|BEGIN|duration=20|warmup=30|profiles_sha256=ced6d7f507b1240bc14d22435f950ba1a5df040cf88a73719b3d935ebbc9190a
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+trimspool not found
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+trimspool not found
+PMLE_WAN_TRANSPORT|long_poll=ON|hold_ms=500|ords_pool_sessions=6|pool_reserve=2|max_held_polls=4|resmgr_running_sessions=2|worker_reserve=1|max_concurrent_poll_returns=1|background_refocus=ON
+PMLE_WAN_PROXY|READY|port=18050|upstream_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_WAN_PROFILE|BEGIN|name=rtt-50-jitter-10|rtt_ms=50|jitter_ms=10|seed=351272
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_clients_presenting
+PMLE_WAN_BACKGROUND|PASS|profile_rtt_ms=50|hidden_ms=29435.4|checkpoint_tic=1536|leases_after_2s=0|presentations_after_focus=40
+PMLE_SOAK_BROWSER_DIAG|slot=0|presented=717|advanced=717|confirmed=709|batches=22|batch_transitions=695|resyncs=0|last_resync_at=0
+PMLE_WAN_LATENCY_DIAG|slot=0|{"samples":33,"totalP50Ms":5458.89999961853,"totalP90Ms":7384.599999427795,"totalP95Ms":7903.300000190735,"totalMaxMs":8160,"queueAndPostP95Ms":169.39999961853027,"postRoundTripP95Ms":168.5999994277954,"acceptedToConfirmedP95Ms":7567.60000038147,"confirmedToPresentedP95Ms":247.10000038146973,"batchWallP95Ms":7774.900000572205,"batchHoldP95Ms":7575,"batchCountP95":32,"presentationLagP50Tics":14,"presentationLagP95Tics":14,"presentationLagMaxTics":14,"worst":[{"queueAndPostMs":93,"roundTripMs":92.5,"acceptedToConfirmedMs":7841.89999961853,"confirmedToPresentedMs":225.10000038146973,"totalMs":8160,"inputSequence":10,"effectiveTic":3055},{"queueAndPostMs":104,"roundTripMs":95.69999980926514,"acceptedToConfirmedMs":7567.60000038147,"confirmedToPresentedMs":231.69999980926514,"totalMs":7903.300000190735,"inputSequence":11,"effectiveTic":3070},{"queueAndPostMs":88.39999961853027,"roundTripMs":88.29999923706055,"acceptedToConfirmedMs":7286.700000762939,"confirmedToPresentedMs":223.89999961853027,"totalMs":7599,"inputSequence":12,"effectiveTic":3083},{"queueAndPostMs":102.19999980926514,"roundTripMs":94.19999980926514,"acceptedToConfirmedMs":7056.5,"confirmedToPresentedMs":225.89999961853027,"totalMs":7384.599999427795,"inputSequence":13,"effectiveTic":3101},{"queueAndPostMs":91.89999961853027,"roundTripMs":89.40000057220459,"acceptedToConfirmedMs":6773.60000038147,"confirmedToPresentedMs":225.89999961853027,"totalMs":7091.39999961853,"inputSequence":14,"effectiveTic":3114}]}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: WAN player 0 input/presentation p95 7903.3 > 460.0
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:1160:14 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

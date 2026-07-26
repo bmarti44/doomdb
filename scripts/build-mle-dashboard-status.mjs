@@ -13,6 +13,26 @@ const deCpsAuthority = {
 };
 const adbVenueEvidencePath =
   'artifacts/performance/pmle-adb-venue/adb-tier-probe-2026-07-25.log';
+const ociReleaseVenueEvidencePath =
+  'artifacts/performance/pmle-decps-rank/' +
+  'oci-adb-release-venue-verdict-2026-07-26.md';
+const ociHostedBrowserEvidencePath =
+  'artifacts/performance/pmle-cloud/' +
+  'oci-hosted-browser-verdict-2026-07-26.log';
+const ociHostedBrowserFullEvidencePath =
+  'artifacts/performance/pmle-cloud/' +
+  't11.2-oci-hosted-depth6-setpoint-evidence-2026-07-26.json';
+const ociHostedBrowserScoringIncidentPath =
+  'artifacts/performance/pmle-cloud/' +
+  't11.2-moving-input-scoring-incident-2026-07-26.md';
+const ociWaitFreeWanEvidencePath =
+  'artifacts/performance/pmle-wan/' +
+  'oci-wait-free-setpoint-depth6-qualification-v2-pass-2026-07-26.md';
+const ociJavaRemovalEvidencePath =
+  'artifacts/performance/pmle-cloud/' +
+  'oci-exact-release-java-removal-2026-07-26.log';
+const ociDeCpsPresentationEvidencePath =
+  'artifacts/performance/pmle-presentation-decps/REPORT.md';
 const deCpsPromoted = authority.outputSha256 === deCpsAuthority.sha256;
 const deCpsPromotionPath =
   'artifacts/performance/pmle-decps-rank/' +
@@ -172,7 +192,7 @@ const currentAdmissionPath =
   'warm-pool-admission-decps-5ec18cbe-bank-yield100ms-2026-07-25.log';
 const asyncAdmissionRacePath =
   'artifacts/performance/pmle-worker-lifecycle/' +
-  'async-admission-races-decps-5ec18cbe-2026-07-25-v5.log';
+  'async-admission-races-decps-5ec18cbe-oci-ticker-pass-cleanup-v2-2026-07-25.log';
 const currentWarmLifecyclePath =
   'artifacts/performance/pmle-worker-lifecycle/' +
   'run-decps-5ec18cbe-2026-07-25-v2.log';
@@ -221,6 +241,11 @@ const browserProfile = read(browserProfilePath);
 const livePerformance = read(livePerformancePath);
 const componentAb = read(componentAbPath);
 const hiddenJit = read(hiddenJitPath);
+const ociReleaseVenue = read(ociReleaseVenueEvidencePath);
+const ociHostedBrowser = read(ociHostedBrowserEvidencePath);
+const ociWaitFreeWan = read(ociWaitFreeWanEvidencePath);
+const ociJavaRemoval = read(ociJavaRemovalEvidencePath);
+const ociHostedBrowserFull = JSON.parse(read(ociHostedBrowserFullEvidencePath));
 const warmRestore = read(warmRestorePath);
 const highAwakeRecovery = read(highAwakeRecoveryPath);
 const warmSlotRecycle = read(warmSlotRecyclePath);
@@ -322,6 +347,52 @@ contains(asyncAdmissionRace,
   'PMLE_ASYNC_ADMISSION_RACES|PASS|scenario_set=ALL|scenarios=4|' +
   'db_output_helper=self_tested',
   'current async-admission race battery');
+contains(asyncAdmissionRace,
+  'PMLE_ASYNC_ADMISSION_CLEANUP|PASS|ready_slots=2|busy_slots=0|' +
+  'third_session_avoided=1',
+  'current async-admission cleanup');
+contains(asyncAdmissionRace,
+  'PMLE_ALERT_WINDOW|PASS|label=DECPS_ASYNC_ADMISSION_RACES|' +
+  'new_ora_incidents=0',
+  'current async-admission alert window');
+contains(ociReleaseVenue,
+  'PMLE_OCI_RELEASE_VENUE|PASS|' +
+  `authority_sha256=${deCpsAuthority.sha256}|route_tps_min=302.419|` +
+  'slowest_peak_tps=140.845|digest_binding=FULL_CHAIN_PASS|' +
+  'client_unique_fps=PENDING',
+  'OCI release venue');
+contains(ociReleaseVenue,
+  'PMLE_OCI_PRESENTATION_PERSIST|DIAGNOSTIC_NOT_GATE|samples=300|' +
+  'unique=300|locator_p95_ms=212.095|direct_p95_ms=214.009|' +
+  'exact_30fps=FAIL',
+  'OCI exact-frame persistence diagnostic');
+contains(ociHostedBrowser,
+  'T112_HOSTED_BROWSER_VERDICT|PASS|objects=24|frames=300|unique=300|' +
+  'sequential=YES|fps=34.08028814518894|p50_ms=31|' +
+  'p95_ms=32.80000019073486|p99_ms=33.5|max_ms=70.30000019073486|' +
+  'frame_chain_sha256=cc2fed9d14adbbac3add9d8056030bfb573a99f05d9b3e55970774a06348de78|' +
+  'evidence_sha256=12dd37b5aa32f83276010f8cb39d51d24341dee9ea356ffc87fc14d705b6d0e5',
+  'OCI hosted browser release gate');
+contains(ociWaitFreeWan,
+  'Classification: `QUALIFICATION_PASS`',
+  'OCI wait-free WAN classification');
+contains(ociWaitFreeWan,
+  'PMLE_WAN_MATRIX|PASS|profiles=3|duration=600|warmup=90|' +
+  'classification=QUALIFICATION|transport_legs=2|' +
+  'approval_sha256=c0257840d5ec12ea730e8da11d08589c85eef03d989fde6b0533b6da53b2463c',
+  'OCI wait-free WAN terminal marker');
+contains(ociJavaRemoval,
+  'PMLE_OCI_JAVA_REMOVAL|PASS|java_objects=0|java_specs=0|' +
+  'java_dependencies=0|legacy_objects=0|legacy_api=0|mle_modules=1|' +
+  'mle_environments=1|mle_call_specs=25',
+  'OCI production Java-removal audit');
+assert.equal(ociHostedBrowserFull.result, 'PASS',
+  'latest OCI hosted-browser evidence is not a PASS');
+assert.equal(ociHostedBrowserFull.browser.performance.frames, 300);
+assert.equal(ociHostedBrowserFull.browser.performance.uniqueFrames, 300);
+assert.equal(ociHostedBrowserFull.browser.performance.sequentialTics, true);
+assert.ok(ociHostedBrowserFull.browser.performance.fps >= 30,
+  'latest OCI hosted-browser evidence missed 30 FPS');
 contains(currentWarmLifecycle,
   'PMLE_WARM_LIFECYCLE|PASS|scenarios=5|pool_restored=1',
   'current warm-slot lifecycle battery');
@@ -397,7 +468,7 @@ contains(warmSlotRecycle,
 
 const status = {
   schema: 1,
-  updated: '2026-07-24',
+  updated: '2026-07-26',
   database: {
     product: 'Oracle AI Database 26ai Free',
     imageVersion: '23.26.2',
@@ -569,14 +640,22 @@ const status = {
     note: 'cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline'
   },
   performance: {
-    state: 'BELOW_30_FPS_ACCELERATION_IN_PROGRESS',
+    state: 'OCI_RELEASE_GATES_AND_WAN_QUALIFICATION_PASS',
     evidenceArtifactSha256: deCpsAuthority.sha256,
     workload: 'two-player deathmatch authoritative exact command stream',
     tics: 5250,
-    throughputTicsPerSecond: 19.788,
-    p50MillisecondsPerTic: 36.640,
-    p95MillisecondsPerTic: 142.665,
-    peakCombatMillisecondsPerTic: '106-141',
+    throughputTicsPerSecond: 302.419,
+    slowestPeakTicsPerSecond: 140.845,
+    routePassTicsPerSecond: [317.029, 302.419],
+    digestBinding: 'FULL_PER_TIC_CHAIN_PASS',
+    cumulativeDigestSha256:
+      '36b454b6eeda79e4f6869ba2b29eab4a885fd1970b972b7daad6ce5b692012ee',
+    browserUniqueMovingFps:
+      ociHostedBrowserFull.browser.performance.fps,
+    browserUniqueMovingP95Milliseconds:
+      ociHostedBrowserFull.browser.performance.p95IntervalMs,
+    localDevelopmentThroughputTicsPerSecond: 19.788,
+    localDevelopmentPeakCombatMillisecondsPerTic: '106-141',
     historicalPreDeCps: {
       artifactSha256: lastSoakedAuthority.sha256,
       throughputTicsPerSecond: 3.961,
@@ -597,9 +676,29 @@ const status = {
       arithmeticNanosecondsPerIteration: '171-189',
       gatherNanosecondsPerByte: 91,
       jitVerdict: 'CLOSED_ABOVE_100_NS',
-      liveExactDatabaseRendering: 'CLOSED',
-      note: 'venue uplift is capacity evidence, not a 35 Hz claim',
-      evidence: adbVenueEvidencePath
+      authorityTicker35Hz: 'PASS',
+      authorityRouteMinimumTicsPerSecond: 302.419,
+      authoritySlowestPeakTicsPerSecond: 140.845,
+      liveExactDatabaseRendering:
+        'CLOSED_FINAL_DECPS_COMPILED_VENUE',
+      exactFramePersistenceP95Milliseconds: 212.095,
+      deCpsPresentationDiagnostic: {
+        classification: 'DIAGNOSTIC_NOT_GATE',
+        artifactSha256:
+          '118c37717b362d9e7669b5a3a1e73c87b3916479b6e53651f08e85be9ae8f2d3',
+        samples: 100,
+        uniqueFrames: 100,
+        exactNodeFrameChain: 'PASS',
+        pipelineP95Milliseconds: 191.276,
+        exact30Fps: 'FAIL',
+        temporaryLobsDelta: 2,
+        locatorHygiene: 'FAIL',
+        frame300: 'NOT_RUN_100_FRAME_MISS',
+        evidence:
+          'artifacts/performance/pmle-presentation-decps/REPORT.md'
+      },
+      note: 'authority, database-hosted browser, complete WAN qualification, and production Java-removal audit pass',
+      evidence: ociReleaseVenueEvidencePath
     },
     deCpsCandidate: {
       promotionState: deCpsPromoted
@@ -671,7 +770,33 @@ const status = {
       'artifacts/performance/pmle-wasm2js/REPORT.md',
     requiredTicsPerSecond: 35,
     targetFps: 30,
-    note: 'No current evidence supports an unqualified 30 FPS claim on 26ai Free'
+    wanQualification: {
+      state: 'PASS',
+      transport: 'WAIT_FREE_IMMEDIATE_BATCHING',
+      transportLegs: 2,
+      selectedPlayoutDepthTics: 6,
+      profiles: ['50+/-10 ms', '100+/-20 ms', '200+/-40 ms'],
+      scoredSecondsPerProfile: 600,
+      warmupSecondsPerProfile: 90,
+      cadenceP99Milliseconds: '34.5-36.2',
+      occupancyMedianTics: '4-5',
+      maximumNeutralSubstitutionPercent: 0.0710,
+      mirrorPoisons: 0,
+      presentationResyncs: 0,
+      evidence: ociWaitFreeWanEvidencePath
+    },
+    productionJavaRemovalAudit: {
+      state: 'PASS',
+      javaObjects: 0,
+      javaSpecs: 0,
+      javaDependencies: 0,
+      legacyApiObjects: 0,
+      mleModules: 1,
+      mleEnvironments: 1,
+      mleCallSpecs: 25,
+      evidence: ociJavaRemovalEvidencePath
+    },
+    note: 'OCI authority, confirmed browser presentation, WAN qualification, and Java-removal audit pass'
   },
   remaining: [
     {id: 'LIFECYCLE', state: deCpsLifecycleQualified ? 'DONE' : 'NEXT',
@@ -680,21 +805,22 @@ const status = {
           ? 'Admission and full lifecycle battery passed on de-CPS authority'
           : 'Recovery and final soak remain; async and warm-slot race batteries pass')
         : 'Admission and full lifecycle battery on e485 fixed-128'},
-    {id: 'SHAPE', state: deCpsPromoted ? 'PROMOTED' : 'ACTIVE',
+    {id: 'SHAPE', state: deCpsPromoted ? 'DONE' : 'ACTIVE',
       label: deCpsPromoted
-        ? 'De-CPS authority promoted; peak-combat acceleration active'
+        ? 'De-CPS authority promoted; OCI route and peak 35 Hz gates passed'
         : 'De-CPS candidate promotion battery and peak-combat acceleration'},
     {id: 'SOAK', state: deCpsLifecycleQualified ? 'DONE' : 'PENDING',
       label: deCpsLifecycleQualified
         ? '30-minute de-CPS promoted-artifact soak passed'
         : '30-minute promoted-artifact soak pending'},
-    {id: 'WAN', state: 'PAUSED', label: 'Injected-latency multiplayer matrix'},
-    {id: 'JAVA-AUDIT', state: 'PENDING',
-      label: 'Production-path Java removal audit'},
+    {id: 'WAN', state: 'DONE',
+      label: 'Wait-free immediate batching passed all three 10-minute OCI WAN profiles'},
+    {id: 'JAVA-AUDIT', state: 'DONE',
+      label: 'Production Java-removal source and exact-release OCI catalog audits pass'},
     {id: 'DVR', state: 'OPEN',
       label: 'HUD, automap, intermission, finale and audit/DVR presentation'},
     {id: 'ADB', state: 'DONE',
-      label: 'OCI Always Free probe: interpreter tier; live exact DB rendering closed'}
+      label: 'OCI authority 35 Hz, full digest chain, hosted statics, and browser 30 FPS passed'}
   ],
   evidence: {
     soak: soakPath, ledger: ledgerPath, canonical: canonicalPath,
@@ -719,6 +845,14 @@ const status = {
     deCpsNodeProfile: nodeProfilePath,
     mobjLowWordDecision: mobjLowWordDecisionPath,
     asyncJitDecision: asyncJitDecisionPath,
+    ociReleaseVenue: ociReleaseVenueEvidencePath,
+    ociHostedBrowser: ociHostedBrowserEvidencePath,
+    ociHostedBrowserFullEvidence: ociHostedBrowserFullEvidencePath,
+    ociHostedBrowserScoringIncident:
+      ociHostedBrowserScoringIncidentPath,
+    ociWaitFreeWanQualification: ociWaitFreeWanEvidencePath,
+    ociJavaRemovalAudit: ociJavaRemovalEvidencePath,
+    ociDeCpsPresentationDiagnostic: ociDeCpsPresentationEvidencePath,
     deCpsDatabaseDeploymentState:
       deCpsState === null ? deCpsSourceEvidencePath : deCpsStatePath
   }

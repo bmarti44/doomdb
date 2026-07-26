@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {ConfirmedWanPolicy,confirmedPlayoutIntervalMs}
+import {ConfirmedWanPolicy,confirmedPlayoutDecision,confirmedPlayoutIntervalMs}
   from '../client/staging/authority-wan.js';
 
 const policy = new ConfirmedWanPolicy();
@@ -26,8 +26,14 @@ assert.throws(()=>gapPolicy.observeRoundTrip(50,20_002,1),/invalid/);
 policy.observeConfirmedDelivery(0);
 policy.observeConfirmedDelivery(28.6);
 policy.observeConfirmedDelivery(97.2);
-assert.ok(policy.playoutBufferTics >= 2 && policy.playoutBufferTics <= 6);
+assert.equal(policy.playoutBufferTics,3);
+assert.equal(policy.preClampPlayoutBufferTics,3);
 assert.equal(policy.presentationTargetTic(50), 50 - policy.playoutBufferTics);
+const clampPolicy=new ConfirmedWanPolicy();
+clampPolicy.observeConfirmedDelivery(0);
+clampPolicy.observeConfirmedDelivery(1000);
+assert.ok(clampPolicy.preClampPlayoutBufferTics>6);
+assert.equal(clampPolicy.playoutBufferTics,6);
 
 for (let tic = 0; tic < 1000; tic += 1) {
   policy.recordScheduledTic(tic < 4);
@@ -41,6 +47,26 @@ assert.equal(confirmedPlayoutIntervalMs(2),1000/35);
 assert.equal(confirmedPlayoutIntervalMs(6),1000/35);
 assert.equal(confirmedPlayoutIntervalMs(7),1000/70);
 assert.equal(confirmedPlayoutIntervalMs(16),1000/70);
+let mode='FREE';
+for(const [occupancy,expectedMode,expectedInterval] of [
+  [9,'ACCELERATE',1000/70],
+  [8,'ACCELERATE',1000/70],
+  [7,'ACCELERATE',1000/70],
+  [6,'FREE',1000/35],
+  [4,'FREE',1000/35],
+  [3,'DECELERATE',31.4],
+  [5,'DECELERATE',31.4],
+  [6,'FREE',1000/35]
+]) {
+  const decision=confirmedPlayoutDecision(occupancy,6,mode);
+  assert.equal(decision.mode,expectedMode,
+    `setpoint mode changed at occupancy ${occupancy}`);
+  assert.equal(decision.intervalMs,expectedInterval);
+  mode=decision.mode;
+}
+assert.throws(()=>confirmedPlayoutDecision(-1,6,'FREE'),/invalid/);
+assert.throws(()=>confirmedPlayoutDecision(1,7,'FREE'),/invalid/);
+assert.throws(()=>confirmedPlayoutDecision(1,6,'INVALID'),/invalid/);
 assert.throws(()=>confirmedPlayoutIntervalMs(-1),/invalid/);
 assert.throws(()=>confirmedPlayoutIntervalMs(1.5),/invalid/);
 console.log('PASS confirmed WAN lead/playout/hysteresis/substitution policy');
