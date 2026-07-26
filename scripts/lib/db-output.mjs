@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 export const sqlclWideOutput = [
   'set heading off feedback off pagesize 0 linesize 32767',
-  'set trimspool on tab off',
+  'set trimout on trimspool on tab off',
 ].join('\n');
 
 export function normalizeDbOutput(input) {
@@ -48,5 +48,7 @@ export function selfTestDbOutput() {
   assert.deepEqual(normalizeDbOutput('ORA-00060: deadlock\n'), [
     'ORA-00060: deadlock',
   ]);
+  assert.deepEqual(normalizeDbOutput(
+    'T111_PUBLIC_EXECUTE|DOOM_API                                     \n'),
+  ['T111_PUBLIC_EXECUTE|DOOM_API']);
 }
-

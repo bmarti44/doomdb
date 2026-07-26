@@ -4,9 +4,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const [rootArg, buildArg, ordsArg, manifestArg, allowlistArg] = process.argv.slice(2);
-assert.ok(rootArg && buildArg && ordsArg && manifestArg && allowlistArg,
-  'usage: t11.2-build-client.mjs ROOT BUILD_DIR ORDS_BASE MANIFEST ALLOWLIST');
+const [rootArg, buildArg, ordsArg, manifestArg, allowlistArg, loaderManifestArg] =
+  process.argv.slice(2);
+assert.ok(rootArg && buildArg && ordsArg && manifestArg && allowlistArg
+    && loaderManifestArg,
+  'usage: t11.2-build-client.mjs ROOT BUILD_DIR ORDS_BASE MANIFEST ALLOWLIST LOADER_TSV');
 const root = path.resolve(rootArg), build = path.resolve(buildArg);
 const policy = JSON.parse(fs.readFileSync(path.join(root, 'deploy/cloud/t11.2/source-policy.json')));
 const ords = new URL(ordsArg.endsWith('/') ? ordsArg : `${ordsArg}/`);
@@ -21,37 +23,30 @@ assert.ok(fs.statSync(indexPath).isFile(), 'compiled index.html absent');
 let api = fs.readFileSync(apiPath, 'utf8');
 const marker = "const ROOT = '/ords/doom/doom_api/';";
 assert.equal(api.split(marker).length - 1, 1, 'same-origin API marker must occur exactly once');
-const apiBase = new URL('doom_api/', ords).href;
-api = api.replace(marker, `const ROOT = ${JSON.stringify(apiBase)};`);
 fs.writeFileSync(apiPath, api, {mode: 0o644});
 
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 const mainPath = path.join(build, 'main.js');
 let main = fs.readFileSync(mainPath, 'utf8');
-const coopMarker = "coop.href = '/play/multiplayer.html#mode=COOP';";
-const multiplayerMarker = "multiplayer.href = '/play/multiplayer.html#mode=DEATHMATCH';";
-assert.equal(main.split(coopMarker).length - 1, 1, 'single-player co-op link marker');
-assert.equal(main.split(multiplayerMarker).length - 1, 1,
-  'single-player multiplayer link marker');
-main = main
-  .replace(coopMarker, "coop.href = '/multiplayer.html#mode=COOP';")
-  .replace(multiplayerMarker, "multiplayer.href = '/multiplayer.html#mode=DEATHMATCH';");
+assert.equal(main.split("coop.href = './multiplayer.html#mode=COOP';").length - 1, 1,
+  'single-player co-op link must be app-relative');
+assert.equal(main.split("multiplayer.href = './multiplayer.html#mode=DEATHMATCH';").length - 1, 1,
+  'single-player multiplayer link must be app-relative');
 fs.writeFileSync(mainPath, main, {mode: 0o644});
 const multiplayerPath = path.join(build, 'multiplayer.js');
 let multiplayer = fs.readFileSync(multiplayerPath, 'utf8');
-assert.equal(multiplayer.split("'/play/multiplayer.html'").length - 1, 1, 'multiplayer share marker');
-multiplayer = multiplayer.replace("'/play/multiplayer.html'", "'/multiplayer.html'");
+assert.equal(multiplayer.split("new URL('./multiplayer.html', location.href)").length - 1, 1,
+  'multiplayer share URL must be app-relative');
 fs.writeFileSync(multiplayerPath, multiplayer, {mode: 0o644});
 const multiplayerIndexPath = path.join(build, 'multiplayer.html');
 let multiplayerIndex = fs.readFileSync(multiplayerIndexPath, 'utf8');
-assert.equal((multiplayerIndex.match(/\/play\/multiplayer\.js/g) ?? []).length, 1, 'multiplayer entry marker');
-multiplayerIndex = multiplayerIndex.replace('/play/multiplayer.js', '/multiplayer.js');
+assert.equal((multiplayerIndex.match(/\.\/multiplayer\.js/g) ?? []).length, 1,
+  'multiplayer entry must be app-relative');
 fs.writeFileSync(multiplayerIndexPath, multiplayerIndex, {mode: 0o644});
 const soloIndexPath = path.join(build, 'solo.html');
 let soloIndex = fs.readFileSync(soloIndexPath, 'utf8');
-assert.equal((soloIndex.match(/\/play\/multiplayer\.js/g) ?? []).length, 1,
-  'solo MLE entry marker');
-soloIndex = soloIndex.replace('/play/multiplayer.js', '/multiplayer.js');
+assert.equal((soloIndex.match(/\.\/multiplayer\.js/g) ?? []).length, 1,
+  'solo MLE entry must be app-relative');
 fs.writeFileSync(soloIndexPath, soloIndex, {mode: 0o644});
 
 const mainBytes = fs.readFileSync(mainPath);
@@ -63,16 +58,16 @@ const multiplayerDigest = sha(multiplayerBytes);
 const addressedMultiplayer = `multiplayer-${multiplayerDigest.slice(0, 12)}.js`;
 fs.renameSync(multiplayerPath, path.join(build, addressedMultiplayer));
 let index = fs.readFileSync(indexPath, 'utf8');
-assert.equal((index.match(/\/play\/main\.js/g) ?? []).length, 1,
+assert.equal((index.match(/\.\/main\.js/g) ?? []).length, 1,
   'menu index must contain one main entry');
-index = index.replace('/play/main.js', `/${addressedMain}`);
+index = index.replace('./main.js', `./${addressedMain}`);
 fs.writeFileSync(indexPath, index, {mode: 0o644});
 for (const entryPath of [multiplayerIndexPath,soloIndexPath]) {
   const entry = fs.readFileSync(entryPath, 'utf8');
-  assert.equal((entry.match(/\/multiplayer\.js/g) ?? []).length, 1,
+  assert.equal((entry.match(/\.\/multiplayer\.js/g) ?? []).length, 1,
     'MLE index must contain one client entry');
   fs.writeFileSync(entryPath,
-    entry.replace('/multiplayer.js', `/${addressedMultiplayer}`), {mode: 0o644});
+    entry.replace('./multiplayer.js', `./${addressedMultiplayer}`), {mode: 0o644});
 }
 
 const files = fs.readdirSync(build, {recursive: true})
@@ -96,13 +91,25 @@ const objects = files.map(key => {
   return {key, sha256: digest, bytes: bytes.length, contentType: policy.contentTypes[ext], cacheControl, nameDigestMatches};
 });
 const textExtensions = new Set(['.html', '.js', '.css', '.svg', '.webmanifest']);
-const compiled = files.filter(name => textExtensions.has(path.extname(name).toLowerCase()))
+const compiled = files.filter(name => textExtensions.has(path.extname(name).toLowerCase())
+    && !/^doom-mle-(?:authority|presentation)-[0-9a-f]{12}\.js$/.test(name))
   .map(name => fs.readFileSync(path.join(build, name), 'utf8')).join('\n');
-assert.ok(compiled.includes(apiBase), 'managed ORDS base was not embedded');
-assert.ok(!compiled.includes(marker), 'same-origin API fallback survived');
+assert.ok(compiled.includes(marker), 'same-origin API root did not survive compilation');
+assert.ok(!/(?:["'`(=])\/play\//.test(compiled),
+  'compiled client contains an origin-root /play/ dependency');
 assert.ok(!/(?:serviceWorker|navigator\.serviceWorker|localhost|127\.0\.0\.1|__ORDS_|runtime-config|reverse.?proxy|proxy_pass|\/api\/proxy)/i.test(compiled),
   'compiled output contains a forbidden fallback or runtime configuration marker');
-assert.ok(!/https?:\/\//i.test(compiled.split(apiBase).join('')), 'compiled output contains a remote static or alternate API origin');
+assert.ok(!/https?:\/\//i.test(compiled),
+  'compiled output contains a remote static or alternate API origin');
 const manifest = {schema: 1, task: 'T11.2', ordsOriginSha256: sha(ords.origin), compiledAuditSha256: sha(compiled), objects};
 fs.writeFileSync(manifestArg, `${JSON.stringify(manifest)}\n`, {mode: 0o600});
 fs.writeFileSync(allowlistArg, `${objects.map(x => x.key).join('\n')}\n`, {mode: 0o600});
+const clean = value => {
+  assert.ok(!/[\t\r\n]/.test(value), 'loader manifest field contains a delimiter');
+  return value;
+};
+fs.writeFileSync(loaderManifestArg,
+  'asset_path\tsha256\tbytes\tcontent_type\tcache_control\n'
+    + objects.map(item => [item.key,item.sha256,String(item.bytes),
+      item.contentType,item.cacheControl].map(clean).join('\t')).join('\n')
+    + '\n', {mode: 0o600});

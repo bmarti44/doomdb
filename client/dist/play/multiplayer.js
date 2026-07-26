@@ -9,7 +9,11 @@ import { ConfirmedAuthorityMirror } from './authority-mirror.js';
 import { authorityRootChainSha } from './authority.js';
 import { ConfirmedWanPolicy, confirmedPlayoutIntervalMs } from './authority-wan.js';
 import { createBrowserAuthorityEngines, restoreBrowserAuthorityCheckpoint } from './teavm-browser.js';
-const MAX_CONFIRMED_PRESENTATION_BACKLOG = 16;
+// Ordinary internet stalls are drained from the already-confirmed queue at
+// the bounded 2x playout rate. Do not skip presentation snapshots for a
+// sub-second WAN pause: the release contract requires sequential unique
+// moving frames. Hidden tabs use the explicit checkpoint-resync path instead.
+const MAX_CONFIRMED_PRESENTATION_BACKLOG = 64;
 const HIDDEN_CHECKPOINT_THRESHOLD_MS = 5_000;
 const HIDDEN_POLL_LEASE_RELEASE_MS = 1_500;
 const soloMode = document.body.hasAttribute('data-doom-solo');
@@ -86,7 +90,7 @@ main.innerHTML = `
     <button type="button" data-switch-mode="COOP">Start co-op</button>
     <button type="button" data-switch-mode="DEATHMATCH">Start deathmatch</button>
   </aside>` : ''}
-  <p>${soloMode ? '' : '<a href="/play/">Single-player</a> · '}<a href="/">Status dashboard</a></p>`;
+  <p>${soloMode ? '' : '<a href="./">Single-player</a> · '}<a href="../">Status dashboard</a></p>`;
 document.body.replaceChildren(main);
 if (!soloMode && (requestedMode === 'COOP' || requestedMode === 'DEATHMATCH')) {
     const mode = main.querySelector('select[name="mode"]');
@@ -206,7 +210,7 @@ const showSoloError = (cause) => {
     setBusy(false);
 };
 const transientAuthorityFailure = (cause) => cause instanceof Error &&
-    /request failed: (?:429|502|503|504)\b/.test(cause.message);
+    /request failed: (?:429|502|503|504|555)\b/.test(cause.message);
 let local = null;
 let latestStatus = null;
 let ready = false;
@@ -232,7 +236,7 @@ for (const button of main.querySelectorAll('[data-switch-mode]')) {
             for (const store of [localStorage, sessionStorage]) {
                 store.removeItem(storageKey(prior.match));
             }
-            location.assign(`/play/multiplayer.html?mode=${mode}`);
+            location.assign(`./multiplayer.html?mode=${mode}`);
         }).catch(cause => {
             for (const candidate of main.querySelectorAll('[data-switch-mode]'))
                 candidate.disabled = false;
@@ -305,7 +309,7 @@ function scheduleLobbyRefresh() {
     }, lobbyDelay);
 }
 const joinUrl = (value) => {
-    const url = new URL('/play/multiplayer.html', location.origin);
+    const url = new URL('./multiplayer.html', location.href);
     url.search = location.search;
     url.hash = `join=${value.match}.${value.joinCapability ?? ''}`;
     return url.toString();
@@ -423,6 +427,12 @@ async function startMleGame(value, status) {
     const rootChainSha = await authorityRootChainSha(value.match, status.membershipEpoch);
     let mirror = new ConfirmedAuthorityMirror(engines.verifier, engines.presenter, value.playerSlot, { tic: 0, generation: 1, membershipEpoch: status.membershipEpoch,
         chainSha: rootChainSha });
+    // Network acquisition and TeaVM frame production have separate cursors.
+    // Keeping the next HTTP request behind eight verifier+renderer steps turns
+    // browser compute time into transport dead time and cannot sustain 35 Hz on
+    // a WAN. Batches are still decoded and applied in strict chain order.
+    let transportFrontier = mirror.frontier;
+    let applyChain = Promise.resolve();
     const wan = new ConfirmedWanPolicy();
     const presentations = new Map();
     let latest = { seq: 0, turn: 0, forward: 0, strafe: 0, run: 0,
@@ -431,6 +441,7 @@ async function startMleGame(value, status) {
     const inputQueue = [];
     let inputPosting = false;
     let polling = false;
+    let requestPresentationPump = () => { };
     let pollEpoch = 0;
     let pollController = null;
     let presentationSuspended = document.hidden;
@@ -491,16 +502,34 @@ async function startMleGame(value, status) {
             + `\n${fps.toFixed(1)} FPS · lead ${wan.inputLeadTics}`
             + ` · playout ${wan.playoutBufferTics} · confirmed-only`;
     };
-    bindInput(canvas, buttons, command => {
+    const queueInput = (command) => {
         latest = command;
-        inputSequence += 1;
         const leadTics = wan.inputLeadTics;
         const targetTic = wan.inputTargetTic(mirror.frontier.tic);
-        inputQueue.push({ sequence: inputSequence, command: { ...latest },
-            hex: ticcmd(latest), targetTic, leadTics });
-        trace('input', { inputSequence, command: latest,
+        const pendingIndex = inputPosting ? 1 : 0;
+        let sequence;
+        if (inputQueue.length > pendingIndex) {
+            // Preserve the next required idempotent sequence while replacing UI
+            // samples that have not begun an HTTP post. One slow ORDS request must
+            // not turn obsolete key states into a multi-second submission tail.
+            sequence = inputQueue[pendingIndex].sequence;
+            inputQueue.splice(pendingIndex, 1, { sequence, command: { ...latest },
+                hex: ticcmd(latest), targetTic, leadTics });
+        }
+        else {
+            inputSequence += 1;
+            sequence = inputSequence;
+            inputQueue.push({ sequence, command: { ...latest },
+                hex: ticcmd(latest), targetTic, leadTics });
+        }
+        trace('input', { inputSequence: sequence, command: latest,
             targetTic, leadTics });
-    }, () => { }, () => { void audio.enable(); });
+    };
+    bindInput(canvas, buttons, queueInput, () => { }, () => { void audio.enable(); });
+    // An idle player still authors the neutral command being sampled. Without
+    // this initial event the authority correctly classifies early tics as
+    // NEUTRAL_INITIAL until the first physical key change.
+    queueInput(latest);
     canvas.addEventListener('click', () => {
         if (document.pointerLockElement !== canvas)
             void canvas.requestPointerLock();
@@ -546,7 +575,7 @@ async function startMleGame(value, status) {
         const requestEpoch = pollEpoch;
         const controller = new AbortController();
         pollController = controller;
-        const frontier = mirror.frontier;
+        const frontier = transportFrontier;
         const pollStarted = performance.now();
         void pollMatchTransitions(value.match, value.playerCapability, frontier.tic, transitionHoldMs, 32, controller.signal).then(async (result) => {
             if (requestEpoch !== pollEpoch)
@@ -565,19 +594,71 @@ async function startMleGame(value, status) {
                 committedFrontierTic: batch.committedFrontierTic,
                 leadTics: wan.inputLeadTics });
             serverTic = Math.max(serverTic, result.currentTic, batch.committedFrontierTic);
-            for (const transition of batch.transitions) {
-                const presentation = await mirror.apply(transition);
-                presentations.set(transition.tic, {
-                    presentation, audio: transition.audio
-                });
-                wan.observeConfirmedDelivery(performance.now());
-                trace('confirmed', { tic: transition.tic, chainSha: transition.chainSha,
-                    generation: transition.generation,
-                    membershipEpoch: transition.membershipEpoch });
+            const last = batch.transitions.at(-1);
+            if (last !== undefined) {
+                transportFrontier = { tic: last.tic, generation: last.generation,
+                    membershipEpoch: last.membershipEpoch, chainSha: last.chainSha };
             }
+            // The database lease is already gone and the decoded chain provides the
+            // next safe cursor. Start the next one-outstanding poll before running
+            // the CPU-heavy browser verifier/presenter for this batch.
+            if (pollController === controller) {
+                polling = false;
+                pollController = null;
+                if (!stopped && !presentationSuspended && !checkpointResyncing) {
+                    window.setTimeout(poll, 0);
+                }
+            }
+            applyChain = applyChain.then(async () => {
+                if (requestEpoch !== pollEpoch)
+                    return;
+                const applyBatchStarted = performance.now();
+                let maximumApplyMs = 0;
+                for (const transition of batch.transitions) {
+                    if (requestEpoch !== pollEpoch)
+                        return;
+                    const applyStarted = performance.now();
+                    const presentation = await mirror.apply(transition);
+                    maximumApplyMs = Math.max(maximumApplyMs, performance.now() - applyStarted);
+                    presentations.set(transition.tic, {
+                        presentation, audio: transition.audio
+                    });
+                    trace('confirmed', { tic: transition.tic, chainSha: transition.chainSha,
+                        generation: transition.generation,
+                        membershipEpoch: transition.membershipEpoch });
+                    // The interval pump is a fallback cadence clock. Under sustained
+                    // TeaVM apply work, browser task arbitration can select this chain
+                    // repeatedly and halve paint cadence. Offer the already-confirmed
+                    // frame directly after each completed transition.
+                    requestPresentationPump();
+                    // Promise continuations alone remain in the microtask queue. Pace
+                    // catch-up apply work to the existing 2x presentation ceiling so
+                    // every generated confirmed frame gets a paint opportunity instead
+                    // of racing ahead and being cleared at the visual-debt bound.
+                    const yieldMs = Math.max(0, Math.min(1000 / 70, nextPresentationAt - performance.now()));
+                    await new Promise(resolve => window.setTimeout(resolve, yieldMs));
+                }
+                if (batch.transitions.length > 0) {
+                    // A DMB1 batch is one delivery event. Treating every transition in
+                    // the same response as a zero-gap network arrival falsely inflates
+                    // jitter and then drains the resulting buffer at 2x.
+                    wan.observeConfirmedDelivery(performance.now());
+                }
+                trace('apply-batch', { count: batch.transitions.length,
+                    wallMs: performance.now() - applyBatchStarted,
+                    maximumApplyMs });
+            });
+            await applyChain;
         }).catch(cause => {
             if (requestEpoch !== pollEpoch || controller.signal.aborted)
                 return;
+            if (cause instanceof Error &&
+                cause.message.includes('DMB1_RESYNC_REQUIRED')) {
+                trace('recovery-wait', { path: 'transitions',
+                    message: 'confirmed checkpoint resync required' });
+                void checkpointResync(0);
+                return;
+            }
             if (transientAuthorityFailure(cause)) {
                 trace('recovery-wait', { path: 'transitions', message: String(cause) });
                 hud.textContent = `${soloMode ? 'SINGLE PLAYER' : status.mode}`
@@ -587,14 +668,15 @@ async function startMleGame(value, status) {
                 fail(cause);
             }
         }).finally(() => {
-            polling = false;
-            if (pollController === controller)
+            if (pollController === controller) {
+                polling = false;
                 pollController = null;
-            // Free defaults to immediate batches. WAN-qualified deployments select
-            // a bounded hold via the page URL; the database enforces both the
-            // 500 ms ceiling and one outstanding poll per player.
-            if (!stopped && !presentationSuspended && !checkpointResyncing) {
-                window.setTimeout(poll, 20);
+                // Free defaults to immediate batches. WAN-qualified deployments
+                // select a bounded hold via the page URL; the database enforces both
+                // the 500 ms ceiling and one outstanding poll per player.
+                if (!stopped && !presentationSuspended && !checkpointResyncing) {
+                    window.setTimeout(poll, 20);
+                }
             }
         });
     };
@@ -605,6 +687,9 @@ async function startMleGame(value, status) {
         pollEpoch += 1;
         pollController?.abort();
         try {
+            // Do not restore either engine while an already-decoded batch is still
+            // mutating it. Epoch checks discard every queued batch after this point.
+            await applyChain;
             const frontier = mirror.frontier;
             const checkpoint = await matchCheckpoint(value.match, value.playerCapability, 0);
             serverTic = Math.max(serverTic, checkpoint.currentTic);
@@ -628,6 +713,7 @@ async function startMleGame(value, status) {
                 membershipEpoch: checkpoint.membershipEpoch,
                 chainSha: checkpoint.chainSha
             });
+            transportFrontier = mirror.frontier;
             presentations.clear();
             presentedTic = checkpoint.checkpointTic;
             presentationStarted = false;
@@ -736,7 +822,11 @@ async function startMleGame(value, status) {
             // forever. Time-compress already-confirmed frames at at most 2x until
             // the configured playout offset is restored, then resume native 35 Hz.
             // This changes presentation timing only; no transition is skipped.
-            nextPresentationAt += confirmedPlayoutIntervalMs(target - presentedTic);
+            const playoutInterval = confirmedPlayoutIntervalMs(target - presentedTic);
+            // Never leave the deadline in the past. Doing so lets a 4 ms pump
+            // burst through a confirmed batch, empty the jitter buffer, and then
+            // expose the next ORDS round trip as a 60–80 ms visual stall.
+            nextPresentationAt = Math.max(nextPresentationAt + playoutInterval, now + playoutInterval);
             trace('present', { tic: presentedTic, chainSha: next.presentation.chainSha,
                 leadTics: wan.inputLeadTics,
                 playoutTics: wan.playoutBufferTics,
@@ -746,9 +836,16 @@ async function startMleGame(value, status) {
             updateHud();
         }
     };
+    requestPresentationPump = pump;
     updateHud();
     poll();
     window.setInterval(pump, 4);
+    window.setInterval(() => {
+        if (!stopped && !presentationSuspended && !checkpointResyncing &&
+            inputQueue.length === 0 && !inputPosting) {
+            queueInput(latest);
+        }
+    }, 1000);
 }
 /*
  * Historical DB-frame polling implementation removed from the production

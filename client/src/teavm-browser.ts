@@ -15,19 +15,19 @@ type TeaVmModule = TeaVmAuthorityVerifier & TeaVmAuthorityPresenter & {
 };
 
 const AUTHORITY = {
-  url: '/play/doom-mle-authority-5ec18cbe4cff.js',
+  url: new URL('./doom-mle-authority-5ec18cbe4cff.js', import.meta.url).href,
   sha: '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3'
 };
 const PRESENTATION = {
-  url: '/play/doom-mle-presentation-e55d5f1138fa.js',
+  url: new URL('./doom-mle-presentation-e55d5f1138fa.js', import.meta.url).href,
   sha: 'e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc'
 };
 const IWAD = {
-  url: '/play/freedoom1-7323bcc168c5.bin',
+  url: new URL('./freedoom1-7323bcc168c5.bin', import.meta.url).href,
   sha: '7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d'
 };
 const TABLES = {
-  url: '/play/canonical-runtime-v2-058cd0df9444.bin',
+  url: new URL('./canonical-runtime-v2-058cd0df9444.bin', import.meta.url).href,
   sha: '058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44'
 };
 const LOAD_CHUNK_BYTES = 1024 * 1024;

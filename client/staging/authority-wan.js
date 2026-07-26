@@ -34,7 +34,11 @@ export function confirmedPlayoutIntervalMs(backlogTics) {
     if (!Number.isInteger(backlogTics) || backlogTics < 0) {
         throw new TypeError('confirmed playout backlog is invalid');
     }
-    return backlogTics > 1 ? TIC_MS / 2 : TIC_MS;
+    // Ordinary two-to-six-tic WAN batches are the playout buffer, not debt.
+    // Draining those at 2x creates an empty-buffer stall on every network
+    // round trip. Time-compress only a backlog deeper than the maximum
+    // chartered jitter buffer.
+    return backlogTics > MAX_PLAYOUT_TICS ? TIC_MS / 2 : TIC_MS;
 }
 /**
  * Schedules input and presentation around confirmed database frontiers.

@@ -48,13 +48,21 @@ async function post(path: string, body: RestDocument,
     response = await request();
   }
   if (!response.ok) {
+    let oracleCode = '';
+    let oracleClass = '';
     if (response.status === 555) {
       const detail = await response.text();
+      oracleCode = detail.match(/\bORA-[0-9]{5}\b/)?.[0] ?? '';
+      if (detail.includes('DMB1 committed transition gap') ||
+          detail.includes('DMB1 frontier changed')) {
+        oracleClass=' DMB1_RESYNC_REQUIRED';
+      }
       if (detail.includes('ORA-20713')) throw new MatchUnavailableError();
       if (path.toLowerCase() === 'create_match' ||
           detail.includes('ORA-20702')) throw new MatchCapacityError();
     }
-    throw new Error(`${path} request failed: ${response.status}`);
+    throw new Error(`${path} request failed: ${response.status}${
+      oracleCode.length>0 ? ` ${oracleCode}` : ''}${oracleClass}`);
   }
   const value: unknown = await response.json();
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -91,8 +99,20 @@ async function postAsync(path: string, body: RestDocument,
           cause.name === 'AbortError') throw cause;
       if (cause instanceof MatchUnavailableError) throw cause;
       lastFailure = cause instanceof Error ? cause : new Error(`${path} request failed`);
+      if (path==='poll_match_transitions' &&
+          lastFailure.message.includes('DMB1_RESYNC_REQUIRED')) {
+        throw lastFailure;
+      }
       if (attempt === 7) break;
-      await delay(Math.min(25 * (2 ** attempt), 500));
+      const retryDelayMs=Math.min(25 * (2 ** attempt), 500);
+      const message=lastFailure.message;
+      window.dispatchEvent(new CustomEvent('doom:api-retry',{detail:{
+        at:performance.now(),operation:path,
+        status:Number(message.match(/request failed: ([0-9]+)/)?.[1]??0),
+        oracleCode:message.match(/\bORA-[0-9]{5}\b/)?.[0]??'',
+        attempt:attempt+1,retryDelayMs
+      }}));
+      await delay(retryDelayMs);
     }
   }
   throw lastFailure ?? new Error(`${path} request failed`);

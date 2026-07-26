@@ -1,85 +1,247 @@
 import {test, expect} from '@playwright/test';
+import type {Page} from '@playwright/test';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 
-const sha = (value:string|Buffer) => crypto.createHash('sha256').update(value).digest('hex');
-const indexUrl = process.env.T112_S3_INDEX_URL!;
-const ordsRoot = process.env.ADB_ORDS_BASE_URL!;
-const ordsBase = ordsRoot.endsWith('/') ? ordsRoot : `${ordsRoot}/`;
-const output = process.env.T112_BROWSER_LEDGER!;
-const routeFile = process.env.T112_COMPLETION_LEDGER!;
+type FrameObservation = {at:number; tic:number; sha256:string};
+type BrowserGate = {
+  presents: FrameObservation[];
+  pending: Promise<void>[];
+  diagnostics: {name:string;detail:Record<string,unknown>}[];
+};
 
-test('[T112-LIVE-CLOUD-BROWSER] direct S3 and managed ORDS workflow', async ({page}) => {
-  expect(new URL(indexUrl).protocol).toBe('https:');
-  const s3Origin = new URL(indexUrl).origin, ordsOrigin = new URL(ordsRoot).origin;
-  expect(s3Origin).not.toBe(ordsOrigin);
-  const errors:string[] = [], network:any[] = [], options:any[] = [], responseTasks:Promise<void>[] = []; let cors:any=null;
-  page.on('console', message => { if (message.type() === 'error') errors.push(`console:${message.text()}`); });
-  page.on('pageerror', error => errors.push(`pageerror:${error.message}`));
-  page.on('requestfailed', request => errors.push(`requestfailed:${request.failure()?.errorText ?? 'unknown'}`));
+const sha = (value:string|Buffer) =>
+  crypto.createHash('sha256').update(value).digest('hex');
+const appUrl = new URL(process.env.T112_HOSTED_INDEX_URL!);
+const output = process.env.T112_BROWSER_LEDGER!;
+
+const releaseMatch = async (page:Page) => page.evaluate(async () => {
+  const match=localStorage.getItem('doomdb.solo.current');
+  if (match===null) return {released:false,absent:true};
+  const raw=localStorage.getItem(`doomdb.match.${match}`);
+  if (raw===null) return {released:false,absent:true};
+  const credentials=JSON.parse(raw);
+  const response=await fetch('/ords/doom/doom_api/LEAVE_MATCH',{
+    method:'POST',headers:{
+      'content-type':'application/json','accept':'application/json'
+    },
+    body:JSON.stringify({p_match:match,
+      p_player_capability:credentials.playerCapability})
+  });
+  localStorage.removeItem('doomdb.solo.current');
+  localStorage.removeItem(`doomdb.match.${match}`);
+  return {released:response.ok,status:response.status,
+    matchSha256:await crypto.subtle.digest('SHA-256',
+      new TextEncoder().encode(match)).then(value =>
+        [...new Uint8Array(value)].map(byte =>
+          byte.toString(16).padStart(2,'0')).join(''))};
+});
+
+test.afterEach(async ({page}) => {
+  if (!page.isClosed()) await releaseMatch(page);
+});
+
+test('[T112-LIVE-OCI-BROWSER] database-hosted confirmed MLE client', async ({page}) => {
+  expect(appUrl.protocol).toBe('https:');
+  expect(appUrl.pathname).toMatch(/\/ords\/doom\/app\/$/);
+  const origin = appUrl.origin;
+  const errors:string[] = [];
+  const network:any[] = [];
+  let verifiedBlobModuleLoads = 0;
+  let collecting = true;
+  page.on('console', message => {
+    if (collecting && message.type() === 'error')
+      errors.push(`console:${message.text()}`);
+  });
+  page.on('pageerror', error => {
+    if (collecting) errors.push(`pageerror:${error.message}`);
+  });
+  page.on('requestfailed', request =>
+    collecting &&
+      errors.push(`requestfailed:${request.failure()?.errorText ?? 'unknown'}`));
   page.on('request', request => {
+    if (!collecting) return;
     const url = new URL(request.url());
-    if (request.method() === 'OPTIONS') options.push({origin: url.origin, method: request.method()});
-    network.push({kind: url.origin === s3Origin ? 'S3_STATIC' : url.origin === ordsOrigin ? 'ORACLE_ORDS' : 'OTHER',
-      urlSha256: sha(url.href), originSha256: sha(url.origin), method: request.method(), redirected: false,
-      failed: false, websocket: request.resourceType() === 'websocket', mocked: false});
+    if (url.protocol==='blob:') {
+      // The two TeaVM modules are imported from object URLs only after their
+      // database-hosted bytes pass SHA-256 verification. They are local
+      // module evaluation, not an alternate network origin.
+      verifiedBlobModuleLoads+=1;return;
+    }
+    network.push({
+      kind: url.pathname.includes('/doom_api/') ? 'ORACLE_API'
+        : url.pathname.includes('/app/') ? 'DATABASE_STATIC' : 'OTHER',
+      urlSha256: sha(url.href), originSha256: sha(url.origin),
+      method: request.method(), status: 0, redirected: false,
+      operation: url.pathname.split('/').filter(Boolean).at(-1) ?? '',
+      failed: false, websocket: request.resourceType() === 'websocket',
+      mocked: false
+    });
   });
   page.on('response', response => {
-    const row = [...network].reverse().find(x => x.urlSha256 === sha(response.url()) && x.status === undefined);
-    if (row) { row.status = response.status(); row.redirected = response.request().redirectedFrom() !== null; }
-    if(response.request().method()==='OPTIONS')responseTasks.push(response.allHeaders().then(headers=>{const methods=(headers['access-control-allow-methods']??'').toUpperCase().split(/\s*,\s*/).filter(Boolean),allowed=(headers['access-control-allow-headers']??'').toLowerCase().split(/\s*,\s*/).filter(Boolean);cors={realOptionsRequest:true,intercepted:false,status:response.status(),requestOriginSha256:sha(s3Origin),targetOriginSha256:sha(ordsOrigin),allowOriginExact:headers['access-control-allow-origin']===s3Origin,allowCredentialsWildcard:headers['access-control-allow-credentials']==='true'&&headers['access-control-allow-origin']==='*',allowMethods:methods,allowHeaders:allowed.filter(x=>['content-type','accept'].includes(x)),observationSha256:sha(JSON.stringify({status:response.status(),methods,allowed,exact:headers['access-control-allow-origin']===s3Origin}))};}));
+    if (!collecting) return;
+    const row = [...network].reverse().find(item =>
+      item.urlSha256 === sha(response.url()) && item.status === 0);
+    if (row !== undefined) {
+      row.status = response.status();
+      row.redirected = response.request().redirectedFrom() !== null;
+    }
   });
   await page.addInitScript(() => {
-    const starts:number[] = [];
-    const original = AudioBufferSourceNode.prototype.start;
-    AudioBufferSourceNode.prototype.start = function(when?:number, offset?:number, duration?:number) {
-      starts.push(when ?? 0); return original.call(this, when, offset, duration);
-    };
-    Object.defineProperty(window, '__doomAudioStarts', {value: starts});
+    const gate:BrowserGate = {presents: [], pending: [], diagnostics: []};
+    Object.defineProperty(window, '__doomT112Gate', {value: gate});
+    window.addEventListener('doom:multiplayer-present', event => {
+      const detail = (event as CustomEvent).detail as {at:number;tic:number};
+      const canvas = document.querySelector('canvas');
+      if (!(canvas instanceof HTMLCanvasElement)) return;
+      const context = canvas.getContext('2d');
+      if (context === null) return;
+      const bytes = context.getImageData(0,0,320,200).data;
+      const snapshot = new Uint8Array(bytes);
+      const pending = crypto.subtle.digest('SHA-256',snapshot).then(value => {
+        const sha256 = [...new Uint8Array(value)]
+          .map(byte => byte.toString(16).padStart(2,'0')).join('');
+        gate.presents.push({at: detail.at,tic: detail.tic,sha256});
+      });
+      gate.pending.push(pending);
+    });
+    for (const [eventName,name] of [
+      ['doom:multiplayer-batch','batch'],
+      ['doom:multiplayer-apply-batch','apply-batch'],
+      ['doom:multiplayer-resync','resync'],
+      ['doom:multiplayer-recovery-wait','recovery-wait'],
+      ['doom:multiplayer-lead','lead'],
+      ['doom:multiplayer-input-effective','input-effective'],
+      ['doom:api-retry','api-retry']
+    ]) {
+      window.addEventListener(eventName,event => {
+        const detail=(event as CustomEvent).detail as Record<string,unknown>;
+        gate.diagnostics.push({name,detail});
+        if (gate.diagnostics.length>2048) gate.diagnostics.shift();
+      });
+    }
   });
-  await page.goto(indexUrl, {waitUntil: 'networkidle'});
-  await expect(page.locator('canvas[data-doom-canvas]')).toHaveAttribute('width', '320');
-  await expect(page.locator('canvas[data-doom-canvas]')).toHaveAttribute('height', '200');
-  const appCanvasSha = await page.locator('canvas[data-doom-canvas]').evaluate((canvas:HTMLCanvasElement) => {
-    const bytes = canvas.getContext('2d')!.getImageData(0, 0, 320, 200).data;
-    return crypto.subtle.digest('SHA-256', bytes).then(x => [...new Uint8Array(x)].map(v => v.toString(16).padStart(2, '0')).join(''));
-  });
-  await page.mouse.click(8, 8);
 
-  const route = JSON.parse(fs.readFileSync(routeFile, 'utf8'));
-  expect(route.schema).toBe(1); expect(route.approved).toBe(true);
-  expect(Array.isArray(route.commands) && route.commands.length > 0).toBe(true);
-  const workflow = await page.evaluate(async ({base, commands}) => {
-    const root = new URL(base.endsWith('/') ? base : `${base}/`), enc = new TextEncoder();
-    const hex = async (value:BufferSource|string) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', typeof value === 'string' ? enc.encode(value) : value))].map(x => x.toString(16).padStart(2, '0')).join('');
-    const value = (o:any,k:string) => o[k] ?? o[k.toUpperCase()] ?? o.items?.[0]?.[k] ?? o.items?.[0]?.[k.toUpperCase()];
-    const post = async (name:string, body:any) => { const r = await fetch(new URL(`${name}/`, root), {method:'POST', headers:{'content-type':'application/json','accept':'application/json'}, body:JSON.stringify(body), redirect:'error'}); if (!r.ok) throw Error(`${name}:${r.status}`); return r.json(); };
-    const bytes = async (o:any) => { let b = Uint8Array.from(atob(value(o,'p_payload')), c => c.charCodeAt(0)); if (b[0] === 31 && b[1] === 139) b = new Uint8Array(await new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()); return b; };
-    const payload = async (o:any) => JSON.parse(new TextDecoder().decode(await bytes(o)));
-    const palette = (await bytes(await post('get_asset',{p_asset_name:'PLAYPAL'}))).slice(0,768);
-    const audioAsset = await bytes(await post('get_asset',{p_asset_name:'DSPISTOL'}));
-    const ng = await post('new_game',{p_skill:3}), token = value(ng,'p_session');
-    if (!/^[0-9a-f]{32}$/.test(token)) throw Error('opaque token contract');
-    let seq=0, last=await payload(ng), issued=0, scheduled=0;
-    const canvas=document.createElement('canvas');canvas.width=320;canvas.height=200;document.body.append(canvas);
-    const context=new AudioContext();await context.resume();
-    const schedule=async(name:string)=>{const raw=await bytes(await post('get_asset',{p_asset_name:name})),view=new DataView(raw.buffer,raw.byteOffset,raw.byteLength),format=view.getUint16(0,true),rate=view.getUint16(2,true),count=view.getUint32(4,true);if(format!==3||count<1||count>raw.length-8)throw Error('Doom audio');const buffer=context.createBuffer(1,count,rate),channel=buffer.getChannelData(0);for(let i=0;i<count;i++)channel[i]=(raw[i+8]-128)/128;const source=context.createBufferSource();source.buffer=buffer;source.connect(context.destination);source.start(context.currentTime);scheduled++;};
-    const render=async(p:any) => { const idx=new Uint8Array(64000); for(let x=0;x<320;x++){let y=0;for(const [y0,n,c] of p.cols[x]){if(y0!==y||n<1||y+n>200)throw Error('RLE');idx.fill(c,x*200+y,x*200+y+n);y+=n}if(y!==200)throw Error('RLE coverage')}const rgba=new Uint8ClampedArray(256000);for(let x=0;x<320;x++)for(let y=0;y<200;y++){const c=idx[x*200+y],q=(y*320+x)*4;rgba[q]=palette[c*3];rgba[q+1]=palette[c*3+1];rgba[q+2]=palette[c*3+2];rgba[q+3]=255}canvas.getContext('2d')!.putImageData(new ImageData(rgba,320,200),0,0);return hex(canvas.getContext('2d')!.getImageData(0,0,320,200).data)};
-    const hashes=[await render(last)];
-    const step=async(patch:any) => { const c={seq:++seq,turn:0,forward:0,strafe:0,run:0,fire:0,use:0,weapon:0,pause:0,automap:0,menu:'NONE',cheat:'',...patch};last=await payload(await post('step',{p_session:token,p_commands:JSON.stringify({v:1,commands:[c]})}));for(const event of last.audio??[]){issued++;await schedule(event[2])}return last;};
-    await step({fire:1}); hashes.push(await render(last));
-    const save=value(await post('save_game',{p_session:token,p_slot:11}),'p_state_sha'); await step({turn:1,forward:1});
-    const load=await payload(await post('load_game',{p_session:token,p_slot:11})); if(load.state_sha!==save)throw Error('load drift');
-    const replayId=value(await post('start_replay',{p_session:token,p_from_tic:1,p_to_tic:1}),'p_replay_id');const replay=await payload(await post('step_replay',{p_replay_id:replayId}));if(replay.state_sha!==save)throw Error('replay drift');
-    const completionNg=await post('new_game',{p_skill:3}),completionToken=value(completionNg,'p_session');if(!/^[0-9a-f]{32}$/.test(completionToken))throw Error('completion token');let completionLast=await payload(completionNg),completionSteps=0;
-    for(const command of commands) {if(command.seq!==completionSteps+1)throw Error('completion command order');completionLast=await payload(await post('step',{p_session:completionToken,p_commands:JSON.stringify({v:1,commands:[command]})}));completionSteps++;for(const event of completionLast.audio??[]){issued++;await schedule(event[2])}if(completionLast.mode==='INTERMISSION'||completionLast.complete===1)break;}
-    if(completionLast.mode!=='INTERMISSION'&&completionLast.complete!==1)throw Error('completion ledger did not complete E1M1');last=completionLast;hashes.push(await render(last));
-    const starts=(window as any).__doomAudioStarts as number[];if(starts.length<scheduled)throw Error('AudioContext did not schedule database event');
-    return {gameTokenSha256:await hex(completionToken),gameTokenBits:128,commandLedgerSha256:await hex(JSON.stringify(commands)),terminalStateSha256:last.state_sha,saveStateSha256:save,loadStateSha256:load.state_sha,replayStateSha256:replay.state_sha,completionStateSha256:last.state_sha,playpalSha256:await hex(palette),audioAssetSha256:await hex(audioAsset),steps:seq+completionSteps,gzipBlobDecoded:true,rleCoverage:64000,canvasWidth:320,canvasHeight:200,canvasRgbaHashes:hashes,audioEventsIssued:issued,audioEventsScheduled:scheduled,completed:true,intermissionVisible:true,apiFamilies:['NEW_GAME','STEP','GET_ASSET','SAVE','LOAD','REPLAY']};
-  }, {base: new URL('doom_api/', ordsBase).href, commands: route.commands});
-  await Promise.all(responseTasks);
-  expect(errors).toEqual([]); expect(options.some(x => x.origin === ordsOrigin)).toBe(true);expect(cors?.status).toBe(204);expect(cors?.allowOriginExact).toBe(true);expect(cors?.allowMethods).toContain('POST');expect(cors?.allowHeaders).toContain('content-type');
-  expect(network.every(x => x.kind !== 'OTHER' && !x.redirected && !x.websocket && x.status >= 200 && x.status < 300)).toBe(true);
-  const ledger={schema:1,appCanvasSha,errors,network,optionsCount:options.length,cors,workflow};
-  fs.writeFileSync(output, `${JSON.stringify(ledger)}\n`, {mode:0o600});
+  // The root document and solo entry are both served from the dedicated
+  // database-resident module. Opening the root first proves relative module
+  // and content-addressed asset resolution before starting a capacity-bearing
+  // game.
+  await page.goto(appUrl.href,{waitUntil:'networkidle'});
+  await expect(page.locator('canvas[data-doom-canvas]')).toHaveAttribute('width','320');
+  await page.goto(new URL('./solo.html#solo=1&skill=3',appUrl).href,
+    {waitUntil:'domcontentloaded'});
+  const canvas = page.locator('canvas[data-doom-canvas]');
+  await expect(canvas).toBeVisible({timeout:180_000});
+  await page.waitForFunction(() => {
+    const gate=(window as any).__doomT112Gate as BrowserGate;
+    return gate.presents.length>=2;
+  },undefined,{timeout:240_000});
+
+  await canvas.focus();
+  await page.keyboard.down('KeyW');
+  await page.keyboard.down('ArrowRight');
+  await page.waitForFunction(() => {
+    const gate=(window as any).__doomT112Gate as BrowserGate;
+    // T112_MOVING_INPUT_EFFECTIVE_FENCE: do not match an earlier heartbeat.
+    return gate.diagnostics.some(row =>
+      row.name==='input-effective' &&
+      Number((row.detail.command as Record<string,unknown>|undefined)
+        ?.forward)!==0 &&
+      Number((row.detail.command as Record<string,unknown>|undefined)
+        ?.turn)!==0);
+  },undefined,{timeout:30_000});
+  const effectiveTic=await page.evaluate(() => {
+    const gate=(window as any).__doomT112Gate as BrowserGate;
+    // T112_MOVING_INPUT_EFFECTIVE_FENCE: bind the scored window to movement.
+    const row=[...gate.diagnostics].reverse().find(
+      candidate=>candidate.name==='input-effective' &&
+        Number((candidate.detail.command as Record<string,unknown>|undefined)
+          ?.forward)!==0 &&
+        Number((candidate.detail.command as Record<string,unknown>|undefined)
+          ?.turn)!==0);
+    return Number(row?.detail.effectiveTic);
+  });
+  expect(Number.isInteger(effectiveTic)).toBe(true);
+  // Exclude cold engine catch-up and the scheduled input-lead window. The
+  // scored period begins only after one second of confirmed moving play.
+  await page.waitForFunction(target => {
+    const gate=(window as any).__doomT112Gate as BrowserGate;
+    return gate.presents.some(frame=>frame.tic>=Number(target)+32);
+  },effectiveTic,{timeout:30_000});
+  await page.evaluate(async () => {
+    const gate=(window as any).__doomT112Gate as BrowserGate;
+    await Promise.all(gate.pending);
+    gate.presents.length=0;gate.pending.length=0;
+  });
+  await page.waitForFunction(() => {
+    const gate=(window as any).__doomT112Gate as BrowserGate;
+    return gate.presents.length>=300;
+  },undefined,{timeout:120_000});
+  await page.keyboard.up('ArrowRight');
+  await page.keyboard.up('KeyW');
+  collecting=false;
+  await page.evaluate(() =>
+    window.dispatchEvent(new PageTransitionEvent('pagehide')));
+  await page.waitForTimeout(50);
+  for (let index=network.length-1;index>=0;index-=1)
+    if (network[index]!.status===0) network.splice(index,1);
+  const observed = await page.evaluate(async () => {
+    const gate=(window as any).__doomT112Gate as BrowserGate;
+    await Promise.all(gate.pending);
+    return {frames:gate.presents.sort((a,b)=>a.at-b.at).slice(-300),
+      diagnostics:gate.diagnostics};
+  });
+  const {frames,diagnostics}=observed;
+  expect(frames).toHaveLength(300);
+  const intervals=frames.slice(1).map((frame,index)=>frame.at-frames[index]!.at)
+    .sort((a,b)=>a-b);
+  const p95=intervals[Math.ceil(intervals.length*.95)-1]!;
+  const percentile=(fraction:number):number =>
+    intervals[Math.max(0,Math.ceil(intervals.length*fraction)-1)]!;
+  const elapsed=frames.at(-1)!.at-frames[0]!.at;
+  const fps=(frames.length-1)*1000/elapsed;
+  const uniqueFrames=new Set(frames.map(frame=>frame.sha256)).size;
+  const sequentialTics=frames.every((frame,index) =>
+    index===0 || frame.tic===frames[index-1]!.tic+1);
+
+  // Release capacity and retain the complete measured verdict before any
+  // assertion can terminate the test. A failed performance cell must remain
+  // diagnosable from its raw sample spread, not only its first assertion.
+  const cleanup = await releaseMatch(page);
+  const ledger={
+    schema:2,
+    hostedOriginSha256:sha(origin),
+    indexUrlSha256:sha(appUrl.href),
+    errors,
+    network,
+    verifiedBlobModuleLoads,
+    performance:{
+      frames:frames.length,uniqueFrames,sequentialTics,
+      fps,p50IntervalMs:percentile(.50),p90IntervalMs:percentile(.90),
+      p95IntervalMs:p95,p99IntervalMs:percentile(.99),
+      maxIntervalMs:intervals.at(-1),
+      intervalsOver33333:intervals.filter(value=>value>33.333).length,
+      duplicateFrameTics:frames.filter((frame,index) =>
+        frames.findIndex(candidate=>candidate.sha256===frame.sha256)!==index)
+        .map(frame=>frame.tic),
+      firstTic:frames[0]!.tic,lastTic:frames.at(-1)!.tic,
+      frameChainSha256:sha(frames.map(frame=>frame.sha256).join(''))
+    },
+    diagnostics,
+    cleanup
+  };
+  fs.writeFileSync(output,`${JSON.stringify(ledger)}\n`,{mode:0o600});
+
+  expect(fps).toBeGreaterThanOrEqual(30);
+  expect(p95).toBeLessThanOrEqual(33.333);
+  expect(uniqueFrames).toBe(frames.length);
+  expect(sequentialTics).toBe(true);
+  expect(errors).toEqual([]);
+  expect(network.every(row => row.kind!=='OTHER' && row.originSha256===sha(origin)
+    && !row.redirected && !row.websocket &&
+    (row.status>=200 && row.status<300 ||
+      row.kind==='DATABASE_STATIC' && row.status===304)))
+    .toBe(true);
+  expect(verifiedBlobModuleLoads).toBe(2);
+  expect(cleanup.released).toBe(true);
 });

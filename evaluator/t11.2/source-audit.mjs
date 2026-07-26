@@ -1,20 +1,55 @@
-import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';
-export function auditDriver(text){assert.ok(text.length>=2400,'substantive live S3 browser driver');for(const s of ['set -Eeuo pipefail','AWS_ACCESS_KEY_ID','AWS_SECRET_ACCESS_KEY','AWS_REGION','AWS_S3_BUCKET','ADB_ORDS_BASE_URL','AWS CLI','2.34.36','Playwright','1.61.0','client/dist','artifact-allowlist','index.html','Content-Type','Cache-Control','s3api','head-object','get-object','--no-cli-pager','https://','playwright test','serviceWorkers','block','workers: 1','retries: 0','CORS','OPTIONS','NEW_GAME','STEP','GET_ASSET','SAVE_GAME','LOAD_GAME','START_REPLAY','STEP_REPLAY','canvas','getImageData','AudioContext','completion','requestfailed','pageerror','console','/tmp/doomdb-t112-evidence.json','mktemp','chmod 600','trap '])assert.ok(text.includes(s),`requires ${s}`);assert.match(text,/(?:sha256sum|shasum\s+-a\s+256)/,'byte hashes');assert.match(text,/aws\s+(?:sts\s+get-caller-identity|s3api\s+get-bucket-location)/,'live AWS provenance');assert.match(text,/ADB_ORDS_BASE_URL.*(?:build|compile|define|replace)/is,'build-time ORDS');assert.match(text,/(?:mv|rename).*doomdb-t112-evidence\.json/,'atomic evidence');assert.match(text,/(?:unset|env).*(?:AWS_SECRET_ACCESS_KEY|ADB_ORDS_BASE_URL)/s,'credential cleanup');assert.ok(!/(?:\|\|\s*true|set\s+\+e|ALLOW_SKIP|DOOM_SKIP|continue_on_error|--force|updateSnapshots\s*:\s*['"]all|route\.fulfill|page\.setContent)/i.test(text),'no failure suppression/mock/snapshot update');assert.ok(!/(?:localhost|127\.0\.0\.1|docker\s+compose|cloudfront|http:\/\/|dry.?run.*PASS|NOT RUN.*PASS)/i.test(text),'no local/proxy/dry substitute');assert.ok(!/(?:echo|printf|set\s+-x).*(?:AWS_SECRET|ADB_ORDS|authorization|bucket|wallet)/i.test(text),'no secret/target printing');return true;}
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+
+export function auditDriver(text){
+  assert.ok(text.length>=5000,'substantive hosted-browser driver');
+  for(const marker of ['set -Eeuo pipefail','DOOMDB_CLOUD_EXECUTE',
+    'ADB_CONNECTION_STRING','ADB_ORDS_BASE_URL','T112_HOSTED_INDEX_URL',
+    'install-hosted-statics.sql','load-hosted-statics.sh',
+    'artifact-allowlist','loader-manifest.tsv','database_asset_load',
+    't11.2-verify-database-inventory.mjs','t11.2-verify-live-headers.mjs',
+    'DoomDB-T11.2-verifier','playwright','playwright.config.ts',
+    'browser_30fps','/tmp/doomdb-t112-evidence.json','mktemp','chmod 600',
+    'redact-cloud-output.mjs','trap cleanup']){
+    assert.ok(text.includes(marker),`requires ${marker}`);
+  }
+  assert.match(text,/(?:sha256sum|shasum\s+-a\s+256)/,'byte hashes');
+  assert.match(text,/mv "\$candidate" "\$evidence"/,'atomic evidence');
+  assert.ok(!/(?:AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_S3_BUCKET|s3api|cloudfront)/i.test(text),
+    'retired AWS transport absent');
+  assert.ok(!/(?:route\.fulfill|page\.setContent|localhost|127\.0\.0\.1|http:\/\/|dry.?run.*PASS)/i.test(text),
+    'no browser mock/local substitute');
+  assert.ok(!/(?:set\s+\+e|\|\|\s*true|ALLOW_SKIP|continue_on_error)/i.test(text),
+    'no failure suppression');
+  assert.ok(!/(?:echo|printf|set\s+-x).*(?:ADB_PASSWORD|authorization|wallet)/i.test(text),
+    'no secret printing');
+  return true;
+}
+
 const good=`#!/usr/bin/env bash
 set -Eeuo pipefail
-for v in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION AWS_S3_BUCKET ADB_ORDS_BASE_URL; do test -n "\${!v:-}" || { echo 'NOT RUN' >&2; exit 2; }; done
-tmp=$(mktemp -d); chmod 600 "$tmp"; trap 'rm -rf "$tmp"; unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION AWS_S3_BUCKET ADB_ORDS_BASE_URL' EXIT
-# Pinned AWS CLI 2.34.36 and Playwright 1.61.0; verify versions, never install.
-aws sts get-caller-identity --no-cli-pager >"$tmp/aws.json"; aws s3api get-bucket-location --no-cli-pager >"$tmp/location.json"
-# ADB_ORDS_BASE_URL is replaced at build/compile time into client/dist; generate artifact-allowlist and sha256sum every byte.
-find client/dist -type f -print0 | sort -z | xargs -0 sha256sum >"$tmp/build.sha"; test -f client/dist/index.html
-# Upload exact keys using deterministic Content-Type and Cache-Control, delete extraneous, then s3api head-object and get-object each live object.
-# Explicit https:// S3 REST index URL. CORS real OPTIONS to managed Oracle. No proxy.
-aws s3api head-object --no-cli-pager; aws s3api get-object --no-cli-pager
-# playwright test with serviceWorkers: 'block', workers: 1, retries: 0, route fulfillment forbidden.
-# Browser cases: NEW_GAME STEP GET_ASSET SAVE_GAME LOAD_GAME START_REPLAY STEP_REPLAY completion; canvas getImageData; AudioContext.
-# Observe CORS OPTIONS, requestfailed, pageerror, console, full network allowlist. Playwright machine report must say passed.
-./node_modules/.bin/playwright test evaluator/t11.2/cloud.spec.ts
-touch "$tmp/evidence"; mv "$tmp/evidence" /tmp/doomdb-t112-evidence.json
-`+'# deterministic build manifest, S3 metadata verification, browser workflow and redacted content hashes '.repeat(30);auditDriver(good);for(const bad of [good.replace('set -Eeuo pipefail','set +e'),good+'\nroute.fulfill({status:200})',good+'\ndocker compose up',good.replace('2.34.36','2.34.35'),good+'\necho "$AWS_SECRET_ACCESS_KEY"'])assert.throws(()=>auditDriver(bad));process.stdout.write('PASS T11.2-SOURCE-POLICY-SELF-CHECK (synthetic positive and negative canaries)\n');
-if(process.env.T112_REQUIRE_PRODUCTION==='1'){const root=path.resolve(import.meta.dirname,'../..'),p=path.join(root,'scripts/verify-cloud-browser.sh');assert.ok(fs.existsSync(p),'cloud browser driver exists');auditDriver(fs.readFileSync(p,'utf8'));process.stdout.write('PASS T11.2-SOURCE-AUDIT (pinned fail-closed S3 browser driver)\n');}
+tmp=$(mktemp -d); chmod 600 "$tmp"; trap cleanup EXIT
+DOOMDB_CLOUD_EXECUTE=YES
+ADB_CONNECTION_STRING=x ADB_ORDS_BASE_URL=https:x T112_HOSTED_INDEX_URL=x
+install-hosted-statics.sql load-hosted-statics.sh artifact-allowlist
+loader-manifest.tsv database_asset_load t11.2-verify-database-inventory.mjs
+t11.2-verify-live-headers.mjs DoomDB-T11.2-verifier playwright playwright.config.ts browser_30fps
+/tmp/doomdb-t112-evidence.json redact-cloud-output.mjs
+sha256sum x
+mv "$candidate" "$evidence"
+`+'database hosted ORDS exact asset verification and browser evidence '.repeat(100);
+auditDriver(good);
+for(const bad of [good+' AWS_S3_BUCKET',good+' route.fulfill({})',
+  good+' localhost',good.replace('set -Eeuo pipefail','set +e')])
+  assert.throws(()=>auditDriver(bad));
+process.stdout.write(
+  'PASS T11.2-SOURCE-POLICY-SELF-CHECK (hosted positive and negative canaries)\n');
+
+if(process.env.T112_REQUIRE_PRODUCTION==='1'){
+  const root=path.resolve(import.meta.dirname,'../..');
+  const driver=fs.readFileSync(path.join(root,'scripts/verify-cloud-browser.sh'),'utf8');
+  auditDriver(driver);
+  process.stdout.write(
+    'PASS T11.2-SOURCE-AUDIT (pinned fail-closed database-hosted browser driver)\n');
+}

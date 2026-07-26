@@ -1,4 +1,44 @@
-import assert from 'node:assert/strict';import fs from 'node:fs';import {makeEvidence,validateEvidence} from './reference.mjs';
-const load=n=>JSON.parse(fs.readFileSync(new URL(n,import.meta.url))),f=load('./fixtures.json'),specs=load('./mutation-specs.json'),clone=structuredClone;
-function mutate(mode,e){switch(mode){case'credentialsMissing':e.credentials.envOnly=false;break;case'credentialLeak':e.authorization='redacted';break;case'localTarget':e.target.provider='LOCAL_STATIC';break;case'websiteHttp':e.target.websiteHttpEndpoint=true;e.target.https=false;break;case'cloudFront':e.target.cloudFront=true;break;case'extraArtifact':{const x={...e.upload.objects[1],key:'app.js.map',contentType:'application/json'};e.upload.objects.push(x);e.upload.allowlist.push(x.key);break;}case'allowlistMismatch':e.upload.allowlist.pop();break;case'wrongContentType':e.upload.objects[1].contentType='application/octet-stream';break;case'cacheIndexImmutable':e.upload.objects[0].cacheControl=f.cachePolicy.immutable;break;case'fakeContentAddress':e.upload.objects[1].key='app-deadbeef.js';e.upload.allowlist[1]='app-deadbeef.js';break;case'runtimeConfig':e.build.runtimeConfigRequests=1;break;case'proxyReference':e.build.proxyReferences=1;break;case'serviceWorker':e.build.serviceWorkers=1;break;case'wrongPlaywright':e.tools.playwright='1.60.0';break;case'routeFulfill':e.browser.routeFulfillCount=1;break;case'browserSkip':e.browser.skipped=1;break;case'corsIntercepted':e.cors.intercepted=true;break;case'corsWildcard':e.cors.allowCredentialsWildcard=true;break;case'missingWorkflow':e.browser.cases=e.browser.cases.filter(x=>x.id!=='ASSET_PLAYPAL');break;case'shortToken':e.workflow.gameTokenBits=96;break;case'badRleCoverage':e.workflow.rleCoverage=63999;break;case'audioDuplicate':e.workflow.audioEventsScheduled++;break;case'loadDrift':e.workflow.loadStateSha256='0'.repeat(64);break;case'replayDrift':e.workflow.replayStateSha256='1'.repeat(64);break;case'notComplete':e.workflow.completed=false;break;case'otherOrigin':e.network[0].originSha256='f'.repeat(64);break;case'redirect':e.network[0].redirected=true;break;case'nonAtomic':e.provenance.atomicWrite=false;break;default:throw Error(`unknown mutation ${mode}`)}}
-let killed=0;for(const s of specs.mutations){const e=clone(makeEvidence(f));mutate(s.mode,e);assert.throws(()=>validateEvidence(e,f),`${s.id} survivor`);killed++;}process.stdout.write(`PASS T11.2-EVAL-MUTATION-SELF-CHECK (${killed}/${specs.mutations.length} isolated mutations killed)\n`);
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {makeEvidence,validateEvidence} from './reference.mjs';
+
+const fixture=JSON.parse(fs.readFileSync(
+  new URL('./fixtures.json',import.meta.url)));
+const specifications=JSON.parse(fs.readFileSync(
+  new URL('./mutation-specs.json',import.meta.url))).mutations;
+const mutations=[
+  ['localTarget',e=>{e.target.provider='LOCAL';}],
+  ['crossOrigin',e=>{e.target.sameOrigin=false;}],
+  ['nonDatabaseStatics',e=>{e.target.databaseResidentStatics=false;}],
+  ['wrongModule',e=>{e.deployment.dedicatedModule='doom_api';}],
+  ['extraModule',e=>{e.deployment.moduleCount=2;}],
+  ['extraAutoRest',e=>{e.deployment.autoRestObjects.push('DOOM_HOSTED_ASSET');}],
+  ['extraArtifact',e=>{e.deployment.objects.push({...e.deployment.objects[0],key:'secret.map'});}],
+  ['databaseShaDrift',e=>{e.deployment.objects[0].databaseSha256='0'.repeat(64);}],
+  ['liveShaDrift',e=>{e.deployment.objects[0].liveGetSha256='0'.repeat(64);}],
+  ['badMime',e=>{e.deployment.objects[0].contentType='application/json';}],
+  ['badCache',e=>{e.deployment.objects[0].cacheControl=fixture.cachePolicy.immutable;}],
+  ['missingLicense',e=>{e.deployment.objects=e.deployment.objects.filter(x=>x.key!=='COPYING-freedoom.txt');}],
+  ['routeMock',e=>{e.browser.routeFulfillCount=1;}],
+  ['blobModuleDrift',e=>{e.browser.verifiedBlobModuleLoads=3;}],
+  ['slowFps',e=>{e.browser.performance.fps=29.9;}],
+  ['slowP95',e=>{e.browser.performance.p95IntervalMs=33.334;}],
+  ['duplicateFrame',e=>{e.browser.performance.uniqueFrames=299;}],
+  ['ticGap',e=>{e.browser.performance.sequentialTics=false;}],
+  ['capacityLeak',e=>{e.browser.cleanup.released=false;}],
+  ['otherOrigin',e=>{e.network[0].originSha256='f'.repeat(64);}],
+  ['redirect',e=>{e.network[0].redirected=true;}],
+  ['credentialLeak',e=>{e.authorization='secret';}],
+  ['nonAtomic',e=>{e.provenance.atomicWrite=false;}]
+];
+assert.deepEqual(specifications.map(row=>row.mode),mutations.map(row=>row[0]),
+  'declared mutation inventory');
+let killed=0;
+for(const [label,mutate] of mutations){
+  const evidence=structuredClone(makeEvidence(fixture));
+  mutate(evidence);
+  assert.throws(()=>validateEvidence(evidence,fixture),label);
+  killed++;
+}
+process.stdout.write(
+  `PASS T11.2-EVAL-MUTATION-SELF-CHECK (${killed}/${mutations.length} mutations killed)\n`);

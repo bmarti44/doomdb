@@ -13,9 +13,12 @@ const config=fs.readFileSync('sql/schema/050_config.sql','utf8');
 const warmSchema=fs.readFileSync('sql/schema/054_mle_warm_pool.sql','utf8');
 const runtime=fs.readFileSync('sql/sim/088_mle_match_runtime.sql','utf8');
 
-assert.match(index,/src="\/play\/main\.js"/);
+assert.match(index,/src="\.\/main\.js"/);
 assert.match(soloIndex,/<body data-doom-solo>/);
-assert.match(soloIndex,/src="\/play\/multiplayer\.js"/);
+assert.match(soloIndex,/src="\.\/multiplayer\.js"/);
+assert.match(menu,/coop\.href = '\.\/multiplayer\.html#mode=COOP'/);
+assert.match(menu,/multiplayer\.href = '\.\/multiplayer\.html#mode=DEATHMATCH'/);
+assert.doesNotMatch(menu+client,/['"`]\/play\//);
 assert.match(menu,/new URL\('solo\.html', location\.href\)/);
 assert.match(menu,/location\.assign\(mleUrl\);\s*return;/);
 assert.match(client,/const soloMode = document\.body\.hasAttribute\('data-doom-solo'\)/);
@@ -68,6 +71,6 @@ assert.match(runtime,/procedure prepare_origin_warm/);
 assert.match(worker,/procedure run_warm_slot/);
 assert.match(worker,/assigned_match=l_match,assigned_role=l_role/);
 assert.match(worker,/if l_role='AUTHORITY' then/);
-assert.match(worker,/avoiding an unnecessary restore here keeps repeated New Game/);
+assert.match(worker,/Reuse that durable DMC1 BLOB[\s\S]+instead of immediately serializing/);
 
 process.stdout.write('PASS MLE-SOLO-SOURCE /play uses one-player retained MLE match authority\n');

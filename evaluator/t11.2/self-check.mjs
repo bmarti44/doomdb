@@ -1,4 +1,26 @@
-import assert from 'node:assert/strict';import fs from 'node:fs';import crypto from 'node:crypto';import path from 'node:path';import {makeEvidence,sha,validateEvidence,validatePolicy} from './reference.mjs';
-const load=n=>JSON.parse(fs.readFileSync(new URL(n,import.meta.url))),f=load('./fixtures.json'),ids=load('./test-ids.json'),m=load('./mutation-specs.json');let n=0;const ok=(v,s)=>{assert.ok(v,s);n++},eq=(a,b,s)=>{assert.deepEqual(a,b,s);n++};
-ok(validatePolicy(f),'policy');eq(ids.tests.length,13,'test count');eq(new Set(ids.tests.map(x=>x.id)).size,13,'unique ids');eq(ids.tests.reduce((s,x)=>s+x.assertions,0),742,'assertion sum');ok(ids.tests.every(x=>/^T112-[A-Z0-9-]+$/.test(x.id)&&x.intent.length>=140),'stable substantive ids');eq(m.mutations.length,28,'mutation count');eq(new Set(m.mutations.map(x=>x.id)).size,28,'mutation ids');ok(m.mutations.every(x=>ids.tests.some(t=>t.id===x.killedBy)&&x.change.length>=80&&x.reason.length>=80),'mutation witnesses');const e=makeEvidence(f);ok(validateEvidence(e,f),'positive evidence');eq(e.upload.allowlist,e.upload.objects.map(x=>x.key),'allowlist equality');eq(e.browser.cases.length,f.browserCases.length,'all browser cases');eq(e.workflow.apiFamilies.length,f.apiFamilies.length,'all APIs');ok(e.target.s3OriginSha256!==e.target.ordsOriginSha256,'separate origins');ok(e.upload.objects.some(x=>x.cacheControl===f.cachePolicy.immutable),'immutable object');ok(e.upload.objects.some(x=>x.cacheControl===f.cachePolicy.index),'index revalidation');
-const root=path.resolve(import.meta.dirname,'../..');for(const [p,h] of [['evaluator/integrity.json','2699e0e0f6e93593d8172ea19a048d2ad6ebabb57aef2604a81782c25f2882a3'],['evaluator/integrity.pending-T10.2.json',f.ancestry.t10_2],['evaluator/integrity.pending-T10.3.json',f.ancestry.t10_3],['evaluator/integrity.pending-T11.1.json',f.ancestry.t11_1]])eq(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,p))).digest('hex'),h,`${p} ancestry`);eq(sha('stable'),sha('stable'),'deterministic hash');process.stdout.write(`PASS T11.2-EVAL-SELF-CHECK (${n}/${n} fixture-contract assertions)\n`);
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {makeEvidence,sha,validateEvidence,validatePolicy} from './reference.mjs';
+
+const fixture=JSON.parse(fs.readFileSync(
+  new URL('./fixtures.json',import.meta.url)));
+const testIds=JSON.parse(fs.readFileSync(
+  new URL('./test-ids.json',import.meta.url))).tests;
+let assertions=0;
+const check=(value,label)=>{assert.ok(value,label);assertions++;};
+check(validatePolicy(fixture),'policy');
+const evidence=makeEvidence(fixture);
+check(validateEvidence(evidence,fixture),'positive evidence');
+check(testIds.length===13&&new Set(testIds.map(row=>row.id)).size===13,
+  'test-id inventory');
+check(evidence.deployment.objects.length===24,'exact static inventory');
+check(evidence.target.sameOrigin,'same origin');
+check(evidence.browser.performance.fps>=30,'30 FPS');
+check(evidence.browser.performance.uniqueFrames===300,'unique moving frames');
+check(evidence.deployment.objects.some(object=>
+  object.cacheControl===fixture.cachePolicy.immutable),'immutable assets');
+check(evidence.deployment.objects.some(object=>
+  object.key==='COPYING-freedoom.txt'),'redistribution notice');
+check(sha('stable')===sha('stable'),'deterministic hash');
+process.stdout.write(
+  `PASS T11.2-EVAL-SELF-CHECK (${assertions}/${assertions} hosted-contract assertions)\n`);

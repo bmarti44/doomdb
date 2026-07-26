@@ -1,121 +1,80 @@
-# Cloud bootstrap skeleton
+# OCI Autonomous Database deployment
 
-## OCI Autonomous Database production target
+The active production venue is OCI Autonomous AI Transaction Processing Always
+Free in `us-ashburn-1`, running Oracle AI Database 26ai. OCI CLI is the
+provisioning and lifecycle control surface. The pinned application schema is
+`DOOM`, exposed through the managed ORDS alias `doom`.
 
-The active production venue is OCI Autonomous AI Transaction Processing
-Always Free in `us-ashburn-1`, using Oracle AI Database **26ai**. The existing
-resource is `doomdb-adb` / database name `DOOMDB`; OCI CLI is the provisioning
-and lifecycle control surface. Its current envelope is:
+The production topology has one origin:
 
-- workload `OLTP`;
-- database version `26ai`;
-- 1 ECPU;
-- 20 GB database storage;
-- Always Free;
-- compute and storage autoscaling disabled;
-- the shortest permitted automatic-backup retention compatible with the
-  production recovery policy.
-
-The OCI profile is configured locally and the database is `AVAILABLE`.
-Wallets and passwords remain under ignored `secrets/` paths. Repository
-automation must use OCI CLI and OCI Object Storage; the older AWS/S3 scripts
-are historical scaffolding and are not the active deployment path.
-
-The database tier is Always Free, so its compute/storage baseline is $0/month
-within OCI Free Tier limits. The MLE arithmetic probe is complete:
-171–189 ns/iteration, above the 100 ns closure threshold. The venue is
-interpreter-tier and does not reopen exact live database rendering.
-
-References:
-
-- <https://docs.aws.amazon.com/odb/latest/UserGuide/getting-started.html>
-- <https://docs.aws.amazon.com/odb/latest/APIReference/API_CreateAutonomousDatabase.html>
-- <https://docs.oracle.com/en-us/iaas/Content/database-at-aws-exadata-awscr/awscr-create-autonomous-ai-database-serverless.html>
-
-All commands default to dry-run and perform no network operation. Dry-run output
-is deterministic for a fixed environment and contains the explicit S3 HTTPS
-object URL and Autonomous Database managed ORDS health URL.
-The placeholder defaults are checked in under `manifests/` and the focused test
-rejects any unexplained drift in those generated files.
-
-```sh
-deploy/cloud/s3-upload.sh --dry-run
-deploy/cloud/autonomous-deploy.sh --dry-run
-deploy/cloud/teardown.sh --dry-run
+```text
+https://<managed-ords-host>/ords/doom/
+  doom_api/...   generated AutoREST game API
+  app/...        database-resident static client
 ```
 
-The placeholder artifact set is exactly `artifact-allowlist.txt`; extra files,
-missing files, traversal entries, and symlinks fail closed. Later production
-deployment can select a compiled directory with `DOOMDB_CLIENT_ARTIFACT_DIR`, but
-its contents must still exactly match the reviewed allowlist.
+The static client is stored in `DOOM_HOSTED_ASSET` BLOBs and served by the
+dedicated `doom.hosted.app` ORDS module. There is no S3, Object Storage,
+CloudFront, reverse proxy, CORS bridge, Lambda, API Gateway, EC2 service, or
+custom middle tier in the release path.
 
-Real execution additionally requires `--execute` and
-`DOOMDB_CLOUD_EXECUTE=YES`. S3 upload requires `AWS_S3_BUCKET`, `AWS_REGION`,
-`AWS_ACCESS_KEY_ID`, and `AWS_SECRET_ACCESS_KEY`. Autonomous deployment requires
-`ADB_CONNECTION_STRING`, `ADB_USERNAME`, `ADB_PASSWORD`, and
-`ADB_ORDS_BASE_URL`.
-Optional AWS session credentials remain environment-only. The scripts verify the
-AWS CLI and SQLcl versions pinned in `versions.lock`; database credentials are
-fed to SQLcl through standard input, never process arguments. Output passes
-through the cloud redactor.
+## Production gates
 
-The Autonomous deployment schema must have direct `EXECUTE` capability on
-`SYS.DBMS_CRYPTO`; this is a database-engine prerequisite for DoomDB's canonical
-SHA-256 documents, not an evaluator grant. `health.sql` verifies SHA-256 before
-creating or exposing an ORDS object and aborts deployment if the capability is
-absent. A tenant administrator must grant it according to that tenant's
-Autonomous Database policy before running `--execute`.
+`scripts/verify-cloud-database.sh` is T11.1, the fail-closed schema and managed
+ORDS gate. It runs capability and transport probes, installs only the reviewed
+production manifest, loads the pinned IWAD and TeaVM artifacts through
+database-side length/SHA checks, builds the tic-zero checkpoint bank, and then
+verifies catalog, grants, seed parity and live API behavior. A PASS is written
+atomically to `/tmp/doomdb-t111-evidence.json`.
 
-The exact-frame presentation acceptance harness also records
-`V$TEMPORARY_LOBS` before and after its 300-frame BLOB transport gate. A tenant
-administrator must grant the deployment owner read access to
-`SYS.V_$TEMPORARY_LOBS` when running that qualification. Live simulation and
-rendering do not depend on this diagnostic view.
+`scripts/verify-cloud-browser.sh` is T11.2. It requires a valid T11.1 record,
+builds an exact 24-object prefix-safe client, installs the static module, loads
+all BLOBs in one transaction, verifies the database and anonymous ORDS
+inventories, and GETs every object to confirm bytes, MIME and cache metadata.
+The PL/SQL handlers emit each stored MIME type and stored SHA-256 as a strong
+ETag, return an empty-body `304` for matching `If-None-Match`, apply
+`no-cache` to entry HTML, and apply one-year immutable caching only to
+content-addressed assets. Fable independently confirmed those four properties
+against the live public endpoint; the attestation is retained alongside the
+automated evidence.
+Pinned Chromium then creates a real MLE-authoritative match and gates 300
+sequential, unique moving frames at at least 30 FPS with p95 frame interval no
+greater than 33.333 ms. It releases the match before atomically publishing
+`/tmp/doomdb-t112-evidence.json`.
 
-The production target requires Oracle MLE JavaScript; Oracle JVM is neither
-required nor permitted in the application schema. The gate uses
-`sql/bootstrap/production-order.txt`, purges residual Java call specs and Java
-schema objects during in-place upgrades, loads the pinned IWAD through a
-database-SHA-fenced JDBC asset loader, and then stages the pinned TeaVM module
-and canonical table pack with database-side length/SHA comparison before
-`CREATE MLE MODULE`. Wallets, artifacts, loader logs, and passwords remain in
-mode-protected temporary storage and are removed on exit.
+Both drivers require `DOOMDB_CLOUD_EXECUTE=YES`, the pinned SQLcl wrapper,
+wallet and passwords outside retained evidence, and real external authority.
+Absent inputs produce `NOT RUN`, never PASS. Underlying errors are preserved
+through the redactor; wrappers redact secrets, not diagnosis.
 
-Teardown is explicit and intentionally separate. Review the dry-run teardown
-manifest, then invoke `deploy/cloud/teardown.sh --execute` with the same guarded
-environment to delete only the allowlisted S3 object and remove the placeholder
-health view/AutoREST exposure. This does not delete an S3 bucket, Autonomous
-Database, wallet, schema, or any unrelated object.
+On Docker Desktop, use `scripts/sqlcl-dedicated-container.sh` and set
+`DOOMDB_SQLCL_DOCKER_WALLET` to the ignored, host-shareable wallet directory.
+The verifier may continue to use its externally scoped `ADB_WALLET_DIR`.
+SQLcl runs in a separate capped Java container so its heap cannot compete with
+the local Oracle SGA/PGA while streaming the production manifest.
 
-## T11.1 production database gate
+The direct privilege surface is declared exclusively in
+`t11.1/schema-grants.sql` and is source-fenced as an exact inventory. `CREATE
+PROPERTY GRAPH` is install-validation-only; the live MLE ticker does not depend
+on a property graph. OJVM is absent from the production schema and deployment
+manifest but remains in repository/dev tooling as the permanent differential
+oracle.
 
-`scripts/verify-cloud-database.sh` is the fail-closed production gate for the
-complete game database. It is separate from the earlier placeholder skeleton.
-It requires SQLcl 26.2.0.181.2110, real Autonomous credentials and a wallet
-outside the repository, the managed ORDS HTTPS schema root, a freshly collected
-local seed observation, and explicit resource bounds. With any input absent it
-returns `NOT RUN`, performs no cloud command, and publishes no evidence. A fully
-successful live run atomically creates `/tmp/doomdb-t111-evidence.json`; only the
-frozen independent evaluator may accept that record.
+## Venue facts
 
-The gate order is deliberately fail-closed: capability/transport probes,
-production schema and seed sources, pinned IWAD load, pinned MLE
-module/table-pack load, MLE runtime and REST sources, then catalog/seed/API
-evidence. The deployment manifest content-addresses the TeaVM version and build
-profile, input/Mocha bytecode, authority module, canonical table pack, and IWAD.
+The Always Free database currently uses 1 ECPU and 20 GB storage with
+autoscaling disabled. The same pinned `5ec18cbe…` authority completed the
+5,250-tic OCI command stream at 302.419 tics/s on the slower of two full passes;
+the slowest preselected awake-20 peak window sustained 140.845 tics/s. A
+canonical digest-bound pass matched the accepted Node chain. Those measurements
+clear the 35-Hz authoritative ticker bar on this venue.
 
-Production execution also requires `DOOMDB_CLOUD_EXECUTE=YES`. The canonical
-database account variable is `ADB_USERNAME` in the skeleton, production gate,
-environment report, loader, and teardown. The final catalog gate requires zero
-Java objects, Java call specs, Java dependencies, or legacy OJVM packages; one
-pinned MLE module/environment; exactly 25 MLE call specs; and database hashes
-matching the deployment manifest. The OJVM oracle remains in repository/dev
-tooling and is intentionally excluded from this production path.
+Always Free has no SLA and may stop after seven idle days. The accepted policy
+currently records that property and does not generate keep-alive traffic. Cloud
+harnesses check lifecycle state and fail closed rather than interpreting a
+stopped database as an application result.
 
-The T11.2 production browser gate requires a dedicated bucket: it enforces the
-frozen exact-object inventory by deleting every non-allowlisted key after the
-explicit `DOOMDB_CLOUD_EXECUTE=YES` guard. `AWS_S3_BUCKET` must be a DNS-safe
-label without dots because the accepted browser URL is the bucket's
-virtual-hosted HTTPS URL. The gate accepts the managed ORDS schema root with or
-without a trailing slash and normalizes it before constructing AutoREST package
-URLs.
+The legacy `autonomous-deploy.sh`, `s3-upload.sh`, `teardown.sh`, placeholder
+health SQL and manifests are retained only as historical pre-T11 scaffolding.
+They are not referenced by the production manifest or either release gate and
+must not be used for the OCI-hosted application.

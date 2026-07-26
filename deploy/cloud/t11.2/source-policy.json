@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "task": "T11.2",
-  "awsCli": "2.34.36",
+  "sqlcl": "26.2.0.181.2110",
   "playwright": "1.61.0",
   "sourceDirectory": "client/src",
   "entryDocument": "index.html",
-  "allowedExtensions": [".html", ".js", ".bin", ".css", ".png", ".ico", ".svg", ".webmanifest"],
+  "allowedExtensions": [".html", ".js", ".bin", ".css", ".png", ".ico", ".svg", ".webmanifest", ".txt"],
   "forbiddenFragments": [".map", "evaluator", "goldens", "reports", "tools", "vendor", "secrets", "wallet", ".env", ".wad", "fixture", "snapshot"],
   "contentTypes": {
     ".html": "text/html; charset=utf-8",
@@ -15,7 +15,8 @@
     ".png": "image/png",
     ".ico": "image/x-icon",
     ".svg": "image/svg+xml",
-    ".webmanifest": "application/manifest+json"
+    ".webmanifest": "application/manifest+json",
+    ".txt": "text/plain; charset=utf-8"
   },
   "cachePolicy": {
     "index": "no-cache, no-store, must-revalidate",

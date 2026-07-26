@@ -1,31 +1,29 @@
-# T11.2 independent S3 browser evaluator
+# T11.2 independent OCI hosted-browser evaluator
 
-This evaluator accepts only a live Chromium run whose top-level document is the
-explicit HTTPS `index.html` object in the deployed S3 bucket and whose dynamic
-requests go directly to the T11.1 managed ORDS origin. A local server, S3 website
-HTTP endpoint, CloudFront, reverse proxy, mocked route, replayed trace, dry run,
-or source-only audit cannot pass. Missing external credentials or URLs produces
-nonzero `NOT RUN`, never PASS.
+This evaluator accepts only a live Chromium run whose top-level document and
+dynamic API calls share the managed ORDS origin of the deployed Autonomous
+Database. Static files are stored as database BLOBs and served by the dedicated
+`doom.hosted.app` ORDS module under the `doom` schema alias. A local server,
+object store, CDN, reverse proxy, mocked route, replayed trace, dry run, or
+source-only audit cannot pass.
 
-The production upload driver must build the managed ORDS URL into the compiled
-client, derive a byte-exact allowlist, upload only that allowlist using AWS CLI
-2.34.36, set deterministic content types and cache controls, and collect live S3
-HEAD/GET/version/TLS provenance. `index.html` is always revalidated; immutable
-long caching is allowed only for content-addressed objects whose filename digest
-matches their bytes. Source maps, evaluator material, WAD tooling, reports,
-goldens, secrets, wallets and runtime configuration are forbidden artifacts.
+The production driver builds an exact 24-object client allowlist, including the
+pinned authority, presentation, canonical-table and Freedoom assets plus their
+redistribution notices. The database loader uses one transaction, deletes
+extraneous objects, streams each BLOB, and verifies its length and SHA-256 in
+Oracle before commit. A live GET of every object must reproduce the build hash,
+MIME type and cache policy. Anonymous exposure is limited to the intended
+AutoREST objects and the dedicated two-route static module.
 
-Playwright 1.61.0 uses one pinned Chromium worker with routing interception and
-service workers disabled. It records actual requests, OPTIONS and response CORS
-headers, then covers new game, STEP, palette/asset transport, raw canvas bytes,
-database-authored audio, save/load, replay and E1M1 completion smoke. The network
-ledger may contain only the one attested S3 origin and the one attested Oracle
-managed ORDS origin; redirects, failed requests, console/page errors, mocks,
-websockets and all other dependencies fail.
+Playwright 1.61.0 uses one Chromium worker with service workers blocked and no
+route fulfillment. It creates a real authoritative MLE match, verifies the
+confirmed-only transition chain, renders 300 sequential and byte-unique moving
+frames at at least 30 FPS with p95 frame interval no greater than 33.333 ms, and
+releases match capacity. The complete network ledger may contain only
+same-origin database static or Oracle API requests; redirects, failed requests,
+websockets, mocks, console/page errors and other origins fail.
 
-AWS and ADB credentials, bucket names, regions, account ids, object URLs, ORDS
-URLs, tokens, authorization headers and session ids remain environment-only and
-must not occur in retained evidence. Evidence keeps lower-case SHA-256 identities
-and redacted live observations, is written atomically only after success, and is
-validated only after evaluator integrity, foundation and adversarial gates pass.
-
+ADB credentials, wallet paths, URLs, match tokens and session identifiers remain
+environment-only and must not occur in retained evidence. Evidence retains only
+SHA-256 identities and redacted live observations and is written atomically
+after all gates pass.
