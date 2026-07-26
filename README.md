@@ -167,7 +167,7 @@ Numbers, measured on the local two-core Oracle Free stack:
 | Pre-deCPS maximum-distance recovery | 57.337 s estimated total at 20 awake monsters |
 | OCI production-shaped deathmatch throughput | 302.419 tics/s slower full pass; 140.845 tics/s slowest selected peak |
 | OCI correctness binding | 5,250-tic full canonical digest chain PASS vs Node |
-| OCI hosted browser | Latest depth-6 build: 300/300 sequential unique frames; 35.418 FPS; 32.6 ms p95 |
+| OCI hosted browser | Post-push depth-6 recheck: 300/300 sequential unique frames; 34.319 FPS; 32.2 ms p95 |
 | OCI wait-free WAN qualification | PASS; 3 profiles × 2 clients × 10 scored minutes; cadence p99 34.5–36.2 ms |
 | OCI production Java-removal audit | PASS; zero Java objects/specs/dependencies and zero legacy API objects |
 | Local production-shaped throughput | 19.788 tics/s whole-route; development/capacity evidence only |
@@ -255,7 +255,7 @@ rejected alternatives, and the honest list of what remains. The reproducible
 throughput gate, and lifecycle race battery. T11.1's clean/idempotent managed
 schema gate, T11.2's database-hosted browser gate, the complete OCI WAN
 qualification, and the production Java-removal catalog audit are green. The
-latest hosted client presents 300 sequential unique frames at 35.418 FPS.
+post-push hosted recheck presents 300 sequential unique frames at 34.319 FPS.
 Local throughput is no longer on the release path. The remaining release
 bookkeeping is to freeze, commit, push, and reverify this evidence unit. The
 artifact-specific 30-minute soak and unfinished HUD/automap/intermission/finale

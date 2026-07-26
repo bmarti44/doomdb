@@ -21,7 +21,7 @@ const ociHostedBrowserEvidencePath =
   'oci-hosted-browser-verdict-2026-07-26.log';
 const ociHostedBrowserFullEvidencePath =
   'artifacts/performance/pmle-cloud/' +
-  't11.2-oci-hosted-depth6-setpoint-evidence-2026-07-26.json';
+  't11.2-oci-hosted-post-push-reverify-2026-07-26.json';
 const ociHostedBrowserScoringIncidentPath =
   'artifacts/performance/pmle-cloud/' +
   't11.2-moving-input-scoring-incident-2026-07-26.md';

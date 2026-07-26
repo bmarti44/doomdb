@@ -132,10 +132,10 @@ assert.equal(status.performance.slowestPeakTicsPerSecond, 140.845);
 assert.equal(status.performance.digestBinding, 'FULL_PER_TIC_CHAIN_PASS');
 assert.equal(
   status.performance.browserUniqueMovingFps,
-  35.41772781893915);
+  34.31929570761499);
 assert.equal(
   status.performance.browserUniqueMovingP95Milliseconds,
-  32.60000038146973);
+  32.19999980926514);
 assert.equal(status.performance.evidenceArtifactSha256,
   '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3');
 assert.equal(status.performance.wasm2jsStatus,

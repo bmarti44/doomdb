@@ -20,9 +20,9 @@ authoritative record.
   final artifact passes the 13,272-tic every-tic ledger, canonical, 762-tic
   co-op, membership, async-admission race, and warm-slot lifecycle gates.
   T11.1's 684-assertion clean/idempotent OCI schema gate and T11.2's
-  database-hosted browser gate pass. The latest depth-6 hosted build produced
-  300/300 sequential unique moving frames at 35.418 FPS with 32.6 ms p95
-  cadence. The complete three-profile OCI WAN qualification and exact-release
+  database-hosted browser gate pass. The post-push depth-6 hosted recheck
+  produced 300/300 sequential unique moving frames at 34.319 FPS with 32.2 ms
+  p95 cadence. The complete three-profile OCI WAN qualification and exact-release
   Java-removal catalog audit also pass. Artifact-specific final soak and full
   HUD/automap/intermission/finale presentation completion remain separate.
 - **Performance truth:** the OCI release venue passes the engine gate. Two
