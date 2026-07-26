@@ -4,6 +4,11 @@ set -Eeuo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 container="${DOOMDB_ASSET_TOOL_CONTAINER:-$(docker compose -f "$root/compose.yaml" ps -q db)}"
 java_home="${DOOMDB_ASSET_TOOL_HOME:-/opt/oracle/product/26ai/dbhomeFree}"
+ojdbc="$java_home/jdbc/lib/ojdbc11.jar"
+oraclepki="$java_home/jlib/oraclepki.jar"
+osdt_core="$java_home/OPatch/modules/oracle.osdt/osdt_core.jar"
+osdt_cert="$java_home/OPatch/modules/oracle.osdt/osdt_cert.jar"
+jdbc_runtime="$ojdbc:$oraclepki:$osdt_core:$osdt_cert"
 iwad_zip="$root/vendor/freedoom/0.13.0/freedoom-0.13.0.zip"
 iwad_sha="7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"
 revision="c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93"
@@ -54,17 +59,19 @@ printf '%s\n' "$ADB_PASSWORD" | docker exec -i "$container" sh -c \
 docker exec -u 0 "$container" chown -R oracle:oinstall "$remote"
 docker exec "$container" chmod -R go-rwx "$remote"
 docker exec "$container" "$java_home/jdk/bin/javac" --release 11 \
-  -cp "$java_home/jdbc/lib/ojdbc11.jar" -d "$remote" \
+  -cp "$ojdbc" -d "$remote" \
   "$remote/DoomMochaIwadLoader.java"
 
 if ! docker exec -e "TNS_ADMIN=$remote/wallet" "$container" sh -c \
   'password=$1; shift; exec "$@" < "$password"' sh "$remote/password" \
   "$java_home/jdk/bin/java" \
-  -cp "$remote:$java_home/jdbc/lib/ojdbc11.jar" DoomMochaIwadLoader \
+  -cp "$remote:$jdbc_runtime" DoomMochaIwadLoader \
   "jdbc:oracle:thin:@$ADB_CONNECTION_STRING" "$ADB_USERNAME" \
   "$remote/freedoom1.wad" "$iwad_sha" "$revision" \
   >"$host_tmp/iwad.log" 2>&1; then
-  printf 'Autonomous IWAD load failed (private diagnostics discarded)\n' >&2
+  node "$root/scripts/redact-cloud-output.mjs" <"$host_tmp/iwad.log" |
+    tail -80 >&2
+  printf 'Autonomous IWAD load failed (redacted underlying diagnostics shown above)\n' >&2
   exit 1
 fi
 printf 'PASS T11.1-CLOUD-ASSETS pinned IWAD loaded with database SHA fence\n'

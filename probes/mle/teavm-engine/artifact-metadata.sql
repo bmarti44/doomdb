@@ -1,6 +1,14 @@
 whenever oserror exit failure rollback
 whenever sqlerror exit sql.sqlcode rollback
-set define off echo off verify off feedback off heading off pages 0 lines 32767 trimspool on serveroutput on size unlimited
+set define off
+set echo off
+set verify off
+set feedback off
+set heading off
+set pagesize 0
+set linesize 32767
+set trimspool on
+set serveroutput on size unlimited
 
 declare
   l_source blob;l_tables blob;

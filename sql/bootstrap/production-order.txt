@@ -11,7 +11,6 @@ sql/schema/036_unified_worker_result_metadata.sql
 sql/schema/037_unified_worker_control_state_map.sql
 sql/schema/038_unified_worker_config.sql
 sql/schema/039_unified_worker_profile.sql
-sql/schema/039_retained_render_overlap.sql
 sql/schema/040_constraints.sql
 sql/schema/041_mochadoom.sql
 sql/schema/042_mocha_command.sql
@@ -85,4 +84,3 @@ sql/render/r2/050_api_presentation_rows.sql
 sql/rest/010_doom_api.sql
 sql/rest/020_ords_enable.sql
 sql/schema/059_finalize_runtime.sql
-sql/schema/060_grants.sql

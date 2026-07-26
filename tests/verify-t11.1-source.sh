@@ -13,13 +13,52 @@ done
 ! grep -Eq 'build-ojvm|load-cloud-ojvm|loadjava|ojvm-preflight|ojvm-postload' \
   "$root/scripts/verify-cloud-database.sh"
 grep -q 'DOOMDB_CLOUD_EXECUTE' "$root/scripts/verify-cloud-database.sh"
+grep -q 'verify-production-drop-inventory.mjs' \
+  "$root/scripts/verify-cloud-database.sh"
+grep -q 'schema-grants.sql' "$root/scripts/verify-cloud-database.sh"
+grep -q 'create property graph to DOOM' \
+  "$root/deploy/cloud/t11.1/schema-grants.sql"
+grep -q 'install-validation-only' \
+  "$root/deploy/cloud/t11.1/schema-grants.sql"
+node "$root/tests/verify-cloud-schema-grants.mjs"
+awk '
+  /least_entry=deploy\/cloud\/t11\.1\/least-grants\.sql/ { least=NR }
+  /command cat "\$root\/\$entry"/ { if (least>0 && final==0) final=NR }
+  END { exit !(least>0 && final>least) }
+' "$root/scripts/verify-cloud-database.sh"
+awk '
+  /verify-production-drop-inventory\.mjs/ { inventory=NR }
+  /phase=capability_probe/ { mutation=NR }
+  END { exit !(inventory>0 && mutation>inventory) }
+' "$root/scripts/verify-cloud-database.sh"
 grep -q 'chown -R oracle:oinstall' "$root/scripts/load-cloud-assets.sh"
+grep -q 'redact-cloud-output.mjs.*iwad.log' "$root/scripts/load-cloud-assets.sh"
+grep -q 'ords_schema_root=${ADB_ORDS_BASE_URL%/}' \
+  "$root/scripts/verify-cloud-database.sh"
+grep -q 'show_failure "$tmp/managed-ords-health.json"' \
+  "$root/scripts/verify-cloud-database.sh"
+grep -q 'doomdb-t111-failure' "$root/scripts/verify-cloud-database.sh"
+! grep -q 'private diagnostics discarded' \
+  "$root/scripts/verify-cloud-database.sh"
 grep -q "plsql_ccflags='doom_dev_ojvm:false'" \
   "$root/scripts/verify-cloud-database.sh"
 for source in t11.1-cloud-api.mjs t11.1-build-evidence.mjs t11.1-deployment-manifest.mjs; do node --check "$root/scripts/$source";done
+node "$root/scripts/verify-db-output-helper.mjs" |
+  grep -q 'DB_OUTPUT_HELPER|PASS'
+grep -q "normalizeDbOutput(catalogRaw)" \
+  "$root/scripts/t11.1-build-evidence.mjs"
+bash -n "$root/scripts/sqlcl-dedicated-container.sh"
+grep -q 'SQLcl is deliberately isolated from the Oracle database container' \
+  "$root/scripts/sqlcl-dedicated-container.sh"
 grep -q 'l_mle_specs<>25' \
   "$root/deploy/cloud/t11.1/catalog-observation.sql"
 grep -q 'mleCallSpecs:25' "$root/scripts/t11.1-build-evidence.mjs"
+grep -q "dbms_output.put_line('T111_PUBLIC_EXECUTE|'||trim(r.table_name))" \
+  "$root/deploy/cloud/t11.1/catalog-observation.sql"
+grep -q "dbms_output.put_line('T111_REST|'||trim(r.parsing_object)" \
+  "$root/deploy/cloud/t11.1/catalog-observation.sql"
+grep -q 'trimout on trimspool on' \
+  "$root/deploy/cloud/t11.1/catalog-observation.sql"
 grep -q 'e.catalog.javaObjects,0' "$root/evaluator/t11.1/reference.mjs"
 grep -q 'e.catalog.mleCallSpecs,25' "$root/evaluator/t11.1/reference.mjs"
 grep -q "case'javaProductionLeak':e.catalog.javaObjects=1" \

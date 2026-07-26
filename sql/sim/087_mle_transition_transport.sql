@@ -16,6 +16,11 @@ create or replace package doom_mle_transition_transport authid definer as
   c_max_concurrent_poll_returns constant pls_integer:=1;
   c_max_batch_transitions constant pls_integer:=64;
   c_max_hold_ms constant pls_integer:=500;
+  -- Returning the first available tic limits a sequential HTTP long poll to
+  -- one tic per WAN RTT. Held polls accumulate a small confirmed batch so the
+  -- one-outstanding-poll contract can carry the 35 Hz authority stream.
+  -- Zero-hold/local polls remain immediate.
+  c_wan_min_batch_transitions constant pls_integer:=8;
 
   procedure publish(p_match in varchar2,p_payload in raw);
 
@@ -124,7 +129,8 @@ create or replace package body doom_mle_transition_transport as
     l_alert varchar2(64):=alert_name(p_match);l_message varchar2(1800);
     l_status integer;l_remaining number;l_header raw(32);l_expected number;
     l_generation number;l_epoch number;l_capacity number;l_held number;
-    l_long_poll number;
+    l_long_poll number;l_ready_count pls_integer;
+    l_registered boolean:=false;
   begin
     p_ready:=0;p_payload:=null;
     if p_player_slot is null or p_player_slot<>trunc(p_player_slot) or
@@ -152,6 +158,8 @@ create or replace package body doom_mle_transition_transport as
         from doom_match_poll_capacity
         where capacity_id=1 for update;
       if l_long_poll=0 then l_hold:=0;end if;
+      l_ready_count:=case when l_hold>0
+        then least(c_wan_min_batch_transitions,l_max) else 1 end;
       l_now:=utc_now;
       delete from doom_match_poll_lease where expires_at<=l_now;
       select count(*) into l_held from doom_match_poll_lease;
@@ -170,7 +178,6 @@ create or replace package body doom_mle_transition_transport as
     -- Immediate batching is the Free-edition fallback. Registering/removing an
     -- alert for a zero-hold request needlessly takes UL locks and contends with
     -- the authority worker's per-tic SIGNAL, collapsing ticker throughput.
-    if l_hold>0 then dbms_alert.register(l_alert);end if;
     loop
       select generation,membership_epoch,current_tic
         into l_generation,l_epoch,l_frontier from doom_match
@@ -185,7 +192,17 @@ create or replace package body doom_mle_transition_transport as
           and tic<=l_frontier
           order by tic
       ) where rownum<=l_max;
-      exit when l_count>0 or elapsed_ms(l_started)>=l_hold;
+      exit when l_count>=l_ready_count or elapsed_ms(l_started)>=l_hold;
+      -- Register only after proving the authoritative batch is empty.
+      -- Register/remove on every catch-up batch creates avoidable UL-lock and
+      -- Resource Manager pressure while the client is already behind.
+      if not l_registered then
+        dbms_alert.register(l_alert);l_registered:=true;
+        -- Registration happens after the empty read. Re-read before WAITONE
+        -- so a commit in that interval cannot become a lost wakeup followed
+        -- by an unnecessary full hold timeout.
+        continue;
+      end if;
       l_remaining:=greatest(0,(l_hold-elapsed_ms(l_started))/1000);
       dbms_alert.waitone(l_alert,l_message,l_status,l_remaining);
     end loop;
@@ -217,12 +234,12 @@ create or replace package body doom_mle_transition_transport as
       dbms_lob.append(p_payload,transition_.payload_blob);l_expected:=l_expected+1;
     end loop;
     p_ready:=case when l_count>0 then 1 else 0 end;
-    if l_hold>0 then dbms_alert.remove(l_alert);end if;
+    if l_registered then dbms_alert.remove(l_alert);end if;
     delete from doom_match_poll_lease where match_id=p_match
       and player_slot=p_player_slot and poll_token=l_token;
     commit;
   exception when others then
-    if l_hold>0 then
+    if l_registered then
       begin dbms_alert.remove(l_alert);exception when others then null;end;
     end if;
     begin

@@ -37,6 +37,8 @@ for forbidden in \
   sql/accel/020_ojvm_renderer_calls.sql \
   sql/accel/030_mochadoom_calls.sql \
   sql/sim/078_retained_render_worker.sql \
+  sql/schema/039_retained_render_overlap.sql \
+  sql/schema/060_grants.sql \
   sql/sim/080_unified_worker.sql \
   sql/sim/082_mochadoom_bridge.sql; do
   ! grep -Fxq "$forbidden" "$order" || {
@@ -76,6 +78,10 @@ grep -Fq '$if $$doom_dev_ojvm $then' \
 grep -Fq '$if $$doom_dev_ojvm $then' \
   "$root/sql/sim/085_session_cleanup.sql"
 grep -q 'p_enabled=>false' "$root/sql/rest/020_ords_enable.sql"
+grep -q "object_name='DOOM_WORKER_API'" \
+  "$root/sql/rest/020_ords_enable.sql"
+grep -q 'l_worker_api_exists=1' \
+  "$root/sql/rest/020_ords_enable.sql"
 [[ "$(grep -Fc "p_object=>'DOOM_API'" \
   "$root/sql/rest/020_ords_enable.sql")" -eq 1 ]]
 awk '
@@ -93,6 +99,14 @@ grep -q 'load-mle-module.sh.*--production' "$cloud"
   "$cloud"
 grep -q "T111_JAVA_REMOVAL" \
   "$root/deploy/cloud/t11.1/catalog-observation.sql"
+grep -q "PMLE_OCI_JAVA_REMOVAL|PASS" \
+  "$root/probes/mle/teavm-engine/audit-oci-java-removal.sql"
+grep -q "diagnostic_objects=0" \
+  "$root/probes/mle/teavm-engine/run-oci-java-removal-audit.sh"
+grep -q "hosted_modules=1|hosted_templates=2|hosted_handlers=2" \
+  "$root/probes/mle/teavm-engine/run-oci-java-removal-audit.sh"
+grep -q "verify-production-java-removal-source.sh" \
+  "$root/probes/mle/teavm-engine/run-oci-java-removal-audit.sh"
 grep -q "l_mle_specs<>25" \
   "$root/deploy/cloud/t11.1/catalog-observation.sql"
 grep -q "LEGACY_NEW_GAME_ABSENT" "$root/scripts/t11.1-cloud-api.mjs"

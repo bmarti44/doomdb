@@ -1,6 +1,6 @@
 whenever sqlerror exit sql.sqlcode rollback
 whenever oserror exit failure rollback
-set define off echo off feedback off heading off pagesize 0 linesize 32767 trimspool on serveroutput on size unlimited
+set define off echo off feedback off heading off pagesize 0 linesize 32767 trimout on trimspool on serveroutput on size unlimited
 
 -- The reviewed row signature is a SHA-256 chain over sorted canonical JSON rows.
 -- It is intentionally identical for the fresh local measurement and cloud run.

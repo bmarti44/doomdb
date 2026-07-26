@@ -1401,7 +1401,10 @@ create or replace package body doom_api as
       if l_code=c_match_auth then
         raise_application_error(c_match_auth,'match unavailable');
       elsif l_code between -20999 and -20000 then
-        raise_application_error(c_bad_request,'match transition poll rejected');
+        -- Preserve the stable application error identity. ORDS redacts the
+        -- database stack, while clients and diagnostic evidence retain the
+        -- exact contract failure class instead of an opaque ORA-20701.
+        raise_application_error(l_code,substr(sqlerrm,1,1800));
       end if;
       raise_application_error(c_bad_request,'match transition poll rejected');
     end;

@@ -39,7 +39,7 @@ const jsonBody=value_=>({headers:{'content-type':'application/json',
 
 await request('PUBLIC_HEALTH',new URL('public_health/',schemaRoot).href,
   {method:'GET'});
-const created=await request('CREATE_MATCH','create_match/',jsonBody({
+const created=await request('CREATE_MATCH','CREATE_MATCH',jsonBody({
   p_game_mode:'COOP',p_skill:3,p_episode:1,p_map:1,
   p_display_name:'CLOUD SOLO',p_max_players:1
 }));
@@ -49,50 +49,53 @@ assert.match(match,/^[0-9a-f]{32}$/);assert.match(player,/^[0-9a-f]{64}$/);
 
 let left=false;
 try {
-  const ready=await request('READY_MATCH','ready_match/',jsonBody({
+  const ready=await request('READY_MATCH','READY_MATCH',jsonBody({
     p_match:match,p_player_capability:player,p_ready:1
   }));
   assert.ok(['STARTING','ACTIVE'].includes(value(ready.json,'p_match_state')));
   let status;
   for(let attempt=0;attempt<900;attempt+=1){
     status=await request('MATCH_STATUS_WAIT',
-      'match_status/',jsonBody({p_match:match,p_capability:player}));
+      'MATCH_STATUS',jsonBody({p_match:match,p_capability:player}));
     observations.pop();
     if(value(status.json,'p_match_state')==='ACTIVE')break;
     await new Promise(resolve=>setTimeout(resolve,1000));
   }
   assert.equal(value(status?.json??{},'p_match_state'),'ACTIVE');
-  status=await request('MATCH_STATUS_ACTIVE','match_status/',
+  status=await request('MATCH_STATUS_ACTIVE','MATCH_STATUS',
     jsonBody({p_match:match,p_capability:player}));
   const currentTic=Number(value(status.json,'p_current_tic'));
 
-  const revised=await request('REVISE_INPUT','revise_match_input/',jsonBody({
+  const revised=await request('REVISE_INPUT','REVISE_MATCH_INPUT',jsonBody({
     p_match:match,p_player_capability:player,p_input_seq:1,
     p_ticcmd_hex:'0800000000000000',p_target_tic:null
   }));
   assert.equal(value(revised.json,'p_accepted'),1);
-  await request('INPUT_FRONTIER','match_input_frontier/',jsonBody({
+  await request('INPUT_FRONTIER','MATCH_INPUT_FRONTIER',jsonBody({
     p_match:match,p_player_capability:player
   }));
   const transitions=await request('POLL_TRANSITIONS',
-    'poll_match_transitions/',jsonBody({
+    'POLL_MATCH_TRANSITIONS',jsonBody({
       p_match:match,p_player_capability:player,
       p_after_tic:Math.max(0,currentTic-2),p_hold_ms:0,p_max_transitions:4
     }));
   assert.ok(value(transitions.json,'p_payload'));
 
-  await request('ASSET_PLAYPAL','get_asset/',
+  await request('ASSET_PLAYPAL','GET_ASSET',
     jsonBody({p_asset_name:'PLAYPAL'}));
-  await request('ASSET_AUDIO','get_asset/',
+  await request('ASSET_AUDIO','GET_ASSET',
     jsonBody({p_asset_name:'DSPISTOL'}));
-  await request('BAD_AUTH_4XX','match_status/',{
-    ...jsonBody({p_match:match,p_capability:'f'.repeat(64)}),accept:'4xx'});
-  await request('BAD_BODY_4XX','create_match/',{
+  // Managed AutoREST maps a rejected PL/SQL application error to its
+  // user-resource 555 response. It remains a fail-closed rejection; local
+  // reverse-proxy status remapping is not part of the Autonomous contract.
+  await request('BAD_AUTH_REJECTED','MATCH_STATUS',{
+    ...jsonBody({p_match:match,p_capability:'f'.repeat(64)}),accept:555});
+  await request('BAD_BODY_4XX','CREATE_MATCH',{
     headers:{'content-type':'application/json'},body:'{"broken":',accept:'4xx'});
-  await request('METHOD_405','create_match/',{method:'GET',accept:405});
-  await request('LEGACY_NEW_GAME_ABSENT','new_game/',{
+  await request('METHOD_405','CREATE_MATCH',{method:'GET',accept:405});
+  await request('LEGACY_NEW_GAME_ABSENT','NEW_GAME',{
     ...jsonBody({p_skill:3}),accept:404});
-  await request('LEGACY_FRAME_ABSENT','poll_match_frame/',{
+  await request('LEGACY_FRAME_ABSENT','POLL_MATCH_FRAME',{
     ...jsonBody({p_match:match,p_player_capability:player,p_tic:0,p_wait_ms:0}),
     accept:404});
   const simple=await request('CORS_SIMPLE',
@@ -100,21 +103,22 @@ try {
     {method:'GET',headers:{origin:'https://doomdb.invalid'}});
   assert.match(simple.response.headers.get('access-control-allow-origin')||'',
     /^(?:\*|https:\/\/doomdb\.invalid)$/);
-  const preflight=await request('CORS_PREFLIGHT','create_match/',{
+  const preflight=await request('CORS_PREFLIGHT','CREATE_MATCH',{
     method:'OPTIONS',headers:{origin:'https://doomdb.invalid',
       'access-control-request-method':'POST',
       'access-control-request-headers':'content-type'}});
   assert.match(preflight.response.headers.get(
     'access-control-allow-methods')||'',/POST/i);
-  const leave=await request('LEAVE_MATCH','leave_match/',jsonBody({
+  const leave=await request('LEAVE_MATCH','LEAVE_MATCH',jsonBody({
     p_match:match,p_player_capability:player
   }));
-  assert.ok(['CANCELLED','ACTIVE'].includes(value(leave.json,'p_match_state')));
+  assert.ok(['CANCELLED','FINISHED','ACTIVE'].includes(
+    value(leave.json,'p_match_state')));
   left=true;
 } finally {
   if(!left){
     try {
-      await request('CLEANUP_LEAVE','leave_match/',jsonBody({
+      await request('CLEANUP_LEAVE','LEAVE_MATCH',jsonBody({
         p_match:match,p_player_capability:player
       }));
       observations.pop();
@@ -124,7 +128,7 @@ try {
 
 const expected=['PUBLIC_HEALTH','CREATE_MATCH','READY_MATCH',
   'MATCH_STATUS_ACTIVE','REVISE_INPUT','INPUT_FRONTIER','POLL_TRANSITIONS',
-  'ASSET_PLAYPAL','ASSET_AUDIO','BAD_AUTH_4XX','BAD_BODY_4XX','METHOD_405',
+  'ASSET_PLAYPAL','ASSET_AUDIO','BAD_AUTH_REJECTED','BAD_BODY_4XX','METHOD_405',
   'LEGACY_NEW_GAME_ABSENT','LEGACY_FRAME_ABSENT','CORS_SIMPLE',
   'CORS_PREFLIGHT','LEAVE_MATCH'];
 assert.deepEqual(observations.map(item=>item.id).sort(),expected.sort());

@@ -5,6 +5,7 @@ PROBE_SCHEMA=DOOMDB_PROBE
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PROBE_SQL=${PROBE_SQL:-$SCRIPT_DIR/capabilities.sql}
 SQL_CLIENT=${SQL_CLIENT:-}
+ORACLE_PROBE_TABLESPACE=${ORACLE_PROBE_TABLESPACE:-users}
 
 fail() {
   printf '%s\n' "oracle capability probe: $*" >&2
@@ -28,9 +29,12 @@ command -v "$SQL_CLIENT" >/dev/null 2>&1 || fail "SQL client not found: $SQL_CLI
 case "$ORACLE_CONNECT_IDENTIFIER" in
   *[!A-Za-z0-9._:/?=@-]*) fail 'ORACLE_CONNECT_IDENTIFIER contains unsupported characters' ;;
 esac
+case "$ORACLE_PROBE_TABLESPACE" in
+  *[!A-Za-z0-9_$#]*) fail 'ORACLE_PROBE_TABLESPACE contains unsupported characters' ;;
+esac
 
 if command -v openssl >/dev/null 2>&1; then
-  PROBE_PASSWORD=$(openssl rand -hex 24)
+  PROBE_PASSWORD="Aa1#$(openssl rand -hex 24)"
 else
   fail 'openssl is required to generate the disposable schema password'
 fi
@@ -43,7 +47,8 @@ run_admin_sql() {
     printf 'set echo off heading off feedback off verify off\n'
     printf 'connect %s\n' "$ORACLE_ADMIN_CONNECT"
     if [ "$action" = create ]; then
-      printf 'create user %s identified by "%s" quota unlimited on users;\n' "$PROBE_SCHEMA" "$PROBE_PASSWORD"
+      printf 'create user %s identified by "%s" quota unlimited on %s;\n' \
+        "$PROBE_SCHEMA" "$PROBE_PASSWORD" "$ORACLE_PROBE_TABLESPACE"
       printf 'grant create session, create table, create procedure, create sequence, create trigger, create property graph to %s;\n' "$PROBE_SCHEMA"
       printf 'grant execute on dbms_crypto to %s;\n' "$PROBE_SCHEMA"
       printf 'grant execute on utl_compress to %s;\n' "$PROBE_SCHEMA"

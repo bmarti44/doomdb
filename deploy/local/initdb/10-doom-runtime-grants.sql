@@ -8,4 +8,6 @@ grant execute on sys.dbms_alert to DOOM;
 grant select on sys.v_$rsrcpdbmetric to DOOM;
 grant select on sys.v_$session to DOOM;
 grant select on sys.v_$process to DOOM;
+grant select on sys.v_$parameter to DOOM;
 grant create job to DOOM;
+grant create property graph to DOOM;

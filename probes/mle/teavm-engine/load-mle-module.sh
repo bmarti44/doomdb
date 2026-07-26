@@ -68,7 +68,15 @@ emit_sql() {
   printf '%s\n' \
     'whenever oserror exit failure rollback' \
     'whenever sqlerror exit sql.sqlcode rollback' \
-    'set define off echo off verify off feedback off heading off pages 0 lines 32767 trimspool on serveroutput on size unlimited' \
+    'set define off' \
+    'set echo off' \
+    'set verify off' \
+    'set feedback off' \
+    'set heading off' \
+    'set pagesize 0' \
+    'set linesize 32767' \
+    'set trimspool on' \
+    'set serveroutput on size unlimited' \
     "begin execute immediate 'drop procedure doom_teavm_bind_release'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
     '/' \
     "begin execute immediate 'drop function doom_teavm_bind_probe_direct'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \

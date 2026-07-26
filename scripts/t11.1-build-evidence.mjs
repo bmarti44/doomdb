@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';import crypto from 'node:crypto';import fs from 'node:fs';
+import {normalizeDbOutput} from './lib/db-output.mjs';
 const [policyPath,capPath,transportPath,catalogPath,localSeedPath,cloudSeedPath,apiPath,deployPath,outPath]=process.argv.slice(2);
 assert.ok(outPath,'nine paths required');
 const read=p=>fs.readFileSync(p,'utf8'),sha=x=>crypto.createHash('sha256').update(x).digest('hex');
-const policy=JSON.parse(read(policyPath)),cap=read(capPath),transport=read(transportPath),catalog=read(catalogPath),localText=read(localSeedPath),cloudText=read(cloudSeedPath),apiText=read(apiPath),deployment=JSON.parse(read(deployPath));
+const policy=JSON.parse(read(policyPath)),cap=read(capPath),transport=read(transportPath),catalogRaw=read(catalogPath),catalog=normalizeDbOutput(catalogRaw).join('\n'),localText=read(localSeedPath),cloudText=read(cloudSeedPath),apiText=read(apiPath),deployment=JSON.parse(read(deployPath));
 const parseSeeds=text=>[...text.matchAll(/^T111_SEED\|([^|]+)\|(\d+)\|([0-9a-f]{64})$/gm)].map(x=>({id:x[1],count:Number(x[2]),sha256:x[3]}));
 const local=parseSeeds(localText),cloud=parseSeeds(cloudText);assert.equal(local.length,24);assert.deepEqual(cloud,local);
 const featureMarkers=[['SDO_GEOMETRY_INDEX','SDO_GEOMETRY_INDEX_OK'],['CONNECT_BY','CONNECT_BY_OK'],['MODEL','MODEL_OK'],['MATCH_RECOGNIZE','MATCH_RECOGNIZE_OK'],['JSON_RETURNING_CLOB','JSON_RETURNING_CLOB_OK'],['SQL_PROPERTY_GRAPH','SQL_PROPERTY_GRAPH_OK'],['DBMS_CRYPTO_SHA256','DBMS_CRYPTO_OK'],['UTL_COMPRESS_GZIP','UTL_COMPRESS_OK'],['ORDS_ENABLE_OBJECT','ORDS_ENABLE_OBJECT_OK']];
@@ -31,5 +32,5 @@ resources:{observedLive:true,workload:target[1],cpuCount:Number(resources[1]),st
 catalog:{invalidObjects:0,sqlErrors:0,disabledConstraints:0,unvalidatedConstraints:0,probeObjectsRemaining:0,javaObjects:0,javaCallSpecs:0,javaDependencies:0,legacyOjvmObjects:0,legacyApiProcedures:0,mleCallSpecs:25,objectFingerprintSha256:sha([...catalog.matchAll(/^T111_OBJECT\|.*$/gm)].map(x=>x[0]).join('\n')),constraintFingerprintSha256:sha([...catalog.matchAll(/^T111_CONSTRAINT\|.*$/gm)].map(x=>x[0]).join('\n'))},
 exposure:{restObjects:rest,customModules:0,customTemplates:0,customHandlers:0,restEnabledTables:0,querySha256:sha(rest.join('\n'))},grants:{publicExecute,forbiddenSystemPrivilegeCount:0,unexpectedGrantCount:Number(grants[3]),querySha256:sha(grants[0])},
 seeds:{local,cloud,localMeasurementSha256:sha(localText),cloudMeasurementSha256:sha(cloudText)},directApi:api.observations.map(x=>({id:x.id,status:'PASS',assertions:1,evidenceSha256:x.sha256,originSha256:api.originSha256,httpRequests:1})),
-provenance:{canonicalEvidenceSha256:'0'.repeat(64),deploymentLogSha256:sha(read(deployPath)),catalogEvidenceSha256:sha(catalog),apiEvidenceSha256:sha(apiText),atomicWrite:true,secretRedactionPassed:true}};
+provenance:{canonicalEvidenceSha256:'0'.repeat(64),deploymentLogSha256:sha(read(deployPath)),catalogEvidenceSha256:sha(catalogRaw),apiEvidenceSha256:sha(apiText),atomicWrite:true,secretRedactionPassed:true}};
 const forbidden=['password','authorization','bearer ','wallet','private_key','aws_access','secret_access','connection_string','adb_username','adb_password','https://','jdbc:','oracle.net','tnsnames'];let raw=JSON.stringify(evidence);for(const p of forbidden)assert.ok(!raw.toLowerCase().includes(p),p);evidence.provenance.canonicalEvidenceSha256=sha(raw);raw=JSON.stringify(evidence);fs.writeFileSync(outPath,`${raw}\n`,{mode:0o600,flag:'wx'});
