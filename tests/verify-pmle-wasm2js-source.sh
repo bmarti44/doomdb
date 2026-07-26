@@ -14,6 +14,8 @@ MLE_DB_PARITY_EXTRACTOR=$SPIKE/extract-mle-parity.mjs
 MLE_RUNNER=$SPIKE/run-mle-rank.sh
 REPORT=$ROOT/artifacts/performance/pmle-wasm2js/REPORT.md
 LOG=$ROOT/artifacts/performance/pmle-wasm2js/run-2026-07-24.log
+PRESENTATION_VERDICT=$ROOT/artifacts/performance/pmle-database-frames/wasm2js-presentation-cost-verdict-2026-07-26.md
+SOURCE_PATCH=$SPIKE/0004-canonical-save-low-word-workaround.patch
 
 grep -q 'b3a245b7d9034ff35cdfab2def057a3d4f256efb' \
   "$SPIKE/build-teavm-singlethread.sh"
@@ -46,7 +48,18 @@ grep -q 'wasm2js i64 lowering mismatch' "$MLE_WRAPPER"
 sh -n "$MLE_INSTALL"
 "$MLE_INSTALL" --self-test >/dev/null
 grep -q 'CANDIDATE_FOR_DIRECT_MLE_RANK' "$MLE_INSTALL"
-grep -q 'adapter_patch_sha256=' "$MLE_INSTALL"
+grep -q 'source_patch_sha256=' "$MLE_INSTALL"
+source_patch_sha256=$(shasum -a 256 "$SOURCE_PATCH" | awk '{print $1}')
+case "$source_patch_sha256" in
+  [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*)
+    [ "${#source_patch_sha256}" -eq 64 ] ;;
+  *) false ;;
+esac
+grep -Eq '^PMLE_WASM2JS_SOURCE_PROVENANCE[|]PASS[|]source_patch_sha256=[0-9a-f]{64}[|]adapter_patch_sha256=none$' \
+  "$PRESENTATION_VERDICT"
+grep -Fqx \
+  "PMLE_WASM2JS_SOURCE_PROVENANCE|PASS|source_patch_sha256=$source_patch_sha256|adapter_patch_sha256=none" \
+  "$PRESENTATION_VERDICT"
 grep -q 'wasm_sha256=' "$MLE_INSTALL"
 grep -q 'tic0_log_sha256=' "$MLE_INSTALL"
 grep -q 'parity_log_sha256=' "$MLE_INSTALL"

@@ -95,7 +95,7 @@ WASM2JS_README=$ROOT/probes/mle/teavm-engine/wasm2js/README.md
 WASM2JS_PARITY=$ROOT/probes/mle/teavm-engine/wasm2js/run-node-parity.mjs
 WASM2JS_I64_DIAGNOSTIC=$ROOT/probes/mle/teavm-engine/wasm2js/run-i64-lowering-diagnostics.sh
 WASM2JS_SERIALIZER_WORKAROUND=$ROOT/probes/mle/teavm-engine/wasm2js/run-serializer-workaround.sh
-WASM2JS_SERIALIZER_PATCH=$ROOT/probes/mle/teavm-engine/wasm2js/0003-canonical-long-high-word-workaround.patch
+WASM2JS_SERIALIZER_PATCH=$ROOT/probes/mle/teavm-engine/wasm2js/0004-canonical-save-low-word-workaround.patch
 WASM2JS_PROBE=$ROOT/probes/mle/teavm-engine/wasm2js/src/main/java/doomdb/mle/wasm2js/Wasm2JsAuthorityProbe.java
 WASM2JS_TOOLCHAIN_BUILD=$ROOT/probes/mle/teavm-engine/wasm2js/build-teavm-singlethread.sh
 WASM2JS_TOOLCHAIN_PATCH=$ROOT/probes/mle/teavm-engine/wasm2js/0001-teavm-singlethread-no-cps.patch
@@ -315,16 +315,20 @@ grep -q 'compareCanonical(0)' "$WASM2JS_PARITY" ||
   fail 'wasm2js tic-zero canonical gate missing'
 grep -q 'PMLE_WASM2JS_I64_REDUCTION|PASS' "$WASM2JS_PARITY" ||
   fail 'wasm2js i64 reduction gate missing'
-grep -q '"$wasm2js" -O0 "$wasm"' "$WASM2JS_I64_DIAGNOSTIC" &&
-  grep -q '"$wasm_dis" --emit-module-names' "$WASM2JS_I64_DIAGNOSTIC" &&
+grep -q '"$lowerer" "$wasm" "$lowered"' "$WASM2JS_I64_DIAGNOSTIC" &&
+  grep -q '"$wasm2js" -O0 "$lowered"' "$WASM2JS_I64_DIAGNOSTIC" &&
+  grep -q '"$wasm_dis" --all-features --emit-module-names' \
+    "$WASM2JS_I64_DIAGNOSTIC" &&
   grep -q 'PMLE_WASM2JS_SERIALIZER_DISASSEMBLY|BEGIN' \
     "$WASM2JS_I64_DIAGNOSTIC" &&
   grep -q 'DOOMDB_WASM2JS_TICS=0' "$WASM2JS_I64_DIAGNOSTIC" ||
   fail 'wasm2js i64 O0/disassembly diagnostics are not fail-closed'
 grep -q 'CALL_BOUNDARY_HIGH_WORD_LOSS' "$WASM2JS_I64_DIAGNOSTIC" &&
   grep -q 'PMLE_WASM2JS_I64_REDUCTION_CASE' "$WASM2JS_PARITY" &&
-  grep -q 'canonicalFlagsHigh' "$WASM2JS_SERIALIZER_PATCH" &&
-  grep -q 'DOOMDB_WASM2JS_ADAPTER_PATCH' \
+  grep -q 'packedOptions' "$WASM2JS_SERIALIZER_PATCH" &&
+  grep -q 'DOOMDB_WASM2JS_SOURCE_PATCH' \
+    "$WASM2JS_SERIALIZER_WORKAROUND" &&
+  grep -q 'adapter_patch_sha256=none' \
     "$WASM2JS_SERIALIZER_WORKAROUND" &&
   grep -q 'DOOMDB_WASM2JS_TICS=100' \
     "$WASM2JS_SERIALIZER_WORKAROUND" &&

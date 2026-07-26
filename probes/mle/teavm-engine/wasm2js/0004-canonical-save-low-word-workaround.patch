@@ -1,0 +1,23 @@
+diff --git a/src/p/mobj_t.java b/src/p/mobj_t.java
+--- a/src/p/mobj_t.java
++++ b/src/p/mobj_t.java
+@@ -450,6 +450,18 @@ public class mobj_t extends thinker_t implements ISoundOrigin, IReadableDoomObje
+ 			buffer.position(0);
+ 			buffer.order(ByteOrder.LITTLE_ENDIAN);
+ 			this.pack(buffer);
+-			f.write(buffer.array());
++			final byte[] packed = buffer.array();
++			/*
++			 * Binaryen wasm2js 131 preserves spawnpoint.options in the live
++			 * object but loses its terminal nested ByteBuffer short write.
++			 * Repair the two canonical-save bytes through direct linear-array
++			 * stores. Offsets 148/149 are mapthing_t.options in the fixed
++			 * 154-byte vanilla mobj layout. Native Java/Wasm output is
++			 * byte-identical.
++			 */
++			final int packedOptions = spawnpoint.options & 0xffff;
++			packed[148] = (byte) (packedOptions & 0xff);
++			packed[149] = (byte) ((packedOptions >>> 8) & 0xff);
++			f.write(packed);
+ 
+ 		}

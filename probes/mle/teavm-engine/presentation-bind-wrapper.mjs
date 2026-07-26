@@ -32,12 +32,20 @@ export function stepMultiplayerAuthoritative(
 }
 
 function exactFrame(playerSlot) {
-  // The presentation artifact's existing render export already returns the
-  // Uint8Array shape accepted by MLE's BLOB bind. Keep transport adaptation in
-  // JavaScript so adding presentation-only @JSExport roots cannot reshape the
-  // separately pinned authority module.
-  const frame = engine.renderPlayerFrame(playerSlot);
-  if (!(frame instanceof Uint8Array) || frame.byteLength !== 64000) {
+  // Prefer TeaVM's by-reference primitive-array export when the candidate
+  // provides it. Int8Array and Uint8Array share the same indexed bytes; a
+  // Uint8Array view makes the Oracle RAW/BLOB mapping explicit without
+  // copying the 64 KB framebuffer.
+  const exported = typeof engine.renderPlayerFrameByRef === 'function'
+    ? engine.renderPlayerFrameByRef(playerSlot)
+    : engine.renderPlayerFrame(playerSlot);
+  if (!ArrayBuffer.isView(exported) || exported.byteLength !== 64000) {
+    throw new Error(`exact frame length mismatch: ${exported?.byteLength}`);
+  }
+  const frame = exported instanceof Uint8Array
+    ? exported
+    : new Uint8Array(exported.buffer, exported.byteOffset, exported.byteLength);
+  if (frame.byteLength !== 64000) {
     throw new Error(`exact frame length mismatch: ${frame?.byteLength}`);
   }
   retainedFrame = frame;

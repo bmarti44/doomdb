@@ -5,7 +5,17 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 spike="$project/wasm2js"
 tool_container="doomdb-wasm2js-javac-$$"
-patches="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch,$project/0006-teavm-authority-no-blocking-wait.patch,$spike/0001-legacy-wasm-runtime-cpu.patch,$spike/0002-legacy-wasm-level-loader-ssa.patch"
+patches="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch,$project/0006-teavm-authority-no-blocking-wait.patch,$spike/0001-legacy-wasm-runtime-cpu.patch,$spike/0002-legacy-wasm-level-loader-ssa.patch,$spike/0005-legacy-wasm-presentation-ssa.patch"
+source_patch="${DOOMDB_WASM2JS_SOURCE_PATCH:-}"
+source_patch_sha=none
+if [[ -n "$source_patch" ]]; then
+  [[ -s "$source_patch" ]] || {
+    printf 'wasm2js source patch missing: %s\n' "$source_patch" >&2
+    exit 2
+  }
+  source_patch_sha="$(shasum -a 256 "$source_patch" | awk '{print $1}')"
+  patches="$patches,$source_patch"
+fi
 adapter_patch="${DOOMDB_WASM2JS_ADAPTER_PATCH:-}"
 adapter_patch_sha=none
 if [[ -n "$adapter_patch" ]]; then
@@ -76,10 +86,10 @@ patch_set_sha="$(
       "$(basename "$patch_path")"
   done | shasum -a 256 | awk '{print $1}'
 )"
-printf 'PASS PMLE-WASM2JS-TEAVM-BUILD teavm=0.13.1 wasm_bytes=%s wasm_sha256=%s runtime_bytes=%s runtime_sha256=%s mocha_jar_sha256=%s patch_set_sha256=%s adapter_patch_sha256=%s decps=YES\n' \
+printf 'PASS PMLE-WASM2JS-TEAVM-BUILD teavm=0.13.1 wasm_bytes=%s wasm_sha256=%s runtime_bytes=%s runtime_sha256=%s mocha_jar_sha256=%s patch_set_sha256=%s source_patch_sha256=%s adapter_patch_sha256=%s decps=YES\n' \
   "$(wc -c <"$wasm" | tr -d '[:space:]')" \
   "$(shasum -a 256 "$wasm" | awk '{print $1}')" \
   "$(wc -c <"$runtime" | tr -d '[:space:]')" \
   "$(shasum -a 256 "$runtime" | awk '{print $1}')" \
   "$(shasum -a 256 "$spike/target/mochadoom-wasm2js-simulation.jar" | awk '{print $1}')" \
-  "$patch_set_sha" "$adapter_patch_sha"
+  "$patch_set_sha" "$source_patch_sha" "$adapter_patch_sha"

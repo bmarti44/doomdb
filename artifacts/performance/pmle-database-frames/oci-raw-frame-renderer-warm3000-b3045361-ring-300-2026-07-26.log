@@ -1,0 +1,103 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1-100|milliseconds_per_render=15.027
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=101-200|milliseconds_per_render=13.859
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=201-300|milliseconds_per_render=13.843
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=301-400|milliseconds_per_render=13.829
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=401-500|milliseconds_per_render=13.843
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=501-600|milliseconds_per_render=13.893
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=601-700|milliseconds_per_render=13.928
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=701-800|milliseconds_per_render=13.823
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=801-900|milliseconds_per_render=13.824
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=901-1000|milliseconds_per_render=13.819
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1001-1100|milliseconds_per_render=13.815
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1101-1200|milliseconds_per_render=13.994
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1201-1300|milliseconds_per_render=14.011
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1301-1400|milliseconds_per_render=13.914
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1401-1500|milliseconds_per_render=13.925
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1501-1600|milliseconds_per_render=13.823
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1601-1700|milliseconds_per_render=14.087
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1701-1800|milliseconds_per_render=13.929
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1801-1900|milliseconds_per_render=13.970
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1901-2000|milliseconds_per_render=14.002
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2001-2100|milliseconds_per_render=13.986
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2101-2200|milliseconds_per_render=14.001
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2201-2300|milliseconds_per_render=13.924
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2301-2400|milliseconds_per_render=13.979
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2401-2500|milliseconds_per_render=13.811
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2501-2600|milliseconds_per_render=13.921
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2601-2700|milliseconds_per_render=13.885
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2701-2800|milliseconds_per_render=13.901
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2801-2900|milliseconds_per_render=13.976
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2901-3000|milliseconds_per_render=13.895
+PMLE_OCI_RENDERER_WARM|DIAGNOSTIC_NOT_GATE|calls=3000|window=100|elapsed_ms=41844.995|landing_windows=0|verdict=MEASURE_ONLY_EXACT_STREAM_FOLLOWS
+

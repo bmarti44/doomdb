@@ -1,0 +1,249 @@
+diff --git a/src/rr/RendererState.java b/src/rr/RendererState.java
+--- a/src/rr/RendererState.java
++++ b/src/rr/RendererState.java
+@@ -32,6 +32,7 @@ import i.IDoomSystem;
+ import java.awt.Rectangle;
+ import java.io.IOException;
+ import java.util.ArrayList;
++import java.util.Arrays;
+ import java.util.List;
+ import static m.BBox.BOXBOTTOM;
+ import static m.BBox.BOXLEFT;
+@@ -430,5 +431,9 @@ public abstract class RendererState<T, V> implements SceneRenderer<T, V>, Detail
+         }
+ 
+         void ResizeSolidSegs() {
+-            solidsegs = C2JUtils.resize(solidsegs, solidsegs.length * 2);
++            final int oldLength = solidsegs.length;
++            solidsegs = Arrays.copyOf(solidsegs, oldLength * 2);
++            for (int index = oldLength; index < solidsegs.length; index++) {
++                solidsegs[index] = new cliprange_t();
++            }
+         }
+diff --git a/src/rr/Visplanes.java b/src/rr/Visplanes.java
+--- a/src/rr/Visplanes.java
++++ b/src/rr/Visplanes.java
+@@ -106,4 +106,8 @@ public class Visplanes {
+     public final void resizeVisplanes() {
+         // Bye bye, old visplanes.
+-        visplanes = C2JUtils.resize(visplanes[0], visplanes, visplanes.length*2);
++        final int oldLength = visplanes.length;
++        visplanes = Arrays.copyOf(visplanes, oldLength * 2);
++        for (int index = oldLength; index < visplanes.length; index++) {
++            visplanes[index] = new visplane_t();
++        }
+     }
+diff --git a/src/rr/SegVars.java b/src/rr/SegVars.java
+--- a/src/rr/SegVars.java
++++ b/src/rr/SegVars.java
+@@ -1,6 +1,7 @@
+ package rr;
+ 
+ import data.Limits;
++import java.util.Arrays;
+ import utils.C2JUtils;
+ 
+ public class SegVars {
+@@ -27,6 +28,10 @@ public class SegVars {
+ 	}
+ 
+ 	public final void ResizeDrawsegs() {
+-		drawsegs = C2JUtils.resize(drawsegs[0], drawsegs, drawsegs.length*2);
++		final int oldLength = drawsegs.length;
++		drawsegs = Arrays.copyOf(drawsegs, oldLength * 2);
++		for (int index = oldLength; index < drawsegs.length; index++) {
++			drawsegs[index] = new drawseg_t();
++		}
+ 	}
+ }
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -2518,9 +2518,11 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+      */
+     @SuppressWarnings("LeakingThisInConstructor")
+     public DoomMain() throws IOException {
+         this(false);
+     }
+ 
++    public static int doomdbInitStage;
++    public static int doomdbDisplayStage;
+     public DoomMain(boolean authorityHeadless) throws IOException {
+         // Init game status...
+         super();
+@@ -2528,6 +2530,7 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         // Init players
+     	players = new player_t[MAXPLAYERS];
+         Arrays.setAll(players, i -> new player_t(this));
++        doomdbInitStage = 2;
+ 
+         // Init objects
+         this.cVarManager = Engine.getCVM();
+@@ -2563,6 +2566,7 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         this.headsUp = new HU(this);
+         this.menu = new Menu<>(this);
+         this.levelLoader = new BoomLevelLoader(this);
++        doomdbInitStage = 9;
+         
+         // Renderer, Actions, StatusBar, AutoMap
+         this.sceneRenderer = bppMode.sceneRenderer(this);
+@@ -2570,5 +2574,6 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         this.actions = new ActionFunctions(this);
+         this.statusBar = new StatusBar(this);
++        doomdbInitStage = 12;
+ 
+         // Let the renderer pick its own. It makes linking easier.
+         this.textureManager = sceneRenderer.getTextureManager();
+@@ -2593,6 +2598,7 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+             wadLoader.InitMultipleFiles(wadfiles);
+         } catch (Exception e1) {
+             // TODO Auto-generated catch block
++            doomdbInitStage = 15;
+             e1.printStackTrace();
+         }
+         
+@@ -2621,10 +2627,12 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         menu.Init();
+ 
+         System.out.print("R_Init: Init DOOM refresh daemon - ");
++        doomdbInitStage = 19;
+         if (authorityHeadless) {
+             textureManager.InitHeadlessDirectories();
+         } else {
+             sceneRenderer.Init();
+         }
++        doomdbInitStage = 20;
+ 
+         System.out.print("\nP_Init: Init Playloop state.\n");
+@@ -2632,11 +2640,14 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         } else {
+             actions.Init();
+         }
++        doomdbInitStage = 21;
+ 
+         System.out.print("I_Init: Setting up machine state.\n");
+         doomSystem.Init();
++        doomdbInitStage = 22;
+ 
+         System.out.print("D_CheckNetGame: Checking network game status.\n");
+         CheckNetGame();
++        doomdbInitStage = 23;
+ 
+         System.out.print("S_Init: Setting up sound.\n");
+@@ -2651,3 +2662,4 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         music.InitMusic();
+         doomSound.Init(snd_SfxVolume * 8, snd_MusicVolume * 8);
++        doomdbInitStage = 24;
+ 
+diff --git a/src/doom/DoomMain.java b/src/doom/DoomMain.java
+--- a/src/doom/DoomMain.java
++++ b/src/doom/DoomMain.java
+@@ -205,4 +205,5 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+     public void Display() throws IOException {
++        doomdbDisplayStage = 1;
+         int nowtime;
+         int tics;
+         int wipestart;
+@@ -224,6 +225,7 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+             oldgamestate = GS_MINUS_ONE;
+             borderdrawcount = 3;
+         }
++        doomdbDisplayStage = 2;
+ 
+         // save the current screen if about to wipe
+         wipe = (gamestate != wipegamestate);
+@@ -267,6 +269,7 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+             default:
+             	break;
+         }
++        doomdbDisplayStage = 3;
+ 
+         // draw the view directly
+         if (gamestate == GS_LEVEL && !automapactive && eval(gametic)) {
+@@ -277,6 +280,7 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+             }
+             sceneRenderer.RenderPlayerView(players[displayplayer]);
+         }
++        doomdbDisplayStage = 4;
+ 
+         // Automap was active, update only HU.    
+         if (gamestate == GS_LEVEL && eval(gametic)) {
+@@ -324,5 +328,6 @@ public class DoomMain<T, V> extends DoomStatus<T, V> implements IDoomGameNetwork
+         menu.Drawer(); // menu is drawn even on top of everything
+         NetUpdate(); // send out any new accumulation
+ 
++        doomdbDisplayStage = 5;
+         // Disk access goes after everything.
+         diskDrawer.Drawer();
+diff --git a/src/rr/RendererState.java b/src/rr/RendererState.java
+--- a/src/rr/RendererState.java
++++ b/src/rr/RendererState.java
+@@ -2205,4 +2205,5 @@ public abstract class RendererState<T, V> implements SceneRenderer<T, V>, Detail
+     public void ExecuteSetViewSize() {
++        doom.DoomMain.doomdbDisplayStage = 11;
+         int cosadj;
+         int dy;
+         int level;
+@@ -2260,7 +2261,9 @@ public abstract class RendererState<T, V> implements SceneRenderer<T, V>, Detail
+ 
+         InitBuffer(view.scaledwidth, view.height);
++        doom.DoomMain.doomdbDisplayStage = 12;
+ 
+         InitTextureMapping();
++        doom.DoomMain.doomdbDisplayStage = 13;
+ 
+         // psprite scales
+         // pspritescale = FRACUNIT*viewwidth/vs.getScreenWidth();
+@@ -2281,6 +2284,7 @@ public abstract class RendererState<T, V> implements SceneRenderer<T, V>, Detail
+         for (int i = 0; i < view.width; i++) {
+             view.screenheightarray[i] = (short) view.height;
+         }
++        doom.DoomMain.doomdbDisplayStage = 14;
+ 
+         // planes
+         for (int i = 0; i < view.height; i++) {
+@@ -2290,6 +2294,7 @@ public abstract class RendererState<T, V> implements SceneRenderer<T, V>, Detail
+             vp_vars.yslope[i] = FixedDiv((view.width << view.detailshift) / 2 * FRACUNIT, dy);
+             // MyPlanes.yslopef[i] = ((viewwidth<<detailshift)/2)/ dy;
+         }
++        doom.DoomMain.doomdbDisplayStage = 15;
+ 
+         // double cosadjf;
+         for (int i = 0; i < view.width; i++) {
+@@ -2304,6 +2309,7 @@ public abstract class RendererState<T, V> implements SceneRenderer<T, V>, Detail
+             MyPlanes.getDistScale()[i] = FixedDiv(FRACUNIT, cosadj);
+             // MyPlanes.distscalef[i] = (float) (1.0/cosadjf);
+         }
++        doom.DoomMain.doomdbDisplayStage = 16;
+ 
+         // Calculate the light levels to use
+         // for each level / scale combination.
+@@ -2328,4 +2334,6 @@ public abstract class RendererState<T, V> implements SceneRenderer<T, V>, Detail
+         }
+ 
++        doom.DoomMain.doomdbDisplayStage = 20;
+         MySegs.ExecuteSetViewSize(view.width);
++        doom.DoomMain.doomdbDisplayStage = 17;
+     }
+diff --git a/src/rr/RendererState.java b/src/rr/RendererState.java
+--- a/src/rr/RendererState.java
++++ b/src/rr/RendererState.java
+@@ -2299,6 +2299,10 @@ public abstract class RendererState<T, V> implements SceneRenderer<T, V>, Detail
+ 
+         // Calculate the light levels to use
+         // for each level / scale combination.
++        doom.DoomMain.doomdbDisplayStage = 18;
++        final Object[][] doomdbScaleLight = (Object[][]) (Object) colormaps.scalelight;
++        final Object[] doomdbColorMaps = (Object[]) (Object) colormaps.colormaps;
++        doom.DoomMain.doomdbDisplayStage = 19;
+         for (int i = 0; i < colormaps.lightLevels(); i++) {
+             startmap = ((colormaps.lightLevels() - colormaps.lightBright() - i) * 2) * colormaps.numColorMaps() / colormaps.lightLevels();
+             for (int j = 0; j < colormaps.maxLightScale(); j++) {
+@@ -2306,6 +2308,6 @@ public abstract class RendererState<T, V> implements SceneRenderer<T, V>, Detail
+                 if (level >= colormaps.numColorMaps()) {
+                     level = colormaps.numColorMaps() - 1;
+                 }
+-                colormaps.scalelight[i][j] = colormaps.colormaps[level];
++                doomdbScaleLight[i][j] = doomdbColorMaps[level];
+             }
+         }

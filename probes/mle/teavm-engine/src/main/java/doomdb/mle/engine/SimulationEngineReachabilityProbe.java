@@ -58,6 +58,7 @@ public final class SimulationEngineReachabilityProbe {
   private static ReusableByteArrayOutputStream envelopeCheckpointOutput;
   private static ReusableByteArrayOutputStream playerCheckpointOutput;
   private static byte[] checkpointLoadBuffer;
+  private static byte[][] presentationStatusBackgrounds;
   private static int checkpointBytesLoaded;
   private static short[][] multiplayerConsistency;
 
@@ -1025,7 +1026,7 @@ public final class SimulationEngineReachabilityProbe {
    * TeaVM can prune the Display graph from that artifact while the separate
    * presentation root calls it from the same simulation adapter bytecode.
    */
-  static Uint8Array renderPlayerFrame(int playerSlot) throws Exception {
+  static byte[] renderPlayerFrameBytes(int playerSlot) throws Exception {
     if (engine == null || multiplayerConsistency == null || !engine.netgame) {
       throw new IllegalStateException("multiplayer engine is not initialized");
     }
@@ -1041,30 +1042,51 @@ public final class SimulationEngineReachabilityProbe {
       engine.statusBar.doomdbDisplayPlayer(playerSlot);
       if (engine.headsUp != null) engine.headsUp.doomdbDisplayPlayer(playerSlot);
       engine.Display();
-      // Mocha's desktop status lifecycle never populates its off-screen SB
-      // buffer in the TeaVM headless engine. Compose the two immutable
-      // backgrounds directly, then retain Mocha's exact widget rules for the
-      // per-player values. This is presentation-only state and the canonical
-      // before/after guard proves it cannot mutate authority.
-      drawIndexedPatch(engine.wadLoader.CachePatchName("STBAR"), 0, 168);
-      drawIndexedPatch(engine.wadLoader.CachePatchName("STFB" + playerSlot), 143, 168);
-      engine.statusBar.doomdbDrawWidgets(true);
       Object foreground = engine.graphicSystem.getScreen(DoomScreen.FG);
       if (!(foreground instanceof byte[]) || ((byte[]) foreground).length != 320 * 200) {
         throw new IllegalStateException("indexed framebuffer unavailable");
       }
       byte[] pixels = (byte[]) foreground;
-      Uint8Array result = Uint8Array.create(pixels.length);
-      for (int index = 0; index < pixels.length; index++) {
-        result.set(index, (short) (pixels[index] & 0xff));
+      // Mocha's desktop status lifecycle never populates its off-screen SB
+      // buffer in the TeaVM headless engine. Compose the two immutable
+      // backgrounds once per player, then restore that exact indexed region
+      // with a bulk copy before applying Mocha's dynamic widget rules.
+      // This is presentation-only state and the canonical before/after guard
+      // proves it cannot mutate authority.
+      if (presentationStatusBackgrounds == null) {
+        presentationStatusBackgrounds = new byte[engine.playeringame.length][];
       }
-      return result;
+      byte[] statusBackground = presentationStatusBackgrounds[playerSlot];
+      if (statusBackground == null) {
+        drawIndexedPatch(engine.wadLoader.CachePatchName("STBAR"), 0, 168);
+        drawIndexedPatch(engine.wadLoader.CachePatchName("STFB" + playerSlot), 143, 168);
+        statusBackground = new byte[320 * 32];
+        for (int index = 0; index < statusBackground.length; index++) {
+          statusBackground[index] = pixels[320 * 168 + index];
+        }
+        presentationStatusBackgrounds[playerSlot] = statusBackground;
+      } else {
+        for (int index = 0; index < statusBackground.length; index++) {
+          pixels[320 * 168 + index] = statusBackground[index];
+        }
+      }
+      engine.statusBar.doomdbDrawWidgets(true);
+      return pixels;
     } finally {
       engine.statusBar.doomdbDisplayPlayer(savedConsole);
       if (engine.headsUp != null) engine.headsUp.doomdbDisplayPlayer(savedConsole);
       engine.consoleplayer = savedConsole;
       engine.displayplayer = savedDisplay;
     }
+  }
+
+  static Uint8Array renderPlayerFrame(int playerSlot) throws Exception {
+    byte[] pixels = renderPlayerFrameBytes(playerSlot);
+    Uint8Array result = Uint8Array.create(pixels.length);
+    for (int index = 0; index < pixels.length; index++) {
+      result.set(index, (short) (pixels[index] & 0xff));
+    }
+    return result;
   }
 
   private static void drawIndexedPatch(patch_t patch, int x, int y) {
@@ -1203,6 +1225,7 @@ public final class SimulationEngineReachabilityProbe {
     checkpointLoadBuffer = null;
     checkpointBytesLoaded = 0;
     iwad = null;
+    presentationStatusBackgrounds = null;
     tablePack = null;
     tablePackBytesLoaded = 0;
     Tables.clearCanonicalTablePack();

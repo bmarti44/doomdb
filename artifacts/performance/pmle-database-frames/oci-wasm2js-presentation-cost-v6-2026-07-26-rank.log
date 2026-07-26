@@ -1,0 +1,22 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+PMLE_WASM2JS_COST_ARM|arm=WASM2JS_LINEAR|frames=20|p50_ms=133.341|p95_ms=140.96|suspect_samples=0|checksum=1469833290
+PMLE_WASM2JS_COST_ARM|arm=PURE_MLE_JS|frames=5|p50_ms=21.418|p95_ms=21.478|suspect_samples=0|checksum=1469833290
+PMLE_WASM2JS_COST_VERDICT|DVR_ONLY_ON_COST|p95_ms=140.96|budget_ms=2.531|structural_speedup=.152|memory_before=linear_memory_bytes=72876032|memory_after=linear_memory_bytes=72876032|classification=DIAGNOSTIC_NOT_GATE|tier=PRESENTATION_DIAGNOSTIC_ONLY
+

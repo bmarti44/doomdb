@@ -6,6 +6,8 @@ wasm="$spike/target/wasm/doom-wasm2js-authority.wasm"
 stem="$spike/target/wasm/doom-wasm2js-authority.i64-diagnostic"
 wasm2js="$spike/node_modules/.bin/wasm2js"
 wasm_dis="$spike/node_modules/.bin/wasm-dis"
+lowerer="$spike/lower-for-wasm2js.sh"
+lowered="$stem.mvp.wasm"
 translated="$stem.o0.mjs"
 bundle="$stem.o0.bundle.mjs"
 wat="$stem.wat"
@@ -37,13 +39,13 @@ busy_host="$(ps ax -o command= | awk '
   exit 1
 }
 
-for input in "$wasm2js" "$wasm_dis"; do
+for input in "$wasm2js" "$wasm_dis" "$lowerer"; do
   test -s "$input" || {
     printf 'missing wasm2js diagnostic input: %s\n' "$input" >&2
     exit 1
   }
 done
-for output in "$translated" "$bundle" "$wat" "$inspection" "$build_log" \
+for output in "$lowered" "$translated" "$bundle" "$wat" "$inspection" "$build_log" \
     "$parity_log" "$log"; do
   [[ ! -e "$output" ]] || {
     printf 'refusing to overwrite wasm2js diagnostic evidence: %s\n' \
@@ -72,7 +74,8 @@ test -s "$wasm"
 
   # This is an optimizer-reordering discriminator. It explicitly disables
   # Binaryen optimization while retaining wasm2js's required lowering passes.
-  "$wasm2js" -O0 "$wasm" -o "$translated"
+  "$lowerer" "$wasm" "$lowered"
+  "$wasm2js" -O0 "$lowered" -o "$translated"
   node "$spike/bundle-wasm2js.mjs" "$translated" "$bundle"
   set +e
   DOOMDB_WASM2JS_ARTIFACT="$bundle" DOOMDB_WASM2JS_TICS=0 \
@@ -88,7 +91,7 @@ test -s "$wasm"
 
   # Preserve the pre-translation Wasm around the canonical serializer exports
   # and every i64 operation/name that can identify the high-half call boundary.
-  "$wasm_dis" --emit-module-names "$wasm" -o "$wat"
+  "$wasm_dis" --all-features --emit-module-names "$wasm" -o "$wat"
   {
     printf '%s\n' 'PMLE_WASM2JS_SERIALIZER_DISASSEMBLY|BEGIN'
     rg -n -C 12 \
@@ -100,19 +103,22 @@ test -s "$wasm"
   grep -q 'i64[.]' "$inspection"
 
   i64_class=OTHER_I64_OR_SERIALIZER_FAILURE
+  # This name is pinned by the standing rejection fence. It now means that
+  # all six primitive reductions are exact and the remaining canonical
+  # mismatch is isolated to the serializer call boundary.
   exact_call_boundary=1
   [[ "$(grep -c '^PMLE_WASM2JS_I64_REDUCTION_CASE|' \
       "$parity_log" || true)" == 6 ]] || exact_call_boundary=0
-  for case_ in constant field field_copy array flag_or; do
+  for case_ in constant field field_copy array call flag_or; do
     [[ "$(grep -c \
       "^PMLE_WASM2JS_I64_REDUCTION_CASE|PASS|case=$case_|" \
       "$parity_log" || true)" == 1 ]] || exact_call_boundary=0
   done
-  [[ "$(grep -c \
-    '^PMLE_WASM2JS_I64_REDUCTION_CASE|FAIL|case=call|' \
-    "$parity_log" || true)" == 1 ]] || exact_call_boundary=0
-  if [[ "$parity_status" != 0 && "$exact_call_boundary" == 1 ]]; then
-    i64_class=CALL_BOUNDARY_HIGH_WORD_LOSS
+  if [[ "$parity_status" != 0 && "$exact_call_boundary" == 1 ]] &&
+      grep -q \
+        'canonical mismatch: differences=236 first=28660:0!=15,' \
+        "$parity_log"; then
+    i64_class=CANONICAL_SERIALIZER_CALL_BOUNDARY_HIGH_WORD_LOSS
     printf '%s\n' \
       'PMLE_WASM2JS_SERIALIZER_WORKAROUND|REQUIRED|shape=object_to_high_int_no_long_call_boundary'
   elif [[ "$parity_status" == 0 ]]; then

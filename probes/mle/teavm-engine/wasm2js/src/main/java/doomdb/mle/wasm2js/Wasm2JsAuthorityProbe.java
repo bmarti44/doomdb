@@ -9,6 +9,10 @@ import doomdb.mocha.DoomDbMochaAdapter;
 import java.util.Arrays;
 import mochadoom.Engine;
 import org.teavm.interop.Export;
+import rr.column_t;
+import rr.patch_t;
+import utils.Throwers;
+import v.renderers.DoomScreen;
 import w.InputStreamSugar;
 
 /**
@@ -29,6 +33,13 @@ public final class Wasm2JsAuthorityProbe {
   private static byte[] canonical;
   private static byte[] commandVector;
   private static short[][] multiplayerConsistency;
+  private static byte[] frame;
+  private static byte[][] statusBackgrounds;
+  private static boolean presentationViewInitialized;
+  private static byte[] initFailure;
+  private static byte[] renderCostTexture;
+  private static byte[] renderCostColormap;
+  private static byte[] renderCostFrame;
 
   private static final class LongHolder {
     long value;
@@ -112,13 +123,64 @@ public final class Wasm2JsAuthorityProbe {
   public static int initialize(
       int activePlayers, int deathmatch, int skill, int episode, int map)
       throws Exception {
+    return initializeGame(
+        activePlayers, deathmatch, skill, episode, map, false);
+  }
+
+  @Export(name = "doom_initialize_presentation")
+  public static int initializePresentation(
+      int activePlayers, int deathmatch, int skill, int episode, int map)
+      throws Exception {
+    return initializeGame(
+        activePlayers, deathmatch, skill, episode, map, true);
+  }
+
+  private static int initializeGame(
+      int activePlayers, int deathmatch, int skill, int episode, int map,
+      boolean presentation) throws Exception {
     if (iwad == null || tablePack == null) return -2;
     if (activePlayers < 1 || activePlayers > 4) return -3;
     Tables.installCanonicalTablePack(tablePack);
     InputStreamSugar.setInjectedResource(iwad);
-    engine = Engine.createHeadlessAuthority(
+    String[] arguments = {
         "-iwad", "freedoom1.wad", "-nosound", "-nomusic", "-indexed",
-        "-width", "320", "-height", "200");
+        "-width", "320", "-height", "200"
+    };
+    try {
+      if (presentation) {
+        engine = Engine.createHeadless(arguments);
+      } else {
+        engine = Engine.createHeadlessAuthority(arguments);
+      }
+    } catch (Throwable failure) {
+      if (failure instanceof Throwers.Throwed
+          && ((Throwers.Throwed) failure).t != null) {
+        failure = ((Throwers.Throwed) failure).t;
+      }
+      String message = failure.getClass().getName() + ":"
+          + (failure.getMessage() == null ? "" : failure.getMessage());
+      Throwable cause = failure.getCause();
+      if (cause != null && cause != failure) {
+        message += "|cause=" + cause.getClass().getName() + ":"
+            + (cause.getMessage() == null ? "" : cause.getMessage());
+      }
+      initFailure = new byte[message.length()];
+      for (int index = 0; index < message.length(); index++) {
+        initFailure[index] = (byte) message.charAt(index);
+      }
+      if (DoomMain.doomdbInitStage != 0) {
+        return -100 - DoomMain.doomdbInitStage;
+      }
+      if (failure instanceof NullPointerException) return -11;
+      if (failure instanceof ArrayIndexOutOfBoundsException) return -12;
+      if (failure instanceof ClassCastException) return -13;
+      if (failure instanceof IllegalArgumentException) return -14;
+      if (failure instanceof IllegalStateException) return -15;
+      if (failure instanceof java.io.IOException) return -16;
+      if (failure instanceof RuntimeException) return -17;
+      if (failure instanceof Error) return -18;
+      return -10;
+    }
     Arrays.fill(engine.playeringame, false);
     for (int player = 0; player < activePlayers; player++) {
       engine.playeringame[player] = true;
@@ -133,7 +195,20 @@ public final class Wasm2JsAuthorityProbe {
     multiplayerConsistency = new short[engine.playeringame.length]
         [engine.netcmds[0].length];
     canonical = null;
+    frame = null;
+    statusBackgrounds = null;
+    presentationViewInitialized = false;
     return engine.gametic;
+  }
+
+  @Export(name = "doom_init_failure_length")
+  public static int initFailureLength() {
+    return initFailure == null ? 0 : initFailure.length;
+  }
+
+  @Export(name = "doom_init_failure_ref")
+  public static byte[] initFailureReference() {
+    return initFailure;
   }
 
   @Export(name = "doom_command_ref")
@@ -223,6 +298,113 @@ public final class Wasm2JsAuthorityProbe {
     return canonical;
   }
 
+  /**
+   * Render one exact confirmed 320x200 indexed frame inside the engine.
+   *
+   * The returned value is a length/status code. doom_frame_ref exposes the
+   * retained Java byte array directly through TeaVM's linear-memory ABI.
+   */
+  @Export(name = "doom_render_player")
+  public static int renderPlayer(int playerSlot) {
+    int stage = 0;
+    try {
+      if (engine == null || multiplayerConsistency == null || !engine.netgame) {
+        return -1;
+      }
+      if (playerSlot < 0 || playerSlot >= engine.playeringame.length
+          || !engine.playeringame[playerSlot]) {
+        return -2;
+      }
+      if (!presentationViewInitialized) {
+        engine.sceneRenderer.SetViewSize(10, 0);
+        presentationViewInitialized = true;
+      }
+      stage = 1;
+      int savedConsole = engine.consoleplayer;
+      int savedDisplay = engine.displayplayer;
+      try {
+        engine.consoleplayer = playerSlot;
+        engine.displayplayer = playerSlot;
+        engine.statusBar.doomdbDisplayPlayer(playerSlot);
+        if (engine.headsUp != null) engine.headsUp.doomdbDisplayPlayer(playerSlot);
+        stage = 2;
+        engine.Display();
+        stage = 3;
+        Object foreground = engine.graphicSystem.getScreen(DoomScreen.FG);
+        if (!(foreground instanceof byte[])
+            || ((byte[]) foreground).length != 320 * 200) {
+          return -3;
+        }
+        frame = (byte[]) foreground;
+        stage = 4;
+        composeStatusBar(playerSlot);
+        stage = 5;
+        return frame.length;
+      } finally {
+        engine.statusBar.doomdbDisplayPlayer(savedConsole);
+        if (engine.headsUp != null) {
+          engine.headsUp.doomdbDisplayPlayer(savedConsole);
+        }
+        engine.consoleplayer = savedConsole;
+        engine.displayplayer = savedDisplay;
+      }
+    } catch (Throwable failure) {
+      if (DoomMain.doomdbDisplayStage != 0) {
+        return -200 - DoomMain.doomdbDisplayStage;
+      }
+      return -100 - stage;
+    }
+  }
+
+  @Export(name = "doom_frame_ref")
+  public static byte[] frameReference() {
+    return frame;
+  }
+
+  /**
+   * Cost-only Doom-shaped indexed raster kernel.
+   *
+   * <p>This is deliberately independent of Display() and engine
+   * initialization so the generated linear-memory shape can be rejected on
+   * cost before more parity debugging. It performs two byte gathers, integer
+   * coordinate work, and one framebuffer store for every 320x200 pixel. It
+   * is a lower bound, not an exact Doom frame and never a release artifact.</p>
+   */
+  @Export(name = "doom_render_cost_kernel")
+  public static int renderCostKernel(int frames) {
+    if (frames < 1 || frames > 1000) return -1;
+    if (renderCostTexture == null) {
+      renderCostTexture = new byte[65536];
+      renderCostColormap = new byte[256];
+      renderCostFrame = new byte[320 * 200];
+      for (int index = 0; index < renderCostTexture.length; index++) {
+        renderCostTexture[index] = (byte) (index * 73 + 19);
+      }
+      for (int index = 0; index < renderCostColormap.length; index++) {
+        renderCostColormap[index] = (byte) (index * 29 + 7);
+      }
+    }
+    int checksum = 0x13579bdf;
+    for (int frameIndex = 0; frameIndex < frames; frameIndex++) {
+      int phase = frameIndex * 17 + checksum;
+      for (int y = 0; y < 200; y++) {
+        int row = y * 320;
+        int v = y * 97 + (phase << 2);
+        for (int x = 0; x < 320; x++) {
+          int u = x * 257 + phase + (y << 3);
+          int textureIndex = (u + (v & 0xff00)) & 0xffff;
+          int sample = renderCostTexture[textureIndex] & 0xff;
+          int mapped = renderCostColormap[
+              (sample + ((x ^ y) & 31)) & 0xff] & 0xff;
+          renderCostFrame[row + x] = (byte) mapped;
+        }
+      }
+      checksum = checksum * 31
+          + (renderCostFrame[(frameIndex * 997) % renderCostFrame.length] & 0xff);
+    }
+    return checksum;
+  }
+
   @Export(name = "doom_release")
   public static int release() {
     engine = null;
@@ -231,6 +413,12 @@ public final class Wasm2JsAuthorityProbe {
     iwad = null;
     commandVector = null;
     multiplayerConsistency = null;
+    frame = null;
+    statusBackgrounds = null;
+    presentationViewInitialized = false;
+    renderCostTexture = null;
+    renderCostColormap = null;
+    renderCostFrame = null;
     InputStreamSugar.clearInjectedResource();
     Engine.releaseHeadless();
     return 0;
@@ -246,5 +434,45 @@ public final class Wasm2JsAuthorityProbe {
 
   private static int highWord(long value) {
     return (int) (value >>> 32);
+  }
+
+  private static void composeStatusBar(int playerSlot) {
+    if (statusBackgrounds == null) {
+      statusBackgrounds = new byte[engine.playeringame.length][];
+    }
+    byte[] background = statusBackgrounds[playerSlot];
+    if (background == null) {
+      drawIndexedPatch(engine.wadLoader.CachePatchName("STBAR"), 0, 168);
+      drawIndexedPatch(
+          engine.wadLoader.CachePatchName("STFB" + playerSlot), 143, 168);
+      background = new byte[320 * 32];
+      System.arraycopy(frame, 320 * 168, background, 0, background.length);
+      statusBackgrounds[playerSlot] = background;
+    } else {
+      System.arraycopy(background, 0, frame, 320 * 168, background.length);
+    }
+    engine.statusBar.doomdbDrawWidgets(true);
+  }
+
+  private static void drawIndexedPatch(patch_t patch, int x, int y) {
+    int originX = x - patch.leftoffset;
+    int originY = y - patch.topoffset;
+    for (int columnIndex = 0; columnIndex < patch.width; columnIndex++) {
+      int targetX = originX + columnIndex;
+      if (targetX < 0 || targetX >= 320) continue;
+      column_t column = patch.columns[columnIndex];
+      for (int post = 0;
+          post < column.posts && column.postdeltas[post] != 0xff;
+          post++) {
+        int targetY = originY + column.postdeltas[post];
+        for (int pixel = 0; pixel < column.postlen[post]; pixel++) {
+          int screenY = targetY + pixel;
+          if (screenY >= 0 && screenY < 200) {
+            frame[screenY * 320 + targetX] =
+                column.data[column.postofs[post] + pixel];
+          }
+        }
+      }
+    }
   }
 }

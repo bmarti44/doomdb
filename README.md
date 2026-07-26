@@ -124,18 +124,39 @@ loads, and i64 call-boundary loss; only a confirmed call-boundary failure may
 try the tracked int-high-word serializer workaround, and exact tic-zero plus
 100-tic parity still precedes any rank cell.
 
-The final de-CPS OCI presentation measurement also missed the live-render bar:
-191.276 ms p95 over 100 exact unique frames on the locator arm, versus
-33.333 ms, with exact Node-chain identity and zero clock exclusions. The
-render itself measured 11.058 ms p95; durable BLOB persistence measured
-180.003 ms p95 and is the bottleneck. Per the predeclared rule, the 300-frame
-arm was not run and live exact database rendering is closed on this artifact
-and persistence shape. This does not change the release architecture: exact
-MLE rendering is the asynchronous audit/DVR tier, while live presentation is
-a confirmed-only browser renderer consuming chained authoritative deltas
-without simulating ahead, reordering, or reinterpreting database state. A
-post-release, separately gated compression/batched-persistence workstream is
-authorized for the DVR tier only.
+The original de-CPS OCI presentation report measured a 191.276 ms p95
+pipeline over 100 exact unique frames on the locator arm, versus 33.333 ms,
+with exact Node-chain identity and zero clock exclusions. A subsequent
+stage-separated 300-frame RAW-ring diagnostic corrected its attribution:
+the earlier 11.058 ms bucket was the authority step only, while the reported
+180.003 ms bucket combined rendering and persistence. On the same pinned
+presentation artifact, exact MLE rasterization measured 207.488 ms p95,
+two-RAW egress 9.287 ms p95, and bounded-ring publication 2.694 ms p95.
+The renderer—not ORDS or durable publication—is therefore the current
+database-frame bottleneck. The active target is to make complete 320×200
+frames in MLE, deliver them through ORDS, and sustain 30+ unique moving FPS
+with a framebuffer-only browser. Compression remains an optional transport
+optimization, not the architecture or acceptance goal.
+
+The subsequent legacy-Wasm → wasm2js structural experiment is also closed for
+live frames. On OCI, a deliberately incomplete 64,000-pixel raster kernel
+measured 140.960 ms p95 in the generated linear-memory shape versus 21.478 ms
+for the identical ordinary-MLE-JavaScript operations. The candidate is 6.56×
+slower on raster gathers/stores and was already 3.44× slower than the shipping
+authority in peak combat. It is classified `DVR_ONLY_ON_COST`; the 0.15
+de-CPS authority and browser renderer remain the release. Frame compression is
+suspended until rasterization itself approaches roughly 30 ms, since egress
+and publication are already minor parts of the measured pipeline.
+
+A final ordinary-MLE pixel-floor cell explains the remaining synthetic
+discrepancy. The 21.478 ms control performs three effective byte-array passes
+per pixel (two dependent reads plus one write); its final plateau normalized
+to 7.077 ms per frame-sized pass, close to the earlier 5.824 ms one-gather
+probe. It did not asynchronously compile, and managed ADB denied the isolated
+hidden forced-compilation control even to ADMIN, so no compiled pixel number
+is claimed. The exact 207.488 ms renderer is 9.66× slower than the ordinary
+three-pass kernel. Per the predeclared rule, a purpose-built flat typed-array
+renderer is worth costing, but has not been authorized or started.
 
 **Multiplayer, where the database is the server.** Two browsers join one
 authoritative world living in Oracle. The engine advances once per ordered

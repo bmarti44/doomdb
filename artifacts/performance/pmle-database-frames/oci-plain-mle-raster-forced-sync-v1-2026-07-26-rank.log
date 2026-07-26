@@ -1,0 +1,25 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+
+Error starting at line : 12 in command -
+alter session set "_mle_compile_immediately"=true
+Error report -
+ORA-01031: insufficient privileges
+Help: https://docs.oracle.com/error-help/db/ora-01031/
+Rollback

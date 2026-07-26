@@ -156,7 +156,42 @@ assert.equal(
   status.performance.autonomousVenue.exactFramePersistenceP95Milliseconds,
   212.095);
 assert.equal(status.performance.autonomousVenue.liveExactDatabaseRendering,
-  'CLOSED_FINAL_DECPS_COMPILED_VENUE');
+  'CLOSED_CURRENT_SHAPES_SPECIALIZED_COSTING_PENDING');
+assert.equal(
+  status.performance.autonomousVenue.databaseFrameStageSeparatedDiagnostic
+    .rasterP95Milliseconds,
+  207.488);
+assert.equal(
+  status.performance.autonomousVenue.databaseFrameStageSeparatedDiagnostic
+    .rawEgressP95Milliseconds,
+  9.287);
+assert.equal(
+  status.performance.autonomousVenue.wasm2jsPresentationCostDiagnostic
+    .verdict,
+  'DVR_ONLY_ON_COST');
+assert.equal(
+  status.performance.autonomousVenue.wasm2jsPresentationCostDiagnostic
+    .rasterLowerBoundP95Milliseconds,
+  140.960);
+assert.equal(
+  status.performance.autonomousVenue.wasm2jsPresentationCostDiagnostic
+    .linearMemoryBytes,
+  72876032);
+assert.equal(
+  status.performance.autonomousVenue.plainMleRasterFloorDiagnostic.verdict,
+  'PLAUSIBLE_COSTING_ONLY');
+assert.equal(
+  status.performance.autonomousVenue.plainMleRasterFloorDiagnostic
+    .normalizedPassP95Milliseconds,
+  7.077);
+assert.equal(
+  status.performance.autonomousVenue.plainMleRasterFloorDiagnostic
+    .compiledNanosecondsPerPixel,
+  'UNAVAILABLE_PRIVILEGE');
+assert.equal(
+  status.performance.autonomousVenue.plainMleRasterFloorDiagnostic
+    .specializedRenderer,
+  'NOT_STARTED');
 assert.equal(
   status.performance.autonomousVenue.deCpsPresentationDiagnostic
     .pipelineP95Milliseconds,

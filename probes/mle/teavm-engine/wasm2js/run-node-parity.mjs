@@ -115,9 +115,37 @@ function compareCanonical(tic) {
     }
   }
   if (differenceCount !== 0) {
+    const readInt32 = (bytes, offset) => (
+      ((bytes[offset] << 24)
+        | (bytes[offset + 1] << 16)
+        | (bytes[offset + 2] << 8)
+        | bytes[offset + 3]) >>> 0
+    );
+    const saveBytes = readInt32(expected, 4);
+    const thinkerBase = 8 + saveBytes + 40;
+    const firstOffset = Number(differences[0].split(':', 1)[0]);
+    const firstThinkerRelative = firstOffset - thinkerBase;
+    const firstContextStart = Math.max(0, firstOffset - 48);
+    const firstExpectedContext = Buffer.from(expected.subarray(
+      firstContextStart, firstOffset + 16)).toString('hex');
+    const firstDescription = typeof oracle.canonicalOffsetDescription
+        === 'function'
+      ? oracle.canonicalOffsetDescription(firstOffset)
+      : 'unavailable';
+    const angleDiagnostic = typeof engine.doom_last_decoded_angle === 'function'
+      ? `${engine.doom_last_decoded_angle()}/`
+          + `${engine.doom_last_stored_net_angle()}/`
+          + `${engine.doom_last_player_angle()}`
+      : 'unavailable';
     throw new Error(`tic ${tic} canonical mismatch: differences=`
       + `${differenceCount} first=${differences.join(',')}`
       + ` last=${lastDifferences.join(',')}`
+      + ` save_bytes=${saveBytes} thinker_base=${thinkerBase}`
+      + ` first_thinker_relative=${firstThinkerRelative}`
+      + ` first_description=${firstDescription}`
+      + ` angle_decoded_net_player=${angleDiagnostic}`
+      + ` first_context_start=${firstContextStart}`
+      + ` first_expected_context=${firstExpectedContext}`
       + ` wasm2js_sha256=${sha256(actual)} oracle_sha256=${sha256(expected)}`);
   }
   return actual;
@@ -138,14 +166,22 @@ assert.match(oracle.initializeMultiplayerGame(
   fixture.skill, fixture.episode, fixture.map),
 /state=multiplayer-initialized\|gametic=0\|/);
 
+if (typeof engine.doom_first_spawn_options === 'function') {
+  process.stdout.write(
+    `PMLE_WASM2JS_SPAWN_OPTIONS|first=${engine.doom_first_spawn_options()}\n`,
+  );
+}
 let canonical = compareCanonical(0);
-const commandView = wasmArray(engine.doom_command_ref(), 32);
 let stepped = 0;
 for (const run of fixture.runs) {
   const command = Uint8Array.from(Buffer.from(run.command, 'hex'));
   assert.equal(command.length, 32);
   for (let repetition = 0; repetition < run.repeat && stepped < tics;
       repetition++) {
+    // TeaVM may grow linear memory while producing canonical material. Never
+    // retain a TypedArray view across that boundary: a grown memory detaches
+    // the prior ArrayBuffer and silently sends later commands to stale bytes.
+    const commandView = wasmArray(engine.doom_command_ref(), 32);
     commandView.set(command);
     assert.equal(engine.doom_step_authority(
       fixture.players, run.membership), stepped + 1);

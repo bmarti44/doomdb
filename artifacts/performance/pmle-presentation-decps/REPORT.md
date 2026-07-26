@@ -27,15 +27,28 @@ Measured locator cell:
 
 | Metric | Result |
 | --- | ---: |
-| authority step + render p50 / p95 | 7.796 / 11.058 ms |
-| BLOB persistence p50 / p95 / p99 | 88.689 / 180.003 / 189.084 ms |
+| authority step p50 / p95 | 7.796 / 11.058 ms |
+| combined render + BLOB persistence p50 / p95 / p99 | 88.689 / 180.003 / 189.084 ms |
 | full pipeline p50 / p95 / p99 | 96.361 / 191.276 / 432.652 ms |
 | exact 30 FPS | FAIL |
 | temporary LOB delta | +2 (hygiene FAIL) |
 
-The persistence leg, not the de-CPS engine step, dominates the result. The
-temporary-LOB miss is retained as a second failure; it is not used to explain
-or waive the latency failure.
+These original buckets did not separate renderer time from persistence time:
+`l_step_ms` was sampled immediately after the authority step, before the
+rendering call, and `l_persist_ms` enclosed both rendering and the BLOB
+write. The earlier interpretation that rendering itself took 11.058 ms was
+therefore incorrect.
+
+A later stage-separated 300-frame RAW-ring diagnostic on this same
+`118c3771…` presentation artifact measured exact MLE rasterization at
+207.488 ms p95, two-RAW egress at 9.287 ms p95, and bounded-ring publication
+at 2.694 ms p95. That diagnostic proves the renderer is the bottleneck; the
+transport and publication legs are already below the 33.333 ms frame budget.
+Its exact 300-frame chain passed. See
+`artifacts/performance/pmle-database-frames/oci-raw-frame-ring-300-2026-07-26.log`.
+
+The temporary-LOB miss is retained as a second failure; it is not used to
+explain or waive the latency failure.
 
 ## Candidate provenance
 

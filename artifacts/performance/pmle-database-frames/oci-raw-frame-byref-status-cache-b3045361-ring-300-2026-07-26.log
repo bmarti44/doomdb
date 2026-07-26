@@ -1,0 +1,73 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_OCI_RAW_FRAME_RING|DIAGNOSTIC_NOT_GATE|frames=300|unique=300|frame_bytes=64000|ring_slots=64|transport=two_raw_columns|commit=WRITE_BATCH_NOWAIT|step_p95_ms=11.556|render_p95_ms=206.776|egress_p95_ms=9.892|publish_p95_ms=4.762|pipeline_p50_ms=151.893|pipeline_p95_ms=224.532|pipeline_fps_p95=4.454|clock_suspects=0|clock_exclusion_cap=1|temporary_lobs_before=0|temporary_lobs_after=0|temporary_lobs_delta=0|chain_sha256=4e6159b218afc6ec15a763026acaea83038d8bb0764c097069094fe988578a6a|raw_30fps=FAIL
+

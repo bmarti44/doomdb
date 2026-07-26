@@ -1,0 +1,158 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1-100|milliseconds_per_render=59.582|milliseconds_per_step_and_render=65.397
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=101-200|milliseconds_per_render=135.530|milliseconds_per_step_and_render=141.870
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=201-300|milliseconds_per_render=145.458|milliseconds_per_step_and_render=152.798
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=301-400|milliseconds_per_render=112.591|milliseconds_per_step_and_render=119.913
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=401-500|milliseconds_per_render=106.011|milliseconds_per_step_and_render=112.740
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=501-600|milliseconds_per_render=181.126|milliseconds_per_step_and_render=187.312
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=601-700|milliseconds_per_render=114.997|milliseconds_per_step_and_render=121.896
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=701-800|milliseconds_per_render=126.643|milliseconds_per_step_and_render=131.366
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=801-900|milliseconds_per_render=86.337|milliseconds_per_step_and_render=90.891
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=901-1000|milliseconds_per_render=65.218|milliseconds_per_step_and_render=69.656
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1001-1100|milliseconds_per_render=91.360|milliseconds_per_step_and_render=95.298
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1101-1200|milliseconds_per_render=88.940|milliseconds_per_step_and_render=92.415
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1201-1300|milliseconds_per_render=111.852|milliseconds_per_step_and_render=117.022
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1301-1400|milliseconds_per_render=114.225|milliseconds_per_step_and_render=116.653
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1401-1500|milliseconds_per_render=85.474|milliseconds_per_step_and_render=91.219
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1501-1600|milliseconds_per_render=54.351|milliseconds_per_step_and_render=58.099
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1601-1700|milliseconds_per_render=92.453|milliseconds_per_step_and_render=98.198
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1701-1800|milliseconds_per_render=77.334|milliseconds_per_step_and_render=81.218
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1801-1900|milliseconds_per_render=87.834|milliseconds_per_step_and_render=92.199
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=1901-2000|milliseconds_per_render=82.485|milliseconds_per_step_and_render=86.731
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2001-2100|milliseconds_per_render=79.026|milliseconds_per_step_and_render=82.928
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2101-2200|milliseconds_per_render=76.289|milliseconds_per_step_and_render=82.534
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2201-2300|milliseconds_per_render=77.780|milliseconds_per_step_and_render=81.235
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2301-2400|milliseconds_per_render=78.522|milliseconds_per_step_and_render=82.824
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2401-2500|milliseconds_per_render=159.831|milliseconds_per_step_and_render=163.725
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2501-2600|milliseconds_per_render=172.721|milliseconds_per_step_and_render=176.356
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2601-2700|milliseconds_per_render=100.912|milliseconds_per_step_and_render=105.624
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2701-2800|milliseconds_per_render=102.818|milliseconds_per_step_and_render=107.186
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2801-2900|milliseconds_per_render=101.646|milliseconds_per_step_and_render=105.782
+PMLE_OCI_RENDERER_WARM_WINDOW|DIAGNOSTIC_NOT_GATE|calls=2901-3000|milliseconds_per_render=101.209|milliseconds_per_step_and_render=105.244
+PMLE_OCI_RENDERER_WARM|DIAGNOSTIC_NOT_GATE|calls=3000|window=100|elapsed_ms=321633.716|landing_windows=0|verdict=MEASURE_ONLY_EXACT_STREAM_FOLLOWS
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_OCI_RAW_FRAME_RING|DIAGNOSTIC_NOT_GATE|frames=300|unique=300|frame_bytes=64000|ring_slots=64|transport=two_raw_columns|commit=WRITE_BATCH_NOWAIT|step_p95_ms=9.882|render_p95_ms=210.643|egress_p95_ms=7.793|publish_p95_ms=3.997|pipeline_p50_ms=155.783|pipeline_p95_ms=228.946|pipeline_fps_p95=4.368|clock_suspects=0|clock_exclusion_cap=1|temporary_lobs_before=0|temporary_lobs_after=1|temporary_lobs_delta=1|chain_sha256=4e6159b218afc6ec15a763026acaea83038d8bb0764c097069094fe988578a6a|raw_30fps=FAIL
+

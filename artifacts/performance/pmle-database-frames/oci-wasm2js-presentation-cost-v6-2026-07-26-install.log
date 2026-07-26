@@ -1,0 +1,53 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+
+Table DOOM_WASM2JS_COST_SOURCE created.
+
+
+1 row inserted.
+
+
+1 row inserted.
+
+
+Commit complete.
+
+PMLE_DIAGNOSTIC_BLOB_LOAD|PASS|kind=ENGINE|bytes=14435019|sha256=8f740a68a8eac249a9cbe8afcedf98e63d165e8d88b99c7e7f70893e59e01610
+PMLE_DIAGNOSTIC_BLOB_LOAD|PASS|kind=BRIDGE|bytes=2510|sha256=39b1a353f5cd792aae8297fae11c29c2d04231fdbfee8ffd3ebcc17d09695bbc
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_WASM2JS_COST_STAGING|PASS|objects=2
+
+PMLE_WASM2JS_COST_MODULE_CREATE|engine_ms=3651.713
+
+PMLE_WASM2JS_COST_FIRST_CALL|PASS|elapsed_ms=2402.216|memory=linear_memory_bytes=72876032
+

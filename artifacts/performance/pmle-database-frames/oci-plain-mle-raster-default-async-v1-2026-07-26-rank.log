@@ -1,0 +1,26 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+PMLE_PLAIN_RASTER_PASS|pass=1|frames=500|p50_ms=19.959|p95_ms=24.196|wall_ms=10307.774|throughput_fps=48.507|clock_suspects=0|checksum=1469833290
+PMLE_PLAIN_RASTER_PASS|pass=2|frames=500|p50_ms=20.337|p95_ms=23.574|wall_ms=10484.238|throughput_fps=47.691|clock_suspects=0|checksum=1469833290
+PMLE_PLAIN_RASTER_PASS|pass=3|frames=500|p50_ms=20.261|p95_ms=21.883|wall_ms=10368.964|throughput_fps=48.221|clock_suspects=0|checksum=1469833290
+PMLE_PLAIN_RASTER_PASS|pass=4|frames=500|p50_ms=20.269|p95_ms=21.262|wall_ms=10338.925|throughput_fps=48.361|clock_suspects=0|checksum=1469833290
+PMLE_PLAIN_RASTER_PASS|pass=5|frames=500|p50_ms=20.24|p95_ms=20.748|wall_ms=10289.883|throughput_fps=48.591|clock_suspects=0|checksum=1469833290
+PMLE_PLAIN_RASTER_PASS|pass=6|frames=500|p50_ms=20.228|p95_ms=21.232|wall_ms=10309.21|throughput_fps=48.5|clock_suspects=0|checksum=1469833290
+PMLE_PLAIN_RASTER_VERDICT|COMPILED_RASTER_SHAPE_INSUFFICIENT|final_two_worst_p95_ms=21.232|first_p95_ms=24.196|passes=6|frames_per_pass=500|settings=PRODUCTION_DEFAULT|classification=DIAGNOSTIC_NOT_GATE
+

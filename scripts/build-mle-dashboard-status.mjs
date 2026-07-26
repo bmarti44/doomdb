@@ -33,6 +33,14 @@ const ociJavaRemovalEvidencePath =
   'oci-exact-release-java-removal-2026-07-26.log';
 const ociDeCpsPresentationEvidencePath =
   'artifacts/performance/pmle-presentation-decps/REPORT.md';
+const ociDatabaseFrameEvidencePath =
+  'artifacts/performance/pmle-database-frames/REPORT.md';
+const ociWasm2jsPresentationCostEvidencePath =
+  'artifacts/performance/pmle-database-frames/' +
+  'wasm2js-presentation-cost-verdict-2026-07-26.md';
+const ociPlainMleRasterFloorEvidencePath =
+  'artifacts/performance/pmle-database-frames/' +
+  'plain-mle-raster-floor-verdict-2026-07-26.md';
 const deCpsPromoted = authority.outputSha256 === deCpsAuthority.sha256;
 const deCpsPromotionPath =
   'artifacts/performance/pmle-decps-rank/' +
@@ -680,8 +688,54 @@ const status = {
       authorityRouteMinimumTicsPerSecond: 302.419,
       authoritySlowestPeakTicsPerSecond: 140.845,
       liveExactDatabaseRendering:
-        'CLOSED_FINAL_DECPS_COMPILED_VENUE',
+        'CLOSED_CURRENT_SHAPES_SPECIALIZED_COSTING_PENDING',
       exactFramePersistenceP95Milliseconds: 212.095,
+      databaseFrameStageSeparatedDiagnostic: {
+        classification: 'DIAGNOSTIC_NOT_GATE',
+        artifactSha256:
+          '118c37717b362d9e7669b5a3a1e73c87b3916479b6e53651f08e85be9ae8f2d3',
+        samples: 300,
+        uniqueFrames: 300,
+        exactFrameChain: 'PASS',
+        authorityStepP95Milliseconds: 10.022,
+        rasterP95Milliseconds: 207.488,
+        rawEgressP95Milliseconds: 9.287,
+        boundedRingPublishP95Milliseconds: 2.694,
+        pipelineP95Milliseconds: 222.569,
+        pipelineFramesPerSecondAtP95: 4.493,
+        databaseRaster30Fps: 'FAIL',
+        evidence: ociDatabaseFrameEvidencePath
+      },
+      wasm2jsPresentationCostDiagnostic: {
+        classification: 'DIAGNOSTIC_NOT_GATE',
+        tier: 'PRESENTATION_DIAGNOSTIC_ONLY',
+        verdict: 'DVR_ONLY_ON_COST',
+        artifactSha256:
+          '8f740a68a8eac249a9cbe8afcedf98e63d165e8d88b99c7e7f70893e59e01610',
+        artifactBytes: 14435019,
+        rasterLowerBoundP50Milliseconds: 133.341,
+        rasterLowerBoundP95Milliseconds: 140.960,
+        pureMleJsP95Milliseconds: 21.478,
+        wasm2jsRelativeSpeed: 0.152,
+        moduleCreateMilliseconds: 3651.713,
+        firstCallMilliseconds: 2402.216,
+        linearMemoryBytes: 72876032,
+        evidence: ociWasm2jsPresentationCostEvidencePath
+      },
+      plainMleRasterFloorDiagnostic: {
+        classification: 'DIAGNOSTIC_NOT_GATE',
+        verdict: 'PLAUSIBLE_COSTING_ONLY',
+        pixels: 64000,
+        effectivePasses: 3,
+        interpretedFullKernelP95Milliseconds: 21.232,
+        interpretedFullKernelP95NanosecondsPerPixel: 331.750,
+        normalizedPassP95Milliseconds: 7.077,
+        normalizedPassP95NanosecondsPerPixel: 110.583,
+        compiledNanosecondsPerPixel: 'UNAVAILABLE_PRIVILEGE',
+        exactRendererToControlRatio: 9.66,
+        specializedRenderer: 'NOT_STARTED',
+        evidence: ociPlainMleRasterFloorEvidencePath
+      },
       deCpsPresentationDiagnostic: {
         classification: 'DIAGNOSTIC_NOT_GATE',
         artifactSha256:
@@ -853,6 +907,9 @@ const status = {
     ociWaitFreeWanQualification: ociWaitFreeWanEvidencePath,
     ociJavaRemovalAudit: ociJavaRemovalEvidencePath,
     ociDeCpsPresentationDiagnostic: ociDeCpsPresentationEvidencePath,
+    ociDatabaseFrameDiagnostic: ociDatabaseFrameEvidencePath,
+    ociWasm2jsPresentationCost: ociWasm2jsPresentationCostEvidencePath,
+    ociPlainMleRasterFloor: ociPlainMleRasterFloorEvidencePath,
     deCpsDatabaseDeploymentState:
       deCpsState === null ? deCpsSourceEvidencePath : deCpsStatePath
   }

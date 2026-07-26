@@ -6,6 +6,19 @@ spike="$root/probes/mle/teavm-engine/wasm2js"
 source_dir="$spike/target/teavm-singlethread/source"
 commit='b3a245b7d9034ff35cdfab2def057a3d4f256efb'
 coordinate='0.13.1-doomdb-singlethread'
+expected_jar_sha='c81017dfb2787f0ecc7cebf155a771ae92190d1b92bcaeba31721ac3fb080cad'
+
+# The pinned fork is already installed in the project Maven volume from its
+# accepted reproducible build. Reuse it only after an exact byte check. This
+# also avoids depending on TeaVM's later Gradle conversion when a detached
+# source checkout is refreshed solely to consume the already-proven fork.
+cached_jar="/root/.m2/repository/org/teavm/teavm-core/$coordinate/teavm-core-$coordinate.jar"
+if docker run --rm -v doomdb-maven-cache:/root/.m2 alpine sh -lc \
+    "test -s '$cached_jar' && test \"\$(sha256sum '$cached_jar' | awk '{print \$1}')\" = '$expected_jar_sha'"; then
+  printf 'PASS PMLE-WASM2JS-TEAVM-FORK commit=%s coordinate=%s jar_sha256=%s source=PINNED_MAVEN_CACHE\n' \
+    "$commit" "$coordinate" "$expected_jar_sha"
+  exit 0
+fi
 
 mkdir -p "$(dirname "$source_dir")"
 if [[ ! -d "$source_dir/.git" ]]; then

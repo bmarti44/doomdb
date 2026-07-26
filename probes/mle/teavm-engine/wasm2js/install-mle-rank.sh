@@ -56,7 +56,7 @@ if [[ "$self_test" == 0 ]]; then
   tic0_log="$workaround_stem.tic0.log"
   parity_log="$workaround_stem.100tic.log"
   wasm="${artifact%.serializer-workaround.o0.bundle.mjs}.wasm"
-  patch="$spike/0003-canonical-long-high-word-workaround.patch"
+  patch="$spike/0004-canonical-save-low-word-workaround.patch"
   for evidence_input in "$workaround_log" "$tic0_log" "$parity_log" \
       "$wasm" "$patch"; do
     [[ -s "$evidence_input" ]] || {
@@ -67,7 +67,7 @@ if [[ "$self_test" == 0 ]]; then
   done
   workaround_terminal="PMLE_WASM2JS_SERIALIZER_WORKAROUND|PASS"
   workaround_terminal+="|classification=CANDIDATE_FOR_DIRECT_MLE_RANK"
-  workaround_terminal+="|adapter_patch_sha256=$(shasum -a 256 "$patch" | awk '{print $1}')"
+  workaround_terminal+="|source_patch_sha256=$(shasum -a 256 "$patch" | awk '{print $1}')"
   workaround_terminal+="|wasm_sha256=$(shasum -a 256 "$wasm" | awk '{print $1}')"
   workaround_terminal+="|bundle_sha256=$artifact_sha"
   workaround_terminal+="|tic0_log_sha256=$(shasum -a 256 "$tic0_log" | awk '{print $1}')"

@@ -2,6 +2,7 @@
 package doomdb.mle.engine;
 
 import org.teavm.jso.JSExport;
+import org.teavm.jso.JSByRef;
 import org.teavm.jso.typedarrays.Uint8Array;
 
 /**
@@ -83,6 +84,25 @@ public final class PresentationEngineReachabilityProbe {
       viewInitialized = true;
     }
     return SimulationEngineReachabilityProbe.renderPlayerFrame(playerSlot);
+  }
+
+  /**
+   * Zero-copy framebuffer export for database-side presentation workers.
+   *
+   * TeaVM normally copies Java primitive arrays across an exported JS
+   * boundary. The by-reference form exposes the retained 64 KB framebuffer
+   * as a typed-array view, avoiding a second interpreted per-pixel loop.
+   * Consumers must finish copying or persisting the view before the next
+   * render mutates the framebuffer.
+   */
+  @JSExport
+  @JSByRef
+  public static byte[] renderPlayerFrameByRef(int playerSlot) throws Exception {
+    if (!viewInitialized) {
+      SimulationEngineReachabilityProbe.initializePresentationView();
+      viewInitialized = true;
+    }
+    return SimulationEngineReachabilityProbe.renderPlayerFrameBytes(playerSlot);
   }
 
   @JSExport
