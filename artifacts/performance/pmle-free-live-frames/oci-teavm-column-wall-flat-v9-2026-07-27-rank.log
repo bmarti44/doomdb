@@ -1,0 +1,43 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_TEAVM_RASTER_LOAD|PASS|pack_bytes=329242
+
+PMLE_FREE_LIVE_TEAVM_RASTER_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_LIVE_TEAVM_FLAT_TEXTURE|PASS|bytes=401408|sha256=bd6225c381118fd2fb75bb15cd2e5d2922eb7dc027b24abd919e3880e86247cf
+
+PMLE_FREE_LIVE_TEAVM_STAGE_PASS|PASS|stage=PLANES_ONLY|pass=1|frames=200|p50_ms=12.787|p95_ms=15.911|throughput_fps=76.627|pixel_writes=53760|checksum=3763850
+PMLE_FREE_LIVE_TEAVM_STAGE_PASS|PASS|stage=PLANES_ONLY|pass=2|frames=200|p50_ms=12.768|p95_ms=15.301|throughput_fps=76.036|pixel_writes=53760|checksum=7527700
+PMLE_FREE_LIVE_TEAVM_STAGE_PASS|PASS|stage=PLANES_ONLY|pass=3|frames=200|p50_ms=12.835|p95_ms=15.058|throughput_fps=74.585|pixel_writes=53760|checksum=11291550
+PMLE_FREE_LIVE_TEAVM_STAGE_PASS|PASS|stage=PLANES_ONLY|pass=4|frames=200|p50_ms=12.746|p95_ms=14.534|throughput_fps=76.114|pixel_writes=53760|checksum=15055400
+PMLE_FREE_LIVE_TEAVM_STAGE_PASS|PASS|stage=WALLS_ONLY|pass=1|frames=200|p50_ms=29.648|p95_ms=38.774|throughput_fps=33.85|pixel_writes=53760|checksum=1763138056
+PMLE_FREE_LIVE_TEAVM_STAGE_PASS|PASS|stage=WALLS_ONLY|pass=2|frames=200|p50_ms=29.479|p95_ms=34.546|throughput_fps=34.692|pixel_writes=53760|checksum=3511152572
+PMLE_FREE_LIVE_TEAVM_STAGE_PASS|PASS|stage=WALLS_ONLY|pass=3|frames=200|p50_ms=28.664|p95_ms=31.86|throughput_fps=35.067|pixel_writes=53760|checksum=5259167088
+PMLE_FREE_LIVE_TEAVM_STAGE_PASS|PASS|stage=WALLS_ONLY|pass=4|frames=200|p50_ms=29.313|p95_ms=32.179|throughput_fps=34.929|pixel_writes=53760|checksum=7007181604
+
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=1|frames=500|p50_ms=40.463|p95_ms=47.204|wall_ms=20341.088|clock_ms=20340|throughput_fps=24.581|clock_suspects=0|pixel_writes=80041|checksum=3293809347
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=2|frames=500|p50_ms=40.391|p95_ms=47.671|wall_ms=20202.331|clock_ms=20200|throughput_fps=24.75|clock_suspects=0|pixel_writes=80041|checksum=6467400281
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=3|frames=500|p50_ms=39.56|p95_ms=48.095|wall_ms=20226.707|clock_ms=20230|throughput_fps=24.72|clock_suspects=0|pixel_writes=80041|checksum=9640991215
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=4|frames=500|p50_ms=40.059|p95_ms=47.876|wall_ms=20301.88|clock_ms=20300|throughput_fps=24.628|clock_suspects=0|pixel_writes=80041|checksum=12814582149
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=5|frames=500|p50_ms=40.479|p95_ms=48.716|wall_ms=20410.859|clock_ms=20410|throughput_fps=24.497|clock_suspects=0|pixel_writes=80041|checksum=15988173083
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=6|frames=500|p50_ms=39.756|p95_ms=48.578|wall_ms=20353.051|clock_ms=20360|throughput_fps=24.566|clock_suspects=0|pixel_writes=80041|checksum=19161764017
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=7|frames=500|p50_ms=40.871|p95_ms=47.971|wall_ms=20399.748|clock_ms=20400|throughput_fps=24.51|clock_suspects=0|pixel_writes=80041|checksum=22335354951
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=8|frames=500|p50_ms=40.042|p95_ms=47.706|wall_ms=20226.069|clock_ms=20230|throughput_fps=24.721|clock_suspects=0|pixel_writes=80041|checksum=25508945885
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=9|frames=500|p50_ms=40.008|p95_ms=48.288|wall_ms=20315.186|clock_ms=20320|throughput_fps=24.612|clock_suspects=0|pixel_writes=80041|checksum=28682536819
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=10|frames=500|p50_ms=40.227|p95_ms=48.562|wall_ms=20375.887|clock_ms=20380|throughput_fps=24.539|clock_suspects=0|pixel_writes=80041|checksum=31856127753
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=11|frames=500|p50_ms=40.562|p95_ms=52.823|wall_ms=20779.69|clock_ms=20780|throughput_fps=24.062|clock_suspects=0|pixel_writes=80041|checksum=35029718687
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=12|frames=500|p50_ms=40.929|p95_ms=48.143|wall_ms=20556.992|clock_ms=20550|throughput_fps=24.323|clock_suspects=0|pixel_writes=80041|checksum=38203309621
+

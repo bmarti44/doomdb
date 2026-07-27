@@ -60,6 +60,90 @@ end;
 /
 
 declare
+  l_blob blob;l_bytes number;l_expected_sha varchar2(64);
+  l_actual_sha varchar2(64);l_offset number:=0;l_chunk raw(16000);
+  l_loaded number;
+begin
+  select encoded_bytes,dbms_lob.getlength(encoded_bytes),payload_sha256
+    into l_blob,l_bytes,l_expected_sha
+    from doom_renderer_asset_pack where asset_kind='flat';
+  l_actual_sha:=lower(rawtohex(
+    dbms_crypto.hash(l_blob,dbms_crypto.hash_sh256)));
+  if l_actual_sha<>l_expected_sha then
+    raise_application_error(-20796,'generated flat hash mismatch');
+  end if;
+  l_loaded:=doom_free_gen_flat_allocate(l_bytes);
+  while l_offset<l_bytes loop
+    l_chunk:=dbms_lob.substr(
+      l_blob,least(16000,l_bytes-l_offset),l_offset+1);
+    l_loaded:=doom_free_gen_flat_load(l_offset,l_chunk);
+    l_offset:=l_offset+utl_raw.length(l_chunk);
+    if l_loaded<>l_offset then
+      raise_application_error(-20796,'generated flat load mismatch');
+    end if;
+  end loop;
+  if doom_free_gen_flat_finalize<>l_bytes then
+    raise_application_error(-20796,'generated flat finalize mismatch');
+  end if;
+  dbms_output.put_line(
+    'PMLE_FREE_LIVE_TEAVM_FLAT_TEXTURE|PASS|bytes='||l_bytes||
+    '|sha256='||l_actual_sha);
+end;
+/
+
+declare
+  c_passes constant pls_integer:=4;
+  c_frames constant pls_integer:=200;
+  c_start constant pls_integer:=500;
+  type values_t is table of number index by pls_integer;
+  l_values values_t;l_sorted values_t;
+  l_started timestamp with time zone;l_pass_started timestamp with time zone;
+  l_wall number;l_value number;l_checksum number:=0;l_j pls_integer;
+  l_stage varchar2(16);
+  function elapsed_ms(p interval day to second)return number is
+  begin
+    return extract(day from p)*86400000+extract(hour from p)*3600000+
+      extract(minute from p)*60000+extract(second from p)*1000;
+  end;
+begin
+  for stage in 1..2 loop
+    l_stage:=case stage when 1 then 'PLANES_ONLY' else 'WALLS_ONLY' end;
+    for pass in 1..c_passes loop
+      l_pass_started:=systimestamp;
+      for frame_index in 1..c_frames loop
+        l_started:=systimestamp;
+        if stage=1 then
+          l_checksum:=l_checksum+
+            doom_free_gen_planes_only(c_start+frame_index-1);
+        else
+          l_checksum:=l_checksum+
+            doom_free_gen_walls_only(c_start+frame_index-1);
+        end if;
+        l_values(frame_index):=elapsed_ms(systimestamp-l_started);
+        l_sorted(frame_index):=l_values(frame_index);
+      end loop;
+      l_wall:=elapsed_ms(systimestamp-l_pass_started);
+      for i in 2..c_frames loop
+        l_value:=l_sorted(i);l_j:=i-1;
+        while l_j>=1 and l_sorted(l_j)>l_value loop
+          l_sorted(l_j+1):=l_sorted(l_j);l_j:=l_j-1;
+        end loop;
+        l_sorted(l_j+1):=l_value;
+      end loop;
+      dbms_output.put_line(
+        'PMLE_FREE_LIVE_TEAVM_STAGE_PASS|PASS|stage='||l_stage||
+        '|pass='||pass||'|frames='||c_frames||
+        '|p50_ms='||round(l_sorted(100),3)||
+        '|p95_ms='||round(l_sorted(190),3)||
+        '|throughput_fps='||round(c_frames*1000/l_wall,3)||
+        '|pixel_writes='||doom_free_gen_raster_writes||
+        '|checksum='||l_checksum);
+    end loop;
+  end loop;
+end;
+/
+
+declare
   c_passes constant pls_integer:=12;
   c_frames constant pls_integer:=500;
   c_start constant pls_integer:=500;
@@ -106,8 +190,8 @@ begin
       '|clock_suspects='||l_suspects||
       '|pixel_writes='||doom_free_gen_raster_writes||
       '|checksum='||l_checksum);
-    if doom_free_gen_raster_writes<>64000 then
-      raise_application_error(-20796,'generated raster did not write 64000 pixels');
+    if doom_free_gen_raster_writes<53760 then
+      raise_application_error(-20796,'generated raster did not cover viewport');
     end if;
   end loop;
 end;

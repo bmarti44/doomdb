@@ -438,3 +438,96 @@ and sprites, weapon animation, the status bar/HUD, automap, and non-level
 screens remain explicit implementation gates. Each layer must be authored
 inside MLE and the completed database-to-browser path must still pass the
 deployed 30 FPS acceptance gate.
+
+## Typed live-renderer floor/ceiling integration
+
+Pack version 4 adds all 49 Freedoom flat textures, sector floor/ceiling asset
+identities, and the subsector-to-sector map. The renderer precomputes the same
+sector-light colormap banks used for walls. Its first correctness-oriented
+plane implementation deliberately used the current view sector across the
+whole open viewport; it proves the database-resident IWAD asset path and the
+live camera mapping, but it is not yet the final multi-visplane implementation
+needed at sector boundaries.
+
+A naive perspective calculation at every pixel was immediately rejected at
+roughly `158 ms p50`. Replacing it with Doom-shaped affine scanlines—one
+perspective setup per row and fixed increments across 320 pixels—reduced the
+combined 320x168 wall/plane result to approximately `39–40 ms p50`,
+`46–49 ms p95`, and `24.8–25.3 FPS` sustained across 6,000 unique moving
+frames. This is a real 6x structural improvement, but it does not pass the
+live bar and still excludes sprites and the 32-line status bar.
+
+The stage-separated OCI cell explains the remaining cost:
+
+| Stage | p50 | p95 | Sustained |
+|---|---:|---:|---:|
+| 53,760-pixel floor/ceiling scanlines | 12.746–13.136 ms | 14.534–17.151 ms | 73.2–76.6 FPS |
+| BSP plus authentic wall columns | 28.497–29.648 ms | 31.429–38.774 ms | 33.8–36.2 FPS |
+
+The earlier geometry-only cell was about `6.6 ms p50`, so wall-column sampling
+rather than BSP traversal owns roughly 22 ms of the second row. Two negative
+experiments further constrain the implementation:
+
+- filling only final visible clip intervals cut the reported writes from
+  about 80,000 to 26,281, but added a branch to every potential plane pixel
+  and regressed to `48.206 ms p50 / 59.095 ms p95`;
+- transposing the prelit wall atlas to column-major layout did not materially
+  move the wall-stage median, so memory layout is not the remaining wall
+  bottleneck in this generated shape.
+
+The selected next candidate removes the operation the fast accepted compact
+raster does not perform: one integer division per wall pixel. It uses Doom's
+16.16 column fraction—one division per column followed by add/shift sampling.
+An executable host comparison over 127,671,929 representative heights,
+offsets, and realistically clipped ranges found the fixed-step sampler
+selected the same texel in 99.7754% of samples; the maximum circular residue
+is one texel at a fixed-rounding boundary, allowed
+by the approved visual/behavioral (not byte-exact) presentation contract.
+Its OCI A/B remains the next promotion decision.
+
+The fixed-step A/B produced a small but stable improvement: combined
+wall/plane throughput rose from roughly `24.8–25.0 FPS` to
+`25.3–25.6 FPS`, with `38.381–39.133 ms p50` and a final-two worst
+`46.794 ms p95`. It is retained because it is both closer to Doom's original
+column sampler and measurably faster, but it does not close the live budget
+by itself.
+
+Separating BSP command production from wall composition was also tested
+inside the same MLE module, with no SQL boundary. Seven primitive command
+arrays were populated during traversal and consumed by one compact loop
+afterward. That shape regressed the wall stage to about `31 ms p50` and the
+combined frame to about `42 ms p50 / 50 ms p95`; it was reverted. The fast
+prerecorded command-raster result does not imply that building and rereading
+those arrays is free on the live path.
+
+### Always Free live profile: original Doom low-detail mode
+
+The successful structural change uses Doom's original low-detail rendering
+model: 160 logical view columns, with each database-generated column written
+twice into the final 320x200 framebuffer. FOV, projection, authoritative
+state, IWAD assets, lighting, and the delivered framebuffer dimensions are
+unchanged. The browser does not upscale or render; it still receives the
+complete pixel-index frame.
+
+An initial generic two-iteration copy loop erased the expected gain. Pinning
+the scale at two and unrolling the two writes removed 26,880 tiny interpreted
+loops per frame. The final OCI diagnostic measured:
+
+| Stage/result | p50 | p95 | Sustained |
+|---|---:|---:|---:|
+| planes only | 8.519–8.756 ms | 8.596–11.949 ms | 106.6–116.1 FPS |
+| walls+BSP only | 16.073–16.546 ms | 18.360–19.963 ms | 61.0–63.4 FPS |
+| combined, 6,000 unique moving frames | 23.796–24.160 ms | 27.378–27.879 ms | 40.8–41.3 FPS |
+
+There were zero wall-clock/`GET_TIME` suspects. The final-two worst p95 was
+`27.477 ms`, leaving `5.856 ms` under the 33.333 ms server frame budget.
+This is the first live-state renderer—not a prerecorded command tape—with a
+credible Free-tier frame margin.
+
+It remains a component result, not the release claim. The current plane
+background still uses the view sector across the full open viewport.
+Authentic multi-sector visplane span generation is next and should reduce
+plane overdraw while fixing that visual limitation. Dynamic sprites, weapon
+animation, sky, status/HUD, menus and non-level screens, frame publication,
+ORDS retrieval, and the deployed browser cadence remain inside the final
+budget gate.

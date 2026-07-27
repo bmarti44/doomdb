@@ -30,6 +30,9 @@ printf '%s\n' \
   'set define off echo off verify off feedback off heading off pages 0 lines 32767' \
   'set serveroutput on size unlimited'
 for object in \
+  'function doom_free_gen_flat_finalize' \
+  'function doom_free_gen_flat_load' \
+  'function doom_free_gen_flat_allocate' \
   'function doom_free_gen_native_reset' \
   'function doom_free_gen_lit_chunk' \
   'function doom_free_gen_lit_length' \
@@ -43,6 +46,7 @@ for object in \
   'function doom_free_gen_native_tape' \
   'function doom_free_gen_frame_chunk' \
   'function doom_free_gen_frame_batch' 'function doom_free_gen_frame' \
+  'function doom_free_gen_walls_only' 'function doom_free_gen_planes_only' \
   'function doom_free_gen_texture_finalize' \
   'function doom_free_gen_texture_load' \
   'function doom_free_gen_texture_allocate' \
@@ -97,7 +101,17 @@ printf '%s\n' \
   '/' \
   "create function doom_free_gen_texture_finalize return number as mle module doom_free_generated_renderer signature 'finalizeWallTextures()';" \
   '/' \
+  "create function doom_free_gen_flat_allocate(p_length number)return number as mle module doom_free_generated_renderer signature 'allocateFlatTextures(number)';" \
+  '/' \
+  "create function doom_free_gen_flat_load(p_offset number,p_chunk raw)return number as mle module doom_free_generated_renderer signature 'loadFlatTextureChunk(number, Uint8Array)';" \
+  '/' \
+  "create function doom_free_gen_flat_finalize return number as mle module doom_free_generated_renderer signature 'finalizeFlatTextures()';" \
+  '/' \
   "create function doom_free_gen_frame(p_pose number)return number as mle module doom_free_generated_renderer signature 'renderFrame(number)';" \
+  '/' \
+  "create function doom_free_gen_walls_only(p_pose number)return number as mle module doom_free_generated_renderer signature 'renderWallsOnly(number)';" \
+  '/' \
+  "create function doom_free_gen_planes_only(p_pose number)return number as mle module doom_free_generated_renderer signature 'renderPlanesOnly(number)';" \
   '/' \
   "create function doom_free_gen_frame_batch(p_start number,p_count number)return number as mle module doom_free_generated_renderer signature 'renderFrameBatch(number, number)';" \
   '/' \

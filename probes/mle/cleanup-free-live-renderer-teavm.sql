@@ -15,6 +15,12 @@ begin execute immediate 'drop function doom_free_gen_native_misses';exception wh
 /
 begin execute immediate 'drop function doom_free_gen_native_reset';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
+begin execute immediate 'drop function doom_free_gen_flat_finalize';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_flat_load';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_flat_allocate';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
 begin execute immediate 'drop function doom_free_gen_native_commands';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
 begin execute immediate 'drop function doom_free_gen_native_record_length';exception when others then if sqlcode<>-4043 then raise;end if;end;
@@ -28,6 +34,10 @@ begin execute immediate 'drop function doom_free_gen_frame_chunk';exception when
 begin execute immediate 'drop function doom_free_gen_frame_batch';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
 begin execute immediate 'drop function doom_free_gen_frame';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_walls_only';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_planes_only';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
 begin execute immediate 'drop function doom_free_gen_texture_finalize';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /

@@ -100,6 +100,22 @@ for (let index = 0; index < wallAssets.length; index += 1) {
   wallElements += wallAssets[index].width * wallAssets[index].height;
 }
 const wallByName = new Map(wallAssets.map(asset => [asset.name, asset]));
+const flatAssets = assetRows
+  .filter(row => text(row[1]) === 'flat')
+  .map(row => ({
+    id: Number(row[0]),
+    name: text(row[2]),
+    width: Number(row[3]),
+    height: Number(row[4]),
+  }))
+  .sort((left, right) => left.id - right.id);
+for (let index = 0; index < flatAssets.length; index += 1) {
+  if (flatAssets[index].width !== 64 || flatAssets[index].height !== 64) {
+    throw new Error(`flat ${flatAssets[index].name} is not 64x64`);
+  }
+  flatAssets[index].index = index;
+}
+const flatByName = new Map(flatAssets.map(asset => [asset.name, asset]));
 const textureIndex = name => name === '-' || !wallByName.has(name)
   ? 0xffff : wallByName.get(name).index;
 const sides = new Map(sideRows.map(row => [Number(row[0]), {
@@ -110,11 +126,23 @@ const sides = new Map(sideRows.map(row => [Number(row[0]), {
   middle: text(row[5]),
   sector: Number(row[6]),
 }]));
-const sectors = sectorRows.map(row => ({
-  floor: Number(row[1]),
-  ceiling: Number(row[2]),
-  light: Number(row[5]),
-}));
+const sectors = sectorRows.map(row => {
+  const floorName = text(row[3]);
+  const ceilingName = text(row[4]);
+  const floor = flatByName.get(floorName);
+  const ceiling = flatByName.get(ceilingName);
+  if (!floor) throw new Error(`floor flat ${floorName} is unavailable`);
+  if (!ceiling && ceilingName !== 'F_SKY1') {
+    throw new Error(`ceiling flat ${ceilingName} is unavailable`);
+  }
+  return {
+    floor: Number(row[1]),
+    ceiling: Number(row[2]),
+    light: Number(row[5]),
+    floorAsset: floor.index,
+    ceilingAsset: ceiling?.index ?? 0xffff,
+  };
+});
 const segs = segRows.map((row, index) => {
   if (Number(row[0]) !== index) throw new Error(`non-dense seg id ${row[0]}`);
   const start = vertices.get(Number(row[1]));
@@ -217,7 +245,18 @@ if (!Number.isInteger(poseRecordBytes)
   throw new Error(`pose length mismatch: ${poses.length}`);
 }
 
-const HEADER = 288;
+const subsectorSector = ssectors.map((subsector, index) => {
+  if (subsector.count < 1) throw new Error(`empty subsector ${index}`);
+  const seg = segs[subsector.first];
+  const line = linePresentation[seg.line];
+  const sector = seg.direction === 0 ? line.rightSector : line.leftSector;
+  if (sector === 0xffff) {
+    throw new Error(`subsector ${index} has no facing sector`);
+  }
+  return sector;
+});
+
+const HEADER = 304;
 let cursor = HEADER;
 const offsets = {};
 for (const name of ['lineX1', 'lineY1', 'lineX2', 'lineY2']) {
@@ -300,12 +339,18 @@ offsets.sectorCeiling = cursor;
 cursor += sectors.length * 2;
 offsets.sectorLight = cursor;
 cursor += sectors.length;
+offsets.sectorFloorAsset = cursor;
+cursor += sectors.length * 2;
+offsets.sectorCeilingAsset = cursor;
+cursor += sectors.length * 2;
+offsets.ssectorSector = cursor;
+cursor += ssectors.length * 2;
 offsets.colormaps = cursor;
 cursor += colormaps.length;
 const pack = Buffer.alloc(cursor);
 
 pack.writeUInt32LE(0x31465244, 0); // DRF1
-pack.writeUInt32LE(3, 4);
+pack.writeUInt32LE(4, 4);
 pack.writeInt32LE(originX, 8);
 pack.writeInt32LE(originY, 12);
 pack.writeUInt32LE(columns, 16);
@@ -374,6 +419,11 @@ pack.writeUInt32LE(offsets.nodeBbox1Top, 264);
 pack.writeUInt32LE(offsets.nodeBbox1Bottom, 268);
 pack.writeUInt32LE(offsets.nodeBbox1Left, 272);
 pack.writeUInt32LE(offsets.nodeBbox1Right, 276);
+pack.writeUInt32LE(offsets.sectorFloorAsset, 280);
+pack.writeUInt32LE(offsets.sectorCeilingAsset, 284);
+pack.writeUInt32LE(flatAssets.length, 288);
+pack.writeUInt32LE(flatAssets.length * 4096, 292);
+pack.writeUInt32LE(offsets.ssectorSector, 296);
 
 for (let index = 0; index < lines.length; index += 1) {
   pack.writeInt32LE(lines[index][0], offsets.lineX1 + index * 4);
@@ -449,6 +499,20 @@ for (let index = 0; index < sectors.length; index += 1) {
   pack.writeInt16LE(sectors[index].floor, offsets.sectorFloor + index * 2);
   pack.writeInt16LE(sectors[index].ceiling, offsets.sectorCeiling + index * 2);
   pack[offsets.sectorLight + index] = sectors[index].light;
+  pack.writeUInt16LE(
+    sectors[index].floorAsset,
+    offsets.sectorFloorAsset + index * 2,
+  );
+  pack.writeUInt16LE(
+    sectors[index].ceilingAsset,
+    offsets.sectorCeilingAsset + index * 2,
+  );
+}
+for (let index = 0; index < subsectorSector.length; index += 1) {
+  pack.writeUInt16LE(
+    subsectorSector[index],
+    offsets.ssectorSector + index * 2,
+  );
 }
 colormaps.copy(pack, offsets.colormaps);
 fs.mkdirSync(path.dirname(outputFile), {recursive: true});
@@ -459,6 +523,7 @@ process.stdout.write(
   + `|poses=${poses.length / poseRecordBytes}|poseRecordBytes=${poseRecordBytes}`
   + `|originX=${originX}|originY=${originY}|columns=${columns}|rows=${rowsCount}`
   + `|wallTextures=${wallAssets.length}|wallElements=${wallElements}`
+  + `|flatTextures=${flatAssets.length}|flatElements=${flatAssets.length * 4096}`
   + `|sectors=${sectors.length}|segs=${segs.length}`
   + `|ssectors=${ssectors.length}|nodes=${nodes.length}\n`,
 );

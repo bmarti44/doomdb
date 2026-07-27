@@ -1,0 +1,30 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_TEAVM_RASTER_LOAD|PASS|pack_bytes=329242
+
+PMLE_FREE_LIVE_TEAVM_RASTER_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_LIVE_TEAVM_FLAT_TEXTURE|PASS|bytes=401408|sha256=bd6225c381118fd2fb75bb15cd2e5d2922eb7dc027b24abd919e3880e86247cf
+
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=1|frames=500|p50_ms=48.206|p95_ms=59.095|wall_ms=24456.071|clock_ms=24460|throughput_fps=20.445|clock_suspects=0|pixel_writes=26281|checksum=3293832171
+
+declare
+*
+ERROR at line 1:
+ORA-20796: generated raster did not cover viewport
+ORA-06512: at line 49
+Help: https://docs.oracle.com/error-help/db/ora-20796/
+

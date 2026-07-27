@@ -25,6 +25,11 @@ snapshot_authority="$probe/teavm-engine/src/main/java/doomdb/mle/engine/Simulati
 snapshot_renderer="$probe/free-live-teavm/src/main/java/doomdb/mle/renderer/FreeLiveRendererReachabilityProbe.java"
 snapshot_fixture_test="$probe/verify-free-live-snapshot-node.mjs"
 snapshot_integration_test="$probe/verify-live-authority-renderer-node.mjs"
+fixed_step_test="$probe/verify-free-live-fixed-step.mjs"
+live_pack_builder="$probe/build-free-live-render-pack.mjs"
+live_renderer_install="$probe/install-free-live-renderer-teavm.sh"
+live_renderer_cleanup="$probe/cleanup-free-live-renderer-teavm.sql"
+live_renderer_raster="$probe/benchmark-oci-free-live-renderer-teavm-raster.sql"
 live_predeclaration="$root/artifacts/performance/pmle-free-live-frames/PREDECLARATION.md"
 
 for input in "$source_file" "$full_source" "$install" "$runner" "$benchmark" \
@@ -32,7 +37,9 @@ for input in "$source_file" "$full_source" "$install" "$runner" "$benchmark" \
   "$capture_patch" "$capture_build" "$capture_pom" "$capture_probe" "$capture_metrics" \
   "$capture_runner" "$live_runner" "$live_benchmark" "$live_bisection" \
   "$snapshot_authority" "$snapshot_renderer" "$snapshot_fixture_test" \
-  "$snapshot_integration_test" "$live_predeclaration" \
+  "$snapshot_integration_test" "$fixed_step_test" "$live_pack_builder" \
+  "$live_renderer_install" \
+  "$live_renderer_cleanup" "$live_renderer_raster" "$live_predeclaration" \
   "$probe/build-free-raster-teavm.sh" "$probe/cleanup-free-raster-teavm.sql"; do
   [[ -s "$input" && ! -L "$input" ]] || {
     printf 'free-raster verifier: missing input %s\n' "$input" >&2
@@ -158,6 +165,30 @@ require 'PMLE_FREE_LIVE_SNAPSHOT_NODE|PASS' "$snapshot_fixture_test"
 require 'PMLE_LIVE_AUTHORITY_RENDERER_NODE|PASS' "$snapshot_integration_test"
 require 'renderPlayerSnapshotGeometry(snapshot)' "$snapshot_integration_test"
 require 'PMLE_LIVE_COMMAND_BISECTION|DIAGNOSTIC_NOT_GATE' "$live_bisection"
+
+# Authentic floors/ceilings are IWAD-derived, prelit once, and rendered with
+# Doom's affine row-span shape. Full-frame timing may not silently fall back
+# to the old solid-color background or per-pixel perspective divisions.
+require 'pack.writeUInt32LE(4, 4);' "$live_pack_builder"
+require 'offsets.sectorFloorAsset' "$live_pack_builder"
+require 'offsets.ssectorSector' "$live_pack_builder"
+require 'public static int finalizeFlatTextures()' "$snapshot_renderer"
+require 'litTextures[bank + base + sourceY * width + textureX]' \
+  "$snapshot_renderer"
+require 'int fractionStep = 8388608 / wallHeight;' "$snapshot_renderer"
+require 'fraction += fractionStep;' "$snapshot_renderer"
+require 'private static final int LIVE_RENDER_WIDTH = 160;' "$snapshot_renderer"
+require 'pixelScale = WIDTH / activeWidth;' "$snapshot_renderer"
+require 'frame[outputAt + FRAME_HEIGHT + output] = pixel;' \
+  "$snapshot_renderer"
+require 'PMLE_FREE_LIVE_FIXED_STEP|PASS' "$fixed_step_test"
+require 'private static void drawPlaneBackground(' "$snapshot_renderer"
+require 'int source = ((worldY >> 10) & 4032)' "$snapshot_renderer"
+require '+ ((worldX >> 16) & 63);' "$snapshot_renderer"
+require 'output += pixelScale * FRAME_HEIGHT;' "$snapshot_renderer"
+require "asset_kind='flat'" "$live_renderer_raster"
+require 'doom_free_gen_flat_finalize' "$live_renderer_install"
+require 'drop function doom_free_gen_flat_finalize' "$live_renderer_cleanup"
 if grep -Fq 'FrameCommandMetrics' \
   "$snapshot_authority"; then
   printf 'free-raster verifier: capture state reached shipping authority source\n' >&2

@@ -1,0 +1,34 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_TEAVM_RASTER_LOAD|PASS|pack_bytes=329242
+
+PMLE_FREE_LIVE_TEAVM_RASTER_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_LIVE_TEAVM_FLAT_TEXTURE|PASS|bytes=401408|sha256=bd6225c381118fd2fb75bb15cd2e5d2922eb7dc027b24abd919e3880e86247cf
+
+    l_checksum:=l_checksum+doom_free_gen_frame(pose);
+                           *
+ERROR at line 17:
+ORA-06550: line 17, column 28:
+PLS-00905: object DOOM.DOOM_FREE_GEN_FRAME is invalid
+ORA-06550: line 17, column 5:
+PL/SQL: Statement ignored
+ORA-06550: line 23, column 30:
+PLS-00905: object DOOM.DOOM_FREE_GEN_FRAME is invalid
+ORA-06550: line 23, column 7:
+PL/SQL: Statement ignored
+Help: https://docs.oracle.com/error-help/db/ora-06550/
+

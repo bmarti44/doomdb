@@ -1,0 +1,26 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_TEAVM_RASTER_LOAD|PASS|pack_bytes=329242
+
+declare
+*
+ERROR at line 1:
+ORA-04161: BJ
+ORA-04171: at BJ (DOOM.DOOM_FREE_GENERATED_RENDERER:13:114)
+ORA-06512: at "DOOM.DOOM_FREE_GEN_FLAT_FINALIZE", line 1
+ORA-06512: at line 24
+Help: https://docs.oracle.com/error-help/db/ora-04161/
+

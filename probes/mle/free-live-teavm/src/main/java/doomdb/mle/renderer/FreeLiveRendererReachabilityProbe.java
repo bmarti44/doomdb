@@ -16,8 +16,10 @@ import org.teavm.jso.typedarrays.Uint8Array;
 public final class FreeLiveRendererReachabilityProbe {
   private static final int MAGIC = 0x31465244;
   private static final int WIDTH = 320;
-  private static final int HEIGHT = 200;
-  private static final int PIXELS = WIDTH * HEIGHT;
+  private static final int LIVE_RENDER_WIDTH = 160;
+  private static final int VIEW_HEIGHT = 168;
+  private static final int FRAME_HEIGHT = 200;
+  private static final int PIXELS = WIDTH * FRAME_HEIGHT;
   private static final int CACHE_SIZE = 262144;
   private static final int COMMAND_BYTES = 24;
   private static final int RESOLVED_COMMAND_BYTES = 20;
@@ -47,13 +49,19 @@ public final class FreeLiveRendererReachabilityProbe {
   private static short[] sectorFloor;
   private static short[] sectorCeiling;
   private static byte[] sectorLight;
+  private static char[] sectorFloorAsset;
+  private static char[] sectorCeilingAsset;
+  private static char[] subsectorSector;
   private static byte[] colormaps;
   private static int[] textureBase;
   private static char[] textureWidth;
   private static char[] textureHeight;
   private static int wallTextureElements;
   private static byte[] encodedWallTextures;
+  private static byte[] encodedFlatTextures;
   private static byte[] litTextures;
+  private static byte[] litFlats;
+  private static int flatTextureElements;
   private static int[] lightToBank;
   private static int lightBankCount;
   private static byte[] frame;
@@ -94,6 +102,8 @@ public final class FreeLiveRendererReachabilityProbe {
   private static int nativeCommandCount;
   private static int nativeMissCount;
   private static int rasterPixelWrites;
+  private static int activeWidth;
+  private static int pixelScale;
   private static int[] nativeCacheKeyA;
   private static int[] nativeCacheKeyB;
   private static int[] nativeCacheKeyC;
@@ -144,7 +154,7 @@ public final class FreeLiveRendererReachabilityProbe {
 
   @JSExport
   public static int finalizePack() {
-    if (u32(0) != MAGIC || u32(4) != 3 || u32(76) != pack.length) {
+    if (u32(0) != MAGIC || u32(4) != 4 || u32(76) != pack.length) {
       throw new IllegalStateException("pack header mismatch");
     }
     int lineCount = u32(24);
@@ -157,8 +167,13 @@ public final class FreeLiveRendererReachabilityProbe {
     int sectorCount = u32(120);
     int textureCount = u32(80);
     wallTextureElements = u32(84);
+    int flatTextureCount = u32(288);
+    flatTextureElements = u32(292);
     if (poseCount != 5250 || poseRecordBytes != 32 || nodeCount < 1) {
       throw new IllegalStateException("pack cardinality mismatch");
+    }
+    if (flatTextureCount < 1 || flatTextureElements != flatTextureCount * 4096) {
+      throw new IllegalStateException("flat cardinality mismatch");
     }
     lineX1 = ints(u32(40), lineCount);
     lineY1 = ints(u32(44), lineCount);
@@ -182,6 +197,9 @@ public final class FreeLiveRendererReachabilityProbe {
     sectorFloor = shorts(u32(124), sectorCount);
     sectorCeiling = shorts(u32(128), sectorCount);
     sectorLight = bytes(u32(132), sectorCount);
+    sectorFloorAsset = chars(u32(280), sectorCount);
+    sectorCeilingAsset = chars(u32(284), sectorCount);
+    subsectorSector = chars(u32(296), subsectorCount);
     colormaps = bytes(u32(136), 8192);
     textureBase = ints(u32(88), textureCount);
     textureWidth = chars(u32(92), textureCount);
@@ -213,9 +231,9 @@ public final class FreeLiveRendererReachabilityProbe {
     stack = new int[nodeCount + subsectorCount + 8];
     stackCheck = new short[stack.length];
     frame = new byte[PIXELS];
-    backgroundColumn = new byte[HEIGHT];
-    for (int y = 0; y < HEIGHT; y++) {
-      backgroundColumn[y] = (byte) (y < HEIGHT / 2 ? 96 : 48);
+    backgroundColumn = new byte[VIEW_HEIGHT];
+    for (int y = 0; y < VIEW_HEIGHT; y++) {
+      backgroundColumn[y] = (byte) (y < VIEW_HEIGHT / 2 ? 96 : 48);
     }
     commandBuffer = new byte[COMMAND_BUFFER_BYTES];
     nativeCacheKeyA = new int[CACHE_SIZE];
@@ -259,16 +277,79 @@ public final class FreeLiveRendererReachabilityProbe {
   }
 
   @JSExport
+  public static int allocateFlatTextures(int length) {
+    if (flatTextureElements < 1 || length != flatTextureElements * 2) {
+      throw new IllegalArgumentException("invalid flat texture length");
+    }
+    encodedFlatTextures = new byte[length];
+    return length;
+  }
+
+  @JSExport
+  public static int loadFlatTextureChunk(int offset, Uint8Array chunk) {
+    if (encodedFlatTextures == null || offset < 0
+        || offset + chunk.getLength() > encodedFlatTextures.length) {
+      throw new IllegalArgumentException("flat texture chunk outside allocation");
+    }
+    for (int index = 0; index < chunk.getLength(); index++) {
+      encodedFlatTextures[offset + index] = (byte) chunk.get(index);
+    }
+    return offset + chunk.getLength();
+  }
+
+  @JSExport
+  public static int finalizeFlatTextures() {
+    if (encodedFlatTextures == null
+        || encodedFlatTextures.length != flatTextureElements * 2
+        || lightToBank == null) {
+      throw new IllegalStateException("flat texture length mismatch");
+    }
+    litFlats = new byte[flatTextureElements * lightBankCount];
+    for (int map = 0; map < 32; map++) {
+      int bank = lightToBank[map];
+      if (bank < 0) continue;
+      int target = bank * flatTextureElements;
+      for (int texel = 0; texel < flatTextureElements; texel++) {
+        int encoded = ((encodedFlatTextures[texel * 2] & 255) << 8)
+            | (encodedFlatTextures[texel * 2 + 1] & 255);
+        int sample = encoded == 0 ? 0 : encoded - 1;
+        litFlats[target + texel] = colormaps[map * 256 + sample];
+      }
+    }
+    int length = encodedFlatTextures.length;
+    encodedFlatTextures = null;
+    return length;
+  }
+
+  @JSExport
   public static int renderGeometry(int pose) {
-    return render(pose, false);
+    return render(pose, false, false, true);
   }
 
   @JSExport
   public static int renderFrame(int pose) {
-    if (litTextures == null) {
-      throw new IllegalStateException("wall textures are not finalized");
+    if (litTextures == null || litFlats == null) {
+      throw new IllegalStateException("renderer textures are not finalized");
     }
-    return render(pose, true);
+    return render(pose, true, true, true);
+  }
+
+  /** Diagnostic stage split: authentic wall columns without plane spans. */
+  @JSExport
+  public static int renderWallsOnly(int pose) {
+    if (litTextures == null) {
+      throw new IllegalStateException("renderer textures are not finalized");
+    }
+    return render(pose, true, false, true);
+  }
+
+  /** Diagnostic stage split: authentic floor/ceiling spans without BSP walls. */
+  @JSExport
+  public static int renderPlanesOnly(int pose) {
+    if (litFlats == null) {
+      throw new IllegalStateException("renderer flats are not finalized");
+    }
+    return render(pose, true, true, false);
   }
 
   /**
@@ -287,8 +368,8 @@ public final class FreeLiveRendererReachabilityProbe {
    */
   @JSExport
   public static int renderPlayerSnapshot(Uint8Array snapshot) {
-    if (litTextures == null) {
-      throw new IllegalStateException("wall textures are not finalized");
+    if (litTextures == null || litFlats == null) {
+      throw new IllegalStateException("renderer textures are not finalized");
     }
     if (snapshot == null || snapshot.getLength() != 32) {
       throw new IllegalArgumentException("player snapshot must be 32 bytes");
@@ -299,6 +380,8 @@ public final class FreeLiveRendererReachabilityProbe {
         snapshotI32(snapshot, 8),
         snapshotI32(snapshot, 12),
         0,
+        true,
+        true,
         true);
   }
 
@@ -314,7 +397,9 @@ public final class FreeLiveRendererReachabilityProbe {
         snapshotI32(snapshot, 8),
         snapshotI32(snapshot, 12),
         0,
-        false);
+        false,
+        false,
+        true);
   }
 
   @JSExport
@@ -322,7 +407,7 @@ public final class FreeLiveRendererReachabilityProbe {
     commandLength = 0;
     captureCommands = true;
     try {
-      render(pose, false);
+      render(pose, false, false, true);
     } finally {
       captureCommands = false;
     }
@@ -337,7 +422,7 @@ public final class FreeLiveRendererReachabilityProbe {
     commandLength = 0;
     captureResolvedCommands = true;
     try {
-      render(pose, false);
+      render(pose, false, false, true);
     } finally {
       captureResolvedCommands = false;
     }
@@ -351,7 +436,7 @@ public final class FreeLiveRendererReachabilityProbe {
     nativeMissCount = 0;
     captureNativeTape = true;
     try {
-      render(pose, false);
+      render(pose, false, false, true);
     } finally {
       captureNativeTape = false;
     }
@@ -362,16 +447,19 @@ public final class FreeLiveRendererReachabilityProbe {
     return commandLength;
   }
 
-  private static int render(int pose, boolean raster) {
+  private static int render(
+      int pose, boolean raster, boolean planes, boolean walls) {
     pose %= poseCount;
     int at = poseOffset + pose * poseRecordBytes;
     return renderView(
-        i32(at), i32(at + 4), i32(at + 8), i32(at + 12), pose, raster);
+        i32(at), i32(at + 4), i32(at + 8), i32(at + 12), pose,
+        raster, planes, walls);
   }
 
   private static int renderView(
       int playerXFixed, int playerYFixed, int angleHigh,
-      int viewZFixed, int sample, boolean raster) {
+      int viewZFixed, int sample, boolean raster, boolean planes,
+      boolean walls) {
     double playerX = playerXFixed / 65536.0;
     double playerY = playerYFixed / 65536.0;
     int angle = (angleHigh >>> 5) & 2047;
@@ -379,16 +467,23 @@ public final class FreeLiveRendererReachabilityProbe {
     double directionX = cosTable[angle] / 32767.0;
     double directionY = sinTable[angle] / 32767.0;
     rasterPixelWrites = 0;
-    for (int x = 0; x < WIDTH; x++) {
+    activeWidth = raster ? LIVE_RENDER_WIDTH : WIDTH;
+    pixelScale = WIDTH / activeWidth;
+    int viewSector = raster && planes
+        ? pointSector(playerX, playerY) : -1;
+    if (raster && planes) {
+      drawPlaneBackground(
+          viewSector, playerX, playerY, viewZ, directionX, directionY);
+    }
+    if (!walls) {
+      return raster
+          ? (frame[sample % PIXELS] & 255)
+              | ((frame[(sample * 997) % PIXELS] & 255) << 8)
+          : 0;
+    }
+    for (int x = 0; x < activeWidth; x++) {
       clipTop[x] = 0;
-      clipBottom[x] = HEIGHT - 1;
-      if (raster) {
-        int base = x * HEIGHT;
-        for (int y = 0; y < HEIGHT; y++) {
-          frame[base + y] = backgroundColumn[y];
-          rasterPixelWrites++;
-        }
-      }
+      clipBottom[x] = VIEW_HEIGHT - 1;
     }
     int stackSize = 1;
     stack[0] = nodeX.length - 1;
@@ -451,11 +546,13 @@ public final class FreeLiveRendererReachabilityProbe {
           bd = .01;
         }
         int start = Math.max(0,
-            (int) Math.ceil(Math.min(WIDTH / 2.0 + as / ad * WIDTH / 2.0,
-                WIDTH / 2.0 + bs / bd * WIDTH / 2.0) - .5));
-        int finish = Math.min(WIDTH - 1,
-            (int) Math.floor(Math.max(WIDTH / 2.0 + as / ad * WIDTH / 2.0,
-                WIDTH / 2.0 + bs / bd * WIDTH / 2.0) - .5));
+            (int) Math.ceil(Math.min(
+                activeWidth / 2.0 + as / ad * activeWidth / 2.0,
+                activeWidth / 2.0 + bs / bd * activeWidth / 2.0) - .5));
+        int finish = Math.min(activeWidth - 1,
+            (int) Math.floor(Math.max(
+                activeWidth / 2.0 + as / ad * activeWidth / 2.0,
+                activeWidth / 2.0 + bs / bd * activeWidth / 2.0) - .5));
         if (start > finish) continue;
         int segmentX = segX2[seg] - segX1[seg];
         int segmentY = segY2[seg] - segY1[seg];
@@ -465,8 +562,8 @@ public final class FreeLiveRendererReachabilityProbe {
         double base = directionX * segmentY - directionY * segmentX;
         double slope = -directionY * segmentY - directionX * segmentX;
         double denominator = base
-            + slope * ((start * 2 + 1) / (double) WIDTH - 1);
-        double denominatorStep = slope * 2 / WIDTH;
+            + slope * ((start * 2 + 1) / (double) activeWidth - 1);
+        double denominatorStep = slope * 2 / activeWidth;
         for (int x = start; x <= finish; x++) {
           double current = denominator;
           denominator += denominatorStep;
@@ -481,10 +578,10 @@ public final class FreeLiveRendererReachabilityProbe {
             int texture = middle;
             if (texture == 0xffff) texture = lineTexture[line];
             int nearTop = (int) Math.floor(
-                HEIGHT / 2.0
+                VIEW_HEIGHT / 2.0
                   - (sectorCeiling[near] - viewZ) * wallHeight / 128);
             int nearBottom = (int) Math.ceil(
-                HEIGHT / 2.0
+                VIEW_HEIGHT / 2.0
                   - (sectorFloor[near] - viewZ) * wallHeight / 128) - 1;
             if (raster || captureCommands || captureResolvedCommands
                 || captureNativeTape) {
@@ -502,16 +599,18 @@ public final class FreeLiveRendererReachabilityProbe {
             int openingCeiling = Math.min(sectorCeiling[near], sectorCeiling[far]);
             int openingFloor = Math.max(sectorFloor[near], sectorFloor[far]);
             int openingTop = (int) Math.floor(
-                HEIGHT / 2.0 - (openingCeiling - viewZ) * wallHeight / 128);
+                VIEW_HEIGHT / 2.0
+                    - (openingCeiling - viewZ) * wallHeight / 128);
             int openingBottom = (int) Math.ceil(
-                HEIGHT / 2.0 - (openingFloor - viewZ) * wallHeight / 128) - 1;
+                VIEW_HEIGHT / 2.0
+                    - (openingFloor - viewZ) * wallHeight / 128) - 1;
             if ((raster || captureCommands || captureResolvedCommands
                 || captureNativeTape) && !clipOnly) {
               int nearTop = (int) Math.floor(
-                  HEIGHT / 2.0
+                  VIEW_HEIGHT / 2.0
                     - (sectorCeiling[near] - viewZ) * wallHeight / 128);
               int nearBottom = (int) Math.ceil(
-                  HEIGHT / 2.0
+                  VIEW_HEIGHT / 2.0
                     - (sectorFloor[near] - viewZ) * wallHeight / 128) - 1;
               boolean drawUpper = sectorCeiling[far] < sectorCeiling[near]
                   && upper != 0xffff && nearTop <= clipBottom[x]
@@ -557,6 +656,83 @@ public final class FreeLiveRendererReachabilityProbe {
         | ((snapshot.get(offset + 1) & 255) << 8)
         | ((snapshot.get(offset + 2) & 255) << 16)
         | ((snapshot.get(offset + 3) & 255) << 24);
+  }
+
+  private static int pointSector(double playerX, double playerY) {
+    int child = nodeX.length - 1;
+    while (child >= 0) {
+      int side = ((playerX - nodeX[child]) * nodeDy[child]
+          - (playerY - nodeY[child]) * nodeDx[child]) >= 0 ? 0 : 1;
+      child = side == 0 ? nodeChild0[child] : nodeChild1[child];
+    }
+    int subsector = child & 0x7fffffff;
+    if (subsector < 0 || subsector >= subsectorSector.length) {
+      throw new IllegalStateException("player subsector outside map");
+    }
+    return subsectorSector[subsector];
+  }
+
+  /**
+   * Doom's plane mapping is affine across a screen row. Compute the expensive
+   * perspective division and fixed-point increments once per row, not once
+   * per pixel. This is the same span shape used by the original renderer and
+   * avoids 64,000 interpreted Math.floor/multiply sequences.
+   */
+  private static void drawPlaneBackground(
+      int sector, double playerX, double playerY, double viewZ,
+      double directionX, double directionY) {
+    int lightBank = lightToBank[lightMap(sector)] * flatTextureElements;
+    int floorBase = lightBank + sectorFloorAsset[sector] * 4096;
+    int ceilingAsset = sectorCeilingAsset[sector];
+    int ceilingBase = ceilingAsset == 0xffff
+        ? -1 : lightBank + ceilingAsset * 4096;
+    for (int y = 0; y < VIEW_HEIGHT; y++) {
+      if (y == VIEW_HEIGHT / 2) {
+        for (int x = 0; x < activeWidth; x++) {
+          int output = x * pixelScale * FRAME_HEIGHT + y;
+          frame[output] = backgroundColumn[y];
+          frame[output + FRAME_HEIGHT] = backgroundColumn[y];
+        }
+        continue;
+      }
+      boolean ceiling = y < VIEW_HEIGHT / 2;
+      if (ceiling && ceilingBase < 0) {
+        for (int x = 0; x < activeWidth; x++) {
+          int output = x * pixelScale * FRAME_HEIGHT + y;
+          frame[output] = backgroundColumn[y];
+          frame[output + FRAME_HEIGHT] = backgroundColumn[y];
+        }
+        continue;
+      }
+      double plane = ceiling
+          ? sectorCeiling[sector] - viewZ : viewZ - sectorFloor[sector];
+      double distance = plane * (activeWidth / 2.0)
+          / Math.abs(y + .5 - VIEW_HEIGHT / 2.0);
+      double firstCamera = .5 / (activeWidth / 2.0) - 1.0;
+      double rayX = directionX - directionY * firstCamera;
+      double rayY = directionY + directionX * firstCamera;
+      int worldX = (int) Math.floor(
+          (playerX + rayX * distance) * 65536.0);
+      int worldY = (int) Math.floor(
+          (playerY + rayY * distance) * 65536.0);
+      int stepX = (int) Math.floor(
+          (-directionY / (activeWidth / 2.0) * distance) * 65536.0);
+      int stepY = (int) Math.floor(
+          (directionX / (activeWidth / 2.0) * distance) * 65536.0);
+      int assetBase = ceiling ? ceilingBase : floorBase;
+      int output = y;
+      for (int x = 0; x < activeWidth; x++) {
+        int source = ((worldY >> 10) & 4032)
+            + ((worldX >> 16) & 63);
+        byte pixel = litFlats[assetBase + source];
+        frame[output] = pixel;
+        frame[output + FRAME_HEIGHT] = pixel;
+        output += pixelScale * FRAME_HEIGHT;
+        worldX += stepX;
+        worldY += stepY;
+      }
+    }
+    rasterPixelWrites += WIDTH * VIEW_HEIGHT;
   }
 
   @JSExport
@@ -696,7 +872,7 @@ public final class FreeLiveRendererReachabilityProbe {
   private static int textureX(
       int screenX, int line, boolean fromRight, double distance,
       double playerX, double playerY, double directionX, double directionY) {
-    double cameraX = (screenX * 2 + 1) / (double) WIDTH - 1;
+    double cameraX = (screenX * 2 + 1) / (double) activeWidth - 1;
     double rayX = directionX - directionY * cameraX;
     double rayY = directionY + directionX * cameraX;
     int segmentX = lineX2[line] - lineX1[line];
@@ -719,7 +895,7 @@ public final class FreeLiveRendererReachabilityProbe {
     }
     int drawTop = Math.max(0, Math.max(clipTopValue, projectedTop));
     int drawBottom = Math.min(
-        HEIGHT - 1, Math.min(clipBottomValue, projectedBottom));
+        VIEW_HEIGHT - 1, Math.min(clipBottomValue, projectedBottom));
     if (drawTop > drawBottom) return;
     if (captureCommands) {
       appendCommand(
@@ -779,7 +955,7 @@ public final class FreeLiveRendererReachabilityProbe {
     int normalizedOffset = verticalOffset % height;
     if (normalizedOffset < 0) normalizedOffset += height;
     int at = commandLength;
-    putI32(at, screenX * HEIGHT + drawTop);
+    putI32(at, screenX * FRAME_HEIGHT + drawTop);
     putI32(at + 4,
         lightToBank[lightMap] * wallTextureElements
             + textureBase[texture] + textureX);
@@ -833,7 +1009,7 @@ public final class FreeLiveRendererReachabilityProbe {
       throw new IllegalStateException("native wall tape overflow");
     }
     putI32BigEndian(commandLength, slot);
-    putU16BigEndian(commandLength + 4, screenX * HEIGHT + drawTop);
+    putU16BigEndian(commandLength + 4, screenX * FRAME_HEIGHT + drawTop);
     commandBuffer[commandLength + 6] = (byte) length;
     commandBuffer[commandLength + 7] = (byte) (miss ? 1 : 0);
     commandLength += 8;
@@ -882,20 +1058,29 @@ public final class FreeLiveRendererReachabilityProbe {
     int normalizedOffset = verticalOffset % height;
     if (normalizedOffset < 0) normalizedOffset += height;
     int length = drawBottom - drawTop + 1;
-    int textureNumerator = normalizedOffset * wallHeight
-        + (drawTop - projectedTop) * 128;
+    int fractionStep = 8388608 / wallHeight; // 128 texels in 16.16.
+    int fraction = (normalizedOffset << 16)
+        + (drawTop - projectedTop) * fractionStep;
     int base = textureBase[texture];
     int bank = lightToBank[lightMap] * wallTextureElements;
-    int outputAt = screenX * HEIGHT + drawTop;
-    rasterPixelWrites += length;
+    int outputAt = screenX * pixelScale * FRAME_HEIGHT + drawTop;
+    rasterPixelWrites += length * pixelScale;
     boolean powerOfTwoHeight = (height & (height - 1)) == 0;
     for (int output = 0; output < length; output++) {
-      int sourceY = textureNumerator / wallHeight;
-      sourceY = powerOfTwoHeight ? sourceY & (height - 1) : sourceY % height;
-      frame[outputAt + output] =
-          litTextures[bank + base + sourceY * width + textureX];
-      textureNumerator += 128;
+      int sourceY = fraction >> 16;
+      sourceY = powerOfTwoHeight
+          ? sourceY & (height - 1)
+          : positiveModulo(sourceY, height);
+      byte pixel = litTextures[bank + base + sourceY * width + textureX];
+      frame[outputAt + output] = pixel;
+      frame[outputAt + FRAME_HEIGHT + output] = pixel;
+      fraction += fractionStep;
     }
+  }
+
+  private static int positiveModulo(int value, int modulus) {
+    int result = value % modulus;
+    return result < 0 ? result + modulus : result;
   }
 
   private static boolean bboxVisible(
@@ -920,7 +1105,8 @@ public final class FreeLiveRendererReachabilityProbe {
       minimumDepth = Math.min(minimumDepth, depth);
       maximumDepth = Math.max(maximumDepth, depth);
       if (depth > .01) {
-        double screen = WIDTH / 2.0 + (-rx * dy + ry * dx) / depth * WIDTH / 2.0;
+        double screen = activeWidth / 2.0
+            + (-rx * dy + ry * dx) / depth * activeWidth / 2.0;
         minimumScreen = Math.min(minimumScreen, screen);
         maximumScreen = Math.max(maximumScreen, screen);
       }
@@ -928,7 +1114,7 @@ public final class FreeLiveRendererReachabilityProbe {
     if (maximumDepth <= .01) return false;
     if (minimumDepth <= .01) return true;
     int start = Math.max(0, (int) Math.floor(minimumScreen));
-    int end = Math.min(WIDTH - 1, (int) Math.ceil(maximumScreen));
+    int end = Math.min(activeWidth - 1, (int) Math.ceil(maximumScreen));
     for (int x = start; x <= end; x++) {
       if (clipTop[x] <= clipBottom[x]) return true;
     }

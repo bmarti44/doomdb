@@ -1,0 +1,23 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_TEAVM_STAGING|PASS|source_bytes=29349|source_sha256=489eb62f8558e04b1b147e0659a9e88d3332805f6bbad03a5014ffac97fa3184|pack_bytes=329242|pack_sha256=c79f6652097a143a96ec3ecb5a14cf0b10bde72116265035cd0804841d5a5461
+
+
+Errors for FUNCTION DOOM_FREE_GEN_FRAME:
+
+LINE/COL ERROR
+-------- ---------------------------------------------------------
+2/1      PLS-00103: Encountered the symbol "CREATE"
