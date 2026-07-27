@@ -5,12 +5,12 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 probe="$root/probes/mle"
 target="$probe/target/free-live-renderer"
 evidence="$root/artifacts/performance/pmle-free-live-frames"
-log="$evidence/real-render-poses-2026-07-26.log"
+log="$evidence/real-render-state-v3b-2026-07-26.log"
 iwad="$probe/teavm-engine/target/iwad-smoke/freedoom1.wad"
 tables="$probe/teavm-engine/target/canonical-runtime-v2.bin"
 fixture="$root/tests/fixtures/mle-live-deathmatch-2026-07-23.json"
 stream="$target/live-dm.expanded.bin"
-poses="$target/live-dm.poses.bin"
+poses="$target/live-dm.state-v3.bin"
 jar="$target/metrics.jar"
 metadata="$target/metrics.json"
 
@@ -29,7 +29,7 @@ docker run --rm \
   -v "$target:/work/out" eclipse-temurin:17-jre \
   java -cp /work/metrics.jar doomdb.mocha.DoomDbRealDrawMetricsMain \
     /work/freedoom1.wad /work/stream.bin /work/tables.bin \
-    /work/out/live-dm.poses.bin
-[[ "$(wc -c <"$poses" | tr -d '[:space:]')" == 63000 ]]
+    /work/out/live-dm.state-v3.bin --extended-poses
+[[ "$(wc -c <"$poses" | tr -d '[:space:]')" == 168000 ]]
 node "$probe/build-free-live-render-pack.mjs" "$root" "$poses" \
   "$target/free-live-render.pack"

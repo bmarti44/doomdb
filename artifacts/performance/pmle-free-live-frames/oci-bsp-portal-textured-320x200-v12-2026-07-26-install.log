@@ -1,0 +1,21 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_STAGING|PASS|source_bytes=29771|source_sha256=a395858020f4f128b02f61f3beee5d08a76128cd79766ef04d86a2011647ce7e|pack_bytes=305310|pack_sha256=fd7c8e1f7b1fbe4231fdf7450d49d10dd25f9e12c4f7f01ed8763b4bb1f0daad
+
+PMLE_FREE_LIVE_PACK_LOAD|PASS|bytes=305310|width=320|height=200|poses=5250|layout=COLUMN_MAJOR_INDEXED|lineTests=0|cellsVisited=0|cacheHits=0|cacheMisses=0|cacheColdMisses=0|cacheReplacements=0|portalHits=0|solidHits=0|maxPortalDepth=0|bspSegsVisited=0|bspSubsectorsVisited=0|lightBanks=0|litTextureBytes=undefined
+
+PMLE_FREE_LIVE_TEXTURE_LOAD|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+

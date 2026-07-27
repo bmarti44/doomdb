@@ -532,6 +532,19 @@ the specialized renderer as the active path. It does not satisfy acceptance
 until portals, textures, lighting, sprites, weapons, HUD, live authority state,
 ORDS delivery, and deployed browser cadence all pass.
 
+#### Full-fidelity clarification — 2026-07-26
+
+Authorized by Brian Martin after the first specialized-renderer result.
+Reduced resolution and flat/simplified presentation are diagnostic tools only,
+not an acceptable finished demo. Release output is 320x200 and must include
+the authentic Doom presentation surface: real textures and flats, portal and
+moving-sector geometry, lighting and palette effects, sprites and animation,
+weapons, the status bar/HUD/face, automap, menus, intermission, and finale.
+Gameplay and deterministic database authority remain exact. The client still
+only receives and presents database-authored pixels. Framebuffer hash parity
+is measured wherever a common reference exists, but no component or synthetic
+parity check substitutes for the deployed 30-FPS full-game gate.
+
 #### Approved MLE integration, observability, and WAN directive — 2026-07-22
 
 Authorized by Brian Martin after review of the first role-swap evidence. This

@@ -134,9 +134,8 @@ final_p95="$(awk -F'[=|]' '
     if((pass==5||pass==6)&&p95>max)max=p95
   }END{if(max<=0)exit 1;printf "%.3f",max}' "$rank_log")"
 verdict="$(awk -v p95="$final_p95" 'BEGIN{
-  if(p95<=8)print "PROMOTE_BLOCKMAP_LAYOUT";
-  else if(p95>=15)print "REJECT_BLOCKMAP_LAYOUT";
-  else print "PROFILE_ONE_OPTIMIZATION";
+  if(p95<=11.330)print "PROMOTE_FULL_RES_LAYOUT";
+  else print "RECOVER_FULL_RES_BUDGET";
 }')"
-printf 'PMLE_FREE_LIVE_VERDICT|%s|final_two_worst_p95_ms=%s|width=160|height=100|input=ACCEPTED_5250_POSES|classification=DIAGNOSTIC_NOT_GATE\n' \
+printf 'PMLE_FREE_LIVE_VERDICT|%s|final_two_worst_p95_ms=%s|width=320|height=200|input=ACCEPTED_5250_POSES|classification=DIAGNOSTIC_NOT_GATE\n' \
   "$verdict" "$final_p95" | tee "$verdict_log"

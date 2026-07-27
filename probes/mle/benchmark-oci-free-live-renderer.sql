@@ -31,6 +31,38 @@ end;
 /
 
 declare
+  l_blob blob;l_bytes number;l_expected_sha varchar2(64);
+  l_actual_sha varchar2(64);l_offset number:=0;l_chunk raw(16000);
+  l_loaded number;
+begin
+  select encoded_bytes,dbms_lob.getlength(encoded_bytes),payload_sha256
+    into l_blob,l_bytes,l_expected_sha
+    from doom_renderer_asset_pack where asset_kind='wall_texture';
+  l_actual_sha:=lower(rawtohex(
+    dbms_crypto.hash(l_blob,dbms_crypto.hash_sh256)));
+  if l_actual_sha<>l_expected_sha then
+    raise_application_error(-20796,'rank wall texture source hash mismatch');
+  end if;
+  l_loaded:=doom_free_live_texture_allocate(l_bytes);
+  while l_offset<l_bytes loop
+    l_chunk:=dbms_lob.substr(
+      l_blob,least(16000,l_bytes-l_offset),l_offset+1);
+    l_loaded:=doom_free_live_texture_load(l_offset,l_chunk);
+    l_offset:=l_offset+utl_raw.length(l_chunk);
+    if l_loaded<>l_offset then
+      raise_application_error(-20796,'rank wall texture load mismatch');
+    end if;
+  end loop;
+  if doom_free_live_texture_finalize<>l_bytes then
+    raise_application_error(-20796,'rank wall texture finalize mismatch');
+  end if;
+  dbms_output.put_line(
+    'PMLE_FREE_LIVE_RANK_TEXTURE_LOAD|PASS|bytes='||l_bytes||
+    '|sha256='||l_actual_sha);
+end;
+/
+
+declare
   c_passes constant pls_integer:=6;
   c_frames constant pls_integer:=500;
   type values_t is table of number index by pls_integer;
@@ -74,7 +106,9 @@ begin
   end loop;
   dbms_output.put_line(
     'PMLE_FREE_LIVE_STATS|PASS|'||doom_free_live_stats||
-    '|frame_bytes='||utl_raw.length(doom_free_live_frame_chunk(0,16000)));
+    '|frame_bytes='||(
+      utl_raw.length(doom_free_live_frame_chunk(0,32000))+
+      utl_raw.length(doom_free_live_frame_chunk(32000,32000))));
   doom_free_live_release;
 exception when others then
   begin doom_free_live_release;exception when others then null;end;

@@ -35,6 +35,9 @@ for object in \
   'function doom_free_live_frame_chunk' \
   'function doom_free_live_render_batch' \
   'function doom_free_live_render' \
+  'function doom_free_live_texture_finalize' \
+  'function doom_free_live_texture_load' \
+  'function doom_free_live_texture_allocate' \
   'function doom_free_live_finalize' \
   'function doom_free_live_load' \
   'function doom_free_live_allocate'; do
@@ -76,6 +79,12 @@ printf '%s\n' \
   '/' \
   "create function doom_free_live_finalize return number as mle module doom_free_live_renderer signature 'finalizePack()';" \
   '/' \
+  "create function doom_free_live_texture_allocate(p_length number)return number as mle module doom_free_live_renderer signature 'allocateWallTextures(number)';" \
+  '/' \
+  "create function doom_free_live_texture_load(p_offset number,p_chunk raw)return number as mle module doom_free_live_renderer signature 'loadWallTextureChunk(number, Uint8Array)';" \
+  '/' \
+  "create function doom_free_live_texture_finalize return number as mle module doom_free_live_renderer signature 'finalizeWallTextures()';" \
+  '/' \
   "create function doom_free_live_render(p_pose number)return number as mle module doom_free_live_renderer signature 'renderPose(number)';" \
   '/' \
   "create function doom_free_live_render_batch(p_start number,p_count number)return number as mle module doom_free_live_renderer signature 'renderBatch(number, number)';" \
@@ -98,5 +107,20 @@ printf '%s\n' \
   'end loop;' \
   "if doom_free_live_finalize<>l_bytes then raise_application_error(-20796,'free live finalize mismatch');end if;" \
   "dbms_output.put_line('PMLE_FREE_LIVE_PACK_LOAD|PASS|bytes='||l_bytes||'|'||doom_free_live_stats);end;" \
+  '/' \
+  'declare l_blob blob;l_bytes number;l_expected_sha varchar2(64);l_actual_sha varchar2(64);' \
+  'l_offset number:=0;l_chunk raw(16000);l_loaded number;begin' \
+  "select encoded_bytes,dbms_lob.getlength(encoded_bytes),payload_sha256 into l_blob,l_bytes,l_expected_sha from doom_renderer_asset_pack where asset_kind='wall_texture';" \
+  'l_actual_sha:=lower(rawtohex(dbms_crypto.hash(l_blob,dbms_crypto.hash_sh256)));' \
+  "if l_actual_sha<>l_expected_sha then raise_application_error(-20796,'wall texture source hash mismatch');end if;" \
+  'l_loaded:=doom_free_live_texture_allocate(l_bytes);' \
+  'while l_offset<l_bytes loop' \
+  'l_chunk:=dbms_lob.substr(l_blob,least(16000,l_bytes-l_offset),l_offset+1);' \
+  'l_loaded:=doom_free_live_texture_load(l_offset,l_chunk);' \
+  'l_offset:=l_offset+utl_raw.length(l_chunk);' \
+  "if l_loaded<>l_offset then raise_application_error(-20796,'wall texture load mismatch');end if;" \
+  'end loop;' \
+  "if doom_free_live_texture_finalize<>l_bytes then raise_application_error(-20796,'wall texture finalize mismatch');end if;" \
+  "dbms_output.put_line('PMLE_FREE_LIVE_TEXTURE_LOAD|PASS|bytes='||l_bytes||'|sha256='||l_actual_sha);end;" \
   '/' \
   'commit;'

@@ -1,0 +1,57 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_POSTFLIGHT|PASS|diagnostic_objects=0|production_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+Rollback
+begin doom_match_worker.start_warm_pool;end;
+*
+ERROR at line 1:
+ORA-01403: no data found
+ORA-06512: at "DOOM.DOOM_MATCH_WORKER", line 1598
+ORA-06512: at "DOOM.DOOM_MATCH_WORKER", line 1570
+ORA-06512: at line 1
+Help: https://docs.oracle.com/error-help/db/ora-01403/
+

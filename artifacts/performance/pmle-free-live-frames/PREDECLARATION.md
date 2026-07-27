@@ -79,3 +79,98 @@ Predeclared interpretation:
 - this component cell cannot pass the release gate. The complete deployed
   authority + raster + ORDS + browser pipeline must still sustain at least
   30 unique moving FPS.
+
+## Full-resolution layout cell
+
+The promoted layout is rerun at the final 320x200 indexed resolution before
+presentation features land. This cell still uses flat walls/floor/ceiling, so
+it isolates the full-resolution visibility and framebuffer floor.
+
+- `p95 <= 11.330 ms` preserves the complete current raster allowance and
+  promotes full-resolution portal/texture work;
+- `p95 > 11.330 ms` requires recovering budget from authority/egress or
+  changing the visibility layout before presentation features;
+- no reduced-resolution result is acceptable as the finished product.
+
+## Authentic wall-texture cell
+
+The next cell keeps full 320x200 visibility and samples the installed,
+SHA-fenced Freedoom `wall_texture` renderer pack for every wall pixel. Lighting
+uses the canonical 32x256 colormap pack and the intersected sector light
+level. Portals are still treated as solid in this isolated cost cell.
+
+- `p95 <= 11.330 ms` promotes portal-aware upper/lower/middle wall bands and
+  textured flats;
+- `p95 > 11.330 ms` triggers texture-column precomputation/caching before more
+  layers;
+- authentic assets are mandatory; flat-color output cannot ship.
+
+## Cached authentic column cell
+
+The authentic wall cell showed that repeated interpreted texture/colormap
+gathers, not visibility, dominate. The next cell caches complete scaled and
+lit 200-byte columns in the database and uses native `TypedArray.set` into a
+column-major indexed framebuffer. Column-major is a transport layout only:
+the database has already selected every final palette index; the client may
+transpose it while decoding to canvas.
+
+- `p95 <= 11.330 ms` promotes the cache architecture to portal bands;
+- cache hit/miss counts are mandatory in the evidence;
+- sustained performance must include route changes, not a static warmed view.
+
+## Portal-correct authentic wall cell
+
+The next cell replaces the solid-linedef approximation with Doom's sidedef
+model.  The pack contains both sides' upper/lower/middle textures and offsets,
+front/back sectors, sector floor/ceiling/light values, the captured player
+view height, and the original linedef flags.  Each ray continues through
+two-sided openings while clipping subsequent upper and lower wall bands.
+One-sided middle walls remain opaque.  Output remains database-authored
+320x200 column-major indexed pixels using the real Freedoom wall pack.
+
+- `p95 <= 11.330 ms` promotes this portal layout to flat, sprite, weapon, and
+  HUD integration;
+- `p95 > 11.330 ms` does not authorize a fidelity reduction: profile portal
+  traversal and recover boundary budget before adding layers;
+- the cell must report portal/solid hit counts and maximum portal depth, and
+  a zero-portal result invalidates the measurement;
+- static sector heights are diagnostic input only.  Shipping frames must bind
+  the same renderer to authoritative per-tic sector heights and presentation
+  state.
+
+## Front-to-back BSP portal cell
+
+The first portal cell proved correctness-shaped traversal but raised line
+intersection work from roughly 2,414 to 8,390 tests per sampled frame because
+each ray independently walked every visible portal.  The next cell consumes
+the checked-in E1M1 NODES/SSECTORS/SEGS tree front-to-back.  It projects each
+visible seg to a screen interval and updates per-column upper/lower occlusion
+clips.  This is the original Doom renderer's visibility shape: each seg is
+classified once, while only covered screen columns perform an intersection
+and cached native blit.
+
+- `p95 <= 11.330 ms` promotes BSP visibility to the remaining presentation
+  layers;
+- `p95 > 11.330 ms` requires a measured stage decomposition or recovered
+  authority/egress budget; it does not authorize solid portals;
+- the rank must report visited seg/subsector counts, portal depth, cache
+  behavior, and nonzero opaque coverage;
+- this remains a component diagnostic, not the deployed 30 FPS gate.
+
+The first BSP cell reduced line intersections but still walked 462 of 682
+subsectors in the sampled frame.  The follow-up adds Doom-shaped back-child
+bounding-box rejection after the front child has updated occlusion.  Its
+verdict thresholds are unchanged, and it must report bbox checks/rejections
+alongside the earlier BSP counters.
+
+The bbox cell reduced visited subsectors to 70 but retained the same 1,870
+portal-column operations.  The next cell applies Doom's empty-trigger-line
+rejection before projection: a two-sided boundary with equal floor and ceiling
+heights and no middle texture does not draw or alter vertical occlusion.
+Skipped segs are counted.  Thresholds remain unchanged.
+
+The empty-boundary cell still performed texture-coordinate and light setup for
+portal columns that only changed occlusion and emitted no pixels.  The next
+cell defers all texel-side setup until an upper/lower band actually intersects
+the current clip.  Geometry and output are unchanged; the same thresholds and
+counters apply.

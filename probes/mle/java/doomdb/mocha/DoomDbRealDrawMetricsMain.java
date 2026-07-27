@@ -25,9 +25,15 @@ public final class DoomDbRealDrawMetricsMain {
   private DoomDbRealDrawMetricsMain() {}
 
   public static void main(String[] args) throws Exception {
-    if (args.length == 3 || args.length == 4) {
+    if (args.length >= 3 && args.length <= 5) {
+      boolean extendedPoses = args.length == 5
+          && "--extended-poses".equals(args[4]);
+      if (args.length == 5 && !extendedPoses) {
+        throw new IllegalArgumentException("unknown pose format " + args[4]);
+      }
       runCanonicalMultiplayer(
-          args[0], args[1], args[2], args.length == 4 ? args[3] : null);
+          args[0], args[1], args[2], args.length >= 4 ? args[3] : null,
+          extendedPoses);
       return;
     }
     if (args.length != 7) {
@@ -87,7 +93,8 @@ public final class DoomDbRealDrawMetricsMain {
   }
 
   private static void runCanonicalMultiplayer(
-      String iwadPath, String streamPath, String tablePath, String posePath)
+      String iwadPath, String streamPath, String tablePath, String posePath,
+      boolean extendedPoses)
       throws Exception {
     byte[] iwad = Files.readAllBytes(Paths.get(iwadPath));
     byte[] stream = Files.readAllBytes(Paths.get(streamPath));
@@ -116,7 +123,7 @@ public final class DoomDbRealDrawMetricsMain {
       engine.Display();
       DoomDbDrawMetrics.beginRun();
       ByteArrayOutputStream poses = posePath == null
-          ? null : new ByteArrayOutputStream(5250 * 12);
+          ? null : new ByteArrayOutputStream(5250 * (extendedPoses ? 32 : 12));
       long started = System.nanoTime();
       for (int tic = 0; tic < 5250; tic++) {
         int offset = tic * 33;
@@ -152,6 +159,13 @@ public final class DoomDbRealDrawMetricsMain {
           writeLittleEndianInt(poses, player.mo.x);
           writeLittleEndianInt(poses, player.mo.y);
           writeLittleEndianInt(poses, (int) (player.mo.angle >>> 16));
+          if (extendedPoses) {
+            writeLittleEndianInt(poses, player.viewz);
+            writeLittleEndianInt(poses, player.health[0]);
+            writeLittleEndianInt(poses, player.armorpoints[0]);
+            writeLittleEndianInt(poses, player.readyweapon.ordinal());
+            writeLittleEndianInt(poses, player.ammo[0]);
+          }
         }
         DoomDbDrawMetrics.beginFrame();
         engine.Display();
@@ -168,7 +182,8 @@ public final class DoomDbRealDrawMetricsMain {
         Files.write(Paths.get(posePath), poseBytes);
         System.out.println("PMLE_REAL_DRAW_POSES|PASS|records=5250|bytes="
             + poseBytes.length + "|sha256="
-            + hex(MessageDigest.getInstance("SHA-256").digest(poseBytes)));
+            + hex(MessageDigest.getInstance("SHA-256").digest(poseBytes))
+            + "|recordBytes=" + (extendedPoses ? 32 : 12));
       }
     } finally {
       Engine.releaseHeadless();

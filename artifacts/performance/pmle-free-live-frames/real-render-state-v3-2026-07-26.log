@@ -1,0 +1,12 @@
+PMLE_REAL_DRAW_FIXTURE|PASS|tics=5250|bytes=173250|sha256=fa7637570c30d3a33cbf8456e98268890e9f5bd82f5ba39fd7f69b139ddc4085
+/tmp/doomdb-ojvm-build-59299/adapter/doomdb/mocha/DoomDbRealDrawMetricsMain.java:164: error: incompatible types: int[] cannot be converted to int
+            writeLittleEndianInt(poses, player.health);
+                                              ^
+/tmp/doomdb-ojvm-build-59299/adapter/doomdb/mocha/DoomDbRealDrawMetricsMain.java:165: error: incompatible types: int[] cannot be converted to int
+            writeLittleEndianInt(poses, player.armorpoints);
+                                              ^
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+Note: Some messages have been simplified; recompile with -Xdiags:verbose to get full output
+2 errors
+Mocha OJVM compilation failed

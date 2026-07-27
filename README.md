@@ -40,8 +40,10 @@ Your save file is rows plus an exact checkpoint.
 The first Always Free renderer spike is encouraging: a retained 160x100 MLE
 BLOCKMAP renderer traversing real E1M1 geometry and the accepted 5,250-tic
 camera route measured 2.529 ms worst-final p95. That promotes the architecture,
-but it is not the finished claim—portal bands, textures, sprites, weapon/HUD,
-live state transfer, and the full deployed 30 FPS browser gate remain.
+but it is strictly a disposable layout proof. The finished output remains
+320x200 with authentic portal geometry, textures/flats, lighting, sprites,
+weapon animation, status bar/face/HUD, automap and game-state screens. Live
+state transfer and the full deployed 30 FPS browser gate remain.
 
 The browser has no authority: it cannot predict, simulate ahead, reorder, or
 invent a tic. If you close the tab, the world is still in the database and a

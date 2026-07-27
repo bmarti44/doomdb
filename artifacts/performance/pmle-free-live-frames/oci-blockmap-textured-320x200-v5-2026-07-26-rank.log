@@ -1,0 +1,27 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_RANK_LOAD|PASS|bytes=119544|width=320|height=200|poses=5250|lineTests=0|cellsVisited=0
+
+PMLE_FREE_LIVE_RANK_TEXTURE_LOAD|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_LIVE_PASS|PASS|pass=1|frames=500|p50_ms=40.045|p95_ms=43.042|wall_ms=19398.872|clock_ms=19390|throughput_fps=25.775|clock_suspects=0|checksum=3591239633
+PMLE_FREE_LIVE_PASS|PASS|pass=2|frames=500|p50_ms=38.874|p95_ms=45.803|wall_ms=19084.924|clock_ms=19080|throughput_fps=26.199|clock_suspects=0|checksum=6421565413
+PMLE_FREE_LIVE_PASS|PASS|pass=3|frames=500|p50_ms=30.068|p95_ms=40.506|wall_ms=15728.963|clock_ms=15720|throughput_fps=31.788|clock_suspects=0|checksum=8537536593
+PMLE_FREE_LIVE_PASS|PASS|pass=4|frames=500|p50_ms=40.715|p95_ms=48.755|wall_ms=18754.617|clock_ms=18750|throughput_fps=26.66|clock_suspects=0|checksum=12175582930
+PMLE_FREE_LIVE_PASS|PASS|pass=5|frames=500|p50_ms=35.56|p95_ms=41.509|wall_ms=16476.996|clock_ms=16470|throughput_fps=30.345|clock_suspects=0|checksum=15382874926
+PMLE_FREE_LIVE_PASS|PASS|pass=6|frames=500|p50_ms=20.601|p95_ms=38.41|wall_ms=11756.872|clock_ms=11750|throughput_fps=42.528|clock_suspects=0|checksum=18533760171
+PMLE_FREE_LIVE_STATS|PASS|width=320|height=200|poses=5250|lineTests=2414|cellsVisited=938|frame_bytes=64000
+
