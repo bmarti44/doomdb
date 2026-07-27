@@ -99,6 +99,7 @@ let bspSubsectorsVisited = 0;
 let bspBboxChecks = 0;
 let bspBboxRejects = 0;
 let emptyPortalSegsSkipped = 0;
+let clipOnlyPortalColumns = 0;
 
 export function allocatePack(length) {
   if (!Number.isInteger(length) || length < 96 || length > 1000000) {
@@ -585,8 +586,8 @@ function renderRayReference(index) {
 }
 
 function renderBspWallColumn(
-    screenX, line, fromRight, distance, rayX, rayY,
-    playerX, playerY, viewZ) {
+    screenX, line, fromRight, wallHeight, numerator, denominator,
+    playerX, playerY, viewZ, directionX, directionY) {
   const clipTop = columnClipTop[screenX];
   const clipBottom = columnClipBottom[screenX];
   if (clipTop > clipBottom) return;
@@ -595,8 +596,6 @@ function renderBspWallColumn(
   const farSector = fromRight
     ? lineLeftSector[line] : lineRightSector[line];
   if (nearSector === 0xffff) return;
-  const wallHeight = Math.min(
-    65535, Math.max(1, Math.floor(128 * 160 / Math.max(0.25, distance))));
   const nearCeiling = sectorCeiling[nearSector];
   const nearFloor = sectorFloor[nearSector];
   const nearTop = Math.floor(
@@ -611,6 +610,10 @@ function renderBspWallColumn(
     if (middleTexture === 0xffff) middleTexture = lineTexture[line];
     const segmentX = lineX2[line] - lineX1[line];
     const segmentY = lineY2[line] - lineY1[line];
+    const cameraX = (screenX * 2 + 1) / WIDTH - 1;
+    const rayX = directionX - directionY * cameraX;
+    const rayY = directionY + directionX * cameraX;
+    const distance = numerator / denominator;
     const hitX = playerX + rayX * distance;
     const hitY = playerY + rayY * distance;
     const along = Math.abs(segmentX) >= Math.abs(segmentY)
@@ -654,6 +657,10 @@ function renderBspWallColumn(
   if (drawUpper || drawLower) {
     const segmentX = lineX2[line] - lineX1[line];
     const segmentY = lineY2[line] - lineY1[line];
+    const cameraX = (screenX * 2 + 1) / WIDTH - 1;
+    const rayX = directionX - directionY * cameraX;
+    const rayY = directionY + directionX * cameraX;
+    const distance = numerator / denominator;
     const hitX = playerX + rayX * distance;
     const hitY = playerY + rayY * distance;
     const along = Math.abs(segmentX) >= Math.abs(segmentY)
@@ -757,6 +764,7 @@ function render(index) {
   bspBboxChecks = 0;
   bspBboxRejects = 0;
   emptyPortalSegsSkipped = 0;
+  clipOnlyPortalColumns = 0;
   columnClipTop.fill(0);
   columnClipBottom.fill(HEIGHT - 1);
   columnPortalDepth.fill(0);
@@ -814,6 +822,19 @@ function render(index) {
         emptyPortalSegsSkipped += 1;
         continue;
       }
+      const upperTexture = fromRight
+        ? lineRightUpper[line] : lineLeftUpper[line];
+      const lowerTexture = fromRight
+        ? lineRightLower[line] : lineLeftLower[line];
+      const clipOnlyPortal = farSector !== 0xffff
+        && !(sectorCeiling[farSector] < sectorCeiling[nearSector]
+          && upperTexture !== 0xffff)
+        && !(sectorFloor[farSector] > sectorFloor[nearSector]
+          && lowerTexture !== 0xffff);
+      const clipOpeningCeiling = clipOnlyPortal
+        ? Math.min(sectorCeiling[nearSector], sectorCeiling[farSector]) : 0;
+      const clipOpeningFloor = clipOnlyPortal
+        ? Math.max(sectorFloor[nearSector], sectorFloor[farSector]) : 0;
 
       let ax = segX1[seg] - playerX;
       let ay = segY1[seg] - playerY;
@@ -843,23 +864,45 @@ function render(index) {
 
       const segmentX = segX2[seg] - segX1[seg];
       const segmentY = segY2[seg] - segY1[seg];
+      const offsetX = segX1[seg] - playerX;
+      const offsetY = segY1[seg] - playerY;
+      const numerator = offsetX * segmentY - offsetY * segmentX;
+      const denominatorBase = directionX * segmentY - directionY * segmentX;
+      const denominatorSlope = -directionY * segmentY
+        - directionX * segmentX;
+      let cameraX = (startX * 2 + 1) / WIDTH - 1;
+      let denominator = denominatorBase + denominatorSlope * cameraX;
+      const denominatorStep = denominatorSlope * 2 / WIDTH;
       for (; startX <= endX; startX += 1) {
+        const currentDenominator = denominator;
+        denominator += denominatorStep;
         if (columnClipTop[startX] > columnClipBottom[startX]) continue;
-        const cameraX = (startX * 2 + 1) / WIDTH - 1;
-        const rayX = directionX - directionY * cameraX;
-        const rayY = directionY + directionX * cameraX;
-        const denominator = rayX * segmentY - rayY * segmentX;
-        if (denominator > -0.000001 && denominator < 0.000001) continue;
+        if (currentDenominator > -0.000001
+            && currentDenominator < 0.000001) continue;
         lineTests += 1;
-        const offsetX = segX1[seg] - playerX;
-        const offsetY = segY1[seg] - playerY;
-        const distance = (offsetX * segmentY - offsetY * segmentX)
-          / denominator;
-        if (distance <= 0.01) continue;
+        const height = Math.floor(20480 * currentDenominator / numerator);
+        if (height < 1) continue;
+        const wallHeight = Math.min(65535, height);
+        if (clipOnlyPortal) {
+          clipOnlyPortalColumns += 1;
+          portalHits += 1;
+          const depth = columnPortalDepth[startX] + 1;
+          columnPortalDepth[startX] = depth;
+          if (depth > maxPortalDepth) maxPortalDepth = depth;
+          const openingTop = Math.floor(
+            HEIGHT / 2 - (clipOpeningCeiling - viewZ) * wallHeight / 128);
+          const openingBottom = Math.ceil(
+            HEIGHT / 2 - (clipOpeningFloor - viewZ) * wallHeight / 128) - 1;
+          columnClipTop[startX] = Math.max(
+            columnClipTop[startX], openingTop);
+          columnClipBottom[startX] = Math.min(
+            columnClipBottom[startX], openingBottom);
+        } else {
         renderBspWallColumn(
-          startX, line, fromRight, distance, rayX, rayY,
-          playerX, playerY, viewZ,
+          startX, line, fromRight, wallHeight, numerator, currentDenominator,
+          playerX, playerY, viewZ, directionX, directionY,
         );
+        }
         if (columnClipTop[startX] > columnClipBottom[startX]) {
           openColumns -= 1;
         }
@@ -911,6 +954,7 @@ export function stats() {
     + `|bspSubsectorsVisited=${bspSubsectorsVisited}`
     + `|bspBboxChecks=${bspBboxChecks}|bspBboxRejects=${bspBboxRejects}`
     + `|emptyPortalSegsSkipped=${emptyPortalSegsSkipped}`
+    + `|clipOnlyPortalColumns=${clipOnlyPortalColumns}`
     + `|lightBanks=${lightBankCount}|litTextureBytes=${litTextures?.byteLength}`;
 }
 

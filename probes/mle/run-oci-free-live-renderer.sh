@@ -5,6 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 probe="$root/probes/mle"
 evidence="$root/artifacts/performance/pmle-free-live-frames"
 tag="${PMLE_FREE_LIVE_TAG:-blockmap-flat-160x100-v1-2026-07-26}"
+repeat_start="${PMLE_FREE_LIVE_REPEAT_START:-}"
 pool_log="$evidence/oci-$tag-pool.log"
 install_log="$evidence/oci-$tag-install.log"
 rank_log="$evidence/oci-$tag-rank.log"
@@ -23,6 +24,10 @@ for name in ADB_CONNECTION_STRING ADB_USERNAME ADB_PASSWORD ADB_WALLET_DIR \
   }
 done
 [[ "$ADB_USERNAME" == DOOM ]] || exit 2
+if [[ -n "$repeat_start" ]]; then
+  [[ "$repeat_start" =~ ^[0-9]+$ && "$repeat_start" -le 4750 ]] || {
+    printf 'repeat start must be between 0 and 4750\n' >&2;exit 2; }
+fi
 for input in "$probe/free-live-renderer.mjs" \
   "$probe/target/free-live-renderer/free-live-render.pack" \
   "$probe/install-free-live-renderer.sh" \
@@ -124,14 +129,29 @@ diagnostic_loaded=1
 "$probe/install-free-live-renderer.sh" --emit-sql |
   "$root/scripts/adb-doom-sql.sh" - | tee "$install_log"
 grep -Fq 'PMLE_FREE_LIVE_PACK_LOAD|PASS' "$install_log"
+if [[ -n "$repeat_start" ]]; then
+  "$root/scripts/adb-doom-sql.sh" - >>"$install_log" <<SQL
+update doom_free_live_source set repeat_start=$repeat_start;
+commit;
+SQL
+fi
 "$root/scripts/adb-doom-sql.sh" \
   "$probe/benchmark-oci-free-live-renderer.sql" | tee "$rank_log"
-[[ "$(grep -c '^PMLE_FREE_LIVE_PASS|PASS|' "$rank_log")" == 6 ]]
+expected_passes=6
+final_pass_a=5
+final_pass_b=6
+if [[ -n "$repeat_start" ]]; then
+  expected_passes=12
+  final_pass_a=11
+  final_pass_b=12
+fi
+[[ "$(grep -c '^PMLE_FREE_LIVE_PASS|PASS|' "$rank_log")" == "$expected_passes" ]]
 final_p95="$(awk -F'[=|]' '
+  BEGIN{a='"$final_pass_a"';b='"$final_pass_b"'}
   /^PMLE_FREE_LIVE_PASS[|]PASS[|]/ {
     pass=0;p95=0
     for(i=1;i<=NF;i++){if($i=="pass")pass=$(i+1);if($i=="p95_ms")p95=$(i+1)}
-    if((pass==5||pass==6)&&p95>max)max=p95
+    if((pass==a||pass==b)&&p95>max)max=p95
   }END{if(max<=0)exit 1;printf "%.3f",max}' "$rank_log")"
 verdict="$(awk -v p95="$final_p95" 'BEGIN{
   if(p95<=11.330)print "PROMOTE_FULL_RES_LAYOUT";

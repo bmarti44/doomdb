@@ -174,3 +174,62 @@ portal columns that only changed occlusion and emitted no pixels.  The next
 cell defers all texel-side setup until an upper/lower band actually intersects
 the current clip.  Geometry and output are unchanged; the same thresholds and
 counters apply.
+
+The lazy-setup cell was neutral because every covered column still formed a
+ray and divided for distance before determining whether any pixels would be
+emitted. For a projected seg, the ray/segment denominator—and therefore the
+projected wall height—is linear across screen X. The next cell advances that
+denominator incrementally and reconstructs distance/ray values only for
+columns that actually draw a cached wall band. Portal clipping retains the
+same integer projected heights. The `11.330 ms` threshold is unchanged.
+
+The incremental cell preserved every pass checksum and improved the final-two
+worst p95 from `37.432` to `34.778 ms`. The next cell moves portal spans that
+cannot emit an upper or lower texture band onto a clip-only inner loop. It
+updates the same per-column opening bounds without entering the general wall
+helper or forming texture coordinates. Clip-only column cardinality is
+reported; thresholds remain unchanged.
+
+## Same-window compilation discriminator
+
+Route-shaped passes cover different geometry, so their non-monotonic timing
+cannot establish whether the specialized module ever enters an optimized
+execution tier. A diagnostic cell repeats poses 500–999 for six consecutive
+500-frame passes without changing the module or pack. Pass-level p95 and
+throughput are compared only against the identical window:
+
+- at least 20% sustained improvement in both passes 5 and 6 versus pass 2 is
+  a compilation signal and authorizes a longer plateau/compilation study;
+- less than 10% improvement in both final passes classifies the default
+  specialized renderer as compilation-inert on this venue;
+- intermediate or unstable results require one longer identical-window cell;
+- this is `DIAGNOSTIC_NOT_GATE` and does not alter any renderer acceptance
+  threshold.
+
+The six-pass cell landed between the predeclared bands: pass 2 p95 was
+`29.997 ms`, while passes 5/6 were `26.363/25.952 ms` (12.1–13.5%).
+The required longer cell repeats the identical window for 12 passes. The
+median p95 of passes 9–12 is compared with pass 2: at least 20% is a useful
+compilation signal; below 10% is inert; 10–20% is classified as minor
+warmup/optimization that does not justify a compiler workstream because it
+cannot close the current gap.
+
+## TeaVM-generated specialized-visibility discriminator
+
+The plain JavaScript plateau is compilation-inert.  A separate 17 KB TeaVM
+0.15.0 `ADVANCED` artifact ports the same primitive-array BSP, bbox, empty-line,
+incremental-height, and clip-only visibility kernel, but intentionally omits
+texture-cache lookup and framebuffer blits.  It tests generated shape only and
+cannot replace either production authority or renderer.
+
+The identical poses 500–999 run for 12 passes:
+
+- final-two p95 `<=5.000 ms` promotes a complete generated-renderer port,
+  because it leaves room for the already-native cached blits;
+- p95 `>=15.000 ms` rejects TeaVM generation as insufficient for this
+  specialized renderer;
+- between those values requires an Amdahl projection using the measured plain
+  renderer's 1,893 geometry columns and 1,066 native cache blits before any
+  full port;
+- a pass checksum change relative to the identical prior pass increment,
+  clock disagreement, or postflight failure invalidates the cell.

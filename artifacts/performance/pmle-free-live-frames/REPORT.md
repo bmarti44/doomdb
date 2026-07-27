@@ -162,3 +162,36 @@ must replace repeated per-column portal setup with span/incremental work or a
 compiled generated shape.  Fidelity is not reduced and the existing browser
 delta renderer remains the public release until the complete database-frame
 gate passes.
+
+## Incremental and generated-shape results
+
+Two more allocation-free specializations preserved every route-pass checksum:
+
+| Cell | Final-two worst p95 | Effect |
+|---|---:|---|
+| incremental seg denominator | 34.778 ms | avoids ray/divide on clip-only columns |
+| specialized clip-only spans | 34.286 ms | 687 terminal-frame columns bypass general helper |
+
+The identical-window compilation discriminator then repeated poses 500–999.
+Its 12-pass plateau held p50 at roughly `20.2–20.9 ms` and p95 at
+`25.784–26.553 ms`; the median p95 of passes 9–12 was `25.912 ms`, only
+`1.4%` below pass 2 (`26.272 ms`). The plain JavaScript specialized module is
+therefore compilation-inert on this Always Free venue.
+
+A separate reproducible TeaVM 0.15.0 `ADVANCED` artifact emitted the same
+primitive-array BSP/portal geometry as a 17,696-byte ES module:
+
+- artifact SHA:
+  `21d4d942c9b3bdac1f94f1ea1e973c92328a5c14cee11b994e36069d8f56f13d`;
+- source SHA:
+  `b97e63b090abf89e8bfb98ceb84060b97907a087e8685a13818dcb73e3c7b46f`;
+- identical-window final p50: `6.553/7.059 ms`;
+- identical-window final p95: `10.077/10.190 ms`;
+- throughput: `162–163 geometry frames/s`.
+
+This is a real generated-shape improvement, but the artifact deliberately
+omits texture-cache lookup and framebuffer blits, so it lands in the
+predeclared `REQUIRE_AMDAHL_PROJECTION` band rather than passing. The next
+cell extends this generated artifact with the real prelit texture cache and
+64,000-byte framebuffer. Only that full-raster measurement can promote a
+generated renderer.

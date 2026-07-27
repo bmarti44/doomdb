@@ -52,8 +52,9 @@ printf '%s\n' \
   'create table doom_free_live_source(' \
   'source_blob blob not null,pack_blob blob not null,' \
   'source_bytes number not null,source_sha varchar2(64) not null,' \
-  'pack_bytes number not null,pack_sha varchar2(64) not null);' \
-  "insert into doom_free_live_source values(empty_blob(),empty_blob(),$source_bytes,'$source_sha',$pack_bytes,'$pack_sha');" \
+  'pack_bytes number not null,pack_sha varchar2(64) not null,' \
+  'repeat_start number);' \
+  "insert into doom_free_live_source values(empty_blob(),empty_blob(),$source_bytes,'$source_sha',$pack_bytes,'$pack_sha',null);" \
   'declare l_source blob;l_pack blob;l_raw raw(32767);begin' \
   'select source_blob,pack_blob into l_source,l_pack from doom_free_live_source for update;'
 emit_blob "$source_file" l_source

@@ -63,25 +63,33 @@ end;
 /
 
 declare
-  c_passes constant pls_integer:=6;
+  c_route_passes constant pls_integer:=6;
+  c_repeat_passes constant pls_integer:=12;
   c_frames constant pls_integer:=500;
   type values_t is table of number index by pls_integer;
   l_values values_t;l_sorted values_t;
   l_started timestamp with time zone;l_pass_started timestamp with time zone;
   l_clock_started number;l_wall number;l_clock number;l_value number;
   l_checksum number:=0;l_j pls_integer;l_suspects number;
+  l_repeat_start number;l_passes pls_integer;
   function elapsed_ms(p interval day to second)return number is
   begin
     return extract(day from p)*86400000+extract(hour from p)*3600000+
       extract(minute from p)*60000+extract(second from p)*1000;
   end;
 begin
+  select repeat_start into l_repeat_start from doom_free_live_source;
+  l_passes:=case when l_repeat_start is null
+    then c_route_passes else c_repeat_passes end;
   for pose in 0..49 loop l_checksum:=l_checksum+doom_free_live_render(pose);end loop;
-  for pass in 1..c_passes loop
+  for pass in 1..l_passes loop
     l_pass_started:=systimestamp;l_clock_started:=dbms_utility.get_time;
     for frame in 1..c_frames loop
       l_started:=systimestamp;
-      l_checksum:=l_checksum+doom_free_live_render((pass-1)*c_frames+frame-1);
+      l_checksum:=l_checksum+doom_free_live_render(
+        case when l_repeat_start is null
+          then (pass-1)*c_frames+frame-1
+          else l_repeat_start+frame-1 end);
       l_values(frame):=elapsed_ms(systimestamp-l_started);
       l_sorted(frame):=l_values(frame);
     end loop;
@@ -102,6 +110,7 @@ begin
       '|wall_ms='||round(l_wall,3)||
       '|clock_ms='||round(l_clock,3)||
       '|throughput_fps='||round(c_frames*1000/l_wall,3)||
+      '|repeat_start='||nvl(to_char(l_repeat_start),'ROUTE')||
       '|clock_suspects='||l_suspects||'|checksum='||l_checksum);
   end loop;
   dbms_output.put_line(
