@@ -38,16 +38,16 @@ begin
     select 191 from dual
   ) loop
     l_value:=doom_free_full_render(sample_.frame_index);
-    if doom_free_full_view_prepare<>53760 then
-      raise_application_error(-20796,'full-command viewport size mismatch');
+    if doom_free_full_frame_prepare<>64000 then
+      raise_application_error(-20796,'full-command frame size mismatch');
     end if;
     dbms_lob.createtemporary(l_frame,true,dbms_lob.call);
     l_offset:=0;
-    while l_offset<53760 loop
-      l_size:=least(32767,53760-l_offset);
-      l_chunk:=doom_free_full_view_chunk(l_offset,l_size);
+    while l_offset<64000 loop
+      l_size:=least(32767,64000-l_offset);
+      l_chunk:=doom_free_full_frame_chunk(l_offset,l_size);
       if utl_raw.length(l_chunk)<>l_size then
-        raise_application_error(-20796,'full-command viewport short read');
+        raise_application_error(-20796,'full-command frame short read');
       end if;
       dbms_lob.writeappend(l_frame,l_size,l_chunk);
       l_offset:=l_offset+l_size;
@@ -55,10 +55,10 @@ begin
     l_actual:=lower(rawtohex(
       dbms_crypto.hash(l_frame,dbms_crypto.hash_sh256)));
     l_expected:=lower(rawtohex(
-      doom_free_full_digest(sample_.frame_index)));
+      doom_free_full_frame_digest(sample_.frame_index)));
     dbms_lob.freetemporary(l_frame);
     if l_actual<>l_expected then
-      raise_application_error(-20796,'full-command viewport digest mismatch');
+      raise_application_error(-20796,'full-command frame digest mismatch');
     end if;
     dbms_output.put_line(
       'PMLE_FULL_COMMAND_EQUIVALENCE|PASS|frame='||

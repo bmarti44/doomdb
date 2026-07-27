@@ -17,6 +17,8 @@ public final class MetricSpanFunction extends DoomSpanFunction<byte[], byte[]> {
     @Override
     public void invoke() {
         FrameCommandMetrics.recordSpan(dsvars);
-        delegate.invoke(dsvars);
+        if (!FrameCommandMetrics.isCaptureOnly()) {
+            delegate.invoke(dsvars);
+        }
     }
 }

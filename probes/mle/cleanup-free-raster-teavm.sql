@@ -1,6 +1,12 @@
 whenever oserror exit failure rollback
 whenever sqlerror exit sql.sqlcode rollback
 set define off echo off verify off feedback off heading off pages 0 lines 32767
+begin execute immediate 'drop function doom_free_full_frame_digest';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_full_frame_chunk';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_full_frame_prepare';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
 begin execute immediate 'drop function doom_free_full_digest';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
 begin execute immediate 'drop function doom_free_full_view_chunk';exception when others then if sqlcode<>-4043 then raise;end if;end;

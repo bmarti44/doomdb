@@ -21,6 +21,8 @@ public final class MetricColumnFunction
     @Override
     public void invoke() {
         FrameCommandMetrics.recordColumn(kind, dcvars);
-        delegate.invoke(dcvars);
+        if (!FrameCommandMetrics.isCaptureOnly()) {
+            delegate.invoke(dcvars);
+        }
     }
 }

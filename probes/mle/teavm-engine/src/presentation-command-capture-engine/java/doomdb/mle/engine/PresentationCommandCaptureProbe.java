@@ -14,6 +14,9 @@ import rr.drawfuns.FrameCommandMetrics;
  * reaching capture state or its retained asset registry.
  */
 public final class PresentationCommandCaptureProbe {
+  private static byte[] retainedNormalFrame;
+  private static byte[] retainedCapturedOriginal;
+
   private PresentationCommandCaptureProbe() {}
 
   @JSExport
@@ -88,8 +91,133 @@ public final class PresentationCommandCaptureProbe {
   }
 
   @JSExport
+  public static int renderPlayerFrameLength(int playerSlot) throws Exception {
+    retainedNormalFrame =
+        PresentationEngineReachabilityProbe.renderPlayerFrameByRef(playerSlot);
+    return retainedNormalFrame.length;
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] renderPlayerFrameChunk(int offset, int length) {
+    if (retainedNormalFrame == null || offset < 0 || length < 0
+        || length > 32767 || offset + length > retainedNormalFrame.length) {
+      throw new IllegalArgumentException(
+          "normal frame chunk outside framebuffer");
+    }
+    byte[] result = new byte[length];
+    System.arraycopy(retainedNormalFrame, offset, result, 0, length);
+    return result;
+  }
+
+  /**
+   * Render from the current authoritative state through the compact command
+   * raster. The viewport writers are intercepted, while Mocha still renders
+   * the authentic status bar into the same retained foreground screen.
+   *
+   * Wire layout: 320x168 column-major viewport followed by the 320x32
+   * row-major HUD. The client only transposes/copies these database-produced
+   * indexed pixels; it performs no game or rendering decisions.
+   */
+  @JSExport
+  @JSByRef
+  public static byte[] renderCapturedPlayerFrameByRef(int playerSlot)
+      throws Exception {
+    capturePlayerFrameCommands(playerSlot);
+    return rasterCapturedPlayerFrameByRef();
+  }
+
+  @JSExport
+  public static int capturePlayerFrameCommands(int playerSlot)
+      throws Exception {
+    if (!FrameCommandMetrics.isEnabled()) FrameCommandMetrics.enable();
+    FrameCommandMetrics.beginLiveFrame();
+    FrameCommandMetrics.setCaptureOnly(true);
+    try {
+      retainedCapturedOriginal =
+          PresentationEngineReachabilityProbe.renderPlayerFrameByRef(playerSlot);
+      return FrameCommandMetrics.liveCommandCount();
+    } finally {
+      FrameCommandMetrics.setCaptureOnly(false);
+    }
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] rasterCapturedPlayerFrameByRef() {
+    if (retainedCapturedOriginal == null) {
+      throw new IllegalStateException("captured commands are unavailable");
+    }
+    return FrameCommandMetrics.renderCapturedFrame(retainedCapturedOriginal);
+  }
+
+  @JSExport
+  public static int rasterCapturedPlayerFrameLength() {
+    rasterCapturedPlayerFrameByRef();
+    return 320 * 200;
+  }
+
+  @JSExport
+  public static int renderPlayerFrameCountOnly(int playerSlot)
+      throws Exception {
+    if (!FrameCommandMetrics.isEnabled()) FrameCommandMetrics.enable();
+    FrameCommandMetrics.beginLiveFrame();
+    FrameCommandMetrics.setCountOnly(true);
+    FrameCommandMetrics.setCaptureOnly(true);
+    try {
+      retainedCapturedOriginal =
+          PresentationEngineReachabilityProbe.renderPlayerFrameByRef(playerSlot);
+      return retainedCapturedOriginal.length;
+    } finally {
+      FrameCommandMetrics.setCaptureOnly(false);
+      FrameCommandMetrics.setCountOnly(false);
+    }
+  }
+
+  @JSExport
+  public static int renderCapturedPlayerFrameLength(int playerSlot)
+      throws Exception {
+    renderCapturedPlayerFrameByRef(playerSlot);
+    return 320 * 200;
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] capturedPlayerFrameChunk(int offset, int length) {
+    return FrameCommandMetrics.capturedFrameChunk(offset, length);
+  }
+
+  @JSExport
+  public static int prepareCapturedPlayerFrameRowMajor() {
+    return FrameCommandMetrics.prepareCapturedFrameRowMajor();
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] capturedPlayerFrameRowMajorChunk(
+      int offset, int length) {
+    return FrameCommandMetrics.capturedFrameRowMajorChunk(offset, length);
+  }
+
+  @JSExport
+  public static int capturedFrameCommandCount() {
+    return FrameCommandMetrics.liveCommandCount();
+  }
+
+  @JSExport
+  public static int capturedFrameAssetResetCount() {
+    return FrameCommandMetrics.liveAssetResetCount();
+  }
+
+  @JSExport
   public static String presentationDiagnostic() {
     return PresentationEngineReachabilityProbe.presentationDiagnostic();
+  }
+
+  @JSExport
+  public static Uint8Array presentationPlayerSnapshot(int playerSlot) {
+    return PresentationEngineReachabilityProbe.presentationPlayerSnapshot(
+        playerSlot);
   }
 
   @JSExport

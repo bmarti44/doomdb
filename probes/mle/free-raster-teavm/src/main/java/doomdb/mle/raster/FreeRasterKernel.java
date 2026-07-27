@@ -217,6 +217,11 @@ public final class FreeRasterKernel {
   }
 
   @JSExport
+  public static int fullFramePrepare() {
+    return FullCommandRasterKernel.prepareFullCommandFrame();
+  }
+
+  @JSExport
   @JSByRef
   public static byte[] fullFrameViewportChunk(int offset, int length) {
     return FullCommandRasterKernel.fullCommandViewportChunk(offset, length);
@@ -226,6 +231,18 @@ public final class FreeRasterKernel {
   @JSByRef
   public static byte[] fullFrameViewportDigest(int index) {
     return FullCommandRasterKernel.fullCommandViewportDigest(index);
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] fullFrameChunk(int offset, int length) {
+    return FullCommandRasterKernel.fullCommandFrameChunk(offset, length);
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] fullFrameDigest(int index) {
+    return FullCommandRasterKernel.fullCommandFrameDigest(index);
   }
 
   private static int u16(byte[] source, int offset) {

@@ -1,0 +1,130 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_LIVE_COMMAND_EQUIVALENCE|PASS|window=PEAK_AWAKE|tic=131|sha256=9ca0312cfc6879bdf6863a920c5cf945c533367342be282e1777c630751ca30a
+PMLE_LIVE_COMMAND_EQUIVALENCE|PASS|window=PEAK_AWAKE|tic=280|sha256=51452712d36e7e30c1862476b5bfa07b0b11093df82aaa07d612f1c800613b42
+PMLE_LIVE_COMMAND_EQUIVALENCE|PASS|window=PEAK_AWAKE|tic=430|sha256=93d679cee955311d423efc1c8a0e78f3cb98f0a670276625fca4bc2077a10ba5
+PMLE_LIVE_COMMAND_RANK|DIAGNOSTIC_NOT_GATE|window=PEAK_AWAKE|offset=100|samples=300|warmup=30|frame_bytes=64000|unique=291|exact_samples=3|asset_resets=3|command_min=524|command_p50=1929|command_p95=2125|command_max=2331|step_p50_ms=8.094|step_p95_ms=12.894|render_p50_ms=175.661|render_p95_ms=205.970|egress_p50_ms=13.410|egress_p95_ms=16.735|pipeline_p50_ms=197.377|pipeline_p95_ms=228.117|throughput_fps=5.586|clock_suspects=0|exact_30fps=FAIL
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_LIVE_COMMAND_EQUIVALENCE|PASS|window=QUIET_ROUTE|tic=1231|sha256=b3ca517471fe206ec9f521110074871f52791d32288e5c3dc55cb0c506b78c59
+PMLE_LIVE_COMMAND_EQUIVALENCE|PASS|window=QUIET_ROUTE|tic=1380|sha256=957fca058177a22c9dcb5755c04333773a1370c3030e46e16d5715824d7d208b
+PMLE_LIVE_COMMAND_EQUIVALENCE|PASS|window=QUIET_ROUTE|tic=1530|sha256=53bd5fccd19c1e783a363c9a3e38e5d5a597b19025c5f0b73a0998e858e3ebfa
+PMLE_LIVE_COMMAND_RANK|DIAGNOSTIC_NOT_GATE|window=QUIET_ROUTE|offset=1200|samples=300|warmup=30|frame_bytes=64000|unique=182|exact_samples=3|asset_resets=1|command_min=477|command_p50=1757|command_p95=1879|command_max=1949|step_p50_ms=3.582|step_p95_ms=7.155|render_p50_ms=130.642|render_p95_ms=145.404|egress_p50_ms=13.779|egress_p95_ms=14.766|pipeline_p50_ms=147.429|pipeline_p95_ms=163.549|throughput_fps=7.258|clock_suspects=0|exact_30fps=FAIL
+

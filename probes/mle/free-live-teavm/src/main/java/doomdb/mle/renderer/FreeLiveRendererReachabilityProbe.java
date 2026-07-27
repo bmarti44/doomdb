@@ -271,6 +271,52 @@ public final class FreeLiveRendererReachabilityProbe {
     return render(pose, true);
   }
 
+  /**
+   * Render from the compact live-authority player snapshot rather than the
+   * prerecorded diagnostic pose bank.  The first 32 bytes deliberately share
+   * the accepted pose-record layout:
+   *
+   * <pre>
+   * x, y, angle&gt;&gt;16, viewz, health, armor, readyweapon, ammo[0]
+   * </pre>
+   *
+   * The remaining fields already cross the authority/renderer boundary even
+   * though the wall-only prototype does not consume them yet.  Keeping the
+   * complete record prevents a second boundary-format change when weapon and
+   * HUD composition land.
+   */
+  @JSExport
+  public static int renderPlayerSnapshot(Uint8Array snapshot) {
+    if (litTextures == null) {
+      throw new IllegalStateException("wall textures are not finalized");
+    }
+    if (snapshot == null || snapshot.getLength() != 32) {
+      throw new IllegalArgumentException("player snapshot must be 32 bytes");
+    }
+    return renderView(
+        snapshotI32(snapshot, 0),
+        snapshotI32(snapshot, 4),
+        snapshotI32(snapshot, 8),
+        snapshotI32(snapshot, 12),
+        0,
+        true);
+  }
+
+  /** Geometry-only counterpart used to measure the live snapshot boundary. */
+  @JSExport
+  public static int renderPlayerSnapshotGeometry(Uint8Array snapshot) {
+    if (snapshot == null || snapshot.getLength() != 32) {
+      throw new IllegalArgumentException("player snapshot must be 32 bytes");
+    }
+    return renderView(
+        snapshotI32(snapshot, 0),
+        snapshotI32(snapshot, 4),
+        snapshotI32(snapshot, 8),
+        snapshotI32(snapshot, 12),
+        0,
+        false);
+  }
+
   @JSExport
   public static int renderCommands(int pose) {
     commandLength = 0;
@@ -319,10 +365,17 @@ public final class FreeLiveRendererReachabilityProbe {
   private static int render(int pose, boolean raster) {
     pose %= poseCount;
     int at = poseOffset + pose * poseRecordBytes;
-    double playerX = i32(at) / 65536.0;
-    double playerY = i32(at + 4) / 65536.0;
-    int angle = (u32(at + 8) >>> 5) & 2047;
-    double viewZ = i32(at + 12) / 65536.0;
+    return renderView(
+        i32(at), i32(at + 4), i32(at + 8), i32(at + 12), pose, raster);
+  }
+
+  private static int renderView(
+      int playerXFixed, int playerYFixed, int angleHigh,
+      int viewZFixed, int sample, boolean raster) {
+    double playerX = playerXFixed / 65536.0;
+    double playerY = playerYFixed / 65536.0;
+    int angle = (angleHigh >>> 5) & 2047;
+    double viewZ = viewZFixed / 65536.0;
     double directionX = cosTable[angle] / 32767.0;
     double directionY = sinTable[angle] / 32767.0;
     rasterPixelWrites = 0;
@@ -493,10 +546,17 @@ public final class FreeLiveRendererReachabilityProbe {
       }
     }
     if (raster) {
-      checksum ^= (frame[pose % PIXELS] & 255)
-          | ((frame[(pose * 997) % PIXELS] & 255) << 8);
+      checksum ^= (frame[sample % PIXELS] & 255)
+          | ((frame[(sample * 997) % PIXELS] & 255) << 8);
     }
     return checksum;
+  }
+
+  private static int snapshotI32(Uint8Array snapshot, int offset) {
+    return (snapshot.get(offset) & 255)
+        | ((snapshot.get(offset + 1) & 255) << 8)
+        | ((snapshot.get(offset + 2) & 255) << 16)
+        | ((snapshot.get(offset + 3) & 255) << 24);
   }
 
   @JSExport

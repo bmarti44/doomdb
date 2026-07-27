@@ -1158,6 +1158,42 @@ public final class SimulationEngineReachabilityProbe {
         + "|statusData=" + statusData;
   }
 
+  /**
+   * Export the bounded live player view consumed by the specialized MLE
+   * rasterizer.  This is presentation input only: the authoritative engine
+   * continues to own and advance all of these values.
+   */
+  @JSExport
+  public static Uint8Array presentationPlayerSnapshot(int playerSlot) {
+    if (engine == null) throw new IllegalStateException("engine is not initialized");
+    if (playerSlot < 0 || playerSlot >= engine.players.length
+        || !engine.playeringame[playerSlot]) {
+      throw new IllegalArgumentException("inactive player slot " + playerSlot);
+    }
+    player_t player = engine.players[playerSlot];
+    if (player.mo == null) {
+      throw new IllegalStateException("player has no mobj " + playerSlot);
+    }
+    Uint8Array snapshot = Uint8Array.create(32);
+    putSnapshotI32(snapshot, 0, player.mo.x);
+    putSnapshotI32(snapshot, 4, player.mo.y);
+    putSnapshotI32(snapshot, 8, (int) (player.mo.angle >>> 16));
+    putSnapshotI32(snapshot, 12, player.viewz);
+    putSnapshotI32(snapshot, 16, player.health[0]);
+    putSnapshotI32(snapshot, 20, player.armorpoints[0]);
+    putSnapshotI32(snapshot, 24, player.readyweapon.ordinal());
+    putSnapshotI32(snapshot, 28, player.ammo[0]);
+    return snapshot;
+  }
+
+  private static void putSnapshotI32(
+      Uint8Array snapshot, int offset, int value) {
+    snapshot.set(offset, (short) (value & 255));
+    snapshot.set(offset + 1, (short) ((value >>> 8) & 255));
+    snapshot.set(offset + 2, (short) ((value >>> 16) & 255));
+    snapshot.set(offset + 3, (short) ((value >>> 24) & 255));
+  }
+
   private static int nonzero(byte[] bytes, int offset, int length) {
     int count = 0;
     int end = Math.min(bytes.length, offset + length);

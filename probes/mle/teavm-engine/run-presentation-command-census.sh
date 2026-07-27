@@ -41,7 +41,7 @@ PMLE_PRESENTATION_COMMAND_METRICS=YES \
 grep -Fq 'PMLE_TEAVM_PRESENTATION|PASS|tics=96|' "$log"
 if [[ -n "$pack" ]]; then
   [[ -s "$pack" && ! -L "$pack" ]]
-  grep -Fq 'PMLE_PRESENTATION_COMMAND_PACK|PASS|version=3|frames=192|' "$log"
+  grep -Fq 'PMLE_PRESENTATION_COMMAND_PACK|PASS|version=4|frames=192|' "$log"
 fi
 
 node - "$log" "$artifact" "$mocha" "$input" <<'NODE' | tee "$verdict"

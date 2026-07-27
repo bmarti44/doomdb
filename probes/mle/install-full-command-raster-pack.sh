@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-pack="${PMLE_FULL_COMMAND_PACK:-$root/probes/mle/teavm-engine/target/full-command-capture-v3.bin}"
+pack="${PMLE_FULL_COMMAND_PACK:-$root/probes/mle/teavm-engine/target/full-command-capture-v6.bin}"
 [[ "${1:-}" == --emit-sql && "$#" == 1 ]] || {
   printf 'usage: %s --emit-sql\n' "$0" >&2;exit 2; }
 [[ -s "$pack" && ! -L "$pack" ]] || {

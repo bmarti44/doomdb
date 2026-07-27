@@ -143,5 +143,5 @@ verdict="$(awk -v p95="$final_p95" -v batch="$final_batch_ms" 'BEGIN{
   else if(p95>30||batch>30)print "REJECT_FULL_COMMAND_RASTER";
   else print "OPTIMIZE_FULL_COMMAND_RASTER";
 }')"
-printf 'PMLE_FULL_COMMAND_VERDICT|%s|final_two_worst_p95_ms=%s|final_two_worst_batch_ms_per_frame=%s|workload=AUTHENTIC_E1M1_WALL_FLAT_MASKED_PLAYER|viewport_exact=192|hud=NOT_INCLUDED|classification=DIAGNOSTIC_NOT_GATE\n' \
+printf 'PMLE_FULL_COMMAND_VERDICT|%s|final_two_worst_p95_ms=%s|final_two_worst_batch_ms_per_frame=%s|workload=AUTHENTIC_E1M1_WALL_FLAT_MASKED_PLAYER_CAPTURED_HUD|full_frame_exact=192|hud=CAPTURED_EXACT_NOT_LIVE_GENERATED|classification=DIAGNOSTIC_NOT_GATE\n' \
   "$verdict" "$final_p95" "$final_batch_ms" | tee "$verdict_log"

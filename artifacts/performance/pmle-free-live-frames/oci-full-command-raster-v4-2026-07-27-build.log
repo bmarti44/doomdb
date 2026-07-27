@@ -1,0 +1,39 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< doomdb:free-raster-kernel >----------------------
+[INFO] Building free-raster-kernel 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ free-raster-kernel ---
+[INFO] skip non existing resourceDirectory /work/probes/mle/free-raster-teavm/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ free-raster-kernel ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ free-raster-kernel ---
+[INFO] skip non existing resourceDirectory /work/probes/mle/free-raster-teavm/src/test/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ free-raster-kernel ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ free-raster-kernel ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.4.1:jar (default-jar) @ free-raster-kernel ---
+[INFO] 
+[INFO] --- org.teavm:teavm-maven-plugin:0.15.0:compile (default) @ free-raster-kernel ---
+[INFO] Preparing classpath for TeaVM
+[INFO] Using the following classpath for TeaVM: /root/.m2/repository/org/teavm/teavm-classlib/0.15.0/teavm-classlib-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-core/0.15.0/teavm-core-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-interop/0.15.0/teavm-interop-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-metaprogramming-api/0.15.0/teavm-metaprogramming-api-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-extension-apis/0.15.0/teavm-extension-apis-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-platform/0.15.0/teavm-platform-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-jso-apis/0.15.0/teavm-jso-apis-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-jso-impl/0.15.0/teavm-jso-impl-0.15.0.jar:/root/.m2/repository/org/teavm/teavm-metaprogramming-impl/0.15.0/teavm-metaprogramming-impl-0.15.0.jar:/root/.m2/repository/com/jcraft/jzlib/1.1.3/jzlib-1.1.3.jar:/root/.m2/repository/joda-time/joda-time/2.12.2/joda-time-2.12.2.jar:/root/.m2/repository/org/teavm/teavm-jso/0.15.0/teavm-jso-0.15.0.jar:/work/probes/mle/free-raster-teavm/target/classes
+[INFO] Running TeaVM
+[INFO] Output file successfully built
+[INFO] Classes compiled: 41
+[INFO] Methods compiled: 596
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  6.905 s
+[INFO] Finished at: 2026-07-27T07:16:35Z
+[INFO] ------------------------------------------------------------------------
+PMLE_FREE_RASTER_BUILD|PASS|bytes=23603|sha256=459a415ac4b08116baf8d9865bf0e1ff06c1f607e59ff0811c05bba781905c50|source_sha256=9a82bdfc008bfb677c46fabd1558363639f13be6358813f1e0d7e70d1ff9cea8|full_source_sha256=47c19722327db1739530aa5ec4f6178d9e6ac4faea44b5d15e93254a4408f9ae|teavm=0.15.0|optimization=ADVANCED
+PMLE_FULL_COMMAND_RASTER_NODE|PASS|frames=192|commands=394360|viewport_exact=192|full_frame_exact=192|ms_per_frame_p50=0.185311|ms_per_frame_p95=0.206606|artifact_sha256=459a415ac4b08116baf8d9865bf0e1ff06c1f607e59ff0811c05bba781905c50|pack_sha256=92a5ba734d6714793af8a183dcff211538f843945b356140457809f678333d56

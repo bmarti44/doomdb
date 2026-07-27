@@ -15,6 +15,9 @@ printf '%s\n' \
   'set define off echo off verify off feedback off heading off pages 0 lines 32767' \
   'set serveroutput on size unlimited'
 for object in \
+  'function doom_free_full_frame_digest' \
+  'function doom_free_full_frame_chunk' \
+  'function doom_free_full_frame_prepare' \
   'function doom_free_full_digest' \
   'function doom_free_full_view_chunk' \
   'function doom_free_full_view_prepare' \
@@ -100,5 +103,11 @@ printf '%s\n' \
   "create function doom_free_full_view_chunk(p_offset number,p_length number)return raw as mle module doom_free_raster_kernel signature 'fullFrameViewportChunk(number, number)';" \
   '/' \
   "create function doom_free_full_digest(p_frame number)return raw as mle module doom_free_raster_kernel signature 'fullFrameViewportDigest(number)';" \
+  '/' \
+  "create function doom_free_full_frame_prepare return number as mle module doom_free_raster_kernel signature 'fullFramePrepare()';" \
+  '/' \
+  "create function doom_free_full_frame_chunk(p_offset number,p_length number)return raw as mle module doom_free_raster_kernel signature 'fullFrameChunk(number, number)';" \
+  '/' \
+  "create function doom_free_full_frame_digest(p_frame number)return raw as mle module doom_free_raster_kernel signature 'fullFrameDigest(number)';" \
   '/' \
   'commit;'

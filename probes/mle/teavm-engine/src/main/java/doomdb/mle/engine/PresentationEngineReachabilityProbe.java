@@ -111,6 +111,12 @@ public final class PresentationEngineReachabilityProbe {
   }
 
   @JSExport
+  public static Uint8Array presentationPlayerSnapshot(int playerSlot) {
+    return SimulationEngineReachabilityProbe.presentationPlayerSnapshot(
+        playerSlot);
+  }
+
+  @JSExport
   public static String canonicalOffsetDescription(int materialOffset) {
     return SimulationEngineReachabilityProbe.canonicalOffsetDescription(materialOffset);
   }

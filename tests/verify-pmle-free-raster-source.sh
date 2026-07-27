@@ -18,11 +18,21 @@ capture_pom="$probe/teavm-engine/pom.xml"
 capture_probe="$probe/teavm-engine/src/presentation-command-capture-engine/java/doomdb/mle/engine/PresentationCommandCaptureProbe.java"
 capture_metrics="$probe/teavm-engine/src/presentation-command-capture/java/rr/drawfuns/FrameCommandMetrics.java"
 capture_runner="$probe/teavm-engine/run-presentation-command-census.sh"
+live_runner="$probe/teavm-engine/run-oci-live-command-raster.sh"
+live_benchmark="$probe/teavm-engine/benchmark-oci-live-command-raster.sql"
+live_bisection="$probe/teavm-engine/benchmark-oci-live-command-bisection.sql"
+snapshot_authority="$probe/teavm-engine/src/main/java/doomdb/mle/engine/SimulationEngineReachabilityProbe.java"
+snapshot_renderer="$probe/free-live-teavm/src/main/java/doomdb/mle/renderer/FreeLiveRendererReachabilityProbe.java"
+snapshot_fixture_test="$probe/verify-free-live-snapshot-node.mjs"
+snapshot_integration_test="$probe/verify-live-authority-renderer-node.mjs"
+live_predeclaration="$root/artifacts/performance/pmle-free-live-frames/PREDECLARATION.md"
 
 for input in "$source_file" "$full_source" "$install" "$runner" "$benchmark" \
   "$full_install" "$full_runner" "$full_benchmark" "$node_rank" \
   "$capture_patch" "$capture_build" "$capture_pom" "$capture_probe" "$capture_metrics" \
-  "$capture_runner" \
+  "$capture_runner" "$live_runner" "$live_benchmark" "$live_bisection" \
+  "$snapshot_authority" "$snapshot_renderer" "$snapshot_fixture_test" \
+  "$snapshot_integration_test" "$live_predeclaration" \
   "$probe/build-free-raster-teavm.sh" "$probe/cleanup-free-raster-teavm.sql"; do
   [[ -s "$input" && ! -L "$input" ]] || {
     printf 'free-raster verifier: missing input %s\n' "$input" >&2
@@ -35,7 +45,8 @@ bash -n \
   "$install" \
   "$runner" \
   "$full_install" \
-  "$full_runner"
+  "$full_runner" \
+  "$live_runner"
 
 require() {
   local pattern="$1" file="$2"
@@ -90,12 +101,13 @@ require 'while IFS= read -r piece || [[ -n "$piece" ]]; do' "$full_install"
 require "raise_application_error(-20796,'full-command staging mismatch')" "$full_install"
 require 'PMLE_FULL_COMMAND_RASTER_NODE|PASS|frames=${frames}' "$node_rank"
 require 'viewport_exact=${frames}' "$node_rank"
+require 'full_frame_exact=${frames}' "$node_rank"
 require 'PMLE_FULL_COMMAND_EQUIVALENCE|PASS|' "$full_benchmark"
 require 'c_frames constant pls_integer:=192' "$full_benchmark"
 require 'c_passes constant pls_integer:=12' "$full_benchmark"
 require 'PMLE_FULL_COMMAND_VERDICT|' "$full_runner"
 require 'final_two_worst_p95_ms=%s' "$full_runner"
-require 'hud=NOT_INCLUDED' "$full_runner"
+require 'hud=CAPTURED_EXACT_NOT_LIVE_GENERATED' "$full_runner"
 require 'PMLE_FULL_COMMAND_POSTFLIGHT|PASS|diagnostic_objects=0' "$full_runner"
 
 # Capture reachability is a candidate-only overlay. The shipping authority
@@ -107,11 +119,47 @@ require 'doomdbEnableFrameCommandMetrics();' "$capture_patch"
 require 'FrameCommandMetrics.enable();' "$capture_patch"
 require 'class PresentationCommandCaptureProbe' "$capture_probe"
 require 'private static final int COMMAND_BYTES = 28;' "$capture_metrics"
-require "header.writeUInt32LE(3, 4);" \
+require "header.writeUInt32LE(4, 4);" \
   "$probe/teavm-engine/run-presentation-node.mjs"
-require "version=3|frames=192" "$capture_runner"
+require "version=4|frames=192" "$capture_runner"
+
+# The integrated path must intercept only final viewport writes, retain
+# primitive commands and prelit assets, and expose a complete database-authored
+# wire frame. Node exactness precedes OCI route/peak timing.
+require 'if (!FrameCommandMetrics.isCaptureOnly()) {' \
+  "$probe/teavm-engine/src/presentation-command-capture/java/rr/drawfuns/MetricColumnFunction.java"
+require 'if (!FrameCommandMetrics.isCaptureOnly()) {' \
+  "$probe/teavm-engine/src/presentation-command-capture/java/rr/drawfuns/MetricSpanFunction.java"
+require 'private static final int ASSET_HASH_SIZE = 32768;' "$capture_metrics"
+require 'capturedFrame[x * VIEW_HEIGHT + y]' "$capture_metrics"
+require '"live fuzz raster requires its separately gated path"' "$capture_metrics"
+require 'renderCapturedPlayerFrameLength' "$capture_probe"
+require 'capturedPlayerFrameRowMajorChunk' "$capture_probe"
+require 'PMLE_PRESENTATION_LIVE_CAPTURE|PASS|frames=${liveCaptureExactFrames}' \
+  "$probe/teavm-engine/run-presentation-node.mjs"
+require '## Live integrated command generation and full-frame raster' \
+  "$live_predeclaration"
+require 'pipeline p95 `<=33.333 ms`' "$live_predeclaration"
+require 'PMLE_LIVE_COMMAND_EQUIVALENCE|PASS|' "$live_benchmark"
+require "run_window('PEAK_AWAKE',100);" "$live_benchmark"
+require "run_window('QUIET_ROUTE',1200);" "$live_benchmark"
+require 'PMLE_LIVE_COMMAND_VERDICT|' "$live_runner"
+require 'full_frame_exact_node=192|full_frame_exact_oci=6' "$live_runner"
+require 'PMLE_LIVE_COMMAND_POSTFLIGHT|PASS|' "$live_runner"
+
+# The specialized live renderer consumes bounded authoritative state rather
+# than a prerecorded pose index. Fixture-equivalence and a changing two-player
+# authority stream are both executable Node gates.
+require 'public static Uint8Array presentationPlayerSnapshot(int playerSlot)' \
+  "$snapshot_authority"
+require 'snapshot.getLength() != 32' "$snapshot_renderer"
+require 'return renderView(' "$snapshot_renderer"
+require 'PMLE_FREE_LIVE_SNAPSHOT_NODE|PASS' "$snapshot_fixture_test"
+require 'PMLE_LIVE_AUTHORITY_RENDERER_NODE|PASS' "$snapshot_integration_test"
+require 'renderPlayerSnapshotGeometry(snapshot)' "$snapshot_integration_test"
+require 'PMLE_LIVE_COMMAND_BISECTION|DIAGNOSTIC_NOT_GATE' "$live_bisection"
 if grep -Fq 'FrameCommandMetrics' \
-  "$probe/teavm-engine/src/main/java/doomdb/mle/engine/SimulationEngineReachabilityProbe.java"; then
+  "$snapshot_authority"; then
   printf 'free-raster verifier: capture state reached shipping authority source\n' >&2
   exit 1
 fi

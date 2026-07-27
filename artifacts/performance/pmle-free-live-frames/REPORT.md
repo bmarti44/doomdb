@@ -399,3 +399,42 @@ remaining 32-line status bar and publication.  It is not yet a product claim:
 sky, fuzz, translated sprites, the status/HUD patch layer, menu/title/loading
 surfaces, automap, intermission/finale, live authority-to-renderer command
 production, ORDS retrieval, and the deployed `>=30 FPS` browser gate remain.
+
+## Integrated-path verdict and authority/renderer split
+
+The direct OCI bisection closed the object-heavy Mocha presentation traversal
+as the live rasterizer:
+
+| Peak-window arm | p50 ms | p95 ms |
+|---|---:|---:|
+| geometry/visibility/HUD count-only | 139.978 | 155.609 |
+| command and prelit-asset capture | 167.140 | 177.973 |
+| compact raster only | 19.052 | 21.936 |
+
+The complete candidate still reproduced every sampled 320x200 frame, so this
+is a performance classification rather than a correctness failure.
+Approximately `156 ms` p95 is paid before compact pixel composition begins.
+Optimizing the pixel loop cannot recover the live budget while that traversal
+stays on the frame path.
+
+The live architecture therefore keeps the accepted Mocha/TeaVM artifact as
+the simulation authority and moves rasterization into the small typed-array
+TeaVM module. The authority now exports a fixed 32-byte player presentation
+record (`x`, `y`, high angle word, `viewz`, health, armor, ready weapon, and
+clip ammo). The renderer accepts that record directly; prerecorded pose
+indices are no longer required by its live entry point.
+
+Two executable Node gates establish the boundary:
+
+- fourteen distributed records from the accepted 5,250-pose bank produce
+  identical geometry checksums through the pose and snapshot entry points;
+- a fresh 96-tic two-player authority run yields 92/90 distinct snapshots and
+  92/90 distinct renderer checksums when those live records are passed
+  directly between the two generated modules.
+
+This is not yet a product-complete renderer. The compact module currently
+draws authentic portal-clipped wall bands. Real flats/skies, masked objects
+and sprites, weapon animation, the status bar/HUD, automap, and non-level
+screens remain explicit implementation gates. Each layer must be authored
+inside MLE and the completed database-to-browser path must still pass the
+deployed 30 FPS acceptance gate.

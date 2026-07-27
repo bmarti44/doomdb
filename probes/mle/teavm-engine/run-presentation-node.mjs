@@ -13,6 +13,7 @@ const {
   canonicalStateChunk,
   canonicalStateLength,
   canonicalOffsetDescription,
+  capturedFrameCommandCount,
   enableFrameCommandMetrics,
   frameAssetCount,
   frameAssetPackChunk,
@@ -24,8 +25,10 @@ const {
   loadIwadChunk,
   loadTablePackChunk,
   memoryDiagnostic,
+  presentationPlayerSnapshot,
   presentationDiagnostic,
   release,
+  renderCapturedPlayerFrameByRef,
   renderPlayerFrame,
   stepMultiplayerAuthoritative,
 } = presentationModule;
@@ -59,9 +62,28 @@ const sampleTics = 96;
 const frameDumpDirectory = process.env.PMLE_PRESENTATION_FRAME_DIR;
 const commandMetricsEnabled =
   process.env.PMLE_PRESENTATION_COMMAND_METRICS === 'YES';
+const liveCaptureEnabled =
+  process.env.PMLE_PRESENTATION_LIVE_CAPTURE === 'YES';
 const commandPackPath = process.env.PMLE_PRESENTATION_COMMAND_PACK;
 const commandFrames = [];
 let commandFrameCount = 0;
+let liveCaptureExactFrames = 0;
+let liveCaptureMinCommands = Number.POSITIVE_INFINITY;
+let liveCaptureMaxCommands = 0;
+
+function decodeCapturedFrame(encoded) {
+  if (!ArrayBuffer.isView(encoded) || encoded.length !== 320 * 200) {
+    throw new Error(`invalid live captured frame length ${encoded?.length}`);
+  }
+  const decoded = Buffer.alloc(320 * 200);
+  for (let x = 0; x < 320; x += 1) {
+    for (let y = 0; y < 168; y += 1) {
+      decoded[y * 320 + x] = encoded[x * 168 + y];
+    }
+  }
+  decoded.set(encoded.subarray(320 * 168), 320 * 168);
+  return decoded;
+}
 
 function loadBytes(allocate, load, bytes, label) {
   if (allocate(bytes.length) !== bytes.length) {
@@ -131,6 +153,7 @@ if (commandMetricsEnabled) {
   enableFrameCommandMetrics();
 }
 const frameHashes = [new Set(), new Set()];
+const playerSnapshotHashes = [new Set(), new Set()];
 const firstFrameStats = [];
 const retainedBrowserFrames = [];
 const retainedBrowserFrameHashes = [];
@@ -172,6 +195,29 @@ for (let tic = 1; tic <= sampleTics; tic += 1) {
     mappedResidueMax = Math.max(mappedResidueMax, mismatchCount);
   }
   for (let player = 0; player < 2; player += 1) {
+    const playerSnapshot = presentationPlayerSnapshot(player);
+    if (!(playerSnapshot instanceof Uint8Array)
+        || playerSnapshot.byteLength !== 32) {
+      throw new Error(
+        `invalid player ${player} presentation snapshot at tic ${tic}`,
+      );
+    }
+    const playerX = new DataView(
+      playerSnapshot.buffer,
+      playerSnapshot.byteOffset,
+      playerSnapshot.byteLength,
+    ).getInt32(0, true);
+    const playerY = new DataView(
+      playerSnapshot.buffer,
+      playerSnapshot.byteOffset,
+      playerSnapshot.byteLength,
+    ).getInt32(4, true);
+    if (playerX === 0 && playerY === 0) {
+      throw new Error(`empty player ${player} presentation pose at tic ${tic}`);
+    }
+    playerSnapshotHashes[player].add(
+      createHash('sha256').update(playerSnapshot).digest('hex'),
+    );
     let capturedCommands;
     if (commandMetricsEnabled) frameCommandMetrics(1);
     const frameLength = renderPlayerFrameLength(player);
@@ -226,8 +272,39 @@ for (let tic = 1; tic <= sampleTics; tic += 1) {
       const viewportDigest = createHash('sha256')
         .update(frame.subarray(0, 320 * 168)).digest();
       commandFrames.push(
-        header, capturedCommands, fullDigest, viewportDigest);
+        header, capturedCommands, fullDigest, viewportDigest,
+        Buffer.from(frame.subarray(320 * 168)));
       commandFrameCount += 1;
+    }
+    if (liveCaptureEnabled) {
+      if (typeof renderCapturedPlayerFrameByRef !== 'function'
+          || typeof capturedFrameCommandCount !== 'function') {
+        throw new Error('live command raster exports are unavailable');
+      }
+      const encoded = renderCapturedPlayerFrameByRef(player);
+      const capturedFrame = decodeCapturedFrame(encoded);
+      const count = capturedFrameCommandCount();
+      if (!Number.isInteger(count) || count < 1 || count > 100_000) {
+        throw new Error(`invalid live command count ${count}`);
+      }
+      liveCaptureMinCommands = Math.min(liveCaptureMinCommands, count);
+      liveCaptureMaxCommands = Math.max(liveCaptureMaxCommands, count);
+      if (!capturedFrame.equals(frame)) {
+        let first = -1;
+        let mismatches = 0;
+        for (let index = 0; index < frame.length; index += 1) {
+          if (frame[index] !== capturedFrame[index]) {
+            if (first < 0) first = index;
+            mismatches += 1;
+          }
+        }
+        throw new Error(
+          `live command raster mismatch at tic ${tic}/player ${player}: `
+          + `first=${first}|expected=${frame[first]}`
+          + `|actual=${capturedFrame[first]}|mismatches=${mismatches}`,
+        );
+      }
+      liveCaptureExactFrames += 1;
     }
     if (tic === 1) {
       const databaseView = renderPlayerFrameDatabaseView(player);
@@ -320,6 +397,8 @@ for (let player = 0; player < expectedHudSha256.length; player += 1) {
 }
 console.log(
   `PMLE_TEAVM_PRESENTATION|PASS|tics=${sampleTics}`
+  + `|pov0_snapshot_unique=${playerSnapshotHashes[0].size}`
+  + `|pov1_snapshot_unique=${playerSnapshotHashes[1].size}`
   + `|pov0_unique=${frameHashes[0].size}|pov1_unique=${frameHashes[1].size}`
   + `|pov0_hud_sha256=${firstFrameStats[0].hudSha256}`
   + `|pov0_hud_distinct=${firstFrameStats[0].hudDistinct}`
@@ -333,6 +412,16 @@ console.log(
   + `|next_tic_world_residue=0|presentation=${presentationDiagnostic()}`
   + `|memory=${memoryDiagnostic()}`,
 );
+if (liveCaptureEnabled) {
+  console.log(
+    `PMLE_PRESENTATION_LIVE_CAPTURE|PASS|frames=${liveCaptureExactFrames}`
+    + `|full_frame_exact=${liveCaptureExactFrames}`
+    + `|command_min=${liveCaptureMinCommands}`
+    + `|command_max=${liveCaptureMaxCommands}`
+    + '|layout=COLUMN_MAJOR_VIEWPORT_ROW_MAJOR_HUD'
+    + '|authority=UNCHANGED|client=PIXEL_COPY_ONLY',
+  );
+}
 if (commandPackPath) {
   if (!commandMetricsEnabled) {
     throw new Error('command pack requires command metrics');
@@ -352,14 +441,14 @@ if (commandPackPath) {
   }
   const header = Buffer.alloc(16);
   header.write('FCP1', 0, 'ascii');
-  header.writeUInt32LE(3, 4);
+  header.writeUInt32LE(4, 4);
   header.writeUInt32LE(commandFrameCount, 8);
   header.writeUInt32LE(assetBytes, 12);
   const pack = Buffer.concat([header, ...commandFrames, assets]);
   fs.mkdirSync(path.dirname(commandPackPath), {recursive: true});
   fs.writeFileSync(commandPackPath, pack, {flag: 'wx'});
   console.log(
-    `PMLE_PRESENTATION_COMMAND_PACK|PASS|version=3|frames=${commandFrameCount}`
+    `PMLE_PRESENTATION_COMMAND_PACK|PASS|version=4|frames=${commandFrameCount}`
     + `|assets=${frameAssetCount()}|asset_bytes=${assetBytes}`
     + `|pack_bytes=${pack.length}`
     + `|sha256=${createHash('sha256').update(pack).digest('hex')}`,

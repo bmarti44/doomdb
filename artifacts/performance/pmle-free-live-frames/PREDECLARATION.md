@@ -546,9 +546,9 @@ The diagnostic presentation root now delegates through transparent command
 recorders at Mocha's actual indexed draw-function boundary.  Across 192
 moving/firing E1M1 player frames, the captured stream contains the original
 invocation order for wall columns, visplane spans, masked sprites, and player
-weapon columns, plus the authentic prelit Freedoom source bytes.  Pack version
-3 binds both the complete 320x200 reference SHA-256 and the 320x168 viewport
-SHA-256 for every frame.
+weapon columns, plus the authentic prelit Freedoom source bytes. Pack version
+4 binds the complete 320x200 reference SHA-256, the 320x168 viewport SHA-256,
+and the original animated 320x32 status pixels for every frame.
 
 Before OCI timing counts:
 
@@ -557,7 +557,9 @@ Before OCI timing counts:
   pack staging and SHA verification;
 - any fuzz command is fail-closed until the separately tested fuzz path
   exists; this route contains no sky, fuzz, or translated-column coverage;
-- the status bar and patch-based screens are explicitly not included.
+- the timed full-frame extension may copy the captured exact status pixels to
+  measure their retained-buffer cost, but this is not evidence of a live HUD
+  generator; patch-based screens remain explicitly excluded.
 
 The OCI cell measures twelve 192-frame per-call passes and twelve retained
 batch passes.  The final-two worst per-call p95 and amortized batch cost are
@@ -570,3 +572,57 @@ classified as follows:
 Promotion is not the product claim.  It means the real world/sprite/weapon
 pixel workload has enough component headroom to add HUD/patch commands,
 publication, retrieval, and the deployed browser `>=30 FPS` gate.
+
+## Live integrated command generation and full-frame raster
+
+The promoted compact raster is now embedded behind the candidate-only Mocha
+draw-function delegates.  In capture-only mode, Mocha still performs its
+authentic BSP traversal, visibility, lighting, sprite selection, weapon
+animation, and status-widget decisions, but the interpreted per-pixel
+viewport delegates are skipped.  Their fresh primitive command arrays feed
+the compact raster immediately.  Mocha's live status renderer supplies the
+final 320x32 pixels; no captured frame pack participates in this cell.
+
+Before OCI timing counts:
+
+- the candidate must reproduce every one of 192 complete 320x200 normal-Mocha
+  frames in Node from the same authoritative state;
+- source, Mocha bytecode, TeaVM input, and emitted artifact SHA-256 values are
+  recorded and database staging is fail-closed;
+- OCI repeats full-frame SHA-256 comparisons at three distributed samples;
+- the accepted 5,250-tic moving/firing command stream supplies real command
+  cardinality, with quiet and peak-combat windows reported separately;
+- fuzz remains fail-closed, and title/menu/automap/intermission/finale coverage
+  is not inferred from the E1M1 play route.
+
+The primary timing is a production-shaped retained sequence:
+authoritative tic, live command generation, full 320x200 raster, and complete
+frame egress.  It reports stage p50/p95 and unique full-frame digests.
+
+- pipeline p95 `<=33.333 ms` and sustained throughput `>=35 FPS` in both the
+  route and slowest peak-combat window promotes ORDS/browser integration;
+- internal step-plus-render p95 `<=25.000 ms` but complete egress misses the
+  live bar promotes a one-crossing BLOB/batched transport optimization;
+- internal step-plus-render p95 `>33.333 ms` triggers one measured bisection
+  between command generation and compact raster before any renderer rewrite;
+- no outcome from this cell alone satisfies the final deployed browser gate.
+
+The wire frame is database-authored palette indices: a column-major 320x168
+viewport followed by a row-major 320x32 HUD.  The browser is permitted only
+to transpose/copy those bytes, apply the palette, and scale the canvas.
+
+The first integrated OCI cell passed all six distributed exactness samples
+but measured `205.970 ms` render p95 at peak and `145.404 ms` on the quiet
+route.  Per its predeclared outcome, one bisection follows before any rewrite:
+
+1. Mocha geometry/visibility/HUD traversal with metric counts only and the
+   original viewport pixel writers suppressed;
+2. the same traversal plus primitive-command and prelit-asset preparation,
+   with rasterization suppressed;
+3. compact rasterization alone over the freshly prepared commands.
+
+One hundred scored peak-window frames per arm use independent freshly
+initialized retained contexts.  The command and raster arms must still
+produce three exact full-frame comparisons.  The largest exclusive stage is
+the only stage eligible for the next implementation change; no aggregate
+projection or Node-profile ranking may override the direct MLE measurements.

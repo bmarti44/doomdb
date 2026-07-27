@@ -18,8 +18,9 @@ public final class FullCommandRasterKernel {
   private static final int FRAME_HEIGHT = 200;
   private static final int FRAME_PIXELS = WIDTH * FRAME_HEIGHT;
   private static final int VIEW_PIXELS = WIDTH * VIEW_HEIGHT;
+  private static final int HUD_PIXELS = WIDTH * (FRAME_HEIGHT - VIEW_HEIGHT);
   private static final int PACK_MAGIC = 0x31504346; // FCP1
-  private static final int PACK_VERSION = 3;
+  private static final int PACK_VERSION = 4;
   private static final int ASSET_MAGIC = 0x31414346; // FCA1
   private static final int COMMAND_BYTES = 28;
   private static final int DIGEST_BYTES = 32;
@@ -29,6 +30,8 @@ public final class FullCommandRasterKernel {
   private static int[] commandLengths;
   private static int[] commandStarts;
   private static int[] viewportDigestOffsets;
+  private static int[] fullDigestOffsets;
+  private static int[] hudOffsets;
   private static int[] frameTics;
   private static int[] framePlayers;
   private static int[] assetOffsets;
@@ -43,7 +46,9 @@ public final class FullCommandRasterKernel {
   private static int[] commandG;
   private static int[] commandH;
   private static byte[] frame;
+  private static byte[] hudFrame;
   private static byte[] rowMajorViewport;
+  private static byte[] rowMajorFrame;
 
   private FullCommandRasterKernel() {}
 
@@ -85,6 +90,8 @@ public final class FullCommandRasterKernel {
     commandLengths = new int[frameCount];
     commandStarts = new int[frameCount];
     viewportDigestOffsets = new int[frameCount];
+    fullDigestOffsets = new int[frameCount];
+    hudOffsets = new int[frameCount];
     frameTics = new int[frameCount];
     framePlayers = new int[frameCount];
     int at = 16;
@@ -102,7 +109,7 @@ public final class FullCommandRasterKernel {
           || frameLength != FRAME_PIXELS) {
         throw new IllegalStateException("full-command frame header invalid");
       }
-      require(at, commandLength + DIGEST_BYTES * 2);
+      require(at, commandLength + DIGEST_BYTES * 2 + HUD_PIXELS);
       frameTics[index] = tic;
       framePlayers[index] = player;
       commandOffsets[index] = at;
@@ -110,9 +117,12 @@ public final class FullCommandRasterKernel {
       commandStarts[index] = totalCommands;
       totalCommands += commandLength / COMMAND_BYTES;
       at += commandLength;
+      fullDigestOffsets[index] = at;
       at += DIGEST_BYTES; // canonical full-frame SHA-256
       viewportDigestOffsets[index] = at;
       at += DIGEST_BYTES;
+      hudOffsets[index] = at;
+      at += HUD_PIXELS;
     }
 
     if (at + assetBytes != pack.length || u32(pack, at) != ASSET_MAGIC) {
@@ -158,7 +168,9 @@ public final class FullCommandRasterKernel {
       throw new IllegalStateException("full-command resolution mismatch");
     }
     frame = new byte[FRAME_PIXELS];
+    hudFrame = new byte[HUD_PIXELS];
     rowMajorViewport = new byte[VIEW_PIXELS];
+    rowMajorFrame = new byte[FRAME_PIXELS];
     return frameCount;
   }
 
@@ -184,6 +196,8 @@ public final class FullCommandRasterKernel {
       }
       command++;
     }
+    System.arraycopy(pack, hudOffsets[frameIndex],
+        hudFrame, 0, HUD_PIXELS);
     return (frame[frameIndex % FRAME_PIXELS] & 255)
         | ((frame[(frameIndex * 997) % FRAME_PIXELS] & 255) << 8);
   }
@@ -236,6 +250,14 @@ public final class FullCommandRasterKernel {
   }
 
   @JSExport
+  public static int prepareFullCommandFrame() {
+    prepareFullCommandViewport();
+    System.arraycopy(rowMajorViewport, 0, rowMajorFrame, 0, VIEW_PIXELS);
+    System.arraycopy(hudFrame, 0, rowMajorFrame, VIEW_PIXELS, HUD_PIXELS);
+    return FRAME_PIXELS;
+  }
+
+  @JSExport
   @JSByRef
   public static byte[] fullCommandViewportChunk(int offset, int length) {
     if (rowMajorViewport == null || offset < 0 || length < 0 || length > 32767
@@ -249,10 +271,32 @@ public final class FullCommandRasterKernel {
 
   @JSExport
   @JSByRef
+  public static byte[] fullCommandFrameChunk(int offset, int length) {
+    if (rowMajorFrame == null || offset < 0 || length < 0 || length > 32767
+        || offset + length > rowMajorFrame.length) {
+      throw new IllegalArgumentException("full-frame chunk outside framebuffer");
+    }
+    byte[] chunk = new byte[length];
+    System.arraycopy(rowMajorFrame, offset, chunk, 0, length);
+    return chunk;
+  }
+
+  @JSExport
+  @JSByRef
   public static byte[] fullCommandViewportDigest(int frameIndex) {
     frameIndex = normalizedFrame(frameIndex);
     byte[] digest = new byte[DIGEST_BYTES];
     System.arraycopy(pack, viewportDigestOffsets[frameIndex],
+        digest, 0, DIGEST_BYTES);
+    return digest;
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] fullCommandFrameDigest(int frameIndex) {
+    frameIndex = normalizedFrame(frameIndex);
+    byte[] digest = new byte[DIGEST_BYTES];
+    System.arraycopy(pack, fullDigestOffsets[frameIndex],
         digest, 0, DIGEST_BYTES);
     return digest;
   }
