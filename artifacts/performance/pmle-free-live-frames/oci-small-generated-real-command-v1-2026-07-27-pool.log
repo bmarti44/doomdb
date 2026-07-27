@@ -1,0 +1,6 @@
+Connection failed
+  USER          = DOOM
+  URL           = jdbc:oracle:thin:@doomdb_tp
+  Error Message = ORA-12263: Failed to access tnsnames.ora in the directory configured as TNS admin: /wallet. The file does not exist, or is not accessible.
+https://docs.oracle.com/error-help/db/ora-12263/
+

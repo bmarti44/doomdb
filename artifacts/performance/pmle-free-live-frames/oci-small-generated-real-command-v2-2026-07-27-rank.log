@@ -1,0 +1,26 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_RASTER_TEXTURE|PASS|encoded_bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+declare
+*
+ERROR at line 1:
+ORA-04161: X
+ORA-04171: at X (DOOM.DOOM_FREE_RASTER_KERNEL:13:112)
+ORA-06512: at "DOOM.DOOM_FREE_RASTER_ATLAS_ALLOCATE", line 1
+ORA-06512: at line 8
+Help: https://docs.oracle.com/error-help/db/ora-04161/
+

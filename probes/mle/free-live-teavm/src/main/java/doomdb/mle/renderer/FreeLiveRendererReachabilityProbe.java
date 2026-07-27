@@ -20,6 +20,7 @@ public final class FreeLiveRendererReachabilityProbe {
   private static final int PIXELS = WIDTH * HEIGHT;
   private static final int CACHE_SIZE = 262144;
   private static final int COMMAND_BYTES = 24;
+  private static final int RESOLVED_COMMAND_BYTES = 20;
   private static final int COMMAND_BUFFER_BYTES = 262144;
   private static final int NATIVE_TAPE_MAGIC = 0x31575244;
   private static byte[] pack;
@@ -88,6 +89,7 @@ public final class FreeLiveRendererReachabilityProbe {
   private static byte[] commandBuffer;
   private static int commandLength;
   private static boolean captureCommands;
+  private static boolean captureResolvedCommands;
   private static boolean captureNativeTape;
   private static int nativeCommandCount;
   private static int nativeMissCount;
@@ -282,6 +284,21 @@ public final class FreeLiveRendererReachabilityProbe {
   }
 
   @JSExport
+  public static int renderResolvedCommands(int pose) {
+    if (litTextures == null) {
+      throw new IllegalStateException("wall textures are not finalized");
+    }
+    commandLength = 0;
+    captureResolvedCommands = true;
+    try {
+      render(pose, false);
+    } finally {
+      captureResolvedCommands = false;
+    }
+    return commandLength / RESOLVED_COMMAND_BYTES;
+  }
+
+  @JSExport
   public static int renderNativeTape(int pose) {
     commandLength = 16;
     nativeCommandCount = 0;
@@ -312,6 +329,13 @@ public final class FreeLiveRendererReachabilityProbe {
     for (int x = 0; x < WIDTH; x++) {
       clipTop[x] = 0;
       clipBottom[x] = HEIGHT - 1;
+      if (raster) {
+        int base = x * HEIGHT;
+        for (int y = 0; y < HEIGHT; y++) {
+          frame[base + y] = backgroundColumn[y];
+          rasterPixelWrites++;
+        }
+      }
     }
     int stackSize = 1;
     stack[0] = nodeX.length - 1;
@@ -401,8 +425,6 @@ public final class FreeLiveRendererReachabilityProbe {
           if (wallHeight > 65535) wallHeight = 65535;
           checksum += wallHeight + line;
           if (far == 0xffff) {
-            int oldClipTop = clipTop[x];
-            int oldClipBottom = clipBottom[x];
             int texture = middle;
             if (texture == 0xffff) texture = lineTexture[line];
             int nearTop = (int) Math.floor(
@@ -411,7 +433,8 @@ public final class FreeLiveRendererReachabilityProbe {
             int nearBottom = (int) Math.ceil(
                 HEIGHT / 2.0
                   - (sectorFloor[near] - viewZ) * wallHeight / 128) - 1;
-            if (raster || captureCommands || captureNativeTape) {
+            if (raster || captureCommands || captureResolvedCommands
+                || captureNativeTape) {
               int textureX = textureX(
                   x, line, fromRight, numerator / current,
                   playerX, playerY, directionX, directionY);
@@ -419,11 +442,6 @@ public final class FreeLiveRendererReachabilityProbe {
                   x, texture, textureX, wallHeight, nearTop, nearBottom,
                   clipTop[x], clipBottom[x], lightMap(near),
                   fromRight ? lineYOffset[line] : lineLeftYOffset[line]);
-            }
-            if (raster) {
-              fillRemovedRange(
-                  x, oldClipTop, oldClipBottom,
-                  nearTop, nearBottom, texture != 0xffff);
             }
             clipTop[x] = 1;
             clipBottom[x] = 0;
@@ -434,7 +452,8 @@ public final class FreeLiveRendererReachabilityProbe {
                 HEIGHT / 2.0 - (openingCeiling - viewZ) * wallHeight / 128);
             int openingBottom = (int) Math.ceil(
                 HEIGHT / 2.0 - (openingFloor - viewZ) * wallHeight / 128) - 1;
-            if ((raster || captureCommands || captureNativeTape) && !clipOnly) {
+            if ((raster || captureCommands || captureResolvedCommands
+                || captureNativeTape) && !clipOnly) {
               int nearTop = (int) Math.floor(
                   HEIGHT / 2.0
                     - (sectorCeiling[near] - viewZ) * wallHeight / 128);
@@ -466,30 +485,6 @@ public final class FreeLiveRendererReachabilityProbe {
                 }
               }
             }
-            if (raster) {
-              int oldClipTop = clipTop[x];
-              int oldClipBottom = clipBottom[x];
-              int newClipTop = Math.max(oldClipTop, openingTop);
-              int newClipBottom = Math.min(oldClipBottom, openingBottom);
-              int nearTop = (int) Math.floor(
-                  HEIGHT / 2.0
-                    - (sectorCeiling[near] - viewZ) * wallHeight / 128);
-              int nearBottom = (int) Math.ceil(
-                  HEIGHT / 2.0
-                    - (sectorFloor[near] - viewZ) * wallHeight / 128) - 1;
-              boolean hasUpper = !clipOnly
-                  && sectorCeiling[far] < sectorCeiling[near]
-                  && upper != 0xffff;
-              boolean hasLower = !clipOnly
-                  && sectorFloor[far] > sectorFloor[near]
-                  && lower != 0xffff;
-              fillRemovedRange(
-                  x, oldClipTop, newClipTop - 1,
-                  nearTop, openingTop - 1, hasUpper);
-              fillRemovedRange(
-                  x, newClipBottom + 1, oldClipBottom,
-                  openingBottom + 1, nearBottom, hasLower);
-            }
             clipTop[x] = Math.max(clipTop[x], openingTop);
             clipBottom[x] = Math.min(clipBottom[x], openingBottom);
             if (!clipOnly) checksum ^= (upper << 1) ^ (lower << 2);
@@ -498,13 +493,6 @@ public final class FreeLiveRendererReachabilityProbe {
       }
     }
     if (raster) {
-      for (int x = 0; x < WIDTH; x++) {
-        int base = x * HEIGHT;
-        for (int y = clipTop[x]; y <= clipBottom[x]; y++) {
-          frame[base + y] = backgroundColumn[y];
-          rasterPixelWrites++;
-        }
-      }
       checksum ^= (frame[pose % PIXELS] & 255)
           | ((frame[(pose * 997) % PIXELS] & 255) << 8);
     }
@@ -565,6 +553,38 @@ public final class FreeLiveRendererReachabilityProbe {
   }
 
   @JSExport
+  @JSByRef
+  public static byte[] resolvedCommandChunk(int offset, int length) {
+    if (offset < 0 || length < 0 || length > 32767
+        || offset + length > commandLength) {
+      throw new IllegalArgumentException("resolved command chunk outside tape");
+    }
+    byte[] chunk = new byte[length];
+    System.arraycopy(commandBuffer, offset, chunk, 0, length);
+    return chunk;
+  }
+
+  @JSExport
+  public static int litTextureLength() {
+    if (litTextures == null) {
+      throw new IllegalStateException("wall textures are not finalized");
+    }
+    return litTextures.length;
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] litTextureChunk(int offset, int length) {
+    if (litTextures == null || offset < 0 || length < 0 || length > 32767
+        || offset + length > litTextures.length) {
+      throw new IllegalArgumentException("lit texture chunk outside atlas");
+    }
+    byte[] chunk = new byte[length];
+    System.arraycopy(litTextures, offset, chunk, 0, length);
+    return chunk;
+  }
+
+  @JSExport
   public static int nativeTapeRecordChunkLength(int offset, int maximumLength) {
     if (offset < 16 || offset >= commandLength
         || maximumLength < 208 || maximumLength > 32767) {
@@ -592,6 +612,16 @@ public final class FreeLiveRendererReachabilityProbe {
   @JSExport
   public static int nativeTapeMissCount() {
     return nativeMissCount;
+  }
+
+  @JSExport
+  public static int resetNativeCache() {
+    for (int index = 0; index < nativeCacheValid.length; index++) {
+      nativeCacheValid[index] = 0;
+    }
+    nativeCommandCount = 0;
+    nativeMissCount = 0;
+    return nativeCacheValid.length;
   }
 
   @JSExport
@@ -637,6 +667,12 @@ public final class FreeLiveRendererReachabilityProbe {
           drawTop, drawBottom, lightMap, verticalOffset);
       return;
     }
+    if (captureResolvedCommands) {
+      appendResolvedCommand(
+          screenX, texture, textureX, wallHeight, projectedTop,
+          drawTop, drawBottom, lightMap, verticalOffset);
+      return;
+    }
     if (captureNativeTape) {
       appendNativeTape(
           screenX, texture, textureX, wallHeight, projectedTop,
@@ -667,6 +703,33 @@ public final class FreeLiveRendererReachabilityProbe {
     putU16(at + 18, drawBottom);
     putI32(at + 20, verticalOffset);
     commandLength += COMMAND_BYTES;
+  }
+
+  private static void appendResolvedCommand(
+      int screenX, int texture, int textureX, int wallHeight,
+      int projectedTop, int drawTop, int drawBottom,
+      int lightMap, int verticalOffset) {
+    if (commandLength + RESOLVED_COMMAND_BYTES > commandBuffer.length) {
+      throw new IllegalStateException("resolved wall command buffer overflow");
+    }
+    int width = textureWidth[texture];
+    int height = textureHeight[texture];
+    textureX %= width;
+    if (textureX < 0) textureX += width;
+    int normalizedOffset = verticalOffset % height;
+    if (normalizedOffset < 0) normalizedOffset += height;
+    int at = commandLength;
+    putI32(at, screenX * HEIGHT + drawTop);
+    putI32(at + 4,
+        lightToBank[lightMap] * wallTextureElements
+            + textureBase[texture] + textureX);
+    putU16(at + 8, width);
+    putU16(at + 10, height);
+    putU16(at + 12, wallHeight);
+    putU16(at + 14, drawBottom - drawTop + 1);
+    putI32(at + 16,
+        normalizedOffset * wallHeight + (drawTop - projectedTop) * 128);
+    commandLength += RESOLVED_COMMAND_BYTES;
   }
 
   private static void putU16(int offset, int value) {
@@ -772,30 +835,6 @@ public final class FreeLiveRendererReachabilityProbe {
       frame[outputAt + output] =
           litTextures[bank + base + sourceY * width + textureX];
       textureNumerator += 128;
-    }
-  }
-
-  private static void fillRemovedRange(
-      int screenX, int rangeTop, int rangeBottom,
-      int wallTop, int wallBottom, boolean hasWall) {
-    if (rangeTop > rangeBottom) return;
-    if (!hasWall || wallBottom < rangeTop || wallTop > rangeBottom) {
-      fillBackgroundRange(screenX, rangeTop, rangeBottom);
-      return;
-    }
-    fillBackgroundRange(screenX, rangeTop, Math.min(rangeBottom, wallTop - 1));
-    fillBackgroundRange(screenX, Math.max(rangeTop, wallBottom + 1), rangeBottom);
-  }
-
-  private static void fillBackgroundRange(
-      int screenX, int rangeTop, int rangeBottom) {
-    int top = Math.max(0, rangeTop);
-    int bottom = Math.min(HEIGHT - 1, rangeBottom);
-    if (top > bottom) return;
-    int base = screenX * HEIGHT;
-    for (int y = top; y <= bottom; y++) {
-      frame[base + y] = backgroundColumn[y];
-      rasterPixelWrites++;
     }
   }
 

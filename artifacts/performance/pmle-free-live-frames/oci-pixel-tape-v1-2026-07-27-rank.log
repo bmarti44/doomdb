@@ -1,0 +1,28 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_PIXEL_TAPE_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_PIXEL_TAPE_EQUIVALENCE|PASS|pose=500|frame_bytes=64000|tape_bytes=49310|commands=879|misses=861
+PMLE_FREE_PIXEL_TAPE_EQUIVALENCE|PASS|pose=750|frame_bytes=64000|tape_bytes=66576|commands=320|misses=320
+PMLE_FREE_PIXEL_TAPE_EQUIVALENCE|PASS|pose=999|frame_bytes=64000|tape_bytes=37822|commands=1173|misses=1152
+
+PMLE_FREE_PIXEL_TAPE_PASS|PASS|pass=1|cache=COLD_ROUTE|frames=500|p50_ms=35.199|p95_ms=43.67|tape_p50_bytes=34714|tape_p95_bytes=66576|miss_p50=342|miss_p95=1007|wall_ms=15738.792|clock_ms=15740|throughput_fps=31.769|clock_suspects=0|checksum=17829558
+PMLE_FREE_PIXEL_TAPE_PASS|PASS|pass=2|cache=REPLAY_WARM|frames=500|p50_ms=26.954|p95_ms=34.184|tape_p50_bytes=22886|tape_p95_bytes=37176|miss_p50=189|miss_p95=559|wall_ms=12425.146|clock_ms=12430|throughput_fps=40.241|clock_suspects=0|checksum=29152297
+PMLE_FREE_PIXEL_TAPE_PASS|PASS|pass=3|cache=REPLAY_WARM|frames=500|p50_ms=27.018|p95_ms=34.491|tape_p50_bytes=22886|tape_p95_bytes=37176|miss_p50=189|miss_p95=559|wall_ms=12437.168|clock_ms=12440|throughput_fps=40.202|clock_suspects=0|checksum=40475036
+PMLE_FREE_PIXEL_TAPE_PASS|PASS|pass=4|cache=REPLAY_WARM|frames=500|p50_ms=26.803|p95_ms=34.539|tape_p50_bytes=22886|tape_p95_bytes=37176|miss_p50=189|miss_p95=559|wall_ms=12432.897|clock_ms=12430|throughput_fps=40.216|clock_suspects=0|checksum=51797775
+PMLE_FREE_PIXEL_TAPE_PASS|PASS|pass=5|cache=REPLAY_WARM|frames=500|p50_ms=27.299|p95_ms=34.747|tape_p50_bytes=22886|tape_p95_bytes=37176|miss_p50=189|miss_p95=559|wall_ms=12460.46|clock_ms=12460|throughput_fps=40.127|clock_suspects=0|checksum=63120514
+PMLE_FREE_PIXEL_TAPE_PASS|PASS|pass=6|cache=REPLAY_WARM|frames=500|p50_ms=26.351|p95_ms=34.062|tape_p50_bytes=22886|tape_p95_bytes=37176|miss_p50=189|miss_p95=559|wall_ms=12322.503|clock_ms=12320|throughput_fps=40.576|clock_suspects=0|checksum=74443253
+

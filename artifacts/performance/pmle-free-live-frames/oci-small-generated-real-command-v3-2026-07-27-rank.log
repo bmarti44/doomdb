@@ -1,0 +1,26 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_RASTER_TEXTURE|PASS|encoded_bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_RASTER_COMMANDS|PASS|frames=500|bytes=7812116|atlas_bytes=22906368|first_commands=879|last_commands=1173
+
+declare
+*
+ERROR at line 1:
+ORA-20796: small raster frame mismatch at index 0
+ORA-06512: at line 14
+Help: https://docs.oracle.com/error-help/db/ora-20796/
+

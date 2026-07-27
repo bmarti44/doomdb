@@ -425,3 +425,117 @@ Verdict:
 This is a component discriminator only.  It cannot establish the 30 FPS
 release claim without the complete Doom presentation layers and deployed
 unique-moving-frame gate.
+
+The per-call cell passed full-frame identity but measured `31.998 ms` final-two
+worst p95 and `36.5–37.0 FPS` sustained throughput.  It closes the hypothesis
+that module size alone makes each call enter a much faster tier.
+
+One production-shape discriminator remains before rejecting the split.  The
+shipping authority executes many tics inside a long retained MLE invocation;
+the per-frame call-spec rank returns to PL/SQL after every frame.  The small
+module therefore adds a 500-frame `renderBatch` export and measures twelve
+long invocations over the same real-command stream.
+
+- the checksum of each batch must equal the sum produced by the accepted
+  per-frame cell;
+- the rank reports amortized wall and `GET_TIME` milliseconds per frame;
+- amortized final-two worst `<=8.000 ms/frame` promotes integration in the
+  retained worker; `>=20.000 ms/frame` closes long-invocation compilation;
+  between requires an integrated retained-worker frame cadence cell.
+
+Batching is only a tier discriminator.  It may not justify delivering frames
+in 500-frame bursts; any promoted implementation still has to publish and
+present unique frames at the live cadence.
+
+## Pixel-complete framebuffer tape
+
+The small-module result closes server-side framebuffer materialization, not
+database pixel authorship.  The existing generated cache already emits an
+ordered tape whose miss payloads are literal prelit pixels and whose hits
+reference retained literal blocks.  Target offsets, lengths, replacement
+order, background palette indices, and every literal value are selected by
+the database.  A client decoder performs only deterministic decompression and
+copy; it receives no geometry, texture atlas, world state, lighting rule, or
+rendering decision.
+
+The next cell isolates generation plus full MLE-to-SQL egress of that encoded
+frame over the real 500-pose route.  The previously accepted native-overlay
+equivalence proves that decoding the tape yields the same 64,000-byte wall
+frame; the cell repeats full-frame comparisons at three poses before timing.
+It reports per-frame tape bytes, command count, misses, and wall time.  Cache
+state is reset before pass one, so its p95 represents a previously unseen
+moving route rather than a replay-warmed dictionary.
+
+- first-pass p95 `<=20.000 ms` promotes expansion into a pixel-complete
+  viewport codec (flats, sprites, weapon, and HUD), because generation and
+  transport retain credible 30 FPS room;
+- first-pass p95 `>=28.571 ms` closes this encoded-frame route;
+- between requires a 320x168 viewport plus status-bar prototype before a
+  decision.
+
+The final release gate remains decoded 320x200 unique moving frames at
+`>=30 FPS` from deployed ORDS.  The codec is a framebuffer transport, not
+permission to move rendering or simulation decisions into the browser.
+
+The literal-tape cell passed exact decoding but measured `43.670 ms` cold-route
+p95 and is rejected.  Its replay-warm throughput (`40.1–40.6 FPS`) is not
+evidence for arbitrary player movement.
+
+## Native Blob ordered composition
+
+Oracle 26ai documents a native Web `Blob` implementation in MLE, and a live
+probe proved that an async MLE call specification awaits `Blob.arrayBuffer()`
+and returns the exact bytes.  The next candidate changes composition, not
+authorship: generated geometry still creates/cache-selects every authentic
+prelit pixel span.  The wrapper orders the non-overlapping spans by final
+column position, inserts database-selected background pixels for gaps, and
+passes those already-rendered byte views to native `Blob` concatenation.
+
+- three complete 64,000-byte frames must equal the generated reference;
+- overlap, dictionary desynchronization, a non-64,000-byte Blob, or a
+  temporary-LOB cleanup failure invalidates the cell;
+- cache is reset before the 500-frame first pass;
+- cold-route p95 `<=20.000 ms` promotes the native-Blob viewport codec,
+  `>=28.571 ms` rejects it, and the interval requires the actual 168-line
+  viewport/status-bar integration.
+
+The measured call includes geometry, literal generation/cache lookup, span
+ordering, Blob materialization, conversion to SQL BLOB, and caller-visible
+BLOB length/cleanup.  It remains a wall-frame component, not a complete
+presentation or release claim.
+
+The Blob candidate passed all exactness prerequisites but measured
+`95.056 ms` cold-route p95 and was rejected.
+
+## Compiled framebuffer and atlas layout
+
+The small compiled raster still cleared the framebuffer with a 64,000-pixel
+nested loop and sampled a row-major atlas with a multiply and strided read per
+wall pixel.  Two exact layout cells therefore follow:
+
+1. initialize a retained 64 KB background framebuffer once and reset each
+   candidate frame with one TeaVM `System.arraycopy`;
+2. transpose referenced authentic prelit texture columns during retained
+   initialization and rewrite command bases, so the selected texels are
+   contiguous without changing any output palette index.
+
+Each cell repeats the three complete framebuffer comparisons.  The rank
+remains twelve 500-frame per-call passes plus twelve 500-frame retained-batch
+passes on OCI.  These are component measurements; promotion means proceeding
+to a full command-capture integration, not declaring release.
+
+The full integration gate is predeclared as:
+
+- moving and firing E1M1 input, with real Mocha column, span, masked-sprite,
+  weapon, status/HUD, and patch-command cardinality;
+- every candidate 320x200 frame is authored in the database; the browser may
+  only decode/copy palette indices and scale the completed framebuffer;
+- database renderer generation, raster, publication, ORDS retrieval, and
+  browser presentation are all inside the measured pipeline;
+- `>=30` unique moving presented FPS and frame cadence p95 `<=33.333 ms`;
+- title/loading/menu/options, automap, pause, intermission, finale, save/load,
+  solo, and multiplayer presentation remain required before the product claim
+  can be made.
+
+No static pose pack, wall-only frame, replay-warmed dictionary, or reduced
+resolution may satisfy that integration gate.

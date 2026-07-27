@@ -1,0 +1,28 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_BLOB_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_BLOB_EQUIVALENCE|PASS|pose=500|frame_bytes=64000|stats=879|861|1602|49310
+PMLE_FREE_BLOB_EQUIVALENCE|PASS|pose=750|frame_bytes=64000|stats=320|320|320|66576
+PMLE_FREE_BLOB_EQUIVALENCE|PASS|pose=999|frame_bytes=64000|stats=1173|1152|2353|37822
+
+PMLE_FREE_BLOB_PASS|PASS|pass=1|cache=COLD_ROUTE|frames=500|p50_ms=75.74|p95_ms=95.056|wall_ms=35593.378|clock_ms=35590|throughput_fps=14.048|clock_suspects=0|last_stats=1173|66|2353|11484|checksum=32000000
+PMLE_FREE_BLOB_PASS|PASS|pass=2|cache=REPLAY_WARM|frames=500|p50_ms=73.151|p95_ms=89.53|wall_ms=33337.108|clock_ms=33340|throughput_fps=14.998|clock_suspects=0|last_stats=1173|40|2353|10551|checksum=64000000
+PMLE_FREE_BLOB_PASS|PASS|pass=3|cache=REPLAY_WARM|frames=500|p50_ms=73.032|p95_ms=90.97|wall_ms=33541.336|clock_ms=33540|throughput_fps=14.907|clock_suspects=0|last_stats=1173|40|2353|10551|checksum=96000000
+PMLE_FREE_BLOB_PASS|PASS|pass=4|cache=REPLAY_WARM|frames=500|p50_ms=75.02|p95_ms=90.287|wall_ms=33674.058|clock_ms=33670|throughput_fps=14.848|clock_suspects=0|last_stats=1173|40|2353|10551|checksum=128000000
+PMLE_FREE_BLOB_PASS|PASS|pass=5|cache=REPLAY_WARM|frames=500|p50_ms=74.514|p95_ms=91.362|wall_ms=33914.842|clock_ms=33910|throughput_fps=14.743|clock_suspects=0|last_stats=1173|40|2353|10551|checksum=160000000
+PMLE_FREE_BLOB_PASS|PASS|pass=6|cache=REPLAY_WARM|frames=500|p50_ms=74.056|p95_ms=90.791|wall_ms=33476.65|clock_ms=33480|throughput_fps=14.936|clock_suspects=0|last_stats=1173|40|2353|10551|checksum=192000000
+

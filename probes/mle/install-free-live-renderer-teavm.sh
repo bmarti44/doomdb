@@ -30,6 +30,11 @@ printf '%s\n' \
   'set define off echo off verify off feedback off heading off pages 0 lines 32767' \
   'set serveroutput on size unlimited'
 for object in \
+  'function doom_free_gen_native_reset' \
+  'function doom_free_gen_lit_chunk' \
+  'function doom_free_gen_lit_length' \
+  'function doom_free_gen_resolved_chunk' \
+  'function doom_free_gen_resolved' \
   'function doom_free_gen_raster_writes' \
   'function doom_free_gen_native_misses' \
   'function doom_free_gen_native_commands' \
@@ -108,6 +113,16 @@ printf '%s\n' \
   '/' \
   "create function doom_free_gen_native_misses return number as mle module doom_free_generated_renderer signature 'nativeTapeMissCount()';" \
   '/' \
+  "create function doom_free_gen_native_reset return number as mle module doom_free_generated_renderer signature 'resetNativeCache()';" \
+  '/' \
   "create function doom_free_gen_raster_writes return number as mle module doom_free_generated_renderer signature 'rasterPixelWrites()';" \
+  '/' \
+  "create function doom_free_gen_resolved(p_pose number)return number as mle module doom_free_generated_renderer signature 'renderResolvedCommands(number)';" \
+  '/' \
+  "create function doom_free_gen_resolved_chunk(p_offset number,p_length number)return raw as mle module doom_free_generated_renderer signature 'resolvedCommandChunk(number, number)';" \
+  '/' \
+  "create function doom_free_gen_lit_length return number as mle module doom_free_generated_renderer signature 'litTextureLength()';" \
+  '/' \
+  "create function doom_free_gen_lit_chunk(p_offset number,p_length number)return raw as mle module doom_free_generated_renderer signature 'litTextureChunk(number, number)';" \
   '/' \
   'commit;'

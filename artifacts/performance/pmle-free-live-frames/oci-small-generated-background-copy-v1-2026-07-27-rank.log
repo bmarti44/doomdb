@@ -1,0 +1,49 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_RASTER_TEXTURE|PASS|encoded_bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_RASTER_COMMANDS|PASS|frames=500|bytes=7812116|atlas_bytes=22906368|first_commands=879|last_commands=1173
+
+PMLE_FREE_RASTER_EQUIVALENCE|PASS|pose=500|commands=879|frame_bytes=64000
+PMLE_FREE_RASTER_EQUIVALENCE|PASS|pose=750|commands=320|frame_bytes=64000
+PMLE_FREE_RASTER_EQUIVALENCE|PASS|pose=999|commands=1173|frame_bytes=64000
+
+PMLE_FREE_RASTER_PASS|PASS|pass=1|frames=500|p50_ms=19.139|p95_ms=25.262|wall_ms=10230.408|clock_ms=10230|throughput_fps=48.874|clock_suspects=0|checksum=10858803
+PMLE_FREE_RASTER_PASS|PASS|pass=2|frames=500|p50_ms=19.55|p95_ms=25.047|wall_ms=10229.619|clock_ms=10230|throughput_fps=48.878|clock_suspects=0|checksum=20899471
+PMLE_FREE_RASTER_PASS|PASS|pass=3|frames=500|p50_ms=19.332|p95_ms=25.083|wall_ms=10236.149|clock_ms=10240|throughput_fps=48.846|clock_suspects=0|checksum=30940139
+PMLE_FREE_RASTER_PASS|PASS|pass=4|frames=500|p50_ms=19.692|p95_ms=25.249|wall_ms=10208.093|clock_ms=10210|throughput_fps=48.981|clock_suspects=0|checksum=40980807
+PMLE_FREE_RASTER_PASS|PASS|pass=5|frames=500|p50_ms=18.887|p95_ms=25.29|wall_ms=10154.514|clock_ms=10160|throughput_fps=49.239|clock_suspects=0|checksum=51021475
+PMLE_FREE_RASTER_PASS|PASS|pass=6|frames=500|p50_ms=19.46|p95_ms=25.113|wall_ms=10219.096|clock_ms=10220|throughput_fps=48.928|clock_suspects=0|checksum=61062143
+PMLE_FREE_RASTER_PASS|PASS|pass=7|frames=500|p50_ms=18.948|p95_ms=25.352|wall_ms=10210.417|clock_ms=10210|throughput_fps=48.97|clock_suspects=0|checksum=71102811
+PMLE_FREE_RASTER_PASS|PASS|pass=8|frames=500|p50_ms=19.202|p95_ms=25.498|wall_ms=10286.936|clock_ms=10280|throughput_fps=48.605|clock_suspects=0|checksum=81143479
+PMLE_FREE_RASTER_PASS|PASS|pass=9|frames=500|p50_ms=19.466|p95_ms=25.886|wall_ms=10285.479|clock_ms=10280|throughput_fps=48.612|clock_suspects=0|checksum=91184147
+PMLE_FREE_RASTER_PASS|PASS|pass=10|frames=500|p50_ms=19.458|p95_ms=25.484|wall_ms=10186.957|clock_ms=10180|throughput_fps=49.082|clock_suspects=0|checksum=101224815
+PMLE_FREE_RASTER_PASS|PASS|pass=11|frames=500|p50_ms=18.341|p95_ms=24.394|wall_ms=9857.001|clock_ms=9850|throughput_fps=50.725|clock_suspects=0|checksum=111265483
+PMLE_FREE_RASTER_PASS|PASS|pass=12|frames=500|p50_ms=18.369|p95_ms=25.297|wall_ms=10028.235|clock_ms=10020|throughput_fps=49.859|clock_suspects=0|checksum=121306151
+
+PMLE_FREE_RASTER_BATCH|PASS|pass=1|frames=500|wall_ms_per_frame=20.654|clock_ms_per_frame=20.66|throughput_fps=48.418|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=2|frames=500|wall_ms_per_frame=20.229|clock_ms_per_frame=20.22|throughput_fps=49.435|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=3|frames=500|wall_ms_per_frame=20.334|clock_ms_per_frame=20.34|throughput_fps=49.179|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=4|frames=500|wall_ms_per_frame=20.328|clock_ms_per_frame=20.32|throughput_fps=49.194|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=5|frames=500|wall_ms_per_frame=20.272|clock_ms_per_frame=20.28|throughput_fps=49.329|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=6|frames=500|wall_ms_per_frame=20.255|clock_ms_per_frame=20.26|throughput_fps=49.371|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=7|frames=500|wall_ms_per_frame=20.299|clock_ms_per_frame=20.3|throughput_fps=49.264|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=8|frames=500|wall_ms_per_frame=20.305|clock_ms_per_frame=20.3|throughput_fps=49.249|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=9|frames=500|wall_ms_per_frame=20.241|clock_ms_per_frame=20.24|throughput_fps=49.405|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=10|frames=500|wall_ms_per_frame=20.295|clock_ms_per_frame=20.3|throughput_fps=49.273|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=11|frames=500|wall_ms_per_frame=20.245|clock_ms_per_frame=20.24|throughput_fps=49.396|clock_suspects=0|checksum=10040668
+PMLE_FREE_RASTER_BATCH|PASS|pass=12|frames=500|wall_ms_per_frame=20.33|clock_ms_per_frame=20.34|throughput_fps=49.187|clock_suspects=0|checksum=10040668
+

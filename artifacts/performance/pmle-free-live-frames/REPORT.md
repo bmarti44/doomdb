@@ -286,3 +286,82 @@ separate, deliberately small generated raster module fed real E1M1 wall
 commands.  Its purpose is to determine whether the integrated artifact's
 raster method is too large or structurally complex for the compiled tier.
 It does not replace the authoritative engine or relax presentation fidelity.
+
+The small module passed complete 64,000-byte framebuffer comparisons at poses
+`500`, `750`, and `999`.  It retained a 7,812,116-byte real-command pack and a
+22,906,368-byte authentic prelit atlas.  Across twelve 500-frame passes it
+sustained `36.5–37.4 FPS`, with final-two p95 values of `31.506` and
+`30.859 ms`.  This is a useful 1.3x improvement over the integrated
+native-typed-array cell, but it is still wall-only and leaves no p95 budget
+for geometry, flats, sprites, weapon/HUD, or delivery.
+
+A second cell kept all 500 renders inside each long exported invocation,
+matching the retained-worker execution shape.  It remained flat at
+`26.672–27.152 ms/frame` (`36.8–37.5 FPS`) across all twelve passes; the
+final-two worst was `26.970 ms/frame`.  Long invocation did not unlock a
+compiled pixel loop.  The module-size and call-spec-return compilation
+hypotheses are therefore both closed.
+
+This does not close encoded database-generated frames.  Materializing every
+cached span into a server-side 64 KB array is the measured cost center.  A
+framebuffer transport codec may instead carry ordered target offsets plus
+database-generated literal pixel blocks and retained dictionary references.
+The browser's only operation is deterministic decompression/copy into the
+indexed framebuffer; it receives no geometry, world state, textures, or
+rendering decisions.  That remains a database-generated frame, just as RLE is
+a frame, while avoiding the server-side scatter that all three native
+composition experiments found expensive.  The next measurement isolates
+real-route generation plus egress of that pixel-complete tape before any
+additional presentation layer is built.
+
+The pixel-complete tape was exact at poses `500`, `750`, and `999`, but did
+not preserve a live-rate margin.  Its cold, never-repeated 500-frame route
+measured `35.199 ms p50 / 43.670 ms p95` and `31.769 FPS` sustained.  Repeating
+the same route warmed the retained dictionary and raised throughput to roughly
+`40 FPS`, but that is not representative of unique movement: the cold route
+reported `1,007` misses at p95.  The encoded-frame route is therefore closed
+for live presentation.
+
+Oracle 26ai's native Web `Blob` implementation was then tested as a possible
+bulk compositor.  An async call-spec smoke proved that
+`new Blob([Uint8Array...]).arrayBuffer()` is available in MLE and preserves
+bytes.  The production-shaped wrapper assembled ordered pixel spans entirely
+inside MLE and passed complete 64,000-byte comparisons at all three reference
+poses.  It nevertheless measured `75.740 ms p50 / 95.056 ms p95` cold and
+about `90 ms p95` warm, sustaining only `14.0-15.0 FPS`.  Native Blob
+materialization is therefore not a raster primitive on this venue.
+
+The small generated raster still contained one full interpreted-looking
+operation that none of those composition paths removed: it repainted the
+64,000-pixel ceiling/floor background with nested loops before drawing walls.
+Replacing that loop with a retained exact background framebuffer and one
+TeaVM `System.arraycopy` preserved all sampled frame bytes.  It improved the
+per-call result to roughly `19 ms p50 / 25 ms p95` and the retained-batch
+result from `26.970` to `20.330 ms/frame`, sustaining about `49 FPS`.
+
+An exact quotient/remainder recurrence was also tested to remove per-pixel
+integer division.  An exhaustive host property check covered negative and
+positive numerators, heights `1..4096`, and 400 samples per case; the OCI
+candidate also passed the three full-frame comparisons.  Its branch-heavy
+shape regressed retained rendering to `22.582 ms/frame`, so it was reverted.
+This is compiler evidence, not a correctness compromise: the simpler direct
+division loop is the selected implementation.
+
+The promoted layout result is the column-major prelit atlas.  The installed
+Mocha/Freedoom atlas is row-major; retained initialization transposes every
+referenced lit texture column once and rewrites command bases, while leaving
+the authoritative asset bytes and output palette indices unchanged.  Complete
+frame comparison again passed at poses `500`, `750`, and `999`.  Twelve
+per-call passes sustained `65.7-68.0 FPS`, with final p95 values `17.316` and
+`17.088 ms`.  Twelve retained-batch passes sustained `66.7-68.0 FPS`; the
+final-two worst was `14.812 ms/frame`.
+
+This is the first measured raster shape with credible room for a complete
+database presentation pipeline: about `18.5 ms/frame` remains under the
+33.333 ms budget before command generation, flats, masked sprites, weapon and
+HUD composition, publication, and ORDS delivery.  It is still a wall-only
+component and is not itself a 30 FPS product claim.  The next integration gate
+must capture the real Mocha low-level column/span/patch command cardinality
+from moving and firing E1M1 frames, execute those commands in the small
+compiled raster, and include database publication.  No static pose pack or
+wall-only result may satisfy that gate.
