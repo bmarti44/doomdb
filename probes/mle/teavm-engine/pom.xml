@@ -111,5 +111,32 @@
         <mochadoom.jar>${project.basedir}/target/mochadoom-mle-simulation.jar</mochadoom.jar>
       </properties>
     </profile>
+    <profile>
+      <id>presentation-command-capture</id>
+      <properties>
+        <teavm.mainClass>doomdb.mle.engine.PresentationCommandCaptureProbe</teavm.mainClass>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.6.1</version>
+            <executions>
+              <execution>
+                <id>add-presentation-command-capture-source</id>
+                <phase>generate-sources</phase>
+                <goals><goal>add-source</goal></goals>
+                <configuration>
+                  <sources>
+                    <source>src/presentation-command-capture-engine/java</source>
+                  </sources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 </project>

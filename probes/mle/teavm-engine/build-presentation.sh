@@ -10,6 +10,9 @@ presentation_candidate="${PMLE_PRESENTATION_CANDIDATE_BUILD:-NO}"
 presentation_candidate_reason="${PMLE_PRESENTATION_CANDIDATE_REASON:-}"
 presentation_minifying="${DOOMDB_TEAVM_PRESENTATION_MINIFYING:-true}"
 candidate_patch_set_sha="none"
+presentation_capture_patch=""
+presentation_capture_source=""
+presentation_maven_profiles="presentation-engine-headless"
 table_pack="$project/target/canonical-runtime-v2.bin"
 iwad="$project/target/iwad-smoke/freedoom1.wad"
 artifact="$project/target/javascript/doom-mle-presentation-engine-headless.js"
@@ -55,13 +58,42 @@ if [[ "$presentation_candidate" == YES &&
   printf 'presentation source-only candidate requires a stable candidate reason\n' >&2
   exit 2
 fi
+if [[ "$presentation_candidate" == YES
+      && "$presentation_candidate_reason" == full-command-census ]]; then
+  presentation_capture_patch="$project/0006-teavm-presentation-command-capture.patch"
+  presentation_capture_source="$project/src/presentation-command-capture/java"
+  presentation_maven_profiles+=",presentation-command-capture"
+  [[ -s "$presentation_capture_patch"
+      && -d "$presentation_capture_source" ]] || {
+    printf 'presentation command-capture overlay is incomplete\n' >&2
+    exit 2
+  }
+  capture_overlay_sha="$(
+    {
+      shasum -a 256 "$presentation_capture_patch"
+      find "$presentation_capture_source" -type f -name '*.java' -print0 |
+        LC_ALL=C sort -z |
+        xargs -0 shasum -a 256
+    } | shasum -a 256 | awk '{print $1}'
+  )"
+  candidate_patch_set_sha="$(
+    printf '%s\n%s\n' "$candidate_patch_set_sha" "$capture_overlay_sha" |
+      shasum -a 256 | awk '{print $1}'
+  )"
+fi
 
 for input in "$mocha_jar" "$table_pack" "$iwad"; do
   [[ -s "$input" ]] || { printf 'presentation prerequisite missing: %s\n' "$input" >&2;exit 2; }
 done
 actual_mocha_sha="$(shasum -a 256 "$mocha_jar" | awk '{print $1}')"
-DOOMDB_MOCHA_EXPECTED_CLASS_COUNT=828 \
-  DOOMDB_MOCHA_EXTRA_PATCH="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch,$project/0005-teavm-statusbar-compat.patch${presentation_extra_patch:+,$presentation_extra_patch}" \
+presentation_class_count=828
+if [[ "$presentation_candidate" == YES
+      && "$presentation_candidate_reason" == full-command-census ]]; then
+  presentation_class_count=831
+fi
+DOOMDB_MOCHA_EXPECTED_CLASS_COUNT="$presentation_class_count" \
+  DOOMDB_MOCHA_EXTRA_PATCH="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch,$project/0005-teavm-statusbar-compat.patch${presentation_capture_patch:+,$presentation_capture_patch}${presentation_extra_patch:+,$presentation_extra_patch}" \
+  DOOMDB_MOCHA_EXTRA_ADAPTER_SOURCE="$presentation_capture_source" \
   "$root/scripts/mochadoom/build-ojvm-jar.sh" \
   "$presentation_mocha_jar" \
   "$project/target/mochadoom-mle-presentation.json"
@@ -74,7 +106,7 @@ fi
 
 docker run --rm -v doomdb-maven-cache:/root/.m2 -v "$root:/work" \
   -w /work/probes/mle/teavm-engine maven:3.9.11-eclipse-temurin-17 \
-  mvn -B -DskipTests -Ppresentation-engine-headless \
+  mvn -B -DskipTests -P"$presentation_maven_profiles" \
   -Dteavm.minifying="$presentation_minifying" \
   -Dmochadoom.jar=/work/probes/mle/teavm-engine/target/mochadoom-mle-presentation.jar \
   package

@@ -13,6 +13,13 @@ const {
   canonicalStateChunk,
   canonicalStateLength,
   canonicalOffsetDescription,
+  enableFrameCommandMetrics,
+  frameAssetCount,
+  frameAssetPackChunk,
+  frameAssetPackLength,
+  frameCommandChunk,
+  frameCommandLength,
+  frameCommandMetrics,
   initializeMultiplayerGame,
   loadIwadChunk,
   loadTablePackChunk,
@@ -50,6 +57,11 @@ const tablePack = fs.readFileSync(tablePackPath);
 const chunkBytes = 1024 * 1024;
 const sampleTics = 96;
 const frameDumpDirectory = process.env.PMLE_PRESENTATION_FRAME_DIR;
+const commandMetricsEnabled =
+  process.env.PMLE_PRESENTATION_COMMAND_METRICS === 'YES';
+const commandPackPath = process.env.PMLE_PRESENTATION_COMMAND_PACK;
+const commandFrames = [];
+let commandFrameCount = 0;
 
 function loadBytes(allocate, load, bytes, label) {
   if (allocate(bytes.length) !== bytes.length) {
@@ -111,6 +123,13 @@ for (let tic = 1; tic <= sampleTics; tic += 1) {
 release();
 
 initialize();
+if (commandMetricsEnabled) {
+  if (typeof enableFrameCommandMetrics !== 'function'
+      || typeof frameCommandMetrics !== 'function') {
+    throw new Error('presentation command metrics exports are unavailable');
+  }
+  enableFrameCommandMetrics();
+}
 const frameHashes = [new Set(), new Set()];
 const firstFrameStats = [];
 const retainedBrowserFrames = [];
@@ -153,7 +172,36 @@ for (let tic = 1; tic <= sampleTics; tic += 1) {
     mappedResidueMax = Math.max(mappedResidueMax, mismatchCount);
   }
   for (let player = 0; player < 2; player += 1) {
+    let capturedCommands;
+    if (commandMetricsEnabled) frameCommandMetrics(1);
     const frameLength = renderPlayerFrameLength(player);
+    if (commandMetricsEnabled) {
+      const metrics = frameCommandMetrics(0);
+      if (commandPackPath) {
+        const commandBytes = frameCommandLength();
+        if (!Number.isInteger(commandBytes) || commandBytes < 1
+            || commandBytes > 1024 * 1024 || commandBytes % 28 !== 0) {
+          throw new Error(`invalid command bytes ${commandBytes}`);
+        }
+        const commands = Buffer.alloc(commandBytes);
+        for (let offset = 0; offset < commandBytes; offset += 32767) {
+          const size = Math.min(32767, commandBytes - offset);
+          const chunk = frameCommandChunk(offset, size);
+          if (!ArrayBuffer.isView(chunk) || chunk.length !== size) {
+            throw new Error(
+              `short command chunk at ${tic}/${player}/${offset}`,
+            );
+          }
+          commands.set(chunk, offset);
+        }
+        capturedCommands = commands;
+      }
+      process.stdout.write(
+        `PMLE_PRESENTATION_COMMANDS|PASS|tic=${tic}|player=${player}|`
+        + `${metrics}\n`,
+      );
+      frameCommandMetrics(1);
+    }
     if (frameLength !== 320 * 200) {
       throw new Error(`invalid player ${player} retained frame length at tic ${tic}`);
     }
@@ -167,6 +215,19 @@ for (let tic = 1; tic <= sampleTics; tic += 1) {
         );
       }
       frame.set(chunk, offset);
+    }
+    if (capturedCommands) {
+      const header = Buffer.alloc(16);
+      header.writeUInt32LE(tic, 0);
+      header.writeUInt32LE(player, 4);
+      header.writeUInt32LE(capturedCommands.length, 8);
+      header.writeUInt32LE(frame.length, 12);
+      const fullDigest = createHash('sha256').update(frame).digest();
+      const viewportDigest = createHash('sha256')
+        .update(frame.subarray(0, 320 * 168)).digest();
+      commandFrames.push(
+        header, capturedCommands, fullDigest, viewportDigest);
+      commandFrameCount += 1;
     }
     if (tic === 1) {
       const databaseView = renderPlayerFrameDatabaseView(player);
@@ -272,4 +333,36 @@ console.log(
   + `|next_tic_world_residue=0|presentation=${presentationDiagnostic()}`
   + `|memory=${memoryDiagnostic()}`,
 );
+if (commandPackPath) {
+  if (!commandMetricsEnabled) {
+    throw new Error('command pack requires command metrics');
+  }
+  if (fs.existsSync(commandPackPath)) {
+    throw new Error(`command pack already exists: ${commandPackPath}`);
+  }
+  const assetBytes = frameAssetPackLength();
+  const assets = Buffer.alloc(assetBytes);
+  for (let offset = 0; offset < assetBytes; offset += 32767) {
+    const size = Math.min(32767, assetBytes - offset);
+    const chunk = frameAssetPackChunk(offset, size);
+    if (!ArrayBuffer.isView(chunk) || chunk.length !== size) {
+      throw new Error(`short asset chunk at ${offset}`);
+    }
+    assets.set(chunk, offset);
+  }
+  const header = Buffer.alloc(16);
+  header.write('FCP1', 0, 'ascii');
+  header.writeUInt32LE(3, 4);
+  header.writeUInt32LE(commandFrameCount, 8);
+  header.writeUInt32LE(assetBytes, 12);
+  const pack = Buffer.concat([header, ...commandFrames, assets]);
+  fs.mkdirSync(path.dirname(commandPackPath), {recursive: true});
+  fs.writeFileSync(commandPackPath, pack, {flag: 'wx'});
+  console.log(
+    `PMLE_PRESENTATION_COMMAND_PACK|PASS|version=3|frames=${commandFrameCount}`
+    + `|assets=${frameAssetCount()}|asset_bytes=${assetBytes}`
+    + `|pack_bytes=${pack.length}`
+    + `|sha256=${createHash('sha256').update(pack).digest('hex')}`,
+  );
+}
 release();

@@ -181,6 +181,53 @@ public final class FreeRasterKernel {
     return chunk;
   }
 
+  @JSExport
+  public static int fullPackAllocate(int length) {
+    return FullCommandRasterKernel.allocateFullCommandPack(length);
+  }
+
+  @JSExport
+  public static int fullPackLoad(int offset, Uint8Array chunk) {
+    return FullCommandRasterKernel.loadFullCommandPackChunk(offset, chunk);
+  }
+
+  @JSExport
+  public static int fullPackFinalize() {
+    return FullCommandRasterKernel.finalizeFullCommandPack();
+  }
+
+  @JSExport
+  public static int fullFrameRender(int index) {
+    return FullCommandRasterKernel.renderFullCommandFrame(index);
+  }
+
+  @JSExport
+  public static int fullFrameBatch(int start, int count) {
+    return FullCommandRasterKernel.renderFullCommandBatch(start, count);
+  }
+
+  @JSExport
+  public static int fullFrameCount() {
+    return FullCommandRasterKernel.fullCommandFrameCount();
+  }
+
+  @JSExport
+  public static int fullFramePrepareViewport() {
+    return FullCommandRasterKernel.prepareFullCommandViewport();
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] fullFrameViewportChunk(int offset, int length) {
+    return FullCommandRasterKernel.fullCommandViewportChunk(offset, length);
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] fullFrameViewportDigest(int index) {
+    return FullCommandRasterKernel.fullCommandViewportDigest(index);
+  }
+
   private static int u16(byte[] source, int offset) {
     return (source[offset] & 255) | ((source[offset + 1] & 255) << 8);
   }
@@ -255,5 +302,7 @@ public final class FreeRasterKernel {
     target[offset + 3] = (byte) (value >>> 24);
   }
 
-  public static void main(String[] args) {}
+  public static void main(String[] args) {
+    FullCommandRasterKernel.keepReachable();
+  }
 }

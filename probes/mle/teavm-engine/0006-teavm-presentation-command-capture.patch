@@ -1,0 +1,86 @@
+diff --git a/src/rr/UnifiedRenderer.java b/src/rr/UnifiedRenderer.java
+--- a/src/rr/UnifiedRenderer.java
++++ b/src/rr/UnifiedRenderer.java
+@@ -13,6 +13,9 @@ import rr.drawfuns.R_DrawSpanLow;
+ import rr.drawfuns.R_DrawTLColumn;
+ import rr.drawfuns.R_DrawTranslatedColumn;
+ import rr.drawfuns.R_DrawTranslatedColumnLow;
++import rr.drawfuns.FrameCommandMetrics;
++import rr.drawfuns.MetricColumnFunction;
++import rr.drawfuns.MetricSpanFunction;
+ 
+ public abstract class UnifiedRenderer<T, V> extends RendererState<T, V> {
+ 
+@@ -188,6 +191,72 @@ public abstract class UnifiedRenderer<T, V> extends RendererState<T, V> {
+             super.R_InitDrawingFunctions();
++            doomdbEnableFrameCommandMetrics();
+         }
+ 
++        /**
++         * Install transparent metric delegates around the exact renderer.
++         *
++         * This is invoked only by the presentation diagnostic root after
++         * initialization.  The authoritative root never reaches it, and the
++         * delegates continue to invoke every original draw function.
++         */
++        public void doomdbEnableFrameCommandMetrics() {
++            FrameCommandMetrics.enable();
++            final int width = DOOM.vs.getScreenWidth();
++            final int height = DOOM.vs.getScreenHeight();
++            DrawSpan = new MetricSpanFunction(
++                width, height, ylookup, columnofs, dsvars, screen,
++                DOOM.doomSystem, DrawSpan);
++            DrawSpanLow = new MetricSpanFunction(
++                width, height, ylookup, columnofs, dsvars, screen,
++                DOOM.doomSystem, DrawSpanLow);
++            DrawColumn = metric(DrawColumn, dcvars, FrameCommandMetrics.WALL);
++            DrawColumnLow = metric(
++                DrawColumnLow, dcvars, FrameCommandMetrics.WALL);
++            DrawColumnMasked = metric(
++                DrawColumnMasked, maskedcvars, FrameCommandMetrics.MASKED);
++            DrawColumnMaskedLow = metric(
++                DrawColumnMaskedLow, maskedcvars, FrameCommandMetrics.MASKED);
++            DrawColumnPlayer = metric(
++                DrawColumnPlayer, maskedcvars, FrameCommandMetrics.PLAYER);
++            DrawColumnSkies = metric(
++                DrawColumnSkies, skydcvars, FrameCommandMetrics.SKY);
++            DrawColumnSkiesLow = metric(
++                DrawColumnSkiesLow, skydcvars, FrameCommandMetrics.SKY);
++            DrawFuzzColumn = metric(
++                DrawFuzzColumn, maskedcvars, FrameCommandMetrics.FUZZ);
++            DrawFuzzColumnLow = metric(
++                DrawFuzzColumnLow, maskedcvars, FrameCommandMetrics.FUZZ);
++            DrawTranslatedColumn = metric(
++                DrawTranslatedColumn, maskedcvars,
++                FrameCommandMetrics.TRANSLATED);
++            DrawTranslatedColumnLow = metric(
++                DrawTranslatedColumnLow, maskedcvars,
++                FrameCommandMetrics.TRANSLATED);
++
++            colfunchi.main = colfunchi.base = DrawColumn;
++            colfunchi.masked = DrawColumnMasked;
++            colfunchi.fuzz = DrawFuzzColumn;
++            colfunchi.trans = DrawTranslatedColumn;
++            colfunchi.player = DrawColumnPlayer;
++            colfunchi.sky = DrawColumnSkies;
++            colfunclow.main = colfunclow.base = DrawColumnLow;
++            colfunclow.masked = DrawColumnMaskedLow;
++            colfunclow.fuzz = DrawFuzzColumnLow;
++            colfunclow.trans = DrawTranslatedColumnLow;
++            colfunclow.player = DrawColumnPlayer;
++            colfunclow.sky = DrawColumnSkiesLow;
++            dsvars.spanfunc = DrawSpan;
++        }
++
++        private MetricColumnFunction metric(
++                rr.drawfuns.DoomColumnFunction<byte[], byte[]> delegate,
++                rr.drawfuns.ColVars<byte[], byte[]> vars, int kind) {
++            return new MetricColumnFunction(
++                DOOM.vs.getScreenWidth(), DOOM.vs.getScreenHeight(),
++                ylookup, columnofs, vars, screen, DOOM.doomSystem,
++                delegate, kind);
++        }
++
+     }
+ 
+     public static final class TrueColor extends UnifiedRenderer<byte[], int[]> {

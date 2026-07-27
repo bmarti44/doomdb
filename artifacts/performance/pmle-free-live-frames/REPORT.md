@@ -365,3 +365,37 @@ must capture the real Mocha low-level column/span/patch command cardinality
 from moving and firing E1M1 frames, execute those commands in the small
 compiled raster, and include database publication.  No static pose pack or
 wall-only result may satisfy that gate.
+
+That real-command integration is now measured.  Transparent delegates around
+Mocha's actual indexed draw functions captured 192 moving/firing E1M1
+player-frames without changing the canonical renderer.  The p95 workload was
+2,474 calls and 60,637 sampled pixels, including walls, visplane
+floor/ceiling spans, masked sprites, and the player weapon.  Pack version 3
+binds every command stream and prelit Freedoom asset to both the original
+320x200 frame digest and a 320x168 viewport digest.
+
+The first compact implementation decoded the 28-byte commands during every
+render.  It reproduced all 192 viewport digests in Node and three distributed
+digests on OCI, but measured `30.491 ms` final-two worst per-call p95 and
+`24.100 ms/frame` retained.  Per its predeclared rule that shape was rejected:
+its roughly `41 FPS` throughput did not leave enough room for HUD and
+publication.
+
+The promoted implementation resolves the byte tape once into primitive
+command arrays during retained-context initialization and uses explicit
+column-major output strides.  It remains pixel-identical on all 192 Node
+frames and all three OCI samples.  On Always Free it measured:
+
+- final-two worst per-call p95: `17.862 ms`;
+- final-two worst retained cost: `16.928 ms/frame`;
+- sustained retained throughput: `59.075-59.743 FPS`;
+- wall-clock/`GET_TIME` suspects: zero;
+- postflight diagnostic objects: zero.
+
+This passes `PROMOTE_FULL_VIEWPORT_INTEGRATION`.  It is the first
+production-cardinality component result covering authentic walls, flats,
+masked sprites, and weapon animation with enough measured headroom for the
+remaining 32-line status bar and publication.  It is not yet a product claim:
+sky, fuzz, translated sprites, the status/HUD patch layer, menu/title/loading
+surfaces, automap, intermission/finale, live authority-to-renderer command
+production, ORDS retrieval, and the deployed `>=30 FPS` browser gate remain.

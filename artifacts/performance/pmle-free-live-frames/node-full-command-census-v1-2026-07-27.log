@@ -1,0 +1,301 @@
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_PRESENTATION_COMMANDS|PASS|tic=1|player=0|wallCalls=838|wallPixels=25902|maskedCalls=666|maskedPixels=4157|playerCalls=0|playerPixels=0|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=743|spanPixels=27858
+PMLE_PRESENTATION_COMMANDS|PASS|tic=1|player=1|wallCalls=825|wallPixels=26568|maskedCalls=623|maskedPixels=4164|playerCalls=0|playerPixels=0|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=575|spanPixels=27192
+PMLE_PRESENTATION_COMMANDS|PASS|tic=2|player=0|wallCalls=838|wallPixels=25902|maskedCalls=666|maskedPixels=4157|playerCalls=0|playerPixels=0|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=743|spanPixels=27858
+PMLE_PRESENTATION_COMMANDS|PASS|tic=2|player=1|wallCalls=825|wallPixels=26568|maskedCalls=623|maskedPixels=4164|playerCalls=0|playerPixels=0|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=575|spanPixels=27192
+PMLE_PRESENTATION_COMMANDS|PASS|tic=3|player=0|wallCalls=838|wallPixels=25902|maskedCalls=666|maskedPixels=4157|playerCalls=0|playerPixels=0|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=743|spanPixels=27858
+PMLE_PRESENTATION_COMMANDS|PASS|tic=3|player=1|wallCalls=825|wallPixels=26568|maskedCalls=623|maskedPixels=4164|playerCalls=0|playerPixels=0|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=575|spanPixels=27192
+PMLE_PRESENTATION_COMMANDS|PASS|tic=4|player=0|wallCalls=838|wallPixels=25902|maskedCalls=666|maskedPixels=4157|playerCalls=0|playerPixels=0|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=743|spanPixels=27858
+PMLE_PRESENTATION_COMMANDS|PASS|tic=4|player=1|wallCalls=825|wallPixels=26568|maskedCalls=623|maskedPixels=4164|playerCalls=0|playerPixels=0|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=575|spanPixels=27192
+PMLE_PRESENTATION_COMMANDS|PASS|tic=5|player=0|wallCalls=838|wallPixels=25808|maskedCalls=667|maskedPixels=4285|playerCalls=0|playerPixels=0|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=746|spanPixels=27952
+PMLE_PRESENTATION_COMMANDS|PASS|tic=5|player=1|wallCalls=825|wallPixels=26568|maskedCalls=623|maskedPixels=4164|playerCalls=0|playerPixels=0|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=575|spanPixels=27192
+PMLE_PRESENTATION_COMMANDS|PASS|tic=6|player=0|wallCalls=838|wallPixels=25808|maskedCalls=667|maskedPixels=4285|playerCalls=2|playerPixels=2|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=746|spanPixels=27952
+PMLE_PRESENTATION_COMMANDS|PASS|tic=6|player=1|wallCalls=858|wallPixels=26435|maskedCalls=687|maskedPixels=4292|playerCalls=2|playerPixels=2|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=615|spanPixels=27325
+PMLE_PRESENTATION_COMMANDS|PASS|tic=7|player=0|wallCalls=838|wallPixels=25697|maskedCalls=678|maskedPixels=4410|playerCalls=12|playerPixels=42|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=749|spanPixels=28063
+PMLE_PRESENTATION_COMMANDS|PASS|tic=7|player=1|wallCalls=858|wallPixels=26435|maskedCalls=687|maskedPixels=4292|playerCalls=12|playerPixels=42|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=615|spanPixels=27325
+PMLE_PRESENTATION_COMMANDS|PASS|tic=8|player=0|wallCalls=837|wallPixels=25815|maskedCalls=675|maskedPixels=4463|playerCalls=22|playerPixels=152|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=746|spanPixels=27945
+PMLE_PRESENTATION_COMMANDS|PASS|tic=8|player=1|wallCalls=858|wallPixels=26435|maskedCalls=687|maskedPixels=4292|playerCalls=22|playerPixels=152|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=615|spanPixels=27325
+PMLE_PRESENTATION_COMMANDS|PASS|tic=9|player=0|wallCalls=835|wallPixels=25831|maskedCalls=677|maskedPixels=4362|playerCalls=25|playerPixels=297|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=751|spanPixels=27929
+PMLE_PRESENTATION_COMMANDS|PASS|tic=9|player=1|wallCalls=856|wallPixels=26480|maskedCalls=683|maskedPixels=4345|playerCalls=25|playerPixels=297|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=613|spanPixels=27280
+PMLE_PRESENTATION_COMMANDS|PASS|tic=10|player=0|wallCalls=836|wallPixels=25316|maskedCalls=693|maskedPixels=4524|playerCalls=25|playerPixels=447|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=763|spanPixels=28444
+PMLE_PRESENTATION_COMMANDS|PASS|tic=10|player=1|wallCalls=855|wallPixels=26502|maskedCalls=690|maskedPixels=4273|playerCalls=25|playerPixels=447|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=609|spanPixels=27258
+PMLE_PRESENTATION_COMMANDS|PASS|tic=11|player=0|wallCalls=837|wallPixels=25352|maskedCalls=699|maskedPixels=4525|playerCalls=32|playerPixels=624|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=765|spanPixels=28408
+PMLE_PRESENTATION_COMMANDS|PASS|tic=11|player=1|wallCalls=853|wallPixels=26533|maskedCalls=673|maskedPixels=4500|playerCalls=32|playerPixels=624|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=611|spanPixels=27227
+PMLE_PRESENTATION_COMMANDS|PASS|tic=12|player=0|wallCalls=837|wallPixels=25423|maskedCalls=701|maskedPixels=4499|playerCalls=47|playerPixels=877|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=761|spanPixels=28337
+PMLE_PRESENTATION_COMMANDS|PASS|tic=12|player=1|wallCalls=884|wallPixels=26500|maskedCalls=679|maskedPixels=4774|playerCalls=47|playerPixels=877|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=650|spanPixels=27260
+PMLE_PRESENTATION_COMMANDS|PASS|tic=13|player=0|wallCalls=837|wallPixels=25370|maskedCalls=711|maskedPixels=4532|playerCalls=50|playerPixels=1165|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=761|spanPixels=28390
+PMLE_PRESENTATION_COMMANDS|PASS|tic=13|player=1|wallCalls=880|wallPixels=26494|maskedCalls=693|maskedPixels=4627|playerCalls=50|playerPixels=1165|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=648|spanPixels=27266
+PMLE_PRESENTATION_COMMANDS|PASS|tic=14|player=0|wallCalls=838|wallPixels=25431|maskedCalls=707|maskedPixels=4613|playerCalls=53|playerPixels=1477|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=763|spanPixels=28329
+PMLE_PRESENTATION_COMMANDS|PASS|tic=14|player=1|wallCalls=882|wallPixels=26474|maskedCalls=692|maskedPixels=4650|playerCalls=53|playerPixels=1477|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=648|spanPixels=27286
+PMLE_PRESENTATION_COMMANDS|PASS|tic=15|player=0|wallCalls=835|wallPixels=24788|maskedCalls=725|maskedPixels=4771|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=783|spanPixels=28972
+PMLE_PRESENTATION_COMMANDS|PASS|tic=15|player=1|wallCalls=880|wallPixels=26460|maskedCalls=681|maskedPixels=4895|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=649|spanPixels=27300
+PMLE_PRESENTATION_COMMANDS|PASS|tic=16|player=0|wallCalls=836|wallPixels=24774|maskedCalls=719|maskedPixels=5019|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=772|spanPixels=28986
+PMLE_PRESENTATION_COMMANDS|PASS|tic=16|player=1|wallCalls=880|wallPixels=26458|maskedCalls=698|maskedPixels=4659|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=648|spanPixels=27302
+PMLE_PRESENTATION_COMMANDS|PASS|tic=17|player=0|wallCalls=835|wallPixels=24766|maskedCalls=734|maskedPixels=5007|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=772|spanPixels=28994
+PMLE_PRESENTATION_COMMANDS|PASS|tic=17|player=1|wallCalls=877|wallPixels=26441|maskedCalls=697|maskedPixels=4656|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=662|spanPixels=27319
+PMLE_PRESENTATION_COMMANDS|PASS|tic=18|player=0|wallCalls=834|wallPixels=24778|maskedCalls=747|maskedPixels=5080|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=774|spanPixels=28982
+PMLE_PRESENTATION_COMMANDS|PASS|tic=18|player=1|wallCalls=912|wallPixels=27287|maskedCalls=590|maskedPixels=4190|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=659|spanPixels=26473
+PMLE_PRESENTATION_COMMANDS|PASS|tic=19|player=0|wallCalls=834|wallPixels=24836|maskedCalls=740|maskedPixels=5067|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=747|spanPixels=28924
+PMLE_PRESENTATION_COMMANDS|PASS|tic=19|player=1|wallCalls=912|wallPixels=27244|maskedCalls=603|maskedPixels=4214|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=661|spanPixels=26516
+PMLE_PRESENTATION_COMMANDS|PASS|tic=20|player=0|wallCalls=866|wallPixels=24348|maskedCalls=770|maskedPixels=5450|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=779|spanPixels=29412
+PMLE_PRESENTATION_COMMANDS|PASS|tic=20|player=1|wallCalls=910|wallPixels=27300|maskedCalls=590|maskedPixels=4398|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=663|spanPixels=26460
+PMLE_PRESENTATION_COMMANDS|PASS|tic=21|player=0|wallCalls=866|wallPixels=24461|maskedCalls=757|maskedPixels=5637|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=780|spanPixels=29299
+PMLE_PRESENTATION_COMMANDS|PASS|tic=21|player=1|wallCalls=907|wallPixels=27430|maskedCalls=608|maskedPixels=4101|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=666|spanPixels=26330
+PMLE_PRESENTATION_COMMANDS|PASS|tic=22|player=0|wallCalls=871|wallPixels=24439|maskedCalls=784|maskedPixels=5563|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=783|spanPixels=29321
+PMLE_PRESENTATION_COMMANDS|PASS|tic=22|player=1|wallCalls=908|wallPixels=27411|maskedCalls=602|maskedPixels=4282|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=662|spanPixels=26349
+PMLE_PRESENTATION_COMMANDS|PASS|tic=23|player=0|wallCalls=871|wallPixels=24487|maskedCalls=767|maskedPixels=5715|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=780|spanPixels=29273
+PMLE_PRESENTATION_COMMANDS|PASS|tic=23|player=1|wallCalls=911|wallPixels=27394|maskedCalls=599|maskedPixels=4289|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=655|spanPixels=26366
+PMLE_PRESENTATION_COMMANDS|PASS|tic=24|player=0|wallCalls=867|wallPixels=24603|maskedCalls=786|maskedPixels=5648|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=786|spanPixels=29157
+PMLE_PRESENTATION_COMMANDS|PASS|tic=24|player=1|wallCalls=921|wallPixels=28308|maskedCalls=511|maskedPixels=3339|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=662|spanPixels=25452
+PMLE_PRESENTATION_COMMANDS|PASS|tic=25|player=0|wallCalls=882|wallPixels=25059|maskedCalls=727|maskedPixels=5199|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=807|spanPixels=28701
+PMLE_PRESENTATION_COMMANDS|PASS|tic=25|player=1|wallCalls=920|wallPixels=28337|maskedCalls=518|maskedPixels=3301|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=663|spanPixels=25423
+PMLE_PRESENTATION_COMMANDS|PASS|tic=26|player=0|wallCalls=884|wallPixels=25020|maskedCalls=743|maskedPixels=5084|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=808|spanPixels=28740
+PMLE_PRESENTATION_COMMANDS|PASS|tic=26|player=1|wallCalls=921|wallPixels=28260|maskedCalls=516|maskedPixels=3455|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=653|spanPixels=25500
+PMLE_PRESENTATION_COMMANDS|PASS|tic=27|player=0|wallCalls=883|wallPixels=25069|maskedCalls=721|maskedPixels=5342|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=814|spanPixels=28691
+PMLE_PRESENTATION_COMMANDS|PASS|tic=27|player=1|wallCalls=915|wallPixels=28405|maskedCalls=508|maskedPixels=3475|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=652|spanPixels=25355
+PMLE_PRESENTATION_COMMANDS|PASS|tic=28|player=0|wallCalls=885|wallPixels=25161|maskedCalls=731|maskedPixels=5338|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=838|spanPixels=28599
+PMLE_PRESENTATION_COMMANDS|PASS|tic=28|player=1|wallCalls=916|wallPixels=28398|maskedCalls=506|maskedPixels=3514|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=652|spanPixels=25362
+PMLE_PRESENTATION_COMMANDS|PASS|tic=29|player=0|wallCalls=886|wallPixels=25318|maskedCalls=722|maskedPixels=5354|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=840|spanPixels=28442
+PMLE_PRESENTATION_COMMANDS|PASS|tic=29|player=1|wallCalls=913|wallPixels=28471|maskedCalls=505|maskedPixels=3537|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=656|spanPixels=25289
+PMLE_PRESENTATION_COMMANDS|PASS|tic=30|player=0|wallCalls=900|wallPixels=25949|maskedCalls=612|maskedPixels=4559|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=897|spanPixels=27811
+PMLE_PRESENTATION_COMMANDS|PASS|tic=30|player=1|wallCalls=916|wallPixels=29133|maskedCalls=402|maskedPixels=2755|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=609|spanPixels=24627
+PMLE_PRESENTATION_COMMANDS|PASS|tic=31|player=0|wallCalls=899|wallPixels=26090|maskedCalls=605|maskedPixels=4572|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=886|spanPixels=27670
+PMLE_PRESENTATION_COMMANDS|PASS|tic=31|player=1|wallCalls=917|wallPixels=29160|maskedCalls=396|maskedPixels=2960|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=613|spanPixels=24600
+PMLE_PRESENTATION_COMMANDS|PASS|tic=32|player=0|wallCalls=902|wallPixels=26074|maskedCalls=606|maskedPixels=4713|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=871|spanPixels=27686
+PMLE_PRESENTATION_COMMANDS|PASS|tic=32|player=1|wallCalls=916|wallPixels=29177|maskedCalls=397|maskedPixels=2971|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=587|spanPixels=24583
+PMLE_PRESENTATION_COMMANDS|PASS|tic=33|player=0|wallCalls=900|wallPixels=26253|maskedCalls=593|maskedPixels=4662|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=899|spanPixels=27507
+PMLE_PRESENTATION_COMMANDS|PASS|tic=33|player=1|wallCalls=916|wallPixels=29241|maskedCalls=391|maskedPixels=3061|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=586|spanPixels=24519
+PMLE_PRESENTATION_COMMANDS|PASS|tic=34|player=0|wallCalls=902|wallPixels=26300|maskedCalls=614|maskedPixels=4578|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=903|spanPixels=27460
+PMLE_PRESENTATION_COMMANDS|PASS|tic=34|player=1|wallCalls=917|wallPixels=29275|maskedCalls=391|maskedPixels=3083|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=587|spanPixels=24485
+PMLE_PRESENTATION_COMMANDS|PASS|tic=35|player=0|wallCalls=915|wallPixels=27023|maskedCalls=468|maskedPixels=3743|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=926|spanPixels=26737
+PMLE_PRESENTATION_COMMANDS|PASS|tic=35|player=1|wallCalls=919|wallPixels=29287|maskedCalls=390|maskedPixels=3087|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=585|spanPixels=24473
+PMLE_PRESENTATION_COMMANDS|PASS|tic=36|player=0|wallCalls=916|wallPixels=27087|maskedCalls=473|maskedPixels=3659|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=770|spanPixels=26673
+PMLE_PRESENTATION_COMMANDS|PASS|tic=36|player=1|wallCalls=926|wallPixels=29446|maskedCalls=422|maskedPixels=3204|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=590|spanPixels=24314
+PMLE_PRESENTATION_COMMANDS|PASS|tic=37|player=0|wallCalls=916|wallPixels=27185|maskedCalls=462|maskedPixels=3876|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=775|spanPixels=26575
+PMLE_PRESENTATION_COMMANDS|PASS|tic=37|player=1|wallCalls=924|wallPixels=29505|maskedCalls=423|maskedPixels=3241|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=591|spanPixels=24255
+PMLE_PRESENTATION_COMMANDS|PASS|tic=38|player=0|wallCalls=916|wallPixels=27275|maskedCalls=467|maskedPixels=3759|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=770|spanPixels=26485
+PMLE_PRESENTATION_COMMANDS|PASS|tic=38|player=1|wallCalls=924|wallPixels=29575|maskedCalls=421|maskedPixels=3245|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=594|spanPixels=24185
+PMLE_PRESENTATION_COMMANDS|PASS|tic=39|player=0|wallCalls=915|wallPixels=27423|maskedCalls=444|maskedPixels=3868|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=768|spanPixels=26337
+PMLE_PRESENTATION_COMMANDS|PASS|tic=39|player=1|wallCalls=924|wallPixels=29655|maskedCalls=427|maskedPixels=3280|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=596|spanPixels=24105
+PMLE_PRESENTATION_COMMANDS|PASS|tic=40|player=0|wallCalls=950|wallPixels=27407|maskedCalls=432|maskedPixels=3264|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=690|spanPixels=26353
+PMLE_PRESENTATION_COMMANDS|PASS|tic=40|player=1|wallCalls=925|wallPixels=29768|maskedCalls=439|maskedPixels=3166|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=583|spanPixels=23992
+PMLE_PRESENTATION_COMMANDS|PASS|tic=41|player=0|wallCalls=951|wallPixels=27312|maskedCalls=431|maskedPixels=3473|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=870|spanPixels=26448
+PMLE_PRESENTATION_COMMANDS|PASS|tic=41|player=1|wallCalls=925|wallPixels=29839|maskedCalls=430|maskedPixels=3247|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=632|spanPixels=23921
+PMLE_PRESENTATION_COMMANDS|PASS|tic=42|player=0|wallCalls=954|wallPixels=27356|maskedCalls=435|maskedPixels=3447|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=873|spanPixels=26404
+PMLE_PRESENTATION_COMMANDS|PASS|tic=42|player=1|wallCalls=915|wallPixels=30374|maskedCalls=471|maskedPixels=3553|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=651|spanPixels=23386
+PMLE_PRESENTATION_COMMANDS|PASS|tic=43|player=0|wallCalls=954|wallPixels=27409|maskedCalls=445|maskedPixels=3467|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=874|spanPixels=26351
+PMLE_PRESENTATION_COMMANDS|PASS|tic=43|player=1|wallCalls=915|wallPixels=30521|maskedCalls=471|maskedPixels=3463|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=652|spanPixels=23239
+PMLE_PRESENTATION_COMMANDS|PASS|tic=44|player=0|wallCalls=956|wallPixels=27415|maskedCalls=450|maskedPixels=3583|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=881|spanPixels=26345
+PMLE_PRESENTATION_COMMANDS|PASS|tic=44|player=1|wallCalls=916|wallPixels=30491|maskedCalls=488|maskedPixels=3445|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=648|spanPixels=23269
+PMLE_PRESENTATION_COMMANDS|PASS|tic=45|player=0|wallCalls=958|wallPixels=27395|maskedCalls=475|maskedPixels=3575|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=912|spanPixels=26365
+PMLE_PRESENTATION_COMMANDS|PASS|tic=45|player=1|wallCalls=917|wallPixels=30574|maskedCalls=478|maskedPixels=3551|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=646|spanPixels=23186
+PMLE_PRESENTATION_COMMANDS|PASS|tic=46|player=0|wallCalls=962|wallPixels=27398|maskedCalls=470|maskedPixels=3799|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=916|spanPixels=26362
+PMLE_PRESENTATION_COMMANDS|PASS|tic=46|player=1|wallCalls=918|wallPixels=30628|maskedCalls=469|maskedPixels=3734|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=650|spanPixels=23132
+PMLE_PRESENTATION_COMMANDS|PASS|tic=47|player=0|wallCalls=967|wallPixels=27387|maskedCalls=479|maskedPixels=3773|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=923|spanPixels=26373
+PMLE_PRESENTATION_COMMANDS|PASS|tic=47|player=1|wallCalls=922|wallPixels=30574|maskedCalls=496|maskedPixels=3664|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=648|spanPixels=23186
+PMLE_PRESENTATION_COMMANDS|PASS|tic=48|player=0|wallCalls=968|wallPixels=27457|maskedCalls=481|maskedPixels=3821|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=931|spanPixels=26303
+PMLE_PRESENTATION_COMMANDS|PASS|tic=48|player=1|wallCalls=911|wallPixels=31401|maskedCalls=493|maskedPixels=3434|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=679|spanPixels=22359
+PMLE_PRESENTATION_COMMANDS|PASS|tic=49|player=0|wallCalls=970|wallPixels=27478|maskedCalls=484|maskedPixels=3901|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=935|spanPixels=26282
+PMLE_PRESENTATION_COMMANDS|PASS|tic=49|player=1|wallCalls=914|wallPixels=31360|maskedCalls=495|maskedPixels=3453|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=675|spanPixels=22400
+PMLE_PRESENTATION_COMMANDS|PASS|tic=50|player=0|wallCalls=958|wallPixels=27860|maskedCalls=494|maskedPixels=4051|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=958|spanPixels=25900
+PMLE_PRESENTATION_COMMANDS|PASS|tic=50|player=1|wallCalls=916|wallPixels=31334|maskedCalls=503|maskedPixels=3494|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=674|spanPixels=22426
+PMLE_PRESENTATION_COMMANDS|PASS|tic=51|player=0|wallCalls=959|wallPixels=27853|maskedCalls=497|maskedPixels=4065|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=963|spanPixels=25907
+PMLE_PRESENTATION_COMMANDS|PASS|tic=51|player=1|wallCalls=916|wallPixels=31354|maskedCalls=495|maskedPixels=3548|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=675|spanPixels=22406
+PMLE_PRESENTATION_COMMANDS|PASS|tic=52|player=0|wallCalls=958|wallPixels=27967|maskedCalls=495|maskedPixels=3989|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=960|spanPixels=25793
+PMLE_PRESENTATION_COMMANDS|PASS|tic=52|player=1|wallCalls=918|wallPixels=31410|maskedCalls=490|maskedPixels=3668|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=676|spanPixels=22350
+PMLE_PRESENTATION_COMMANDS|PASS|tic=53|player=0|wallCalls=961|wallPixels=27902|maskedCalls=498|maskedPixels=4022|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=961|spanPixels=25858
+PMLE_PRESENTATION_COMMANDS|PASS|tic=53|player=1|wallCalls=918|wallPixels=31442|maskedCalls=489|maskedPixels=3697|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=677|spanPixels=22318
+PMLE_PRESENTATION_COMMANDS|PASS|tic=54|player=0|wallCalls=965|wallPixels=27931|maskedCalls=484|maskedPixels=4130|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=965|spanPixels=25829
+PMLE_PRESENTATION_COMMANDS|PASS|tic=54|player=1|wallCalls=905|wallPixels=32128|maskedCalls=479|maskedPixels=3274|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=675|spanPixels=21632
+PMLE_PRESENTATION_COMMANDS|PASS|tic=55|player=0|wallCalls=919|wallPixels=28402|maskedCalls=458|maskedPixels=3918|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=800|spanPixels=25358
+PMLE_PRESENTATION_COMMANDS|PASS|tic=55|player=1|wallCalls=905|wallPixels=32280|maskedCalls=479|maskedPixels=3116|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=663|spanPixels=21480
+PMLE_PRESENTATION_COMMANDS|PASS|tic=56|player=0|wallCalls=923|wallPixels=28346|maskedCalls=472|maskedPixels=3902|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=804|spanPixels=25414
+PMLE_PRESENTATION_COMMANDS|PASS|tic=56|player=1|wallCalls=907|wallPixels=32289|maskedCalls=486|maskedPixels=3154|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=667|spanPixels=21471
+PMLE_PRESENTATION_COMMANDS|PASS|tic=57|player=0|wallCalls=923|wallPixels=28416|maskedCalls=463|maskedPixels=3899|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=813|spanPixels=25344
+PMLE_PRESENTATION_COMMANDS|PASS|tic=57|player=1|wallCalls=909|wallPixels=32354|maskedCalls=493|maskedPixels=3085|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=671|spanPixels=21406
+PMLE_PRESENTATION_COMMANDS|PASS|tic=58|player=0|wallCalls=924|wallPixels=28451|maskedCalls=467|maskedPixels=3812|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=810|spanPixels=25309
+PMLE_PRESENTATION_COMMANDS|PASS|tic=58|player=1|wallCalls=909|wallPixels=32378|maskedCalls=479|maskedPixels=3242|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=674|spanPixels=21382
+PMLE_PRESENTATION_COMMANDS|PASS|tic=59|player=0|wallCalls=926|wallPixels=28490|maskedCalls=466|maskedPixels=3735|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=819|spanPixels=25270
+PMLE_PRESENTATION_COMMANDS|PASS|tic=59|player=1|wallCalls=911|wallPixels=32433|maskedCalls=479|maskedPixels=3241|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=675|spanPixels=21327
+PMLE_PRESENTATION_COMMANDS|PASS|tic=60|player=0|wallCalls=850|wallPixels=28805|maskedCalls=478|maskedPixels=3264|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=823|spanPixels=24955
+PMLE_PRESENTATION_COMMANDS|PASS|tic=60|player=1|wallCalls=856|wallPixels=33090|maskedCalls=467|maskedPixels=2913|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=580|spanPixels=20670
+PMLE_PRESENTATION_COMMANDS|PASS|tic=61|player=0|wallCalls=850|wallPixels=28938|maskedCalls=471|maskedPixels=3194|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=825|spanPixels=24822
+PMLE_PRESENTATION_COMMANDS|PASS|tic=61|player=1|wallCalls=857|wallPixels=33132|maskedCalls=467|maskedPixels=2916|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=579|spanPixels=20628
+PMLE_PRESENTATION_COMMANDS|PASS|tic=62|player=0|wallCalls=854|wallPixels=28865|maskedCalls=478|maskedPixels=3190|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=829|spanPixels=24895
+PMLE_PRESENTATION_COMMANDS|PASS|tic=62|player=1|wallCalls=858|wallPixels=33144|maskedCalls=479|maskedPixels=2745|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=584|spanPixels=20616
+PMLE_PRESENTATION_COMMANDS|PASS|tic=63|player=0|wallCalls=853|wallPixels=28972|maskedCalls=467|maskedPixels=3194|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=838|spanPixels=24788
+PMLE_PRESENTATION_COMMANDS|PASS|tic=63|player=1|wallCalls=858|wallPixels=33241|maskedCalls=478|maskedPixels=2737|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=583|spanPixels=20519
+PMLE_PRESENTATION_COMMANDS|PASS|tic=64|player=0|wallCalls=854|wallPixels=29010|maskedCalls=484|maskedPixels=3075|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=843|spanPixels=24750
+PMLE_PRESENTATION_COMMANDS|PASS|tic=64|player=1|wallCalls=858|wallPixels=33288|maskedCalls=481|maskedPixels=2711|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=586|spanPixels=20472
+PMLE_PRESENTATION_COMMANDS|PASS|tic=65|player=0|wallCalls=785|wallPixels=29490|maskedCalls=413|maskedPixels=2620|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=858|spanPixels=24270
+PMLE_PRESENTATION_COMMANDS|PASS|tic=65|player=1|wallCalls=863|wallPixels=33294|maskedCalls=472|maskedPixels=2846|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=590|spanPixels=20466
+PMLE_PRESENTATION_COMMANDS|PASS|tic=66|player=0|wallCalls=787|wallPixels=29500|maskedCalls=415|maskedPixels=2593|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=860|spanPixels=24260
+PMLE_PRESENTATION_COMMANDS|PASS|tic=66|player=1|wallCalls=799|wallPixels=33857|maskedCalls=491|maskedPixels=2864|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=567|spanPixels=19903
+PMLE_PRESENTATION_COMMANDS|PASS|tic=67|player=0|wallCalls=788|wallPixels=29520|maskedCalls=410|maskedPixels=2568|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=868|spanPixels=24240
+PMLE_PRESENTATION_COMMANDS|PASS|tic=67|player=1|wallCalls=799|wallPixels=33949|maskedCalls=467|maskedPixels=3008|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=570|spanPixels=19811
+PMLE_PRESENTATION_COMMANDS|PASS|tic=68|player=0|wallCalls=790|wallPixels=29403|maskedCalls=430|maskedPixels=2540|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=868|spanPixels=24357
+PMLE_PRESENTATION_COMMANDS|PASS|tic=68|player=1|wallCalls=801|wallPixels=33896|maskedCalls=476|maskedPixels=3052|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=571|spanPixels=19864
+PMLE_PRESENTATION_COMMANDS|PASS|tic=69|player=0|wallCalls=791|wallPixels=29361|maskedCalls=419|maskedPixels=2616|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=872|spanPixels=24399
+PMLE_PRESENTATION_COMMANDS|PASS|tic=69|player=1|wallCalls=804|wallPixels=33866|maskedCalls=491|maskedPixels=2881|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=568|spanPixels=19894
+PMLE_PRESENTATION_COMMANDS|PASS|tic=70|player=0|wallCalls=719|wallPixels=29948|maskedCalls=348|maskedPixels=2559|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=883|spanPixels=23812
+PMLE_PRESENTATION_COMMANDS|PASS|tic=70|player=1|wallCalls=805|wallPixels=33803|maskedCalls=480|maskedPixels=3183|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=571|spanPixels=19957
+PMLE_PRESENTATION_COMMANDS|PASS|tic=71|player=0|wallCalls=717|wallPixels=29947|maskedCalls=367|maskedPixels=2328|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=887|spanPixels=23813
+PMLE_PRESENTATION_COMMANDS|PASS|tic=71|player=1|wallCalls=805|wallPixels=33878|maskedCalls=493|maskedPixels=2874|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=572|spanPixels=19882
+PMLE_PRESENTATION_COMMANDS|PASS|tic=72|player=0|wallCalls=719|wallPixels=30000|maskedCalls=344|maskedPixels=2623|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=893|spanPixels=23760
+PMLE_PRESENTATION_COMMANDS|PASS|tic=72|player=1|wallCalls=738|wallPixels=34603|maskedCalls=457|maskedPixels=3055|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=599|spanPixels=19157
+PMLE_PRESENTATION_COMMANDS|PASS|tic=73|player=0|wallCalls=720|wallPixels=29977|maskedCalls=357|maskedPixels=2586|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=892|spanPixels=23783
+PMLE_PRESENTATION_COMMANDS|PASS|tic=73|player=1|wallCalls=736|wallPixels=34704|maskedCalls=457|maskedPixels=3082|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=562|spanPixels=19056
+PMLE_PRESENTATION_COMMANDS|PASS|tic=74|player=0|wallCalls=718|wallPixels=30099|maskedCalls=354|maskedPixels=2547|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=898|spanPixels=23661
+PMLE_PRESENTATION_COMMANDS|PASS|tic=74|player=1|wallCalls=736|wallPixels=34736|maskedCalls=442|maskedPixels=3266|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=565|spanPixels=19024
+PMLE_PRESENTATION_COMMANDS|PASS|tic=75|player=0|wallCalls=641|wallPixels=30612|maskedCalls=309|maskedPixels=2780|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=875|spanPixels=23148
+PMLE_PRESENTATION_COMMANDS|PASS|tic=75|player=1|wallCalls=738|wallPixels=34729|maskedCalls=461|maskedPixels=3227|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=569|spanPixels=19031
+PMLE_PRESENTATION_COMMANDS|PASS|tic=76|player=0|wallCalls=642|wallPixels=30752|maskedCalls=313|maskedPixels=2558|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=651|spanPixels=23008
+PMLE_PRESENTATION_COMMANDS|PASS|tic=76|player=1|wallCalls=739|wallPixels=34761|maskedCalls=464|maskedPixels=3220|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=581|spanPixels=18999
+PMLE_PRESENTATION_COMMANDS|PASS|tic=77|player=0|wallCalls=644|wallPixels=30627|maskedCalls=313|maskedPixels=2695|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=657|spanPixels=23133
+PMLE_PRESENTATION_COMMANDS|PASS|tic=77|player=1|wallCalls=739|wallPixels=34776|maskedCalls=451|maskedPixels=3423|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=582|spanPixels=18984
+PMLE_PRESENTATION_COMMANDS|PASS|tic=78|player=0|wallCalls=641|wallPixels=30722|maskedCalls=317|maskedPixels=2623|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=660|spanPixels=23038
+PMLE_PRESENTATION_COMMANDS|PASS|tic=78|player=1|wallCalls=667|wallPixels=35579|maskedCalls=406|maskedPixels=3452|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=616|spanPixels=18181
+PMLE_PRESENTATION_COMMANDS|PASS|tic=79|player=0|wallCalls=640|wallPixels=30744|maskedCalls=311|maskedPixels=2744|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=664|spanPixels=23016
+PMLE_PRESENTATION_COMMANDS|PASS|tic=79|player=1|wallCalls=671|wallPixels=35550|maskedCalls=402|maskedPixels=3433|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=619|spanPixels=18210
+PMLE_PRESENTATION_COMMANDS|PASS|tic=80|player=0|wallCalls=573|wallPixels=31555|maskedCalls=312|maskedPixels=2803|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=610|spanPixels=22205
+PMLE_PRESENTATION_COMMANDS|PASS|tic=80|player=1|wallCalls=674|wallPixels=35494|maskedCalls=418|maskedPixels=3261|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=617|spanPixels=18266
+PMLE_PRESENTATION_COMMANDS|PASS|tic=81|player=0|wallCalls=574|wallPixels=31501|maskedCalls=315|maskedPixels=2961|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=587|spanPixels=22259
+PMLE_PRESENTATION_COMMANDS|PASS|tic=81|player=1|wallCalls=676|wallPixels=35554|maskedCalls=408|maskedPixels=3362|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=599|spanPixels=18206
+PMLE_PRESENTATION_COMMANDS|PASS|tic=82|player=0|wallCalls=570|wallPixels=31643|maskedCalls=318|maskedPixels=2734|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=583|spanPixels=22117
+PMLE_PRESENTATION_COMMANDS|PASS|tic=82|player=1|wallCalls=678|wallPixels=35593|maskedCalls=409|maskedPixels=3375|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=599|spanPixels=18167
+PMLE_PRESENTATION_COMMANDS|PASS|tic=83|player=0|wallCalls=568|wallPixels=31621|maskedCalls=314|maskedPixels=2965|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=565|spanPixels=22139
+PMLE_PRESENTATION_COMMANDS|PASS|tic=83|player=1|wallCalls=680|wallPixels=35563|maskedCalls=407|maskedPixels=3486|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=602|spanPixels=18197
+PMLE_PRESENTATION_COMMANDS|PASS|tic=84|player=0|wallCalls=569|wallPixels=31796|maskedCalls=314|maskedPixels=2975|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=568|spanPixels=21964
+PMLE_PRESENTATION_COMMANDS|PASS|tic=84|player=1|wallCalls=589|wallPixels=36530|maskedCalls=423|maskedPixels=3814|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=480|spanPixels=17230
+PMLE_PRESENTATION_COMMANDS|PASS|tic=85|player=0|wallCalls=545|wallPixels=32914|maskedCalls=326|maskedPixels=3229|playerCalls=55|playerPixels=1739|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=493|spanPixels=20846
+PMLE_PRESENTATION_COMMANDS|PASS|tic=85|player=1|wallCalls=589|wallPixels=36661|maskedCalls=414|maskedPixels=3778|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=476|spanPixels=17099
+PMLE_PRESENTATION_COMMANDS|PASS|tic=86|player=0|wallCalls=539|wallPixels=33020|maskedCalls=325|maskedPixels=3245|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=489|spanPixels=20740
+PMLE_PRESENTATION_COMMANDS|PASS|tic=86|player=1|wallCalls=588|wallPixels=36600|maskedCalls=430|maskedPixels=3722|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=476|spanPixels=17160
+PMLE_PRESENTATION_COMMANDS|PASS|tic=87|player=0|wallCalls=540|wallPixels=33119|maskedCalls=330|maskedPixels=3276|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=572|spanPixels=20641
+PMLE_PRESENTATION_COMMANDS|PASS|tic=87|player=1|wallCalls=588|wallPixels=36607|maskedCalls=421|maskedPixels=3819|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=474|spanPixels=17153
+PMLE_PRESENTATION_COMMANDS|PASS|tic=88|player=0|wallCalls=539|wallPixels=33268|maskedCalls=338|maskedPixels=3221|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=573|spanPixels=20492
+PMLE_PRESENTATION_COMMANDS|PASS|tic=88|player=1|wallCalls=590|wallPixels=36631|maskedCalls=414|maskedPixels=3928|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=477|spanPixels=17129
+PMLE_PRESENTATION_COMMANDS|PASS|tic=89|player=0|wallCalls=538|wallPixels=33335|maskedCalls=328|maskedPixels=3195|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=572|spanPixels=20425
+PMLE_PRESENTATION_COMMANDS|PASS|tic=89|player=1|wallCalls=593|wallPixels=36475|maskedCalls=423|maskedPixels=3963|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=512|spanPixels=17285
+PMLE_PRESENTATION_COMMANDS|PASS|tic=90|player=0|wallCalls=522|wallPixels=34388|maskedCalls=354|maskedPixels=3508|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=592|spanPixels=19372
+PMLE_PRESENTATION_COMMANDS|PASS|tic=90|player=1|wallCalls=541|wallPixels=38041|maskedCalls=433|maskedPixels=4183|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=439|spanPixels=15719
+PMLE_PRESENTATION_COMMANDS|PASS|tic=91|player=0|wallCalls=519|wallPixels=34555|maskedCalls=347|maskedPixels=3634|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=588|spanPixels=19205
+PMLE_PRESENTATION_COMMANDS|PASS|tic=91|player=1|wallCalls=539|wallPixels=38046|maskedCalls=425|maskedPixels=4282|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=438|spanPixels=15714
+PMLE_PRESENTATION_COMMANDS|PASS|tic=92|player=0|wallCalls=517|wallPixels=34804|maskedCalls=363|maskedPixels=3444|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=585|spanPixels=18956
+PMLE_PRESENTATION_COMMANDS|PASS|tic=92|player=1|wallCalls=539|wallPixels=37890|maskedCalls=440|maskedPixels=4246|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=438|spanPixels=15870
+PMLE_PRESENTATION_COMMANDS|PASS|tic=93|player=0|wallCalls=512|wallPixels=34955|maskedCalls=353|maskedPixels=3534|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=543|spanPixels=18805
+PMLE_PRESENTATION_COMMANDS|PASS|tic=93|player=1|wallCalls=537|wallPixels=37990|maskedCalls=431|maskedPixels=4214|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=431|spanPixels=15770
+PMLE_PRESENTATION_COMMANDS|PASS|tic=94|player=0|wallCalls=509|wallPixels=35040|maskedCalls=353|maskedPixels=3717|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=543|spanPixels=18720
+PMLE_PRESENTATION_COMMANDS|PASS|tic=94|player=1|wallCalls=537|wallPixels=37930|maskedCalls=446|maskedPixels=4169|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=426|spanPixels=15830
+PMLE_PRESENTATION_COMMANDS|PASS|tic=95|player=0|wallCalls=499|wallPixels=36473|maskedCalls=363|maskedPixels=3870|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=563|spanPixels=17287
+PMLE_PRESENTATION_COMMANDS|PASS|tic=95|player=1|wallCalls=537|wallPixels=37846|maskedCalls=433|maskedPixels=4376|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=427|spanPixels=15914
+PMLE_PRESENTATION_COMMANDS|PASS|tic=96|player=0|wallCalls=495|wallPixels=36711|maskedCalls=360|maskedPixels=3867|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=560|spanPixels=17049
+PMLE_PRESENTATION_COMMANDS|PASS|tic=96|player=1|wallCalls=539|wallPixels=38136|maskedCalls=462|maskedPixels=4711|playerCalls=56|playerPixels=1793|skyCalls=0|skyPixels=0|fuzzCalls=0|fuzzPixels=0|translatedCalls=0|translatedPixels=0|spanCalls=336|spanPixels=15624
+PMLE_TEAVM_PRESENTATION|PASS|tics=96|pov0_unique=93|pov1_unique=93|pov0_hud_sha256=dd2e30a5ca3d0ecdfbce78bf82bdc03898bffc19d201e571fee769eea50bf032|pov0_hud_distinct=75|pov0_hud_nonzero=10240|pov1_hud_sha256=96882b5d2d1fceed8d83437b13f3976eec2c140ee2b3d8c2cbaada0af665a0af|pov1_hud_distinct=73|pov1_hud_nonzero=10240|render_canonical_mutations=18|mapped_line_residue_bytes=12227|mapped_line_residue_max=142|next_tic_world_residue=0|presentation=fullHeight=false|fullScreen=false|setSizeNeeded=false|statusHeight=32|fgHud=10240|statusBuffer=10240|statusPatch=320x32|statusColumns=320|statusPosts=320|statusPixels=10240|statusData=11520|memory=iwadBytes=28795076|frameBytes=64000|thinkers=248|mobjs=239|killMonsters=29|livingMonsters=29|awakeMonsters=0|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141

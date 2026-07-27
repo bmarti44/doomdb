@@ -539,3 +539,34 @@ The full integration gate is predeclared as:
 
 No static pose pack, wall-only frame, replay-warmed dictionary, or reduced
 resolution may satisfy that integration gate.
+
+## Authentic full-command viewport raster
+
+The diagnostic presentation root now delegates through transparent command
+recorders at Mocha's actual indexed draw-function boundary.  Across 192
+moving/firing E1M1 player frames, the captured stream contains the original
+invocation order for wall columns, visplane spans, masked sprites, and player
+weapon columns, plus the authentic prelit Freedoom source bytes.  Pack version
+3 binds both the complete 320x200 reference SHA-256 and the 320x168 viewport
+SHA-256 for every frame.
+
+Before OCI timing counts:
+
+- the compact TeaVM raster must reproduce all 192 viewport digests in Node;
+- OCI must reproduce three distributed viewport digests after database-side
+  pack staging and SHA verification;
+- any fuzz command is fail-closed until the separately tested fuzz path
+  exists; this route contains no sky, fuzz, or translated-column coverage;
+- the status bar and patch-based screens are explicitly not included.
+
+The OCI cell measures twelve 192-frame per-call passes and twelve retained
+batch passes.  The final-two worst per-call p95 and amortized batch cost are
+classified as follows:
+
+- both `<=20.000 ms` promotes integration of the authentic 320x168 viewport;
+- either `>30.000 ms` rejects this compact command-raster shape;
+- otherwise optimize the measured raster before integration.
+
+Promotion is not the product claim.  It means the real world/sprite/weapon
+pixel workload has enough component headroom to add HUD/patch commands,
+publication, retrieval, and the deployed browser `>=30 FPS` gate.

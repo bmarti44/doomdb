@@ -15,6 +15,15 @@ printf '%s\n' \
   'set define off echo off verify off feedback off heading off pages 0 lines 32767' \
   'set serveroutput on size unlimited'
 for object in \
+  'function doom_free_full_digest' \
+  'function doom_free_full_view_chunk' \
+  'function doom_free_full_view_prepare' \
+  'function doom_free_full_count' \
+  'function doom_free_full_batch' \
+  'function doom_free_full_render' \
+  'function doom_free_full_finalize' \
+  'function doom_free_full_load' \
+  'function doom_free_full_allocate' \
   'function doom_free_raster_frame_chunk' \
   'function doom_free_raster_command_count' \
   'function doom_free_raster_batch' \
@@ -73,5 +82,23 @@ printf '%s\n' \
   "create function doom_free_raster_command_count(p_frame number)return number as mle module doom_free_raster_kernel signature 'commandCount(number)';" \
   '/' \
   "create function doom_free_raster_frame_chunk(p_offset number,p_length number)return raw as mle module doom_free_raster_kernel signature 'frameChunk(number, number)';" \
+  '/' \
+  "create function doom_free_full_allocate(p_length number)return number as mle module doom_free_raster_kernel signature 'fullPackAllocate(number)';" \
+  '/' \
+  "create function doom_free_full_load(p_offset number,p_chunk raw)return number as mle module doom_free_raster_kernel signature 'fullPackLoad(number, Uint8Array)';" \
+  '/' \
+  "create function doom_free_full_finalize return number as mle module doom_free_raster_kernel signature 'fullPackFinalize()';" \
+  '/' \
+  "create function doom_free_full_render(p_frame number)return number as mle module doom_free_raster_kernel signature 'fullFrameRender(number)';" \
+  '/' \
+  "create function doom_free_full_batch(p_start number,p_count number)return number as mle module doom_free_raster_kernel signature 'fullFrameBatch(number, number)';" \
+  '/' \
+  "create function doom_free_full_count return number as mle module doom_free_raster_kernel signature 'fullFrameCount()';" \
+  '/' \
+  "create function doom_free_full_view_prepare return number as mle module doom_free_raster_kernel signature 'fullFramePrepareViewport()';" \
+  '/' \
+  "create function doom_free_full_view_chunk(p_offset number,p_length number)return raw as mle module doom_free_raster_kernel signature 'fullFrameViewportChunk(number, number)';" \
+  '/' \
+  "create function doom_free_full_digest(p_frame number)return raw as mle module doom_free_raster_kernel signature 'fullFrameViewportDigest(number)';" \
   '/' \
   'commit;'
