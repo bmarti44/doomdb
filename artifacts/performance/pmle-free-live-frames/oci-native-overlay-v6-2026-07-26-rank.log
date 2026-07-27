@@ -1,0 +1,29 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_NATIVE_OVERLAY_LOAD|PASS|pack_bytes=327134
+
+PMLE_FREE_NATIVE_OVERLAY_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+declare
+*
+ERROR at line 1:
+ORA-06502: PL/SQL: value or conversion error
+ORA-06512: at "DOOM.DOOM_FREE_NATIVE_OVERLAY", line 20
+ORA-06512: at "DOOM.DOOM_FREE_NATIVE_OVERLAY", line 63
+ORA-06512: at line 24
+ORA-06512: at line 36
+Help: https://docs.oracle.com/error-help/db/ora-06502/
+

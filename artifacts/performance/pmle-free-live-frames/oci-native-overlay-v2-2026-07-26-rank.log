@@ -1,0 +1,32 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_NATIVE_OVERLAY_LOAD|PASS|pack_bytes=327134
+
+PMLE_FREE_NATIVE_OVERLAY_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+    l_reference0:=doom_free_gen_frame_chunk(0,32000);
+                  *
+ERROR at line 41:
+ORA-06550: line 41, column 19:
+PLS-00201: identifier 'DOOM_FREE_GEN_FRAME_CHUNK' must be declared
+ORA-06550: line 41, column 5:
+PL/SQL: Statement ignored
+ORA-06550: line 42, column 19:
+PLS-00201: identifier 'DOOM_FREE_GEN_FRAME_CHUNK' must be declared
+ORA-06550: line 42, column 5:
+PL/SQL: Statement ignored
+Help: https://docs.oracle.com/error-help/db/ora-06550/
+

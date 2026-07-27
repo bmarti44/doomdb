@@ -30,6 +30,13 @@ printf '%s\n' \
   'set define off echo off verify off feedback off heading off pages 0 lines 32767' \
   'set serveroutput on size unlimited'
 for object in \
+  'function doom_free_gen_raster_writes' \
+  'function doom_free_gen_native_misses' \
+  'function doom_free_gen_native_commands' \
+  'function doom_free_gen_native_record_length' \
+  'function doom_free_gen_native_chunk' \
+  'function doom_free_gen_native_tape' \
+  'function doom_free_gen_frame_chunk' \
   'function doom_free_gen_frame_batch' 'function doom_free_gen_frame' \
   'function doom_free_gen_texture_finalize' \
   'function doom_free_gen_texture_load' \
@@ -88,5 +95,19 @@ printf '%s\n' \
   "create function doom_free_gen_frame(p_pose number)return number as mle module doom_free_generated_renderer signature 'renderFrame(number)';" \
   '/' \
   "create function doom_free_gen_frame_batch(p_start number,p_count number)return number as mle module doom_free_generated_renderer signature 'renderFrameBatch(number, number)';" \
+  '/' \
+  "create function doom_free_gen_frame_chunk(p_offset number,p_length number)return raw as mle module doom_free_generated_renderer signature 'frameChunk(number, number)';" \
+  '/' \
+  "create function doom_free_gen_native_tape(p_pose number)return number as mle module doom_free_generated_renderer signature 'renderNativeTape(number)';" \
+  '/' \
+  "create function doom_free_gen_native_chunk(p_offset number,p_length number)return raw as mle module doom_free_generated_renderer signature 'nativeTapeChunk(number, number)';" \
+  '/' \
+  "create function doom_free_gen_native_record_length(p_offset number,p_maximum number)return number as mle module doom_free_generated_renderer signature 'nativeTapeRecordChunkLength(number, number)';" \
+  '/' \
+  "create function doom_free_gen_native_commands return number as mle module doom_free_generated_renderer signature 'nativeTapeCommandCount()';" \
+  '/' \
+  "create function doom_free_gen_native_misses return number as mle module doom_free_generated_renderer signature 'nativeTapeMissCount()';" \
+  '/' \
+  "create function doom_free_gen_raster_writes return number as mle module doom_free_generated_renderer signature 'rasterPixelWrites()';" \
   '/' \
   'commit;'

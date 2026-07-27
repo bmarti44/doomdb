@@ -345,3 +345,83 @@ accepted generated frame.
 - this replaces the earlier `11.330 ms` isolated-raster allowance only for
   the integrated pipeline decision: the release gate remains 30 unique moving
   FPS with complete presentation, not a component projection.
+
+The native-overlay pipeline produced exact frames but landed at `54.634 ms`
+final-two worst p95 and is rejected. Real-tape parsing made the native scatter
+primitive slower than its synthetic command-cardinality projection.
+
+## Rational-step generated raster
+
+Profiling the direct-pixel source exposes a remaining generated-shape defect:
+every wall texel executes floating-point `Math.floor`, modulo, and accumulation
+even though Doom texture sampling is a rational fixed-step walk. The next cell
+uses an exact integer numerator:
+
+`source = (offset * wallHeight + screenDelta * 128) / wallHeight`
+
+and increments the numerator by 128 for each output pixel. Power-of-two
+texture heights use a mask. This preserves the same mathematical nearest
+texel mapping without accumulated fixed-point approximation.
+
+- the same authentic assets, 320x200 output, portal ordering, route window,
+  checksums, clocks, and postflight apply;
+- output must remain byte-identical to the preceding direct-pixel frame cell;
+- `p95 <=20.000 ms` promotes a one-write-per-pixel viewport integration;
+- `p95 >=28.571 ms` rejects direct generated sampling;
+- between those values requires the one-write viewport cell before decision.
+
+The rational-step cell improved sustained throughput to about `27.2 FPS`
+(`44.804 ms` final-two worst p95), but it changed a small number of texel
+boundary samples and remains over budget.
+
+## One-write portal framebuffer
+
+The next cell removes guaranteed overdraw. The earlier direct cells initialized
+all 64,000 pixels, then overwrote every wall span. Front-to-back portal clips
+already partition each column into written walls and one final opening. The
+candidate writes wall pixels during traversal and fills only that final opening
+afterward, so every framebuffer location is assigned exactly once.
+
+- output checksum must match the rational-step cell exactly;
+- the rank reports final-frame pixel-write count and it must equal 64,000;
+- `p95 <=20.000 ms` promotes viewport flat/sprite integration;
+- `p95 >=28.571 ms` rejects the one-write direct raster;
+- between those values requires the 168-line viewport plus status-bar
+  integration before a decision.
+
+The corrected one-write implementation retained the rational-step checksum but
+reported 64,236 writes and measured `37.401/49.479 ms p50/p95` on its first
+pass.  The exact-write-count gate stopped the cell.  Since it was already
+slower than the rational baseline and the 236 excess writes are only 0.37% of
+a frame, this shape is rejected rather than weakening the invariant.
+
+## Small generated real-command raster module
+
+The next cell separates rasterization from the integrated BSP artifact.  A
+small TeaVM 0.15.0 module consumes wall-span commands captured from the
+accepted 5,250-pose E1M1 route and samples the same prelit wall atlas into a
+320x200 column-major framebuffer.  The command distribution, span lengths,
+texture coordinates, scale, vertical offset, and light banks come from real
+generated geometry; this is not a uniform synthetic pixel loop.
+
+This discriminator asks whether the raster can enter the compiled tier when
+its generated module and hot method are small.  Before timing:
+
+- decoded commands and authentic wall data must reproduce the corresponding
+  integrated renderer checksum for every captured validation pose;
+- the evidence records source, command-pack, wall-pack, generated-artifact,
+  and TeaVM input hashes;
+- twelve 500-frame passes run on the same Always Free OCI venue with the
+  existing two-clock, exclusion-cap, pool-park/restore, and postflight rules.
+
+Verdict:
+
+- final-two worst raster p95 `<=8.000 ms` promotes a split generated
+  geometry/raster integration, because a real frame-sized compiled pass then
+  leaves credible room for flats, sprites, HUD, boundary, and ORDS delivery;
+- p95 `>=20.000 ms` closes this generated-raster compilation shape;
+- between requires one integrated 320x168 viewport cell before a decision.
+
+This is a component discriminator only.  It cannot establish the 30 FPS
+release claim without the complete Doom presentation layers and deployed
+unique-moving-frame gate.

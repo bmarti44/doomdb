@@ -103,7 +103,12 @@ begin
       '|wall_ms='||round(l_wall,3)||
       '|clock_ms='||round(l_clock,3)||
       '|throughput_fps='||round(c_frames*1000/l_wall,3)||
-      '|clock_suspects='||l_suspects||'|checksum='||l_checksum);
+      '|clock_suspects='||l_suspects||
+      '|pixel_writes='||doom_free_gen_raster_writes||
+      '|checksum='||l_checksum);
+    if doom_free_gen_raster_writes<>64000 then
+      raise_application_error(-20796,'generated raster did not write 64000 pixels');
+    end if;
   end loop;
 end;
 /

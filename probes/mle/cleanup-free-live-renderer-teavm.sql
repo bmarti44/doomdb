@@ -1,6 +1,20 @@
 whenever oserror exit failure rollback
 whenever sqlerror exit sql.sqlcode rollback
 set define off
+begin execute immediate 'drop function doom_free_gen_raster_writes';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_native_misses';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_native_commands';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_native_record_length';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_native_chunk';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_native_tape';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_frame_chunk';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
 begin execute immediate 'drop function doom_free_gen_frame_batch';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
 begin execute immediate 'drop function doom_free_gen_frame';exception when others then if sqlcode<>-4043 then raise;end if;end;

@@ -242,3 +242,47 @@ segments with native `UTL_RAW.OVERLAY`. Existing venue evidence measured
 native scatter at about `10.775 ms p95` for 1,505 commands; the specialized
 terminal frame has 1,173 commands. This path must measure the real tape,
 including MLE egress and parsing, before it can be promoted.
+
+The real-tape native-overlay result was exact but slower than its synthetic
+projection: `54.634 ms` final-two worst p95 at 1,173 commands and a
+10,551-byte terminal tape. Parsing four binary fields per command in PL/SQL
+outweighed native overlay's isolated benefit, so that composition path is
+rejected.
+
+The next source-level discriminator targets the direct raster's actual inner
+loop. Texture Y is a rational function of screen Y; it does not require
+floating-point `Math.floor`, modulo, and accumulated addition for every texel.
+The generated loop can advance an integer numerator by 128 and divide by the
+wall height, preserving the mathematical sample while producing a much
+smaller interpreter/compiler shape.
+
+The rational-step cell improved steady throughput from roughly `20 FPS` to
+`27.2 FPS`, with a final-two worst p95 of `44.804 ms`. Its cumulative checksum
+changed slightly because integer rational sampling resolves a few texel
+boundaries differently from accumulated binary floating point; it therefore
+did not satisfy that cell's exact-output prerequisite.
+
+The next candidate removes a separate source of deterministic overdraw.
+Front-to-back portal clipping leaves one open interval per screen column.
+Writing walls as they are accepted and filling only that final interval
+assigns every output pixel once instead of painting a 64,000-byte background
+and then overwriting the walls.
+
+That candidate did not improve the raster.  The corrected removed-range
+implementation produced the same cumulative checksum as the rational-step
+cell, but reported 64,236 writes because boundary pixels shared by adjacent
+portal ranges were still assigned twice.  Its first pass was already
+`37.401 ms p50 / 49.479 ms p95` (`27.006 FPS`) before the exact-64,000-write
+assertion stopped the run.  This is slower than the rational-step baseline,
+so removing the remaining 236 duplicate writes cannot plausibly recover the
+`16.238 ms` needed to reach 30 FPS p95.  The one-write shape is rejected
+without weakening its predeclared invariant.
+
+Taken together, these cells isolate the remaining uncertainty.  The generated
+geometry is fast, authentic texture data is not itself large enough to explain
+the result, and both roughly 1,100 short bulk-copy calls and an interpreted
+frame-sized sampling loop miss the budget.  The next discriminator is a
+separate, deliberately small generated raster module fed real E1M1 wall
+commands.  Its purpose is to determine whether the integrated artifact's
+raster method is too large or structurally complex for the compiled tier.
+It does not replace the authoritative engine or relax presentation fidelity.

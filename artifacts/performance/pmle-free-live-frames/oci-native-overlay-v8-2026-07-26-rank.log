@@ -1,0 +1,38 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_NATIVE_OVERLAY_LOAD|PASS|pack_bytes=327134
+
+PMLE_FREE_NATIVE_OVERLAY_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_NATIVE_OVERLAY_EQUIVALENCE|PASS|pose=0|frame_bytes=64000|tape_bytes=10342|commands=1280|misses=6
+PMLE_FREE_NATIVE_OVERLAY_EQUIVALENCE|PASS|pose=500|frame_bytes=64000|tape_bytes=49310|commands=879|misses=861
+PMLE_FREE_NATIVE_OVERLAY_EQUIVALENCE|PASS|pose=999|frame_bytes=64000|tape_bytes=37792|commands=1173|misses=1142
+PMLE_FREE_NATIVE_OVERLAY_EQUIVALENCE|PASS|pose=2500|frame_bytes=64000|tape_bytes=35074|commands=1172|misses=1157
+PMLE_FREE_NATIVE_OVERLAY_EQUIVALENCE|PASS|pose=5249|frame_bytes=64000|tape_bytes=25647|commands=828|misses=777
+
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=1|frames=500|p50_ms=54.414|p95_ms=66.235|wall_ms=24628.768|clock_ms=24630|throughput_fps=20.301|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=32599148
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=2|frames=500|p50_ms=41.157|p95_ms=54.131|wall_ms=19447.666|clock_ms=19440|throughput_fps=25.71|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=65104871
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=3|frames=500|p50_ms=41.644|p95_ms=53.892|wall_ms=19687.233|clock_ms=19680|throughput_fps=25.397|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=97610594
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=4|frames=500|p50_ms=42.553|p95_ms=53.813|wall_ms=19611.372|clock_ms=19610|throughput_fps=25.495|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=130116317
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=5|frames=500|p50_ms=42.407|p95_ms=54.014|wall_ms=19674.088|clock_ms=19680|throughput_fps=25.414|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=162622040
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=6|frames=500|p50_ms=42.119|p95_ms=54.32|wall_ms=19803.578|clock_ms=19800|throughput_fps=25.248|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=195127763
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=7|frames=500|p50_ms=42.196|p95_ms=53.899|wall_ms=19743.184|clock_ms=19740|throughput_fps=25.325|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=227633486
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=8|frames=500|p50_ms=42.782|p95_ms=54.123|wall_ms=19803.202|clock_ms=19810|throughput_fps=25.248|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=260139209
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=9|frames=500|p50_ms=42.068|p95_ms=54.268|wall_ms=19796.426|clock_ms=19800|throughput_fps=25.257|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=292644932
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=10|frames=500|p50_ms=42.37|p95_ms=54.544|wall_ms=19735.612|clock_ms=19740|throughput_fps=25.335|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=325150655
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=11|frames=500|p50_ms=42.212|p95_ms=53.917|wall_ms=19683.679|clock_ms=19680|throughput_fps=25.402|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=357656378
+PMLE_FREE_NATIVE_OVERLAY_PASS|PASS|pass=12|frames=500|p50_ms=42.403|p95_ms=54.634|wall_ms=19693.563|clock_ms=19690|throughput_fps=25.389|clock_suspects=0|last_tape_bytes=10551|last_commands=1173|last_misses=40|checksum=390162101
+
