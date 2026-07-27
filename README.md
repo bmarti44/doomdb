@@ -6,6 +6,13 @@ session. The active target is for Oracle Autonomous Database 26ai Always Free
 to generate every live framebuffer and deliver at least 30 unique moving FPS;
 the browser only copies the completed pixels to canvas.
 
+**Public demo:** [Play DoomDB on Oracle Autonomous Database Always Free](https://G53C2244DAB9063-DOOMDB.adb.us-ashburn-1.oraclecloudapps.com/ords/doom/app/)
+
+The hosted release currently uses the confirmed-state browser renderer while
+the database-generated framebuffer replacement described below is being
+qualified. Always Free may stop after an idle period; retry after the database
+has resumed if the link is temporarily unavailable.
+
 ![DoomDB gameplay recorded from the local stack](media/doomdb-gameplay.gif)
 
 *Real footage from the earlier exact database-frame pipeline. The current MLE
