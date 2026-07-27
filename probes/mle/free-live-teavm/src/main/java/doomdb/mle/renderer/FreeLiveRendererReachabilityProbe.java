@@ -1,6 +1,7 @@
 package doomdb.mle.renderer;
 
 import org.teavm.jso.JSExport;
+import org.teavm.jso.JSByRef;
 import org.teavm.jso.typedarrays.Uint8Array;
 
 /**
@@ -16,6 +17,9 @@ public final class FreeLiveRendererReachabilityProbe {
   private static final int MAGIC = 0x31465244;
   private static final int WIDTH = 320;
   private static final int HEIGHT = 200;
+  private static final int PIXELS = WIDTH * HEIGHT;
+  private static final int COMMAND_BYTES = 24;
+  private static final int COMMAND_BUFFER_BYTES = 65536;
   private static byte[] pack;
   private static int poseOffset;
   private static int poseCount;
@@ -32,8 +36,25 @@ public final class FreeLiveRendererReachabilityProbe {
   private static char[] lineLeftUpper;
   private static char[] lineLeftLower;
   private static char[] lineLeftMiddle;
+  private static char[] lineTexture;
+  private static short[] lineXOffset;
+  private static short[] lineYOffset;
+  private static short[] lineLeftXOffset;
+  private static short[] lineLeftYOffset;
   private static short[] sectorFloor;
   private static short[] sectorCeiling;
+  private static byte[] sectorLight;
+  private static byte[] colormaps;
+  private static int[] textureBase;
+  private static char[] textureWidth;
+  private static char[] textureHeight;
+  private static int wallTextureElements;
+  private static byte[] encodedWallTextures;
+  private static byte[] litTextures;
+  private static int[] lightToBank;
+  private static int lightBankCount;
+  private static byte[] frame;
+  private static byte[] backgroundColumn;
   private static short[] sinTable;
   private static short[] cosTable;
   private static int[] segX1;
@@ -62,6 +83,9 @@ public final class FreeLiveRendererReachabilityProbe {
   private static int[] clipBottom;
   private static int[] stack;
   private static short[] stackCheck;
+  private static byte[] commandBuffer;
+  private static int commandLength;
+  private static boolean captureCommands;
 
   private FreeLiveRendererReachabilityProbe() {}
 
@@ -86,6 +110,27 @@ public final class FreeLiveRendererReachabilityProbe {
   }
 
   @JSExport
+  public static int allocateWallTextures(int length) {
+    if (length < 1 || length > 10_000_000) {
+      throw new IllegalArgumentException("invalid wall texture length");
+    }
+    encodedWallTextures = new byte[length];
+    return length;
+  }
+
+  @JSExport
+  public static int loadWallTextureChunk(int offset, Uint8Array chunk) {
+    if (encodedWallTextures == null || offset < 0
+        || offset + chunk.getLength() > encodedWallTextures.length) {
+      throw new IllegalArgumentException("wall texture chunk outside allocation");
+    }
+    for (int index = 0; index < chunk.getLength(); index++) {
+      encodedWallTextures[offset + index] = (byte) chunk.get(index);
+    }
+    return offset + chunk.getLength();
+  }
+
+  @JSExport
   public static int finalizePack() {
     if (u32(0) != MAGIC || u32(4) != 3 || u32(76) != pack.length) {
       throw new IllegalStateException("pack header mismatch");
@@ -98,6 +143,8 @@ public final class FreeLiveRendererReachabilityProbe {
     int subsectorCount = u32(184);
     int nodeCount = u32(188);
     int sectorCount = u32(120);
+    int textureCount = u32(80);
+    wallTextureElements = u32(84);
     if (poseCount != 5250 || poseRecordBytes != 32 || nodeCount < 1) {
       throw new IllegalStateException("pack cardinality mismatch");
     }
@@ -115,8 +162,18 @@ public final class FreeLiveRendererReachabilityProbe {
     lineLeftUpper = chars(u32(152), lineCount);
     lineLeftLower = chars(u32(156), lineCount);
     lineLeftMiddle = chars(u32(160), lineCount);
+    lineTexture = chars(u32(100), lineCount);
+    lineXOffset = shorts(u32(104), lineCount);
+    lineYOffset = shorts(u32(108), lineCount);
+    lineLeftXOffset = shorts(u32(164), lineCount);
+    lineLeftYOffset = shorts(u32(168), lineCount);
     sectorFloor = shorts(u32(124), sectorCount);
     sectorCeiling = shorts(u32(128), sectorCount);
+    sectorLight = bytes(u32(132), sectorCount);
+    colormaps = bytes(u32(136), 8192);
+    textureBase = ints(u32(88), textureCount);
+    textureWidth = chars(u32(92), textureCount);
+    textureHeight = chars(u32(96), textureCount);
     segX1 = ints(u32(192), segCount);
     segY1 = ints(u32(196), segCount);
     segX2 = ints(u32(200), segCount);
@@ -143,11 +200,74 @@ public final class FreeLiveRendererReachabilityProbe {
     clipBottom = new int[WIDTH];
     stack = new int[nodeCount + subsectorCount + 8];
     stackCheck = new short[stack.length];
+    frame = new byte[PIXELS];
+    backgroundColumn = new byte[HEIGHT];
+    for (int y = 0; y < HEIGHT; y++) {
+      backgroundColumn[y] = (byte) (y < HEIGHT / 2 ? 96 : 48);
+    }
+    commandBuffer = new byte[COMMAND_BUFFER_BYTES];
     return pack.length;
   }
 
   @JSExport
+  public static int finalizeWallTextures() {
+    if (encodedWallTextures == null
+        || encodedWallTextures.length != wallTextureElements * 2) {
+      throw new IllegalStateException("wall texture length mismatch");
+    }
+    lightToBank = new int[32];
+    for (int index = 0; index < lightToBank.length; index++) {
+      lightToBank[index] = -1;
+    }
+    lightBankCount = 0;
+    for (byte value : sectorLight) {
+      int light = value & 255;
+      int map = Math.max(0, Math.min(31, (255 - light) / 8));
+      if (lightToBank[map] < 0) lightToBank[map] = lightBankCount++;
+    }
+    litTextures = new byte[wallTextureElements * lightBankCount];
+    for (int map = 0; map < 32; map++) {
+      int bank = lightToBank[map];
+      if (bank < 0) continue;
+      int target = bank * wallTextureElements;
+      for (int texel = 0; texel < wallTextureElements; texel++) {
+        int encoded = ((encodedWallTextures[texel * 2] & 255) << 8)
+            | (encodedWallTextures[texel * 2 + 1] & 255);
+        int sample = encoded == 0 ? 0 : encoded - 1;
+        litTextures[target + texel] = colormaps[map * 256 + sample];
+      }
+    }
+    int length = encodedWallTextures.length;
+    encodedWallTextures = null;
+    return length;
+  }
+
+  @JSExport
   public static int renderGeometry(int pose) {
+    return render(pose, false);
+  }
+
+  @JSExport
+  public static int renderFrame(int pose) {
+    if (litTextures == null) {
+      throw new IllegalStateException("wall textures are not finalized");
+    }
+    return render(pose, true);
+  }
+
+  @JSExport
+  public static int renderCommands(int pose) {
+    commandLength = 0;
+    captureCommands = true;
+    try {
+      render(pose, false);
+    } finally {
+      captureCommands = false;
+    }
+    return commandLength / COMMAND_BYTES;
+  }
+
+  private static int render(int pose, boolean raster) {
     pose %= poseCount;
     int at = poseOffset + pose * poseRecordBytes;
     double playerX = i32(at) / 65536.0;
@@ -159,6 +279,12 @@ public final class FreeLiveRendererReachabilityProbe {
     for (int x = 0; x < WIDTH; x++) {
       clipTop[x] = 0;
       clipBottom[x] = HEIGHT - 1;
+      if (raster) {
+        int base = x * HEIGHT;
+        for (int y = 0; y < HEIGHT; y++) {
+          frame[base + y] = backgroundColumn[y];
+        }
+      }
     }
     int stackSize = 1;
     stack[0] = nodeX.length - 1;
@@ -248,6 +374,23 @@ public final class FreeLiveRendererReachabilityProbe {
           if (wallHeight > 65535) wallHeight = 65535;
           checksum += wallHeight + line;
           if (far == 0xffff) {
+            if (raster || captureCommands) {
+              int texture = middle;
+              if (texture == 0xffff) texture = lineTexture[line];
+              int nearTop = (int) Math.floor(
+                  HEIGHT / 2.0
+                    - (sectorCeiling[near] - viewZ) * wallHeight / 128);
+              int nearBottom = (int) Math.ceil(
+                  HEIGHT / 2.0
+                    - (sectorFloor[near] - viewZ) * wallHeight / 128) - 1;
+              int textureX = textureX(
+                  x, line, fromRight, numerator / current,
+                  playerX, playerY, directionX, directionY);
+              drawWallSegment(
+                  x, texture, textureX, wallHeight, nearTop, nearBottom,
+                  clipTop[x], clipBottom[x], lightMap(near),
+                  fromRight ? lineYOffset[line] : lineLeftYOffset[line]);
+            }
             clipTop[x] = 1;
             clipBottom[x] = 0;
           } else {
@@ -257,12 +400,48 @@ public final class FreeLiveRendererReachabilityProbe {
                 HEIGHT / 2.0 - (openingCeiling - viewZ) * wallHeight / 128);
             int openingBottom = (int) Math.ceil(
                 HEIGHT / 2.0 - (openingFloor - viewZ) * wallHeight / 128) - 1;
+            if ((raster || captureCommands) && !clipOnly) {
+              int nearTop = (int) Math.floor(
+                  HEIGHT / 2.0
+                    - (sectorCeiling[near] - viewZ) * wallHeight / 128);
+              int nearBottom = (int) Math.ceil(
+                  HEIGHT / 2.0
+                    - (sectorFloor[near] - viewZ) * wallHeight / 128) - 1;
+              boolean drawUpper = sectorCeiling[far] < sectorCeiling[near]
+                  && upper != 0xffff && nearTop <= clipBottom[x]
+                  && openingTop - 1 >= clipTop[x];
+              boolean drawLower = sectorFloor[far] > sectorFloor[near]
+                  && lower != 0xffff && openingBottom + 1 <= clipBottom[x]
+                  && nearBottom >= clipTop[x];
+              if (drawUpper || drawLower) {
+                int textureX = textureX(
+                    x, line, fromRight, numerator / current,
+                    playerX, playerY, directionX, directionY);
+                int lightMap = lightMap(near);
+                int yOffset = fromRight
+                    ? lineYOffset[line] : lineLeftYOffset[line];
+                if (drawUpper) {
+                  drawWallSegment(
+                      x, upper, textureX, wallHeight, nearTop, openingTop - 1,
+                      clipTop[x], clipBottom[x], lightMap, yOffset);
+                }
+                if (drawLower) {
+                  drawWallSegment(
+                      x, lower, textureX, wallHeight, openingBottom + 1,
+                      nearBottom, clipTop[x], clipBottom[x], lightMap, yOffset);
+                }
+              }
+            }
             clipTop[x] = Math.max(clipTop[x], openingTop);
             clipBottom[x] = Math.min(clipBottom[x], openingBottom);
             if (!clipOnly) checksum ^= (upper << 1) ^ (lower << 2);
           }
         }
       }
+    }
+    if (raster) {
+      checksum ^= (frame[pose % PIXELS] & 255)
+          | ((frame[(pose * 997) % PIXELS] & 255) << 8);
     }
     return checksum;
   }
@@ -274,6 +453,140 @@ public final class FreeLiveRendererReachabilityProbe {
       checksum += renderGeometry(start + index);
     }
     return checksum;
+  }
+
+  @JSExport
+  public static int renderFrameBatch(int start, int count) {
+    int checksum = 0;
+    for (int index = 0; index < count; index++) {
+      checksum += renderFrame(start + index);
+    }
+    return checksum;
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] frameByRef() {
+    return frame;
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] frameChunk(int offset, int length) {
+    if (offset < 0 || length < 0 || offset + length > frame.length) {
+      throw new IllegalArgumentException("frame chunk outside framebuffer");
+    }
+    byte[] chunk = new byte[length];
+    System.arraycopy(frame, offset, chunk, 0, length);
+    return chunk;
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] commandBufferByRef() {
+    return commandBuffer;
+  }
+
+  private static int lightMap(int sector) {
+    return Math.max(0, Math.min(31, (255 - (sectorLight[sector] & 255)) / 8));
+  }
+
+  private static int textureX(
+      int screenX, int line, boolean fromRight, double distance,
+      double playerX, double playerY, double directionX, double directionY) {
+    double cameraX = (screenX * 2 + 1) / (double) WIDTH - 1;
+    double rayX = directionX - directionY * cameraX;
+    double rayY = directionY + directionX * cameraX;
+    int segmentX = lineX2[line] - lineX1[line];
+    int segmentY = lineY2[line] - lineY1[line];
+    double hitX = playerX + rayX * distance;
+    double hitY = playerY + rayY * distance;
+    double along = Math.abs(segmentX) >= Math.abs(segmentY)
+        ? Math.abs(hitX - lineX1[line]) : Math.abs(hitY - lineY1[line]);
+    return (int) Math.floor(along)
+        + (fromRight ? lineXOffset[line] : lineLeftXOffset[line]);
+  }
+
+  private static void drawWallSegment(
+      int screenX, int texture, int textureX, int wallHeight,
+      int projectedTop, int projectedBottom, int clipTopValue,
+      int clipBottomValue, int lightMap, int verticalOffset) {
+    if (texture == 0xffff || projectedTop > clipBottomValue
+        || projectedBottom < clipTopValue || projectedTop > projectedBottom) {
+      return;
+    }
+    int drawTop = Math.max(0, Math.max(clipTopValue, projectedTop));
+    int drawBottom = Math.min(
+        HEIGHT - 1, Math.min(clipBottomValue, projectedBottom));
+    if (drawTop > drawBottom) return;
+    if (captureCommands) {
+      appendCommand(
+          screenX, texture, textureX, wallHeight, projectedTop,
+          drawTop, drawBottom, lightMap, verticalOffset);
+      return;
+    }
+    drawWallPixels(
+        screenX, texture, textureX, wallHeight, projectedTop,
+        drawTop, drawBottom, lightMap, verticalOffset);
+  }
+
+  private static void appendCommand(
+      int screenX, int texture, int textureX, int wallHeight,
+      int projectedTop, int drawTop, int drawBottom,
+      int lightMap, int verticalOffset) {
+    if (commandLength + COMMAND_BYTES > commandBuffer.length) {
+      throw new IllegalStateException("wall command buffer overflow");
+    }
+    int at = commandLength;
+    putU16(at, screenX);
+    putU16(at + 2, texture);
+    putI32(at + 4, textureX);
+    putU16(at + 8, wallHeight);
+    commandBuffer[at + 10] = (byte) lightMap;
+    commandBuffer[at + 11] = 0;
+    putI32(at + 12, projectedTop);
+    putU16(at + 16, drawTop);
+    putU16(at + 18, drawBottom);
+    putI32(at + 20, verticalOffset);
+    commandLength += COMMAND_BYTES;
+  }
+
+  private static void putU16(int offset, int value) {
+    commandBuffer[offset] = (byte) value;
+    commandBuffer[offset + 1] = (byte) (value >>> 8);
+  }
+
+  private static void putI32(int offset, int value) {
+    commandBuffer[offset] = (byte) value;
+    commandBuffer[offset + 1] = (byte) (value >>> 8);
+    commandBuffer[offset + 2] = (byte) (value >>> 16);
+    commandBuffer[offset + 3] = (byte) (value >>> 24);
+  }
+
+  private static void drawWallPixels(
+      int screenX, int texture, int textureX, int wallHeight,
+      int projectedTop, int drawTop, int drawBottom,
+      int lightMap, int verticalOffset) {
+    int width = textureWidth[texture];
+    int height = textureHeight[texture];
+    textureX %= width;
+    if (textureX < 0) textureX += width;
+    int normalizedOffset = verticalOffset % height;
+    if (normalizedOffset < 0) normalizedOffset += height;
+    int length = drawBottom - drawTop + 1;
+    double textureY = normalizedOffset
+        + (drawTop - projectedTop) * 128.0 / wallHeight;
+    double textureStep = 128.0 / wallHeight;
+    int base = textureBase[texture];
+    int bank = lightToBank[lightMap] * wallTextureElements;
+    int outputAt = screenX * HEIGHT + drawTop;
+    for (int output = 0; output < length; output++) {
+      int sourceY = (int) Math.floor(textureY) % height;
+      if (sourceY < 0) sourceY += height;
+      frame[outputAt + output] =
+          litTextures[bank + base + sourceY * width + textureX];
+      textureY += textureStep;
+    }
   }
 
   private static boolean bboxVisible(

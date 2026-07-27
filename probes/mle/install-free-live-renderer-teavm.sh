@@ -30,6 +30,10 @@ printf '%s\n' \
   'set define off echo off verify off feedback off heading off pages 0 lines 32767' \
   'set serveroutput on size unlimited'
 for object in \
+  'function doom_free_gen_frame_batch' 'function doom_free_gen_frame' \
+  'function doom_free_gen_texture_finalize' \
+  'function doom_free_gen_texture_load' \
+  'function doom_free_gen_texture_allocate' \
   'function doom_free_gen_batch' 'function doom_free_gen_render' \
   'function doom_free_gen_finalize' 'function doom_free_gen_load' \
   'function doom_free_gen_allocate'; do
@@ -74,5 +78,15 @@ printf '%s\n' \
   "create function doom_free_gen_render(p_pose number)return number as mle module doom_free_generated_renderer signature 'renderGeometry(number)';" \
   '/' \
   "create function doom_free_gen_batch(p_start number,p_count number)return number as mle module doom_free_generated_renderer signature 'renderGeometryBatch(number, number)';" \
+  '/' \
+  "create function doom_free_gen_texture_allocate(p_length number)return number as mle module doom_free_generated_renderer signature 'allocateWallTextures(number)';" \
+  '/' \
+  "create function doom_free_gen_texture_load(p_offset number,p_chunk raw)return number as mle module doom_free_generated_renderer signature 'loadWallTextureChunk(number, Uint8Array)';" \
+  '/' \
+  "create function doom_free_gen_texture_finalize return number as mle module doom_free_generated_renderer signature 'finalizeWallTextures()';" \
+  '/' \
+  "create function doom_free_gen_frame(p_pose number)return number as mle module doom_free_generated_renderer signature 'renderFrame(number)';" \
+  '/' \
+  "create function doom_free_gen_frame_batch(p_start number,p_count number)return number as mle module doom_free_generated_renderer signature 'renderFrameBatch(number, number)';" \
   '/' \
   'commit;'

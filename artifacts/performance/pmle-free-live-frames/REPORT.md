@@ -195,3 +195,50 @@ predeclared `REQUIRE_AMDAHL_PROJECTION` band rather than passing. The next
 cell extends this generated artifact with the real prelit texture cache and
 64,000-byte framebuffer. Only that full-raster measurement can promote a
 generated renderer.
+
+That full generated raster was then measured with the authentic
+2,545,152-byte wall pack retained in one MLE session. Its final-two worst p95
+was `48.273 ms` (`30.0–31.5 FPS` pass-level throughput), so it hit the
+predeclared `REJECT_GENERATED_FULL_WALL_RASTER` branch. The failure is
+generated framebuffer/cache shape, not generated visibility: TeaVM's emitted
+Java array copies do not behave like the native `TypedArray.set` blits that
+made the plain cache effective.
+
+The next measured candidate is therefore a narrow hybrid, not another engine:
+TeaVM emits a bounded ordered wall-command tape, and ordinary MLE JavaScript
+consumes it in the same module graph with native typed-array cache blits. It
+preserves the exact generated portal decisions and authentic wall pixels while
+isolating the two independently measured fast shapes.
+
+That hybrid passed byte-for-byte comparison against the generated reference
+at poses `0`, `500`, `999`, `2500`, and `5249`, but its final-two worst p95
+was `45.415 ms`. The terminal frame contained 1,173 commands, of which 1,133
+were cache hits. Moving that many cache/control operations into the
+interpreted wrapper erased the geometry gain even though each final copy used
+native `Uint8Array.set`.
+
+The next cell therefore leaves cache control in the generated kernel and
+changes only the storage/copy primitive: its framebuffer, prelit atlas, and
+cached segments are TeaVM JSO `Uint8Array` objects copied with native `set`,
+not Java arrays copied through `System.arraycopy`.
+
+The resulting generated native-typed-array cell improved sustained
+pass-throughput to `34.8–36.4 FPS`, but its final-two worst p95 was still
+`40.670 ms`. The copy primitive helped, yet approximately 1,100 short copy
+calls per frame remained the dominant raster shape. The next discriminator
+removes those boundaries and directly gathers each authentic prelit texel
+into the generated primitive framebuffer.
+
+The direct-pixel discriminator preserved the exact same cumulative checksums
+but regressed to `59.556 ms` final-two worst p95 and roughly `20 FPS`.
+Consequently, neither interpreted per-pixel sampling nor many short bulk
+copies is a viable terminal raster shape.
+
+The remaining database-native composition path is now explicit. Generated
+geometry will own the segment-cache keys and emit a compact ordered tape:
+cache hits reference retained slots, while only misses carry newly generated
+segment bytes. A session-persistent PL/SQL package can then apply those
+segments with native `UTL_RAW.OVERLAY`. Existing venue evidence measured
+native scatter at about `10.775 ms p95` for 1,505 commands; the specialized
+terminal frame has 1,173 commands. This path must measure the real tape,
+including MLE egress and parsing, before it can be promoted.

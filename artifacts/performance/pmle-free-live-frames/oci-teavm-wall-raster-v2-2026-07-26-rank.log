@@ -1,0 +1,32 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_TEAVM_RASTER_LOAD|PASS|pack_bytes=327134
+
+PMLE_FREE_LIVE_TEAVM_RASTER_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=1|frames=500|p50_ms=42.957|p95_ms=54.136|wall_ms=20029.669|clock_ms=20030|throughput_fps=24.963|clock_suspects=0|checksum=3293798564
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=2|frames=500|p50_ms=33.491|p95_ms=44.466|wall_ms=15912.326|clock_ms=15920|throughput_fps=31.422|clock_suspects=0|checksum=6467339822
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=3|frames=500|p50_ms=32.995|p95_ms=45.709|wall_ms=16010.87|clock_ms=16010|throughput_fps=31.229|clock_suspects=0|checksum=9640881080
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=4|frames=500|p50_ms=33.786|p95_ms=44.932|wall_ms=16033.619|clock_ms=16040|throughput_fps=31.184|clock_suspects=0|checksum=12814422338
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=5|frames=500|p50_ms=34.131|p95_ms=44.55|wall_ms=16177.609|clock_ms=16180|throughput_fps=30.907|clock_suspects=0|checksum=15987963596
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=6|frames=500|p50_ms=33.644|p95_ms=44.315|wall_ms=16024.665|clock_ms=16030|throughput_fps=31.202|clock_suspects=0|checksum=19161504854
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=7|frames=500|p50_ms=33.928|p95_ms=43.96|wall_ms=15983.424|clock_ms=15980|throughput_fps=31.282|clock_suspects=0|checksum=22335046112
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=8|frames=500|p50_ms=33.283|p95_ms=44.826|wall_ms=16049.709|clock_ms=16050|throughput_fps=31.153|clock_suspects=0|checksum=25508587370
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=9|frames=500|p50_ms=33.098|p95_ms=44.672|wall_ms=15919.92|clock_ms=15920|throughput_fps=31.407|clock_suspects=0|checksum=28682128628
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=10|frames=500|p50_ms=33.255|p95_ms=44.299|wall_ms=15897.966|clock_ms=15900|throughput_fps=31.451|clock_suspects=0|checksum=31855669886
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=11|frames=500|p50_ms=34.197|p95_ms=48.273|wall_ms=16663.618|clock_ms=16660|throughput_fps=30.005|clock_suspects=0|checksum=35029211144
+PMLE_FREE_LIVE_TEAVM_RASTER_PASS|PASS|pass=12|frames=500|p50_ms=34.315|p95_ms=45.006|wall_ms=16291.609|clock_ms=16290|throughput_fps=30.691|clock_suspects=0|checksum=38202752402
+

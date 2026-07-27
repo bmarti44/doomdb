@@ -1,0 +1,26 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_HYBRID_LOAD|PASS|pack_bytes=327134
+
+declare
+*
+ERROR at line 1:
+ORA-04161: Bl
+ORA-04171: at Bl (DOOM.DOOM_FREE_GENERATED_RENDERER:13:114)
+ORA-06512: at "DOOM.DOOM_FREE_GEN_TEXTURE_FINALIZE", line 1
+ORA-06512: at line 27
+Help: https://docs.oracle.com/error-help/db/ora-04161/
+

@@ -1,6 +1,16 @@
 whenever oserror exit failure rollback
 whenever sqlerror exit sql.sqlcode rollback
 set define off
+begin execute immediate 'drop function doom_free_gen_frame_batch';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_frame';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_texture_finalize';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_texture_load';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_gen_texture_allocate';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
 begin execute immediate 'drop function doom_free_gen_batch';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
 begin execute immediate 'drop function doom_free_gen_render';exception when others then if sqlcode<>-4043 then raise;end if;end;

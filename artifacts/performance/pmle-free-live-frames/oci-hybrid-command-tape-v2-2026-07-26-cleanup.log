@@ -1,0 +1,86 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+
+PL/SQL procedure successfully completed.
+
+Rollback
+begin execute immediate 'drop mle env doom_free_hybrid_env';exception when others then if sqlcode not in(-4080,-4103) then raise;end if;end;
+*
+ERROR at line 1:
+ORA-04105: MLE environment DOOM_FREE_HYBRID_ENV does not exist.
+ORA-06512: at line 1
+ORA-06512: at line 1
+Help: https://docs.oracle.com/error-help/db/ora-04105/
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_HYBRID_POSTFLIGHT|PASS|diagnostic_objects=0
+

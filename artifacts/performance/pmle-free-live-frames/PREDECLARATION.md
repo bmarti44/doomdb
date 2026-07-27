@@ -233,3 +233,115 @@ The identical poses 500–999 run for 12 passes:
   full port;
 - a pass checksum change relative to the identical prior pass increment,
   clock disagreement, or postflight failure invalidates the cell.
+
+The geometry cell landed at `10.190 ms p95`, inside the Amdahl band. The next
+candidate extends that exact generated source with the real 2,545,152-byte
+wall asset pack, 18 prelit colormap banks, the same 262K scaled-segment cache,
+native array copies into a retained 64,000-byte framebuffer, and the same
+portal wall output as the plain module. It still excludes flats, sprites,
+weapon, and HUD.
+
+- full wall-raster p95 `<=11.330 ms` promotes the generated shape to remaining
+  presentation layers;
+- p95 `>=20.000 ms` rejects the full generated wall shape;
+- between those values requires recovered egress/authority budget and a
+  concurrent-pipeline measurement before more visual layers;
+- the asset SHA fence, twelve identical-window pass checksums, two clocks, and
+  postflight must all pass.
+
+The full generated wall raster landed at `48.273 ms` final-two worst p95 and
+is rejected. Its geometry remained fast, but TeaVM's emitted Java
+`System.arraycopy`/array-cache shape did not preserve the native
+`TypedArray.set` behavior of the plain JavaScript raster.
+
+## Generated-command/native-raster hybrid
+
+The next cell retains the generated BSP/portal geometry but emits a bounded,
+ordered 24-byte command for every actual upper/lower/middle wall span. A
+separate ordinary MLE module consumes that tape without a SQL crossing and
+performs the previously proven prelit-cache lookup and native
+`Uint8Array.set` framebuffer blit. The generated artifact remains
+diagnostic-only and does not replace the deterministic authority.
+
+Before timing, five actual E1M1 poses (`0`, `500`, `999`, `2500`, `5249`)
+must produce identical 64,000-byte frames in the full generated reference and
+hybrid arms. The command buffer must remain bounded and every decoded command
+must pass its screen/texture/light/span validation.
+
+- final-two worst p95 `<=11.330 ms` promotes the hybrid wall pipeline to the
+  full-route measurement and remaining presentation layers;
+- p95 `>=20.000 ms` rejects the hybrid wall pipeline;
+- between those values requires a full 5,250-pose route measurement before
+  another renderer decision;
+- the same-window cell is component evidence only: it cannot claim 30 FPS
+  until flats, sprites, weapon, HUD, authority step, and frame delivery are
+  present in one deployed gate.
+
+The hybrid produced exact frames but landed at `45.415 ms` final-two worst
+p95. Its terminal frame carried 1,173 wall commands (1,133 cache hits and 40
+misses), so the interpreted wrapper loop and cache calls erased the generated
+geometry gain.
+
+## Generated native-typed-array raster
+
+The next cell keeps geometry and cache lookup inside the generated artifact,
+but replaces Java `byte[]` frame/cache columns and `System.arraycopy` with
+TeaVM JSO `Uint8Array` storage and its native `set(source, offset)` operation.
+This is the direct combination not represented by either failed arm:
+compiler-visible BSP/cache control plus the native bulk copy proven in the
+plain module.
+
+- the authentic wall pack, portal decisions, framebuffer size, sampled poses,
+  twelve-pass window, and `11.330/20.000 ms` promotion/rejection thresholds
+  are unchanged;
+- a changed frame checksum, failed staging/postflight, or clock disagreement
+  invalidates the cell;
+- promotion remains only permission to add the missing presentation layers,
+  never a complete-renderer or 30 FPS claim.
+
+The native-typed-array generated cell improved pass-level throughput to
+`34.8–36.4 FPS`, but final-two worst p95 remained `40.670 ms`. Native bulk
+copy was not enough: roughly 1,100 short segment copies per frame still carry
+too much call overhead.
+
+## Generated direct-pixel raster
+
+The next cell removes scaled-segment caching and short bulk-copy calls from
+the generated raster. It writes the authentic prelit texel directly into a
+Java primitive framebuffer in the compiled geometry loop. This exchanges
+roughly 1,100 native-call boundaries for a bounded frame-sized primitive
+gather/write loop—the workload shape on which the generated authority and
+geometry artifacts obtained their venue compilation gain.
+
+- it retains full 320x200 output, portal wall ordering, authentic textures,
+  sector lighting, and the same pose stream;
+- the twelve-pass output checksum must equal the preceding generated wall
+  cells, otherwise the result is invalid regardless of speed;
+- the `11.330/20.000 ms` component promotion/rejection thresholds and all
+  staging, clock, and postflight rules remain unchanged.
+
+The direct-pixel cell preserved the preceding cumulative frame checksum but
+landed at `59.556 ms` final-two worst p95. It is rejected.
+
+## Generated-cache/native-overlay composition
+
+The next cell keeps visibility, texture-coordinate calculation, cache-key
+selection, and miss generation in the generated module. Its ordered tape
+contains a compact target/slot record for every wall span and carries texel
+bytes only on cache misses. A session-persistent PL/SQL cache consumes the
+tape in order and composes the two 32,000-byte framebuffer halves with
+`UTL_RAW.OVERLAY`; this preserves collision/replacement ordering.
+
+The measurement must include generated tape creation, MLE-to-PL/SQL tape
+egress, real-tape parsing, cache updates, and both framebuffer halves. It must
+report command count, miss count, tape bytes, and output identity against the
+accepted generated frame.
+
+- component p95 `<=20.000 ms` authorizes an integrated authority/ORDS frame
+  request cell because it leaves a plausible deployed 33.333 ms envelope;
+- component p95 `>=28.571 ms` rejects this final native composition shape;
+- between those values requires the integrated request measurement before a
+  decision;
+- this replaces the earlier `11.330 ms` isolated-raster allowance only for
+  the integrated pipeline decision: the release gate remains 30 unique moving
+  FPS with complete presentation, not a component projection.
