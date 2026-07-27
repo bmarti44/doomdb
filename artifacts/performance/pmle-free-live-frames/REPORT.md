@@ -531,3 +531,24 @@ plane overdraw while fixing that visual limitation. Dynamic sprites, weapon
 animation, sky, status/HUD, menus and non-level screens, frame publication,
 ORDS retrieval, and the deployed browser cadence remain inside the final
 budget gate.
+
+The first multi-sector visplane port is now measured as well. During
+front-to-back BSP traversal it records the visible ceiling/floor interval for
+each sector and logical column, then applies Doom's `R_MakeSpans` transition
+algorithm to emit contiguous horizontal flat spans. This removes the
+current-sector-only visual shortcut and avoids both full-background overdraw
+and a per-potential-pixel visibility branch.
+
+Across the same twelve 500-frame passes it measured `22.484–23.398 ms p50`,
+`31.257–31.561 ms p95`, and `45.3–45.9 FPS` sustained. The final-two worst
+p95 was `31.491 ms`; wall-clock and `GET_TIME` again agreed. Reported physical
+writes fell from 80,116 to 55,748, close to the 53,760-pixel viewport plus
+small boundary overdraw. This is both more visually faithful and faster on
+average than the provisional plane fill.
+
+The variable span count fattens the per-frame tail, leaving only `1.842 ms`
+under a strict 33.333 ms p95 component budget. Therefore no arithmetic claim
+is made for sprites/HUD/publication: they must be implemented as predecoded
+bulk patch blits and the complete server pipeline must be measured directly.
+An extracted-frame visual comparison is the immediate correctness gate before
+those layers are added.

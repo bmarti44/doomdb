@@ -49,6 +49,7 @@ public final class FreeLiveRendererReachabilityProbe {
   private static short[] sectorFloor;
   private static short[] sectorCeiling;
   private static byte[] sectorLight;
+  private static int sectorCount;
   private static char[] sectorFloorAsset;
   private static char[] sectorCeilingAsset;
   private static char[] subsectorSector;
@@ -104,6 +105,15 @@ public final class FreeLiveRendererReachabilityProbe {
   private static int rasterPixelWrites;
   private static int activeWidth;
   private static int pixelScale;
+  private static short[] planeTop;
+  private static short[] planeBottom;
+  private static int[] planeStamp;
+  private static int[] planeMinX;
+  private static int[] planeMaxX;
+  private static int[] touchedPlanes;
+  private static int touchedPlaneCount;
+  private static int planeSerial;
+  private static int[] spanStart;
   private static int[] nativeCacheKeyA;
   private static int[] nativeCacheKeyB;
   private static int[] nativeCacheKeyC;
@@ -164,7 +174,7 @@ public final class FreeLiveRendererReachabilityProbe {
     int segCount = u32(180);
     int subsectorCount = u32(184);
     int nodeCount = u32(188);
-    int sectorCount = u32(120);
+    sectorCount = u32(120);
     int textureCount = u32(80);
     wallTextureElements = u32(84);
     int flatTextureCount = u32(288);
@@ -240,6 +250,14 @@ public final class FreeLiveRendererReachabilityProbe {
     nativeCacheKeyB = new int[CACHE_SIZE];
     nativeCacheKeyC = new int[CACHE_SIZE];
     nativeCacheValid = new byte[CACHE_SIZE];
+    int planeCount = sectorCount * 2;
+    planeTop = new short[planeCount * LIVE_RENDER_WIDTH];
+    planeBottom = new short[planeCount * LIVE_RENDER_WIDTH];
+    planeStamp = new int[planeCount];
+    planeMinX = new int[planeCount];
+    planeMaxX = new int[planeCount];
+    touchedPlanes = new int[planeCount];
+    spanStart = new int[VIEW_HEIGHT];
     return pack.length;
   }
 
@@ -471,7 +489,10 @@ public final class FreeLiveRendererReachabilityProbe {
     pixelScale = WIDTH / activeWidth;
     int viewSector = raster && planes
         ? pointSector(playerX, playerY) : -1;
-    if (raster && planes) {
+    boolean recordVisplanes = raster && planes && walls;
+    if (recordVisplanes) {
+      startPlaneFrame();
+    } else if (raster && planes) {
       drawPlaneBackground(
           viewSector, playerX, playerY, viewZ, directionX, directionY);
     }
@@ -583,6 +604,14 @@ public final class FreeLiveRendererReachabilityProbe {
             int nearBottom = (int) Math.ceil(
                 VIEW_HEIGHT / 2.0
                   - (sectorFloor[near] - viewZ) * wallHeight / 128) - 1;
+            if (recordVisplanes) {
+              recordPlaneRange(
+                  near, true, x, clipTop[x],
+                  Math.min(clipBottom[x], nearTop - 1));
+              recordPlaneRange(
+                  near, false, x,
+                  Math.max(clipTop[x], nearBottom + 1), clipBottom[x]);
+            }
             if (raster || captureCommands || captureResolvedCommands
                 || captureNativeTape) {
               int textureX = textureX(
@@ -604,14 +633,22 @@ public final class FreeLiveRendererReachabilityProbe {
             int openingBottom = (int) Math.ceil(
                 VIEW_HEIGHT / 2.0
                     - (openingFloor - viewZ) * wallHeight / 128) - 1;
+            int nearTop = (int) Math.floor(
+                VIEW_HEIGHT / 2.0
+                    - (sectorCeiling[near] - viewZ) * wallHeight / 128);
+            int nearBottom = (int) Math.ceil(
+                VIEW_HEIGHT / 2.0
+                    - (sectorFloor[near] - viewZ) * wallHeight / 128) - 1;
+            if (recordVisplanes) {
+              recordPlaneRange(
+                  near, true, x, clipTop[x],
+                  Math.min(clipBottom[x], nearTop - 1));
+              recordPlaneRange(
+                  near, false, x,
+                  Math.max(clipTop[x], nearBottom + 1), clipBottom[x]);
+            }
             if ((raster || captureCommands || captureResolvedCommands
                 || captureNativeTape) && !clipOnly) {
-              int nearTop = (int) Math.floor(
-                  VIEW_HEIGHT / 2.0
-                    - (sectorCeiling[near] - viewZ) * wallHeight / 128);
-              int nearBottom = (int) Math.ceil(
-                  VIEW_HEIGHT / 2.0
-                    - (sectorFloor[near] - viewZ) * wallHeight / 128) - 1;
               boolean drawUpper = sectorCeiling[far] < sectorCeiling[near]
                   && upper != 0xffff && nearTop <= clipBottom[x]
                   && openingTop - 1 >= clipTop[x];
@@ -644,6 +681,10 @@ public final class FreeLiveRendererReachabilityProbe {
         }
       }
     }
+    if (recordVisplanes) {
+      drawRecordedPlanes(
+          playerX, playerY, viewZ, directionX, directionY);
+    }
     if (raster) {
       checksum ^= (frame[sample % PIXELS] & 255)
           | ((frame[(sample * 997) % PIXELS] & 255) << 8);
@@ -670,6 +711,128 @@ public final class FreeLiveRendererReachabilityProbe {
       throw new IllegalStateException("player subsector outside map");
     }
     return subsectorSector[subsector];
+  }
+
+  private static void startPlaneFrame() {
+    planeSerial++;
+    if (planeSerial == 0) {
+      for (int index = 0; index < planeStamp.length; index++) {
+        planeStamp[index] = 0;
+      }
+      planeSerial = 1;
+    }
+    touchedPlaneCount = 0;
+  }
+
+  private static void recordPlaneRange(
+      int sector, boolean ceiling, int x, int top, int bottom) {
+    top = Math.max(0, top);
+    bottom = Math.min(VIEW_HEIGHT - 1, bottom);
+    if (top > bottom || x < 0 || x >= activeWidth) return;
+    int plane = sector * 2 + (ceiling ? 0 : 1);
+    if (planeStamp[plane] != planeSerial) {
+      planeStamp[plane] = planeSerial;
+      touchedPlanes[touchedPlaneCount++] = plane;
+      planeMinX[plane] = x;
+      planeMaxX[plane] = x;
+      int base = plane * LIVE_RENDER_WIDTH;
+      for (int column = 0; column < activeWidth; column++) {
+        planeTop[base + column] = VIEW_HEIGHT;
+        planeBottom[base + column] = -1;
+      }
+    } else {
+      planeMinX[plane] = Math.min(planeMinX[plane], x);
+      planeMaxX[plane] = Math.max(planeMaxX[plane], x);
+    }
+    int at = plane * LIVE_RENDER_WIDTH + x;
+    planeTop[at] = (short) Math.min(planeTop[at], top);
+    planeBottom[at] = (short) Math.max(planeBottom[at], bottom);
+  }
+
+  private static void drawRecordedPlanes(
+      double playerX, double playerY, double viewZ,
+      double directionX, double directionY) {
+    for (int touched = 0; touched < touchedPlaneCount; touched++) {
+      int plane = touchedPlanes[touched];
+      int base = plane * LIVE_RENDER_WIDTH;
+      int minimum = planeMinX[plane];
+      int maximum = planeMaxX[plane];
+      int previousTop = VIEW_HEIGHT;
+      int previousBottom = -1;
+      for (int x = minimum; x <= maximum + 1; x++) {
+        int top = x <= maximum ? planeTop[base + x] : VIEW_HEIGHT;
+        int bottom = x <= maximum ? planeBottom[base + x] : -1;
+        while (previousTop < top && previousTop <= previousBottom) {
+          drawPlaneSpan(
+              plane, previousTop, spanStart[previousTop], x - 1,
+              playerX, playerY, viewZ, directionX, directionY);
+          previousTop++;
+        }
+        while (previousBottom > bottom && previousBottom >= previousTop) {
+          drawPlaneSpan(
+              plane, previousBottom, spanStart[previousBottom], x - 1,
+              playerX, playerY, viewZ, directionX, directionY);
+          previousBottom--;
+        }
+        while (top < previousTop && top <= bottom) {
+          spanStart[top++] = x;
+        }
+        while (bottom > previousBottom && bottom >= top) {
+          spanStart[bottom--] = x;
+        }
+        previousTop = x <= maximum ? planeTop[base + x] : VIEW_HEIGHT;
+        previousBottom = x <= maximum ? planeBottom[base + x] : -1;
+      }
+    }
+  }
+
+  private static void drawPlaneSpan(
+      int plane, int y, int x1, int x2,
+      double playerX, double playerY, double viewZ,
+      double directionX, double directionY) {
+    if (x1 > x2 || y == VIEW_HEIGHT / 2) return;
+    int sector = plane / 2;
+    boolean ceiling = (plane & 1) == 0;
+    int asset = ceiling ? sectorCeilingAsset[sector] : sectorFloorAsset[sector];
+    if (ceiling && asset == 0xffff) {
+      byte pixel = backgroundColumn[y];
+      int output = x1 * pixelScale * FRAME_HEIGHT + y;
+      for (int x = x1; x <= x2; x++) {
+        frame[output] = pixel;
+        frame[output + FRAME_HEIGHT] = pixel;
+        output += pixelScale * FRAME_HEIGHT;
+      }
+      rasterPixelWrites += (x2 - x1 + 1) * pixelScale;
+      return;
+    }
+    double planeHeight = ceiling
+        ? sectorCeiling[sector] - viewZ : viewZ - sectorFloor[sector];
+    double distance = planeHeight * (activeWidth / 2.0)
+        / Math.abs(y + .5 - VIEW_HEIGHT / 2.0);
+    double cameraX = (x1 * 2 + 1) / (double) activeWidth - 1.0;
+    double rayX = directionX - directionY * cameraX;
+    double rayY = directionY + directionX * cameraX;
+    int worldX = (int) Math.floor(
+        (playerX + rayX * distance) * 65536.0);
+    int worldY = (int) Math.floor(
+        (playerY + rayY * distance) * 65536.0);
+    int stepX = (int) Math.floor(
+        (-directionY / (activeWidth / 2.0) * distance) * 65536.0);
+    int stepY = (int) Math.floor(
+        (directionX / (activeWidth / 2.0) * distance) * 65536.0);
+    int bank = lightToBank[lightMap(sector)] * flatTextureElements;
+    int assetBase = bank + asset * 4096;
+    int output = x1 * pixelScale * FRAME_HEIGHT + y;
+    for (int x = x1; x <= x2; x++) {
+      int source = ((worldY >> 10) & 4032) + ((worldX >> 16) & 63);
+      byte pixel = litFlats[assetBase + source];
+      frame[output] = pixel;
+      frame[output + FRAME_HEIGHT] = pixel;
+      output += pixelScale * FRAME_HEIGHT;
+      worldX += stepX;
+      worldY += stepY;
+    }
+    rasterPixelWrites += (x2 - x1 + 1) * pixelScale;
   }
 
   /**
