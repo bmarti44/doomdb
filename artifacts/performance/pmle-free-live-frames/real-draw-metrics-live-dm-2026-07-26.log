@@ -1,0 +1,48 @@
+PMLE_REAL_DRAW_FIXTURE|PASS|tics=5250|bytes=173250|sha256=fa7637570c30d3a33cbf8456e98268890e9f5bd82f5ba39fd7f69b139ddc4085
+PASS MOCHADOOM-OJVM-ARTIFACT classes=830 release=8 sha256=d93f40e2807222c31f361d66e8ef78320694ae3258a22680999d7824059eefb4
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_REAL_DRAW_METRICS|PASS|stream=live-dm-2026-07-23|samples=5250|elapsedMicros=2979357|streamSha256=fa7637570c30d3a33cbf8456e98268890e9f5bd82f5ba39fd7f69b139ddc4085|drawFrames=5250|columnsPerFrame=1058|spansPerFrame=447|pixelsPerFrame=56615|uniqueColumnsPerFrame=1046|uniqueSpansPerFrame=447|columnPixelsPerFrame=33769|spanPixelsPerFrame=22845|sourceSetsPerFrame=581|colormapSetsPerFrame=17|translationSetsPerFrame=0|maxDrawCommands=2325|maxDrawPixels=77869|maxColumnPixels=77869|maxSpanPixels=36936|maxSourceSets=890|maxColormapSets=29|maxTranslationSets=0|maxColumnLength=168|maxSpanLength=320|lengthLe8=2756018|lengthLe16=796291|lengthLe32=1408096|lengthLe64=1600461|lengthLe128=719638|lengthLe200=566270|lengthOver200=62532|columnKind1=4214029|columnKind2=1345668|columnKind3=0|spanKind1=2349609

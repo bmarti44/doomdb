@@ -1,0 +1,5 @@
+
+Error: SQLcl requires Java 11 and above to run.
+       Found Java version .
+       Please set JAVA_HOME to appropriate version.
+

@@ -13,10 +13,15 @@ listed acceptance command succeeds without weakening an existing check.
 Orientation only; the task cards and dated checkpoints in Section 7 are the
 authoritative record.
 
-- **Current MLE direction:** the approved role swap is active. The
-  TeaVM-generated `5ec18cbe…` MLE JavaScript authority is promoted and
-  deployed; live rendering consumes confirmed database deltas in the browser,
-  while exact database rendering remains asynchronous audit/DVR work. The
+- **Current MLE direction:** the TeaVM-generated `5ec18cbe…` MLE JavaScript
+  authority is promoted and deployed. The active product goal is now a live
+  framebuffer generated inside Oracle Autonomous Database 26ai Always Free and
+  delivered through ORDS at least 30 unique moving FPS. The browser may
+  decode/copy the completed framebuffer to canvas but may not rasterize the
+  world or simulate it. Paid compute, OJVM production execution, client-side
+  world rendering, and a DVR-only outcome are outside the goal. The prior
+  confirmed-delta browser renderer remains the working release and regression
+  control until the database-frame path passes its replacement gates. The
   final artifact passes the 13,272-tic every-tic ledger, canonical, 762-tic
   co-op, membership, async-admission race, and warm-slot lifecycle gates.
   T11.1's 684-assertion clean/idempotent OCI schema gate and T11.2's
@@ -31,9 +36,16 @@ authoritative record.
   The full per-tic cumulative canonical digest matched Node. Local de-CPS
   throughput (19.788 tics/s whole-route, peak 7–9 tics/s) is development and
   capacity evidence only; no further local engine optimization is planned.
-  Exact live database rendering is finally closed after the authorized de-CPS
-  OCI rerank measured 191.276 ms p95 over 100/100 exact unique frames, with
-  two temporary LOBs; the predeclared 300-frame arm was not run. Fresh profile ranking puts
+  The generated exact renderer is not the selected implementation after its
+  authorized de-CPS OCI rerank measured 191.276 ms p95 over 100/100 exact
+  unique frames. That result closes that artifact shape, not the new
+  Free-tier database-frame objective. The implementation order is: measure
+  the complete real-frame budget; benchmark the real E1M1 draw tape with
+  database-native bulk operations; build a specialized allocation-free MLE
+  live renderer, permitting measured visual simplifications or reduced
+  internal resolution while the database still authors every output pixel;
+  minimize ORDS framebuffer delivery; then qualify sustained browser-observed
+  30 FPS on Always Free. Fresh profile ranking puts
   sight/BSP below its selection threshold. The exact narrow long/flag
   candidate improved real-MLE throughput only 2.707% and high-awake median
   only 1.401%, so it is rejected under the standing 5% rule. Final-artifact
@@ -467,6 +479,58 @@ ordering, and evidence rules are unchanged.
 The frozen SQL/OJVM engines remain migration oracles only until those cutover
 gates pass. Evidence and the reproducible probes are in `probes/mle/` and
 `reports/performance-PMLE-mle-26ai-2026-07-22.md`.
+
+#### Approved Always Free database-frame amendment — 2026-07-26
+
+Authorized by Brian Martin. This amendment supersedes the live-presentation
+portion of the 2026-07-22 role swap while preserving its simulation authority,
+determinism, recovery, multiplayer ordering, Java-removal, and evidence rules.
+
+1. The deployment and acceptance venue is Oracle Autonomous Database 26ai
+   Always Free. A solution that requires paid ECPUs, another database edition,
+   an external render service, OJVM, or native `extproc` does not satisfy the
+   demo goal.
+2. Oracle must generate each complete live framebuffer. The browser may
+   decode a transport encoding, expand a database-selected indexed palette,
+   and copy/scale completed pixels to canvas; it may not perform visibility,
+   wall/span/sprite/HUD rasterization, game simulation, prediction, or frame
+   reinterpretation.
+3. Release acceptance requires at least 30 browser-observed unique moving
+   frames per second from database-generated pixels during real gameplay on
+   the deployed Always Free application. The gate covers moving and firing,
+   sustained peak-combat windows, frame ordering, bounded backlog, and healthy
+   database/ORDS postflight. Component projections and synthetic scenes cannot
+   pass this gate.
+4. Exact Mocha frames remain a differential reference where useful, but
+   byte-exact live parity is not a release requirement. Reduced internal
+   resolution, bounded lighting buckets, precomputed columns, or other
+   measured visual simplifications are permitted if the database still
+   produces the final displayed pixel field and gameplay remains recognizably
+   complete. Any simplification must be explicit and visually regression
+   tested.
+5. DVR, audit-frame persistence, and frame compression are not deliverables.
+   Compression may be reconsidered only as a transport optimization after the
+   live raster path meets its producer budget.
+6. The implementation order is fixed:
+   a. freeze and measure the complete Always Free live-frame budget;
+   b. run a real E1M1 draw-tape A/B for batched database-native primitives;
+   c. implement an allocation-free specialized MLE JavaScript live renderer,
+      using the least visual simplification required by measurements;
+   d. optimize framebuffer egress and hosted ORDS delivery;
+   e. integrate solo and multiplayer with a display-only client; and
+   f. pass the sustained deployed 30-FPS, correctness, recovery, and WAN gates.
+7. The existing confirmed-delta browser-rendered release remains available
+   only as a control and fallback during implementation. It is not completion
+   evidence for this amendment.
+
+First implementation evidence (2026-07-26): the accepted 5,250-tic E1M1 route
+contains 1,505 real Mocha draw commands per average frame and 2,325 maximum.
+Always Free rejects per-command native RAW scatter at 14.007 ms peak p95, but
+promotes a retained allocation-free 160x100 MLE BLOCKMAP renderer at 2.529 ms
+worst-final p95 across the same route's real camera poses. This establishes
+the specialized renderer as the active path. It does not satisfy acceptance
+until portals, textures, lighting, sprites, weapons, HUD, live authority state,
+ORDS delivery, and deployed browser cadence all pass.
 
 #### Approved MLE integration, observability, and WAN directive — 2026-07-22
 

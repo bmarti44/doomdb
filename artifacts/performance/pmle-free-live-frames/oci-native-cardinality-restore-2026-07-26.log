@@ -1,0 +1,25 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Error starting at line : 13 in command -
+select 'PMLE_FREE_NATIVE_RESTORE|PASS|production_sha256='||
+  lower(rawtohex(dbms_crypto.hash(source_blob,dbms_crypto.hash_sh256)))
+from doom_teavm_sim_source
+Error at Command Line : 14 Column : 47
+Error report -
+SQL Error: ORA-06553: PLS-221: 'HASH_SH256' is not a procedure or is undefined
+Help: https://docs.oracle.com/error-help/db/ora-06553/
+Rollback

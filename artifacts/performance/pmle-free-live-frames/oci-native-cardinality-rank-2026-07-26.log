@@ -1,0 +1,22 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_NATIVE_CARDINALITY|PASS|cell=translate_average|groups=17|commands=1505|pixels=56615|samples=30|batch=5|wall_p50_ms=0.066|wall_p95_ms=0.076|clock_p50_ms=0.000|clock_p95_ms=0.000|clock_suspects=0|checksum=499650
+PMLE_FREE_NATIVE_CARDINALITY|PASS|cell=scatter_average|groups=17|commands=1505|pixels=56615|samples=30|batch=5|wall_p50_ms=9.343|wall_p95_ms=10.775|clock_p50_ms=10.000|clock_p95_ms=10.000|clock_suspects=0|checksum=9600000
+PMLE_FREE_NATIVE_CARDINALITY|PASS|cell=combined_average|groups=17|commands=1505|pixels=56615|samples=30|batch=5|wall_p50_ms=16.487|wall_p95_ms=18.764|clock_p50_ms=16.000|clock_p95_ms=20.000|clock_suspects=0|checksum=9600000
+PMLE_FREE_NATIVE_CARDINALITY|PASS|cell=translate_peak|groups=29|commands=2325|pixels=77869|samples=30|batch=5|wall_p50_ms=0.087|wall_p95_ms=0.100|clock_p50_ms=0.000|clock_p95_ms=2.000|clock_suspects=0|checksum=402900
+PMLE_FREE_NATIVE_CARDINALITY|PASS|cell=scatter_peak|groups=29|commands=2325|pixels=77869|samples=30|batch=5|wall_p50_ms=13.887|wall_p95_ms=16.266|clock_p50_ms=14.000|clock_p95_ms=16.000|clock_suspects=0|checksum=9600000
+PMLE_FREE_NATIVE_CARDINALITY|PASS|cell=combined_peak|groups=29|commands=2325|pixels=77869|samples=30|batch=5|wall_p50_ms=13.945|wall_p95_ms=14.007|clock_p50_ms=14.000|clock_p95_ms=14.000|clock_suspects=0|checksum=9600000
+

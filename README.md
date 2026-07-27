@@ -1,8 +1,10 @@
 # DoomDB
 
 Doom, running *inside* Oracle Database. Not next to it. Not "using it for
-saves." The authoritative game engine lives in a retained Oracle MLE
-JavaScript session; the browser renders only confirmed state transitions.
+saves." The authoritative engine lives in a retained Oracle MLE JavaScript
+session. The active target is for Oracle Autonomous Database 26ai Always Free
+to generate every live framebuffer and deliver at least 30 unique moving FPS;
+the browser only copies the completed pixels to canvas.
 
 ![DoomDB gameplay recorded from the local stack](media/doomdb-gameplay.gif)
 
@@ -22,14 +24,24 @@ Here's what happens when you press the fire key:
    database** in Oracle MLE.
 3. The engine advances one tic: the bullet traces, the zombie takes damage,
    monsters think. All of it inside your database session's world.
-4. A compact, cryptographically chained DMD1 transition comes back. The
-   browser applies it to a separately pinned TeaVM presentation artifact and
-   renders the 320×200 view.
+4. The current release returns a compact, cryptographically chained DMD1
+   transition to a browser renderer. That path is now the regression control:
+   the replacement under active development returns a complete
+   database-generated framebuffer through ORDS, leaving only decode/copy and
+   canvas presentation in the browser.
 
-The target round trip is keypress, HTTP, PL/SQL, MLE JavaScript, confirmed
-delta, HTTP, canvas at Doom's 35 Hz tic rate. Firing the pistol is a database
-transaction. A demon dying is authoritative database state advancement. Your
-save file is rows plus an exact checkpoint.
+The target round trip is keypress, HTTP, PL/SQL, MLE JavaScript simulation and
+rasterization, completed pixels, HTTP, canvas. The hard demo gate is sustained
+browser-observed 30 FPS on Always Free. Firing the pistol is a database
+transaction and the resulting wall, sprite, weapon, and HUD pixels are
+database output. A demon dying is authoritative database state advancement.
+Your save file is rows plus an exact checkpoint.
+
+The first Always Free renderer spike is encouraging: a retained 160x100 MLE
+BLOCKMAP renderer traversing real E1M1 geometry and the accepted 5,250-tic
+camera route measured 2.529 ms worst-final p95. That promotes the architecture,
+but it is not the finished claim—portal bands, textures, sprites, weapon/HUD,
+live state transfer, and the full deployed 30 FPS browser gate remain.
 
 The browser has no authority: it cannot predict, simulate ahead, reorder, or
 invent a tic. If you close the tab, the world is still in the database and a

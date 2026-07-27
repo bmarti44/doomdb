@@ -38,3 +38,14 @@
  
  			int f_xfrac; // fixed_t
  			int f_yfrac; // fixed_t
+--- a/src/rr/drawfuns/R_DrawFuzzColumn.java
++++ b/src/rr/drawfuns/R_DrawFuzzColumn.java
+@@ -87,7 +87,8 @@ public abstract class R_DrawFuzzColumn<T, V> extends DoomColumnFunction<T, V> {
+ 
+         @Override
+         public void invoke() {
++            doomdb.mocha.DoomDbDrawMetrics.column(dcvars, 4);
+             int count;
+             int dest;
+ 
+             // Adjust borders. Low...
