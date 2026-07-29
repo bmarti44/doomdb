@@ -53,9 +53,12 @@ The renderer program moved through deliberately disposable floor and layout
 probes before reaching the deployed integrated candidate. It emits a complete
 64,000-byte indexed framebuffer with real E1M1 portal geometry, textures and
 flats, dynamic state, sprites, weapon animation, and the Doom status display.
-The public path has passed its deployed two-player 30 FPS gate. Visual and
-gameplay fidelity remain separately reviewable—passing the frame-rate gate
-does not turn this specialized renderer into a byte-for-byte Mocha rasterizer.
+The current public two-POV producer sustains 25.701 tics/s with no client
+pixel polling; the 30 FPS gate is therefore still open. A prior 300-frame
+browser sample averaged just over 30 FPS by spending startup backlog, but it
+was not sustained producer evidence and is no longer described as a pass.
+Visual and gameplay fidelity also remain separately reviewable—the
+specialized renderer is not a byte-for-byte Mocha rasterizer.
 
 The browser has no authority: it cannot predict, simulate ahead, reorder, or
 invent a tic. If you close the tab, the world is still in the database and a

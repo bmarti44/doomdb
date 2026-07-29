@@ -1,0 +1,26 @@
+PMLE_TWO_POV_PRODUCER|DIAGNOSTIC_NOT_GATE|mode=OBSERVE_ONLY|first_tic=415|last_tic=1045|elapsed_ms=25142.980|fps=25.057|warmup_seconds=10|generation=1|game_mode=COOP
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+FRAME_STAGE_WINDOW|170|269|views=200|render_avg_ms=29.541|render_max_ms=69.495|publish_avg_ms=2.167|publish_max_ms=3.145     
+FRAME_STAGE_WINDOW|270|369|views=200|render_avg_ms=32.129|render_max_ms=135.603|publish_avg_ms=2.203|publish_max_ms=3.493    
+FRAME_STAGE_WINDOW|370|469|views=200|render_avg_ms=29.781|render_max_ms=82.593|publish_avg_ms=2.144|publish_max_ms=2.985     
+FRAME_STAGE_WINDOW|470|569|views=200|render_avg_ms=29.987|render_max_ms=99.339|publish_avg_ms=1.990|publish_max_ms=2.688     
+FRAME_STAGE_WINDOW|570|669|views=200|render_avg_ms=30.270|render_max_ms=109.372|publish_avg_ms=2.027|publish_max_ms=2.956    
+FRAME_STAGE_WINDOW|670|769|views=200|render_avg_ms=30.825|render_max_ms=101.855|publish_avg_ms=2.200|publish_max_ms=3.608    
+FRAME_STAGE_WINDOW|770|869|views=200|render_avg_ms=31.160|render_max_ms=122.561|publish_avg_ms=2.209|publish_max_ms=3.199    
+FRAME_STAGE_WINDOW|870|969|views=200|render_avg_ms=31.280|render_max_ms=101.656|publish_avg_ms=2.145|publish_max_ms=3.588    
+POSTFLIGHT|ACTIVE=0               
+POSTFLIGHT|SLOTS=1:READY:-,2:READY:-                                                                                         

@@ -18,6 +18,12 @@ create or replace package doom_mle_match_runtime authid definer as
   procedure render_and_publish_views(
     p_match in varchar2,p_player_mask in number,p_membership_epoch in number,
     p_generation in number,p_tic in number);
+  procedure prepare_views(
+    p_match in varchar2,p_player_mask in number,p_membership_epoch in number,
+    p_generation in number,p_tic in number);
+  procedure publish_prepared_views(
+    p_match in varchar2,p_player_mask in number,p_membership_epoch in number,
+    p_generation in number,p_tic in number);
   procedure flush_live_frames(
     p_match in varchar2,p_membership_epoch in number,p_generation in number);
   function authority_sha256 return varchar2;
@@ -325,23 +331,55 @@ create or replace package body doom_mle_match_runtime as
     end if;
   end;
 
-  procedure render_and_publish_views(
+  procedure validate_view_mask(p_player_mask number) is
+  begin
+    if g_active_players is null or p_player_mask not in(1,3)
+       or bitand(p_player_mask,power(2,g_active_players)-1)<>p_player_mask then
+      raise_application_error(c_error,'MLE shared-view player mask');
+    end if;
+  end;
+
+  procedure prepare_views(
     p_match in varchar2,p_player_mask in number,p_membership_epoch in number,
     p_generation in number,p_tic in number
   ) is
     l_bytes number;
     l_players number;
   begin
-    if g_active_players is null or p_player_mask not in(1,3)
-       or bitand(p_player_mask,power(2,g_active_players)-1)<>p_player_mask then
-      raise_application_error(c_error,'MLE shared-view player mask');
-    end if;
+    validate_view_mask(p_player_mask);
     l_players:=case p_player_mask when 1 then 1 when 3 then 2 end;
-    l_bytes:=doom_mle_live_render_publish_views(
+    l_bytes:=doom_mle_live_prepare_views(
+      p_match,p_player_mask,p_membership_epoch,p_generation,p_tic);
+    if l_bytes<>16+l_players*64000 then
+      raise_application_error(c_error,'MLE shared-view preparation length');
+    end if;
+  end;
+
+  procedure publish_prepared_views(
+    p_match in varchar2,p_player_mask in number,p_membership_epoch in number,
+    p_generation in number,p_tic in number
+  ) is
+    l_bytes number;
+    l_players number;
+  begin
+    validate_view_mask(p_player_mask);
+    l_players:=case p_player_mask when 1 then 1 when 3 then 2 end;
+    l_bytes:=doom_mle_live_publish_prepared_views(
       p_match,p_player_mask,p_membership_epoch,p_generation,p_tic);
     if l_bytes<>16+l_players*64000 then
       raise_application_error(c_error,'MLE shared-view publication length');
     end if;
+  end;
+
+  procedure render_and_publish_views(
+    p_match in varchar2,p_player_mask in number,p_membership_epoch in number,
+    p_generation in number,p_tic in number
+  ) is
+  begin
+    prepare_views(
+      p_match,p_player_mask,p_membership_epoch,p_generation,p_tic);
+    publish_prepared_views(
+      p_match,p_player_mask,p_membership_epoch,p_generation,p_tic);
   end;
 
   procedure flush_live_frames(

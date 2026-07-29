@@ -138,6 +138,7 @@ AUTHORITY_TRANSPORT_TEST=$ROOT/tests/verify-mle-transition-transport.sql
 MLE_MATCH_RUNTIME=$ROOT/sql/sim/088_mle_match_runtime.sql
 MLE_LIVE_FRAME_LOADER=$ROOT/probes/mle/load-live-frame-module.sh
 MLE_LIVE_FRAME_SCHEMA=$ROOT/sql/schema/064_mle_live_frame.sql
+MLE_FRAME_STAGE_SCHEMA=$ROOT/sql/schema/067_mle_frame_stage_telemetry.sql
 MLE_LIVE_FRAME_TRANSPORT=$ROOT/sql/sim/089_mle_live_frame_transport.sql
 MLE_LIVE_FRAME_COORDINATOR=$ROOT/probes/mle/dvl2-world-raster-coordinator.mjs
 MLE_RENDERER_ASSET_PACK_BUILDER=$ROOT/probes/mle/build-renderer-asset-packs.mjs
@@ -859,8 +860,17 @@ grep -q 'live-frame module deployment requires the retained pool parked' \
   fail 'diagnostic live-frame pin override is not explicit/fail-closed'
 grep -q "signature 'renderAndPublishMatchFrame" "$MLE_LIVE_FRAME_LOADER" ||
   fail 'live-frame render/publish call spec missing'
+grep -q "signature 'prepareMatchViews" "$MLE_LIVE_FRAME_LOADER" &&
+grep -q "signature 'publishPreparedMatchViews" "$MLE_LIVE_FRAME_LOADER" &&
+grep -q 'doom_mle_match_runtime.prepare_views' "$MLE_MATCH_WORKER" &&
+grep -q 'doom_mle_match_runtime.publish_prepared_views' "$MLE_MATCH_WORKER" &&
+grep -q 'create table doom_match_frame_stage_window' \
+  "$MLE_FRAME_STAGE_SCHEMA" ||
+  fail 'two-POV render/publication stage decomposition is not fenced'
 grep -q 'renderAndPublishMatchFrame' "$MLE_LIVE_FRAME_COORDINATOR" ||
   fail 'live-frame coordinator pipeline missing'
+node "$ROOT/tests/verify-temporal-static-copy.mjs" >/dev/null ||
+  fail 'stationary confirmed-frame bulk-copy equivalence failed'
 node --check "$MLE_RENDERER_ASSET_PACK_BUILDER" >/dev/null ||
   fail 'renderer asset-pack builder syntax is invalid'
 (

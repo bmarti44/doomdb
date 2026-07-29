@@ -2,8 +2,9 @@
 set -Eeuo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+db_sql_client="${DOOMDB_DB_SQL_CLIENT:-$root/scripts/db_sql.sh}"
 renderer="$root/artifacts/performance/pmle-live-frame-hud/renderer-c60a34dd81d6.js"
-coordinator="$root/artifacts/performance/pmle-live-frame-hud/coordinator-59acb671e6e0.mjs"
+coordinator="${PMLE_LIVE_FRAME_COORDINATOR:-$root/artifacts/performance/pmle-live-frame-stage-split/coordinator-8f005189021d.mjs}"
 world_pack="$root/artifacts/performance/pmle-live-frame-hud/world-pack-4f5fed82d21a.bin"
 compositor_pack="$root/artifacts/performance/pmle-live-frame-hud/compositor-pack-e31962b3a177.bin"
 wall_asset="$root/artifacts/performance/pmle-live-frame-hud/wall-assets-4e23605106fe.bin"
@@ -96,6 +97,8 @@ emit_sql() {
     'procedure doom_mle_live_release' \
     'function doom_mle_live_frame_flush' \
     'function doom_mle_live_frame_prewarm' \
+    'function doom_mle_live_publish_prepared_views' \
+    'function doom_mle_live_prepare_views' \
     'function doom_mle_live_render_publish_views' \
     'function doom_mle_live_render_publish' \
     'function doom_mle_live_ui_finalize' \
@@ -269,6 +272,10 @@ emit_sql() {
     '/' \
     "create function doom_mle_live_render_publish_views(p_match varchar2,p_player_mask number,p_epoch number,p_generation number,p_tic number)return number as mle module doom_mle_live_coordinator env doom_mle_live_env signature 'renderAndPublishMatchViews(string, number, number, number, number)';" \
     '/' \
+    "create function doom_mle_live_prepare_views(p_match varchar2,p_player_mask number,p_epoch number,p_generation number,p_tic number)return number as mle module doom_mle_live_coordinator env doom_mle_live_env signature 'prepareMatchViews(string, number, number, number, number)';" \
+    '/' \
+    "create function doom_mle_live_publish_prepared_views(p_match varchar2,p_player_mask number,p_epoch number,p_generation number,p_tic number)return number as mle module doom_mle_live_coordinator env doom_mle_live_env signature 'publishPreparedMatchViews(string, number, number, number, number)';" \
+    '/' \
     "create function doom_mle_live_frame_prewarm(p_iterations number)return number as mle module doom_mle_live_coordinator env doom_mle_live_env signature 'prewarmCompleteRenderer(number)';" \
     '/' \
     "create function doom_mle_live_frame_flush(p_match varchar2,p_epoch number,p_generation number)return number as mle module doom_mle_live_coordinator env doom_mle_live_env signature 'flushMatchLiveFrameBatches(string, number, number)';" \
@@ -282,17 +289,17 @@ if [[ "$emit_only" == 1 ]]; then
   emit_sql
   exit 0
 fi
-active_contexts="$("$root/scripts/db_sql.sh" - <<'SQL'
+active_contexts="$("$db_sql_client" - <<'SQL'
 set heading off feedback off pagesize 0
 select 'ACTIVE_LIVE_CONTEXTS='||count(*) from doom_mle_warm_slot
 where slot_status in('WARMING','READY','CLAIMED','RUNNING');
 SQL
 )"
 active_contexts="$(awk -F= '/^ACTIVE_LIVE_CONTEXTS=/{print $2}' \
-  <<<"$active_contexts")"
+  <<<"$active_contexts" | tr -d '[:space:]')"
 [[ "$active_contexts" == 0 ]] || {
   printf 'live-frame module deployment requires the retained pool parked; active contexts=%s\n' \
     "${active_contexts:-UNKNOWN}" >&2
   exit 1
 }
-emit_sql | "$root/scripts/db_sql.sh" -
+emit_sql | "$db_sql_client" -

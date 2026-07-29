@@ -1,0 +1,23 @@
+PMLE_TWO_POV_PRODUCER|DIAGNOSTIC_NOT_GATE|mode=OBSERVE_ONLY|first_tic=264|last_tic=912|elapsed_ms=25213.249|fps=25.701|warmup_seconds=10|generation=1|game_mode=COOP
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+FRAME_STAGE_WINDOW|346|445|render_avg_ms=29.559|render_max_ms=104.215|publish_avg_ms=2.136|publish_max_ms=3.403    
+FRAME_STAGE_WINDOW|446|545|render_avg_ms=29.544|render_max_ms=101.280|publish_avg_ms=2.032|publish_max_ms=2.714    
+FRAME_STAGE_WINDOW|546|645|render_avg_ms=28.387|render_max_ms=66.763|publish_avg_ms=1.996|publish_max_ms=2.625     
+FRAME_STAGE_WINDOW|646|745|render_avg_ms=28.570|render_max_ms=67.070|publish_avg_ms=2.016|publish_max_ms=3.914     
+FRAME_STAGE_WINDOW|746|845|render_avg_ms=29.279|render_max_ms=106.572|publish_avg_ms=2.035|publish_max_ms=3.421    
+POSTFLIGHT|ACTIVE=0               
+POSTFLIGHT|SLOTS=1:READY:-,2:READY:-                                                                                         

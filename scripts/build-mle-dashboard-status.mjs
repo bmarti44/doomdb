@@ -55,6 +55,9 @@ const ociDatabasePixelReleaseEvidencePath =
 const ociHudDatabasePixelEvidencePath =
   'artifacts/performance/pmle-live-frame-hud/' +
   'oci-hud-v8-two-pov-300-v5-qualified-2026-07-29.log';
+const ociFrameStageEvidencePath =
+  'artifacts/performance/pmle-live-frame-stage-split/' +
+  'oci-static-copy-observe-2026-07-29.log';
 const ociBrowserCleanupEvidencePath =
   'artifacts/performance/pmle-live-frame-authority/' +
   'oci-session-cleanup-browser-native35-2026-07-29.log';
@@ -295,6 +298,9 @@ const ociDatabasePixelRelease = read(ociDatabasePixelReleaseEvidencePath);
 const ociHudDatabasePixel = hudLiveFramePromoted
   ? read(ociHudDatabasePixelEvidencePath)
   : null;
+const ociFrameStage = hudLiveFramePromoted
+  ? read(ociFrameStageEvidencePath)
+  : null;
 const ociBrowserCleanup = read(ociBrowserCleanupEvidencePath);
 const ociDatabaseCleanup = read(ociDatabaseCleanupEvidencePath);
 const ociActiveLeave = read(ociActiveLeaveEvidencePath);
@@ -382,6 +388,14 @@ if (hudLiveFramePromoted) {
   contains(ociHudDatabasePixel,
     'player 0 p0=32.98fps paint=31.50/42.70ms',
     'OCI HUD database-pixel narrow cadence miss');
+  contains(ociFrameStage,
+    'PMLE_TWO_POV_PRODUCER|DIAGNOSTIC_NOT_GATE|mode=OBSERVE_ONLY|' +
+    'first_tic=264|last_tic=912|elapsed_ms=25213.249|fps=25.701',
+    'OCI sustained two-POV producer');
+  contains(ociFrameStage,
+    'FRAME_STAGE_WINDOW|546|645|render_avg_ms=28.387|' +
+    'render_max_ms=66.763|publish_avg_ms=1.996|publish_max_ms=2.625',
+    'OCI render/publish stage split');
 }
 contains(ociBrowserCleanup,
   'PASS SESSION-CLEANUP-BROWSER',
@@ -640,7 +654,7 @@ const status = {
       ? 'PASS_CURRENT_AUTHORITY'
       : 'HISTORICAL_PASS_103E',
     databasePixelTwoPov300: hudLiveFramePromoted
-      ? 'VISUAL_FIX_DEPLOYED_TWO_POV_AVERAGE_30_12FPS_P95_GATE_OPEN'
+      ? 'DEPLOYED_SUSTAINED_PRODUCER_25_701FPS_30FPS_GATE_OPEN'
       : 'PASS',
     databasePixelCheckpointCrossing: hudLiveFramePromoted
       ? 'HISTORICAL_PASS_C613'
@@ -778,7 +792,7 @@ const status = {
   },
   performance: {
     state: hudLiveFramePromoted
-      ? 'VISUAL_GEOMETRY_FIXED_DATABASE_RENDERER_DEPLOYED_TWO_POV_PRODUCER_GATE_OPEN'
+      ? 'DATABASE_RENDERER_DEPLOYED_TWO_POV_SUSTAINED_25_701FPS_GATE_OPEN'
       : 'OCI_DATABASE_PIXELS_TWO_POV_30FPS_PASS',
     evidenceArtifactSha256: liveFrameAuthority.sha256,
     authorityTickerEvidenceArtifactSha256: deCpsAuthority.sha256,
@@ -809,14 +823,17 @@ const status = {
         authority.liveFrameRenderer.deployedOutputSha256,
       coordinatorSha256:
         authority.liveFrameRenderer.deployedCoordinatorSha256,
-      status: 'VISUAL_FIX_DEPLOYED_TWO_POV_AVERAGE_PASS_P95_GATE_OPEN',
+      status: 'SUSTAINED_TWO_POV_PRODUCER_25_701FPS_30FPS_GATE_OPEN',
       productionShapeServerFps: 72.562,
       productionShapeServerP50Milliseconds: 13.145,
       productionShapeServerP95Milliseconds: 18.598,
       latestPublicTwoBrowserFps: [30.12],
       latestPublicTwoBrowserCadenceP95Milliseconds: [51.2],
+      sustainedNoPixelPollingProducerFps: 25.701,
+      twoPovRenderAverageMillisecondsRange: [28.387, 29.559],
+      twoPovPublishAverageMillisecondsRange: [1.996, 2.136],
       confirmedFrameDrops: [0, 0],
-      evidence: ociHudDatabasePixelEvidencePath
+      evidence: ociFrameStageEvidencePath
     } : null,
     workload: 'two-player deathmatch authoritative exact command stream',
     tics: 5250,
@@ -1045,7 +1062,7 @@ const status = {
       label: 'HUD, automap, intermission, finale and audit/DVR presentation'},
     {id: 'ADB', state: 'DONE',
       label: hudLiveFramePromoted
-        ? 'HUD-complete OCI database-pixel build deployed; strict two-browser p95 cadence requalification pending'
+        ? 'Complete OCI database pixels deployed; sustained two-POV producer is 25.701 FPS and the 30 FPS gate remains open'
         : 'OCI authority 35 Hz, full digest chain, hosted statics, and browser 30 FPS passed'}
   ],
   evidence: {
@@ -1080,6 +1097,8 @@ const status = {
     ociJavaRemovalAudit: ociJavaRemovalEvidencePath,
     ociHudDatabasePixelRequalification:
       hudLiveFramePromoted ? ociHudDatabasePixelEvidencePath : null,
+    ociFrameStageDecomposition:
+      hudLiveFramePromoted ? ociFrameStageEvidencePath : null,
     ociDeCpsPresentationDiagnostic: ociDeCpsPresentationEvidencePath,
     ociDatabaseFrameDiagnostic: ociDatabaseFrameEvidencePath,
     ociWasm2jsPresentationCost: ociWasm2jsPresentationCostEvidencePath,

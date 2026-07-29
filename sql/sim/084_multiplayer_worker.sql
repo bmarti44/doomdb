@@ -66,6 +66,15 @@ create or replace package body doom_match_worker as
   -- Keep explicit so deployment evidence can A/B the Free-edition value.
   c_post_ready_yield_seconds constant number:=.1;
   g_warm_promotion boolean:=false;
+  g_frame_stage_match varchar2(32);
+  g_frame_stage_generation number;
+  g_frame_stage_first_tic number;
+  g_frame_stage_tics number:=0;
+  g_frame_stage_views number:=0;
+  g_frame_render_total_ms number:=0;
+  g_frame_render_max_ms number:=0;
+  g_frame_publish_total_ms number:=0;
+  g_frame_publish_max_ms number:=0;
 
   -- This bounded worker advances complete two-player vectors and fills a
   -- missing peer with a durable neutral command after a fixed deadline.
@@ -434,6 +443,47 @@ create or replace package body doom_match_worker as
     commit;
   end;
 
+  procedure record_frame_stage(
+    p_match varchar2,p_generation number,p_tic number,p_views number,
+    p_render_ms number,p_publish_ms number
+  ) is
+  begin
+    if g_frame_stage_match is null or g_frame_stage_match<>p_match
+       or g_frame_stage_generation<>p_generation then
+      g_frame_stage_match:=p_match;
+      g_frame_stage_generation:=p_generation;
+      g_frame_stage_first_tic:=p_tic;
+      g_frame_stage_tics:=0;
+      g_frame_stage_views:=0;
+      g_frame_render_total_ms:=0;
+      g_frame_render_max_ms:=0;
+      g_frame_publish_total_ms:=0;
+      g_frame_publish_max_ms:=0;
+    end if;
+    g_frame_stage_tics:=g_frame_stage_tics+1;
+    g_frame_stage_views:=g_frame_stage_views+p_views;
+    g_frame_render_total_ms:=g_frame_render_total_ms+p_render_ms;
+    g_frame_render_max_ms:=greatest(g_frame_render_max_ms,p_render_ms);
+    g_frame_publish_total_ms:=g_frame_publish_total_ms+p_publish_ms;
+    g_frame_publish_max_ms:=greatest(g_frame_publish_max_ms,p_publish_ms);
+    if g_frame_stage_tics=100 then
+      insert into doom_match_frame_stage_window(
+        match_id,generation,window_first_tic,window_last_tic,
+        rendered_tics,rendered_views,render_total_ms,render_max_ms,
+        publish_total_ms,publish_max_ms)
+      values(p_match,p_generation,g_frame_stage_first_tic,p_tic,
+        g_frame_stage_tics,g_frame_stage_views,g_frame_render_total_ms,
+        g_frame_render_max_ms,g_frame_publish_total_ms,g_frame_publish_max_ms);
+      g_frame_stage_first_tic:=p_tic+1;
+      g_frame_stage_tics:=0;
+      g_frame_stage_views:=0;
+      g_frame_render_total_ms:=0;
+      g_frame_render_max_ms:=0;
+      g_frame_publish_total_ms:=0;
+      g_frame_publish_max_ms:=0;
+    end if;
+  end;
+
   procedure checkpoint_busy(
     p_match varchar2,p_generation number,p_busy number
   ) is
@@ -470,6 +520,9 @@ create or replace package body doom_match_worker as
     l_step_ended timestamp with time zone;l_step_elapsed_ms number;
     l_pre_mle_ended timestamp with time zone;
     l_mle_ended timestamp with time zone;
+    l_frame_render_started timestamp with time zone;
+    l_frame_render_ended timestamp with time zone;
+    l_frame_publish_ended timestamp with time zone;
     l_precommit_ended timestamp with time zone;
     l_checkpoint_diagnostic number:=0;
     l_checkpoint_due number:=0;
@@ -571,8 +624,19 @@ create or replace package body doom_match_worker as
     elsif l_render_players not in(1,2) then
       raise_application_error(c_error,'live-frame active membership mismatch');
     else
-      doom_mle_match_runtime.render_and_publish_views(
+      l_frame_render_started:=utc_now;
+      doom_mle_match_runtime.prepare_views(
         p_match,l_render_mask,p_epoch,p_generation,p_tic);
+      l_frame_render_ended:=utc_now;
+      doom_mle_match_runtime.publish_prepared_views(
+        p_match,l_render_mask,p_epoch,p_generation,p_tic);
+      l_frame_publish_ended:=utc_now;
+      if p_diagnostics=1 then
+        record_frame_stage(
+          p_match,p_generation,p_tic,l_render_players,
+          elapsed_micros(l_frame_render_started,l_frame_render_ended)/1000,
+          elapsed_micros(l_frame_render_ended,l_frame_publish_ended)/1000);
+      end if;
     end if;
     dbms_application_info.set_action('MLE_STEP');
     -- Test scaffold only: CHECKPOINT_TEST_HOOK may force a tic-64 checkpoint

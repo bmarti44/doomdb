@@ -113,17 +113,6 @@ function synthesizeConfirmedWorld(playerSlot, frameTic, snapshot) {
     throw new Error(`confirmed world cache is absent for player ${playerSlot}`);
   }
   const current = snapshotCamera(snapshot, frameTic);
-  const target = rendererFrameView(renderer);
-  // The prior path still performed 320 interpreted column selections when
-  // the confirmed camera was byte-for-byte stationary. In that case its
-  // mapping is exactly sourceX=x with no vertical shift, so one native bulk
-  // copy is bit-identical and avoids 320 JS-to-TypedArray crossings.
-  if (current.x === previous.x && current.y === previous.y
-      && current.angle === previous.angle
-      && current.viewZ === previous.viewZ) {
-    target.set(source);
-    return target;
-  }
   const [directionX, directionY] = approximateDirection(previous.angle);
   const dx = current.x - previous.x;
   const dy = current.y - previous.y;
@@ -143,6 +132,7 @@ function synthesizeConfirmedWorld(playerSlot, frameTic, snapshot) {
     -96, Math.min(96, forwardFixed * 12 / 65536));
   const vertical = Math.max(
     -6, Math.min(6, Math.round((current.viewZ - previous.viewZ) / 65536)));
+  const target = rendererFrameView(renderer);
   for (let x = 0; x < FRAME_WIDTH; x++) {
     const centered = x - FRAME_WIDTH / 2;
     const sourcePosition =

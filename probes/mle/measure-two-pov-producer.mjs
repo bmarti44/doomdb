@@ -7,6 +7,14 @@ const root = new URL(process.env.DOOMDB_ORDS_BASE_URL
 const frames = Number.parseInt(
   process.env.DOOMDB_TWO_POV_PRODUCER_FRAMES ?? '300', 10);
 assert.ok(Number.isInteger(frames) && frames >= 100 && frames <= 10_000);
+const observeOnlySeconds = Number.parseInt(
+  process.env.DOOMDB_TWO_POV_OBSERVE_ONLY_SECONDS ?? '0', 10);
+const observeWarmupSeconds = Number.parseInt(
+  process.env.DOOMDB_TWO_POV_OBSERVE_WARMUP_SECONDS ?? '0', 10);
+assert.ok(Number.isInteger(observeOnlySeconds)
+  && observeOnlySeconds >= 0 && observeOnlySeconds <= 300);
+assert.ok(Number.isInteger(observeWarmupSeconds)
+  && observeWarmupSeconds >= 0 && observeWarmupSeconds <= 300);
 
 async function post(path, body, expected = true) {
   const response = await fetch(new URL(path, root), {
@@ -62,14 +70,65 @@ try {
   });
   const active = await waitActive(
     created.p_match, created.p_player_capability);
-  let afterTic = -1;
-  let firstTic = -1;
-  let lastTic = -1;
-  let received = 0;
-  let firstAt = 0;
-  let lastAt = 0;
-  let nextPresenceAt = 0;
-  while (received < frames) {
+  if (observeOnlySeconds > 0) {
+    let status = active;
+    const warmupDeadline = performance.now() + observeWarmupSeconds * 1_000;
+    while (performance.now() < warmupDeadline) {
+      await Promise.all([
+        post('TOUCH_MATCH_PRESENCE', {
+          p_match: created.p_match,
+          p_player_capability: created.p_player_capability,
+        }),
+        post('TOUCH_MATCH_PRESENCE', {
+          p_match: created.p_match,
+          p_player_capability: joined.p_player_capability,
+        }),
+      ]);
+      await new Promise(resolve => setTimeout(resolve, 1_000));
+      status = await post('MATCH_STATUS', {
+        p_match: created.p_match,
+        p_capability: created.p_player_capability,
+      });
+    }
+    const firstTic = status.p_current_tic;
+    const started = performance.now();
+    let ended = started;
+    while (ended - started < observeOnlySeconds * 1_000) {
+      await Promise.all([
+        post('TOUCH_MATCH_PRESENCE', {
+          p_match: created.p_match,
+          p_player_capability: created.p_player_capability,
+        }),
+        post('TOUCH_MATCH_PRESENCE', {
+          p_match: created.p_match,
+          p_player_capability: joined.p_player_capability,
+        }),
+      ]);
+      await new Promise(resolve => setTimeout(resolve, 1_000));
+      status = await post('MATCH_STATUS', {
+        p_match: created.p_match,
+        p_capability: created.p_player_capability,
+      });
+      ended = performance.now();
+    }
+    const lastTic = status.p_current_tic;
+    const elapsedMs = ended - started;
+    const fps = (lastTic - firstTic) * 1_000 / elapsedMs;
+    process.stdout.write(
+      `PMLE_TWO_POV_PRODUCER|DIAGNOSTIC_NOT_GATE|mode=OBSERVE_ONLY`
+      + `|first_tic=${firstTic}|last_tic=${lastTic}`
+      + `|elapsed_ms=${elapsedMs.toFixed(3)}|fps=${fps.toFixed(3)}`
+      + `|warmup_seconds=${observeWarmupSeconds}`
+      + `|generation=${active.p_generation}|game_mode=COOP\n`);
+  } else {
+    let afterTic = -1;
+    let firstTic = -1;
+    let lastTic = -1;
+    let received = 0;
+    let firstAt = 0;
+    let lastAt = 0;
+    let nextPresenceAt = 0;
+    while (received < frames) {
     const now = performance.now();
     if (now >= nextPresenceAt) {
       await Promise.all([
@@ -105,15 +164,16 @@ try {
     lastTic = batch.p_last_tic;
     lastAt = performance.now();
     afterTic = lastTic;
+    }
+    const elapsedMs = lastAt - firstAt;
+    const intervals = lastTic - firstTic;
+    const fps = intervals * 1_000 / elapsedMs;
+    process.stdout.write(
+      `PMLE_TWO_POV_PRODUCER|DIAGNOSTIC_NOT_GATE|frames=${received}`
+      + `|first_tic=${firstTic}|last_tic=${lastTic}`
+      + `|elapsed_ms=${elapsedMs.toFixed(3)}|fps=${fps.toFixed(3)}`
+      + `|generation=${active.p_generation}|mode=COOP\n`);
   }
-  const elapsedMs = lastAt - firstAt;
-  const intervals = lastTic - firstTic;
-  const fps = intervals * 1_000 / elapsedMs;
-  process.stdout.write(
-    `PMLE_TWO_POV_PRODUCER|DIAGNOSTIC_NOT_GATE|frames=${received}`
-    + `|first_tic=${firstTic}|last_tic=${lastTic}`
-    + `|elapsed_ms=${elapsedMs.toFixed(3)}|fps=${fps.toFixed(3)}`
-    + `|generation=${active.p_generation}|mode=COOP\n`);
 } finally {
   try {
     await post('LEAVE_MATCH', {

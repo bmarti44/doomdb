@@ -30,6 +30,7 @@ sql/schema/062_mle_warm_lifecycle.sql
 sql/schema/064_mle_live_frame.sql
 sql/schema/065_mle_shared_views.sql
 sql/schema/066_async_standby_checkpoint.sql
+sql/schema/067_mle_frame_stage_telemetry.sql
 sql/schema/050_config.sql
 sql/schema/061_mle_production_config.sql
 sql/engine/005_render_axes.sql

@@ -54,8 +54,8 @@
       "bytes": 48427,
       "sha256": "c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c",
       "profile": "unified-160x56-live-frame",
-      "coordinatorBytes": 46231,
-      "coordinatorSha256": "59acb671e6e0a03ee89735806c8f0178a53dc792d22b87fb2c22db5f226fdd85"
+      "coordinatorBytes": 48003,
+      "coordinatorSha256": "8f005189021d476dfe9c75718fee8dfa0a47e235efd5567242a8b2f81f203249"
     },
     "inputBytecodeSha256": "289edf1d678f9aced34c969ed24dcc9c90b9dce38f1b15701b284a2e5384df7e",
     "mochaBytecodeSha256": "c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4",
@@ -69,7 +69,7 @@
     "coopEveryTic762": "HISTORICAL_PASS_C613",
     "membershipRecovery": "HISTORICAL_PASS_C613",
     "ledgerEveryTic13272": "HISTORICAL_PASS_C613_NODE_5250_PARITY_CURRENT",
-    "databasePixelTwoPov300": "VISUAL_FIX_DEPLOYED_TWO_POV_AVERAGE_30_12FPS_P95_GATE_OPEN",
+    "databasePixelTwoPov300": "DEPLOYED_SUSTAINED_PRODUCER_25_701FPS_30FPS_GATE_OPEN",
     "databasePixelCheckpointCrossing": "HISTORICAL_PASS_C613",
     "abandonedSessionCleanup": "PASS",
     "warmRestoreDirectMleAb": "PASS",
@@ -189,7 +189,7 @@
     "note": "cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline"
   },
   "performance": {
-    "state": "VISUAL_GEOMETRY_FIXED_DATABASE_RENDERER_DEPLOYED_TWO_POV_PRODUCER_GATE_OPEN",
+    "state": "DATABASE_RENDERER_DEPLOYED_TWO_POV_SUSTAINED_25_701FPS_GATE_OPEN",
     "evidenceArtifactSha256": "c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1",
     "authorityTickerEvidenceArtifactSha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
     "databasePixelRelease": {
@@ -226,8 +226,8 @@
     "currentHudDeployment": {
       "authoritySha256": "66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873",
       "rendererSha256": "c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c",
-      "coordinatorSha256": "59acb671e6e0a03ee89735806c8f0178a53dc792d22b87fb2c22db5f226fdd85",
-      "status": "VISUAL_FIX_DEPLOYED_TWO_POV_AVERAGE_PASS_P95_GATE_OPEN",
+      "coordinatorSha256": "8f005189021d476dfe9c75718fee8dfa0a47e235efd5567242a8b2f81f203249",
+      "status": "SUSTAINED_TWO_POV_PRODUCER_25_701FPS_30FPS_GATE_OPEN",
       "productionShapeServerFps": 72.562,
       "productionShapeServerP50Milliseconds": 13.145,
       "productionShapeServerP95Milliseconds": 18.598,
@@ -237,11 +237,20 @@
       "latestPublicTwoBrowserCadenceP95Milliseconds": [
         51.2
       ],
+      "sustainedNoPixelPollingProducerFps": 25.701,
+      "twoPovRenderAverageMillisecondsRange": [
+        28.387,
+        29.559
+      ],
+      "twoPovPublishAverageMillisecondsRange": [
+        1.996,
+        2.136
+      ],
       "confirmedFrameDrops": [
         0,
         0
       ],
-      "evidence": "artifacts/performance/pmle-live-frame-hud/oci-hud-v8-two-pov-300-v5-qualified-2026-07-29.log"
+      "evidence": "artifacts/performance/pmle-live-frame-stage-split/oci-static-copy-observe-2026-07-29.log"
     },
     "workload": "two-player deathmatch authoritative exact command stream",
     "tics": 5250,
@@ -466,7 +475,7 @@
     {
       "id": "ADB",
       "state": "DONE",
-      "label": "HUD-complete OCI database-pixel build deployed; strict two-browser p95 cadence requalification pending"
+      "label": "Complete OCI database pixels deployed; sustained two-POV producer is 25.701 FPS and the 30 FPS gate remains open"
     }
   ],
   "evidence": {
@@ -507,6 +516,7 @@
     "ociWaitFreeWanQualification": "artifacts/performance/pmle-wan/oci-wait-free-setpoint-depth6-qualification-v2-pass-2026-07-26.md",
     "ociJavaRemovalAudit": "artifacts/performance/pmle-cloud/oci-exact-release-java-removal-2026-07-26.log",
     "ociHudDatabasePixelRequalification": "artifacts/performance/pmle-live-frame-hud/oci-hud-v8-two-pov-300-v5-qualified-2026-07-29.log",
+    "ociFrameStageDecomposition": "artifacts/performance/pmle-live-frame-stage-split/oci-static-copy-observe-2026-07-29.log",
     "ociDeCpsPresentationDiagnostic": "artifacts/performance/pmle-presentation-decps/REPORT.md",
     "ociDatabaseFrameDiagnostic": "artifacts/performance/pmle-database-frames/REPORT.md",
     "ociWasm2jsPresentationCost": "artifacts/performance/pmle-database-frames/wasm2js-presentation-cost-verdict-2026-07-26.md",
