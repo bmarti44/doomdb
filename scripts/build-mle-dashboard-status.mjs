@@ -53,8 +53,8 @@ const ociDatabasePixelReleaseEvidencePath =
   'artifacts/performance/pmle-live-frame-authority/' +
   'oci-two-pov-native35-input20-standby5-terminal-2026-07-29-v37.log';
 const ociHudDatabasePixelEvidencePath =
-  'artifacts/performance/pmle-live-frame-hud/' +
-  'oci-hud-v8-two-pov-300-v5-qualified-2026-07-29.log';
+  'artifacts/performance/pmle-live-frame-hud-fix/' +
+  'OCI-160X84-DEPLOYMENT.md';
 const ociFrameStageEvidencePath =
   'artifacts/performance/pmle-live-frame-stage-split/' +
   'oci-static-copy-observe-2026-07-29.log';
@@ -380,14 +380,21 @@ contains(ociDatabasePixelRelease,
   'OCI database-pixel checkpoint crossing');
 if (hudLiveFramePromoted) {
   contains(ociHudDatabasePixel,
-    'PMLE_OCI_TWO_POV_ARTIFACT_ATTEST|phase=BEFORE|' +
+    'PMLE_OCI_SOLO_160X84_ARTIFACT|' +
     `authority_sha256=${hudLiveFrameAuthority.sha256}|` +
-    'renderer_sha256=61163171b77421fc01a96359903fc1bc5fbbc17c639177c77e48f4973b4a0f12|' +
-    'coordinator_sha256=906f045eb2c5b016f9c1733c3c7546575d0a8e07f591c85181bf38ef56df6306',
+    `renderer_sha256=${authority.liveFrameRenderer.deployedOutputSha256}|` +
+    `coordinator_sha256=${authority.liveFrameRenderer.deployedCoordinatorSha256}`,
     'OCI HUD database-pixel artifact attestation');
   contains(ociHudDatabasePixel,
-    'player 0 p0=32.98fps paint=31.50/42.70ms',
-    'OCI HUD database-pixel narrow cadence miss');
+    'PMLE_OCI_SOLO_160X84|PERFORMANCE_PASS|frames=300|' +
+    'unique_frames=300|sequential_tics=true|fps=34.995|' +
+    'p50_ms=28.200|p95_ms=31.900',
+    'OCI HUD database-pixel solo performance pass');
+  contains(ociHudDatabasePixel,
+    'PMLE_OCI_SOLO_160X84_REPEAT|DIAGNOSTIC_NOT_GATE|' +
+    'frames=300|unique_frames=300|sequential_tics=true|fps=34.117|' +
+    'p50_ms=28.300|p95_ms=32.400|p99_ms=33.200|max_ms=225.000',
+    'OCI HUD database-pixel repeat venue tail');
   contains(ociFrameStage,
     'PMLE_TWO_POV_PRODUCER|DIAGNOSTIC_NOT_GATE|mode=OBSERVE_ONLY|' +
     'first_tic=264|last_tic=912|elapsed_ms=25213.249|fps=25.701',
@@ -654,7 +661,7 @@ const status = {
       ? 'PASS_CURRENT_AUTHORITY'
       : 'HISTORICAL_PASS_103E',
     databasePixelTwoPov300: hudLiveFramePromoted
-      ? 'DEPLOYED_SUSTAINED_PRODUCER_25_701FPS_30FPS_GATE_OPEN'
+      ? 'SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_GATE_OPEN'
       : 'PASS',
     databasePixelCheckpointCrossing: hudLiveFramePromoted
       ? 'HISTORICAL_PASS_C613'
@@ -792,9 +799,11 @@ const status = {
   },
   performance: {
     state: hudLiveFramePromoted
-      ? 'DATABASE_RENDERER_DEPLOYED_TWO_POV_SUSTAINED_25_701FPS_GATE_OPEN'
+      ? 'DATABASE_RENDERER_DEPLOYED_SOLO_160X84_34_995FPS'
       : 'OCI_DATABASE_PIXELS_TWO_POV_30FPS_PASS',
-    evidenceArtifactSha256: liveFrameAuthority.sha256,
+    evidenceArtifactSha256: hudLiveFramePromoted
+      ? hudLiveFrameAuthority.sha256
+      : liveFrameAuthority.sha256,
     authorityTickerEvidenceArtifactSha256: deCpsAuthority.sha256,
     databasePixelRelease: {
       venue: 'OCI Autonomous Database Always Free 26ai',
@@ -823,12 +832,16 @@ const status = {
         authority.liveFrameRenderer.deployedOutputSha256,
       coordinatorSha256:
         authority.liveFrameRenderer.deployedCoordinatorSha256,
-      status: 'SUSTAINED_TWO_POV_PRODUCER_25_701FPS_30FPS_GATE_OPEN',
+      status: 'SOLO_160X84_PERFORMANCE_PASS_TWO_POV_GATE_OPEN',
       productionShapeServerFps: 72.562,
       productionShapeServerP50Milliseconds: 13.145,
       productionShapeServerP95Milliseconds: 18.598,
-      latestPublicTwoBrowserFps: [30.12],
-      latestPublicTwoBrowserCadenceP95Milliseconds: [51.2],
+      latestPublicSoloFps: 34.995,
+      latestPublicSoloCadenceP95Milliseconds: 31.9,
+      repeatPublicSoloFps: 34.117,
+      repeatPublicSoloCadenceP95Milliseconds: 32.4,
+      repeatPublicSoloMaximumIntervalMilliseconds: 225,
+      repeatPublicSoloStarvations: 1,
       sustainedNoPixelPollingProducerFps: 25.701,
       twoPovRenderAverageMillisecondsRange: [28.387, 29.559],
       twoPovPublishAverageMillisecondsRange: [1.996, 2.136],

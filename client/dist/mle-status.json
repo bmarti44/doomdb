@@ -51,11 +51,11 @@
       "profile": "presentation-engine-headless"
     },
     "liveFrameRenderer": {
-      "bytes": 48427,
-      "sha256": "c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c",
-      "profile": "unified-160x56-live-frame",
-      "coordinatorBytes": 48003,
-      "coordinatorSha256": "906f045eb2c5b016f9c1733c3c7546575d0a8e07f591c85181bf38ef56df6306"
+      "bytes": 48242,
+      "sha256": "50835b7130486e5e705bec501c785a43e8158ce5e77202afe2ad9ff4f4133d17",
+      "profile": "unified-160x84-live-frame",
+      "coordinatorBytes": 48154,
+      "coordinatorSha256": "903ee45498ea637da2150fcda226e46480f4257bcc650b4e30930527882fdf8b"
     },
     "inputBytecodeSha256": "289edf1d678f9aced34c969ed24dcc9c90b9dce38f1b15701b284a2e5384df7e",
     "mochaBytecodeSha256": "c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4",
@@ -69,7 +69,7 @@
     "coopEveryTic762": "HISTORICAL_PASS_C613",
     "membershipRecovery": "HISTORICAL_PASS_C613",
     "ledgerEveryTic13272": "HISTORICAL_PASS_C613_NODE_5250_PARITY_CURRENT",
-    "databasePixelTwoPov300": "DEPLOYED_SUSTAINED_PRODUCER_25_701FPS_30FPS_GATE_OPEN",
+    "databasePixelTwoPov300": "SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_GATE_OPEN",
     "databasePixelCheckpointCrossing": "HISTORICAL_PASS_C613",
     "abandonedSessionCleanup": "PASS",
     "warmRestoreDirectMleAb": "PASS",
@@ -189,8 +189,8 @@
     "note": "cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline"
   },
   "performance": {
-    "state": "DATABASE_RENDERER_DEPLOYED_TWO_POV_SUSTAINED_25_701FPS_GATE_OPEN",
-    "evidenceArtifactSha256": "c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1",
+    "state": "DATABASE_RENDERER_DEPLOYED_SOLO_160X84_34_995FPS",
+    "evidenceArtifactSha256": "66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873",
     "authorityTickerEvidenceArtifactSha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
     "databasePixelRelease": {
       "venue": "OCI Autonomous Database Always Free 26ai",
@@ -225,18 +225,18 @@
     },
     "currentHudDeployment": {
       "authoritySha256": "66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873",
-      "rendererSha256": "c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c",
-      "coordinatorSha256": "906f045eb2c5b016f9c1733c3c7546575d0a8e07f591c85181bf38ef56df6306",
-      "status": "SUSTAINED_TWO_POV_PRODUCER_25_701FPS_30FPS_GATE_OPEN",
+      "rendererSha256": "50835b7130486e5e705bec501c785a43e8158ce5e77202afe2ad9ff4f4133d17",
+      "coordinatorSha256": "903ee45498ea637da2150fcda226e46480f4257bcc650b4e30930527882fdf8b",
+      "status": "SOLO_160X84_PERFORMANCE_PASS_TWO_POV_GATE_OPEN",
       "productionShapeServerFps": 72.562,
       "productionShapeServerP50Milliseconds": 13.145,
       "productionShapeServerP95Milliseconds": 18.598,
-      "latestPublicTwoBrowserFps": [
-        30.12
-      ],
-      "latestPublicTwoBrowserCadenceP95Milliseconds": [
-        51.2
-      ],
+      "latestPublicSoloFps": 34.995,
+      "latestPublicSoloCadenceP95Milliseconds": 31.9,
+      "repeatPublicSoloFps": 34.117,
+      "repeatPublicSoloCadenceP95Milliseconds": 32.4,
+      "repeatPublicSoloMaximumIntervalMilliseconds": 225,
+      "repeatPublicSoloStarvations": 1,
       "sustainedNoPixelPollingProducerFps": 25.701,
       "twoPovRenderAverageMillisecondsRange": [
         28.387,
@@ -515,7 +515,7 @@
     "ociHostedBrowserScoringIncident": "artifacts/performance/pmle-cloud/t11.2-moving-input-scoring-incident-2026-07-26.md",
     "ociWaitFreeWanQualification": "artifacts/performance/pmle-wan/oci-wait-free-setpoint-depth6-qualification-v2-pass-2026-07-26.md",
     "ociJavaRemovalAudit": "artifacts/performance/pmle-cloud/oci-exact-release-java-removal-2026-07-26.log",
-    "ociHudDatabasePixelRequalification": "artifacts/performance/pmle-live-frame-hud/oci-hud-v8-two-pov-300-v5-qualified-2026-07-29.log",
+    "ociHudDatabasePixelRequalification": "artifacts/performance/pmle-live-frame-hud-fix/OCI-160X84-DEPLOYMENT.md",
     "ociFrameStageDecomposition": "artifacts/performance/pmle-live-frame-stage-split/oci-static-copy-observe-2026-07-29.log",
     "ociDeCpsPresentationDiagnostic": "artifacts/performance/pmle-presentation-decps/REPORT.md",
     "ociDatabaseFrameDiagnostic": "artifacts/performance/pmle-database-frames/REPORT.md",

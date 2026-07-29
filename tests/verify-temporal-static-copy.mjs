@@ -9,7 +9,8 @@ const coordinator = fs.readFileSync(new URL(
 assert.match(coordinator,
   /current\.x === previous\.x && current\.y === previous\.y[\s\S]*current\.angle === previous\.angle[\s\S]*current\.viewZ === previous\.viewZ/);
 assert.match(coordinator,
-  /target\.set\(source\);\s*return target;/);
+  /target\.set\(source\.subarray\(at, at \+ VIEW_HEIGHT\), at\);/);
+assert.doesNotMatch(coordinator, /target\.set\(source\);/);
 assert.match(coordinator, /const VIEW_HEIGHT = 168;/);
 assert.match(coordinator,
   /source\.subarray\(sourceAt, sourceAt \+ VIEW_HEIGHT\)/);
@@ -18,6 +19,7 @@ assert.doesNotMatch(coordinator,
 
 const width = 320;
 const height = 200;
+const viewHeight = 168;
 const source = new Uint8Array(width * height);
 for (let index = 0; index < source.length; index++) {
   source[index] = (index * 73 + (index >>> 7) * 19) & 255;
@@ -25,6 +27,7 @@ for (let index = 0; index < source.length; index++) {
 
 for (const frameTic of [1, 2, 31, 0xffff_ffff]) {
   const prior = new Uint8Array(source.length);
+  prior.fill(199);
   for (let x = 0; x < width; x++) {
     const sourcePosition = width / 2 + (x - width / 2);
     const lowerSource = Math.floor(sourcePosition);
@@ -33,18 +36,22 @@ for (const frameTic of [1, 2, 31, 0xffff_ffff]) {
     const sourceX = Math.max(0, Math.min(
       width - 1, lowerSource + (fraction > threshold ? 1 : 0)));
     const sourceAt = sourceX * height;
-    prior.set(source.subarray(sourceAt, sourceAt + height), x * height);
+    prior.set(
+      source.subarray(sourceAt, sourceAt + viewHeight), x * height);
   }
   const candidate = new Uint8Array(source.length);
-  candidate.set(source);
+  candidate.fill(199);
+  for (let x = 0; x < width; x++) {
+    const at = x * height;
+    candidate.set(source.subarray(at, at + viewHeight), at);
+  }
   assert.deepEqual(candidate, prior,
-    `stationary fast path changed the indexed framebuffer at tic ${frameTic}`);
+    `stationary viewport path changed framebuffer at tic ${frameTic}`);
 }
 
 // Moving-camera reprojection is allowed to transform only the 168-row world
 // viewport. The compositor owns rows 168..199; shifting those bytes tears the
 // retained status-bar background underneath its widget-level redraws.
-const viewHeight = 168;
 const target = new Uint8Array(source);
 for (let x = 0; x < width; x++) {
   const sourceX = Math.min(width - 1, x + 1);

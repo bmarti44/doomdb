@@ -19,12 +19,12 @@ assert.equal(mleArtifact.tablePack.sha256,
   '058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44');
 assert.equal(mleArtifact.liveFrameRenderer.requiredAuthoritySha256,
   mleArtifact.authority.sha256);
-assert.equal(mleArtifact.liveFrameRenderer.bytes,48427);
+assert.equal(mleArtifact.liveFrameRenderer.bytes,48242);
 assert.equal(mleArtifact.liveFrameRenderer.sha256,
-  'c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c');
-assert.equal(mleArtifact.liveFrameRenderer.coordinatorBytes,48022);
+  '50835b7130486e5e705bec501c785a43e8158ce5e77202afe2ad9ff4f4133d17');
+assert.equal(mleArtifact.liveFrameRenderer.coordinatorBytes,48154);
 assert.equal(mleArtifact.liveFrameRenderer.coordinatorSha256,
-  '906f045eb2c5b016f9c1733c3c7546575d0a8e07f591c85181bf38ef56df6306');
+  '903ee45498ea637da2150fcda226e46480f4257bcc650b4e30930527882fdf8b');
 assert.match(mleArtifact.iwadSha256,/^[0-9a-f]{64}$/);
 assert.equal('canonicalOracleJarSha256' in mleArtifact,false);
 fs.writeFileSync(outPath,

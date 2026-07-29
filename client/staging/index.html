@@ -240,9 +240,10 @@ fetch('/mle-status.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();ret
         ? 'capacity state unproven; operator intervention required'
         : 'capacity held closed; operator intervention required')
       : 'source pinned; database deployment pending');
-  const hudRequalificationPending=data.gates.databasePixelTwoPov300==='REQUALIFICATION_PENDING_P95_NARROW_MISS';
-  document.querySelector('#evidence-state').textContent=hudRequalificationPending
-    ? `PENDING · ${data.updated} · HUD build deployed; strict cadence requalification; ${databaseDeployment}`
+  const soloDatabasePixelPerformance=
+    data.gates.databasePixelTwoPov300==='SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_GATE_OPEN';
+  document.querySelector('#evidence-state').textContent=soloDatabasePixelPerformance
+    ? `SOLO PASS · ${data.updated} · 30 FPS multiplayer gate open; ${databaseDeployment}`
     : `PASS · ${data.updated} · correctness green; ${databaseDeployment}`;
   document.querySelector('#authority-artifact').textContent=authority.slice(0,12)+'…';
   document.querySelector('#authority-sha').textContent=authority.slice(0,12)+'…';
@@ -258,10 +259,9 @@ fetch('/mle-status.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();ret
   document.querySelector('#determinism-truth').textContent=
     `Determinism: authority ${authority.slice(0,8)}… has ledger qualification ${data.gates.ledgerEveryTic13272}; canonical-330, every-tic co-op-762, and membership-recovery gates are ${data.gates.canonical330}/${data.gates.coopEveryTic762}/${data.gates.membershipRecovery}. Every result remains bound to its recorded artifact SHA and the preserved dev-only OJVM oracle.`;
   const currentPixels=data.performance.currentHudDeployment;
-  document.querySelector('#performance-truth').textContent=(hudRequalificationPending
-    ? `Performance truth: the HUD-complete OCI database-pixel build is deployed and its warmed two-browser run measured ${currentPixels.warmRunFps[0]} / ${currentPixels.warmRunFps[1]} FPS with ${currentPixels.warmRunCadenceP95Milliseconds[0]} / ${currentPixels.warmRunCadenceP95Milliseconds[1]} ms p95 cadence and zero confirmed-frame drops. The first client's p95 narrowly missed the strict 33.333 ms bar, so requalification remains pending. The prior c613 release passed ${pixels.fps[0]} / ${pixels.fps[1]} FPS. `
-    : `Performance truth: the deployed OCI database-pixel path passed with two distinct player viewpoints and ${pixels.framesPerPlayer} sequential unique frames each. Players measured ${pixels.fps[0]} / ${pixels.fps[1]} FPS with ${pixels.cadenceP95Milliseconds[0]} / ${pixels.cadenceP95Milliseconds[1]} ms p95 cadence, zero confirmed-frame drops, and a tic-${pixels.checkpointTic} checkpoint crossing. `)+
-    `Oracle MLE generates each complete ${pixels.width}×${pixels.height} indexed framebuffer; ORDS transports compressed batches and the browser only decodes, palettes, and copies pixels to canvas. The current authority's 13,272-tic ledger, co-op-762, membership recovery, session cleanup, and capacity-reuse gates pass; the earlier confirmed-state transport also retains its three-profile WAN qualification. The artifact-specific 30-minute soak and remaining visual-fidelity work stay separately reported.`;
+  document.querySelector('#performance-truth').textContent=soloDatabasePixelPerformance
+    ? `Performance truth: the deployed 160×84-world OCI database-pixel build produced 300/300 sequential unique solo frames at ${currentPixels.latestPublicSoloFps} FPS and ${currentPixels.latestPublicSoloCadenceP95Milliseconds} ms p95 with zero scored drops, starvation, or resync. An immediate repeat sustained ${currentPixels.repeatPublicSoloFps} FPS and ${currentPixels.repeatPublicSoloCadenceP95Milliseconds} ms p95 but recorded one ${currentPixels.repeatPublicSoloMaximumIntervalMilliseconds} ms venue tail and one starvation. The strict two-player 30 FPS gate remains open; the older ${pixels.fps[0]} / ${pixels.fps[1]} FPS result with two distinct player viewpoints belongs to the historical c613 tuple. Oracle MLE generates each complete ${pixels.width}×${pixels.height} indexed framebuffer; ORDS transports bounded frame batches and the browser only applies the palette and copies pixels to canvas. Current-artifact determinism gates retain their explicit historical/current labels above; cleanup and capacity reuse pass. The earlier confirmed-state transport retains its three-profile WAN qualification across the recorded 50/100/200 ms profiles.`
+    : `Performance truth: see the pinned database-pixel evidence for the deployed artifact.`;
   document.querySelector('#soak-state').textContent=data.gates.finalWorkerSoak==='PASS_CURRENT_AUTHORITY'
     ? `PASS · ${authority.slice(0,4)}`
     : `PENDING · ${authority.slice(0,4)} RERUN`;

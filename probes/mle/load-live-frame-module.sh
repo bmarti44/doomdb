@@ -3,8 +3,8 @@ set -Eeuo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 db_sql_client="${DOOMDB_DB_SQL_CLIENT:-$root/scripts/db_sql.sh}"
-renderer="$root/artifacts/performance/pmle-live-frame-hud/renderer-c60a34dd81d6.js"
-coordinator="${PMLE_LIVE_FRAME_COORDINATOR:-$root/artifacts/performance/pmle-live-frame-stage-split/coordinator-906f045eb2c5.mjs}"
+renderer="${PMLE_LIVE_FRAME_RENDERER:-$root/artifacts/performance/pmle-live-frame-hud/renderer-50835b713048.js}"
+coordinator="${PMLE_LIVE_FRAME_COORDINATOR:-$root/artifacts/performance/pmle-live-frame-stage-split/coordinator-903ee45498ea.mjs}"
 world_pack="$root/artifacts/performance/pmle-live-frame-hud/world-pack-4f5fed82d21a.bin"
 compositor_pack="$root/artifacts/performance/pmle-live-frame-hud/compositor-pack-e31962b3a177.bin"
 wall_asset="$root/artifacts/performance/pmle-live-frame-hud/wall-assets-4e23605106fe.bin"
