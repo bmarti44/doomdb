@@ -136,7 +136,7 @@ assert.equal(status.soak.resourceManagerCpuQuantumSamples, 0);
 assert.equal(status.architecture.productionOjvm, false);
 assert.equal(status.performance.state,
   hudLiveFramePromoted
-    ? 'OCI_HUD_DATABASE_PIXELS_DEPLOYED_REQUALIFICATION_PENDING'
+    ? 'DATABASE_RENDERER_DEPLOYED_TWO_POV_SUSTAINED_25_701FPS_GATE_OPEN'
     : 'OCI_DATABASE_PIXELS_TWO_POV_30FPS_PASS');
 assert.equal(status.performance.throughputTicsPerSecond, 302.419);
 assert.equal(status.performance.slowestPeakTicsPerSecond, 140.845);
@@ -165,12 +165,16 @@ assert.equal(status.performance.databasePixelRelease.checkpointCrossing,
   'PASS');
 if (hudLiveFramePromoted) {
   assert.equal(status.gates.databasePixelTwoPov300,
-    'REQUALIFICATION_PENDING_P95_NARROW_MISS');
-  assert.deepEqual(status.performance.currentHudDeployment.warmRunFps,
-    [32.978, 32.723]);
+    'DEPLOYED_SUSTAINED_PRODUCER_25_701FPS_30FPS_GATE_OPEN');
+  assert.equal(
+    status.performance.currentHudDeployment.sustainedNoPixelPollingProducerFps,
+    25.701);
   assert.deepEqual(
-    status.performance.currentHudDeployment.warmRunCadenceP95Milliseconds,
-    [42.7, 34.6]);
+    status.performance.currentHudDeployment.twoPovRenderAverageMillisecondsRange,
+    [28.387, 29.559]);
+  assert.deepEqual(
+    status.performance.currentHudDeployment.twoPovPublishAverageMillisecondsRange,
+    [1.996, 2.136]);
 }
 assert.equal(status.sessionCleanup.capacityReuse, 'PASS');
 assert.equal(status.sessionCleanup.browserCloseReleaseMilliseconds, 321);

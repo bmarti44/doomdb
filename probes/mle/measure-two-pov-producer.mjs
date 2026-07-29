@@ -11,10 +11,13 @@ const observeOnlySeconds = Number.parseInt(
   process.env.DOOMDB_TWO_POV_OBSERVE_ONLY_SECONDS ?? '0', 10);
 const observeWarmupSeconds = Number.parseInt(
   process.env.DOOMDB_TWO_POV_OBSERVE_WARMUP_SECONDS ?? '0', 10);
+const producerMode =
+  (process.env.DOOMDB_FRAME_PRODUCER_MODE ?? 'COOP').toUpperCase();
 assert.ok(Number.isInteger(observeOnlySeconds)
   && observeOnlySeconds >= 0 && observeOnlySeconds <= 300);
 assert.ok(Number.isInteger(observeWarmupSeconds)
   && observeWarmupSeconds >= 0 && observeWarmupSeconds <= 300);
+assert.ok(producerMode === 'COOP' || producerMode === 'SOLO');
 
 async function post(path, body, expected = true) {
   const response = await fetch(new URL(path, root), {
@@ -42,48 +45,58 @@ async function waitActive(match, capability) {
 }
 
 const created = await post('CREATE_MATCH', {
-  p_game_mode: 'COOP',
+  p_game_mode: producerMode === 'SOLO' ? 'COOP' : producerMode,
   p_skill: 3,
   p_episode: 1,
   p_map: 1,
   p_display_name: 'PRODUCER HOST',
-  p_max_players: 2,
+  p_max_players: producerMode === 'SOLO' ? 1 : 2,
 });
-const joined = await post('JOIN_MATCH', {
-  p_match: created.p_match,
-  p_join_capability: created.p_join_capability,
-  p_display_name: 'PRODUCER GUEST',
-  p_player_capability: null,
-});
+const joined = producerMode === 'COOP'
+  ? await post('JOIN_MATCH', {
+    p_match: created.p_match,
+    p_join_capability: created.p_join_capability,
+    p_display_name: 'PRODUCER GUEST',
+    p_player_capability: null,
+  })
+  : null;
 let hostLeft = false;
-let guestLeft = false;
+let guestLeft = joined === null;
+const touchPlayers = async () => {
+  const touches = [
+    post('TOUCH_MATCH_PRESENCE', {
+      p_match: created.p_match,
+      p_player_capability: created.p_player_capability,
+    }),
+  ];
+  if (joined !== null) {
+    touches.push(post('TOUCH_MATCH_PRESENCE', {
+      p_match: created.p_match,
+      p_player_capability: joined.p_player_capability,
+    }));
+  }
+  await Promise.all(touches);
+};
 try {
   await post('READY_MATCH', {
     p_match: created.p_match,
     p_player_capability: created.p_player_capability,
     p_ready: 1,
   });
-  await post('READY_MATCH', {
-    p_match: created.p_match,
-    p_player_capability: joined.p_player_capability,
-    p_ready: 1,
-  });
+  if (joined !== null) {
+    await post('READY_MATCH', {
+      p_match: created.p_match,
+      p_player_capability: joined.p_player_capability,
+      p_ready: 1,
+    });
+  }
   const active = await waitActive(
     created.p_match, created.p_player_capability);
   if (observeOnlySeconds > 0) {
     let status = active;
     const warmupDeadline = performance.now() + observeWarmupSeconds * 1_000;
     while (performance.now() < warmupDeadline) {
-      await Promise.all([
-        post('TOUCH_MATCH_PRESENCE', {
-          p_match: created.p_match,
-          p_player_capability: created.p_player_capability,
-        }),
-        post('TOUCH_MATCH_PRESENCE', {
-          p_match: created.p_match,
-          p_player_capability: joined.p_player_capability,
-        }),
-      ]);
+      await touchPlayers();
       await new Promise(resolve => setTimeout(resolve, 1_000));
       status = await post('MATCH_STATUS', {
         p_match: created.p_match,
@@ -94,16 +107,7 @@ try {
     const started = performance.now();
     let ended = started;
     while (ended - started < observeOnlySeconds * 1_000) {
-      await Promise.all([
-        post('TOUCH_MATCH_PRESENCE', {
-          p_match: created.p_match,
-          p_player_capability: created.p_player_capability,
-        }),
-        post('TOUCH_MATCH_PRESENCE', {
-          p_match: created.p_match,
-          p_player_capability: joined.p_player_capability,
-        }),
-      ]);
+      await touchPlayers();
       await new Promise(resolve => setTimeout(resolve, 1_000));
       status = await post('MATCH_STATUS', {
         p_match: created.p_match,
@@ -119,7 +123,7 @@ try {
       + `|first_tic=${firstTic}|last_tic=${lastTic}`
       + `|elapsed_ms=${elapsedMs.toFixed(3)}|fps=${fps.toFixed(3)}`
       + `|warmup_seconds=${observeWarmupSeconds}`
-      + `|generation=${active.p_generation}|game_mode=COOP\n`);
+      + `|generation=${active.p_generation}|game_mode=${producerMode}\n`);
   } else {
     let afterTic = -1;
     let firstTic = -1;
@@ -131,16 +135,7 @@ try {
     while (received < frames) {
     const now = performance.now();
     if (now >= nextPresenceAt) {
-      await Promise.all([
-        post('TOUCH_MATCH_PRESENCE', {
-          p_match: created.p_match,
-          p_player_capability: created.p_player_capability,
-        }),
-        post('TOUCH_MATCH_PRESENCE', {
-          p_match: created.p_match,
-          p_player_capability: joined.p_player_capability,
-        }),
-      ]);
+      await touchPlayers();
       nextPresenceAt = performance.now() + 1_000;
     }
     const batch = await post('POLL_MATCH_PIXEL_BATCH', {
@@ -172,15 +167,17 @@ try {
       `PMLE_TWO_POV_PRODUCER|DIAGNOSTIC_NOT_GATE|frames=${received}`
       + `|first_tic=${firstTic}|last_tic=${lastTic}`
       + `|elapsed_ms=${elapsedMs.toFixed(3)}|fps=${fps.toFixed(3)}`
-      + `|generation=${active.p_generation}|mode=COOP\n`);
+      + `|generation=${active.p_generation}|mode=${producerMode}\n`);
   }
 } finally {
   try {
-    await post('LEAVE_MATCH', {
-      p_match: created.p_match,
-      p_player_capability: joined.p_player_capability,
-    });
-    guestLeft = true;
+    if (joined !== null) {
+      await post('LEAVE_MATCH', {
+        p_match: created.p_match,
+        p_player_capability: joined.p_player_capability,
+      });
+      guestLeft = true;
+    }
   } catch {}
   try {
     await post('LEAVE_MATCH', {

@@ -40,3 +40,18 @@ deployment. Authority
 and renderer
 `c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c`
 did not change.
+
+## Default solo production path
+
+The default one-player path was then measured independently because it
+produces one 320x200 POV rather than the co-op path's two. With the same
+deployed artifacts, a 10-second warmup, and a 25-second scored interval, the
+database advanced from tic 359 through tic 1226 at **34.156 tics/s**.
+
+A separate client-side run fetched 300 consecutive frames through the real
+ORDS pixel-batch endpoint. Tics 1 through 300 arrived in 8,644.013 ms, or
+**34.590 delivered frames/s**. These are diagnostic measurements rather than
+release-gate reclassifications, but they establish that the deployed default
+solo database-frame path clears 30 FPS. The remaining rate miss is the
+two-independent-POV co-op path; the remaining product defect on both paths is
+the specialized renderer's visual fidelity.
