@@ -54,8 +54,18 @@ const additionalRequiredUi = [
   ...Array.from({length:5},(_,pain)=>`STFEVL${pain}`),
   ...Array.from({length:5},(_,pain)=>`STFKILL${pain}`)
 ];
-const requiredUi = [...baselineRequiredUi, ...additionalRequiredUi];
+const hudCompletionRequiredUi = [
+  'STTMINUS',
+  ...Array.from({length:6},(_,i)=>`STGNUM${i + 2}`)
+];
+const retainedPresentationSprites = new Set(['BAL1A0']);
+const requiredUi = [
+  ...baselineRequiredUi,
+  ...additionalRequiredUi,
+  ...hudCompletionRequiredUi
+];
 const additionalUi = new Set(additionalRequiredUi);
+const hudCompletionUi = new Set(hudCompletionRequiredUi);
 const animationGroups = [
   {id:'FLAT_NUKAGE',kind:'flat',periodTics:8,frames:['NUKAGE1','NUKAGE2','NUKAGE3']},
   {id:'FLAT_FWATER',kind:'flat',periodTics:8,frames:['FWATER1','FWATER2','FWATER3','FWATER4']},
@@ -145,6 +155,8 @@ const spriteLumps=(spec)=>{
   return [...lumpNames].filter(name=>name.startsWith(spec.prefix)&&[...name.slice(4).matchAll(/([A-Z])([0-8])/g)].some(pair=>pair[1]===spec.frame)).sort();
 };
 for(const row of states){for(const lump of spriteLumps(row.sprite)) add('sprite_patch',lump,[`state ${row.id}`]); if(row.sound)add('sound',row.sound,[`state ${row.id}`]);}
+for(const name of retainedPresentationSprites) add(
+  'sprite_patch',name,['retained imp fireball presentation']);
 for(const name of requiredSounds) add('sound',name,['required E1M1 gameplay audio']);
 for(const name of requiredMusic) add('music',name,['E1M1 or intermission music']);
 for(const name of requiredUi) add('ui_patch',name,['menu, HUD, pause, or intermission UI']);
@@ -152,6 +164,12 @@ const kindOrder=new Map(['wall_texture','flat','patch','sprite_patch','sound','m
 const sortedAssets=[...assetMap.values()].map(asset=>
   asset.kind==='ui_patch'&&additionalUi.has(asset.name)
     ? {...asset,seedOrderGroup:1} : asset
+).map(asset=>
+  asset.kind==='sprite_patch'&&retainedPresentationSprites.has(asset.name)
+    ? {...asset,seedOrderGroup:2} : asset
+).map(asset=>
+  asset.kind==='ui_patch'&&hudCompletionUi.has(asset.name)
+    ? {...asset,seedOrderGroup:3} : asset
 ).sort((a,b)=>
   kindOrder.get(a.kind)-kindOrder.get(b.kind)
   ||(a.seedOrderGroup??0)-(b.seedOrderGroup??0)
@@ -159,12 +177,7 @@ const sortedAssets=[...assetMap.values()].map(asset=>
 // Keep the established seed IDs stable. The complete live-presentation
 // closure is appended after the original UI set instead of renumbering all
 // existing database assets whenever a presentation surface is completed.
-const assets=[
-  ...sortedAssets.filter(asset=>
-    asset.kind!=='ui_patch'||asset.seedOrderGroup!==1),
-  ...sortedAssets.filter(asset=>
-    asset.kind==='ui_patch'&&asset.seedOrderGroup===1)
-];
+const assets=sortedAssets;
 const closure={schema:1,wadSha256:WAD_SHA256,map:MAP,assets};
 const rngValues=[];
 for(let counter=0;rngValues.length<256;counter++)rngValues.push(...crypto.createHash('sha256').update(`DoomDB project RNG v1|${String(counter).padStart(4,'0')}`,'ascii').digest());

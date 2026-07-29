@@ -2,15 +2,14 @@
 set -Eeuo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-renderer="$root/probes/mle/free-live-teavm/target/javascript/doom-mle-free-live-unified-renderer.js"
-coordinator="$root/probes/mle/dvl2-world-raster-coordinator.mjs"
-world_pack="$root/probes/mle/free-live-teavm/target/world-raster-pack/free-live-render.pack"
-compositor_pack="$root/probes/mle/target/free-live-renderer/free-live-render.pack"
-asset_directory="$root/probes/mle/target/free-live-renderer/assets-v1"
-wall_asset="$asset_directory/wall_texture.bin"
-flat_asset="$asset_directory/flat.bin"
-sprite_asset="$asset_directory/sprite_patch.bin"
-ui_asset="$asset_directory/ui_patch.bin"
+renderer="$root/artifacts/performance/pmle-live-frame-hud/renderer-61163171b774.js"
+coordinator="$root/artifacts/performance/pmle-live-frame-hud/coordinator-59acb671e6e0.mjs"
+world_pack="$root/artifacts/performance/pmle-live-frame-hud/world-pack-4f5fed82d21a.bin"
+compositor_pack="$root/artifacts/performance/pmle-live-frame-hud/compositor-pack-e31962b3a177.bin"
+wall_asset="$root/artifacts/performance/pmle-live-frame-hud/wall-assets-4e23605106fe.bin"
+flat_asset="$root/artifacts/performance/pmle-live-frame-hud/flat-assets-bd6225c38111.bin"
+sprite_asset="$root/artifacts/performance/pmle-live-frame-hud/sprite-assets-626e52a0ce5c.bin"
+ui_asset="$root/artifacts/performance/pmle-live-frame-hud/ui-assets-8961a242c674.bin"
 lock="${PMLE_LIVE_FRAME_LOCK:-$root/versions.lock}"
 fold_width=2000
 emit_only=0

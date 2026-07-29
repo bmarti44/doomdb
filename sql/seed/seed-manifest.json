@@ -646,6 +646,69 @@
       "selection": "last-occurrence"
     },
     {
+      "directoryIndex": 608,
+      "name": "STGNUM2",
+      "occurrence": 0,
+      "offset": 14288732,
+      "size": 74,
+      "sha256": "9cfbedcef82e31faee349d0e9cfdfa7e2294348ec0c95bd55d83ba019f037d6f",
+      "selection": "last-occurrence"
+    },
+    {
+      "directoryIndex": 609,
+      "name": "STGNUM3",
+      "occurrence": 0,
+      "offset": 14288808,
+      "size": 76,
+      "sha256": "1c4050209c7b20573371033ef058b1aeae592e5dbd19508c935ee88210a1d578",
+      "selection": "last-occurrence"
+    },
+    {
+      "directoryIndex": 610,
+      "name": "STGNUM4",
+      "occurrence": 0,
+      "offset": 14288884,
+      "size": 58,
+      "sha256": "f57a1e931af55ed62ce90f9909f4c4fb50660e5730bdc1cd573e4305b20ff5cf",
+      "selection": "last-occurrence"
+    },
+    {
+      "directoryIndex": 611,
+      "name": "STGNUM5",
+      "occurrence": 0,
+      "offset": 14288944,
+      "size": 72,
+      "sha256": "72256c8268b373409ee3746c56c6545481b5a5b554ff0590d4af40caeeba7e5a",
+      "selection": "last-occurrence"
+    },
+    {
+      "directoryIndex": 612,
+      "name": "STGNUM6",
+      "occurrence": 0,
+      "offset": 14289016,
+      "size": 65,
+      "sha256": "84e470322f16f15903ea5226e5fbbe980aa8bed2d879cac2570054c21bcd3550",
+      "selection": "last-occurrence"
+    },
+    {
+      "directoryIndex": 613,
+      "name": "STGNUM7",
+      "occurrence": 0,
+      "offset": 14289084,
+      "size": 59,
+      "sha256": "92a5e43ab5fbde911a54239ae6b12fd25950791b6a958d5e425558e8dc3e7c9d",
+      "selection": "last-occurrence"
+    },
+    {
+      "directoryIndex": 616,
+      "name": "STTMINUS",
+      "occurrence": 0,
+      "offset": 14289272,
+      "size": 170,
+      "sha256": "b1d31d6934860573f3174abeaf05a770d49f4b963c467519b9ed03bbe121c993",
+      "selection": "last-occurrence"
+    },
+    {
       "directoryIndex": 617,
       "name": "STTNUM0",
       "occurrence": 0,
@@ -15167,6 +15230,111 @@
       "width": 15,
       "height": 15,
       "texelSha256": "6b0cca29964b1e133f7000549a546e70ecd4a6b72ac7509abb48c38d906280e5"
+    },
+    {
+      "assetId": 652,
+      "kind": "ui_patch",
+      "name": "STGNUM2",
+      "sourceLumps": [
+        "STGNUM2"
+      ],
+      "sourceSha256": [
+        "9cfbedcef82e31faee349d0e9cfdfa7e2294348ec0c95bd55d83ba019f037d6f"
+      ],
+      "rawSha256": "9cfbedcef82e31faee349d0e9cfdfa7e2294348ec0c95bd55d83ba019f037d6f",
+      "width": 4,
+      "height": 6,
+      "texelSha256": "a5e3f7b24a371e8851ac95d01b4ea3fbd1a06633f3d7f5dac31bbb2d3eb71325"
+    },
+    {
+      "assetId": 653,
+      "kind": "ui_patch",
+      "name": "STGNUM3",
+      "sourceLumps": [
+        "STGNUM3"
+      ],
+      "sourceSha256": [
+        "1c4050209c7b20573371033ef058b1aeae592e5dbd19508c935ee88210a1d578"
+      ],
+      "rawSha256": "1c4050209c7b20573371033ef058b1aeae592e5dbd19508c935ee88210a1d578",
+      "width": 4,
+      "height": 6,
+      "texelSha256": "f5058f42013f859b0a7e3cb20726b77ebde5887dc6c0aed137cc2604e8ee8246"
+    },
+    {
+      "assetId": 654,
+      "kind": "ui_patch",
+      "name": "STGNUM4",
+      "sourceLumps": [
+        "STGNUM4"
+      ],
+      "sourceSha256": [
+        "f57a1e931af55ed62ce90f9909f4c4fb50660e5730bdc1cd573e4305b20ff5cf"
+      ],
+      "rawSha256": "f57a1e931af55ed62ce90f9909f4c4fb50660e5730bdc1cd573e4305b20ff5cf",
+      "width": 4,
+      "height": 6,
+      "texelSha256": "85ae180192980164e7ac8dc2202f34c112b3c980fad689b77769679619106842"
+    },
+    {
+      "assetId": 655,
+      "kind": "ui_patch",
+      "name": "STGNUM5",
+      "sourceLumps": [
+        "STGNUM5"
+      ],
+      "sourceSha256": [
+        "72256c8268b373409ee3746c56c6545481b5a5b554ff0590d4af40caeeba7e5a"
+      ],
+      "rawSha256": "72256c8268b373409ee3746c56c6545481b5a5b554ff0590d4af40caeeba7e5a",
+      "width": 4,
+      "height": 6,
+      "texelSha256": "8087b7078bad09d5bd04dad6d27de5ece9df6f4096955ed74b1093bd6d70ae66"
+    },
+    {
+      "assetId": 656,
+      "kind": "ui_patch",
+      "name": "STGNUM6",
+      "sourceLumps": [
+        "STGNUM6"
+      ],
+      "sourceSha256": [
+        "84e470322f16f15903ea5226e5fbbe980aa8bed2d879cac2570054c21bcd3550"
+      ],
+      "rawSha256": "84e470322f16f15903ea5226e5fbbe980aa8bed2d879cac2570054c21bcd3550",
+      "width": 4,
+      "height": 6,
+      "texelSha256": "a330e3c8a42c3907d2c70da22e19f7ac1ba60fe15d9665da6a712c9b4fc9029a"
+    },
+    {
+      "assetId": 657,
+      "kind": "ui_patch",
+      "name": "STGNUM7",
+      "sourceLumps": [
+        "STGNUM7"
+      ],
+      "sourceSha256": [
+        "92a5e43ab5fbde911a54239ae6b12fd25950791b6a958d5e425558e8dc3e7c9d"
+      ],
+      "rawSha256": "92a5e43ab5fbde911a54239ae6b12fd25950791b6a958d5e425558e8dc3e7c9d",
+      "width": 4,
+      "height": 6,
+      "texelSha256": "5d68fb8c659f73aa7d043eab19e8f6bdc69601fb04a78d1771378b332f52330e"
+    },
+    {
+      "assetId": 658,
+      "kind": "ui_patch",
+      "name": "STTMINUS",
+      "sourceLumps": [
+        "STTMINUS"
+      ],
+      "sourceSha256": [
+        "b1d31d6934860573f3174abeaf05a770d49f4b963c467519b9ed03bbe121c993"
+      ],
+      "rawSha256": "b1d31d6934860573f3174abeaf05a770d49f4b963c467519b9ed03bbe121c993",
+      "width": 13,
+      "height": 16,
+      "texelSha256": "50b71881b109df6c82fc12bb23a2b0a9cf0dd88c6bb6bfce1a7bfc6f5b432fe3"
     }
   ],
   "spotTexels": [
@@ -15395,26 +15563,26 @@
     {
       "path": "130_wad_sources.sql",
       "dataset": "wadSources",
-      "rowCount": 549,
+      "rowCount": 556,
       "batchCount": 2,
       "maxRowsInBatch": 500,
-      "sha256": "62f55cf6569ad7423b1dec729ae1d270bcc609ca4d5eb21d676b77af583e5cb6"
+      "sha256": "caae19b4f24087dd99d40636e3b6f46bcd33e82830e34c2e97718f94fe2e28ec"
     },
     {
       "path": "140_assets.sql",
       "dataset": "assets",
-      "rowCount": 652,
+      "rowCount": 659,
       "batchCount": 2,
       "maxRowsInBatch": 500,
-      "sha256": "7e351fb1951258495854445948db7358295220102744444e68bb0acc255eac19"
+      "sha256": "d73344606b03e1c1aae0c8c94c7d12591a86e070b7470a647d929c642aae509b"
     },
     {
       "path": "150_asset_sources.sql",
       "dataset": "assetSources",
-      "rowCount": 946,
+      "rowCount": 953,
       "batchCount": 2,
       "maxRowsInBatch": 500,
-      "sha256": "c60d5b3f7772d6f7df311e08d6b0b52d3d5c7d26135f299be63f44df4c5a4f78"
+      "sha256": "a101cc1b20fa4de32185c5743c52b32650748d22f3b660ea9b58587b3c82f6bb"
     },
     {
       "path": "160_asset_texels_0001.sql",
@@ -20279,7 +20447,63 @@
       "batchCount": 1,
       "maxRowsInBatch": 225,
       "sha256": "38c24bc11dcf57ff48d415f90fcbe7a1003d95d1bb2ab1d4551e2f484e56cd3d"
+    },
+    {
+      "path": "160_asset_texels_0609.sql",
+      "dataset": "assetTexels",
+      "rowCount": 24,
+      "batchCount": 1,
+      "maxRowsInBatch": 24,
+      "sha256": "a1e9375c415c2fe958c0c94c17b0eb44fade0e7e7a35f7877471346193e62be2"
+    },
+    {
+      "path": "160_asset_texels_0610.sql",
+      "dataset": "assetTexels",
+      "rowCount": 24,
+      "batchCount": 1,
+      "maxRowsInBatch": 24,
+      "sha256": "c6a3fd2083fbd59d8efc8f2af96b54479479140d93a48bdefb198e2de79bafa5"
+    },
+    {
+      "path": "160_asset_texels_0611.sql",
+      "dataset": "assetTexels",
+      "rowCount": 24,
+      "batchCount": 1,
+      "maxRowsInBatch": 24,
+      "sha256": "57c6a7026e8cfa1eb22dce00815d1b8186eaafecae31d489a599a9e5ff61992d"
+    },
+    {
+      "path": "160_asset_texels_0612.sql",
+      "dataset": "assetTexels",
+      "rowCount": 24,
+      "batchCount": 1,
+      "maxRowsInBatch": 24,
+      "sha256": "32fa342f9293279aef044a91bc4e96893f85618c0ac5407f1cf1179564920a14"
+    },
+    {
+      "path": "160_asset_texels_0613.sql",
+      "dataset": "assetTexels",
+      "rowCount": 24,
+      "batchCount": 1,
+      "maxRowsInBatch": 24,
+      "sha256": "314143237976a3768dc3541d81e5d36f5940e186912ac43b90116f23977f35cb"
+    },
+    {
+      "path": "160_asset_texels_0614.sql",
+      "dataset": "assetTexels",
+      "rowCount": 24,
+      "batchCount": 1,
+      "maxRowsInBatch": 24,
+      "sha256": "c34286fb8919359f6ad6c77654ea47c1cb6c1737cebaf142604bfb8203de4435"
+    },
+    {
+      "path": "160_asset_texels_0615.sql",
+      "dataset": "assetTexels",
+      "rowCount": 208,
+      "batchCount": 1,
+      "maxRowsInBatch": 208,
+      "sha256": "3167fbd9e25d5d4eda6b6d77a8632b65111c035f5ce584f6440a3e74c9f819a3"
     }
   ],
-  "sqlTreeSha256": "1e6e65aaadbe99325ed24e5c434aa8ed9208d002dd81f23d4d7b194911ce4f26"
+  "sqlTreeSha256": "5651c7c66a5201b5deb54aa6e4e11238f40860f319602bc2f8d12a3cbc8b7292"
 }

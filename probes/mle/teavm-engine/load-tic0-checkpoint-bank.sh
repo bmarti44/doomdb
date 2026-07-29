@@ -46,7 +46,15 @@ emit_sql() {
   printf '%s\n' \
     'whenever oserror exit failure rollback' \
     'whenever sqlerror exit sql.sqlcode rollback' \
-    'set define off echo off verify off feedback off heading off pages 0 lines 32767 trimspool on serveroutput on size unlimited'
+    'set define off' \
+    'set echo off' \
+    'set verify off' \
+    'set feedback off' \
+    'set heading off' \
+    'set pagesize 0' \
+    'set linesize 32767' \
+    'set trimspool on' \
+    'set serveroutput on size unlimited'
   if [[ -n "$equivalent_authority_sha256" ]]; then
     local eq_mode eq_skill eq_episode eq_map eq_players eq_bytes eq_sha
     local eq_state_sha eq_filename eq_count=0

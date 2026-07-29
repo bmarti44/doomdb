@@ -72,7 +72,7 @@ core = replaceExact(
   `  private static boolean statusBarInitialized;
 `,
   `  private static boolean statusBarInitialized;
-  private static int[] lastStatusState = new int[9];
+  private static int[] lastStatusState = new int[10];
 `,
   'retained-status-state-field',
 );
@@ -349,13 +349,14 @@ core = replaceExact(
     int ammo2 = snapshotI32(snapshot, 80);
     int ammo3 = snapshotI32(snapshot, 84);
     int cardsValue = snapshotI32(snapshot, 144);
+    int fragsValue = snapshotI32(snapshot, 148);
     int changed = 0;
     if (!statusBarInitialized || face != lastStatusState[0]
         || healthValue != lastStatusState[1]) changed |= 1;
     if (!statusBarInitialized || weaponValue != lastStatusState[3]
         || ammo0 != lastStatusState[4] || ammo1 != lastStatusState[5]
         || ammo2 != lastStatusState[6]
-        || ammo3 != lastStatusState[7]) changed |= 2;
+        || ammo3 != lastStatusState[7]) changed |= 2 | 64;
     if (!statusBarInitialized || healthValue != lastStatusState[1]) {
       changed |= 4;
     }
@@ -363,7 +364,10 @@ core = replaceExact(
       changed |= 8;
     }
     if (!statusBarInitialized || cardsValue != lastStatusState[8]) {
-      changed |= 16;
+      changed |= 16 | 32 | 64;
+    }
+    if (!statusBarInitialized || fragsValue != lastStatusState[9]) {
+      changed |= 32;
     }
     if (changed != 0) {
       lastStatusState[0] = face;
@@ -375,6 +379,7 @@ core = replaceExact(
       lastStatusState[6] = ammo2;
       lastStatusState[7] = ammo3;
       lastStatusState[8] = cardsValue;
+      lastStatusState[9] = fragsValue;
     }
     return changed;
   }
@@ -393,6 +398,8 @@ core = replaceExact(
       restoreStatusRect(142, 185, 168, FRAME_HEIGHT);
       restoreStatusRect(182, 221, 168, FRAME_HEIGHT);
       restoreStatusRect(238, 269, 168, FRAME_HEIGHT);
+      restoreStatusRect(104, 142, 168, FRAME_HEIGHT);
+      restoreStatusRect(274, 320, 168, FRAME_HEIGHT);
 `,
   `      if ((statusChanges & 2) != 0) {
         restoreStatusRect(4, 44, 168, FRAME_HEIGHT);
@@ -408,6 +415,12 @@ core = replaceExact(
       }
       if ((statusChanges & 16) != 0) {
         restoreStatusRect(238, 269, 168, FRAME_HEIGHT);
+      }
+      if ((statusChanges & 32) != 0) {
+        restoreStatusRect(104, 142, 168, FRAME_HEIGHT);
+      }
+      if ((statusChanges & 64) != 0) {
+        restoreStatusRect(274, 320, 168, FRAME_HEIGHT);
       }
 `,
   'widget-specific-status-restore',
@@ -426,11 +439,19 @@ core = replaceExact(
   core,
   `    drawHudNumber(health, 90);
     drawHudNumber(armor, 221);
+    blitUi(uiPercent, 90, 171);
+    blitUi(uiPercent, 221, 171);
     // STFB0 is the player-color background behind Doomguy's animated face.
     blitUi(uiFaceNormal, 143, 169);
 `,
-  `    if ((statusChanges & 4) != 0) drawHudNumber(health, 90);
-    if ((statusChanges & 8) != 0) drawHudNumber(armor, 221);
+  `    if ((statusChanges & 4) != 0) {
+      drawHudNumber(health, 90);
+      blitUi(uiPercent, 90, 171);
+    }
+    if ((statusChanges & 8) != 0) {
+      drawHudNumber(armor, 221);
+      blitUi(uiPercent, 221, 171);
+    }
     // STFB0 is the player-color background behind Doomguy's animated face.
     if ((statusChanges & 1) != 0) blitUi(uiFaceNormal, 143, 169);
 `,
@@ -439,20 +460,69 @@ core = replaceExact(
 core = replaceExact(
   core,
   `    blitUi(face, 148, 169);
-    int cards = snapshotI32(snapshot, 144);
-    for (int key = 0; key < 6; key++) {
-      if ((cards & (1 << key)) != 0) {
-        blitUi(uiKeys[key], 239 + (key % 3) * 10, 171);
+    int presentationFlags = snapshotI32(snapshot, 144);
+    for (int row = 0; row < 3; row++) {
+      int key = (presentationFlags & (1 << (row + 3))) != 0
+          ? row + 3
+          : (presentationFlags & (1 << row)) != 0 ? row : -1;
+      if (key >= 0) blitUi(uiKeys[key], 239, 171 + row * 10);
+    }
+    boolean deathmatch = (presentationFlags & (1 << 18)) != 0;
+    if (deathmatch) {
+      drawTallHudNumber(snapshotI32(snapshot, 148), 138, 171, 2);
+    } else {
+      blitUi(uiArmsBackground, 104, 168);
+      for (int arm = 0; arm < 6; arm++) {
+        boolean owned =
+            (presentationFlags & (1 << (8 + arm + 1))) != 0;
+        blitUi(owned ? uiYellowDigits[arm + 2] : uiGrayArmsDigits[arm],
+            111 + (arm % 3) * 12, 172 + (arm / 3) * 10);
       }
+    }
+    boolean backpack = (presentationFlags & (1 << 17)) != 0;
+    for (int ammoType = 0; ammoType < 4; ammoType++) {
+      drawShortHudNumber(
+          Math.max(0, snapshotI32(snapshot, 72 + ammoType * 4)),
+          288, STATUS_AMMO_Y[ammoType], 3);
+      drawShortHudNumber(
+          STATUS_MAX_AMMO[ammoType] * (backpack ? 2 : 1),
+          314, STATUS_AMMO_Y[ammoType], 3);
     }
 `,
   `    if ((statusChanges & 1) != 0) blitUi(face, 148, 169);
     if ((statusChanges & 16) != 0) {
-      int cards = snapshotI32(snapshot, 144);
-      for (int key = 0; key < 6; key++) {
-        if ((cards & (1 << key)) != 0) {
-          blitUi(uiKeys[key], 239 + (key % 3) * 10, 171);
+      int presentationFlags = snapshotI32(snapshot, 144);
+      for (int row = 0; row < 3; row++) {
+        int key = (presentationFlags & (1 << (row + 3))) != 0
+            ? row + 3
+            : (presentationFlags & (1 << row)) != 0 ? row : -1;
+        if (key >= 0) blitUi(uiKeys[key], 239, 171 + row * 10);
+      }
+    }
+    int presentationFlags = snapshotI32(snapshot, 144);
+    if ((statusChanges & 32) != 0) {
+      boolean deathmatch = (presentationFlags & (1 << 18)) != 0;
+      if (deathmatch) {
+        drawTallHudNumber(snapshotI32(snapshot, 148), 138, 171, 2);
+      } else {
+        blitUi(uiArmsBackground, 104, 168);
+        for (int arm = 0; arm < 6; arm++) {
+          boolean owned =
+              (presentationFlags & (1 << (8 + arm + 1))) != 0;
+          blitUi(owned ? uiYellowDigits[arm + 2] : uiGrayArmsDigits[arm],
+              111 + (arm % 3) * 12, 172 + (arm / 3) * 10);
         }
+      }
+    }
+    if ((statusChanges & 64) != 0) {
+      boolean backpack = (presentationFlags & (1 << 17)) != 0;
+      for (int ammoType = 0; ammoType < 4; ammoType++) {
+        drawShortHudNumber(
+            Math.max(0, snapshotI32(snapshot, 72 + ammoType * 4)),
+            288, STATUS_AMMO_Y[ammoType], 3);
+        drawShortHudNumber(
+            STATUS_MAX_AMMO[ammoType] * (backpack ? 2 : 1),
+            314, STATUS_AMMO_Y[ammoType], 3);
       }
     }
 `,

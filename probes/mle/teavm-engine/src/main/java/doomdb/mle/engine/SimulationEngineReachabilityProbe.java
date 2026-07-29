@@ -1525,6 +1525,15 @@ public final class SimulationEngineReachabilityProbe {
     for (int card = 0; card < player.cards.length; card++) {
       if (player.cards[card]) cards |= 1 << card;
     }
+    // DVL presentation metadata uses the otherwise-empty high bits of the
+    // key mask. This preserves the fixed 208-byte hot snapshot while giving
+    // the database renderer enough information for Doom's ARMS/max-ammo and
+    // deathmatch-frag widgets. Bits 0..5 remain the exact card/skull mask.
+    for (int weapon = 0; weapon < player.weaponowned.length; weapon++) {
+      if (player.weaponowned[weapon]) cards |= 1 << (8 + weapon);
+    }
+    if (player.backpack) cards |= 1 << 17;
+    if (engine.deathmatch) cards |= 1 << 18;
     putPresentationI32(144, cards);
     int frags = 0;
     for (int frag : player.frags) frags += frag;

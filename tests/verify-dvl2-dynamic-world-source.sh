@@ -120,13 +120,15 @@ grep -Fq 'buildBrightSpriteRuns();' "$COMPOSITOR" &&
   grep -Fq 'System.arraycopy(' "$COMPOSITOR" &&
   grep -Fq '"bright sprite run mismatch at "' "$COMPOSITOR" &&
   grep -Fq 'statusChangeMask(Uint8Array snapshot)' "$COMPOSITOR" &&
-  grep -Fq 'int[] lastStatusState = new int[9]' "$COMPOSITOR" &&
+  grep -Fq 'int[] lastStatusState = new int[10]' "$COMPOSITOR" &&
   grep -Fq 'public static int resetPresentationState()' "$COMPOSITOR" &&
   grep -Fq 'statusBarInitialized = false;' "$COMPOSITOR" &&
   grep -Fq 'cardsValue != lastStatusState[8]' "$COMPOSITOR" &&
   grep -Fq "'widget-specific-status-restore'" "$COMPOSITOR" &&
   grep -Fq 'if ((statusChanges & 1) != 0)' "$COMPOSITOR" &&
   grep -Fq 'if ((statusChanges & 16) != 0)' "$COMPOSITOR" &&
+  grep -Fq 'if ((statusChanges & 32) != 0)' "$COMPOSITOR" &&
+  grep -Fq 'if ((statusChanges & 64) != 0)' "$COMPOSITOR" &&
   ! grep -Fq 'lastStatusSignature' "$COMPOSITOR" ||
   fail 'compositor lacks verified bright runs or exact retained-HUD invalidation'
 grep -Fq 'PMLE_FREE_LIVE_OPTIMIZATION:-ADVANCED' "$UNIFIED_BUILD" &&

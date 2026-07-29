@@ -15,6 +15,10 @@ const liveFrameAuthority = {
   bytes: 1181281,
   sha256: 'c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1'
 };
+const hudLiveFrameAuthority = {
+  bytes: 1090790,
+  sha256: '66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873'
+};
 const adbVenueEvidencePath =
   'artifacts/performance/pmle-adb-venue/adb-tier-probe-2026-07-25.log';
 const ociReleaseVenueEvidencePath =
@@ -48,6 +52,9 @@ const ociPlainMleRasterFloorEvidencePath =
 const ociDatabasePixelReleaseEvidencePath =
   'artifacts/performance/pmle-live-frame-authority/' +
   'oci-two-pov-native35-input20-standby5-terminal-2026-07-29-v37.log';
+const ociHudDatabasePixelEvidencePath =
+  'artifacts/performance/pmle-live-frame-hud/' +
+  'oci-hud-v8-two-pov-300-v5-qualified-2026-07-29.log';
 const ociBrowserCleanupEvidencePath =
   'artifacts/performance/pmle-live-frame-authority/' +
   'oci-session-cleanup-browser-native35-2026-07-29.log';
@@ -58,8 +65,11 @@ const ociActiveLeaveEvidencePath =
   'artifacts/performance/pmle-live-frame-authority/' +
   'oci-active-leave-native35-2026-07-29.log';
 const deCpsPromoted = authority.outputSha256 === deCpsAuthority.sha256;
+const hudLiveFramePromoted =
+  authority.outputSha256 === hudLiveFrameAuthority.sha256;
 const liveFramePromoted =
-  authority.outputSha256 === liveFrameAuthority.sha256;
+  authority.outputSha256 === liveFrameAuthority.sha256 ||
+  hudLiveFramePromoted;
 const deCpsPromotionPath =
   'artifacts/performance/pmle-decps-rank/' +
   'promotion-5ec18cbe-2026-07-25.log';
@@ -282,6 +292,9 @@ const warmRestore = read(warmRestorePath);
 const highAwakeRecovery = read(highAwakeRecoveryPath);
 const warmSlotRecycle = read(warmSlotRecyclePath);
 const ociDatabasePixelRelease = read(ociDatabasePixelReleaseEvidencePath);
+const ociHudDatabasePixel = hudLiveFramePromoted
+  ? read(ociHudDatabasePixelEvidencePath)
+  : null;
 const ociBrowserCleanup = read(ociBrowserCleanupEvidencePath);
 const ociDatabaseCleanup = read(ociDatabaseCleanupEvidencePath);
 const ociActiveLeave = read(ociActiveLeaveEvidencePath);
@@ -329,10 +342,12 @@ for (const [evidence, marker, label, expectedAuthority] of [
     'candidate canonical 330',
     liveFramePromoted ? deCpsAuthority : authority],
   [coop, 'PMLE_TEAVM_COOP_DIFFERENTIAL|PASS|players=2|skill=1|tics=762|deep_every=1',
-    'candidate co-op 762', authority],
+    'candidate co-op 762',
+    hudLiveFramePromoted ? liveFrameAuthority : authority],
   [membership,
     'PMLE_TEAVM_MEMBERSHIP_RECOVERY_DIFFERENTIAL|PASS|players=2',
-    'candidate membership recovery', authority]
+    'candidate membership recovery',
+    hudLiveFramePromoted ? liveFrameAuthority : authority]
 ]) {
   contains(evidence,
     `PMLE_ARTIFACT|source_bytes=${expectedAuthority.bytes ??
@@ -357,6 +372,17 @@ contains(ociDatabasePixelRelease,
   'PMLE_OCI_CHECKPOINT_CROSSING|PASS|checkpoint_tic=512|' +
   'windows=301-600/301-600',
   'OCI database-pixel checkpoint crossing');
+if (hudLiveFramePromoted) {
+  contains(ociHudDatabasePixel,
+    'PMLE_OCI_TWO_POV_ARTIFACT_ATTEST|phase=BEFORE|' +
+    `authority_sha256=${hudLiveFrameAuthority.sha256}|` +
+    'renderer_sha256=61163171b77421fc01a96359903fc1bc5fbbc17c639177c77e48f4973b4a0f12|' +
+    'coordinator_sha256=59acb671e6e0a03ee89735806c8f0178a53dc792d22b87fb2c22db5f226fdd85',
+    'OCI HUD database-pixel artifact attestation');
+  contains(ociHudDatabasePixel,
+    'player 0 p0=32.98fps paint=31.50/42.70ms',
+    'OCI HUD database-pixel narrow cadence miss');
+}
 contains(ociBrowserCleanup,
   'PASS SESSION-CLEANUP-BROWSER',
   'browser refresh/close cleanup');
@@ -602,13 +628,23 @@ const status = {
     canonical330: liveFramePromoted
       ? 'HISTORICAL_PASS_5EC'
       : 'PASS',
-    coopEveryTic762: 'PASS',
-    membershipRecovery: 'PASS',
-    ledgerEveryTic13272: deCpsPromoted || liveFramePromoted
+    coopEveryTic762: hudLiveFramePromoted
+      ? 'HISTORICAL_PASS_C613'
+      : 'PASS',
+    membershipRecovery: hudLiveFramePromoted
+      ? 'HISTORICAL_PASS_C613'
+      : 'PASS',
+    ledgerEveryTic13272: hudLiveFramePromoted
+      ? 'HISTORICAL_PASS_C613_NODE_5250_PARITY_CURRENT'
+      : deCpsPromoted || liveFramePromoted
       ? 'PASS_CURRENT_AUTHORITY'
       : 'HISTORICAL_PASS_103E',
-    databasePixelTwoPov300: 'PASS',
-    databasePixelCheckpointCrossing: 'PASS',
+    databasePixelTwoPov300: hudLiveFramePromoted
+      ? 'REQUALIFICATION_PENDING_P95_NARROW_MISS'
+      : 'PASS',
+    databasePixelCheckpointCrossing: hudLiveFramePromoted
+      ? 'HISTORICAL_PASS_C613'
+      : 'PASS',
     abandonedSessionCleanup: 'PASS',
     warmRestoreDirectMleAb: deCpsPromoted
       ? (deCpsLifecycleQualified
@@ -632,8 +668,12 @@ const status = {
     lifecycleHardening: deCpsLifecycleQualified
       ? 'PASS_CURRENT_AUTHORITY'
       : 'PENDING_RERUN',
-    asyncAdmissionRaces: 'PASS_CURRENT_AUTHORITY',
-    warmSlotLifecycle: 'PASS_CURRENT_AUTHORITY',
+    asyncAdmissionRaces: hudLiveFramePromoted
+      ? 'HISTORICAL_PASS_5EC'
+      : 'PASS_CURRENT_AUTHORITY',
+    warmSlotLifecycle: hudLiveFramePromoted
+      ? 'HISTORICAL_PASS_5EC'
+      : 'PASS_CURRENT_AUTHORITY',
     postHardeningCausalSoak: 'HISTORICAL_PASS',
     calibratedProcessMemory: 'PASS',
     browserConfirmedOnly: 'PASS',
@@ -737,8 +777,10 @@ const status = {
     note: 'cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline'
   },
   performance: {
-    state: 'OCI_DATABASE_PIXELS_TWO_POV_30FPS_PASS',
-    evidenceArtifactSha256: authority.outputSha256,
+    state: hudLiveFramePromoted
+      ? 'OCI_HUD_DATABASE_PIXELS_DEPLOYED_REQUALIFICATION_PENDING'
+      : 'OCI_DATABASE_PIXELS_TWO_POV_30FPS_PASS',
+    evidenceArtifactSha256: liveFrameAuthority.sha256,
     authorityTickerEvidenceArtifactSha256: deCpsAuthority.sha256,
     databasePixelRelease: {
       venue: 'OCI Autonomous Database Always Free 26ai',
@@ -754,13 +796,25 @@ const status = {
       checkpointTic: 512,
       checkpointCrossing: 'PASS',
       maximumPublicationGapMilliseconds: 62.666,
-      authoritySha256: authority.outputSha256,
+      authoritySha256: liveFrameAuthority.sha256,
+      rendererSha256:
+        '302d574ec500330b5fe08c55593ee8d61c81930e37d68ba6dc963c35f6b996c7',
+      coordinatorSha256:
+        '9e7d2e17d5d386d12498d65130387e14ee23d478ab794b8538677fa7b9163559',
+      evidence: ociDatabasePixelReleaseEvidencePath
+    },
+    currentHudDeployment: hudLiveFramePromoted ? {
+      authoritySha256: hudLiveFrameAuthority.sha256,
       rendererSha256:
         authority.liveFrameRenderer.deployedOutputSha256,
       coordinatorSha256:
         authority.liveFrameRenderer.deployedCoordinatorSha256,
-      evidence: ociDatabasePixelReleaseEvidencePath
-    },
+      status: 'DEPLOYED_REQUALIFICATION_PENDING',
+      warmRunFps: [32.978, 32.723],
+      warmRunCadenceP95Milliseconds: [42.7, 34.6],
+      confirmedFrameDrops: [0, 0],
+      evidence: ociHudDatabasePixelEvidencePath
+    } : null,
     workload: 'two-player deathmatch authoritative exact command stream',
     tics: 5250,
     throughputTicsPerSecond: 302.419,
@@ -961,7 +1015,9 @@ const status = {
       mleCallSpecs: 25,
       evidence: ociJavaRemovalEvidencePath
     },
-    note: 'OCI authority, confirmed browser presentation, WAN qualification, and Java-removal audit pass'
+    note: hudLiveFramePromoted
+      ? 'HUD-complete OCI database-pixel build is deployed; strict two-browser cadence requalification is pending after a narrow p95 miss'
+      : 'OCI authority, confirmed browser presentation, WAN qualification, and Java-removal audit pass'
   },
   remaining: [
     {id: 'LIFECYCLE', state: deCpsLifecycleQualified ? 'DONE' : 'NEXT',
@@ -985,7 +1041,9 @@ const status = {
     {id: 'DVR', state: 'OPEN',
       label: 'HUD, automap, intermission, finale and audit/DVR presentation'},
     {id: 'ADB', state: 'DONE',
-      label: 'OCI authority 35 Hz, full digest chain, hosted statics, and browser 30 FPS passed'}
+      label: hudLiveFramePromoted
+        ? 'HUD-complete OCI database-pixel build deployed; strict two-browser p95 cadence requalification pending'
+        : 'OCI authority 35 Hz, full digest chain, hosted statics, and browser 30 FPS passed'}
   ],
   evidence: {
     soak: soakPath, ledger: ledgerPath, canonical: canonicalPath,
@@ -1017,6 +1075,8 @@ const status = {
       ociHostedBrowserScoringIncidentPath,
     ociWaitFreeWanQualification: ociWaitFreeWanEvidencePath,
     ociJavaRemovalAudit: ociJavaRemovalEvidencePath,
+    ociHudDatabasePixelRequalification:
+      hudLiveFramePromoted ? ociHudDatabasePixelEvidencePath : null,
     ociDeCpsPresentationDiagnostic: ociDeCpsPresentationEvidencePath,
     ociDatabaseFrameDiagnostic: ociDatabaseFrameEvidencePath,
     ociWasm2jsPresentationCost: ociWasm2jsPresentationCostEvidencePath,

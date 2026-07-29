@@ -1,0 +1,22 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+declare l_count number;begin
+*
+ERROR at line 1:
+ORA-20796: tic-zero checkpoint equivalence mismatch mode=COOP skill=1
+ORA-06512: at line 3
+Help: https://docs.oracle.com/error-help/db/ora-20796/
+

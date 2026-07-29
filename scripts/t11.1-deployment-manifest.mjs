@@ -11,20 +11,20 @@ assert.equal(mleArtifact.targetType,'JAVASCRIPT');
 assert.equal(mleArtifact.moduleType,'ES2015');
 assert.match(mleArtifact.inputBytecodeSha256,/^[0-9a-f]{64}$/);
 assert.match(mleArtifact.mochaBytecodeSha256,/^[0-9a-f]{64}$/);
-assert.equal(mleArtifact.authority.bytes,1181281);
+assert.equal(mleArtifact.authority.bytes,1090790);
 assert.equal(mleArtifact.authority.sha256,
-  'c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1');
+  '66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873');
 assert.equal(mleArtifact.tablePack.bytes,180272);
 assert.equal(mleArtifact.tablePack.sha256,
   '058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44');
 assert.equal(mleArtifact.liveFrameRenderer.requiredAuthoritySha256,
   mleArtifact.authority.sha256);
-assert.equal(mleArtifact.liveFrameRenderer.bytes,47094);
+assert.equal(mleArtifact.liveFrameRenderer.bytes,48097);
 assert.equal(mleArtifact.liveFrameRenderer.sha256,
-  '302d574ec500330b5fe08c55593ee8d61c81930e37d68ba6dc963c35f6b996c7');
-assert.equal(mleArtifact.liveFrameRenderer.coordinatorBytes,36221);
+  '61163171b77421fc01a96359903fc1bc5fbbc17c639177c77e48f4973b4a0f12');
+assert.equal(mleArtifact.liveFrameRenderer.coordinatorBytes,46231);
 assert.equal(mleArtifact.liveFrameRenderer.coordinatorSha256,
-  '9e7d2e17d5d386d12498d65130387e14ee23d478ab794b8538677fa7b9163559');
+  '59acb671e6e0a03ee89735806c8f0178a53dc792d22b87fb2c22db5f226fdd85');
 assert.match(mleArtifact.iwadSha256,/^[0-9a-f]{64}$/);
 assert.equal('canonicalOracleJarSha256' in mleArtifact,false);
 fs.writeFileSync(outPath,

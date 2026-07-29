@@ -4987,6 +4987,17 @@
       ]
     },
     {
+      "kind": "sprite_patch",
+      "name": "BAL1A0",
+      "reasons": [
+        "retained imp fireball presentation"
+      ],
+      "sourceLumps": [
+        "BAL1A0"
+      ],
+      "seedOrderGroup": 2
+    },
+    {
       "kind": "sound",
       "name": "DSBAREXP",
       "reasons": [
@@ -7012,15 +7023,81 @@
       "seedOrderGroup": 1
     },
     {
-      "kind": "sprite_patch",
-      "name": "BAL1A0",
+      "kind": "ui_patch",
+      "name": "STGNUM2",
       "reasons": [
-        "retained imp fireball presentation"
+        "menu, HUD, pause, or intermission UI"
       ],
       "sourceLumps": [
-        "BAL1A0"
+        "STGNUM2"
       ],
-      "seedOrderGroup": 2
+      "seedOrderGroup": 3
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STGNUM3",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STGNUM3"
+      ],
+      "seedOrderGroup": 3
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STGNUM4",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STGNUM4"
+      ],
+      "seedOrderGroup": 3
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STGNUM5",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STGNUM5"
+      ],
+      "seedOrderGroup": 3
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STGNUM6",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STGNUM6"
+      ],
+      "seedOrderGroup": 3
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STGNUM7",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STGNUM7"
+      ],
+      "seedOrderGroup": 3
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STTMINUS",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STTMINUS"
+      ],
+      "seedOrderGroup": 3
     }
   ]
 }

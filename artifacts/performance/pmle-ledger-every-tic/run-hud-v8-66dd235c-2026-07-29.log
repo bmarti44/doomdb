@@ -1,0 +1,35 @@
+PMLE_LEDGER_PROVENANCE|BEGIN|executions=1|log_mode=exclusive-create|started_utc=2026-07-29T14:03:43Z|launcher_pid=72922
+PMLE_HOST_QUIESCENCE|PASS|docker_builds=0|compiles=0|verifiers=0
+PMLE_CANDIDATE_PAIR|classification=UNPROMOTED_CANDIDATE|authority_sha256=66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44|ojvm_jar_sha256=2a102cb47626108d37127358ca18a34925709914606e8d89d04be22d0d72da74
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_ENVIRONMENT|cpu_count=2|resource_plan=DEFAULT_PLAN|cpu_managed=ON|pdb_cpu_count=2|pdb_utilization_limit=50|pdb_running_sessions_limit=2|pdb_plan=DEFAULT_CDB_PLAN
+PMLE_ARTIFACT|source_bytes=1090790|source_sha256=66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+    l_status:=doom_mocha_canonical_blob(l_java_blob);
+              *
+ERROR at line 16:
+ORA-06550: line 16, column 15:
+PLS-00201: identifier 'DOOM_MOCHA_CANONICAL_BLOB' must be declared
+ORA-06550: line 16, column 5:
+PL/SQL: Statement ignored
+ORA-06550: line 33, column 11:
+PLS-00201: identifier 'DOOM_MOCHA_DISPOSE' must be declared
+ORA-06550: line 33, column 3:
+PL/SQL: Statement ignored
+ORA-06550: line 46, column 45:
+PLS-00201: identifier 'DOOM_MOCHA_INITIALIZE' must be declared
+ORA-06550: line 46, column 37:
+PL/SQL: Statement ignored
+Help: https://docs.oracle.com/error-help/db/ora-06550/
+
+

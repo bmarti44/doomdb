@@ -5,8 +5,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 javascript="$project/target/javascript/doom-mle-simulation-engine-headless.js"
 table_pack="$project/target/canonical-runtime-v2.bin"
-expected_source_bytes=1181281
-expected_source_sha256="c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1"
+expected_source_bytes=1090790
+expected_source_sha256="66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873"
 expected_table_pack_sha256="058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"
 base64_fold_width=2000
 build=1
@@ -21,7 +21,7 @@ for option in "$@"; do
     --javascript=*) javascript="${option#--javascript=}";build=0;custom_source=1 ;;
     --table-pack=*) table_pack="${option#--table-pack=}";build=0;custom_source=1 ;;
     --production) production=1;build=0
-      javascript="$root/artifacts/performance/pmle-live-frame-authority/authority-candidate-c613bb5106d6.js"
+      javascript="$root/artifacts/performance/pmle-live-frame-hud/authority-candidate-66dd235cde82.js"
       table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
       ;;
     *) printf 'unsupported option: %s\n' "$option" >&2;exit 2 ;;

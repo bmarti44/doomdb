@@ -1,0 +1,761 @@
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+
+ITicker: Using nanosecond accuracy timer.
+                            FreeDoom: Phase 1          v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+       Copyright © 2001-2017 Contributors to the Freedoom project.
+                            All rights reserved.
+     See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+
+ITicker: Using nanosecond accuracy timer.
+                            FreeDoom: Phase 1          v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+       Copyright © 2001-2017 Contributors to the Freedoom project.
+                            All rights reserved.
+     See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+down
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+waiting
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+up
+PASS PMLE-JAVASCRIPT-CANDIDATE-PARITY tics=5250 checkpoints=5251 canonical_bytes=75818 canonical_sha256=b3f667c9395455fd42e31586dd79006fc9c091132cb09c8b1f4627a7d93a9907 fixture_sha256=3f625da2ab4166426c008a430a994d504e4ce65be1a9bede24b30abcb227d6b4 stream_sha256=fa7637570c30d3a33cbf8456e98268890e9f5bd82f5ba39fd7f69b139ddc4085 candidate_sha256=66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873 oracle_sha256=c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1

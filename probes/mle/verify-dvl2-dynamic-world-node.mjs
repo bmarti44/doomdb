@@ -564,7 +564,7 @@ retainedStatusFrame[168] ^= 1;
 if (statusSha() === statusBaselineSha) {
   throw new Error('status reset fixture did not corrupt retained pixels');
 }
-if (renderer.resetPresentationState() !== 9) {
+if (renderer.resetPresentationState() !== 10) {
   throw new Error('retained presentation reset rejected');
 }
 renderer.composeStatusStage(compositor);
@@ -760,9 +760,9 @@ const expectedPixelHashes = {
   sides: '27f53aed73d0e21d5905fe9454416ed456e737644ef4ab0ad052ac5dfc548a63',
   offsets: 'e5eb8f3d83a46b28b36f38e0e39a1f6a24c9f46cac1450a2123fea9b37a9a03f',
   sprite: '08e6c2116f1309ac30196f7cd1b67330e0ad2a412c2882aada8ddab12ad23472',
-  status: '32c36c20914cc7bd66bca7bcdba9e7d93ba27fcd47fcf91cf8dab62b5228e533',
+  status: '152ba482162a0f4b88b1347aa54d7585888950fc3bd97fb117f26a8eb23d7f49',
   damagedStatus:
-    'd6496afc7a73b1d704bab539b8f8b19d0be475a8b013e98ac692cd03b8e16942',
+    '9a0d02035cb262c12bbc0f4b5b1951674fba4f4a53a349a68a08b727711b407c',
 };
 for (const [name, actual, expected] of [
   ['baseline', baselineSha, expectedPixelHashes.baseline],

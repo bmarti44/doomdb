@@ -25,6 +25,8 @@ public final class FreeLiveRendererReachabilityProbe {
   private static final int RESOLVED_COMMAND_BYTES = 20;
   private static final int COMMAND_BUFFER_BYTES = 262144;
   private static final int NATIVE_TAPE_MAGIC = 0x31575244;
+  private static final int[] STATUS_MAX_AMMO = {200, 50, 300, 50};
+  private static final int[] STATUS_AMMO_Y = {173, 179, 191, 185};
   private static byte[] pack;
   private static int poseOffset;
   private static int poseCount;
@@ -92,6 +94,8 @@ public final class FreeLiveRendererReachabilityProbe {
   private static char[] uiWidth;
   private static char[] uiHeight;
   private static char[] uiDigits;
+  private static char[] uiYellowDigits;
+  private static char[] uiGrayArmsDigits;
   private static char[] uiKeys;
   private static char[] uiFaceStraight;
   private static char[] uiFaceTurnLeft;
@@ -114,6 +118,9 @@ public final class FreeLiveRendererReachabilityProbe {
   private static short[] uiRunLength;
   private static byte[] uiRunPixels;
   private static int uiStatusBar;
+  private static int uiPercent;
+  private static int uiArmsBackground;
+  private static int uiMinus;
   private static int uiFaceNormal;
   private static int uiFaceDead;
   private static int uiFaceGod;
@@ -192,7 +199,7 @@ public final class FreeLiveRendererReachabilityProbe {
 
   @JSExport
   public static int allocatePack(int length) {
-    if (length < 496 || length > 1_000_000) {
+    if (length < 520 || length > 1_000_000) {
       throw new IllegalArgumentException("invalid pack length");
     }
     pack = new byte[length];
@@ -233,7 +240,8 @@ public final class FreeLiveRendererReachabilityProbe {
 
   @JSExport
   public static int finalizePack() {
-    if (u32(0) != MAGIC || u32(4) != 7 || u32(76) != pack.length) {
+    if (u32(0) != MAGIC || u32(4) != 8 || u32(76) != pack.length
+        || u32(516) != 520) {
       throw new IllegalStateException("pack header mismatch");
     }
     int lineCount = u32(24);
@@ -339,6 +347,8 @@ public final class FreeLiveRendererReachabilityProbe {
     uiEpisode = u32(396);
     uiSkill = u32(400);
     uiDigits = chars(u32(404), 10);
+    uiYellowDigits = chars(u32(496), 10);
+    uiGrayArmsDigits = chars(u32(500), 6);
     uiKeys = chars(u32(408), 6);
     uiFaceStraight = chars(u32(412), 15);
     uiFaceTurnLeft = chars(u32(416), 5);
@@ -353,6 +363,9 @@ public final class FreeLiveRendererReachabilityProbe {
     uiMenuSkulls = chars(u32(452), 2);
     uiFullScreens = chars(u32(456), 10);
     uiOptions = u32(460);
+    uiPercent = u32(504);
+    uiArmsBackground = u32(508);
+    uiMinus = u32(512);
     runtimeWallToAsset = chars(u32(464), u32(468));
     runtimeFlatToAsset = chars(u32(472), u32(476));
     lineRightSide = chars(u32(480), lineCount);
@@ -1504,6 +1517,8 @@ public final class FreeLiveRendererReachabilityProbe {
       restoreStatusRect(142, 185, 168, FRAME_HEIGHT);
       restoreStatusRect(182, 221, 168, FRAME_HEIGHT);
       restoreStatusRect(238, 269, 168, FRAME_HEIGHT);
+      restoreStatusRect(104, 142, 168, FRAME_HEIGHT);
+      restoreStatusRect(274, 320, 168, FRAME_HEIGHT);
     }
     int ammo = snapshotI32(snapshot, 72);
     int weapon = snapshotI32(snapshot, 64);
@@ -1515,6 +1530,8 @@ public final class FreeLiveRendererReachabilityProbe {
     int armor = Math.max(0, snapshotI32(snapshot, 60));
     drawHudNumber(health, 90);
     drawHudNumber(armor, 221);
+    blitUi(uiPercent, 90, 171);
+    blitUi(uiPercent, 221, 171);
     // STFB0 is the player-color background behind Doomguy's animated face.
     blitUi(uiFaceNormal, 143, 169);
     int pain = Math.max(0, Math.min(4, (100 - health) * 5 / 101));
@@ -1541,11 +1558,33 @@ public final class FreeLiveRendererReachabilityProbe {
       face = uiFaceStraight[pain * 3 + (tic / 17) % 3];
     }
     blitUi(face, 148, 169);
-    int cards = snapshotI32(snapshot, 144);
-    for (int key = 0; key < 6; key++) {
-      if ((cards & (1 << key)) != 0) {
-        blitUi(uiKeys[key], 239 + (key % 3) * 10, 171);
+    int presentationFlags = snapshotI32(snapshot, 144);
+    for (int row = 0; row < 3; row++) {
+      int key = (presentationFlags & (1 << (row + 3))) != 0
+          ? row + 3
+          : (presentationFlags & (1 << row)) != 0 ? row : -1;
+      if (key >= 0) blitUi(uiKeys[key], 239, 171 + row * 10);
+    }
+    boolean deathmatch = (presentationFlags & (1 << 18)) != 0;
+    if (deathmatch) {
+      drawTallHudNumber(snapshotI32(snapshot, 148), 138, 171, 2);
+    } else {
+      blitUi(uiArmsBackground, 104, 168);
+      for (int arm = 0; arm < 6; arm++) {
+        boolean owned =
+            (presentationFlags & (1 << (8 + arm + 1))) != 0;
+        blitUi(owned ? uiYellowDigits[arm + 2] : uiGrayArmsDigits[arm],
+            111 + (arm % 3) * 12, 172 + (arm / 3) * 10);
       }
+    }
+    boolean backpack = (presentationFlags & (1 << 17)) != 0;
+    for (int ammoType = 0; ammoType < 4; ammoType++) {
+      drawShortHudNumber(
+          Math.max(0, snapshotI32(snapshot, 72 + ammoType * 4)),
+          288, STATUS_AMMO_Y[ammoType], 3);
+      drawShortHudNumber(
+          STATUS_MAX_AMMO[ammoType] * (backpack ? 2 : 1),
+          314, STATUS_AMMO_Y[ammoType], 3);
     }
   }
 
@@ -1566,14 +1605,36 @@ public final class FreeLiveRendererReachabilityProbe {
   }
 
   private static void drawHudNumber(int value, int rightEdge) {
-    value = Math.min(999, value);
-    int hundreds = value / 100;
-    int tens = (value / 10) % 10;
-    if (hundreds > 0) blitUi(uiDigits[hundreds], rightEdge - 39, 171);
-    if (hundreds > 0 || tens > 0) {
-      blitUi(uiDigits[tens], rightEdge - 26, 171);
-    }
-    blitUi(uiDigits[value % 10], rightEdge - 13, 171);
+    drawTallHudNumber(value, rightEdge, 171, 3);
+  }
+
+  private static void drawTallHudNumber(
+      int value, int rightEdge, int top, int digits) {
+    drawStatusNumber(value, rightEdge, top, digits, uiDigits, 13, true);
+  }
+
+  private static void drawShortHudNumber(
+      int value, int rightEdge, int top, int digits) {
+    drawStatusNumber(
+        Math.max(0, value), rightEdge, top, digits,
+        uiYellowDigits, 4, false);
+  }
+
+  private static void drawStatusNumber(
+      int value, int rightEdge, int top, int digits, char[] patches,
+      int spacing, boolean signed) {
+    int limit = digits == 2 ? 99 : 999;
+    boolean negative = signed && value < 0;
+    int magnitude = Math.min(limit, Math.abs(value));
+    int cursor = rightEdge;
+    int remaining = digits;
+    do {
+      cursor -= spacing;
+      blitUi(patches[magnitude % 10], cursor, top);
+      magnitude /= 10;
+      remaining--;
+    } while (magnitude != 0 && remaining > 0);
+    if (negative) blitUi(uiMinus, cursor - 8, top);
   }
 
   private static void blitSprite(

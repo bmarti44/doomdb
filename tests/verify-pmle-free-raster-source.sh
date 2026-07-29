@@ -25,6 +25,7 @@ snapshot_authority="$probe/teavm-engine/src/main/java/doomdb/mle/engine/Simulati
 snapshot_renderer="$probe/free-live-teavm/src/main/java/doomdb/mle/renderer/FreeLiveRendererReachabilityProbe.java"
 snapshot_fixture_test="$probe/verify-free-live-snapshot-node.mjs"
 snapshot_integration_test="$probe/verify-live-authority-renderer-node.mjs"
+hud_integration_test="$probe/verify-free-live-hud-node.mjs"
 fixed_step_test="$probe/verify-free-live-fixed-step.mjs"
 live_pack_builder="$probe/build-free-live-render-pack.mjs"
 live_asset_builder="$probe/build-render-asset-blobs.mjs"
@@ -39,7 +40,8 @@ for input in "$source_file" "$full_source" "$install" "$runner" "$benchmark" \
   "$capture_patch" "$capture_build" "$capture_pom" "$capture_probe" "$capture_metrics" \
   "$capture_runner" "$live_runner" "$live_benchmark" "$live_bisection" \
   "$snapshot_authority" "$snapshot_renderer" "$snapshot_fixture_test" \
-  "$snapshot_integration_test" "$fixed_step_test" "$live_pack_builder" \
+  "$snapshot_integration_test" "$hud_integration_test" "$fixed_step_test" \
+  "$live_pack_builder" \
   "$live_asset_builder" \
   "$live_renderer_install" \
   "$live_renderer_cleanup" "$live_renderer_raster" "$live_predeclaration" \
@@ -166,8 +168,11 @@ require 'public static Uint8Array presentationPlayerSnapshot(int playerSlot)' \
 require 'public static int presentationWorldSnapshotLength(int playerSlot)' \
   "$snapshot_authority"
 require 'DVL2 header/player: 208 bytes' "$snapshot_authority"
-require 'sideOffset + engine.levelLoader.sides.length * 8' \
+require 'int mobjOffset = sideOffset + sideCount * sideRecordBytes;' \
   "$snapshot_authority"
+require 'cards |= 1 << (8 + weapon);' "$snapshot_authority"
+require 'if (player.backpack) cards |= 1 << 17;' "$snapshot_authority"
+require 'if (engine.deathmatch) cards |= 1 << 18;' "$snapshot_authority"
 require 'engine.textureManager.getFlatTranslation(sector.floorpic)' \
   "$snapshot_authority"
 require 'presentationWorldSnapshotChunk(worldLength, 1)' \
@@ -178,17 +183,26 @@ require 'snapshot.getLength() != 32' "$snapshot_renderer"
 require 'return renderView(' "$snapshot_renderer"
 require 'PMLE_FREE_LIVE_SNAPSHOT_NODE|PASS' "$snapshot_fixture_test"
 require 'PMLE_LIVE_AUTHORITY_RENDERER_NODE|PASS' "$snapshot_integration_test"
+require 'PMLE_FREE_LIVE_HUD_NODE|PASS' "$hud_integration_test"
+require 'deathmatch_negative_frags=YES' "$hud_integration_test"
+require 'unchanged_pixel_stable=YES' "$hud_integration_test"
 require 'renderPlayerSnapshotGeometry(snapshot)' "$snapshot_integration_test"
 require 'PMLE_LIVE_COMMAND_BISECTION|DIAGNOSTIC_NOT_GATE' "$live_bisection"
 
 # Authentic floors/ceilings are IWAD-derived, prelit once, and rendered with
 # Doom's affine row-span shape. Full-frame timing may not silently fall back
 # to the old solid-color background or per-pixel perspective divisions.
-require 'pack.writeUInt32LE(7, 4);' "$live_pack_builder"
+require 'pack.writeUInt32LE(8, 4);' "$live_pack_builder"
+require 'const HEADER = 520;' "$live_pack_builder"
 require 'offsets.sectorFloorAsset' "$live_pack_builder"
 require 'offsets.ssectorSector' "$live_pack_builder"
 require 'offsets.spriteLookupAsset' "$live_pack_builder"
 require 'offsets.uiDigits' "$live_pack_builder"
+require 'offsets.uiYellowDigits' "$live_pack_builder"
+require 'offsets.uiGrayArmsDigits' "$live_pack_builder"
+require "uiByName.get('STTPRCNT').index" "$live_pack_builder"
+require "uiByName.get('STARMS').index" "$live_pack_builder"
+require "uiByName.get('STTMINUS').index" "$live_pack_builder"
 require 'offsets.uiFaceStraight' "$live_pack_builder"
 require 'offsets.uiMainMenuItems' "$live_pack_builder"
 require 'offsets.runtimeWallToAsset' "$live_pack_builder"
@@ -213,6 +227,15 @@ require 'public static int renderStatusStage(Uint8Array snapshot)' \
   "$snapshot_renderer"
 require 'drawPlayerSprites(snapshot);' "$snapshot_renderer"
 require 'drawStatusBar(snapshot);' "$snapshot_renderer"
+require 'drawTallHudNumber(snapshotI32(snapshot, 148), 138, 171, 2);' \
+  "$snapshot_renderer"
+require 'uiYellowDigits[arm + 2] : uiGrayArmsDigits[arm]' \
+  "$snapshot_renderer"
+require 'STATUS_MAX_AMMO[ammoType] * (backpack ? 2 : 1)' \
+  "$snapshot_renderer"
+require 'blitUi(uiPercent, 90, 171);' "$snapshot_renderer"
+require 'if (key >= 0) blitUi(uiKeys[key], 239, 171 + row * 10);' \
+  "$snapshot_renderer"
 require 'dynamicSideMiddle[side]' "$snapshot_renderer"
 require 'wallDepth[x * VIEW_HEIGHT + y]' "$snapshot_renderer"
 require 'wallDepth[base + y] = Math.min(wallDepth[base + y], depth);' \
@@ -227,7 +250,7 @@ require 'public static int finalizeFlatTextures()' "$snapshot_renderer"
 require 'litTextures[bank + base + sourceY * width + textureX]' \
   "$snapshot_renderer"
 require 'int fractionStep = 8388608 / wallHeight;' "$snapshot_renderer"
-require 'fraction += fractionStep;' "$snapshot_renderer"
+require 'fraction += fractionStep * verticalStep;' "$snapshot_renderer"
 require 'private static final int LIVE_RENDER_WIDTH = 160;' "$snapshot_renderer"
 require 'pixelScale = WIDTH / activeWidth;' "$snapshot_renderer"
 require 'frame[outputAt + FRAME_HEIGHT + output] = pixel;' \

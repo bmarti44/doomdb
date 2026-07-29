@@ -110,7 +110,7 @@ function initializeRenderer(renderer) {
       throw new Error(`${name} compositor finalize mismatch`);
     }
   }
-  if (renderer.resetPresentationState() !== 9) {
+  if (renderer.resetPresentationState() !== 10) {
     throw new Error('presentation-state reset mismatch');
   }
 }

@@ -461,7 +461,7 @@ const subsectorSector = ssectors.map((subsector, index) => {
   return sector;
 });
 
-const HEADER = 496;
+const HEADER = 520;
 let cursor = HEADER;
 const offsets = {};
 for (const name of ['lineX1', 'lineY1', 'lineX2', 'lineY2']) {
@@ -576,6 +576,10 @@ offsets.uiHeight = cursor;
 cursor += uiAssets.length * 2;
 offsets.uiDigits = cursor;
 cursor += 10 * 2;
+offsets.uiYellowDigits = cursor;
+cursor += 10 * 2;
+offsets.uiGrayArmsDigits = cursor;
+cursor += 6 * 2;
 offsets.uiKeys = cursor;
 cursor += 6 * 2;
 for (const [name, values] of [
@@ -606,7 +610,7 @@ cursor += linePresentation.length * 2;
 const pack = Buffer.alloc(cursor);
 
 pack.writeUInt32LE(0x31465244, 0); // DRF1
-pack.writeUInt32LE(7, 4);
+pack.writeUInt32LE(8, 4);
 pack.writeInt32LE(originX, 8);
 pack.writeInt32LE(originY, 12);
 pack.writeUInt32LE(columns, 16);
@@ -729,6 +733,12 @@ pack.writeUInt32LE(offsets.lineRightSide, 480);
 pack.writeUInt32LE(offsets.lineLeftSide, 484);
 pack.writeUInt32LE(sides.size, 488);
 pack.writeUInt32LE(208, 492); // DVL2 header bytes
+pack.writeUInt32LE(offsets.uiYellowDigits, 496);
+pack.writeUInt32LE(offsets.uiGrayArmsDigits, 500);
+pack.writeUInt32LE(uiByName.get('STTPRCNT').index, 504);
+pack.writeUInt32LE(uiByName.get('STARMS').index, 508);
+pack.writeUInt32LE(uiByName.get('STTMINUS').index, 512);
+pack.writeUInt32LE(520, 516); // DRF1 v8 header bytes
 
 for (let index = 0; index < lines.length; index += 1) {
   pack.writeInt32LE(lines[index][0], offsets.lineX1 + index * 4);
@@ -857,6 +867,16 @@ for (let digit = 0; digit < 10; digit += 1) {
   pack.writeUInt16LE(
     uiByName.get(`STTNUM${digit}`).index,
     offsets.uiDigits + digit * 2,
+  );
+  pack.writeUInt16LE(
+    uiByName.get(`STYSNUM${digit}`).index,
+    offsets.uiYellowDigits + digit * 2,
+  );
+}
+for (let digit = 0; digit < 6; digit += 1) {
+  pack.writeUInt16LE(
+    uiByName.get(`STGNUM${digit + 2}`).index,
+    offsets.uiGrayArmsDigits + digit * 2,
   );
 }
 for (let key = 0; key < 6; key += 1) {

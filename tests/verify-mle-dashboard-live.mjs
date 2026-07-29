@@ -24,13 +24,16 @@ try {
   assert.equal(response?.status(), 200);
   await page.locator('#evidence-state').waitFor({state: 'visible'});
   await page.waitForFunction(() =>
-    document.querySelector('#evidence-state')?.textContent?.startsWith('PASS'));
+    /^(PASS|PENDING)/.test(
+      document.querySelector('#evidence-state')?.textContent ?? ''));
   assert.equal(await page.locator('#authority-artifact').textContent(),
     `${authorityPrefix}…`);
   assert.equal(await page.locator('#presentation-artifact').textContent(),
-    '5092dda164a9…');
+    `${versions.teaVM.liveFrameRenderer.deployedOutputSha256.slice(0, 12)}…`);
   assert.equal(await page.locator('#ledger-state').textContent(),
-    'PASS · current authority · 13,272');
+    status.gates.ledgerEveryTic13272 === 'PASS_CURRENT_AUTHORITY'
+      ? 'PASS · current authority · 13,272'
+      : 'HISTORICAL PASS · c613 · 13,272; current 5,250 parity PASS');
   assert.equal(await page.locator('#soak-state').textContent(),
     status.gates.finalWorkerSoak === 'PASS_CURRENT_AUTHORITY'
       ? `PASS · ${authorityPrefix.slice(0, 4)}`

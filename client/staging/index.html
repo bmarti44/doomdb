@@ -227,7 +227,7 @@ fetch('/health.txt',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r
   document.querySelector('#status').textContent=t.trim()==='DOOMDB_ORDS_READY'?'stack online':'unexpected health response';
 }).catch(()=>document.querySelector('#status').textContent='stack unavailable');
 fetch('/mle-status.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(data=>{
-  if(data.schema!==1||!['HISTORICAL_PASS_103E','PASS_CURRENT_AUTHORITY'].includes(data.gates?.ledgerEveryTic13272)||!['PASS','PASS_CURRENT_AUTHORITY','HISTORICAL_PASS_E485_PENDING_RERUN'].includes(data.gates?.highAwakeMaximumDistanceRecovery)||!['PENDING_RERUN','PASS_CURRENT_AUTHORITY'].includes(data.gates?.finalWorkerSoak)||!['PASS','PENDING','INTERVENTION_REQUIRED'].includes(data.gates?.databaseAuthorityDeployment))throw Error();
+  if(data.schema!==1||!['HISTORICAL_PASS_103E','HISTORICAL_PASS_C613_NODE_5250_PARITY_CURRENT','PASS_CURRENT_AUTHORITY'].includes(data.gates?.ledgerEveryTic13272)||!['PASS','PASS_CURRENT_AUTHORITY','HISTORICAL_PASS_E485_PENDING_RERUN'].includes(data.gates?.highAwakeMaximumDistanceRecovery)||!['PENDING_RERUN','PASS_CURRENT_AUTHORITY'].includes(data.gates?.finalWorkerSoak)||!['PASS','PENDING','INTERVENTION_REQUIRED'].includes(data.gates?.databaseAuthorityDeployment))throw Error();
   const authority=data.artifacts.authority.sha256;
   const presentation=data.artifacts.liveFrameRenderer.sha256;
   if(!/^[0-9a-f]{64}$/.test(authority)||!/^[0-9a-f]{64}$/.test(presentation))throw Error();
@@ -240,20 +240,27 @@ fetch('/mle-status.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();ret
         ? 'capacity state unproven; operator intervention required'
         : 'capacity held closed; operator intervention required')
       : 'source pinned; database deployment pending');
-  document.querySelector('#evidence-state').textContent=`PASS · ${data.updated} · correctness green; ${databaseDeployment}`;
+  const hudRequalificationPending=data.gates.databasePixelTwoPov300==='REQUALIFICATION_PENDING_P95_NARROW_MISS';
+  document.querySelector('#evidence-state').textContent=hudRequalificationPending
+    ? `PENDING · ${data.updated} · HUD build deployed; strict cadence requalification; ${databaseDeployment}`
+    : `PASS · ${data.updated} · correctness green; ${databaseDeployment}`;
   document.querySelector('#authority-artifact').textContent=authority.slice(0,12)+'…';
   document.querySelector('#authority-sha').textContent=authority.slice(0,12)+'…';
   document.querySelector('#authority-summary').textContent=`MLE JavaScript · ${data.artifacts.authority.bytes.toLocaleString()} bytes`;
   document.querySelector('#presentation-artifact').textContent=presentation.slice(0,12)+'…';
   document.querySelector('#ledger-state').textContent=data.gates.ledgerEveryTic13272==='PASS_CURRENT_AUTHORITY'
     ? 'PASS · current authority · 13,272'
-    : 'HISTORICAL PASS · current rerun pending';
+    : data.gates.ledgerEveryTic13272==='HISTORICAL_PASS_C613_NODE_5250_PARITY_CURRENT'
+      ? 'HISTORICAL PASS · c613 · 13,272; current 5,250 parity PASS'
+      : 'HISTORICAL PASS · current rerun pending';
   const deCps=data.performance.deCpsCandidate;
   const pixels=data.performance.databasePixelRelease;
   document.querySelector('#determinism-truth').textContent=
     `Determinism: authority ${authority.slice(0,8)}… has ledger qualification ${data.gates.ledgerEveryTic13272}; canonical-330, every-tic co-op-762, and membership-recovery gates are ${data.gates.canonical330}/${data.gates.coopEveryTic762}/${data.gates.membershipRecovery}. Every result remains bound to its recorded artifact SHA and the preserved dev-only OJVM oracle.`;
-  document.querySelector('#performance-truth').textContent=
-    `Performance truth: the deployed OCI database-pixel path passed with two distinct player viewpoints and ${pixels.framesPerPlayer} sequential unique frames each. Players measured ${pixels.fps[0]} / ${pixels.fps[1]} FPS with ${pixels.cadenceP95Milliseconds[0]} / ${pixels.cadenceP95Milliseconds[1]} ms p95 cadence, zero confirmed-frame drops, and a tic-${pixels.checkpointTic} checkpoint crossing. `+
+  const currentPixels=data.performance.currentHudDeployment;
+  document.querySelector('#performance-truth').textContent=(hudRequalificationPending
+    ? `Performance truth: the HUD-complete OCI database-pixel build is deployed and its warmed two-browser run measured ${currentPixels.warmRunFps[0]} / ${currentPixels.warmRunFps[1]} FPS with ${currentPixels.warmRunCadenceP95Milliseconds[0]} / ${currentPixels.warmRunCadenceP95Milliseconds[1]} ms p95 cadence and zero confirmed-frame drops. The first client's p95 narrowly missed the strict 33.333 ms bar, so requalification remains pending. The prior c613 release passed ${pixels.fps[0]} / ${pixels.fps[1]} FPS. `
+    : `Performance truth: the deployed OCI database-pixel path passed with two distinct player viewpoints and ${pixels.framesPerPlayer} sequential unique frames each. Players measured ${pixels.fps[0]} / ${pixels.fps[1]} FPS with ${pixels.cadenceP95Milliseconds[0]} / ${pixels.cadenceP95Milliseconds[1]} ms p95 cadence, zero confirmed-frame drops, and a tic-${pixels.checkpointTic} checkpoint crossing. `)+
     `Oracle MLE generates each complete ${pixels.width}×${pixels.height} indexed framebuffer; ORDS transports compressed batches and the browser only decodes, palettes, and copies pixels to canvas. The current authority's 13,272-tic ledger, co-op-762, membership recovery, session cleanup, and capacity-reuse gates pass; the earlier confirmed-state transport also retains its three-profile WAN qualification. The artifact-specific 30-minute soak and remaining visual-fidelity work stay separately reported.`;
   document.querySelector('#soak-state').textContent=data.gates.finalWorkerSoak==='PASS_CURRENT_AUTHORITY'
     ? `PASS · ${authority.slice(0,4)}`

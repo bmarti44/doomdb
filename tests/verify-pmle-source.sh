@@ -646,6 +646,12 @@ grep -q 'doomdb-pmle-ledger-' "$TEAVM_LEDGER_RUNNER" ||
 grep -q 'PMLE_LEDGER_RUNTIME' "$TEAVM_LEDGER_RUNNER" ||
   fail 'ledger elapsed-time provenance missing'
 grep -q 'PMLE_PINNED_PAIR' "$TEAVM_LEDGER_RUNNER" || fail 'ledger pinned authority/oracle evidence missing'
+grep -Fq 'lock.teaVM.outputSha256' "$TEAVM_LEDGER_RUNNER" &&
+  grep -Fq 'lock.teaVM.outputBytes' "$TEAVM_LEDGER_RUNNER" ||
+  fail 'ledger production authority provenance is not derived from versions.lock'
+if grep -q "^pinned_authority='[0-9a-f]" "$TEAVM_LEDGER_RUNNER"; then
+  fail 'ledger runner retains a stale hardcoded production authority'
+fi
 grep -q 'deep-every=1' "$TEAVM_LEDGER_RUNNER" || fail 'ledger every-tic differential missing'
 grep -q 'progress-every=100' "$TEAVM_LEDGER_RUNNER" || fail 'ledger progress cadence missing'
 grep -q 'environment-metadata.sql' "$TEAVM_DISPATCH_AB" || fail 'dispatch A/B environment metadata missing'
@@ -866,7 +872,7 @@ node --check "$MLE_RENDERER_ASSET_PACK_BUILDER" >/dev/null ||
       "$ROOT/probes/mle/target/free-live-renderer/assets-v1/$kind.bin"
   done
 ) || fail 'renderer asset packs do not match the canonical seed manifest'
-test "$(grep -Fc 'renderer.resetPresentationState() !== 9' \
+test "$(grep -Fc 'renderer.resetPresentationState() !== 10' \
   "$MLE_LIVE_FRAME_COORDINATOR")" -eq 5 ||
   fail 'live-frame coordinator does not reset retained presentation state'
 grep -q 'const MATCH_LIVE_BATCH_FRAMES = 2' \
@@ -2327,9 +2333,9 @@ grep -q 'procedure match_checkpoint' "$DOOM_API" ||
 grep -q 'match checkpoint SHA fence' "$DOOM_API" ||
   fail 'confirmed browser checkpoint database SHA fence missing'
 grep -q '"version": "0.15.0"' "$VERSIONS" || fail 'TeaVM version pin missing'
-grep -q '"inputBytecodeSha256": "b80f697e8a49775c4b98db6b5ce47df46aee99398b22227a8408585c103ceaa4"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
-grep -q '"mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e"' "$VERSIONS" || fail 'TeaVM Mocha bytecode pin missing'
-grep -q '"outputSha256": "c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1"' "$VERSIONS" || fail 'TeaVM output pin missing'
+grep -q '"inputBytecodeSha256": "289edf1d678f9aced34c969ed24dcc9c90b9dce38f1b15701b284a2e5384df7e"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
+grep -q '"mochaBytecodeSha256": "c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4"' "$VERSIONS" || fail 'TeaVM Mocha bytecode pin missing'
+grep -q '"outputSha256": "66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873"' "$VERSIONS" || fail 'TeaVM output pin missing'
 grep -q '"authoritySelection": "EXACT_SHA_SELECTED_TEA_VM_0_15_NONDETERMINISTIC_EMISSION"' \
   "$VERSIONS" &&
 grep -q '"authorityReproducible": false' "$VERSIONS" ||
