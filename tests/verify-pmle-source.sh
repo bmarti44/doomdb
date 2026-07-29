@@ -947,6 +947,7 @@ grep -q 'api.observations.length,20' \
   "$ROOT/scripts/t11.1-build-evidence.mjs" ||
   fail 'full PLAYPAL asset endpoint is absent or not integrity-fenced'
 grep -q 'procedure poll_match_pixel_batch' "$DOOM_API" &&
+grep -q 'procedure touch_match_presence' "$DOOM_API" &&
 grep -q 'procedure ensure_pixel_worker' "$DOOM_API" &&
 test "$(grep -c 'procedure ensure_pixel_worker(' "$DOOM_API")" -eq 1 &&
 test "$(grep -n -m1 'create or replace package body doom_api as' "$DOOM_API" |
@@ -967,8 +968,21 @@ perl -0777 -ne 'exit !(/create or replace package body doom_api as.*?\n  procedu
   "$DOOM_API" &&
 perl -0777 -ne 'exit !(/\n  procedure poll_match_pixels\(.*?last_seen_at=l_now.*?commit;.*?ensure_pixel_worker\(.*?doom_mle_live_frame_transport\.poll_latest/s)' \
   "$DOOM_API" &&
-perl -0777 -ne 'exit !(/\n  procedure poll_match_pixel_batch\(.*?last_seen_at=l_now.*?commit;.*?ensure_pixel_worker\(.*?doom_mle_live_frame_transport\.poll_batch/s)' \
-  "$DOOM_API" &&
+perl -0777 -ne '
+  /create or replace package body doom_api as.*?(\n  procedure poll_match_pixel_batch\(.*?)(?=\n  procedure|\n  \$if)/s or exit 1;
+  $body=$1;
+  exit 1 if $body=~/update doom_match_member|renew_match_lease|commit;/;
+  exit !($body=~/select count\(\*\) into l_member_valid/
+    &&$body=~/doom_mle_live_frame_transport\.poll_batch/s);
+' "$DOOM_API" &&
+perl -0777 -ne '
+  exit !(/\n  procedure touch_match_presence\(.*?update doom_match_member
+.*?renew_match_lease\(p_match,l_now\);.*?commit;/s)
+' "$DOOM_API" &&
+grep -q 'touchMatchPresence(value.match,value.playerCapability)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'window.setInterval(touchPresence,1_000)' \
+  "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'p_after_tic: 2_147_483_647' "$MLE_LIVE_FRAME_E2E" &&
 grep -q 'invalid capability changed pixel-worker recovery state' \
   "$MLE_LIVE_FRAME_E2E" &&
@@ -993,8 +1007,8 @@ grep -q 'GZIP_DPB2_V1 encoding failed' "$MLE_LIVE_FRAME_TRANSPORT" &&
   "$MLE_LIVE_FRAME_TRANSPORT" ||
   fail 'persistent DPB2 batch/suffix transport contract missing'
 test "$(grep -c "last_seen_at<l_now-numtodsinterval(1,'SECOND')" \
-  "$DOOM_API")" -eq 2 ||
-  fail 'live-frame poll lease writes are not throttled to one per second'
+  "$DOOM_API")" -eq 1 ||
+  fail 'legacy single-frame poll lease write is not throttled'
 perl -0777 -ne 'exit !(/\n  procedure revise_match_input\(.*?select ticcmd_raw,effective_tic into l_existing,p_effective_tic.*?input revision mismatch.*?update doom_match_member set member_state='\''ACTIVE'\'',last_seen_at=l_now,.*?disconnected_at=null.*?renew_match_lease\(p_match,l_now\);p_accepted:=1;commit;return;/s)' \
   "$DOOM_API" ||
   fail 'idempotent fused-input retry does not preserve member liveness'
@@ -1050,22 +1064,41 @@ grep -q 'wan.observeConfirmedBatch(finished,batch.length)' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'const wan=new ConfirmedWanPolicy(6,6)' \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'const pixelInputCatchupFloor=2' \
+grep -q 'const pixelInputCatchupFloor=3' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'activePixelInputCatchupFloor=finished-started>80' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'frames.size>activePixelInputCatchupFloor' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'const pixelPollBatchDelayMs=35' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'interval=inputCatchup?20:nativePixelInterval/2' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'interval=31' "$ROOT/client/src/multiplayer.ts" &&
 ! grep -q 'decelerationPhase\|interval=.*53' \
   "$ROOT/client/src/multiplayer.ts" &&
-! grep -q 'exchangePixelBatchWithHedge\|pixel-poll-hedge' \
-  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'const hedgeDelayMs=120' "$ROOT/client/src/api.ts" &&
+grep -Fq "Promise.any([primaryRequest,hedgeRequest])" \
+  "$ROOT/client/src/api.ts" &&
+grep -Fq 'primary.abort();hedge.abort()' "$ROOT/client/src/api.ts" &&
 grep -q 'frames.size>wan.playoutBufferTics' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q '+wan.expectedConfirmedBatchTics)return' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'const pixelInputLeadTics=1' \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'nextPollDelayMs=0' "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'nextPollDelayMs=playoutStarted?pixelPollBatchDelayMs:0' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q "set_action('MLE_TICKER_PREWARM')" \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
+grep -q 'for l_preload_tic in 1..600 loop' \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
+grep -Fq "2,3,l_preload_tic,hextoraw(rpad('00',64,'0'))" \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
+grep -q "set_action('MLE_TICKER_RESTORE_ORIGIN')" \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
+grep -Fq '2,0,3,1,1,0,l_warm_checkpoint,l_state' \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
 perl -0777 -ne 'exit !(/if\(changed\) \{.*?urgentPixelInput=true;.*?schedulePixelPolls\(0\);.*?\}/s)' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'let urgentPixelInput=false' "$ROOT/client/src/multiplayer.ts" &&
@@ -1075,7 +1108,7 @@ grep -Fq 'frames.size>wan.playoutBufferTics' \
   "$ROOT/client/src/multiplayer.ts" &&
 ! grep -Fq 'pendingInput===null&&!inputPosting)queueInput(latest)' \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'Pixel polling is the authenticated presence heartbeat' \
+grep -q 'Presence has a dedicated one-Hz lifecycle leg' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -Fq 'const sequence=pendingInput?.sequence??inputSequence+1' \
   "$ROOT/client/src/multiplayer.ts" &&

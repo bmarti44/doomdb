@@ -55,3 +55,36 @@ HUD build is classified
 `OCI_HUD_DATABASE_PIXELS_DEPLOYED_REQUALIFICATION_PENDING`; the earlier
 `c613bb51…` two-browser PASS remains historical evidence only.
 
+## Transport/ticker hardening deployment — 2026-07-29
+
+The public ADB deployment now also carries:
+
+- a 600-tic retained-context ticker prewarm followed by an exact tic-zero
+  restore before a warm slot becomes `READY`;
+- 35-ms successful-response microbatch pacing and the measured three-frame
+  input catch-up floor;
+- a delayed idempotent framebuffer-fetch hedge;
+- a dedicated one-second `TOUCH_MATCH_PRESENCE` lifecycle call, leaving
+  `POLL_MATCH_PIXEL_BATCH` read-only so primary and hedge requests do not
+  serialize on the player's membership row.
+
+The deployed hosted client is
+`multiplayer-ffa0bb983cc9.js`, SHA-256
+`ffa0bb983cc9ec03f3cdb42977fa524e907bcbd639d94e0026d2ec3d40ee6a40`.
+The database static-loader manifest SHA-256 is
+`9bbac133daf9655399a819d78c8632ea8d3f01012e5709b59a3f7cfc8711d454`.
+The public entry, solo entry, and new generated package endpoint returned
+HTTP `200`, `200`, and an expected authenticated `555` respectively; the
+latter proves the endpoint is routed and rejected the deliberately invalid
+capability rather than returning `404`.
+
+The first exact-deployment two-browser run
+(`oci-hud-v8-two-pov-300-v15-presence-split-2026-07-29`) produced 300/300
+consecutive unique database framebuffers for both players over tics
+301–600. Player 0 measured `32.612` FPS with `33.400` ms p95; player 1
+measured `32.440` FPS with `33.200` ms p95. This is playable above the
+30-FPS product target and confirms end-to-end operation, but remains a
+strict-gate `FAIL` because player 0 exceeded the `33.333` ms p95 cadence bar
+by `0.067` ms and both streams retained Free-tier tail spikes. The run is
+preserved as measured, not relabeled. Cleanup left zero active matches and
+both retained slots `READY`.

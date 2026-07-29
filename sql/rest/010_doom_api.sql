@@ -150,6 +150,12 @@ create or replace package doom_api authid definer as
     p_generation        out number,
     p_payload           out blob);
 
+  procedure touch_match_presence(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_membership_epoch  out number,
+    p_generation        out number);
+
   procedure poll_match_pixel_batch(
     p_match             in  varchar2,
     p_player_capability in  varchar2,
@@ -628,6 +634,49 @@ create or replace package body doom_api as
     end;
   end;
 
+  procedure touch_match_presence(
+    p_match in varchar2,p_player_capability in varchar2,
+    p_membership_epoch out number,p_generation out number
+  ) is
+    l_slot number;
+    l_state varchar2(16);
+    l_expiry timestamp with time zone;
+    l_now timestamp with time zone:=utc_now;
+  begin
+    p_membership_epoch:=null;p_generation:=null;
+    require_match_shape(p_match);
+    select match_state,expires_at,membership_epoch,generation
+      into l_state,l_expiry,p_membership_epoch,p_generation
+      from doom_match where match_id=p_match;
+    if l_state<>'ACTIVE' or l_expiry<=l_now or p_generation<1 then
+      fail(c_match_auth,'match unavailable');
+    end if;
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    update doom_match_member
+       set member_state='ACTIVE',last_seen_at=l_now,disconnected_at=null
+     where match_id=p_match and player_slot=l_slot
+       and member_state in('ACTIVE','DISCONNECTED')
+       and membership_epoch=p_membership_epoch
+       and generation=p_generation;
+    if sql%rowcount<>1 then fail(c_match_auth,'match unavailable');end if;
+    renew_match_lease(p_match,l_now);
+    commit;
+  exception when no_data_found then
+    rollback;p_membership_epoch:=null;p_generation:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;
+    begin
+      rollback;p_membership_epoch:=null;p_generation:=null;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      elsif l_code between -20999 and -20000 then
+        raise_application_error(l_code,substr(sqlerrm,1,1800));
+      end if;
+      raise_application_error(c_bad_request,'match presence rejected');
+    end;
+  end;
+
   procedure poll_match_pixel_batch(
     p_match in varchar2,p_player_capability in varchar2,p_after_tic in number,
     p_max_frames in number,p_frame_count out number,p_first_tic out number,
@@ -657,28 +706,15 @@ create or replace package body doom_api as
       fail(c_match_auth,'match unavailable');
     end if;
     l_slot:=player_capability_slot(p_match,p_player_capability);
-    -- Keep authenticated recovery waiters alive even when ENSURE_PIXEL_WORKER
-    -- returns the bounded capacity/starting response. This transaction must
-    -- commit before recovery so its failure handler cannot roll back presence.
-    update doom_match_member
-       set member_state='ACTIVE',last_seen_at=l_now,disconnected_at=null
+    -- Frame retrieval is deliberately read-only. Presence is refreshed by
+    -- TOUCH_MATCH_PRESENCE on its own low-rate lifecycle leg so a delayed
+    -- idempotent pixel hedge cannot convoy on this player's membership row.
+    select count(*) into l_member_valid from doom_match_member
      where match_id=p_match and player_slot=l_slot
        and member_state in('ACTIVE','DISCONNECTED')
        and membership_epoch=p_membership_epoch
-       and generation=p_generation
-       and (member_state='DISCONNECTED'
-         or last_seen_at<l_now-numtodsinterval(1,'SECOND'));
-    if sql%rowcount=1 then
-      renew_match_lease(p_match,l_now);
-      commit;
-    else
-      select count(*) into l_member_valid from doom_match_member
-       where match_id=p_match and player_slot=l_slot
-         and member_state in('ACTIVE','DISCONNECTED')
-         and membership_epoch=p_membership_epoch
-         and generation=p_generation;
-      if l_member_valid<>1 then fail(c_match_auth,'match unavailable');end if;
-    end if;
+       and generation=p_generation;
+    if l_member_valid<>1 then fail(c_match_auth,'match unavailable');end if;
     if p_after_tic>=p_current_tic then
       ensure_pixel_worker(
         p_match,p_membership_epoch,p_generation,p_current_tic);

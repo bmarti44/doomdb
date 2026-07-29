@@ -2,7 +2,7 @@ import {
   createMatch, getAsset, joinMatch, leaveMatch, leaveMatchOnUnload, matchStatus,
   exchangeMatchPixelBatch,matchInputFrontier,
   matchCheckpoint,pollMatchTransitions,
-  readyMatch,reviseMatchInput,
+  readyMatch,reviseMatchInput,touchMatchPresence,
   MatchCapacityError, MatchUnavailableError,
   type Command, type MatchCredentials, type MatchStatus
 } from './api.js';
@@ -492,6 +492,7 @@ async function startDatabaseFrameGame(
   let transportEstablished=false;
   let urgentPixelInput=false;
   let inputPostInFlight=false;
+  let presenceInFlight=false;
   // Six confirmed frames cover the compressed, contention-free OCI poll
   // tail. Input response catches up by accelerating already-confirmed frames;
   // it never deletes or predicts presentation state.
@@ -499,19 +500,49 @@ async function startDatabaseFrameGame(
   // A real input transition may time-compress already-confirmed frames down
   // to two frames of reserve. With native 35-Hz database publication the
   // reserve refills without dropping, predicting, or reordering any frame.
-  const pixelInputCatchupFloor=2;
+  // Input catch-up may spend part of the confirmed reserve, but two frames
+  // did not cover an ordinary 40-60 ms managed-ORDS tail after HUD payloads
+  // were enabled. Retain three exact database frames before accelerating;
+  // four crossed the 250-ms visual input gate on the same OCI workload.
+  const pixelInputCatchupFloor=3;
+  let activePixelInputCatchupFloor=pixelInputCatchupFloor;
   const pixelInputLeadTics=1;
   const paintedAt:number[]=[];
   const frames=new Map<number,DatabasePixelFrame>();
   const pixelPollInFlight=new Set<number>();
   const arrivedTransportTics=new Set<number>();
   const pixelPollLegs=1;
+  // The Always Free PDB has one guaranteed API execution lane beside the
+  // retained worker. An immediate request after every 1-2 frame response
+  // creates an ORDS/session convoy across two browsers. Let another native
+  // tic accrue after a successful steady-state response so each crossing
+  // amortizes more frames while the confirmed playout reserve is spent.
+  const pixelPollBatchDelayMs=35;
   const buttons=new Map<ControlName,HTMLButtonElement>();
   let schedulePixelPolls=(_delayMs=0):void=>{};
   const fail=(cause:unknown):void=>{
     stopped=true;
     hud.className='error';
     hud.textContent=cause instanceof Error?cause.message:String(cause);
+  };
+  const touchPresence=():void=>{
+    if(stopped||suspended||presenceInFlight)return;
+    presenceInFlight=true;
+    void touchMatchPresence(value.match,value.playerCapability)
+      .then(result=>{
+        if(stopped||suspended)return;
+        if(result.membershipEpoch!==membershipEpoch
+            ||result.generation<generation) {
+          throw new Error('database-frame presence fence changed');
+        }
+        if(result.generation>generation) {
+          generation=result.generation;
+          resetPixelTransport();
+        }
+      }).catch(cause=>{
+        if(stopped||suspended)return;
+        if(!transientAuthorityFailure(cause))fail(cause);
+      }).finally(()=>{presenceInFlight=false;});
   };
   const updateHud=():void=>{
     const elapsed=paintedAt.length>1?paintedAt.at(-1)!-paintedAt[0]!:0;
@@ -583,6 +614,12 @@ async function startDatabaseFrameGame(
         if(playoutStarted&&changedInput) {
           inputCatchupThroughTic=Math.max(
             inputCatchupThroughTic,result.effectiveTic);
+          // A control response that already spent most of the 250-ms visual
+          // budget may consume one additional *confirmed* reserve frame.
+          // Normal inputs retain the measured three-frame cadence floor.
+          activePixelInputCatchupFloor=finished-started>80
+            ? pixelInputCatchupFloor-1
+            : pixelInputCatchupFloor;
         }
         urgentPixelInput=true;
         schedulePixelPolls(0);
@@ -650,7 +687,7 @@ async function startDatabaseFrameGame(
       frames.size,wan.playoutBufferTics,
       wan.expectedConfirmedBatchTics,playoutMode);
     const inputCatchup=inputCatchupThroughTic>presentedTic
-      &&frames.size>pixelInputCatchupFloor;
+      &&frames.size>activePixelInputCatchupFloor;
     playoutMode=inputCatchup?'ACCELERATE':decision.mode;
     const nativePixelInterval=1000/35;
     let interval=nativePixelInterval;
@@ -662,13 +699,15 @@ async function startDatabaseFrameGame(
       interval=inputCatchup?20:nativePixelInterval/2;
     } else if(playoutMode==='DECELERATE') {
       // Recover reserve continuously without manufacturing a long paint gap.
-      // 31 ms remains above the strict 30-FPS/33.3-ms presentation gate.
+      // 31 ms remains above 30 FPS and gives the Free-tier publication path
+      // enough headroom to refill the confirmed reserve.
       interval=31;
     }
     nextFrameAt=nextFrameAt<=0?now+interval:
       Math.max(nextFrameAt+interval,now+1000/70);
     if(inputCatchupThroughTic>=0&&presentedTic>=inputCatchupThroughTic) {
       inputCatchupThroughTic=-1;
+      activePixelInputCatchupFloor=pixelInputCatchupFloor;
       if(pendingInput===null&&retryInput===null&&!inputPostInFlight)
         urgentPixelInput=false;
     }
@@ -794,11 +833,11 @@ async function startDatabaseFrameGame(
             bufferedFrames:frames.size,source:'database-framebuffer'});
           pump();
           lastFrameBatchAt=finished;
-          // Drain available confirmed frames immediately. Deliberately
-          // delaying this crossing caused a retained-ring resync stall on the
-          // qualified OCI path; payload-size reduction must happen below this
-          // scheduling layer.
-          nextPollDelayMs=0;
+          // Startup still fills immediately. Once playout is active, one
+          // native-tic delay raises the batch cardinality and reduces pressure
+          // on the single Free-tier API lane. This is transport batching only:
+          // every confirmed framebuffer remains ordered and presentable.
+          nextPollDelayMs=playoutStarted?pixelPollBatchDelayMs:0;
           if(requestEpoch!==pixelPollEpoch)schedulePixelPolls();
         } else {
           // Once caught up, aim the next request at the following native tic
@@ -868,19 +907,24 @@ async function startDatabaseFrameGame(
       trace('pixel-resync',{
         reason:'visibility',hiddenMilliseconds,
         source:'database-framebuffer'});
+      touchPresence();
       schedulePixelPolls();
     }
   });
   window.addEventListener('pagehide',()=>{stopped=true;},{once:true});
-  // Pixel polling is the authenticated presence heartbeat and PACED_INPUT
-  // reuses the latest accepted command. Reposting an unchanged command every
-  // 250 ms only convoys on the worker's 35-Hz match-row linearization lock.
+  // Presence has a dedicated one-Hz lifecycle leg. Pixel reads stay
+  // transactionally read-only so an idempotent hedge can bypass a stranded
+  // ORDS request without serializing on this player's membership row.
+  // PACED_INPUT reuses the latest accepted command. Reposting an unchanged
+  // command every 250 ms would convoy on the worker's 35-Hz match-row lock.
   // Genuine keyboard/pointer transitions enter through queueInput directly.
   // A four-millisecond sampler turned a 32 ms target into a visible 36 ms
   // bucket, while requestAnimationFrame produced a 40 ms cloud-browser p95.
   // One-millisecond sampling remains the measured best scheduler on this
   // venue; the pump's deadline check prevents early presentation.
-  updateHud();schedulePixelPolls();window.setInterval(pump,1);
+  updateHud();touchPresence();schedulePixelPolls();
+  window.setInterval(touchPresence,1_000);
+  window.setInterval(pump,1);
 }
 
 /** Retained diagnostic fallback; production admission uses database pixels. */

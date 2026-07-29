@@ -1722,6 +1722,7 @@ create or replace package body doom_match_worker as
     l_spid varchar2(24);l_job_run varchar2(64);
     l_warm_checkpoint blob;l_warm_checkpoint_sha varchar2(64);
     l_warm_checkpoint_bytes number;
+    l_ticker_prewarm_state varchar2(64);
   begin
     if p_slot not in(1,2) or
        not regexp_like(p_incarnation,'^[0-9a-f]{32}$') then
@@ -1756,6 +1757,25 @@ create or replace package body doom_match_worker as
     dbms_application_info.set_action('MLE_WARM_CHECKPOINT');
     doom_mle_match_runtime.save_checkpoint(
       l_warm_checkpoint,l_warm_checkpoint_sha,l_warm_checkpoint_bytes);
+    -- The cloud engine compiles the renderer during INITIALIZE_GAME, but the
+    -- authoritative ticker previously entered a live match cold. Its delayed
+    -- compilation/first-GC plateau produced a repeatable ~100 ms MLE_STEP
+    -- around tic 496 and drained both browsers' confirmed-frame reserve.
+    -- Exercise the real ticker before READY, then restore the byte-fenced
+    -- tic-zero checkpoint. Compiled code remains resident in this MLE context;
+    -- authoritative world state, RNG, membership, and replay identity return
+    -- exactly to the durable origin before the slot can be claimed.
+    if sys_context('USERENV','CLOUD_SERVICE') is not null then
+      dbms_application_info.set_action('MLE_TICKER_PREWARM');
+      for l_preload_tic in 1..600 loop
+        doom_mle_match_runtime.step_game(
+          2,3,l_preload_tic,hextoraw(rpad('00',64,'0')),
+          l_ticker_prewarm_state);
+      end loop;
+      dbms_application_info.set_action('MLE_TICKER_RESTORE_ORIGIN');
+      doom_mle_match_runtime.restore_checkpoint(
+        2,0,3,1,1,0,l_warm_checkpoint,l_state);
+    end if;
     if dbms_lob.istemporary(l_warm_checkpoint)=1 then
       dbms_lob.freetemporary(l_warm_checkpoint);
     end if;
