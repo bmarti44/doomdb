@@ -104,9 +104,8 @@ create or replace package body doom_session_cleanup as
       join doom_match_member host_
         on host_.match_id=m.match_id and host_.player_slot=0
       where m.match_state in('LOBBY','ACTIVE')
-        and host_.member_state<>'LEFT'
-        and host_.last_seen_at<
-          l_now-numtodsinterval(15,'SECOND')
+        and (host_.member_state='LEFT' or host_.last_seen_at<
+          l_now-numtodsinterval(15,'SECOND'))
       order by host_.last_seen_at
       fetch first l_limit rows only
     ) loop
@@ -119,9 +118,8 @@ create or replace package body doom_session_cleanup as
             and exists(
               select 1 from doom_match_member host_
               where host_.match_id=m.match_id and host_.player_slot=0
-                and host_.member_state<>'LEFT'
-                and host_.last_seen_at<
-                  l_now-numtodsinterval(15,'SECOND'))
+                and (host_.member_state='LEFT' or host_.last_seen_at<
+                  l_now-numtodsinterval(15,'SECOND')))
           for update skip locked;
       exception when no_data_found then continue;end;
       update doom_match_member set member_state='LEFT',

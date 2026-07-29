@@ -1864,6 +1864,28 @@ create or replace package body doom_api as
     select member_state into l_member_state from doom_match_member
       where match_id=p_match and player_slot=l_slot;
     if l_member_state='LEFT' then
+      -- Idempotent unload can arrive after the worker has already converted a
+      -- disconnected host to LEFT but before its terminal match update becomes
+      -- visible. Repair that legal intermediate state instead of returning an
+      -- ACTIVE match that permanently owns both retained slots.
+      if l_slot=0 and l_state='ACTIVE' then
+        update doom_match set match_state='FINISHED',finished_at=l_now,
+          last_activity_at=l_now,
+          expires_at=l_now+numtodsinterval(5,'MINUTE')
+          where match_id=p_match and match_state='ACTIVE'
+            and generation=l_generation;
+        commit;
+        doom_match_worker.stop_match(p_match,l_generation);
+        p_match_state:='FINISHED';
+        return;
+      elsif l_slot=0 and l_state='LOBBY' then
+        update doom_match set match_state='CANCELLED',finished_at=l_now,
+          last_activity_at=l_now,expires_at=l_now
+          where match_id=p_match and match_state='LOBBY';
+        commit;
+        p_match_state:='CANCELLED';
+        return;
+      end if;
       p_match_state:=l_state;commit;return;
     end if;
     if l_state='FINISHED' then fail(c_match_auth,'match unavailable');end if;

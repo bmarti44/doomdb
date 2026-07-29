@@ -68,10 +68,12 @@ begin
   select slot_id into l_slot from doom_mle_warm_slot
     where assigned_match=l_match and assigned_role='AUTHORITY'
       and slot_status='RUNNING';
-  update doom_match_member set
-    joined_at=joined_at-interval '16' second,
-    ready_at=ready_at-interval '16' second,
-    last_seen_at=last_seen_at-interval '16' second
+  -- Reproduce the incident state exactly: unload/disconnect has already
+  -- reached LEFT, but the terminal match update and retained-slot release
+  -- were lost. This must be reaped immediately, without waiting for another
+  -- last-seen threshold that can never match the old <>LEFT predicate.
+  update doom_match_member set member_state='LEFT',
+    leave_tic=l_tic+1,last_seen_at=systimestamp
     where match_id=l_match and player_slot=0;
   commit;
   doom_session_cleanup.reap_abandoned_matches(1);
@@ -99,7 +101,7 @@ begin
   end if;
   delete from doom_match where match_id=l_match;commit;l_match:=null;
   dbms_output.put_line(
-    'PASS SESSION-CLEANUP-LIVE abandoned active browser releases retained slot');
+    'PASS SESSION-CLEANUP-LIVE left-host active orphan releases retained slot');
 exception when others then rollback;cleanup_;raise;
 end;
 /

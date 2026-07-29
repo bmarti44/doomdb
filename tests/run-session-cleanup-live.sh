@@ -14,7 +14,7 @@ umask 077
   2>&1 | tee "$output"
 grep -q '^PASS SESSION-CLEANUP-LIVE abandoned browser lobby releases capacity$' \
   "$output"
-grep -q '^PASS SESSION-CLEANUP-LIVE abandoned active browser releases retained slot$' \
+grep -q '^PASS SESSION-CLEANUP-LIVE left-host active orphan releases retained slot$' \
   "$output"
 grep -q '^PASS SESSION-CLEANUP-LIVE expired match cascade purged off request path$' \
   "$output"
