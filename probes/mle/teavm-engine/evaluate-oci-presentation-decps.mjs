@@ -25,7 +25,9 @@ const requireSha = (fields, name) => {
   return value;
 };
 
-const evaluate = (oracleText, rankText, expectedSamples) => {
+const evaluate = (
+  oracleText, rankText, expectedSamples, expectedArtifactSha = null,
+) => {
   const oracle = parse(oracleText, 'PMLE_OCI_PRESENTATION_ORACLE');
   const rank = parse(rankText, 'PMLE_OCI_PRESENTATION_RANK');
   assert.equal(oracle.get('PASS'), '');
@@ -35,8 +37,16 @@ const evaluate = (oracleText, rankText, expectedSamples) => {
   assert.equal(Number(oracle.get('unique')), expectedSamples);
   assert.equal(Number(rank.get('unique')), expectedSamples);
   assert.equal(rank.get('transport'), 'persistent_returning_oracle_blob');
-  for (const name of ['artifact_sha256', 'stream_sha256', 'chain_sha256']) {
+  for (const name of ['stream_sha256', 'chain_sha256']) {
     assert.equal(requireSha(rank, name), requireSha(oracle, name), name);
+  }
+  const artifactSha = requireSha(rank, 'artifact_sha256');
+  if (expectedArtifactSha === null) {
+    assert.equal(artifactSha, requireSha(oracle, 'artifact_sha256'),
+      'artifact_sha256');
+  } else {
+    assert.match(expectedArtifactSha, /^[0-9a-f]{64}$/);
+    assert.equal(artifactSha, expectedArtifactSha, 'artifact_sha256');
   }
   const p95 = Number(rank.get('pipeline_p95_ms'));
   assert.ok(Number.isFinite(p95) && p95 >= 0);
@@ -51,7 +61,7 @@ const evaluate = (oracleText, rankText, expectedSamples) => {
     exact30Fps: expectedVerdict,
     temporaryLobsDelta,
     locatorHygiene: temporaryLobsDelta === 0 ? 'PASS' : 'FAIL',
-    artifactSha256: requireSha(rank, 'artifact_sha256'),
+    artifactSha256: artifactSha,
     streamSha256: requireSha(rank, 'stream_sha256'),
     chainSha256: requireSha(rank, 'chain_sha256'),
   };
@@ -82,7 +92,8 @@ if (process.argv[2] === '--self-test') {
   }
   console.log('PASS PMLE-OCI-PRESENTATION-DECPS-EVALUATOR-SELF-TEST');
 } else {
-  const [, , oraclePath, rankPath, samplesText] = process.argv;
+  const [, , oraclePath, rankPath, samplesText, expectedArtifactSha] =
+    process.argv;
   const samples = Number(samplesText);
   assert.ok(oraclePath && rankPath && [100, 300].includes(samples),
     'usage: evaluate-oci-presentation-decps.mjs ORACLE RANK 100|300');
@@ -90,6 +101,7 @@ if (process.argv[2] === '--self-test') {
     fs.readFileSync(oraclePath, 'utf8'),
     fs.readFileSync(rankPath, 'utf8'),
     samples,
+    expectedArtifactSha ?? null,
   );
   console.log(
     `PMLE_OCI_PRESENTATION_DECPS_VERDICT|DIAGNOSTIC_NOT_GATE|` +

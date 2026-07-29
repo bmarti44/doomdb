@@ -2069,11 +2069,19 @@ node "$TEAVM_OCI_PRESENTATION_DECPS_EVALUATOR" --self-test >/dev/null
 grep -Eq 'normalizeDbOutput|oneDbRecord' \
   "$TEAVM_OCI_PRESENTATION_DECPS_EVALUATOR" ||
   fail 'OCI presentation evaluator bypasses the shared DB-output parser'
-grep -q 'candidate_sha=118c37717b362d9e7669b5a3a1e73c87b3916479b6e53651f08e85be9ae8f2d3' \
+grep -q 'candidate="${PMLE_OCI_PRESENTATION_CANDIDATE:-$evidence/presentation-candidate-118c37717b36.js}"' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q 'candidate_sha="$(shasum -a 256 "$candidate"' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q '\[\[ "$candidate_sha" =~ \^\[0-9a-f\]{64}\$' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q 'PMLE_OCI_PRESENTATION_EVIDENCE_TAG' \
     "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
   grep -q 'require-db-record.mjs' \
     "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
   grep -q '"$record_parser" --self-test' \
+    "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
+  grep -q '"$oracle100" "$rank100" 100 "$candidate_sha"' \
     "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&
   grep -q 'OCI_PRESENTATION_LOCATOR_100' \
     "$TEAVM_OCI_PRESENTATION_DECPS_RUNNER" &&

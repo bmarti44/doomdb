@@ -1,0 +1,108 @@
+diff --git a/src/rr/SimpleTextureManager.java b/src/rr/SimpleTextureManager.java
+index 6beb52e..fc8a334 100644
+--- a/src/rr/SimpleTextureManager.java
++++ b/src/rr/SimpleTextureManager.java
+@@ -284,6 +284,13 @@ public class SimpleTextureManager<T, V> implements TextureManager<T> {
+         
+         for (int i=0 ; i<numtextures ; i++)
+             texturetranslation[i] = i;
++
++        // MLE presentation is single-threaded. Hydrate every texture column
++        // while WAD I/O is still an initialization concern so the per-frame
++        // renderer can use a suspension-free resident lookup.
++        for (int i=0 ; i<numtextures ; i++)
++            for (int column=0 ; column<textures[i].width ; column++)
++                GetCachedColumn(i, column);
+     }
+     
+     /** Assigns proper lumpnum to patch names. Check whether flats and patches of the same name coexist.
+@@ -1163,7 +1171,7 @@ public class SimpleTextureManager<T, V> implements TextureManager<T> {
+      * @param column
+      * @return raw, 0-pointed column data.
+      */    
+-    public synchronized byte[] getRogueColumn(int lump, int column) {
++    public byte[] getRogueColumn(int lump, int column) {
+ 		
+ 		// If previously requested, speed up gathering.
+ 		//if (lastrogue==lump)
+@@ -1481,6 +1489,28 @@ public class SimpleTextureManager<T, V> implements TextureManager<T> {
+ 
+         return getTextureComposite(tex, col);
+     }
++
++    /**
++     * Suspension-free rendering lookup for the retained single-threaded MLE
++     * presentation context. InitTextures has already hydrated both branches.
++     */
++    public final byte[] GetResidentColumn(int tex, int col) {
++        col &= getTexturewidthmask(tex);
++        int lump = getTextureColumnLump(tex, col);
++        int ofs = getTextureColumnOfs(tex, col);
++
++        if (lump > 0) {
++            byte[][] residentPatch = roguePatches.get(lump);
++            if (residentPatch == null)
++                throw new IllegalStateException("unhydrated resident patch");
++            return residentPatch[ofs];
++        }
++
++        byte[][] residentComposite = getTextureComposite(tex);
++        if (residentComposite == null)
++            throw new IllegalStateException("unhydrated resident composite");
++        return residentComposite[col];
++    }
+ 
+     @Override
+     public void setSMPVars(int num_threads) {
+diff --git a/src/rr/RendererState.java b/src/rr/RendererState.java
+index c24f984..ee9bd3f 100644
+--- a/src/rr/RendererState.java
++++ b/src/rr/RendererState.java
+@@ -1518,7 +1518,7 @@ public class RendererState<T, V> implements SceneRenderer<T, V> {
+                     dcvars.dc_texturemid = rw_midtexturemid;
+                     dcvars.dc_source_ofs = 0;
+                     dcvars.dc_source
+-                        = TexMan.GetCachedColumn(midtexture, texturecolumn);
++                        = TexMan.GetResidentColumn(midtexture, texturecolumn);
+                     CompleteColumn();
+                     ceilingclip[rw_x] = (short) view.height;
+                     floorclip[rw_x] = -1;
+@@ -1538,7 +1538,7 @@ public class RendererState<T, V> implements SceneRenderer<T, V> {
+                             dcvars.dc_yh = mid;
+                             dcvars.dc_texturemid = rw_toptexturemid;
+                             dcvars.dc_texheight = TexMan.getTextureheight(toptexture) >> FRACBITS;
+-                            dcvars.dc_source = TexMan.GetCachedColumn(toptexture, texturecolumn);
++                            dcvars.dc_source = TexMan.GetResidentColumn(toptexture, texturecolumn);
+                             dcvars.dc_source_ofs = 0;
+                             if (dcvars.dc_colormap == null) {
+                                 System.out.println("Two-sided");
+@@ -1570,7 +1570,7 @@ public class RendererState<T, V> implements SceneRenderer<T, V> {
+                             dcvars.dc_yh = yh;
+                             dcvars.dc_texturemid = rw_bottomtexturemid;
+                             dcvars.dc_texheight = TexMan.getTextureheight(bottomtexture) >> FRACBITS;
+-                            dcvars.dc_source = TexMan.GetCachedColumn(bottomtexture, texturecolumn);
++                            dcvars.dc_source = TexMan.GetResidentColumn(bottomtexture, texturecolumn);
+                             dcvars.dc_source_ofs = 0;
+                             CompleteColumn();
+ 
+@@ -1797,8 +1797,8 @@ public class RendererState<T, V> implements SceneRenderer<T, V> {
+                                 = (int) (addAngles(view.angle, view.xtoviewangle[x]) >>> ANGLETOSKYSHIFT);
+                             skydcvars.dc_x = x;
+                             // Optimized: texheight is going to be the same
+                             // during normal skies drawing...right?
+                             skydcvars.dc_source
+-                                = TexMan.GetCachedColumn(skytexture, angle);
++                                = TexMan.GetResidentColumn(skytexture, angle);
+                             colfunc.sky.invoke();
+                         }
+diff --git a/src/rr/TextureManager.java b/src/rr/TextureManager.java
+index e5d11e8..17218b9 100644
+--- a/src/rr/TextureManager.java
++++ b/src/rr/TextureManager.java
+@@ -84,6 +84,8 @@ public interface TextureManager<T> extends IGetColumn<T>, IGetCachedColumn<T>,IG
+ 
+ 	byte[] getRogueColumn(int lump, int column);
+ 
++	T GetResidentColumn(int tex, int col);
++
+     int getTextureColumnLump(int tex, int col);

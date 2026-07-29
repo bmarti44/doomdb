@@ -216,6 +216,10 @@ test('[T112-LIVE-OCI-BROWSER] database-generated framebuffer client', async ({pa
   },undefined,{timeout:120_000});
   await page.keyboard.up('ArrowRight');
   await page.keyboard.up('KeyW');
+  if (process.env.T112_SCREENSHOT_PATH)
+    await page.screenshot({
+      path:process.env.T112_SCREENSHOT_PATH,fullPage:true
+    });
   collecting=false;
   // Capture the authenticated identity before pagehide deliberately erases
   // browser storage. The subsequent explicit LEAVE is an idempotency proof for

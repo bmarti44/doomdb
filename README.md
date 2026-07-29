@@ -10,13 +10,15 @@ the browser only copies the completed pixels to canvas.
 
 The hosted release now uses the database-pixel path: Oracle MLE advances the
 authoritative world and produces each complete 320x200 indexed framebuffer.
-ORDS returns compressed batches of those pixels; the browser only decompresses,
-applies the palette, and copies them to canvas. The terminal two-browser OCI
-gate produced 300 sequential, unique database frames per player at 34.182 and
-34.133 FPS, with 33.0 and 32.8 ms p95 presentation cadence, zero confirmed
-frame drops, distinct player viewpoints, dynamic input, and a checkpoint
-crossing. Always Free may stop after an idle period; retry after the database
-has resumed if the link is temporarily unavailable.
+ORDS returns bounded batches of those pixels; the browser only applies the
+palette and copies them to canvas. The current public solo gate produced 300
+sequential, unique database frames at 34.366 FPS with 32.5 ms p95 presentation
+cadence, zero confirmed frame drops, and zero starvation/resync events. The
+July 29 coordinator fix also keeps the full-resolution Doom status bar intact
+during temporal world reprojection. The separate two-view co-op producer is
+still below 30 FPS and remains an open performance gate. Always Free may stop
+after an idle period; retry after the database has resumed if the link is
+temporarily unavailable.
 
 ![DoomDB gameplay recorded from the local stack](media/doomdb-gameplay.gif)
 
@@ -38,8 +40,8 @@ Here's what happens when you press the fire key:
    monsters think. All of it inside your database session's world.
 4. MLE rasterizes the player-specific view into a complete indexed
    framebuffer and publishes it through the bounded database pixel ring. ORDS
-   returns compressed batches; the browser decodes and copies the pixels to
-   canvas. The compact DMD1 state chain remains the authority and recovery
+   returns bounded batches; the browser applies the palette and copies the
+   pixels to canvas. The compact DMD1 state chain remains the authority and recovery
    record, not the live rasterizer.
 
 The target round trip is keypress, HTTP, PL/SQL, MLE JavaScript simulation and
@@ -55,7 +57,8 @@ probes before reaching the deployed integrated candidate. It emits a complete
 flats, dynamic state, sprites, weapon animation, and the Doom status display.
 The current public default solo path sustains 34.156 database tics/s and
 delivered 300 consecutive database-generated frames through ORDS at 34.590
-FPS. The two-independent-POV co-op producer sustains 25.701 tics/s, so the
+FPS; the post-HUD-fix public rerun sustained 34.366 FPS. The
+two-independent-POV co-op producer sustains 25.701 tics/s, so the
 multi-POV 30 FPS gate remains open. A prior co-op browser sample averaged just
 over 30 FPS by spending startup backlog; it was not sustained producer
 evidence and is no longer described as a pass. Visual and gameplay fidelity

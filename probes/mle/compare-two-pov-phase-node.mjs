@@ -42,6 +42,12 @@ const inputs = [
 const stubUrl = 'data:text/javascript,'
   + encodeURIComponent('export default {};');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'doomdb-two-pov-phase-'));
+const capturedFrameTics = Number.parseInt(
+  process.env.PMLE_TWO_POV_CAPTURE_TICS ?? '16', 10);
+if (!Number.isInteger(capturedFrameTics)
+    || capturedFrameTics < 1 || capturedFrameTics > 600) {
+  throw new Error('PMLE_TWO_POV_CAPTURE_TICS must be within 1..600');
+}
 
 function coordinatorModule(source, label) {
   const authorityUrl = `${pathToFileURL(authorityPath).href}?phase=${label}`;
@@ -155,7 +161,7 @@ async function run(api, stream, frames) {
     const started = performance.now();
     for (let player = 0; player < 2; player++) {
       api.renderConfirmedTemporalFrame(player, tic);
-      if (index < 16) {
+      if (index < capturedFrameTics) {
         firstFrames.push(Buffer.from(api.frameChunk(0, 64_000)));
       }
     }
@@ -168,7 +174,7 @@ async function run(api, stream, frames) {
   };
 }
 
-async function exactFrames(api, stream, frames = 16) {
+async function exactFrames(api, stream, frames = capturedFrameTics) {
   const output = [];
   for (let index = 0; index < frames; index++) {
     const command = stream[index];
@@ -211,6 +217,20 @@ const baselineResult = await run(baseline, stream, frames);
 const candidateResult = await run(candidate, stream, frames);
 const exact = await prepareExact();
 const referenceFrames = await exactFrames(exact, stream);
+const frameDirectory = process.env.PMLE_TWO_POV_FRAME_DIR;
+if (frameDirectory) {
+  fs.mkdirSync(frameDirectory, {recursive: true});
+  for (let index = 0; index < candidateResult.firstFrames.length; index++) {
+    const tic = Math.floor(index / 2) + 1;
+    const player = index % 2;
+    fs.writeFileSync(
+      path.join(frameDirectory, `tic-${tic}-p${player}-candidate.bin`),
+      candidateResult.firstFrames[index]);
+    fs.writeFileSync(
+      path.join(frameDirectory, `tic-${tic}-p${player}-exact.bin`),
+      referenceFrames[index]);
+  }
+}
 if (baselineResult.canonicalSha256 !== candidateResult.canonicalSha256) {
   throw new Error('phase shift changed authoritative simulation state');
 }
@@ -228,7 +248,7 @@ process.stdout.write(
   `PMLE_TWO_POV_PHASE_NODE|DIAGNOSTIC_NOT_GATE|frames=${frames}`
   + `|baseline=${JSON.stringify(report('baseline', baselineResult))}`
   + `|candidate=${JSON.stringify(report('candidate', candidateResult))}`
-  + `|first_32_frame_differences=${
+  + `|captured_frame_differences=${
     candidateResult.firstFrames.filter(
       (value, index) => !value.equals(baselineResult.firstFrames[index])).length}`
   + `|baseline_exact_difference_percent=${

@@ -383,7 +383,7 @@ if (hudLiveFramePromoted) {
     'PMLE_OCI_TWO_POV_ARTIFACT_ATTEST|phase=BEFORE|' +
     `authority_sha256=${hudLiveFrameAuthority.sha256}|` +
     'renderer_sha256=61163171b77421fc01a96359903fc1bc5fbbc17c639177c77e48f4973b4a0f12|' +
-    'coordinator_sha256=59acb671e6e0a03ee89735806c8f0178a53dc792d22b87fb2c22db5f226fdd85',
+    'coordinator_sha256=906f045eb2c5b016f9c1733c3c7546575d0a8e07f591c85181bf38ef56df6306',
     'OCI HUD database-pixel artifact attestation');
   contains(ociHudDatabasePixel,
     'player 0 p0=32.98fps paint=31.50/42.70ms',

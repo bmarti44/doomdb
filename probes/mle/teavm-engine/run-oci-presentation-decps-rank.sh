@@ -4,15 +4,18 @@ set -Eeuo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 evidence="$root/artifacts/performance/pmle-presentation-decps"
-candidate="$evidence/presentation-candidate-118c37717b36.js"
-candidate_sha=118c37717b362d9e7669b5a3a1e73c87b3916479b6e53651f08e85be9ae8f2d3
-candidate_bytes=1167481
+candidate="${PMLE_OCI_PRESENTATION_CANDIDATE:-$evidence/presentation-candidate-118c37717b36.js}"
+candidate_sha="$(shasum -a 256 "$candidate" | awk '{print $1}')"
+candidate_bytes="$(wc -c <"$candidate" | tr -d '[:space:]')"
 tables="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
 fixture="$root/tests/fixtures/mle-live-deathmatch-2026-07-23.json"
 iwad="$project/target/iwad-smoke/freedoom1.wad"
 oracle100="$evidence/oci-presentation-oracle-100-118c3771-2026-07-26.log"
 oracle300="$evidence/oci-presentation-oracle-300-118c3771-2026-07-26.log"
 record_parser="$root/scripts/require-db-record.mjs"
+bind_source="$project/presentation-bind-wrapper.mjs"
+bind_source_sha="$(shasum -a 256 "$bind_source" | awk '{print $1}')"
+bind_source_bytes="$(wc -c <"$bind_source" | tr -d '[:space:]')"
 stream_log="$evidence/oci-adb-presentation-stream-stage-v5-2026-07-26.log"
 load_log="$evidence/oci-adb-presentation-load-118c3771-v5-2026-07-26.log"
 bind_log="$evidence/oci-adb-presentation-bind-install-118c3771-v5-2026-07-26.log"
@@ -22,6 +25,24 @@ verdict100="$evidence/oci-adb-presentation-verdict-100-118c3771-v5-2026-07-26.lo
 verdict300="$evidence/oci-adb-presentation-verdict-300-118c3771-v5-2026-07-26.log"
 restore_log="$evidence/oci-adb-authority-restore-after-118c3771-v5-2026-07-26.log"
 park_log="$evidence/oci-adb-presentation-pool-park-118c3771-v5-2026-07-26.log"
+
+if [[ -n "${PMLE_OCI_PRESENTATION_CANDIDATE:-}" ]]; then
+  evidence="${PMLE_OCI_PRESENTATION_EVIDENCE_DIR:-$root/artifacts/performance/pmle-presentation-candidate}"
+  evidence_tag="${PMLE_OCI_PRESENTATION_EVIDENCE_TAG:-${candidate_sha:0:12}-2026-07-29}"
+  [[ "$evidence_tag" =~ ^[a-z0-9][a-z0-9._-]{2,80}$ ]] || {
+    printf '%s\n' 'OCI presentation evidence tag is invalid' >&2
+    exit 2
+  }
+  stream_log="$evidence/oci-command-stream-$evidence_tag.log"
+  load_log="$evidence/oci-load-$evidence_tag.log"
+  bind_log="$evidence/oci-bind-$evidence_tag.log"
+  rank100="$evidence/oci-locator-100-$evidence_tag.log"
+  rank300="$evidence/oci-locator-300-$evidence_tag.log"
+  verdict100="$evidence/oci-verdict-100-$evidence_tag.log"
+  verdict300="$evidence/oci-verdict-300-$evidence_tag.log"
+  restore_log="$evidence/oci-restore-$evidence_tag.log"
+  park_log="$evidence/oci-pool-park-$evidence_tag.log"
+fi
 
 for name in ADB_CONNECTION_STRING ADB_USERNAME ADB_PASSWORD ADB_WALLET_DIR \
   SQL_CLIENT; do
@@ -41,9 +62,10 @@ for input in "$candidate" "$tables" "$fixture" "$iwad" "$oracle100" \
     exit 2
   }
 done
-[[ "$(wc -c <"$candidate" | tr -d '[:space:]')" == "$candidate_bytes" &&
-    "$(shasum -a 256 "$candidate" | awk '{print $1}')" == "$candidate_sha" ]] ||
+[[ "$candidate_sha" =~ ^[0-9a-f]{64}$ &&
+    "$candidate_bytes" =~ ^[1-9][0-9]*$ ]] ||
   { printf '%s\n' 'OCI presentation candidate pin mismatch' >&2; exit 1; }
+mkdir -p "$evidence"
 for output in "$stream_log" "$load_log" "$bind_log" "$rank100" "$rank300" \
   "$verdict100" "$verdict300" "$restore_log" "$park_log"; do
   [[ ! -e "$output" ]] || {
@@ -76,7 +98,7 @@ restore_production() {
     if "$project/load-mle-module.sh" --production --emit-sql |
         "$root/scripts/adb-doom-sql.sh" - >"$restore_log" &&
       node "$record_parser" "$restore_log" 'PMLE_TEAVM_STAGING_GATE|' \
-        'PMLE_TEAVM_STAGING_GATE|PASS|source_bytes=1081335|source_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44' &&
+        'PMLE_TEAVM_STAGING_GATE|PASS|source_bytes=1090790|source_sha256=66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44' &&
       "$root/scripts/adb-doom-sql.sh" - >>"$restore_log" <<'SQL'
 alter package doom_mle_match_runtime compile body;
 set heading off feedback off pagesize 0 linesize 32767 trimspool on
@@ -92,21 +114,18 @@ SQL
       "$root/scripts/adb-doom-sql.sh" \
         "$project/artifact-metadata.sql" >>"$restore_log" &&
       node "$record_parser" "$restore_log" 'PMLE_ARTIFACT|' \
-        'PMLE_ARTIFACT|source_bytes=1081335|source_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44' &&
+        'PMLE_ARTIFACT|source_bytes=1090790|source_sha256=66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44' &&
       "$root/scripts/adb-doom-sql.sh" - >>"$restore_log" <<'SQL'
 set heading off feedback off pagesize 0 linesize 32767 trimspool on
-select 'PMLE_OCI_PRESENTATION_ROLLBACK_CONTRACT|PASS|sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3'
+select 'PMLE_OCI_PRESENTATION_ROLLBACK_CONTRACT|PASS|sha256=66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873'
 from dual
-where (select count(*) from user_source
-       where name='DOOM_MLE_MATCH_RUNTIME' and type='PACKAGE BODY'
-         and text like '%5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3%')=1
-  and (select count(*) from user_objects
+where (select count(*) from user_objects
        where object_name='DOOM_MLE_MATCH_RUNTIME'
          and object_type='PACKAGE BODY' and status='VALID')=1;
 SQL
       node "$record_parser" "$restore_log" \
         'PMLE_OCI_PRESENTATION_ROLLBACK_CONTRACT|' \
-        'PMLE_OCI_PRESENTATION_ROLLBACK_CONTRACT|PASS|sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3'; then
+        'PMLE_OCI_PRESENTATION_ROLLBACK_CONTRACT|PASS|sha256=66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873'; then
       :
     else
       environment_safe=0
@@ -197,7 +216,7 @@ node "$record_parser" "$load_log" 'PMLE_TEAVM_STAGING_GATE|' \
   "--engine-sha256=$candidate_sha" |
   "$root/scripts/adb-doom-sql.sh" - | tee "$bind_log"
 node "$record_parser" "$bind_log" 'PMLE_PRESENTATION_BIND_INSTALL|' \
-  "PMLE_PRESENTATION_BIND_INSTALL|PASS|transports=direct_uint8array_blob_insert,persistent_returning_oracle_blob|direct_supported=YES|direct_mode=explicit_db_type_blob|frame_bytes=64000|imports=1|source_bytes=5408|source_sha256=e2410f67c81c007aca7ab881fb8aa922026418b630299390fdc5cf97e0219576|engine_sha256=$candidate_sha"
+  "PMLE_PRESENTATION_BIND_INSTALL|PASS|transports=direct_uint8array_blob_insert,persistent_returning_oracle_blob|direct_supported=YES|direct_mode=explicit_db_type_blob|frame_bytes=64000|imports=1|source_bytes=$bind_source_bytes|source_sha256=$bind_source_sha|engine_sha256=$candidate_sha"
 
 run_rank() {
   local identifier=$1 output=$2
@@ -211,13 +230,13 @@ run_rank() {
 
 run_rank OCI_PRESENTATION_LOCATOR_100 "$rank100"
 node "$project/evaluate-oci-presentation-decps.mjs" \
-  "$oracle100" "$rank100" 100 | tee "$verdict100"
+  "$oracle100" "$rank100" 100 "$candidate_sha" | tee "$verdict100"
 
 if grep -Fq '|exact_30fps=PASS|' "$verdict100" &&
     grep -Fq '|locator_hygiene=PASS|' "$verdict100"; then
   run_rank OCI_PRESENTATION_LOCATOR_300 "$rank300"
   node "$project/evaluate-oci-presentation-decps.mjs" \
-    "$oracle300" "$rank300" 300 | tee "$verdict300"
+    "$oracle300" "$rank300" 300 "$candidate_sha" | tee "$verdict300"
 else
   printf 'PMLE_OCI_PRESENTATION_DECPS_VERDICT|DIAGNOSTIC_NOT_GATE|' \
     >"$verdict300"

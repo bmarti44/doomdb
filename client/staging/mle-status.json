@@ -55,7 +55,7 @@
       "sha256": "c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c",
       "profile": "unified-160x56-live-frame",
       "coordinatorBytes": 48003,
-      "coordinatorSha256": "8f005189021d476dfe9c75718fee8dfa0a47e235efd5567242a8b2f81f203249"
+      "coordinatorSha256": "906f045eb2c5b016f9c1733c3c7546575d0a8e07f591c85181bf38ef56df6306"
     },
     "inputBytecodeSha256": "289edf1d678f9aced34c969ed24dcc9c90b9dce38f1b15701b284a2e5384df7e",
     "mochaBytecodeSha256": "c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4",
@@ -226,7 +226,7 @@
     "currentHudDeployment": {
       "authoritySha256": "66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873",
       "rendererSha256": "c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c",
-      "coordinatorSha256": "8f005189021d476dfe9c75718fee8dfa0a47e235efd5567242a8b2f81f203249",
+      "coordinatorSha256": "906f045eb2c5b016f9c1733c3c7546575d0a8e07f591c85181bf38ef56df6306",
       "status": "SUSTAINED_TWO_POV_PRODUCER_25_701FPS_30FPS_GATE_OPEN",
       "productionShapeServerFps": 72.562,
       "productionShapeServerP50Milliseconds": 13.145,

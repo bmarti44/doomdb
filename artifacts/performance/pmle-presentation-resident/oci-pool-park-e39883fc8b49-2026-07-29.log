@@ -1,0 +1,7 @@
+Connection failed
+  USER          = DOOM
+  URL           = jdbc:oracle:thin:@doomdb_tp
+  Error Message = ORA-01017: invalid credential or not authorized; logon denied
+
+https://docs.oracle.com/error-help/db/ora-01017/
+

@@ -1,0 +1,159 @@
+diff --git a/src/w/IWadLoader.java b/src/w/IWadLoader.java
+index 22df012..a7ce399 100644
+--- a/src/w/IWadLoader.java
++++ b/src/w/IWadLoader.java
+@@ -181,5 +181,7 @@ public abstract class IWadLoader {
+      */
+     public abstract patch_t CachePatchNum(int num);
+ 
++    public abstract <T> T GetResidentLump(int num, Class<T> what);
++
+     @W_Wad.C(W_CacheLumpName)
+     public abstract <T extends CacheableDoomObject> T CacheLumpName(String name, int tag, Class<T> what);
+diff --git a/src/w/WadLoader.java b/src/w/WadLoader.java
+index e405911..9dddc44 100644
+--- a/src/w/WadLoader.java
++++ b/src/w/WadLoader.java
+@@ -1043,6 +1043,17 @@ public class WadLoader extends IWadLoader {
+ 		return this.CacheLumpNum(num, PU_CACHE, patch_t.class);
+ 	}
+ 
++	@Override
++	@SuppressWarnings("unchecked")
++	public <T> T GetResidentLump(int num, Class<T> what) {
++		if (num < 0 || num >= lumpcache.length || lumpcache[num] == null)
++			throw new IllegalStateException("unhydrated resident lump");
++		Object value = lumpcache[num];
++		if (!what.isInstance(value))
++			throw new IllegalStateException("resident lump type mismatch");
++		return (T) value;
++	}
++
+ 	/* (non-Javadoc)
+ 	 * @see w.IWadLoader#CacheLumpName(java.lang.String, int, java.lang.Class)
+ 	 */
+diff --git a/src/rr/TextureManager.java b/src/rr/TextureManager.java
+index 17218b9..a4bd7e1 100644
+--- a/src/rr/TextureManager.java
++++ b/src/rr/TextureManager.java
+@@ -88,4 +88,6 @@ public interface TextureManager<T> extends IGetColumn<T>, IGetCachedColumn<T>,IG
+ 
+ 	T GetResidentColumn(int tex, int col);
+ 
++    column_t GetResidentColumnStruct(int tex, int col);
++
+     int getTextureColumnLump(int tex, int col);
+diff --git a/src/rr/SimpleTextureManager.java b/src/rr/SimpleTextureManager.java
+index fc8a334..78a83a9 100644
+--- a/src/rr/SimpleTextureManager.java
++++ b/src/rr/SimpleTextureManager.java
+@@ -111,6 +111,7 @@ public class SimpleTextureManager implements TextureManager<byte[]> {
+     }
+     
+     Hashtable<Integer, patch_t> FlatPatchCache;
++    Hashtable<Integer, patch_t> residentPatchCache = new Hashtable<Integer, patch_t>();
+ 
+     /** Quick, O(1) texture lookup by name.
+      * 
+@@ -291,5 +291,23 @@ public class SimpleTextureManager implements TextureManager<byte[]> {
+             for (int column=0 ; column<textures[i].width ; column++)
+                 GetCachedColumn(i, column);
++
++        for (int i=0 ; i<numtextures ; i++)
++            for (int patchIndex=0 ; patchIndex<textures[i].patchcount ; patchIndex++) {
++                int lump = textures[i].patches[patchIndex].patch;
++                if (!residentPatchCache.containsKey(lump))
++                    residentPatchCache.put(lump, retrievePatchSafe(lump));
++            }
++
++        // Masked mid-textures need column_t metadata rather than raw bytes.
++        // Build those composites here too so the retained render path never
++        // reaches WAD I/O.
++        for (int i=0 ; i<numtextures ; i++) {
++            boolean compositeTexture = false;
++            for (int column=0 ; column<textures[i].width ; column++)
++                compositeTexture |= texturecolumnlump[i][column] <= 0;
++            if (compositeTexture)
++                GenerateMaskedComposite(i);
++        }
+     }
+     
+     /** Assigns proper lumpnum to patch names. Check whether flats and patches of the same name coexist.
+@@ -873,7 +883,11 @@ public class SimpleTextureManager implements TextureManager<byte[]> {
+               for (int i=0;i<numflats;i++){
+                   flattranslation[i]=i;
+                 //  System.out.printf("Verification: flat[%d] is %s in lump %d\n",i,W.GetNameForNum(flattranslation[i]),flatstorage[i]);  
+               }
++
++              // The retained presentation renderer never performs WAD I/O.
++              for (int i=0; i<numflats; i++)
++                  W.CacheLumpNum(flatstorage[i], PU_STATIC, flat_t.class);
+             }
+     
+     private final static String LUMPSTART="F_START";
+@@ -1237,8 +1247,8 @@ public class SimpleTextureManager implements TextureManager<byte[]> {
+ 
+     @Override
+     public byte[] getSafeFlat(int flatnum) {
+-        byte[] flat= ((flat_t)W.CacheLumpNum(getFlatTranslation(flatnum),
+-            PU_STATIC,flat_t.class)).data;
++        byte[] flat = W.GetResidentLump(getFlatTranslation(flatnum),
++            flat_t.class).data;
+ 
+         if (flat.length<4096){
+             System.arraycopy(flat, 0,safepatch,0,flat.length);
+@@ -1442,5 +1452,33 @@ public class SimpleTextureManager implements TextureManager<byte[]> {
+         return lastpatch.columns[col];
+     }
++
++    @Override
++    public column_t GetResidentColumnStruct(int tex, int col) {
++        col &= getTexturewidthmask(tex);
++        int lump = getTextureColumnLump(tex, col);
++        int ofs = getTextureColumnOfs(tex, col);
++
++        if (tex == lasttex && lump == lastlump)
++            return composite ? lastpatch.columns[col] : lastpatch.columns[ofs];
++
++        if (lump > 0) {
++            lastpatch = residentPatchCache.get(lump);
++            if (lastpatch == null)
++                throw new IllegalStateException("unhydrated resident texture patch");
++            lasttex = tex;
++            lastlump = lump;
++            composite = false;
++            return lastpatch.columns[ofs];
++        }
++
++        lastpatch = getMaskedComposite(tex);
++        if (lastpatch == null)
++            throw new IllegalStateException("unhydrated resident masked composite");
++        lasttex = tex;
++        lastlump = 0;
++        composite = true;
++        return lastpatch.columns[col];
++    }
+ 
+     // False: disk-mirrored patch. True: improper "transparent composite".
+     private boolean composite = false;
+diff --git a/src/rr/AbstractThings.java b/src/rr/AbstractThings.java
+index 66e52f6..32be866 100644
+--- a/src/rr/AbstractThings.java
++++ b/src/rr/AbstractThings.java
+@@ -127,6 +127,7 @@ public abstract class AbstractThings<T, V> implements Things<T, V> {
+ 
+         // At this point, the view angle (and patch) has already been
+         // chosen. Go back.
+-        patch = W.CachePatchNum(vis.patch + SM.getFirstSpriteLump());
++        patch = W.GetResidentLump(vis.patch + SM.getFirstSpriteLump(),
++            patch_t.class);
+ 
+         maskedcvars.dc_colormap = vis.colormap;
+@@ -259,6 +260,6 @@ public abstract class AbstractThings<T, V> implements Things<T, V> {
+                 maskedcvars.dc_iscale = (int) (0xffffffffL / spryscale);
+ 
+                 // draw the texture
+-                column_t data = TexMan.GetColumnStruct(texnum,
++                column_t data = TexMan.GetResidentColumnStruct(texnum,
+                     (int) maskedtexturecol[pmaskedtexturecol
+                             + maskedcvars.dc_x]);// -3);

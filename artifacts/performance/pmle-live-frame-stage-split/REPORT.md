@@ -55,3 +55,14 @@ release-gate reclassifications, but they establish that the deployed default
 solo database-frame path clears 30 FPS. The remaining rate miss is the
 two-independent-POV co-op path; the remaining product defect on both paths is
 the specialized renderer's visual fidelity.
+
+## Status-bar reprojection correction
+
+Coordinator `906f045eb2c5…` supersedes `8f005189021d…` after reproducing a
+temporal-frame defect: moving-camera reprojection transformed the complete
+200-row frame instead of only the 168-row world viewport, tearing the retained
+HUD beneath widget-level redraws. The corrected public run delivered 300
+unique sequential database frames at 34.366 FPS with a 32.5 ms p95 interval,
+zero drops/starvation/resync, and a clean match release. The authority and
+renderer artifacts remain unchanged. Full evidence is in
+`../pmle-live-frame-hud-fix/`.
