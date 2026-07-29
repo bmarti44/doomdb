@@ -842,11 +842,19 @@ const status = {
       repeatPublicSoloCadenceP95Milliseconds: 32.4,
       repeatPublicSoloMaximumIntervalMilliseconds: 225,
       repeatPublicSoloStarvations: 1,
-      sustainedNoPixelPollingProducerFps: 25.701,
-      twoPovRenderAverageMillisecondsRange: [28.387, 29.559],
-      twoPovPublishAverageMillisecondsRange: [1.996, 2.136],
       confirmedFrameDrops: [0, 0],
-      evidence: ociFrameStageEvidencePath
+      evidence: ociHudDatabasePixelEvidencePath,
+      historicalTwoPovProducer: {
+        profile: 'unified-160x56-live-frame',
+        rendererSha256:
+          'c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c',
+        coordinatorSha256:
+          '8f005189021ddf246ee154ce8fcf44a719dd6e571943e55ddc251d46e865cd50',
+        sustainedFps: 25.701,
+        renderAverageMillisecondsRange: [28.387, 29.559],
+        publishAverageMillisecondsRange: [1.996, 2.136],
+        evidence: ociFrameStageEvidencePath
+      }
     } : null,
     workload: 'two-player deathmatch authoritative exact command stream',
     tics: 5250,

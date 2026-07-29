@@ -60,8 +60,9 @@ flats, dynamic state, sprites, weapon animation, and the Doom status display.
 The current public default solo path delivered 300 consecutive
 database-generated frames through ORDS at 34.995 FPS with 31.9 ms p95. The
 immediate repeat delivered 34.117 FPS with 32.4 ms p95 and one isolated 225 ms
-venue tail. The
-two-independent-POV co-op producer sustains 25.701 tics/s, so the
+venue tail. The previous 160x56 two-independent-POV co-op producer sustained
+25.701 tics/s;
+the current 160x84 tuple has not yet run that producer cell, so the
 multi-POV 30 FPS gate remains open. A prior co-op browser sample averaged just
 over 30 FPS by spending startup backlog; it was not sustained producer
 evidence and is no longer described as a pass. Visual and gameplay fidelity

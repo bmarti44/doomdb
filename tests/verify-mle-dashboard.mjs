@@ -179,14 +179,21 @@ if (hudLiveFramePromoted) {
       .repeatPublicSoloMaximumIntervalMilliseconds,
     225);
   assert.equal(
-    status.performance.currentHudDeployment.sustainedNoPixelPollingProducerFps,
+    status.performance.currentHudDeployment.historicalTwoPovProducer
+      .sustainedFps,
     25.701);
   assert.deepEqual(
-    status.performance.currentHudDeployment.twoPovRenderAverageMillisecondsRange,
+    status.performance.currentHudDeployment.historicalTwoPovProducer
+      .renderAverageMillisecondsRange,
     [28.387, 29.559]);
   assert.deepEqual(
-    status.performance.currentHudDeployment.twoPovPublishAverageMillisecondsRange,
+    status.performance.currentHudDeployment.historicalTwoPovProducer
+      .publishAverageMillisecondsRange,
     [1.996, 2.136]);
+  assert.equal(
+    status.performance.currentHudDeployment.historicalTwoPovProducer
+      .rendererSha256,
+    'c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c');
 }
 assert.equal(status.sessionCleanup.capacityReuse, 'PASS');
 assert.equal(status.sessionCleanup.browserCloseReleaseMilliseconds, 321);
