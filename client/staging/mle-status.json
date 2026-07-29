@@ -54,8 +54,8 @@
       "bytes": 48242,
       "sha256": "50835b7130486e5e705bec501c785a43e8158ce5e77202afe2ad9ff4f4133d17",
       "profile": "unified-160x84-live-frame",
-      "coordinatorBytes": 48154,
-      "coordinatorSha256": "903ee45498ea637da2150fcda226e46480f4257bcc650b4e30930527882fdf8b"
+      "coordinatorBytes": 48960,
+      "coordinatorSha256": "b8d2250f998f7fc5a1a7e4209dff0508abf02fec1672ba41e42de1dda73a5145"
     },
     "inputBytecodeSha256": "289edf1d678f9aced34c969ed24dcc9c90b9dce38f1b15701b284a2e5384df7e",
     "mochaBytecodeSha256": "c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4",
@@ -69,7 +69,7 @@
     "coopEveryTic762": "HISTORICAL_PASS_C613",
     "membershipRecovery": "HISTORICAL_PASS_C613",
     "ledgerEveryTic13272": "HISTORICAL_PASS_C613_NODE_5250_PARITY_CURRENT",
-    "databasePixelTwoPov300": "SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_GATE_OPEN",
+    "databasePixelTwoPov300": "SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_AVERAGE_P95_OPEN",
     "databasePixelCheckpointCrossing": "HISTORICAL_PASS_C613",
     "abandonedSessionCleanup": "PASS",
     "warmRestoreDirectMleAb": "PASS",
@@ -226,26 +226,47 @@
     "currentHudDeployment": {
       "authoritySha256": "66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873",
       "rendererSha256": "50835b7130486e5e705bec501c785a43e8158ce5e77202afe2ad9ff4f4133d17",
-      "coordinatorSha256": "903ee45498ea637da2150fcda226e46480f4257bcc650b4e30930527882fdf8b",
-      "status": "SOLO_160X84_PERFORMANCE_PASS_TWO_POV_GATE_OPEN",
+      "coordinatorSha256": "b8d2250f998f7fc5a1a7e4209dff0508abf02fec1672ba41e42de1dda73a5145",
+      "status": "SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_AVERAGE_P95_OPEN",
       "productionShapeServerFps": 72.562,
       "productionShapeServerP50Milliseconds": 13.145,
       "productionShapeServerP95Milliseconds": 18.598,
-      "latestPublicSoloFps": 34.995,
-      "latestPublicSoloCadenceP95Milliseconds": 31.9,
-      "repeatPublicSoloFps": 34.117,
-      "repeatPublicSoloCadenceP95Milliseconds": 32.4,
-      "repeatPublicSoloMaximumIntervalMilliseconds": 225,
+      "latestPublicSoloFps": 34.691,
+      "latestPublicSoloCadenceP95Milliseconds": 32.1,
+      "repeatPublicSoloFps": 34.752,
+      "repeatPublicSoloCadenceP95Milliseconds": 32.1,
+      "repeatPublicSoloMaximumIntervalMilliseconds": 63.4,
       "repeatPublicSoloStarvations": 1,
       "confirmedFrameDrops": [
         0,
         0
       ],
+      "currentTwoPovDiagnostic": {
+        "status": "AVERAGE_30FPS_PASS_P95_OPEN",
+        "fps": [
+          30.599,
+          30.536
+        ],
+        "cadenceP95Milliseconds": [
+          47.7,
+          51.2
+        ],
+        "uniqueFrames": [
+          300,
+          300
+        ],
+        "confirmedFrameDrops": [
+          0,
+          0
+        ],
+        "coordinatorSha256": "b8d2250f998f7fc5a1a7e4209dff0508abf02fec1672ba41e42de1dda73a5145",
+        "evidence": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-two-pov-phase-stagger-2026-07-29.json"
+      },
       "evidence": [
         "artifacts/performance/pmle-live-frame-hud-fix/OCI-160X84-DEPLOYMENT.md",
-        "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-solo-browser-pass-2026-07-29.json",
-        "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-solo-browser-repeat-2026-07-29.json",
-        "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-db-postflight-2026-07-29.log"
+        "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-solo-browser-repeat-2026-07-29.json",
+        "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-solo-browser-2026-07-29.json",
+        "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-db-postflight-2026-07-29.log"
       ],
       "historicalTwoPovProducer": {
         "profile": "unified-160x56-live-frame",
@@ -450,7 +471,7 @@
       "mleCallSpecs": 25,
       "evidence": "artifacts/performance/pmle-cloud/oci-exact-release-java-removal-2026-07-26.log"
     },
-    "note": "160x84 OCI database-pixel solo performance passes; the current artifact still needs a sustained two-POV producer cell"
+    "note": "160x84 OCI solo passes; current two-POV path clears 30 FPS average while its strict p95 cadence gate remains open"
   },
   "remaining": [
     {
@@ -486,7 +507,7 @@
     {
       "id": "ADB",
       "state": "DONE",
-      "label": "Current 160x84 OCI solo path clears 30 FPS; its sustained two-POV producer cell remains unmeasured"
+      "label": "Current 160x84 OCI solo passes; two-POV average clears 30 FPS and p95 remains open"
     }
   ],
   "evidence": {
@@ -527,9 +548,9 @@
     "ociWaitFreeWanQualification": "artifacts/performance/pmle-wan/oci-wait-free-setpoint-depth6-qualification-v2-pass-2026-07-26.md",
     "ociJavaRemovalAudit": "artifacts/performance/pmle-cloud/oci-exact-release-java-removal-2026-07-26.log",
     "ociHudDatabasePixelRequalification": "artifacts/performance/pmle-live-frame-hud-fix/OCI-160X84-DEPLOYMENT.md",
-    "ociHudSoloPrimary": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-solo-browser-pass-2026-07-29.json",
-    "ociHudSoloRepeat": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-solo-browser-repeat-2026-07-29.json",
-    "ociHudSoloPostflight": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-db-postflight-2026-07-29.log",
+    "ociHudSoloPrimary": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-solo-browser-repeat-2026-07-29.json",
+    "ociHudSoloRepeat": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-solo-browser-2026-07-29.json",
+    "ociHudSoloPostflight": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-db-postflight-2026-07-29.log",
     "ociFrameStageDecomposition": "artifacts/performance/pmle-live-frame-stage-split/oci-static-copy-observe-2026-07-29.log",
     "ociDeCpsPresentationDiagnostic": "artifacts/performance/pmle-presentation-decps/REPORT.md",
     "ociDatabaseFrameDiagnostic": "artifacts/performance/pmle-database-frames/REPORT.md",

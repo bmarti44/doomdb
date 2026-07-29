@@ -66,3 +66,18 @@ unique sequential database frames at 34.366 FPS with a 32.5 ms p95 interval,
 zero drops/starvation/resync, and a clean match release. The authority and
 renderer artifacts remain unchanged. Full evidence is in
 `../pmle-live-frame-hud-fix/`.
+
+## Two-view exact-raster phase staggering
+
+Coordinator `b8d2250f998f…` retains the same four-tic exact-world refresh
+interval for each POV but assigns the second view a two-tic phase offset.
+Sprites, weapon, HUD, and confirmed-camera reprojection still update on every
+authoritative tic. A 600-frame Node A/B preserved the canonical state SHA and
+reduced the candidate p95 render cost from 1.819 to 1.386 ms.
+
+On OCI, the current 160x84 renderer improved from 29.982/29.756 FPS without
+staggering to 30.599/30.536 FPS with staggering; both players received 300
+unique sequential database frames with zero confirmed drops. P95 client
+cadence remained 47.7/51.2 ms, so this is promoted as the best current build
+but is not called a strict two-view gate PASS. A five-tic refresh experiment
+regressed both players to about 29.1 FPS and was rejected.

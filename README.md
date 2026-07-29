@@ -12,13 +12,14 @@ The hosted release now uses the database-pixel path: Oracle MLE advances the
 authoritative world and produces each complete 320x200 indexed framebuffer.
 ORDS returns bounded batches of those pixels; the browser only applies the
 palette and copies them to canvas. The current 160x84-world public solo cell
-produced 300 sequential, unique database frames at 34.995 FPS with 31.9 ms p95
+produced 300 sequential, unique database frames at 34.691 FPS with 32.1 ms p95
 presentation cadence, zero confirmed frame drops, and zero scored
-starvation/resync events. An immediate repeat sustained 34.117 FPS and 32.4 ms
-p95 but recorded one 225 ms managed-service tail. The July 29 coordinator fix
+starvation/resync events. An adjacent diagnostic sustained 34.752 FPS and
+32.1 ms p95 but recorded one 63.4 ms managed-service tail. The July 29 coordinator fix
 keeps the full-resolution Doom status bar intact during both moving and
-stationary temporal world reuse. The separate two-view co-op producer is still
-below 30 FPS and remains an open performance gate. Always Free may stop
+stationary temporal world reuse. Its phase-staggered two-view path sustained
+30.599/30.536 FPS with 300 unique frames per player, although the stricter p95
+cadence gate remains open. Always Free may stop
 after an idle period; retry after the database has resumed if the link is
 temporarily unavailable.
 
@@ -58,12 +59,11 @@ probes before reaching the deployed integrated candidate. It emits a complete
 64,000-byte indexed framebuffer with real E1M1 portal geometry, textures and
 flats, dynamic state, sprites, weapon animation, and the Doom status display.
 The current public default solo path delivered 300 consecutive
-database-generated frames through ORDS at 34.995 FPS with 31.9 ms p95. The
-immediate repeat delivered 34.117 FPS with 32.4 ms p95 and one isolated 225 ms
-venue tail. The previous 160x56 two-independent-POV co-op producer sustained
-25.701 tics/s;
-the current 160x84 tuple has not yet run that producer cell, so the
-multi-POV 30 FPS gate remains open. A prior co-op browser sample averaged just
+database-generated frames through ORDS at 34.691 FPS with 32.1 ms p95. The
+adjacent diagnostic delivered 34.752 FPS with 32.1 ms p95 and one isolated
+63.4 ms venue tail. The current 160x84 two-independent-POV path sustained
+30.599/30.536 FPS after staggering its exact-raster phases; its 47.7/51.2 ms
+p95 cadence means the strict multi-POV gate remains open. A prior co-op browser sample averaged just
 over 30 FPS by spending startup backlog; it was not sustained producer
 evidence and is no longer described as a pass. Visual and gameplay fidelity
 also remain separately reviewable—the specialized renderer is not a
@@ -150,7 +150,7 @@ and the dashboard remains fail-closed on any artifact-specific gate that has
 not been rerun. Evidence is never inherited across artifact SHAs. The selected
 live-frame authority is now `66dd235c…`; its generated
 `client/dist/mle-status.json` binds the selected authority and deployed
-`50835b71…` renderer / `903ee454…` coordinator tuple, current solo browser
+`50835b71…` renderer / `b8d2250f…` coordinator tuple, current solo browser
 result, historical two-player result, and session-cleanup evidence. TeaVM did
 not reproduce the selected authority bytes,
 so the lock records exact-SHA selection and the non-reproducible emission
@@ -240,7 +240,7 @@ Numbers, measured on the local two-core Oracle Free stack:
 | Measurement | Result |
 | --- | --- |
 | Current database authority | Exact-SHA-selected `66dd235c…` (1,090,790 bytes) |
-| Current database-frame renderer | `50835b71…` 160x84 world + full-resolution HUD; coordinator `903ee454…` |
+| Current database-frame renderer | `50835b71…` 160x84 world + full-resolution HUD; phase-stagger coordinator `b8d2250f…` |
 | Full E1M1 MLE/OJVM differential | Historical 13,272/13,272 on `c613bb51…`; current `66dd235c…` has 5,250-tic Node parity |
 | Co-op MLE/OJVM differential | Historical 762/762 on `c613bb51…`; not inherited by current authority |
 | Pre-deCPS maximum-distance recovery | 57.337 s estimated total at 20 awake monsters |
@@ -248,8 +248,8 @@ Numbers, measured on the local two-core Oracle Free stack:
 | OCI correctness binding | 5,250-tic full canonical digest chain PASS vs Node |
 | OCI hosted browser (historical state-rendered release) | Post-push depth-6 recheck: 300/300 sequential unique frames; 34.319 FPS; 32.2 ms p95 |
 | OCI database-internal live-frame diagnostic | v84: 300/300 unique; 25.272 ms p50; 32.025 ms p95; single POV and reduced 106x56 world raster |
-| OCI production database-pixel browser | Current solo performance PASS: 300 unique frames, 34.995 FPS, 31.9 ms p95, zero scored drops/starvation/resync; repeat 34.117 FPS / 32.4 ms p95 with one 225 ms tail |
-| OCI two-POV database-pixel browser | Historical c613 tuple PASS at 34.182/34.133 FPS; current 66dd/5083/903e sustained two-POV 30 FPS gate remains open |
+| OCI production database-pixel browser | Current solo PASS: 300 unique frames, 34.691 FPS, 32.1 ms p95, zero scored drops/starvation/resync |
+| OCI two-POV database-pixel browser | Current 66dd/5083/b8d2 diagnostic: 30.599/30.536 FPS, 300 unique frames/player, zero drops; 47.7/51.2 ms p95 gate remains open |
 | OCI wait-free WAN qualification | PASS; 3 profiles × 2 clients × 10 scored minutes; cadence p99 34.5–36.2 ms |
 | OCI production Java-removal audit | PASS; zero Java objects/specs/dependencies and zero legacy API objects |
 | Local production-shaped throughput | 19.788 tics/s whole-route; development/capacity evidence only |
@@ -340,11 +340,11 @@ throughput gate, and lifecycle race battery. T11.1's clean/idempotent managed
 schema gate, T11.2's database-hosted browser gate, the complete OCI WAN
 qualification, and the production Java-removal catalog audit are green. The
 current 160x84-world hosted solo cell presents 300 sequential unique database
-frames at 34.995 FPS with 31.9 ms p95. Local throughput is no longer on the
+frames at 34.691 FPS with 32.1 ms p95. Local throughput is no longer on the
 release path. The
 artifact-specific 30-minute soak and unfinished HUD/automap/intermission/finale
-surfaces remain explicitly separate open work; the current two-player producer
-also remains below 30 FPS. Cloud qualification uses OCI CLI and the
+surfaces remain explicitly separate open work; the current two-player path
+clears 30 FPS average but not its strict p95 cadence gate. Cloud qualification uses OCI CLI and the
 existing `doomdb-adb` Autonomous Database. Deep-dive evidence lives in
 [artifacts/performance/](artifacts/performance/) and [reports/](reports/).
 

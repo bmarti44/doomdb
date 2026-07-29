@@ -70,7 +70,7 @@ node "$root/scripts/t11.2-verify-not-modified.mjs" \
 node --check "$root/scripts/t11.2-build-hosted-evidence.mjs"
 node --check "$root/scripts/t11.2-verify-runtime-postflight.mjs"
 cat >"$tmp/runtime-postflight.log" <<'EOF'
-T112_RUNTIME|match_sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|authority_sha256=66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873|renderer_sha256=50835b7130486e5e705bec501c785a43e8158ce5e77202afe2ad9ff4f4133d17|coordinator_sha256=903ee45498ea637da2150fcda226e46480f4257bcc650b4e30930527882fdf8b|current_tic=300|checkpoint_count=0|checkpoint_unmeasured_count=0|checkpoint_slow_count=0|checkpoint_max_step_ms=0|checkpoint_max_save_ms=0|checkpoint_max_publish_ms=0|checkpoint_max_stage_ms=0
+T112_RUNTIME|match_sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|authority_sha256=66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873|renderer_sha256=50835b7130486e5e705bec501c785a43e8158ce5e77202afe2ad9ff4f4133d17|coordinator_sha256=b8d2250f998f7fc5a1a7e4209dff0508abf02fec1672ba41e42de1dda73a5145|current_tic=300|checkpoint_count=0|checkpoint_unmeasured_count=0|checkpoint_slow_count=0|checkpoint_max_step_ms=0|checkpoint_max_save_ms=0|checkpoint_max_publish_ms=0|checkpoint_max_stage_ms=0
 EOF
 node "$root/scripts/t11.2-verify-runtime-postflight.mjs" \
   "$tmp/runtime-postflight.log" \

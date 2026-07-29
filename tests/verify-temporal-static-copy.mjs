@@ -16,6 +16,10 @@ assert.match(coordinator,
   /source\.subarray\(sourceAt, sourceAt \+ VIEW_HEIGHT\)/);
 assert.doesNotMatch(coordinator,
   /source\.subarray\(sourceAt, sourceAt \+ FRAME_HEIGHT\)/);
+assert.match(coordinator,
+  /frameTic % WORLD_RASTER_INTERVAL_TICS === worldRasterPhase/);
+assert.match(coordinator,
+  /playerSlot \* \(WORLD_RASTER_INTERVAL_TICS \/ 2\)/);
 
 const width = 320;
 const height = 200;
@@ -60,6 +64,25 @@ for (let x = 0; x < width; x++) {
       sourceX * height, sourceX * height + viewHeight),
     x * height);
 }
+
+// A two-view match alternates its exact world raster calls instead of stacking
+// both on one tic. Current sprites, weapon and HUD still compose every tic.
+const interval = 4;
+const exactTics = [[], []];
+for (let tic = 2; tic <= 17; tic++) {
+  const due = [];
+  for (let player = 0; player < 2; player++) {
+    const phase = player * (interval / 2) % interval;
+    if (tic % interval === phase) {
+      due.push(player);
+      exactTics[player].push(tic);
+    }
+  }
+  assert.ok(due.length <= 1,
+    `two-view exact raster collision survived at tic ${tic}`);
+}
+assert.deepEqual(exactTics[0], [4, 8, 12, 16]);
+assert.deepEqual(exactTics[1], [2, 6, 10, 14]);
 for (let x = 0; x < width; x++) {
   assert.deepEqual(
     target.subarray(x * height + viewHeight, (x + 1) * height),

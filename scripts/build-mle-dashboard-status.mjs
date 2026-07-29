@@ -57,13 +57,13 @@ const ociHudDatabasePixelEvidencePath =
   'OCI-160X84-DEPLOYMENT.md';
 const ociHudSoloPrimaryEvidencePath =
   'artifacts/performance/pmle-live-frame-hud-fix/' +
-  'oci-160x84-solo-browser-pass-2026-07-29.json';
+  'oci-160x84-phase-stagger-solo-browser-repeat-2026-07-29.json';
 const ociHudSoloRepeatEvidencePath =
   'artifacts/performance/pmle-live-frame-hud-fix/' +
-  'oci-160x84-solo-browser-repeat-2026-07-29.json';
+  'oci-160x84-phase-stagger-solo-browser-2026-07-29.json';
 const ociHudSoloPostflightEvidencePath =
   'artifacts/performance/pmle-live-frame-hud-fix/' +
-  'oci-160x84-db-postflight-2026-07-29.log';
+  'oci-160x84-phase-stagger-db-postflight-2026-07-29.log';
 const ociFrameStageEvidencePath =
   'artifacts/performance/pmle-live-frame-stage-split/' +
   'oci-static-copy-observe-2026-07-29.log';
@@ -405,13 +405,13 @@ if (hudLiveFramePromoted) {
     'OCI HUD database-pixel artifact attestation');
   contains(ociHudDatabasePixel,
     'PMLE_OCI_SOLO_160X84|PERFORMANCE_PASS|frames=300|' +
-    'unique_frames=300|sequential_tics=true|fps=34.995|' +
-    'p50_ms=28.200|p95_ms=31.900',
+    'unique_frames=300|sequential_tics=true|fps=34.691|' +
+    'p50_ms=28.200|p95_ms=32.100',
     'OCI HUD database-pixel solo performance pass');
   contains(ociHudDatabasePixel,
     'PMLE_OCI_SOLO_160X84_REPEAT|DIAGNOSTIC_NOT_GATE|' +
-    'frames=300|unique_frames=300|sequential_tics=true|fps=34.117|' +
-    'p50_ms=28.300|p95_ms=32.400|p99_ms=33.200|max_ms=225.000',
+    'frames=300|unique_frames=300|sequential_tics=true|fps=34.752|' +
+    'p50_ms=28.200|p95_ms=32.100|p99_ms=33.100|max_ms=63.400',
     'OCI HUD database-pixel repeat venue tail');
   assert.deepEqual(
     {
@@ -427,7 +427,7 @@ if (hudLiveFramePromoted) {
     },
     {
       frames: 300, uniqueFrames: 300, sequentialTics: true,
-      fps: 34.995, p95: 31.9, drops: 0, starvations: 0, resyncs: 0,
+      fps: 34.691, p95: 32.1, drops: 0, starvations: 0, resyncs: 0,
       cleanup: 200,
     },
     'OCI solo primary raw ledger drifted',
@@ -445,7 +445,7 @@ if (hudLiveFramePromoted) {
     },
     {
       frames: 300, uniqueFrames: 300, sequentialTics: true,
-      fps: 34.117, p95: 32.4, maximum: 225, starvations: 1,
+      fps: 34.752, p95: 32.1, maximum: 63.4, starvations: 1,
       cleanup: 200,
     },
     'OCI solo repeat raw ledger drifted',
@@ -727,7 +727,7 @@ const status = {
       ? 'PASS_CURRENT_AUTHORITY'
       : 'HISTORICAL_PASS_103E',
     databasePixelTwoPov300: hudLiveFramePromoted
-      ? 'SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_GATE_OPEN'
+      ? 'SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_AVERAGE_P95_OPEN'
       : 'PASS',
     databasePixelCheckpointCrossing: hudLiveFramePromoted
       ? 'HISTORICAL_PASS_C613'
@@ -898,17 +898,28 @@ const status = {
         authority.liveFrameRenderer.deployedOutputSha256,
       coordinatorSha256:
         authority.liveFrameRenderer.deployedCoordinatorSha256,
-      status: 'SOLO_160X84_PERFORMANCE_PASS_TWO_POV_GATE_OPEN',
+      status: 'SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_AVERAGE_P95_OPEN',
       productionShapeServerFps: 72.562,
       productionShapeServerP50Milliseconds: 13.145,
       productionShapeServerP95Milliseconds: 18.598,
-      latestPublicSoloFps: 34.995,
-      latestPublicSoloCadenceP95Milliseconds: 31.9,
-      repeatPublicSoloFps: 34.117,
-      repeatPublicSoloCadenceP95Milliseconds: 32.4,
-      repeatPublicSoloMaximumIntervalMilliseconds: 225,
+      latestPublicSoloFps: 34.691,
+      latestPublicSoloCadenceP95Milliseconds: 32.1,
+      repeatPublicSoloFps: 34.752,
+      repeatPublicSoloCadenceP95Milliseconds: 32.1,
+      repeatPublicSoloMaximumIntervalMilliseconds: 63.4,
       repeatPublicSoloStarvations: 1,
       confirmedFrameDrops: [0, 0],
+      currentTwoPovDiagnostic: {
+        status: 'AVERAGE_30FPS_PASS_P95_OPEN',
+        fps: [30.599, 30.536],
+        cadenceP95Milliseconds: [47.7, 51.2],
+        uniqueFrames: [300, 300],
+        confirmedFrameDrops: [0, 0],
+        coordinatorSha256:
+          authority.liveFrameRenderer.deployedCoordinatorSha256,
+        evidence: 'artifacts/performance/pmle-live-frame-hud-fix/' +
+          'oci-160x84-two-pov-phase-stagger-2026-07-29.json'
+      },
       evidence: [
         ociHudDatabasePixelEvidencePath,
         ociHudSoloPrimaryEvidencePath,
@@ -1128,7 +1139,7 @@ const status = {
       evidence: ociJavaRemovalEvidencePath
     },
     note: hudLiveFramePromoted
-      ? '160x84 OCI database-pixel solo performance passes; the current artifact still needs a sustained two-POV producer cell'
+      ? '160x84 OCI solo passes; current two-POV path clears 30 FPS average while its strict p95 cadence gate remains open'
       : 'OCI authority, confirmed browser presentation, WAN qualification, and Java-removal audit pass'
   },
   remaining: [
@@ -1154,7 +1165,7 @@ const status = {
       label: 'HUD, automap, intermission, finale and audit/DVR presentation'},
     {id: 'ADB', state: 'DONE',
       label: hudLiveFramePromoted
-        ? 'Current 160x84 OCI solo path clears 30 FPS; its sustained two-POV producer cell remains unmeasured'
+        ? 'Current 160x84 OCI solo passes; two-POV average clears 30 FPS and p95 remains open'
         : 'OCI authority 35 Hz, full digest chain, hosted statics, and browser 30 FPS passed'}
   ],
   evidence: {

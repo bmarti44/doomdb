@@ -13,9 +13,13 @@ const coordinatorPath = path.join(
 const authorityPath = path.join(
   root, 'artifacts/performance/pmle-live-frame-hud/'
     + 'authority-candidate-66dd235cde82.js');
-const rendererPath = path.join(
-  root, 'artifacts/performance/pmle-live-frame-hud/'
-    + 'renderer-c60a34dd81d6.js');
+const rendererPath = path.resolve(
+  process.env.PMLE_TWO_POV_RENDERER ?? path.join(
+    root, 'artifacts/performance/pmle-live-frame-hud/'
+      + 'renderer-50835b713048.js'));
+if (!fs.existsSync(rendererPath)) {
+  throw new Error(`two-POV renderer is absent: ${rendererPath}`);
+}
 const exactPath = path.join(
   root, 'artifacts/performance/pmle-database-frames/'
     + 'presentation-decps-lean-byref-status-cache-4646503ae116.js');

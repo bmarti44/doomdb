@@ -34,6 +34,7 @@ const FRAME_WIDTH = 320;
 const FRAME_HEIGHT = 200;
 const VIEW_HEIGHT = 168;
 const WORLD_RASTER_INTERVAL_TICS = 4;
+const MULTI_VIEW_WORLD_RASTER_INTERVAL_TICS = 5;
 let retainedWorldFrames = [undefined, undefined, undefined, undefined];
 let retainedWorldCameras = [undefined, undefined, undefined, undefined];
 
@@ -909,7 +910,8 @@ export function publishPreparedMatchFrameLocator(
 
 function renderCompleteMatchFrame(
     playerSlot, fullWorld = false, frameTic = undefined,
-    worldRasterPhase = undefined) {
+    worldRasterPhase = undefined,
+    worldRasterInterval = WORLD_RASTER_INTERVAL_TICS) {
   if (fullWorld) {
     // DVL2 establishes every retained sector/sidedef baseline, but building
     // it intentionally does not consume the authority's DVL6 dirty cache.
@@ -924,12 +926,14 @@ function renderCompleteMatchFrame(
   const rasterPhaseDue = Number.isInteger(frameTic)
     && Number.isInteger(worldRasterPhase)
     && worldRasterPhase >= 0
-    && worldRasterPhase < WORLD_RASTER_INTERVAL_TICS
-    && frameTic % WORLD_RASTER_INTERVAL_TICS === worldRasterPhase;
+    && Number.isInteger(worldRasterInterval)
+    && worldRasterInterval >= WORLD_RASTER_INTERVAL_TICS
+    && worldRasterPhase < worldRasterInterval
+    && frameTic % worldRasterInterval === worldRasterPhase;
   const synthesize = Number.isInteger(frameTic)
     && cachedCamera !== undefined
     && frameTic - cachedCamera.tic > 0
-    && frameTic - cachedCamera.tic < WORLD_RASTER_INTERVAL_TICS
+    && frameTic - cachedCamera.tic < worldRasterInterval
     && !rasterPhaseDue;
   if (synthesize) {
     synthesizeConfirmedWorld(playerSlot, frameTic, retainedSnapshot);
@@ -962,13 +966,14 @@ export function renderConfirmedTemporalFrame(playerSlot, frameTic) {
       `invalid confirmed temporal frame: ${frameTic}/${retainedTic}`);
   }
   // Two-view diagnostics use the same alternating phase as the production
-  // shared-view path. Each player still receives one exact world raster every
-  // four tics; the expensive calls no longer land on the same tic.
+  // shared-view path. The lower-frequency world-only refresh leaves room for
+  // two distinct POVs on Always Free; sprites, weapon, HUD and confirmed
+  // camera reprojection still update on every authoritative tic.
   const worldRasterPhase =
-    (playerSlot * (WORLD_RASTER_INTERVAL_TICS / 2))
-      % WORLD_RASTER_INTERVAL_TICS;
+    (playerSlot * 2) % MULTI_VIEW_WORLD_RASTER_INTERVAL_TICS;
   renderCompleteMatchFrame(
-    playerSlot, false, frameTic, worldRasterPhase);
+    playerSlot, false, frameTic, worldRasterPhase,
+    MULTI_VIEW_WORLD_RASTER_INTERVAL_TICS);
   return retainedPaletteIndex;
 }
 
@@ -1179,10 +1184,10 @@ export function prepareMatchViews(
   for (let playerSlot = 0; playerSlot < 2; playerSlot++) {
     if ((playerMask & (1 << playerSlot)) === 0) continue;
     const worldRasterPhase =
-      (playerSlot * (WORLD_RASTER_INTERVAL_TICS / 2))
-        % WORLD_RASTER_INTERVAL_TICS;
+      (playerSlot * 2) % MULTI_VIEW_WORLD_RASTER_INTERVAL_TICS;
     renderCompleteMatchFrame(
-      playerSlot, changed && first, frameTic, worldRasterPhase);
+      playerSlot, changed && first, frameTic, worldRasterPhase,
+      MULTI_VIEW_WORLD_RASTER_INTERVAL_TICS);
     retainedMatchViews[9 + playerSlot] = retainedPaletteIndex;
     retainedMatchViews.set(retainedFrame, outputOffset);
     outputOffset += FRAME_BYTES;

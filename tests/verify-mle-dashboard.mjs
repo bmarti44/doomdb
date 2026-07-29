@@ -167,17 +167,20 @@ assert.equal(status.performance.databasePixelRelease.checkpointCrossing,
   'PASS');
 if (hudLiveFramePromoted) {
   assert.equal(status.gates.databasePixelTwoPov300,
-    'SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_GATE_OPEN');
+    'SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_AVERAGE_P95_OPEN');
   assert.equal(status.performance.currentHudDeployment.latestPublicSoloFps,
-    34.995);
+    34.691);
   assert.equal(
     status.performance.currentHudDeployment
       .latestPublicSoloCadenceP95Milliseconds,
-    31.9);
+    32.1);
   assert.equal(
     status.performance.currentHudDeployment
       .repeatPublicSoloMaximumIntervalMilliseconds,
-    225);
+    63.4);
+  assert.deepEqual(
+    status.performance.currentHudDeployment.currentTwoPovDiagnostic.fps,
+    [30.599, 30.536]);
   assert.equal(
     status.performance.currentHudDeployment.historicalTwoPovProducer
       .sustainedFps,
