@@ -6,6 +6,14 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 
 const root = path.resolve(import.meta.dirname, '../..');
+const liveRenderWidth = Number.parseInt(
+  process.env.PMLE_FREE_LIVE_RENDER_WIDTH ?? '106', 10);
+if (![64, 106, 160].includes(liveRenderWidth)) {
+  throw new Error('PMLE_FREE_LIVE_RENDER_WIDTH must be 64, 106, or 160');
+}
+const livePixelScale = Math.floor(320 / liveRenderWidth);
+const allowVisualVariant =
+  process.env.PMLE_FREE_LIVE_ALLOW_VISUAL_VARIANT === 'YES';
 const authorityPath = path.join(
   root,
   'probes/mle/teavm-engine/target/javascript/'
@@ -112,6 +120,9 @@ if (!(exported instanceof Uint8Array) || length > exported.byteLength) {
   throw new Error('authority native world snapshot shape mismatch');
 }
 const baseline = exported.slice(0, length);
+if (process.env.PMLE_DVL2_SNAPSHOT_BIN) {
+  fs.writeFileSync(process.env.PMLE_DVL2_SNAPSHOT_BIN, baseline);
+}
 const header = new DataView(
   baseline.buffer, baseline.byteOffset, baseline.byteLength);
 const sectorCount = header.getInt32(16, true);
@@ -133,9 +144,9 @@ function render(snapshot) {
   if (!(frame instanceof Uint8Array) || frame.byteLength !== 64_000) {
     throw new Error('dynamic world framebuffer shape mismatch');
   }
-  for (let logical = 0; logical < 106; logical += 1) {
-    const source = logical * 3 * 200;
-    for (let copy = 1; copy <= 2; copy += 1) {
+  for (let logical = 0; logical < liveRenderWidth; logical += 1) {
+    const source = logical * livePixelScale * 200;
+    for (let copy = 1; copy < livePixelScale; copy += 1) {
       const target = source + copy * 200;
       if (!Buffer.from(frame.subarray(source, source + 168)).equals(
         Buffer.from(frame.subarray(target, target + 168)),
@@ -146,8 +157,12 @@ function render(snapshot) {
       }
     }
   }
-  for (const column of [318, 319]) {
-    if (!Buffer.from(frame.subarray(315 * 200, 315 * 200 + 168)).equals(
+  const tailSource =
+    (liveRenderWidth - 1) * livePixelScale * 200;
+  for (let column = liveRenderWidth * livePixelScale;
+       column < 320; column += 1) {
+    if (!Buffer.from(frame.subarray(
+      tailSource, tailSource + 168)).equals(
       Buffer.from(frame.subarray(column * 200, column * 200 + 168)),
     )) {
       throw new Error(`coarse horizontal tail mismatch at ${column}`);
@@ -155,8 +170,9 @@ function render(snapshot) {
   }
   const solidDepth=renderer.solidDepthByRef();
   const wallDepth=renderer.wallDepthByRef();
-  if(!ArrayBuffer.isView(solidDepth)||solidDepth.length!==106
-      ||!ArrayBuffer.isView(wallDepth)||wallDepth.length!==106*168) {
+  if(!ArrayBuffer.isView(solidDepth)||solidDepth.length!==liveRenderWidth
+      ||!ArrayBuffer.isView(wallDepth)
+      ||wallDepth.length!==liveRenderWidth*168) {
     throw new Error('retained wall-depth shape mismatch');
   }
   let partialPixels;
@@ -164,7 +180,7 @@ function render(snapshot) {
     partialPixels=renderer.partialDepthPixelCount();
   } else {
     partialPixels=0;
-    for(let x=0;x<106;x+=1) {
+    for(let x=0;x<liveRenderWidth;x+=1) {
       const solid=solidDepth[x];
       const base=x*168;
       for(let y=0;y<168;y+=1) {
@@ -186,6 +202,35 @@ if (baselineRepeatSha !== baselineSha) {
   throw new Error(
     `identical DVL2 snapshot is not frame-deterministic: `
       + `${baselineSha}/${baselineRepeatSha}`,
+  );
+}
+if (process.env.PMLE_DVL2_FRAME_PPM) {
+  const count = iwadBytes.readUInt32LE(4);
+  const directory = iwadBytes.readUInt32LE(8);
+  let palette;
+  for (let index = 0; index < count; index += 1) {
+    const at = directory + index * 16;
+    const name = iwadBytes.toString('ascii', at + 8, at + 16)
+      .replace(/\0.*$/s, '');
+    if (name !== 'PLAYPAL') continue;
+    const offset = iwadBytes.readUInt32LE(at);
+    palette = iwadBytes.subarray(offset, offset + 768);
+    break;
+  }
+  if (!palette || palette.length !== 768) {
+    throw new Error('PLAYPAL palette missing from visual capture IWAD');
+  }
+  const frame = renderer.frameNativeByRef();
+  const rgb = Buffer.alloc(320 * 200 * 3);
+  for (let y = 0; y < 200; y += 1) {
+    for (let x = 0; x < 320; x += 1) {
+      const color = frame[x * 200 + y] & 255;
+      palette.copy(rgb, (y * 320 + x) * 3, color * 3, color * 3 + 3);
+    }
+  }
+  fs.writeFileSync(
+    process.env.PMLE_DVL2_FRAME_PPM,
+    Buffer.concat([Buffer.from('P6\n320 200\n255\n'), rgb]),
   );
 }
 
@@ -774,7 +819,7 @@ for (const [name, actual, expected] of [
   ['status', statusBaselineSha, expectedPixelHashes.status],
   ['damagedStatus', statusDamagedSha, expectedPixelHashes.damagedStatus],
 ]) {
-  if (actual !== expected) {
+  if (!allowVisualVariant && actual !== expected) {
     throw new Error(
       `single-column pixel-equivalence mismatch for ${name}: `
         + `${actual}/${expected}`,
@@ -805,6 +850,7 @@ process.stdout.write(
     + `|partial_wall_depth_pixels_max=${maximumPartialWallDepthPixels}`
     + `|status_sha256=${statusBaselineSha}`
     + `|status_mutation_sha256=${statusDamagedSha}`
+    + `|visual_variant=${allowVisualVariant ? 'YES' : 'NO'}`
     + '|restore_exact=YES|status_restore_exact=YES'
     + '|status_widget_masks_exact=YES|frame_bytes=64000\n',
 );

@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 loader="$root/probes/mle/teavm-engine/load-mle-module.sh"
-source_file="${PMLE_DVL2_AUTHORITY_SOURCE:-$root/probes/mle/teavm-engine/target/javascript/doom-mle-presentation-engine-headless.js}"
+source_file="${PMLE_DVL2_AUTHORITY_SOURCE:-$root/artifacts/performance/pmle-live-frame-hud/authority-candidate-66dd235cde82.js}"
 
 [[ "${1:-}" == --emit-sql && "$#" == 1 ]] || {
   printf 'usage: %s --emit-sql\n' "$0" >&2

@@ -14,8 +14,8 @@ const sourcePath = path.join(
 const source = fs.readFileSync(sourcePath, 'utf8');
 const liveRenderWidth = Number.parseInt(
   process.env.PMLE_FREE_LIVE_RENDER_WIDTH ?? '106', 10);
-if (![64, 106].includes(liveRenderWidth)) {
-  throw new Error('PMLE_FREE_LIVE_RENDER_WIDTH must be 64 or 106');
+if (![64, 106, 160].includes(liveRenderWidth)) {
+  throw new Error('PMLE_FREE_LIVE_RENDER_WIDTH must be 64, 106, or 160');
 }
 const livePixelScale = Math.floor(320 / liveRenderWidth);
 const liveSpriteWrites = Array.from(
@@ -46,9 +46,76 @@ let core = source
   .replace(/^\s*@JSByRef\n/gm, '');
 core = replaceExact(
   core,
+  '      double lateral = -dx * directionY + dy * directionX;\n',
+  '      double lateral = dx * directionY - dy * directionX;\n',
+  'camera-right-sprite-cull',
+);
+core = replaceExact(
+  core,
+  '    double lateral = -(mobjX - playerX) * directionY\n'
+    + '        + (mobjY - playerY) * directionX;\n',
+  '    double lateral = (mobjX - playerX) * directionY\n'
+    + '        - (mobjY - playerY) * directionX;\n',
+  'camera-right-sprite-projection',
+);
+core = replaceExact(
+  core,
+  `    double scale = (LIVE_RENDER_WIDTH / 2.0) / depth;
+    double center = LIVE_RENDER_WIDTH / 2.0
+        + lateral * (LIVE_RENDER_WIDTH / 2.0) / depth;
+    int left = (int) Math.floor(center - spriteLeft[asset] * scale);
+    int right = (int) Math.ceil(
+        center + (width - spriteLeft[asset]) * scale) - 1;
+    double viewZ = snapshotI32(snapshot, 52) / 65536.0;
+    int top = (int) Math.floor(
+        VIEW_HEIGHT / 2.0
+            - (mobjZ + spriteTop[asset] - viewZ) * scale);
+    int bottom = (int) Math.ceil(
+        VIEW_HEIGHT / 2.0
+            - (mobjZ + spriteTop[asset] - height - viewZ) * scale) - 1;
+`,
+  `    double horizontalScale = (LIVE_RENDER_WIDTH / 2.0) / depth;
+    double verticalScale = (WIDTH / 2.0) / depth;
+    double center = LIVE_RENDER_WIDTH / 2.0
+        + lateral * (LIVE_RENDER_WIDTH / 2.0) / depth;
+    int left = (int) Math.floor(
+        center - spriteLeft[asset] * horizontalScale);
+    int right = (int) Math.ceil(
+        center + (width - spriteLeft[asset]) * horizontalScale) - 1;
+    double viewZ = snapshotI32(snapshot, 52) / 65536.0;
+    int top = (int) Math.floor(
+        VIEW_HEIGHT / 2.0
+            - (mobjZ + spriteTop[asset] - viewZ) * verticalScale);
+    int bottom = (int) Math.ceil(
+        VIEW_HEIGHT / 2.0
+            - (mobjZ + spriteTop[asset] - height - viewZ)
+                * verticalScale) - 1;
+`,
+  'physical-height-sprite-projection',
+);
+core = replaceExact(
+  core,
   '  private static final int LIVE_RENDER_WIDTH = 160;\n',
   `  private static final int LIVE_RENDER_WIDTH = ${liveRenderWidth};\n`,
   'width',
+);
+core = replaceExact(
+  core,
+  `      // Doom's WEAPONTOP is 32. A newly spawned weapon begins at
+      // WEAPONBOTTOM (128-ish) and rises into place; anchoring against the
+      // tic-1 value made the ready weapon float 84 pixels too high.
+      int left = (WIDTH - width) / 2 + sx;
+      int top = VIEW_HEIGHT - height + sy - 32;
+`,
+  `      // Match R_DrawPSprite's standard 320x200 projection. Pack offsets
+      // retain the signed Doom patch offsets; the view center is 84 because
+      // the 32-pixel status bar leaves a 168-pixel world view, while
+      // BASEYCENTER remains 100.
+      int left = sx - spriteLeft[asset];
+      int top = (int) Math.floor(
+          VIEW_HEIGHT / 2.0 - 100.5 + sy - spriteTop[asset]);
+`,
+  'doom-psprite-projection',
 );
 core = replaceExact(
   core,

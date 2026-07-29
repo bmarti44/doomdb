@@ -99,9 +99,12 @@ grep -Fq 'u32(4) != 5' "$GENERATOR" &&
   grep -Fq 'java.util.Arrays.fill(wallDepth, start, end, depth)' "$GENERATOR" &&
   grep -Fq 'yOffset, wallDistance, false);' "$GENERATOR" &&
   test "$(grep -Fc 'wallDistance, true);' "$GENERATOR")" -eq 2 &&
-  grep -Fq "'exact-light-map-shift'" "$GENERATOR" &&
-  grep -Fq 'return (255 - (sectorLight[sector] & 255)) >>> 3;' \
-    "$GENERATOR" &&
+  grep -Fq "'doom-distance-lighting'" "$GENERATOR" &&
+  grep -Fq 'wallLightMap(near, line, wallHeight)' "$GENERATOR" &&
+  grep -Fq 'planeLightMap(sector, distance)' "$GENERATOR" &&
+  grep -Fq 'int scale = wallHeight >>> 3;' "$GENERATOR" &&
+  grep -Fq 'int distanceBucket = (int) distance >>> 4;' "$GENERATOR" &&
+  grep -Fq 'liveExtraLight = snapshotI32(snapshot, 136);' "$GENERATOR" &&
   grep -Fq 'lightBankCount = 32' "$GENERATOR" ||
   fail 'world generator lacks dynamic mappings, deterministic clear, or lights'
 grep -Fq 'build-world-live-pack.mjs' "$PACK_BUILD" &&

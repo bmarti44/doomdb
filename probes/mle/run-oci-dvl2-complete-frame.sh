@@ -19,6 +19,15 @@ pool_log="$evidence/oci-$tag-pool.log"
 rank_log="$evidence/oci-$tag-rank.log"
 cleanup_log="$evidence/oci-$tag-cleanup.log"
 coordinator_log="$evidence/oci-$tag-coordinator-install.log"
+production_authority_sha="$(
+  node -e \
+    "const f=require('fs');const v=JSON.parse(f.readFileSync(process.argv[1]));process.stdout.write(v.teaVM.outputSha256)" \
+    "$root/versions.lock"
+)"
+[[ "$production_authority_sha" =~ ^[0-9a-f]{64}$ ]] || {
+  printf '%s\n' 'versions.lock production authority SHA is invalid' >&2
+  exit 2
+}
 
 [[ "${PMLE_DVL2_COMPLETE_EXECUTE:-NO}" == YES ]] || {
   printf '%s\n' 'set PMLE_DVL2_COMPLETE_EXECUTE=YES to run OCI cell' >&2
@@ -109,7 +118,7 @@ finish() {
   else
     : >"$cleanup_log"
   fi
-  if ! "$root/scripts/adb-doom-sql.sh" - >>"$cleanup_log" <<'SQL'
+  if ! "$root/scripts/adb-doom-sql.sh" - >>"$cleanup_log" <<SQL
 set serveroutput on size unlimited heading off feedback off pages 0
 declare l_objects number;l_sha varchar2(64);
 begin
@@ -124,11 +133,11 @@ begin
     source_blob,dbms_crypto.hash_sh256))) into l_sha
     from doom_teavm_sim_source;
   if l_objects<>0 or
-     l_sha<>'c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1'
+     l_sha<>'$production_authority_sha'
   then raise_application_error(-20796,'DVL2 postflight mismatch');end if;
   dbms_output.put_line(
     'PMLE_OCI_DVL2_POSTFLIGHT|PASS|diagnostic_objects=0'||
-    '|production_authority=c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1');
+    '|production_authority=$production_authority_sha');
 end;
 /
 SQL

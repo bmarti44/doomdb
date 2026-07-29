@@ -13,10 +13,16 @@ const compositor = path.join(
 const source = path.join(project, 'src', 'main', 'java', packagePath);
 const liveRenderWidth = Number.parseInt(
   process.env.PMLE_FREE_LIVE_RENDER_WIDTH ?? '106', 10);
-if (![64, 106].includes(liveRenderWidth)) {
-  throw new Error('PMLE_FREE_LIVE_RENDER_WIDTH must be 64 or 106');
+if (![64, 106, 160].includes(liveRenderWidth)) {
+  throw new Error('PMLE_FREE_LIVE_RENDER_WIDTH must be 64, 106, or 160');
 }
 const livePixelScale = Math.floor(320 / liveRenderWidth);
+const livePlaneMode =
+  process.env.PMLE_FREE_LIVE_PLANE_MODE ?? 'VISPLANE';
+if (!['VISPLANE', 'VIEW_SECTOR'].includes(livePlaneMode)) {
+  throw new Error(
+    'PMLE_FREE_LIVE_PLANE_MODE must be VISPLANE or VIEW_SECTOR');
+}
 
 function copy(name, from) {
   const input = path.join(from, name);
@@ -135,16 +141,25 @@ worldSource = replaceExact(
           : 0;
     }
 `,
-  `    activeWidth = LIVE_RENDER_WIDTH;
+  livePlaneMode === 'VISPLANE'
+    ? `    activeWidth = LIVE_RENDER_WIDTH;
     pixelScale = WIDTH / LIVE_RENDER_WIDTH;
     startPlaneFrame();
+`
+    : `    activeWidth = LIVE_RENDER_WIDTH;
+    pixelScale = WIDTH / LIVE_RENDER_WIDTH;
+    int viewSector = pointSector(playerX, playerY);
+    drawPlaneBackground(
+        viewSector, playerX, playerY, viewZ, directionX, directionY);
 `,
   'live-render-view-constants',
 );
 worldSource = replaceExactCount(
   worldSource,
   '            if (recordVisplanes) {\n',
-  '            {\n',
+  livePlaneMode === 'VISPLANE'
+    ? '            {\n'
+    : '            if (false) {\n',
   2,
   'live-record-plane-ranges',
 );
@@ -159,9 +174,13 @@ worldSource = replaceExact(
           | ((frame[(sample * 997) % PIXELS] & 255) << 8);
     }
 `,
-  `    drawRecordedPlanes(
+  livePlaneMode === 'VISPLANE'
+    ? `    drawRecordedPlanes(
         playerX, playerY, viewZ, directionX, directionY);
     checksum ^= (frame[sample % PIXELS] & 255)
+        | ((frame[(sample * 997) % PIXELS] & 255) << 8);
+`
+    : `    checksum ^= (frame[sample % PIXELS] & 255)
         | ((frame[(sample * 997) % PIXELS] & 255) << 8);
 `,
   'live-render-view-tail',
@@ -466,5 +485,6 @@ process.stdout.write(
   'PMLE_FREE_LIVE_UNIFIED_SOURCE|PASS' +
   `|world_sha256=${worldSha}` +
   `|compositor_sha256=${compositorSha}` +
-  `|entry_sha256=${entrySha}\n`,
+  `|entry_sha256=${entrySha}` +
+  `|plane_mode=${livePlaneMode}\n`,
 );

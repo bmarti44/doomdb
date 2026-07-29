@@ -51,9 +51,9 @@
       "profile": "presentation-engine-headless"
     },
     "liveFrameRenderer": {
-      "bytes": 48097,
-      "sha256": "61163171b77421fc01a96359903fc1bc5fbbc17c639177c77e48f4973b4a0f12",
-      "profile": "unified-coarse-live-frame",
+      "bytes": 48427,
+      "sha256": "c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c",
+      "profile": "unified-160x56-live-frame",
       "coordinatorBytes": 46231,
       "coordinatorSha256": "59acb671e6e0a03ee89735806c8f0178a53dc792d22b87fb2c22db5f226fdd85"
     },
@@ -69,7 +69,7 @@
     "coopEveryTic762": "HISTORICAL_PASS_C613",
     "membershipRecovery": "HISTORICAL_PASS_C613",
     "ledgerEveryTic13272": "HISTORICAL_PASS_C613_NODE_5250_PARITY_CURRENT",
-    "databasePixelTwoPov300": "REQUALIFICATION_PENDING_P95_NARROW_MISS",
+    "databasePixelTwoPov300": "VISUAL_FIX_DEPLOYED_TWO_POV_AVERAGE_30_12FPS_P95_GATE_OPEN",
     "databasePixelCheckpointCrossing": "HISTORICAL_PASS_C613",
     "abandonedSessionCleanup": "PASS",
     "warmRestoreDirectMleAb": "PASS",
@@ -189,7 +189,7 @@
     "note": "cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline"
   },
   "performance": {
-    "state": "OCI_HUD_DATABASE_PIXELS_DEPLOYED_REQUALIFICATION_PENDING",
+    "state": "VISUAL_GEOMETRY_FIXED_DATABASE_RENDERER_DEPLOYED_TWO_POV_PRODUCER_GATE_OPEN",
     "evidenceArtifactSha256": "c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1",
     "authorityTickerEvidenceArtifactSha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
     "databasePixelRelease": {
@@ -225,16 +225,17 @@
     },
     "currentHudDeployment": {
       "authoritySha256": "66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873",
-      "rendererSha256": "61163171b77421fc01a96359903fc1bc5fbbc17c639177c77e48f4973b4a0f12",
+      "rendererSha256": "c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c",
       "coordinatorSha256": "59acb671e6e0a03ee89735806c8f0178a53dc792d22b87fb2c22db5f226fdd85",
-      "status": "DEPLOYED_REQUALIFICATION_PENDING",
-      "warmRunFps": [
-        32.978,
-        32.723
+      "status": "VISUAL_FIX_DEPLOYED_TWO_POV_AVERAGE_PASS_P95_GATE_OPEN",
+      "productionShapeServerFps": 72.562,
+      "productionShapeServerP50Milliseconds": 13.145,
+      "productionShapeServerP95Milliseconds": 18.598,
+      "latestPublicTwoBrowserFps": [
+        30.12
       ],
-      "warmRunCadenceP95Milliseconds": [
-        42.7,
-        34.6
+      "latestPublicTwoBrowserCadenceP95Milliseconds": [
+        51.2
       ],
       "confirmedFrameDrops": [
         0,

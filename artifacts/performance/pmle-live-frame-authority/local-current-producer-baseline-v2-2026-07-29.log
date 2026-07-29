@@ -1,0 +1,17 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: match became CANCELLED
+    at waitActive (file:///Users/bmarti44/doomdb/probes/mle/measure-two-pov-producer.mjs:29:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///Users/bmarti44/doomdb/probes/mle/measure-two-pov-producer.mjs:63:18 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

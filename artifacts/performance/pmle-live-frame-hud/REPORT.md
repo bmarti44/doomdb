@@ -88,3 +88,86 @@ strict-gate `FAIL` because player 0 exceeded the `33.333` ms p95 cadence bar
 by `0.067` ms and both streams retained Free-tier tail spikes. The run is
 preserved as measured, not relabeled. Cleanup left zero active matches and
 both retained slots `READY`.
+
+## Visual-correction promotion — 2026-07-29
+
+The `61163171…` renderer was withdrawn after a synchronized same-tic
+comparison proved that its custom world raster used the camera's opposite
+perpendicular and mixed the 160-column horizontal focal length into the
+200-row vertical projection. Those defects mirrored and stretched the scene.
+It also selected one constant colormap per sector and approximated the
+player-weapon placement.
+
+The currently deployed renderer is
+`c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c`
+(`48,427` bytes). It retains the 160-column low-detail database raster while
+correcting camera handedness, horizontal/vertical focal lengths, wall
+denominators, ray and plane steps, sprite projection, Doom's
+distance/orientation colormap selection, and `R_DrawPSprite` placement.
+Against a canonical-state-identical Mocha frame at tic 32, the old build
+differed in roughly 76–82% of pixels; the corrected build differs in 42.780%,
+with mean palette-index delta `19.044`. The residual difference is dominated
+by the deliberately coarse vertical raster, simplified visplane coverage,
+and noncanonical status-face selection rather than mirrored geometry.
+
+A higher-fidelity 160-by-84 candidate (`50835b71…`) passed the production-
+shaped OCI database cell at `72.562` FPS (`13.145/18.598` ms p50/p95 over
+1,200 complete 64,000-byte frames). It nevertheless measured only `29.76`
+and `29.61` FPS in two consecutive public two-browser runs because
+managed-ORDS delivery tails, not raster capacity, drained the confirmed
+frame reserve. The deployed 160-by-56 build retains more compute margin, but
+its first public run measured `29.67` FPS under the same approximately
+60-ms p95 delivery tail. A two-staggered-poll client experiment worsened the
+result to `28.70` FPS with a 1.247-second stall and was immediately reverted;
+the public client is again the prior single-poll manifest
+`9bbac133daf9655399a819d78c8632ea8d3f01012e5709b59a3f7cfc8711d454`.
+
+The promotion is therefore classified
+`VISUAL_GEOMETRY_FIXED_DATABASE_RENDERER_DEPLOYED_30FPS_TRANSPORT_GATE_OPEN`.
+The database module and both warm slots are healthy and SHA-attested; the
+remaining release gate is sustained public delivery at or above 30 FPS.
+
+### Two-POV producer reconciliation
+
+Full retained browser traces subsequently showed that the public stream itself
+advanced only `29.569–29.886` consecutive tics/s. Increasing the confirmed
+playout reserve from 6 to 12 frames did not change that rate, proving that the
+approximately 54-ms paint p95 was downstream evidence of a producer shortfall,
+not a buffer-starvation defect. The `72.562` FPS OCI result above is a
+one-viewpoint production-shaped cell; live co-op renders two independent POVs
+per authoritative tic.
+
+A coordinator candidate
+(`f98f6e3408ff7d2d57c26aa31b09d572fd73ea98b551f3f0cd322459dce15a0a`)
+retains each player's prior database-rendered status bar and skips patch
+composition when that player's HUD state is unchanged. Its first two-browser
+run measured `29.85` FPS and therefore did not materially improve the limiting
+path. It was withdrawn on 2026-07-29; the public deployment is again the
+proven coordinator
+`59acb671e6e0a03ee89735806c8f0178a53dc792d22b87fb2c22db5f226fdd85`.
+
+The honest current classification is
+`VISUAL_GEOMETRY_FIXED_DATABASE_RENDERER_DEPLOYED_TWO_POV_PRODUCER_GATE_OPEN`.
+Client polling and buffer-size experiments are no longer the primary
+performance path; the next measurement must decompose the actual two-POV
+producer before another optimization is promoted.
+
+### Best-fixed public deployment — 2026-07-29
+
+The public ADB deployment now binds authority `66dd235c…`, corrected renderer
+`c60a34dd…`, and coordinator `59acb671…`. The hosted client uses a six-frame
+confirmed playout ceiling and one-request adaptive refill. In-database staging
+verified the length and SHA-256 of all three JavaScript sources, both retained
+slots returned `READY`, and the public entry returned HTTP 200 with the
+expected no-cache policy.
+
+A pacing candidate that retained monotonic catch-up for up to one second was
+rejected after its 600-frame two-POV producer diagnostic measured `26.709`
+FPS. The deployed worker was restored to the prior `200/35`-centisecond reset
+and source-attested after compilation. The direct producer diagnostic itself
+adds an aggressive serial ORDS polling workload and is not comparable with the
+browser acceptance harness; after rollback, the same two-browser 300-frame
+test measured `30.12` FPS for player zero with 300 unique database
+framebuffers and distinct player POVs. It still failed the strict cadence
+tail (`52.4` ms p95 versus `33.333` ms), so the honest result is average-rate
+PASS-shaped but full 30-FPS acceptance still open.

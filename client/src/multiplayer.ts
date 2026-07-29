@@ -833,11 +833,17 @@ async function startDatabaseFrameGame(
             bufferedFrames:frames.size,source:'database-framebuffer'});
           pump();
           lastFrameBatchAt=finished;
-          // Startup still fills immediately. Once playout is active, one
-          // native-tic delay raises the batch cardinality and reduces pressure
-          // on the single Free-tier API lane. This is transport batching only:
-          // every confirmed framebuffer remains ordered and presentable.
-          nextPollDelayMs=playoutStarted?pixelPollBatchDelayMs:0;
+          // Preserve the low-request-rate batch cadence while the confirmed
+          // reserve is healthy, but refill promptly when one batch or less
+          // remains above the selected playout depth. This retains exactly one
+          // outstanding request per client (the Free-tier lane cannot sustain
+          // staggered duplicate polls) while keeping ordinary ORDS tails away
+          // from the canvas.
+          const refillFloor=wan.playoutBufferTics
+            +wan.expectedConfirmedBatchTics;
+          nextPollDelayMs=playoutStarted
+            ? (frames.size<=refillFloor?8:pixelPollBatchDelayMs)
+            : 0;
           if(requestEpoch!==pixelPollEpoch)schedulePixelPolls();
         } else {
           // Once caught up, aim the next request at the following native tic

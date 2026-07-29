@@ -24,11 +24,16 @@ const engineName = 'FreeLiveWorldRasterCore.java';
 const entryName = 'FreeLiveWorldRasterModule.java';
 const liveRenderWidth = Number.parseInt(
   process.env.PMLE_FREE_LIVE_RENDER_WIDTH ?? '106', 10);
-if (![64, 106].includes(liveRenderWidth)) {
-  throw new Error('PMLE_FREE_LIVE_RENDER_WIDTH must be 64 or 106');
+if (![64, 106, 160].includes(liveRenderWidth)) {
+  throw new Error('PMLE_FREE_LIVE_RENDER_WIDTH must be 64, 106, or 160');
 }
 const lazyPlaneColumns =
   process.env.PMLE_FREE_LIVE_LAZY_PLANE_COLUMNS === 'YES';
+const liveVerticalStep = Number.parseInt(
+  process.env.PMLE_FREE_LIVE_VERTICAL_STEP ?? '3', 10);
+if (![2, 3, 4].includes(liveVerticalStep)) {
+  throw new Error('PMLE_FREE_LIVE_VERTICAL_STEP must be 2, 3, or 4');
+}
 
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -85,6 +90,76 @@ let engine = fs.readFileSync(originalPath, 'utf8')
   .replace(/^import org\.teavm\.jso\.JSByRef;\n/m, '')
   .replace(/^\s*@JSExport\n/gm, '')
   .replace(/^\s*@JSByRef\n/gm, '');
+// Doom screen X grows toward the camera's right vector (dirY,-dirX). The
+// historical compact renderer used the opposite perpendicular, mirroring the
+// complete world view relative to the canonical Mocha renderer.
+engine = replaceExact(
+  engine,
+  '        double as = -ax * directionY + ay * directionX;\n'
+    + '        double bs = -bx * directionY + by * directionX;\n',
+  '        double as = ax * directionY - ay * directionX;\n'
+    + '        double bs = bx * directionY - by * directionX;\n',
+  'camera-right-wall-projection',
+);
+engine = replaceExact(
+  engine,
+  '        double slope = -directionY * segmentY - directionX * segmentX;\n',
+  '        double slope = directionY * segmentY + directionX * segmentX;\n',
+  'camera-right-wall-denominator',
+);
+engine = replaceCount(
+  engine,
+  'double rayX = directionX - directionY * ',
+  'double rayX = directionX + directionY * ',
+  3,
+  'camera-right-ray-x',
+);
+engine = replaceCount(
+  engine,
+  'double rayY = directionY + directionX * ',
+  'double rayY = directionY - directionX * ',
+  3,
+  'camera-right-ray-y',
+);
+engine = replaceCount(
+  engine,
+  '(-directionY / (activeWidth / 2.0) * distance) * 65536.0',
+  '(directionY / (activeWidth / 2.0) * distance) * 65536.0',
+  2,
+  'camera-right-plane-step-x',
+);
+engine = replaceCount(
+  engine,
+  '(directionX / (activeWidth / 2.0) * distance) * 65536.0',
+  '(-directionX / (activeWidth / 2.0) * distance) * 65536.0',
+  2,
+  'camera-right-plane-step-y',
+);
+engine = replaceExact(
+  engine,
+  '          int wallHeight = (int) Math.floor(20480 * current / numerator);\n',
+  '          int wallHeight = (int) Math.floor(\n'
+    + '              WIDTH * 64.0 * current / numerator);\n',
+  'logical-width-wall-projection',
+);
+engine = replaceExact(
+  engine,
+  '    double distance = planeHeight * (activeWidth / 2.0)\n',
+  '    double distance = planeHeight * (WIDTH / 2.0)\n',
+  'physical-height-visplane-projection',
+);
+engine = replaceExact(
+  engine,
+  '      double distance = plane * (activeWidth / 2.0)\n',
+  '      double distance = plane * (WIDTH / 2.0)\n',
+  'physical-height-background-plane-projection',
+);
+engine = replaceExact(
+  engine,
+  '            + (-rx * dy + ry * dx) / depth * activeWidth / 2.0;\n',
+  '            + (rx * dy - ry * dx) / depth * activeWidth / 2.0;\n',
+  'camera-right-bbox-projection',
+);
 engine = replaceExact(
   engine,
   `  private static char[] sectorFloorAsset;
@@ -115,6 +190,7 @@ engine = replaceExact(
   private static int[] baselineSideRowOffset;
   private static int sideCount;
   private static boolean liveDynamicsActive;
+  private static int liveExtraLight;
 `,
   'dynamic-world-fields',
 );
@@ -642,6 +718,7 @@ engine = replaceExact(
     int magic = snapshotI32(snapshot, 0);
     if (magic != 0x324c5644
         && magic != 0x334c5644 && magic != 0x364c5644) return;
+    liveExtraLight = snapshotI32(snapshot, 136);
     int sectors = snapshotI32(snapshot, 16);
     int sectorOffset = snapshotI32(snapshot, 24);
     int sides = snapshotI32(snapshot, 192);
@@ -757,13 +834,96 @@ engine = replaceExact(
     return Math.max(0, Math.min(31, (255 - (sectorLight[sector] & 255)) / 8));
   }
 `,
-  `  private static int lightMap(int sector) {
-    // The unsigned light is always 0..255, so the quotient is already 0..31.
-    // Avoid interpreted min/max and division in every wall/plane light lookup.
-    return (255 - (sectorLight[sector] & 255)) >>> 3;
+  `  private static int baseLightLevel(int sector) {
+    int light = ((sectorLight[sector] & 255) >>> 3) + liveExtraLight;
+    return light < 0 ? 0 : light > 31 ? 31 : light;
+  }
+
+  private static int wallLightMap(int sector, int line, int wallHeight) {
+    int light = baseLightLevel(sector);
+    // Doom biases horizontal walls darker and vertical walls brighter.
+    if (lineY1[line] == lineY2[line]) {
+      light--;
+    } else if (lineX1[line] == lineX2[line]) {
+      light++;
+    }
+    if (light < 0) light = 0;
+    if (light > 31) light = 31;
+    int scale = wallHeight >>> 3;
+    if (scale > 47) scale = 47;
+    int map = (30 - light) * 2 - (scale >>> 1);
+    return map < 0 ? 0 : map > 31 ? 31 : map;
+  }
+
+  private static int planeLightMap(int sector, double distance) {
+    int distanceBucket = (int) distance >>> 4;
+    if (distanceBucket > 127) distanceBucket = 127;
+    int scale = 160 / (distanceBucket + 1);
+    int map = (30 - baseLightLevel(sector)) * 2 - (scale >>> 1);
+    return map < 0 ? 0 : map > 31 ? 31 : map;
   }
 `,
-  'exact-light-map-shift',
+  'doom-distance-lighting',
+);
+engine = replaceExact(
+  engine,
+  `                  clipTop[x], clipBottom[x], lightMap(near),
+                  yOffset, wallDistance, false);
+`,
+  `                  clipTop[x], clipBottom[x],
+                  wallLightMap(near, line, wallHeight),
+                  yOffset, wallDistance, false);
+`,
+  'solid-wall-distance-lighting',
+);
+engine = replaceExact(
+  engine,
+  `                int lightMap = lightMap(near);
+`,
+  `                int lightMap = wallLightMap(near, line, wallHeight);
+`,
+  'portal-wall-distance-lighting',
+);
+engine = replaceExact(
+  engine,
+  `    int bank = lightToBank[lightMap(sector)] * flatTextureElements;
+`,
+  `    int bank =
+        lightToBank[planeLightMap(sector, distance)] * flatTextureElements;
+`,
+  'visplane-distance-lighting',
+);
+engine = replaceExact(
+  engine,
+  `    int lightBank = lightToBank[lightMap(sector)] * flatTextureElements;
+    int floorBase = lightBank + sectorFloorAsset[sector] * 4096;
+    int ceilingAsset = sectorCeilingAsset[sector];
+    int ceilingBase = ceilingAsset == 0xffff
+        ? -1 : lightBank + ceilingAsset * 4096;
+`,
+  `    int ceilingAsset = sectorCeilingAsset[sector];
+`,
+  'background-plane-deferred-lighting',
+);
+engine = replaceExact(
+  engine,
+  `      int assetBase = ceiling ? ceilingBase : floorBase;
+`,
+  `      int lightBank =
+          lightToBank[planeLightMap(sector, distance)] * flatTextureElements;
+      int assetBase = lightBank
+          + (ceiling ? sectorCeilingAsset[sector] : sectorFloorAsset[sector])
+              * 4096;
+`,
+  'background-plane-distance-lighting-bank',
+);
+engine = replaceExact(
+  engine,
+  `      if (ceiling && ceilingBase < 0) {
+`,
+  `      if (ceiling && ceilingAsset == 0xffff) {
+`,
+  'background-sky-asset-check',
 );
 engine = removeMatchingLines(
   engine,
@@ -771,6 +931,135 @@ engine = removeMatchingLines(
   18,
   'single-column-interpreted-raster',
 );
+if (liveVerticalStep === 2) {
+  engine = replaceExact(
+    engine,
+    '        || (coarseVerticalRaster && y % 3 != 0)) return;\n',
+    '        || (coarseVerticalRaster && y % 2 != 0)) return;\n',
+    'two-row-visplane-sampling',
+  );
+  engine = replaceCount(
+    engine,
+    'coarseVerticalRaster ? 3 : 1',
+    'coarseVerticalRaster ? 2 : 1',
+    2,
+    'two-row-raster-step',
+  );
+  engine = replaceCount(
+    engine,
+    `        if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
+          frame[output + 2] = pixel;
+        }
+`,
+    '',
+    2,
+    'two-row-span-third-write',
+  );
+  engine = replaceCount(
+    engine,
+    `          if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
+            frame[output + 2] = backgroundColumn[y];
+          }
+`,
+    '',
+    2,
+    'two-row-background-third-write',
+  );
+  engine = replaceExact(
+    engine,
+    `      if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
+        frame[output + 2] = pixel;
+      }
+`,
+    '',
+    'two-row-span-third-write-indented',
+  );
+  engine = replaceExact(
+    engine,
+    `      if (coarseVerticalRaster && output + 2 < length) {
+        frame[outputAt + output + 2] = pixel;
+      }
+`,
+    '',
+    'two-row-wall-third-write',
+  );
+} else if (liveVerticalStep === 4) {
+  engine = replaceExact(
+    engine,
+    '        || (coarseVerticalRaster && y % 3 != 0)) return;\n',
+    '        || (coarseVerticalRaster && y % 4 != 0)) return;\n',
+    'four-row-visplane-sampling',
+  );
+  engine = replaceCount(
+    engine,
+    'coarseVerticalRaster ? 3 : 1',
+    'coarseVerticalRaster ? 4 : 1',
+    2,
+    'four-row-raster-step',
+  );
+  engine = replaceCount(
+    engine,
+    `        if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
+          frame[output + 2] = pixel;
+        }
+`,
+    `        if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
+          frame[output + 2] = pixel;
+        }
+        if (coarseVerticalRaster && y + 3 < VIEW_HEIGHT) {
+          frame[output + 3] = pixel;
+        }
+`,
+    2,
+    'four-row-span-fourth-write',
+  );
+  engine = replaceCount(
+    engine,
+    `          if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
+            frame[output + 2] = backgroundColumn[y];
+          }
+`,
+    `          if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
+            frame[output + 2] = backgroundColumn[y];
+          }
+          if (coarseVerticalRaster && y + 3 < VIEW_HEIGHT) {
+            frame[output + 3] = backgroundColumn[y];
+          }
+`,
+    2,
+    'four-row-background-fourth-write',
+  );
+  engine = replaceExact(
+    engine,
+    `      if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
+        frame[output + 2] = pixel;
+      }
+`,
+    `      if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
+        frame[output + 2] = pixel;
+      }
+      if (coarseVerticalRaster && y + 3 < VIEW_HEIGHT) {
+        frame[output + 3] = pixel;
+      }
+`,
+    'four-row-span-fourth-write-indented',
+  );
+  engine = replaceExact(
+    engine,
+    `      if (coarseVerticalRaster && output + 2 < length) {
+        frame[outputAt + output + 2] = pixel;
+      }
+`,
+    `      if (coarseVerticalRaster && output + 2 < length) {
+        frame[outputAt + output + 2] = pixel;
+      }
+      if (coarseVerticalRaster && output + 3 < length) {
+        frame[outputAt + output + 3] = pixel;
+      }
+`,
+    'four-row-wall-fourth-write',
+  );
+}
 if (engine.includes('@JSExport') || engine.includes('@JSByRef')) {
   throw new Error('world-raster source still contains delegate exports');
 }

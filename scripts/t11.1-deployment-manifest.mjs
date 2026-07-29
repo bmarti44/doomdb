@@ -19,9 +19,9 @@ assert.equal(mleArtifact.tablePack.sha256,
   '058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44');
 assert.equal(mleArtifact.liveFrameRenderer.requiredAuthoritySha256,
   mleArtifact.authority.sha256);
-assert.equal(mleArtifact.liveFrameRenderer.bytes,48097);
+assert.equal(mleArtifact.liveFrameRenderer.bytes,48427);
 assert.equal(mleArtifact.liveFrameRenderer.sha256,
-  '61163171b77421fc01a96359903fc1bc5fbbc17c639177c77e48f4973b4a0f12');
+  'c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c');
 assert.equal(mleArtifact.liveFrameRenderer.coordinatorBytes,46231);
 assert.equal(mleArtifact.liveFrameRenderer.coordinatorSha256,
   '59acb671e6e0a03ee89735806c8f0178a53dc792d22b87fb2c22db5f226fdd85');

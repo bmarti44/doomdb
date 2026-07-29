@@ -1,0 +1,19 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: player 0 p0=30.12fps paint=31.70/52.40ms paint99/999/max=87.00/94.20/94.20ms submitGap=0.00/0.00ms submitDecode=0.00/0.00ms pollReady=0.00/0.00ms decodePaint=0.00/0.00ms input=195.40/244.30ms input999/max=259.20/259.20ms n=26 worstPaint=289:94.2 net95=submit(q1.0,t50.5,d0.6)/poll(q1.0,t51.2,d1.5)
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.3-multiplayer-client.mjs:513:16
+    at Array.map (<anonymous>)
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.3-multiplayer-client.mjs:405:30
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

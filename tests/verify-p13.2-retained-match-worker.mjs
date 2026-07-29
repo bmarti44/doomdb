@@ -77,6 +77,7 @@ assert.match(worker, /procedure materialize_paced_vector/);
 assert.match(worker, /worker_mode='PACED_INPUT'/);
 assert.match(worker, /l_boundary_ticks:=dbms_utility\.get_time/);
 assert.match(worker, /dbms_session\.sleep\(l_delay_ticks\/100\)/);
+assert.match(worker, /l_delay_ticks < -200\/35/);
 assert.doesNotMatch(worker, /l_boundary:=utc_now/,
   'wall-clock corrections must not pace the retained worker');
 assert.match(worker, /request_status='PROCESSING'/);

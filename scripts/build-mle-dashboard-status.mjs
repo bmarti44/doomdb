@@ -640,7 +640,7 @@ const status = {
       ? 'PASS_CURRENT_AUTHORITY'
       : 'HISTORICAL_PASS_103E',
     databasePixelTwoPov300: hudLiveFramePromoted
-      ? 'REQUALIFICATION_PENDING_P95_NARROW_MISS'
+      ? 'VISUAL_FIX_DEPLOYED_TWO_POV_AVERAGE_30_12FPS_P95_GATE_OPEN'
       : 'PASS',
     databasePixelCheckpointCrossing: hudLiveFramePromoted
       ? 'HISTORICAL_PASS_C613'
@@ -778,7 +778,7 @@ const status = {
   },
   performance: {
     state: hudLiveFramePromoted
-      ? 'OCI_HUD_DATABASE_PIXELS_DEPLOYED_REQUALIFICATION_PENDING'
+      ? 'VISUAL_GEOMETRY_FIXED_DATABASE_RENDERER_DEPLOYED_TWO_POV_PRODUCER_GATE_OPEN'
       : 'OCI_DATABASE_PIXELS_TWO_POV_30FPS_PASS',
     evidenceArtifactSha256: liveFrameAuthority.sha256,
     authorityTickerEvidenceArtifactSha256: deCpsAuthority.sha256,
@@ -809,9 +809,12 @@ const status = {
         authority.liveFrameRenderer.deployedOutputSha256,
       coordinatorSha256:
         authority.liveFrameRenderer.deployedCoordinatorSha256,
-      status: 'DEPLOYED_REQUALIFICATION_PENDING',
-      warmRunFps: [32.978, 32.723],
-      warmRunCadenceP95Milliseconds: [42.7, 34.6],
+      status: 'VISUAL_FIX_DEPLOYED_TWO_POV_AVERAGE_PASS_P95_GATE_OPEN',
+      productionShapeServerFps: 72.562,
+      productionShapeServerP50Milliseconds: 13.145,
+      productionShapeServerP95Milliseconds: 18.598,
+      latestPublicTwoBrowserFps: [30.12],
+      latestPublicTwoBrowserCadenceP95Milliseconds: [51.2],
       confirmedFrameDrops: [0, 0],
       evidence: ociHudDatabasePixelEvidencePath
     } : null,

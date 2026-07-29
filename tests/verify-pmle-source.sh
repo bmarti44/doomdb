@@ -1087,7 +1087,9 @@ grep -q '+wan.expectedConfirmedBatchTics)return' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'const pixelInputLeadTics=1' \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -Fq 'nextPollDelayMs=playoutStarted?pixelPollBatchDelayMs:0' \
+grep -Fq 'const refillFloor=wan.playoutBufferTics' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq '? (frames.size<=refillFloor?8:pixelPollBatchDelayMs)' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q "set_action('MLE_TICKER_PREWARM')" \
   "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
