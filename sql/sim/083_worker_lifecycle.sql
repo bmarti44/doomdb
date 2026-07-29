@@ -57,6 +57,7 @@ create or replace package body doom_worker_lifecycle as
     l_session number;l_running number;l_assignment number;
     l_status varchar2(16);l_token varchar2(32);l_sid number;l_serial number;
     l_spid varchar2(24);l_run varchar2(64);l_heartbeat timestamp with time zone;
+    l_match varchar2(32);l_role varchar2(16);
   begin
     for slot_ in (
       select slot_id,job_name,slot_status,incarnation_token,worker_sid,
@@ -108,6 +109,83 @@ create or replace package body doom_worker_lifecycle as
             heartbeat=localtimestamp at time zone 'UTC',
             last_error='janitor: stale unassigned scheduler/session absent'
             where slot_id=slot_.slot_id and slot_status=l_status
+              and nvl(incarnation_token,'-')=nvl(l_token,'-')
+              and nvl(worker_sid,-1)=nvl(l_sid,-1)
+              and nvl(worker_serial,-1)=nvl(l_serial,-1)
+              and nvl(worker_spid,'-')=nvl(l_spid,'-')
+              and nvl(worker_job_run,'-')=nvl(l_run,'-')
+              and heartbeat=l_heartbeat;
+        end if;
+      end if;
+    end loop;
+
+    -- A retained worker can die after accepting an assignment. Generation
+    -- fencing lets recovery continue on another slot, but the dead RUNNING
+    -- row must not retain Free edition's only admission capacity forever.
+    -- CLAIMED remains a hard no-op: that state is owned by promotion. For a
+    -- RUNNING row, require the full recorded incarnation to be absent from
+    -- both Scheduler and V$SESSION, age past the grace period, then reverify
+    -- every field under the row lock before failing the exact assignment.
+    for slot_ in (
+      select slot_id,job_name,slot_status,assigned_match,assigned_role,
+        incarnation_token,worker_sid,worker_serial,worker_spid,
+        worker_job_run,heartbeat
+      from doom_mle_warm_slot
+      where slot_status='RUNNING' and assigned_match is not null
+        and assigned_role in('AUTHORITY','STANDBY')
+        and heartbeat<localtimestamp at time zone 'UTC'-
+          numtodsinterval(c_reconcile_grace_seconds,'SECOND')
+    ) loop
+      select count(*) into l_running from user_scheduler_running_jobs
+        where job_name=slot_.job_name;
+      select count(*) into l_session
+        from v$session s join v$process p on p.addr=s.paddr
+        where s.sid=slot_.worker_sid and s.serial#=slot_.worker_serial
+          and p.spid=slot_.worker_spid;
+      if l_running=0 and l_session=0 then
+        begin
+          select slot_status,assigned_match,assigned_role,incarnation_token,
+            worker_sid,worker_serial,worker_spid,worker_job_run,heartbeat
+            into l_status,l_match,l_role,l_token,l_sid,l_serial,l_spid,l_run,
+              l_heartbeat
+            from doom_mle_warm_slot
+            where slot_id=slot_.slot_id and slot_status='RUNNING'
+              and assigned_match=slot_.assigned_match
+              and assigned_role=slot_.assigned_role
+              and nvl(incarnation_token,'-')=
+                  nvl(slot_.incarnation_token,'-')
+              and nvl(worker_sid,-1)=nvl(slot_.worker_sid,-1)
+              and nvl(worker_serial,-1)=nvl(slot_.worker_serial,-1)
+              and nvl(worker_spid,'-')=nvl(slot_.worker_spid,'-')
+              and nvl(worker_job_run,'-')=nvl(slot_.worker_job_run,'-')
+              and heartbeat=slot_.heartbeat
+              and heartbeat<localtimestamp at time zone 'UTC'-
+                numtodsinterval(c_reconcile_grace_seconds,'SECOND')
+            for update skip locked;
+        exception when no_data_found then continue;end;
+        select count(*) into l_running from user_scheduler_running_jobs
+          where job_name=slot_.job_name;
+        select count(*) into l_session
+          from v$session s join v$process p on p.addr=s.paddr
+          where s.sid=l_sid and s.serial#=l_serial and p.spid=l_spid;
+        if l_running=0 and l_session=0 then
+          update doom_mle_warm_assignment set assignment_status='FAILED',
+            finished_at=localtimestamp at time zone 'UTC',
+            failure_detail='janitor: assigned scheduler/session absent'
+            where slot_id=slot_.slot_id and match_id=l_match
+              and assigned_role=l_role
+              and incarnation_token=l_token and worker_sid=l_sid
+              and worker_serial=l_serial and worker_spid=l_spid
+              and worker_job_run=l_run
+              and assignment_status in('PENDING','ACCEPTED');
+          update doom_mle_warm_slot set slot_status='FAILED',
+            assigned_match=null,assigned_role=null,worker_sid=null,
+            worker_serial=null,worker_spid=null,worker_job_run=null,
+            incarnation_token=null,stop_requested=0,
+            heartbeat=localtimestamp at time zone 'UTC',
+            last_error='janitor: stale assigned scheduler/session absent'
+            where slot_id=slot_.slot_id and slot_status='RUNNING'
+              and assigned_match=l_match and assigned_role=l_role
               and nvl(incarnation_token,'-')=nvl(l_token,'-')
               and nvl(worker_sid,-1)=nvl(l_sid,-1)
               and nvl(worker_serial,-1)=nvl(l_serial,-1)

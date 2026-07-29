@@ -1,0 +1,21 @@
+PMLE_OCI_TWO_POV|BEGIN|frames=300|renderer=DATABASE_PIXELS|url_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8
+PMLE_OCI_TWO_POV_ARTIFACT_ATTEST|phase=BEFORE|authority_sha256=c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1|renderer_sha256=5092dda164a9cc7bd712e5e0b6ac82d98e2d441ff461e67443e9b1257a8af64f|coordinator_sha256=da9ff7a653b893712821d25b3b6b40fc1097497740550c32939d610763916192
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: player 0 p0=31.07fps paint=31.80/38.60ms paint99/999/max=70.70/118.40/118.40ms submitGap=0.00/0.00ms submitDecode=0.00/0.00ms pollReady=0.00/0.00ms decodePaint=0.00/0.00ms input=244.50/286.00ms input999/max=329.50/329.50ms n=51 worstPaint=287:118.4 net95=submit(q0.0,t0.0,d0.0)/poll(q0.8,t51.4,d6.7)
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.3-multiplayer-client.mjs:518:16
+    at Array.map (<anonymous>)
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.3-multiplayer-client.mjs:406:30
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

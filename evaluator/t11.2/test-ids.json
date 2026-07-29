@@ -1,14 +1,17 @@
-{"schema":2,"task":"T11.2","declaredAssertions":742,"tests":[
+{"schema":2,"task":"T11.2","declaredAssertions":900,"tests":[
 {"id":"T112-CREDENTIAL-PREFLIGHT","assertions":42,"intent":"Required ADB and managed ORDS inputs remain environment-only; missing, unsafe, placeholder or retained secret values stop execution without a success-shaped record."},
 {"id":"T112-OCI-HOSTED-PROVENANCE","assertions":48,"intent":"The browser document and API are served from one attested managed-ORDS origin backed by the target Autonomous Database; local, proxy, replay and dry-run substitutes fail."},
-{"id":"T112-STATIC-ARTIFACT-ALLOWLIST","assertions":68,"intent":"The database inventory exactly equals the reviewed 24-object build, contains the pinned runtime assets and redistribution notices, and excludes source maps, stale engine artifacts, tools and private files."},
+{"id":"T112-STATIC-ARTIFACT-ALLOWLIST","assertions":68,"intent":"The database inventory exactly equals the reviewed 17-object DB-pixel build, retains redistribution notices, and excludes browser engines, source maps, stale artifacts, tools and private files."},
 {"id":"T112-DATABASE-BLOB-INTEGRITY","assertions":56,"intent":"One atomic load replaces the static inventory and Oracle-resident length and SHA-256 checks bind every BLOB to the build manifest before commit."},
 {"id":"T112-DETERMINISTIC-METADATA","assertions":53,"intent":"Every live object has the reviewed MIME and cache policy; long immutable caching is accepted only when the filename digest matches the served bytes."},
 {"id":"T112-ANONYMOUS-SURFACE","assertions":52,"intent":"Anonymous access is limited to DOOM_API, PUBLIC_HEALTH and the dedicated doom.hosted.app routes; the backing table and all administrative surfaces remain unexposed."},
 {"id":"T112-PLAYWRIGHT-PROVENANCE","assertions":59,"intent":"Pinned Chromium navigates directly to the hosted ORDS document with one worker, no retries, mocks, route fulfillment, proxy, service worker, skips, errors or redirects."},
-{"id":"T112-AUTHORITATIVE-MLE-MATCH","assertions":84,"intent":"The hosted client creates a real database-authoritative MLE match and consumes only confirmed, ordered DMD1 transitions without local simulation or prediction."},
+{"id":"T112-AUTHORITATIVE-MLE-MATCH","assertions":84,"intent":"The hosted client creates a real database-authoritative MLE match whose retained MLE session owns simulation, ordering and frame generation."},
+{"id":"T112-DATABASE-FRAMEBUFFER-SOURCE","assertions":53,"intent":"Every scored canvas frame comes from a complete database-generated 320x200 framebuffer; no browser authority, renderer module, prediction or local simulation is loaded."},
 {"id":"T112-UNIQUE-MOVING-FRAMES","assertions":64,"intent":"The moving-input sample contains 300 sequential authoritative tics and 300 byte-unique rendered canvas frames."},
 {"id":"T112-CLIENT-30-FPS","assertions":67,"intent":"The 300-frame browser sample sustains at least 30 FPS and p95 inter-frame time no greater than 33.333 ms on the deployed OCI application."},
+{"id":"T112-CHECKPOINT-CADENCE","assertions":41,"intent":"The exact scored 300-tic browser window contains at least two durable production checkpoints, proving the hard 128-tic recovery cadence was exercised."},
+{"id":"T112-CHECKPOINT-TAIL","assertions":47,"intent":"Database postflight proves no scored checkpoint step or save exceeded the 100 ms live presentation tail bar."},
 {"id":"T112-CAPACITY-RELEASE","assertions":62,"intent":"The browser leaves its match and proves capacity release so a successful gate cannot strand a live game or worker lease."},
 {"id":"T112-NETWORK-DEPENDENCY-ALLOWLIST","assertions":49,"intent":"Every browser request stays on the attested managed-ORDS origin and is classified as database static or Oracle API traffic, with no websocket, redirect, mock or unclassified dependency."},
 {"id":"T112-EVIDENCE-INTEGRITY","assertions":38,"intent":"Canonical secret-free evidence binds build, database catalog, live GETs, browser report and network ledger to one run; partial writes and mutation survivors fail closed."}

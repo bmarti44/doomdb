@@ -188,12 +188,15 @@ create table doom_match_checkpoint (
   checkpoint_sha varchar2(64) not null,
   checkpoint_bytes number(8) not null,
   checkpoint_blob blob not null,
+  save_elapsed_ms number(12,3) default 0 not null,
+  publish_elapsed_ms number(12,3) default 0 not null,
   created_at timestamp with time zone not null,
   constraint doom_match_checkpoint_pk primary key(match_id,tic),
   constraint doom_match_checkpoint_tic_fk foreign key(match_id,tic)
     references doom_match_tic(match_id,tic) on delete cascade,
   constraint doom_match_checkpoint_fence_ck check(
-    tic>=0 and membership_epoch>0 and generation>0 and checkpoint_bytes>0),
+    tic>=0 and membership_epoch>0 and generation>0 and checkpoint_bytes>0
+    and save_elapsed_ms>=0 and publish_elapsed_ms>=0),
   constraint doom_match_checkpoint_bitmap_ck check(
     vsize(membership_bitmap)=1),
   constraint doom_match_checkpoint_sha_ck check(

@@ -1,5 +1,7 @@
 node_modules/
 .artifacts/
+.m2-cache/
+scratchpad/
 
 # Local credentials. Keep only deliberately fake templates in version control.
 secrets/**

@@ -1,0 +1,88 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_TEAVM_STAGING_GATE|PASS|source_bytes=1081335|source_sha256=5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3|table_bytes=180272|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44
+
+Usage: SHOW ERRORS [{ FUNCTION | PROCEDURE | PACKAGE |
+    PACKAGE BODY | TRIGGER | VIEW
+    | TYPE | TYPE BODY | DIMENSION
+    | JAVA SOURCE | JAVA CLASS } [schema.]name]
+PMLE_TEAVM_SIMULATION_LOAD|bytes=1081335|table_pack_bytes=180272                                                                   
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Package DOOM_MLE_MATCH_RUNTIME altered.
+
+
+Error starting at line : 12 in command -
+select 'PMLE_OCI_DVR_ROLLBACK|PASS|module_sha256='||
+  lower(rawtohex(dbms_crypto.hash(source_blob,dbms_crypto.hash_sh256)))||
+  '|runtime_status='||(select status from user_objects
+    where object_name='DOOM_MLE_MATCH_RUNTIME' and object_type='PACKAGE BODY')
+from doom_teavm_sim_source
+Error at Command Line : 13 Column : 47
+Error report -
+SQL Error: ORA-06553: PLS-221: 'HASH_SH256' is not a procedure or is undefined
+Help: https://docs.oracle.com/error-help/db/ora-06553/
+Rollback
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+

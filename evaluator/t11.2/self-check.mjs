@@ -11,9 +11,9 @@ const check=(value,label)=>{assert.ok(value,label);assertions++;};
 check(validatePolicy(fixture),'policy');
 const evidence=makeEvidence(fixture);
 check(validateEvidence(evidence,fixture),'positive evidence');
-check(testIds.length===13&&new Set(testIds.map(row=>row.id)).size===13,
+check(testIds.length===16&&new Set(testIds.map(row=>row.id)).size===16,
   'test-id inventory');
-check(evidence.deployment.objects.length===24,'exact static inventory');
+check(evidence.deployment.objects.length===17,'exact static inventory');
 check(evidence.target.sameOrigin,'same origin');
 check(evidence.browser.performance.fps>=30,'30 FPS');
 check(evidence.browser.performance.uniqueFrames===300,'unique moving frames');

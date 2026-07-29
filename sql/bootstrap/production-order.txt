@@ -27,6 +27,9 @@ sql/schema/052_mle_authority_transport.sql
 sql/schema/053_singleplayer_mle.sql
 sql/schema/054_mle_warm_pool.sql
 sql/schema/062_mle_warm_lifecycle.sql
+sql/schema/064_mle_live_frame.sql
+sql/schema/065_mle_shared_views.sql
+sql/schema/066_async_standby_checkpoint.sql
 sql/schema/050_config.sql
 sql/schema/061_mle_production_config.sql
 sql/engine/005_render_axes.sql
@@ -67,8 +70,10 @@ sql/sim/077_retained_switch_presentation.sql
 sql/sim/086_mle_authority_delta.sql
 sql/sim/087_mle_transition_transport.sql
 @mle-module
+@mle-live-frame-module
 @mle-tic0-bank
 sql/sim/088_mle_match_runtime.sql
+sql/sim/089_mle_live_frame_transport.sql
 sql/sim/084_multiplayer_worker.sql
 sql/sim/085_session_cleanup.sql
 sql/render/r1/012_staged_rays_intersections.sql

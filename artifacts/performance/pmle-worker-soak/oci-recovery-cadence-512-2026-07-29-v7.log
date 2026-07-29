@@ -1,0 +1,172 @@
+PMLE_RECOVERY_CADENCE_PREDECLARATION|DIAGNOSTIC_NOT_GATE|venue=OCI_ALWAYS_FREE_26AI|checkpoint_max_tics=512|checkpoint_min_tics=16|checkpoint_low_awake=-1|kill_window=497-511|committed_frontier_pause_tic=511|pause_seconds=90|phase_budget_ms=45000|detection_budget_ms=15000|production_cadence_unchanged=113-128|worker_source_sha256=16c1b0450c9eaf2895ad1a8c520797b91530469889c2b1f28c8f9d689ecb04d2|candidate_source_sha256=c347b4a3d551e316252b96a51bf92b66a66c654b3adcf6ea82f0690c1a7938a5
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_RECOVERY_CADENCE_POOL|PASS|active=0|assigned=0|live=0
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Package DOOM_MATCH_WORKER compiled
+
+
+Package Body DOOM_MATCH_WORKER compiled
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_RECOVERY_CADENCE_DEPLOY|PASS|candidate_sha256=c347b4a3d551e316252b96a51bf92b66a66c654b3adcf6ea82f0690c1a7938a5
+
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_HIGH_AWAKE_STAGE|fixture_preloaded|tics=800|changes=379|generation=1
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_ready_requests_complete
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: high-awake diagnostic did not lease both ready members
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:404:12 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '\n' +
+    'Session altered.\n' +
+    '\n' +
+    '\n' +
+    'Session altered.\n' +
+    '\n' +
+    '\n' +
+    'Session altered.\n' +
+    '\n' +
+    '\n' +
+    'Session altered.\n' +
+    '\n' +
+    '\n' +
+    'Session altered.\n' +
+    '\n' +
+    'PMLE_HIGH_AWAKE_READY_HOLD|1\n',
+  expected: /PMLE_HIGH_AWAKE_READY_HOLD\|2/,
+  operator: 'match',
+  diff: 'simple'
+}
+
+Node.js v25.9.0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_RECOVERY_CADENCE_POOL|PASS|active=0|assigned=0|live=0
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Package DOOM_MATCH_WORKER compiled
+
+
+Package Body DOOM_MATCH_WORKER compiled
+
+PMLE_RECOVERY_CADENCE_RESTORE|PASS|worker_sha256=16c1b0450c9eaf2895ad1a8c520797b91530469889c2b1f28c8f9d689ecb04d2
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+

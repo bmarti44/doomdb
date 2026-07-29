@@ -37,7 +37,12 @@ printf '%s\n' \
 for object in \
   'function doom_free_hybrid_stats' \
   'function doom_free_hybrid_frame_chunk' \
+  'function doom_free_hybrid_raster' \
+  'function doom_free_hybrid_commands_half' \
+  'function doom_free_hybrid_commands' \
+  'function doom_free_hybrid_clear' \
   'function doom_free_hybrid_frame_batch' \
+  'function doom_free_hybrid_frame_half' \
   'function doom_free_hybrid_frame' \
   'function doom_free_hybrid_texture_finalize' \
   'function doom_free_hybrid_texture_load' \
@@ -111,6 +116,16 @@ printf '%s\n' \
   "create function doom_free_hybrid_texture_finalize return number as mle module doom_free_hybrid_renderer env doom_free_hybrid_env signature 'finalizeWallTextures()';" \
   '/' \
   "create function doom_free_hybrid_frame(p_pose number)return number as mle module doom_free_hybrid_renderer env doom_free_hybrid_env signature 'renderFrame(number)';" \
+  '/' \
+  "create function doom_free_hybrid_frame_half(p_pose number)return number as mle module doom_free_hybrid_renderer env doom_free_hybrid_env signature 'renderFrameHalfWidth(number)';" \
+  '/' \
+  "create function doom_free_hybrid_clear return number as mle module doom_free_hybrid_renderer env doom_free_hybrid_env signature 'clearFrame()';" \
+  '/' \
+  "create function doom_free_hybrid_commands(p_pose number)return number as mle module doom_free_hybrid_renderer env doom_free_hybrid_env signature 'generateCommands(number)';" \
+  '/' \
+  "create function doom_free_hybrid_commands_half(p_pose number)return number as mle module doom_free_hybrid_renderer env doom_free_hybrid_env signature 'generateCommandsHalfWidth(number)';" \
+  '/' \
+  "create function doom_free_hybrid_raster return number as mle module doom_free_hybrid_renderer env doom_free_hybrid_env signature 'rasterizeCommands()';" \
   '/' \
   "create function doom_free_hybrid_frame_batch(p_start number,p_count number)return number as mle module doom_free_hybrid_renderer env doom_free_hybrid_env signature 'renderFrameBatch(number, number)';" \
   '/' \

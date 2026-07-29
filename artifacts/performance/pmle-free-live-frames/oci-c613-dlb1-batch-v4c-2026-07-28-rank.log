@@ -1,0 +1,76 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_OCI_DVL2_BATCH_LOAD|PASS
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+ITicker: Using nanosecond accuracy timer.
+FreeDoom: Phase 1	   v1.9
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors -
+===========================================================================
+Copyright © 2001-2017 Contributors to the Freedoom project.
+All rights reserved.
+See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon -
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_OCI_DVL2_BATCH_PUBLISH|PASS|classification=DIAGNOSTIC_NOT_GATE|format=DLB1|batch_size=1|frames=300|groups=300|amortized_p50_ms=28.031|amortized_p95_ms=41.281|mean_ms=34.597|sustained_fps=28.121|delivery_batch_p95_ms=41.281|wall_ms=10668.038|get_time_ms=10670.000|clock_suspects=0|frame_bytes=64000|codec=NONE|authorship=DATABASE_MLE|rate_shape=FAIL
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_OCI_DVL2_BATCH_PUBLISH|PASS|classification=DIAGNOSTIC_NOT_GATE|format=DLB1|batch_size=2|frames=300|groups=150|amortized_p50_ms=26.406|amortized_p95_ms=35.599|mean_ms=28.477|sustained_fps=34.651|delivery_batch_p95_ms=71.198|wall_ms=8657.828|get_time_ms=8660.000|clock_suspects=0|frame_bytes=64000|codec=NONE|authorship=DATABASE_MLE|rate_shape=FAIL
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_OCI_DVL2_BATCH_PUBLISH|PASS|classification=DIAGNOSTIC_NOT_GATE|format=DLB1|batch_size=4|frames=300|groups=75|amortized_p50_ms=26.712|amortized_p95_ms=47.634|mean_ms=30.464|sustained_fps=32.573|delivery_batch_p95_ms=190.534|wall_ms=9210.107|get_time_ms=9210.000|clock_suspects=0|frame_bytes=64000|codec=NONE|authorship=DATABASE_MLE|rate_shape=FAIL
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+P_GetNodesVersion: using normal BSP nodes
+Max size 66146
+PMLE_OCI_DVL2_BATCH_PUBLISH|PASS|classification=DIAGNOSTIC_NOT_GATE|format=DLB1|batch_size=10|frames=300|groups=30|amortized_p50_ms=27.446|amortized_p95_ms=32.505|mean_ms=26.605|sustained_fps=37.476|delivery_batch_p95_ms=325.048|wall_ms=8005.072|get_time_ms=8010.000|clock_suspects=0|frame_bytes=64000|codec=NONE|authorship=DATABASE_MLE|rate_shape=PASS
+PMLE_OCI_DVL2_BATCH_POSTFLIGHT|PASS|temporary_lobs_before=0|temporary_lobs_after=0|temporary_lobs_delta=0

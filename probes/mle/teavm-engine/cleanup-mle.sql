@@ -111,6 +111,12 @@ exception when others then if sqlcode<>-4043 then raise;end if;end;
 begin execute immediate 'drop function doom_teavm_sim_authority_step';
 exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
+begin execute immediate 'drop function doom_teavm_sim_world_chunk';
+exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_teavm_sim_world_length';
+exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
 begin execute immediate 'drop function doom_teavm_sim_multi_init';
 exception when others then if sqlcode<>-4043 then raise;end if;end;
 /

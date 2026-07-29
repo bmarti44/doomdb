@@ -53,6 +53,21 @@ while IFS= read -r entry || [[ -n "$entry" ]]; do
     count=$((count + 1))
     continue
   fi
+  if [[ "$entry" == '@mle-live-frame-module' ]]; then
+    if [[ -n "${seen[$entry]:-}" ]]; then
+      printf 'duplicate bootstrap entry: %s\n' "$entry" >&2
+      exit 1
+    fi
+    [[ -n "${seen["@mle-module"]:-}" ]] || {
+      printf 'live-frame module must follow the authority module\n' >&2
+      exit 1
+    }
+    seen[$entry]=1
+    printf 'BOOTSTRAP %03d %s\n' "$((count + 1))" "$entry"
+    "$root/probes/mle/load-live-frame-module.sh"
+    count=$((count + 1))
+    continue
+  fi
   if [[ ! "$entry" =~ ^sql/(bootstrap|schema|seed|engine|spatial|bsp|accel|render|sim|rest)/[A-Za-z0-9._/-]+\.sql$ || "$entry" == *'..'* ]]; then
     printf 'unsafe bootstrap entry: %s\n' "$entry" >&2
     exit 1

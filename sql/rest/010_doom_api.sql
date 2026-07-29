@@ -139,6 +139,48 @@ create or replace package doom_api authid definer as
     p_current_tic       out number,
     p_payload           out blob);
 
+  procedure poll_match_pixels(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_after_tic         in  number,
+    p_ready             out number,
+    p_current_tic       out number,
+    p_frame_tic         out number,
+    p_membership_epoch  out number,
+    p_generation        out number,
+    p_payload           out blob);
+
+  procedure poll_match_pixel_batch(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_after_tic         in  number,
+    p_max_frames        in  number default 8,
+    p_frame_count       out number,
+    p_first_tic         out number,
+    p_last_tic          out number,
+    p_current_tic       out number,
+    p_membership_epoch  out number,
+    p_generation        out number,
+    p_payload           out blob);
+
+  procedure exchange_match_pixel_batch(
+    p_match             in  varchar2,
+    p_player_capability in  varchar2,
+    p_after_tic         in  number,
+    p_max_frames        in  number default 8,
+    p_input_seq         in  number default null,
+    p_ticcmd_hex        in  varchar2 default null,
+    p_target_tic        in  number default null,
+    p_input_accepted    out number,
+    p_effective_tic     out number,
+    p_frame_count       out number,
+    p_first_tic         out number,
+    p_last_tic          out number,
+    p_current_tic       out number,
+    p_membership_epoch  out number,
+    p_generation        out number,
+    p_payload           out blob);
+
   procedure match_checkpoint(
     p_match             in  varchar2,
     p_player_capability in  varchar2,
@@ -378,6 +420,54 @@ create or replace package body doom_api as
   procedure require_match_shape(p_match varchar2);
   procedure copy_blob(p_source blob,p_target out blob);
 
+  -- The database-pixel client does not consume DMD1 transitions, so its
+  -- caught-up poll must own the same retained-worker recovery trigger. Keep
+  -- the control-row/v$session work off the backlog path: callers invoke this
+  -- only when their pixel frontier has reached (or crossed after recovery)
+  -- the match frontier.
+  procedure ensure_pixel_worker(
+    p_match in varchar2,p_membership_epoch in out number,
+    p_generation in out number,p_current_tic in out number
+  ) is
+    l_state varchar2(16);l_expiry timestamp with time zone;
+    l_worker_status varchar2(16);l_worker_heartbeat timestamp with time zone;
+    l_worker_sid number;l_worker_serial number;
+    l_busy_until timestamp with time zone;
+    l_checkpoint_call boolean:=false;
+    l_recovery_state varchar2(16);
+  begin
+    select worker_status,heartbeat,worker_sid,worker_serial,busy_until
+      into l_worker_status,l_worker_heartbeat,l_worker_sid,l_worker_serial,
+        l_busy_until
+      from doom_match_worker_control
+     where match_id=p_match and generation=p_generation;
+    if l_worker_status='READY' and l_worker_heartbeat<
+       utc_now-numtodsinterval(c_worker_probe_seconds,'SECOND') then
+      l_checkpoint_call:=worker_liveness_suppresses(
+        p_match,p_generation,'PIXEL_POLL',l_worker_sid,l_worker_serial,
+        l_worker_heartbeat,l_busy_until);
+    end if;
+    if l_worker_status in('FAILED','STOPPED') or
+       (l_worker_status='READY' and l_worker_heartbeat<
+        utc_now-numtodsinterval(c_worker_stale_seconds,'SECOND') and
+        not l_checkpoint_call) then
+      doom_match_worker.recover_match(p_match,20,l_recovery_state);
+      select match_state,expires_at,membership_epoch,generation,current_tic
+        into l_state,l_expiry,p_membership_epoch,p_generation,p_current_tic
+        from doom_match where match_id=p_match;
+      if l_recovery_state<>'ACTIVE' or l_state<>'ACTIVE'
+         or l_expiry<=utc_now then
+        fail(c_capacity,'match recovery is starting');
+      end if;
+    elsif l_worker_status='STARTING' then
+      fail(c_capacity,'match recovery is starting');
+    elsif l_worker_status<>'READY' then
+      fail(c_capacity,'match worker is unavailable');
+    end if;
+  exception when no_data_found then
+    fail(c_capacity,'match worker is unavailable');
+  end;
+
   procedure match_checkpoint(
     p_match in varchar2,p_player_capability in varchar2,p_after_tic in number,
     p_ready out number,p_current_tic out number,p_checkpoint_tic out number,
@@ -449,6 +539,175 @@ create or replace package body doom_api as
         raise_application_error(c_match_auth,'match unavailable');
       end if;
       raise_application_error(c_bad_request,'match checkpoint rejected');
+    end;
+  end;
+
+  procedure poll_match_pixels(
+    p_match in varchar2,p_player_capability in varchar2,p_after_tic in number,
+    p_ready out number,p_current_tic out number,p_frame_tic out number,
+    p_membership_epoch out number,p_generation out number,p_payload out blob
+  ) is
+    l_slot number;
+    l_state varchar2(16);
+    l_member_valid number;
+    l_expiry timestamp with time zone;
+    l_now timestamp with time zone:=utc_now;
+  begin
+    p_ready:=0;p_current_tic:=null;p_frame_tic:=null;
+    p_membership_epoch:=null;p_generation:=null;p_payload:=null;
+    require_match_shape(p_match);
+    if p_after_tic is null or p_after_tic<>trunc(p_after_tic)
+       or p_after_tic< -1 then
+      fail(c_bad_request,'invalid live-frame frontier');
+    end if;
+    select match_state,expires_at,current_tic,membership_epoch,generation
+      into l_state,l_expiry,p_current_tic,p_membership_epoch,p_generation
+      from doom_match where match_id=p_match;
+    if l_state<>'ACTIVE' or l_expiry<=l_now or p_generation<1 then
+      fail(c_match_auth,'match unavailable');
+    end if;
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    -- An authenticated caught-up poll may have to trigger a generation
+    -- recovery. Publish its presence before that bounded operation: if
+    -- recovery reports capacity/starting, rolling this heartbeat back would
+    -- let the worker's disconnected-member reaper terminate the very client
+    -- that is waiting for recovery.
+    update doom_match_member
+       set member_state='ACTIVE',last_seen_at=l_now,disconnected_at=null
+     where match_id=p_match and player_slot=l_slot
+       and member_state in('ACTIVE','DISCONNECTED')
+       and membership_epoch=p_membership_epoch
+       and generation=p_generation
+       and (member_state='DISCONNECTED'
+         or last_seen_at<l_now-numtodsinterval(1,'SECOND'));
+    if sql%rowcount=1 then
+      renew_match_lease(p_match,l_now);
+      commit;
+    else
+      select count(*) into l_member_valid from doom_match_member
+       where match_id=p_match and player_slot=l_slot
+         and member_state in('ACTIVE','DISCONNECTED')
+         and membership_epoch=p_membership_epoch
+         and generation=p_generation;
+      if l_member_valid<>1 then fail(c_match_auth,'match unavailable');end if;
+    end if;
+    if p_after_tic>=p_current_tic then
+      ensure_pixel_worker(
+        p_match,p_membership_epoch,p_generation,p_current_tic);
+    end if;
+    doom_mle_live_frame_transport.poll_latest(
+      p_match,l_slot,p_membership_epoch,p_generation,p_after_tic,
+      p_ready,p_frame_tic,p_payload);
+    -- A killed renderer can lose its in-memory partial six-frame batch after
+    -- DOOM_MATCH.current_tic has advanced. In that case the client is behind
+    -- the SQL frontier but there is no durable frame to consume, so the usual
+    -- caught-up predicate can never become true. Tic zero deliberately has no
+    -- presentation frame: the first ticker transition refreshes Doom's
+    -- derived animation tables. Probe only a nonzero empty-gap result; a
+    -- recovered generation is returned with READY=0 and the client resets its
+    -- frontier before the next poll.
+    if p_ready=0 and p_current_tic>0 and p_after_tic<p_current_tic then
+      ensure_pixel_worker(
+        p_match,p_membership_epoch,p_generation,p_current_tic);
+    end if;
+  exception when no_data_found then
+    rollback;p_ready:=0;p_current_tic:=null;p_frame_tic:=null;
+    p_membership_epoch:=null;p_generation:=null;p_payload:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;
+    begin
+      rollback;p_ready:=0;p_current_tic:=null;p_frame_tic:=null;
+      p_membership_epoch:=null;p_generation:=null;p_payload:=null;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      elsif l_code between -20999 and -20000 then
+        raise_application_error(l_code,substr(sqlerrm,1,1800));
+      end if;
+      raise_application_error(c_bad_request,'match pixel poll rejected');
+    end;
+  end;
+
+  procedure poll_match_pixel_batch(
+    p_match in varchar2,p_player_capability in varchar2,p_after_tic in number,
+    p_max_frames in number,p_frame_count out number,p_first_tic out number,
+    p_last_tic out number,p_current_tic out number,
+    p_membership_epoch out number,p_generation out number,p_payload out blob
+  ) is
+    l_slot number;
+    l_state varchar2(16);
+    l_member_valid number;
+    l_expiry timestamp with time zone;
+    l_now timestamp with time zone:=utc_now;
+  begin
+    p_frame_count:=0;p_first_tic:=null;p_last_tic:=null;
+    p_current_tic:=null;p_membership_epoch:=null;p_generation:=null;
+    p_payload:=null;
+    require_match_shape(p_match);
+    if p_after_tic is null or p_after_tic<>trunc(p_after_tic)
+       or p_after_tic< -1 or p_max_frames is null
+       or p_max_frames<>trunc(p_max_frames)
+       or p_max_frames not between 1 and 8 then
+      fail(c_bad_request,'invalid live-frame batch frontier');
+    end if;
+    select match_state,expires_at,current_tic,membership_epoch,generation
+      into l_state,l_expiry,p_current_tic,p_membership_epoch,p_generation
+      from doom_match where match_id=p_match;
+    if l_state<>'ACTIVE' or l_expiry<=l_now or p_generation<1 then
+      fail(c_match_auth,'match unavailable');
+    end if;
+    l_slot:=player_capability_slot(p_match,p_player_capability);
+    -- Keep authenticated recovery waiters alive even when ENSURE_PIXEL_WORKER
+    -- returns the bounded capacity/starting response. This transaction must
+    -- commit before recovery so its failure handler cannot roll back presence.
+    update doom_match_member
+       set member_state='ACTIVE',last_seen_at=l_now,disconnected_at=null
+     where match_id=p_match and player_slot=l_slot
+       and member_state in('ACTIVE','DISCONNECTED')
+       and membership_epoch=p_membership_epoch
+       and generation=p_generation
+       and (member_state='DISCONNECTED'
+         or last_seen_at<l_now-numtodsinterval(1,'SECOND'));
+    if sql%rowcount=1 then
+      renew_match_lease(p_match,l_now);
+      commit;
+    else
+      select count(*) into l_member_valid from doom_match_member
+       where match_id=p_match and player_slot=l_slot
+         and member_state in('ACTIVE','DISCONNECTED')
+         and membership_epoch=p_membership_epoch
+         and generation=p_generation;
+      if l_member_valid<>1 then fail(c_match_auth,'match unavailable');end if;
+    end if;
+    if p_after_tic>=p_current_tic then
+      ensure_pixel_worker(
+        p_match,p_membership_epoch,p_generation,p_current_tic);
+    end if;
+    doom_mle_live_frame_transport.poll_batch(
+      p_match,l_slot,p_membership_epoch,p_generation,p_after_tic,p_max_frames,
+      p_frame_count,p_first_tic,p_last_tic,p_payload);
+    if p_frame_count=0 and p_current_tic>0
+        and p_after_tic<p_current_tic then
+      ensure_pixel_worker(
+        p_match,p_membership_epoch,p_generation,p_current_tic);
+    end if;
+  exception when no_data_found then
+    rollback;p_frame_count:=0;p_first_tic:=null;p_last_tic:=null;
+    p_current_tic:=null;p_membership_epoch:=null;p_generation:=null;
+    p_payload:=null;
+    raise_application_error(c_match_auth,'match unavailable');
+  when others then
+    declare l_code pls_integer:=sqlcode;
+    begin
+      rollback;p_frame_count:=0;p_first_tic:=null;p_last_tic:=null;
+      p_current_tic:=null;p_membership_epoch:=null;p_generation:=null;
+      p_payload:=null;
+      if l_code=c_match_auth then
+        raise_application_error(c_match_auth,'match unavailable');
+      elsif l_code between -20999 and -20000 then
+        raise_application_error(l_code,substr(sqlerrm,1,1800));
+      end if;
+      raise_application_error(c_bad_request,'match pixel batch poll rejected');
     end;
   end;
 
@@ -598,11 +857,11 @@ create or replace package body doom_api as
 
   function any_capability_slot(
     p_match varchar2,p_capability varchar2,
-    p_host_salt raw,p_host_hash varchar2
+    p_host_salt raw,p_host_hash varchar2,p_include_left number default 0
   ) return number is
   begin
     if capability_hash(p_host_salt,p_capability)=p_host_hash then return -1;end if;
-    return player_capability_slot(p_match,p_capability);
+    return player_capability_slot(p_match,p_capability,p_include_left);
   end;
 
   procedure create_match(
@@ -631,6 +890,13 @@ create or replace package body doom_api as
       fail(c_bad_request,'invalid match map selection');
     end if;
     require_display_name(p_display_name);
+
+    -- A browser normally sends authenticated LEAVE_MATCH during pagehide.
+    -- Browser/process death cannot be trusted to deliver it, so admission
+    -- also reaps bounded stale-host rows before counting Free-edition
+    -- capacity. The package uses the same stop-intent path as the periodic
+    -- janitor; it never kills a Scheduler session directly.
+    doom_session_cleanup.reap_abandoned_matches(4);
 
     -- Serialize the bounded global create check on an existing immutable
     -- configuration row. AutoREST supplies no trustworthy client address, so
@@ -885,8 +1151,13 @@ create or replace package body doom_api as
            l_host_salt,l_host_hash
       from doom_match where match_id=p_match;
     if l_expiry<=utc_now then fail(c_match_auth,'match unavailable');end if;
+    -- LEAVE_MATCH retains terminal lineage for bounded audit and UI
+    -- convergence. The capability that just left may read that terminal
+    -- state, but remains excluded from every live/lobby authority surface.
     p_requester_slot:=any_capability_slot(
-      p_match,p_capability,l_host_salt,l_host_hash);
+      p_match,p_capability,l_host_salt,l_host_hash,
+      case when l_state in('FINISHED','CANCELLED','TERMINATED')
+        then 1 else 0 end);
     renew_match_lease(p_match,utc_now);
     select count(*),count(case when member_state='READY' then 1 end)
       into p_member_count,p_ready_count from doom_match_member
@@ -1105,6 +1376,15 @@ create or replace package body doom_api as
         from doom_match_input_event where match_id=p_match
           and player_slot=l_slot and input_seq=p_input_seq;
       if l_existing<>l_raw then fail(c_bad_request,'input revision mismatch');end if;
+      -- A fused input can commit successfully before the pixel-batch leg
+      -- reports a transport error. Retrying that same sequence is still a
+      -- live authenticated member heartbeat; refresh membership here so one
+      -- recoverable frame-poll failure cannot cascade into DISCONNECTED/LEFT.
+      update doom_match_member set member_state='ACTIVE',last_seen_at=l_now,
+        disconnected_at=null where match_id=p_match and player_slot=l_slot
+        and membership_epoch=p_membership_epoch and generation=p_generation
+        and member_state in('ACTIVE','DISCONNECTED');
+      if sql%rowcount<>1 then fail(c_match_auth,'match unavailable');end if;
       renew_match_lease(p_match,l_now);p_accepted:=1;commit;return;
     exception when no_data_found then null;end;
     select coalesce(max(input_seq),0) into l_frontier
@@ -1142,6 +1422,39 @@ create or replace package body doom_api as
       end if;
       raise_application_error(c_bad_request,'match input revision rejected');
     end;
+  end;
+
+  procedure exchange_match_pixel_batch(
+    p_match in varchar2,p_player_capability in varchar2,p_after_tic in number,
+    p_max_frames in number,p_input_seq in number,p_ticcmd_hex in varchar2,
+    p_target_tic in number,p_input_accepted out number,
+    p_effective_tic out number,p_frame_count out number,
+    p_first_tic out number,p_last_tic out number,p_current_tic out number,
+    p_membership_epoch out number,p_generation out number,p_payload out blob
+  ) is
+    l_input_membership_epoch number;
+    l_input_generation number;
+  begin
+    p_input_accepted:=0;p_effective_tic:=null;
+    if (p_input_seq is null and p_ticcmd_hex is not null)
+       or (p_input_seq is not null and p_ticcmd_hex is null) then
+      fail(c_bad_request,'incomplete match pixel exchange input');
+    end if;
+    if p_input_seq is not null then
+      revise_match_input(
+        p_match,p_player_capability,p_input_seq,p_ticcmd_hex,
+        p_input_accepted,p_effective_tic,l_input_membership_epoch,
+        l_input_generation,p_target_tic);
+    end if;
+    poll_match_pixel_batch(
+      p_match,p_player_capability,p_after_tic,p_max_frames,
+      p_frame_count,p_first_tic,p_last_tic,p_current_tic,
+      p_membership_epoch,p_generation,p_payload);
+    if p_input_seq is not null and
+       (p_membership_epoch<>l_input_membership_epoch
+        or p_generation<>l_input_generation) then
+      fail(c_match_auth,'match generation changed during pixel exchange');
+    end if;
   end;
 
   procedure match_input_frontier(
@@ -1507,7 +1820,8 @@ create or replace package body doom_api as
     select match_state,expires_at,membership_epoch,generation
       into l_state,l_expiry,l_epoch,l_generation
       from doom_match where match_id=p_match for update;
-    if l_expiry<=l_now or l_state not in('LOBBY','CANCELLED','ACTIVE','FINISHED') then
+    if l_state not in('LOBBY','CANCELLED','ACTIVE','FINISHED') or
+       (l_expiry<=l_now and l_state in('LOBBY','ACTIVE')) then
       fail(c_match_auth,'match unavailable');
     end if;
     l_slot:=player_capability_slot(p_match,p_player_capability,1);
@@ -1523,7 +1837,13 @@ create or replace package body doom_api as
         update doom_match_member set member_state='LEFT',
           leave_tic=l_current+1,last_seen_at=l_now where match_id=p_match;
         update doom_match set match_state='FINISHED',finished_at=l_now,
-          last_activity_at=l_now where match_id=p_match;
+          last_activity_at=l_now,
+          -- Capacity is released by STOP_MATCH immediately. Retain the
+          -- terminal lineage briefly so postflight/audit readers cannot race
+          -- the minute janitor and mistake successful browser cleanup for
+          -- missing runtime evidence.
+          expires_at=l_now+numtodsinterval(5,'MINUTE')
+          where match_id=p_match;
         commit;doom_match_worker.stop_match(p_match,l_generation);
         p_match_state:='FINISHED';return;
       end if;
@@ -1549,7 +1869,7 @@ create or replace package body doom_api as
       update doom_match_member set member_state='LEFT',leave_tic=0,
         last_seen_at=l_now where match_id=p_match;
       update doom_match set match_state='CANCELLED',finished_at=l_now,
-        last_activity_at=l_now where match_id=p_match;
+        last_activity_at=l_now,expires_at=l_now where match_id=p_match;
       p_match_state:='CANCELLED';
     else
       l_epoch:=l_epoch+1;
@@ -1563,6 +1883,17 @@ create or replace package body doom_api as
       p_match_state:='LOBBY';
     end if;
     commit;
+    if l_slot=0 then
+      -- A host can close the browser after READY_MATCH has claimed a retained
+      -- slot but before PUBLISH_INITIAL changes the match to ACTIVE. Match
+      -- generation is still zero in that window, so stop the exact control
+      -- generation instead of passing the stale match generation.
+      begin
+        select generation into l_generation from doom_match_worker_control
+          where match_id=p_match;
+        doom_match_worker.stop_match(p_match,l_generation);
+      exception when no_data_found then null;end;
+    end if;
   exception when no_data_found then
     rollback;p_match_state:=null;
     raise_application_error(c_match_auth,'match unavailable');
@@ -2642,18 +2973,41 @@ create or replace package body doom_api as
   ) is
     l_blob blob;
     l_hex clob;
+    l_lump_offset number;l_lump_size number;l_lump_sha varchar2(64);
+    l_actual_sha varchar2(64);
   begin
     p_payload:=null;p_media_type:=null;
     if p_asset_name is null or
        (p_asset_name not in(
-          'PLAYPAL','TITLEPIC','GENMIDI','M_DOOM','M_NGAME','M_OPTION',
+          'PLAYPAL','PLAYPAL_ALL','TITLEPIC','GENMIDI',
+          'M_DOOM','M_NGAME','M_OPTION',
           'M_LOADG','M_SAVEG','M_RDTHIS','M_QUITG','M_NEWG','M_SKILL',
           'M_JKILL','M_ROUGH','M_HURT','M_ULTRA','M_NMARE',
           'M_SKULL1','M_SKULL2') and
         not regexp_like(p_asset_name,'^DS[A-Z0-9]{1,6}$')) then
       fail(c_asset,'asset is not allowlisted');
     end if;
-    if p_asset_name='PLAYPAL' then
+    if p_asset_name='PLAYPAL_ALL' then
+      select payload_bytes into l_blob from doom_engine_artifact
+        where artifact_name='freedoom1.wad';
+      select lump_offset,lump_size,sha256
+        into l_lump_offset,l_lump_size,l_lump_sha
+        from doom_wad_source where lump_name='PLAYPAL'
+          and selection_rule='last-occurrence';
+      if l_lump_size<>14*256*3 then
+        fail(c_asset,'PLAYPAL set dimensions are invalid');
+      end if;
+      dbms_lob.createtemporary(p_payload,true,dbms_lob.call);
+      dbms_lob.copy(p_payload,l_blob,l_lump_size,1,l_lump_offset+1);
+      l_actual_sha:=lower(rawtohex(
+        dbms_crypto.hash(p_payload,dbms_crypto.hash_sh256)));
+      if dbms_lob.getlength(p_payload)<>l_lump_size
+         or l_actual_sha<>l_lump_sha then
+        fail(c_asset,'PLAYPAL set integrity mismatch');
+      end if;
+      p_media_type:='application/octet-stream';
+      commit;return;
+    elsif p_asset_name='PLAYPAL' then
       select xmlserialize(content xmlagg(xmlelement(e,
         lpad(to_char(red,'FMXX'),2,'0')||lpad(to_char(green,'FMXX'),2,'0')||
         lpad(to_char(blue,'FMXX'),2,'0')) order by palette_index)

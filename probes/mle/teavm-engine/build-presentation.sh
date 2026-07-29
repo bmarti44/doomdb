@@ -111,6 +111,8 @@ docker run --rm -v doomdb-maven-cache:/root/.m2 -v "$root:/work" \
   -Dmochadoom.jar=/work/probes/mle/teavm-engine/target/mochadoom-mle-presentation.jar \
   package
 test -s "$artifact"
+node "$root/probes/mle/verify-native-byte-array-view.mjs" \
+  "$artifact" presentationWorldSnapshotNativeByRef
 input_jar="$project/target/mochadoom-mle-engine-slice-1.0.0.jar"
 actual_input_sha="$(shasum -a 256 "$input_jar" | awk '{print $1}')"
 artifact_bytes="$(wc -c <"$artifact" | tr -d '[:space:]')"

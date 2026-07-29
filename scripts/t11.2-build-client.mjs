@@ -70,6 +70,18 @@ for (const entryPath of [multiplayerIndexPath,soloIndexPath]) {
     entry.replace('./multiplayer.js', `./${addressedMultiplayer}`), {mode: 0o644});
 }
 
+// The shipping database-frame client must not publish the historical
+// confirmed-state TeaVM fallback. TypeScript still emits every source module,
+// so remove this explicitly named diagnostic-only closure before inventory.
+for(const diagnosticOnly of [
+  'authority.js','authority-batch.js','authority-mirror.js','teavm-browser.js'
+]) {
+  const diagnosticPath=path.join(build,diagnosticOnly);
+  assert.ok(fs.statSync(diagnosticPath).isFile(),
+    `expected diagnostic-only client module is absent: ${diagnosticOnly}`);
+  fs.rmSync(diagnosticPath);
+}
+
 const files = fs.readdirSync(build, {recursive: true})
   .filter(name => fs.statSync(path.join(build, name)).isFile())
   .map(name => name.split(path.sep).join('/')).sort();

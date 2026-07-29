@@ -96,7 +96,7 @@
   <section class="status-grid" aria-label="machine-readable MLE status" id="mle-status-grid">
     <article class="panel status-card" data-state="loading"><h2>Evidence feed</h2><strong id="evidence-state">loading…</strong><span class="muted">Validating <code>/mle-status.json</code></span></article>
     <article class="panel status-card"><h2>Authority artifact</h2><strong id="authority-artifact">loading…</strong><span class="muted">MLE JavaScript · DMC1 v5</span></article>
-    <article class="panel status-card"><h2>Presentation artifact</h2><strong id="presentation-artifact">loading…</strong><span class="muted">browser renderer pin · audit/DVR incomplete</span></article>
+    <article class="panel status-card"><h2>Live frame renderer</h2><strong id="presentation-artifact">loading…</strong><span class="muted">database pixels · browser framebuffer consumer</span></article>
     <article class="panel status-card"><h2>Every-tic ledger</h2><strong id="ledger-state">loading qualification…</strong><span class="muted">full canonical MLE/OJVM equality is pin-specific</span></article>
     <article class="panel status-card"><h2>Final soak</h2><strong id="soak-state">loading qualification…</strong><span class="muted">soak evidence is pin-specific</span></article>
     <article class="panel status-card"><h2>Platform envelope</h2><strong id="capacity-state">1 effective PDB CPU</strong><span class="muted">2 running sessions · 1 guaranteed poll return</span></article>
@@ -228,7 +228,8 @@ fetch('/health.txt',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r
 }).catch(()=>document.querySelector('#status').textContent='stack unavailable');
 fetch('/mle-status.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();return r.json()}).then(data=>{
   if(data.schema!==1||!['HISTORICAL_PASS_103E','PASS_CURRENT_AUTHORITY'].includes(data.gates?.ledgerEveryTic13272)||!['PASS','PASS_CURRENT_AUTHORITY','HISTORICAL_PASS_E485_PENDING_RERUN'].includes(data.gates?.highAwakeMaximumDistanceRecovery)||!['PENDING_RERUN','PASS_CURRENT_AUTHORITY'].includes(data.gates?.finalWorkerSoak)||!['PASS','PENDING','INTERVENTION_REQUIRED'].includes(data.gates?.databaseAuthorityDeployment))throw Error();
-  const authority=data.artifacts.authority.sha256,presentation=data.artifacts.presentation.sha256;
+  const authority=data.artifacts.authority.sha256;
+  const presentation=data.artifacts.liveFrameRenderer.sha256;
   if(!/^[0-9a-f]{64}$/.test(authority)||!/^[0-9a-f]{64}$/.test(presentation))throw Error();
   const databaseDeployment=data.gates.databaseAuthorityDeployment==='PASS'
     ? (data.artifacts.authority.deploymentQualification==='DATABASE_DEPLOYED_LIFECYCLE_QUALIFIED'
@@ -248,13 +249,12 @@ fetch('/mle-status.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error();ret
     ? 'PASS · current authority · 13,272'
     : 'HISTORICAL PASS · current rerun pending';
   const deCps=data.performance.deCpsCandidate;
-  const deCpsLive=authority===deCps.artifactSha256;
+  const pixels=data.performance.databasePixelRelease;
   document.querySelector('#determinism-truth').textContent=
     `Determinism: authority ${authority.slice(0,8)}… has ledger qualification ${data.gates.ledgerEveryTic13272}; canonical-330, every-tic co-op-762, and membership-recovery gates are ${data.gates.canonical330}/${data.gates.coopEveryTic762}/${data.gates.membershipRecovery}. Every result remains bound to its recorded artifact SHA and the preserved dev-only OJVM oracle.`;
   document.querySelector('#performance-truth').textContent=
-    `Performance truth: OCI authority ${data.performance.evidenceArtifactSha256.slice(0,8)}… passed two complete ${data.performance.tics.toLocaleString()}-tic routes; the slower pass was ${data.performance.throughputTicsPerSecond} tics/s and the slowest selected awake-20 peak was ${data.performance.slowestPeakTicsPerSecond} tics/s. `+
-    `The result is bound to a full per-tic canonical digest chain. Local ${deCps.artifactSha256.slice(0,8)}… throughput (${deCps.throughputTicsPerSecond} tics/s) is development/capacity evidence only. `+
-    `The deployed browser's current 30 unique-moving-FPS gate, three-profile WAN qualification, and production Java-removal audit pass. The artifact-specific 30-minute soak remains separate. Corrected database-frame timing attributes ${data.performance.autonomousVenue.databaseFrameStageSeparatedDiagnostic.rasterP95Milliseconds} ms p95 to MLE rasterization, ${data.performance.autonomousVenue.databaseFrameStageSeparatedDiagnostic.rawEgressP95Milliseconds} ms to RAW egress, and ${data.performance.autonomousVenue.databaseFrameStageSeparatedDiagnostic.boundedRingPublishP95Milliseconds} ms to bounded publication. The wasm2js raster lower bound was ${data.performance.autonomousVenue.wasm2jsPresentationCostDiagnostic.rasterLowerBoundP95Milliseconds} ms p95 and is DVR-only; browser rendering remains live.`;
+    `Performance truth: the deployed OCI database-pixel path passed with two distinct player viewpoints and ${pixels.framesPerPlayer} sequential unique frames each. Players measured ${pixels.fps[0]} / ${pixels.fps[1]} FPS with ${pixels.cadenceP95Milliseconds[0]} / ${pixels.cadenceP95Milliseconds[1]} ms p95 cadence, zero confirmed-frame drops, and a tic-${pixels.checkpointTic} checkpoint crossing. `+
+    `Oracle MLE generates each complete ${pixels.width}×${pixels.height} indexed framebuffer; ORDS transports compressed batches and the browser only decodes, palettes, and copies pixels to canvas. The current authority's 13,272-tic ledger, co-op-762, membership recovery, session cleanup, and capacity-reuse gates pass; the earlier confirmed-state transport also retains its three-profile WAN qualification. The artifact-specific 30-minute soak and remaining visual-fidelity work stay separately reported.`;
   document.querySelector('#soak-state').textContent=data.gates.finalWorkerSoak==='PASS_CURRENT_AUTHORITY'
     ? `PASS · ${authority.slice(0,4)}`
     : `PENDING · ${authority.slice(0,4)} RERUN`;

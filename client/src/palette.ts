@@ -1,7 +1,14 @@
 export type Palette = Uint8Array<ArrayBuffer>;
+export type PaletteSet = Uint8Array<ArrayBuffer>;
 
 export function createPalette(bytes: Uint8Array<ArrayBuffer>): Palette {
   if (bytes.length !== 256 * 3) throw new TypeError('palette byte length is invalid');
+  return new Uint8Array(bytes);
+}
+
+export function createPaletteSet(bytes: Uint8Array<ArrayBuffer>): PaletteSet {
+  if (bytes.length !== 14 * 256 * 3)
+    throw new TypeError('PLAYPAL set byte length is invalid');
   return new Uint8Array(bytes);
 }
 

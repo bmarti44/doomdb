@@ -34,14 +34,34 @@ create or replace package body doom_match_worker as
   c_command_deadline_ms constant pls_integer:=2000;
   c_initial_command_deadline_ms constant pls_integer:=500;
   c_frame_retention_tics constant pls_integer:=128;
-  -- Absolute 16-tic probes yield a 113..128 interval for every prior offset.
-  -- This is the fixed-128 hard-bound policy; density no longer defers a save.
-  c_checkpoint_min_tics constant pls_integer:=113;
-  c_checkpoint_max_tics constant pls_integer:=128;
+  -- Absolute 16-tic probes yield a 497..512 interval for every prior offset.
+  -- OCI Always Free recovery at distance 511 completed through the production
+  -- ORDS pixel path in 22.377 s (37.377 s including the reserved 15 s
+  -- detection budget), so this hard bound remains inside the 60 s SLA while
+  -- moving serializer tails out of ordinary 300-frame presentation windows.
+  c_checkpoint_min_tics constant pls_integer:=497;
+  c_checkpoint_max_tics constant pls_integer:=512;
   c_checkpoint_probe_tics constant pls_integer:=16;
   c_checkpoint_low_awake constant pls_integer:=16;
+  -- Production-inert test scaffold. A diagnostic deployment may pin this to
+  -- the final pre-checkpoint tic so a slow external SQL client can kill the
+  -- exact committed frontier; zero is the only shipping value.
+  c_checkpoint_recovery_diagnostic_tic constant pls_integer:=0;
   c_command_lead_tics constant pls_integer:=8;
-  c_standby_poll_seconds constant number:=1;
+  -- The authoritative simulation and framebuffer stream are both native
+  -- 35 Hz. A prior 19/20 throttle left only 3.25 FPS above the presentation
+  -- gate; ordinary Free-tier service tails consumed that margin and drained
+  -- the confirmed reserve.
+  -- Five seconds is still small against the 60-second recovery SLA, while a
+  -- one-second heartbeat measurably collided with authority/ORDS work inside
+  -- Always Free's one-effective-CPU resource cage.
+  c_standby_poll_seconds constant number:=5;
+  -- Reconstructing 512 tics flat-out finished in 2.232 s on OCI but stole
+  -- enough CPU from ORDS to create a 104 ms presentation tail. One-tic
+  -- bursts plus a 20 ms wait project to ~12.4 s versus the 14.6 s checkpoint
+  -- interval while yielding the Free-tier CPU cage between every step.
+  c_standby_checkpoint_replay_batch constant pls_integer:=1;
+  c_standby_checkpoint_replay_yield constant number:=.02;
   -- Scheduling heuristic only: admission correctness never depends on this.
   -- Keep explicit so deployment evidence can A/B the Free-edition value.
   c_post_ready_yield_seconds constant number:=.1;
@@ -143,11 +163,13 @@ create or replace package body doom_match_worker as
     p_match varchar2,p_generation number,p_warm boolean default false
   ) is
     l_skill number;l_episode number;l_map number;l_mode varchar2(16);
-    l_epoch number;l_players number;l_serial number;l_state varchar2(64);
+    l_epoch number;l_players number;l_render_players number;
+    l_serial number;l_state varchar2(64);
     l_now timestamp with time zone:=utc_now;
     l_vector raw(32):=hextoraw(rpad('00',64,'0'));
     l_command_sha varchar2(64);l_previous varchar2(64);l_event varchar2(64);
     l_origin_checkpoint blob;l_origin_checkpoint_sha varchar2(64);
+    l_authority_sha varchar2(64);
     l_origin_checkpoint_bytes number;
   begin
     select skill,episode,map,game_mode,membership_epoch,max_players
@@ -162,6 +184,7 @@ create or replace package body doom_match_worker as
       doom_mle_match_runtime.prepare_origin_warm(2,
         case l_mode when 'DEATHMATCH' then 1 else 0 end,
         l_skill,l_episode,l_map,l_state);
+      l_authority_sha:=doom_mle_match_runtime.authority_sha256;
       -- Deployment proves every bank entry byte-identical to a fresh
       -- serialization by this exact authority. Reuse that durable DMC1 BLOB
       -- instead of immediately serializing the just-restored tic-zero state
@@ -173,8 +196,7 @@ create or replace package body doom_match_worker as
         from doom_mle_tic0_checkpoint
         where game_mode=l_mode and skill=l_skill and episode=l_episode
           and map=l_map and active_players=2
-          and authority_sha256=
-            '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3';
+          and authority_sha256=l_authority_sha;
     else
       doom_mle_match_runtime.initialize_game(2,
         case l_mode when 'DEATHMATCH' then 1 else 0 end,
@@ -202,11 +224,19 @@ create or replace package body doom_match_worker as
     if l_players<>2 then
       raise_application_error(c_error,'membership changed during initialization');
     end if;
+    select count(*) into l_render_players from doom_match_member
+      where match_id=p_match and membership_epoch=l_epoch
+        and player_slot in(0,1) and display_name<>'SOLO NEUTRAL';
+    if l_render_players not in(1,2) then
+      raise_application_error(c_error,'live-frame client membership mismatch');
+    end if;
     l_command_sha:=sha_raw(l_vector);
     select lower(standard_hash('MLE_ROOT|'||l_mode||'|'||l_skill||'|'||
       l_episode||'|'||l_map||'|PLAYERS=2|MEMBERSHIP=03','SHA256'))
       into l_previous from dual;
-    select lower(standard_hash('[]','SHA256')) into l_event from dual;
+    -- SHA-256("[]") is invariant. Avoid a SQL-engine round trip in every
+    -- 35 Hz authority transaction.
+    l_event:='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945';
     insert into doom_match_tic(match_id,tic,membership_epoch,generation,
       membership_bitmap,neutral_bitmap,command_vector,command_sha,
       previous_state_sha,state_sha,event_sha,deadline_at,committed_at)
@@ -222,6 +252,13 @@ create or replace package body doom_match_worker as
     end if;
     update doom_match_member set member_state='ACTIVE',generation=p_generation,
       last_seen_at=l_now where match_id=p_match and membership_epoch=l_epoch;
+    doom_mle_live_frame_transport.initialize_ring(
+      p_match,l_render_players,l_epoch,p_generation);
+    -- DMC1 authenticates authority state, not the renderer-facing animation
+    -- translation tables derived by Doom's ticker. A retained restore at tic
+    -- zero can therefore still carry the preceding match's animated-flat
+    -- phase. Never publish that pre-ticker presentation state: tic 1 refreshes
+    -- every derived table and becomes the generation's first pixel frame.
     update doom_match set match_state='ACTIVE',generation=p_generation,
       current_tic=0,started_at=l_now,last_activity_at=l_now
       where match_id=p_match and membership_epoch=l_epoch and generation=0;
@@ -253,7 +290,8 @@ create or replace package body doom_match_worker as
     l_epoch number;l_old_generation number;l_tic number;l_checkpoint_tic number:=0;
     l_state varchar2(64);l_expected varchar2(64);l_ignored varchar2(64);
     l_checkpoint blob;
-    l_count number;l_serial number;l_now timestamp with time zone:=utc_now;
+    l_count number;l_render_players number;l_render_mask number:=0;
+    l_serial number;l_now timestamp with time zone:=utc_now;
     l_diagnostics number;
     l_recovery_started timestamp with time zone:=utc_now;
     l_restore_ended timestamp with time zone;
@@ -308,6 +346,27 @@ create or replace package body doom_match_worker as
         raise_application_error(c_error,'MLE recovery state mismatch tic='||step_.tic);end if;
     end loop;
     l_replay_ended:=utc_now;
+    doom_mle_live_frame_transport.advance_generation(
+      p_match,l_epoch,l_old_generation,p_generation);
+    l_render_players:=0;
+    for l_render_member in (
+      select player_slot from doom_match_member
+       where match_id=p_match and membership_epoch=l_epoch
+         and generation=l_old_generation and player_slot in(0,1)
+         and member_state in('ACTIVE','DISCONNECTED')
+         and display_name<>'SOLO NEUTRAL'
+       order by player_slot
+    ) loop
+      l_render_players:=l_render_players+1;
+      l_render_mask:=l_render_mask+power(2,l_render_member.player_slot);
+    end loop;
+    if l_render_players not in(1,2) then
+      raise_application_error(c_error,'recovery live-frame membership mismatch');
+    end if;
+    if l_tic>l_checkpoint_tic then
+      doom_mle_match_runtime.render_and_publish_views(
+        p_match,l_render_mask,l_epoch,p_generation,l_tic);
+    end if;
     update doom_match_tic set generation=p_generation
       where match_id=p_match and tic=l_tic and generation=l_old_generation;
     update doom_match_checkpoint set generation=p_generation
@@ -402,6 +461,8 @@ create or replace package body doom_match_worker as
     l_previous varchar2(64);l_vector_hex varchar2(64);l_state varchar2(64);
     l_command_sha varchar2(64);l_previous_chain varchar2(64);l_event varchar2(64);
     l_count number;l_neutral number;l_membership number;l_next_count number;
+    l_render_players number;
+    l_render_mask number:=0;
     l_now timestamp with time zone:=utc_now;l_deadline timestamp with time zone;
     l_eligible timestamp with time zone;l_input raw(8);l_payload raw(32767);
     l_checkpoint blob;l_checkpoint_sha varchar2(64);l_checkpoint_bytes number;
@@ -418,8 +479,15 @@ create or replace package body doom_match_worker as
     l_checkpoint_save_started timestamp with time zone;
     l_checkpoint_save_ended timestamp with time zone;
     l_checkpoint_publish_ended timestamp with time zone;
+    l_checkpoint_save_ms number;
+    l_checkpoint_publish_ms number;
+    l_async_checkpoint number:=0;
+    l_match_state varchar2(16);
+    l_terminal number;
   begin
-    select state_sha into l_previous from doom_match_tic
+    savepoint process_step_start;
+    select state_sha into l_previous
+      from doom_match_tic
       where match_id=p_match and tic=p_tic-1 and generation=p_generation;
     select count(*),lower(listagg(rawtohex(ticcmd_raw),'') within group(order by player_slot)),
       coalesce(sum(case when command_source like 'NEUTRAL_%'
@@ -462,7 +530,7 @@ create or replace package body doom_match_worker as
       hextoraw(lpad(to_char(l_membership,'fmxx'),2,'0')),
       hextoraw(l_vector_hex));
     l_command_sha:=sha_raw(hextoraw(l_vector_hex));
-    select lower(standard_hash('[]','SHA256')) into l_event from dual;
+    l_event:='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945';
     insert into doom_match_tic(match_id,tic,membership_epoch,generation,
       membership_bitmap,neutral_bitmap,command_vector,command_sha,
       previous_state_sha,state_sha,event_sha,deadline_at,committed_at)
@@ -482,6 +550,31 @@ create or replace package body doom_match_worker as
       hextoraw(lpad(to_char(l_membership,'fmxx'),2,'0')),2,l_previous_chain,
       null,hextoraw(l_vector_hex),'[]',0);
     doom_mle_transition_transport.publish(p_match,l_payload);
+    select match_state into l_match_state
+      from doom_match where match_id=p_match;
+    l_render_players:=0;
+    dbms_application_info.set_action('MLE_FRAME');
+    for l_render_member in (
+      select player_slot
+        from doom_match_member
+       where match_id=p_match and membership_epoch=p_epoch
+         and generation=p_generation and player_slot in(0,1)
+         and member_state in('ACTIVE','DISCONNECTED')
+         and display_name<>'SOLO NEUTRAL'
+       order by player_slot
+    ) loop
+      l_render_players:=l_render_players+1;
+      l_render_mask:=l_render_mask+power(2,l_render_member.player_slot);
+    end loop;
+    if l_render_players=0 and l_match_state in('FINISHED','CANCELLED') then
+      null; -- Host departure raced this already-authorized terminal tic.
+    elsif l_render_players not in(1,2) then
+      raise_application_error(c_error,'live-frame active membership mismatch');
+    else
+      doom_mle_match_runtime.render_and_publish_views(
+        p_match,l_render_mask,p_epoch,p_generation,p_tic);
+    end if;
+    dbms_application_info.set_action('MLE_STEP');
     -- Test scaffold only: CHECKPOINT_TEST_HOOK may force a tic-64 checkpoint
     -- for liveness attribution. ROUTE_DIAGNOSTICS observes production cadence
     -- without changing it.
@@ -501,13 +594,13 @@ create or replace package body doom_match_worker as
       if p_tic-l_last_checkpoint_tic>=c_checkpoint_min_tics then
         -- This existing diagnostic export is sampled only during the bounded
         -- checkpoint opportunity window, never on every production tic.
-        l_memory_status:=doom_teavm_sim_memory;
+        l_memory_status:=doom_mle_match_runtime.memory_status;
         l_awake_monsters:=to_number(status_field(
           l_memory_status,'awakeMonsters'));
         if p_tic-l_last_checkpoint_tic>=
             c_checkpoint_max_tics-c_checkpoint_probe_tics+1 then
           -- Probing on absolute 16-tic boundaries with this conservative
-          -- threshold guarantees no interval can exceed 128 tics, even when a
+          -- threshold guarantees no interval can exceed 512 tics, even when a
           -- membership/recovery checkpoint was created off-boundary.
           l_checkpoint_due:=1;
         elsif l_awake_monsters<=c_checkpoint_low_awake then
@@ -529,39 +622,22 @@ create or replace package body doom_match_worker as
         end if;
       end if;
     end if;
-    if l_checkpoint_diagnostic=1 or l_checkpoint_due=1 then
-      -- Checkpoint serialization is a long but healthy retained MLE call on
-      -- Free. Expose that state so REST liveness checks distinguish it from
-      -- a dead authority session instead of triggering a competing recovery.
-      checkpoint_busy(p_match,p_generation,1);
-      dbms_application_info.set_action('MLE_CHECKPOINT');
-      l_checkpoint_save_started:=utc_now;
-      begin
-        doom_mle_match_runtime.save_checkpoint(
-          l_checkpoint,l_checkpoint_sha,l_checkpoint_bytes);
-      exception when others then
-        dbms_application_info.set_action('MLE_STEP');
-        checkpoint_busy(p_match,p_generation,0);
-        raise;
-      end;
-      l_checkpoint_save_ended:=utc_now;
-      dbms_application_info.set_action('MLE_STEP');
-      checkpoint_busy(p_match,p_generation,0);
-      insert into doom_match_checkpoint(match_id,tic,membership_epoch,generation,
-        membership_bitmap,command_sha,state_sha,checkpoint_sha,
-        checkpoint_bytes,checkpoint_blob,created_at)
-      values(p_match,p_tic,p_epoch,p_generation,
-        hextoraw(lpad(to_char(l_membership,'fmxx'),2,'0')),l_command_sha,
-        l_state,l_checkpoint_sha,l_checkpoint_bytes,l_checkpoint,l_now);
-      if dbms_lob.istemporary(l_checkpoint)=1 then dbms_lob.freetemporary(l_checkpoint);end if;
-      delete from doom_match_checkpoint where match_id=p_match
-        and tic<p_tic-c_checkpoint_max_tics;
-      l_checkpoint_publish_ended:=utc_now;
-    end if;
     update doom_match set current_tic=p_tic,last_activity_at=l_now
       where match_id=p_match and match_state='ACTIVE' and generation=p_generation
         and membership_epoch=p_epoch and current_tic=p_tic-1;
-    if sql%rowcount<>1 then raise_application_error(c_error,'step frontier fence');end if;
+    if sql%rowcount<>1 then
+      -- Browser LEAVE/abandon cleanup may finish the match after this retained
+      -- session started an otherwise valid tic. Discard that uncommitted SQL
+      -- suffix and return cleanly only for the exact terminal generation.
+      -- The in-memory engine may be one tic ahead, but this owner is about to
+      -- recycle and no terminal state is published from it.
+      rollback to process_step_start;
+      select count(*) into l_terminal from doom_match
+       where match_id=p_match and generation=p_generation
+         and match_state in('FINISHED','CANCELLED');
+      if l_terminal=1 then return;end if;
+      raise_application_error(c_error,'step frontier fence');
+    end if;
     select count(*) into l_next_count from doom_match_command
       where match_id=p_match and tic=p_tic+1 and membership_epoch=p_epoch
         and generation=p_generation and player_slot in(0,1);
@@ -575,6 +651,15 @@ create or replace package body doom_match_worker as
     l_precommit_ended:=utc_now;
     dbms_application_info.set_action('COMMIT');commit;
     l_step_ended:=utc_now;
+    if p_diagnostics=1 and c_checkpoint_recovery_diagnostic_tic>0
+       and p_tic=c_checkpoint_recovery_diagnostic_tic then
+      dbms_application_info.set_action('RECOVERY_DISTANCE_WINDOW');
+      for diagnostic_hold_ in 1..3 loop
+        checkpoint_busy(p_match,p_generation,1);
+        dbms_session.sleep(45);
+      end loop;
+      checkpoint_busy(p_match,p_generation,0);
+    end if;
     l_step_elapsed_ms:=elapsed_micros(l_step_started,l_step_ended)/1000;
     if l_step_elapsed_ms>100 then
       record_slow_call(p_match,p_generation,p_tic,l_step_started,l_step_ended,
@@ -582,11 +667,85 @@ create or replace package body doom_match_worker as
         elapsed_micros(l_step_started,l_pre_mle_ended)/1000,
         elapsed_micros(l_pre_mle_ended,l_mle_ended)/1000,
         elapsed_micros(l_mle_ended,l_precommit_ended)/1000,
-        elapsed_micros(l_precommit_ended,l_step_ended)/1000,
-        case when l_checkpoint_save_started is not null then
-          elapsed_micros(l_checkpoint_save_started,l_checkpoint_save_ended)/1000 end,
-        case when l_checkpoint_save_ended is not null then
-          elapsed_micros(l_checkpoint_save_ended,l_checkpoint_publish_ended)/1000 end);
+        elapsed_micros(l_precommit_ended,l_step_ended)/1000);
+    end if;
+    if l_checkpoint_diagnostic=1 or l_checkpoint_due=1 then
+      if l_checkpoint_diagnostic=0 then
+        update doom_match_standby_control set
+          checkpoint_request_tic=p_tic,checkpoint_status='QUEUED',
+          checkpoint_error=null,heartbeat=(localtimestamp at time zone 'UTC')
+          where match_id=p_match and base_generation=p_generation
+            and standby_status='READY' and checkpoint_status='IDLE';
+        if sql%rowcount=1 then
+          l_async_checkpoint:=1;
+          commit;
+        else
+          select count(*) into l_async_checkpoint
+            from doom_match_standby_control
+            where match_id=p_match and base_generation=p_generation
+              and standby_status='READY'
+              and checkpoint_status in('QUEUED','PROCESSING');
+        end if;
+      end if;
+      if l_async_checkpoint=0 then
+      -- The authoritative tic and its framebuffer publication are already
+      -- committed. Flush any partial six-frame ring first so the client can
+      -- spend those confirmed frames during checkpoint work instead of
+      -- waiting for the next full batch. Then build the immutable DMC1 cache
+      -- and export it as two separately bounded operations; no later engine
+      -- step can run in this retained session until both complete, so the
+      -- bytes still describe exactly p_tic.
+      dbms_application_info.set_action('CHECKPOINT_FRAME_FLUSH');
+      doom_mle_match_runtime.flush_live_frames(
+        p_match,p_epoch,p_generation);
+      commit write batch nowait;
+      checkpoint_busy(p_match,p_generation,1);
+      dbms_application_info.set_action('MLE_CHECKPOINT_PREPARE');
+      l_checkpoint_save_started:=utc_now;
+      begin
+        doom_mle_match_runtime.prepare_checkpoint(l_checkpoint_bytes);
+      exception when others then
+        dbms_application_info.set_action(null);
+        checkpoint_busy(p_match,p_generation,0);
+        raise;
+      end;
+      l_checkpoint_save_ended:=utc_now;
+      l_checkpoint_save_ms:=elapsed_micros(
+        l_checkpoint_save_started,l_checkpoint_save_ended)/1000;
+      dbms_application_info.set_action('MLE_CHECKPOINT_EXPORT');
+      begin
+        doom_mle_match_runtime.export_prepared_checkpoint(
+          l_checkpoint_bytes,l_checkpoint,l_checkpoint_sha);
+      exception when others then
+        dbms_application_info.set_action(null);
+        checkpoint_busy(p_match,p_generation,0);
+        raise;
+      end;
+      insert into doom_match_checkpoint(match_id,tic,membership_epoch,generation,
+        membership_bitmap,command_sha,state_sha,checkpoint_sha,
+        checkpoint_bytes,checkpoint_blob,save_elapsed_ms,
+        publish_elapsed_ms,created_at)
+      values(p_match,p_tic,p_epoch,p_generation,
+        hextoraw(lpad(to_char(l_membership,'fmxx'),2,'0')),l_command_sha,
+        l_state,l_checkpoint_sha,l_checkpoint_bytes,l_checkpoint,
+        l_checkpoint_save_ms,0,l_now);
+      if dbms_lob.istemporary(l_checkpoint)=1 then
+        dbms_lob.freetemporary(l_checkpoint);
+      end if;
+      delete from doom_match_checkpoint where match_id=p_match
+        and tic<p_tic-c_checkpoint_max_tics*2;
+      l_checkpoint_publish_ended:=utc_now;
+      l_checkpoint_publish_ms:=elapsed_micros(
+        l_checkpoint_save_ended,l_checkpoint_publish_ended)/1000;
+      update doom_match_checkpoint set
+        publish_elapsed_ms=l_checkpoint_publish_ms
+        where match_id=p_match and tic=p_tic and generation=p_generation;
+      if sql%rowcount<>1 then
+        raise_application_error(c_error,'checkpoint timing publication fence');
+      end if;
+      commit;
+      checkpoint_busy(p_match,p_generation,0);
+      end if;
     end if;
     dbms_application_info.set_action(null);
   exception when others then
@@ -656,7 +815,7 @@ create or replace package body doom_match_worker as
     select lower(standard_hash('MULTI_ROOT|'||l_mode||'|'||l_skill||'|'||
       l_episode||'|'||l_map||'|PLAYERS=2|MEMBERSHIP=03','SHA256'))
       into l_previous from dual;
-    select lower(standard_hash('[]','SHA256')) into l_event from dual;
+    l_event:='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945';
     insert into doom_match_tic(match_id,tic,membership_epoch,generation,
       membership_bitmap,neutral_bitmap,command_vector,command_sha,
       previous_state_sha,state_sha,event_sha,deadline_at,committed_at)
@@ -888,7 +1047,7 @@ create or replace package body doom_match_worker as
       l_frame_finalized:=utc_now;dbms_application_info.set_action('LEDGER_CHECKPOINT');
     end if;
     l_command_sha:=sha_raw(hextoraw(l_applied_hex));
-    select lower(standard_hash('[]','SHA256')) into l_event from dual;
+    l_event:='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945';
     insert into doom_match_tic(match_id,tic,membership_epoch,generation,
       membership_bitmap,neutral_bitmap,command_vector,command_sha,
       previous_state_sha,state_sha,event_sha,deadline_at,committed_at)
@@ -921,7 +1080,7 @@ create or replace package body doom_match_worker as
       -- Two native checkpoints are sufficient for operational inspection. The
       -- compact per-tic vector ledger remains complete for exact replay.
       delete from doom_match_checkpoint where match_id=p_match
-        and tic<p_tic-c_checkpoint_max_tics;
+        and tic<p_tic-c_checkpoint_max_tics*2;
     end if;
     if l_route_diagnostics=1 then
       l_ledger_done:=utc_now;l_retirement_started:=l_ledger_done;
@@ -1058,6 +1217,7 @@ create or replace package body doom_match_worker as
     p_match varchar2,p_generation number,p_epoch number
   ) is
     l_now timestamp with time zone:=utc_now;
+    l_host_left number;
   begin
     update doom_match_member member_ set member_state='LEFT',
       leave_tic=(select current_tic+1 from doom_match
@@ -1065,15 +1225,34 @@ create or replace package body doom_match_worker as
           and membership_epoch=p_epoch),last_seen_at=l_now
       where match_id=p_match and generation=p_generation
       and membership_epoch=p_epoch and member_state='DISCONNECTED'
-      -- A generated-ORDS restart republishes the allowlist before serving and
-      -- can exceed two minutes on the pinned local stack. Keep the slot
-      -- recoverable across that bounded transport outage; explicit leave and
-      -- match expiry remain immediate bounded cleanup paths.
-      and disconnected_at<l_now-interval '180' second;
+      -- Explicit leave is immediate; for a browser/process death retain a
+      -- short grace window before neutral substitution and bounded cleanup.
+      and disconnected_at<l_now-interval '15' second;
     update doom_match_member set member_state='DISCONNECTED',
       disconnected_at=l_now where match_id=p_match and generation=p_generation
       and membership_epoch=p_epoch and member_state='ACTIVE'
       and last_seen_at<l_now-interval '3' second;
+    -- Browser unload delivery is best-effort. Once the host has remained
+    -- disconnected through the documented transport-outage allowance, end
+    -- the match and release both retained assignments instead of allowing an
+    -- abandoned neutral simulation to renew no lease yet occupy a slot for
+    -- the full twenty-minute expiry window.
+    select count(*) into l_host_left from doom_match_member
+      where match_id=p_match and player_slot=0 and generation=p_generation
+        and membership_epoch=p_epoch and member_state='LEFT';
+    if l_host_left=1 then
+      update doom_match set match_state='FINISHED',finished_at=l_now,
+        last_activity_at=l_now,expires_at=l_now
+        where match_id=p_match and match_state='ACTIVE'
+          and generation=p_generation and membership_epoch=p_epoch;
+      if sql%rowcount=1 then
+        update doom_match_worker_control set stop_requested=1,heartbeat=l_now
+          where match_id=p_match and generation=p_generation;
+        update doom_match_standby_control set stop_requested=1,heartbeat=l_now
+          where match_id=p_match and base_generation=p_generation
+            and standby_status in('STARTING','READY');
+      end if;
+    end if;
     commit;
   end;
 
@@ -1173,10 +1352,94 @@ create or replace package body doom_match_worker as
     exception when others then rollback;end;
   end;
 
+  procedure build_standby_checkpoint(
+    p_match varchar2,p_generation number,p_target_tic number
+  ) is
+    l_skill number;l_episode number;l_map number;l_deathmatch number;
+    l_epoch number;l_checkpoint_tic number;l_checkpoint blob;
+    l_expected varchar2(64);l_state varchar2(64);l_ignored varchar2(64);
+    l_checkpoint_sha varchar2(64);l_checkpoint_bytes number;
+    l_membership raw(1);l_command_sha varchar2(64);
+    l_started timestamp with time zone:=utc_now;
+    l_saved timestamp with time zone;l_save_ms number;l_publish_ms number;
+  begin
+    select skill,episode,map,
+      case game_mode when 'DEATHMATCH' then 1 else 0 end,membership_epoch
+      into l_skill,l_episode,l_map,l_deathmatch,l_epoch
+      from doom_match where match_id=p_match and generation=p_generation
+        and match_state='ACTIVE';
+    select tic,checkpoint_blob,state_sha
+      into l_checkpoint_tic,l_checkpoint,l_expected
+      from (select tic,checkpoint_blob,state_sha
+        from doom_match_checkpoint where match_id=p_match
+          and generation=p_generation and tic<p_target_tic
+        order by tic desc) where rownum=1;
+    dbms_application_info.set_action('STANDBY_CHECKPOINT_RESTORE');
+    doom_mle_match_runtime.restore_checkpoint_warm(
+      2,l_deathmatch,l_skill,l_episode,l_map,
+      l_checkpoint_tic,l_checkpoint,l_state);
+    l_state:=l_expected;
+    dbms_application_info.set_action('STANDBY_CHECKPOINT_REPLAY');
+    for step_ in (select tic,membership_bitmap,command_vector,state_sha
+      from doom_match_tic where match_id=p_match
+        and generation=p_generation
+        and tic between l_checkpoint_tic+1 and p_target_tic order by tic) loop
+      doom_mle_match_runtime.step_game(2,
+        to_number(rawtohex(step_.membership_bitmap),'xx'),step_.tic,
+        step_.command_vector,l_ignored);
+      l_state:=transition_state(
+        l_state,step_.membership_bitmap,step_.command_vector);
+      if l_state<>step_.state_sha then
+        raise_application_error(
+          c_error,'standby checkpoint replay mismatch tic='||step_.tic);
+      end if;
+      if step_.tic<p_target_tic
+          and mod(step_.tic-l_checkpoint_tic,
+            c_standby_checkpoint_replay_batch)=0 then
+        dbms_session.sleep(c_standby_checkpoint_replay_yield);
+      end if;
+    end loop;
+    select membership_bitmap,command_sha,state_sha
+      into l_membership,l_command_sha,l_expected
+      from doom_match_tic where match_id=p_match and tic=p_target_tic
+        and generation=p_generation;
+    if l_state<>l_expected then
+      raise_application_error(c_error,'standby checkpoint frontier mismatch');
+    end if;
+    dbms_application_info.set_action('STANDBY_CHECKPOINT_SAVE');
+    doom_mle_match_runtime.save_checkpoint(
+      l_checkpoint,l_checkpoint_sha,l_checkpoint_bytes);
+    l_saved:=utc_now;
+    l_save_ms:=elapsed_micros(l_started,l_saved)/1000;
+    insert into doom_match_checkpoint(match_id,tic,membership_epoch,generation,
+      membership_bitmap,command_sha,state_sha,checkpoint_sha,
+      checkpoint_bytes,checkpoint_blob,save_elapsed_ms,
+      publish_elapsed_ms,created_at)
+    values(p_match,p_target_tic,l_epoch,p_generation,l_membership,
+      l_command_sha,l_state,l_checkpoint_sha,l_checkpoint_bytes,l_checkpoint,
+      l_save_ms,0,l_saved);
+    if dbms_lob.istemporary(l_checkpoint)=1 then
+      dbms_lob.freetemporary(l_checkpoint);
+    end if;
+    delete from doom_match_checkpoint where match_id=p_match
+      and tic<p_target_tic-c_checkpoint_max_tics*2;
+    l_publish_ms:=elapsed_micros(l_saved,utc_now)/1000;
+    update doom_match_checkpoint set publish_elapsed_ms=l_publish_ms
+      where match_id=p_match and tic=p_target_tic
+        and generation=p_generation;
+    commit;
+  exception when others then
+    if dbms_lob.istemporary(l_checkpoint)=1 then
+      dbms_lob.freetemporary(l_checkpoint);
+    end if;
+    raise;
+  end;
+
   procedure run_standby_core(p_match in varchar2,p_warm boolean) is
     l_players number;l_deathmatch number;l_skill number;l_episode number;l_map number;
     l_generation number;l_promote number;l_stop number;l_state varchar2(64);
     l_expected varchar2(64);l_status varchar2(16);l_polls number:=0;
+    l_checkpoint_status varchar2(16);l_checkpoint_tic number;
   begin
     select m.max_players,case m.game_mode when 'DEATHMATCH' then 1 else 0 end,
       m.skill,m.episode,m.map,s.base_generation
@@ -1204,8 +1467,10 @@ create or replace package body doom_match_worker as
     if sql%rowcount<>1 then raise_application_error(c_error,'standby ready fence');end if;
     commit;
     loop
-      select standby_status,promote_generation,stop_requested
-        into l_status,l_promote,l_stop from doom_match_standby_control
+      select standby_status,promote_generation,stop_requested,
+        checkpoint_status,checkpoint_request_tic
+        into l_status,l_promote,l_stop,l_checkpoint_status,l_checkpoint_tic
+        from doom_match_standby_control
         where match_id=p_match and base_generation=l_generation;
       exit when l_stop=1;
       if l_status='PROMOTING' and l_promote=l_generation+1 then
@@ -1219,6 +1484,48 @@ create or replace package body doom_match_worker as
         run_match_core(p_match,p_warm);
         return;
       end if;
+      if l_status='READY' and l_checkpoint_status='QUEUED'
+          and l_checkpoint_tic is not null then
+        update doom_match_standby_control set
+          checkpoint_status='PROCESSING',checkpoint_error=null,
+          heartbeat=(localtimestamp at time zone 'UTC')
+          where match_id=p_match and base_generation=l_generation
+            and standby_status='READY' and checkpoint_status='QUEUED'
+            and checkpoint_request_tic=l_checkpoint_tic;
+        if sql%rowcount<>1 then
+          raise_application_error(c_error,'standby checkpoint claim fence');
+        end if;
+        commit;
+        begin
+          build_standby_checkpoint(
+            p_match,l_generation,l_checkpoint_tic);
+          update doom_match_standby_control set
+            checkpoint_status='IDLE',
+            checkpoint_completed_tic=l_checkpoint_tic,
+            checkpoint_request_tic=null,checkpoint_error=null,
+            heartbeat=(localtimestamp at time zone 'UTC')
+            where match_id=p_match and base_generation=l_generation
+              and standby_status='READY'
+              and checkpoint_status='PROCESSING'
+              and checkpoint_request_tic=l_checkpoint_tic;
+          if sql%rowcount<>1 then
+            raise_application_error(c_error,'standby checkpoint finish fence');
+          end if;
+          commit;
+        exception when others then
+          declare l_checkpoint_error varchar2(2000):=substr(sqlerrm,1,2000);
+          begin
+            rollback;
+            update doom_match_standby_control set
+              checkpoint_status='FAILED',
+              checkpoint_error=l_checkpoint_error,
+              heartbeat=(localtimestamp at time zone 'UTC')
+              where match_id=p_match and base_generation=l_generation;
+            commit;
+          end;
+        end;
+        dbms_application_info.set_action('MLE_STANDBY_PASSIVE');
+      end if;
       -- A READY standby owns a retained origin/checkpoint-capable context but
       -- performs no checkpoint restore or simulation work until promotion.
       -- Poll coarsely so Free's second runnable-session slot and effective CPU
@@ -1229,7 +1536,7 @@ create or replace package body doom_match_worker as
         heartbeat=(localtimestamp at time zone 'UTC')
         where match_id=p_match and base_generation=l_generation
           and standby_status='READY';
-      if mod(l_polls,5)=0 then commit;end if;
+      commit;
     end loop;
     if not p_warm then doom_mle_match_runtime.release;end if;
     update doom_match_standby_control set standby_status='STOPPED',
@@ -1376,6 +1683,12 @@ create or replace package body doom_match_worker as
         end if;
       end if;
     end loop;
+    -- A terminal/stop boundary may cut through the selected six-frame
+    -- persistence batch. Publish that confirmed suffix before recycling the
+    -- retained context so the framebuffer client never waits on lost frames.
+    doom_mle_match_runtime.flush_live_frames(
+      p_match,l_epoch,l_generation);
+    commit write batch nowait;
     if not p_warm then doom_mle_match_runtime.release;end if;
     update doom_match_worker_control set worker_status='STOPPED',
       heartbeat=(localtimestamp at time zone 'UTC')
@@ -1488,7 +1801,7 @@ create or replace package body doom_match_worker as
         -- context to the default tic-zero origin before exposing it again. An
         -- assignment-level restore failure may have released the context, in
         -- which case rebuild it rather than publishing a false READY slot.
-        l_runtime_status:=doom_teavm_sim_state;
+        l_runtime_status:=doom_mle_match_runtime.current_status;
         if l_runtime_status='state=uninitialized' then
           doom_mle_match_runtime.initialize_game(2,0,3,1,1,l_state);
         else

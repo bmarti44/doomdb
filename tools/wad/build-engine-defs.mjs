@@ -36,7 +36,26 @@ const weaponSpecs = [
 ];
 const requiredSounds = ['DSPISTOL','DSSHOTGN','DSSGCOCK','DSSAWUP','DSSAWIDL','DSSAWFUL','DSSAWHIT','DSRLAUNC','DSRXPLOD','DSFIRSHT','DSFIRXPL','DSPLASMA','DSDOROPN','DSDORCLS','DSSTNMOV','DSSWTCHN','DSSWTCHX','DSPLPAIN','DSPOPAIN','DSITEMUP','DSWPNUP','DSOOF','DSNOWAY','DSPOSIT1','DSPOSIT2','DSPOSIT3','DSSGTSIT','DSBGSIT1','DSBGSIT2','DSSGTATK','DSCLAW','DSPODTH1','DSPODTH2','DSPODTH3','DSSGTDTH','DSBGDTH1','DSBGDTH2','DSPOSACT','DSBGACT','DSBAREXP','DSPUNCH'];
 const requiredMusic = ['D_E1M1','D_INTER','D_VICTOR'];
-const requiredUi = ['TITLEPIC','M_DOOM','M_EPISOD','M_NGAME','M_SKILL','M_PAUSE','STBAR',...Array.from({length:10},(_,i)=>`STTNUM${i}`),'STTPRCNT',...Array.from({length:10},(_,i)=>`STYSNUM${i}`),...Array.from({length:6},(_,i)=>`STKEYS${i}`),'STARMS','STFB0','STFGOD0','STFDEAD0','WIMAP0','WILV00','WILV01','WIURH0','WIURH1','WISPLAT',...Array.from({length:10},(_,i)=>`WINUM${i}`),'WIPCNT','WICOLON','WIMINUS','WIF','WIENTER','WIOSTK','WIOSTS','WITIME','WIPAR','WIKILRS','WIVCTMS','WIMSTT','WISCRT2'];
+const baselineRequiredUi = ['TITLEPIC','M_DOOM','M_EPISOD','M_NGAME','M_SKILL','M_PAUSE','STBAR',...Array.from({length:10},(_,i)=>`STTNUM${i}`),'STTPRCNT',...Array.from({length:10},(_,i)=>`STYSNUM${i}`),...Array.from({length:6},(_,i)=>`STKEYS${i}`),'STARMS','STFB0','STFGOD0','STFDEAD0','WIMAP0','WILV00','WILV01','WIURH0','WIURH1','WISPLAT',...Array.from({length:10},(_,i)=>`WINUM${i}`),'WIPCNT','WICOLON','WIMINUS','WIF','WIENTER','WIOSTK','WIOSTS','WITIME','WIPAR','WIKILRS','WIVCTMS','WIMSTT','WISCRT2'];
+const additionalRequiredUi = [
+  'CREDIT','HELP1','HELP2','INTERPIC','VICTORY2','ENDPIC',
+  'PFUB1','PFUB2','BOSSBACK',
+  'M_NEWG','M_OPTION','M_LOADG','M_SAVEG','M_RDTHIS','M_QUITG','M_ENDGAM',
+  'M_OPTTTL','M_EPI1','M_EPI2','M_EPI3','M_EPI4',
+  'M_JKILL','M_ROUGH','M_HURT','M_ULTRA','M_NMARE',
+  'M_MESSG','M_DETAIL','M_SCRNSZ','M_MSENS','M_SVOL','M_SFXVOL',
+  'M_MUSVOL','M_THERML','M_THERMM','M_THERMR','M_SKULL1','M_SKULL2',
+  ...Array.from({length:3},(_,i)=>`STFB${i + 1}`),
+  ...Array.from({length:5},(_,pain)=>
+    ['0','1','2'].map(expression=>`STFST${pain}${expression}`)).flat(),
+  ...Array.from({length:5},(_,pain)=>`STFTL${pain}0`),
+  ...Array.from({length:5},(_,pain)=>`STFTR${pain}0`),
+  ...Array.from({length:5},(_,pain)=>`STFOUCH${pain}`),
+  ...Array.from({length:5},(_,pain)=>`STFEVL${pain}`),
+  ...Array.from({length:5},(_,pain)=>`STFKILL${pain}`)
+];
+const requiredUi = [...baselineRequiredUi, ...additionalRequiredUi];
+const additionalUi = new Set(additionalRequiredUi);
 const animationGroups = [
   {id:'FLAT_NUKAGE',kind:'flat',periodTics:8,frames:['NUKAGE1','NUKAGE2','NUKAGE3']},
   {id:'FLAT_FWATER',kind:'flat',periodTics:8,frames:['FWATER1','FWATER2','FWATER3','FWATER4']},
@@ -130,7 +149,22 @@ for(const name of requiredSounds) add('sound',name,['required E1M1 gameplay audi
 for(const name of requiredMusic) add('music',name,['E1M1 or intermission music']);
 for(const name of requiredUi) add('ui_patch',name,['menu, HUD, pause, or intermission UI']);
 const kindOrder=new Map(['wall_texture','flat','patch','sprite_patch','sound','music','ui_patch'].map((kind,index)=>[kind,index]));
-const assets=[...assetMap.values()].sort((a,b)=>kindOrder.get(a.kind)-kindOrder.get(b.kind)||a.name.localeCompare(b.name));
+const sortedAssets=[...assetMap.values()].map(asset=>
+  asset.kind==='ui_patch'&&additionalUi.has(asset.name)
+    ? {...asset,seedOrderGroup:1} : asset
+).sort((a,b)=>
+  kindOrder.get(a.kind)-kindOrder.get(b.kind)
+  ||(a.seedOrderGroup??0)-(b.seedOrderGroup??0)
+  ||a.name.localeCompare(b.name));
+// Keep the established seed IDs stable. The complete live-presentation
+// closure is appended after the original UI set instead of renumbering all
+// existing database assets whenever a presentation surface is completed.
+const assets=[
+  ...sortedAssets.filter(asset=>
+    asset.kind!=='ui_patch'||asset.seedOrderGroup!==1),
+  ...sortedAssets.filter(asset=>
+    asset.kind==='ui_patch'&&asset.seedOrderGroup===1)
+];
 const closure={schema:1,wadSha256:WAD_SHA256,map:MAP,assets};
 const rngValues=[];
 for(let counter=0;rngValues.length<256;counter++)rngValues.push(...crypto.createHash('sha256').update(`DoomDB project RNG v1|${String(counter).padStart(4,'0')}`,'ascii').digest());

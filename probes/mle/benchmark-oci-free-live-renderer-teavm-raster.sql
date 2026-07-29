@@ -32,9 +32,9 @@ declare
   l_actual_sha varchar2(64);l_offset number:=0;l_chunk raw(16000);
   l_loaded number;
 begin
-  select encoded_bytes,dbms_lob.getlength(encoded_bytes),payload_sha256
+  select wall_blob,wall_bytes,wall_sha
     into l_blob,l_bytes,l_expected_sha
-    from doom_renderer_asset_pack where asset_kind='wall_texture';
+    from doom_free_generated_source;
   l_actual_sha:=lower(rawtohex(
     dbms_crypto.hash(l_blob,dbms_crypto.hash_sh256)));
   if l_actual_sha<>l_expected_sha then
@@ -64,9 +64,9 @@ declare
   l_actual_sha varchar2(64);l_offset number:=0;l_chunk raw(16000);
   l_loaded number;
 begin
-  select encoded_bytes,dbms_lob.getlength(encoded_bytes),payload_sha256
+  select flat_blob,flat_bytes,flat_sha
     into l_blob,l_bytes,l_expected_sha
-    from doom_renderer_asset_pack where asset_kind='flat';
+    from doom_free_generated_source;
   l_actual_sha:=lower(rawtohex(
     dbms_crypto.hash(l_blob,dbms_crypto.hash_sh256)));
   if l_actual_sha<>l_expected_sha then
@@ -87,6 +87,70 @@ begin
   end if;
   dbms_output.put_line(
     'PMLE_FREE_LIVE_TEAVM_FLAT_TEXTURE|PASS|bytes='||l_bytes||
+    '|sha256='||l_actual_sha);
+end;
+/
+
+declare
+  l_blob blob;l_bytes number;l_expected_sha varchar2(64);
+  l_actual_sha varchar2(64);l_offset number:=0;l_chunk raw(16000);
+  l_loaded number;
+begin
+  select sprite_blob,sprite_bytes,sprite_sha
+    into l_blob,l_bytes,l_expected_sha
+    from doom_free_generated_source;
+  l_actual_sha:=lower(rawtohex(
+    dbms_crypto.hash(l_blob,dbms_crypto.hash_sh256)));
+  if l_actual_sha<>l_expected_sha then
+    raise_application_error(-20796,'generated sprite hash mismatch');
+  end if;
+  l_loaded:=doom_free_gen_sprite_allocate(l_bytes);
+  while l_offset<l_bytes loop
+    l_chunk:=dbms_lob.substr(
+      l_blob,least(16000,l_bytes-l_offset),l_offset+1);
+    l_loaded:=doom_free_gen_sprite_load(l_offset,l_chunk);
+    l_offset:=l_offset+utl_raw.length(l_chunk);
+    if l_loaded<>l_offset then
+      raise_application_error(-20796,'generated sprite load mismatch');
+    end if;
+  end loop;
+  if doom_free_gen_sprite_finalize<>l_bytes then
+    raise_application_error(-20796,'generated sprite finalize mismatch');
+  end if;
+  dbms_output.put_line(
+    'PMLE_FREE_LIVE_TEAVM_SPRITE_TEXTURE|PASS|bytes='||l_bytes||
+    '|sha256='||l_actual_sha);
+end;
+/
+
+declare
+  l_blob blob;l_bytes number;l_expected_sha varchar2(64);
+  l_actual_sha varchar2(64);l_offset number:=0;l_chunk raw(16000);
+  l_loaded number;
+begin
+  select ui_blob,ui_bytes,ui_sha
+    into l_blob,l_bytes,l_expected_sha
+    from doom_free_generated_source;
+  l_actual_sha:=lower(rawtohex(
+    dbms_crypto.hash(l_blob,dbms_crypto.hash_sh256)));
+  if l_actual_sha<>l_expected_sha then
+    raise_application_error(-20796,'generated UI hash mismatch');
+  end if;
+  l_loaded:=doom_free_gen_ui_allocate(l_bytes);
+  while l_offset<l_bytes loop
+    l_chunk:=dbms_lob.substr(
+      l_blob,least(16000,l_bytes-l_offset),l_offset+1);
+    l_loaded:=doom_free_gen_ui_load(l_offset,l_chunk);
+    l_offset:=l_offset+utl_raw.length(l_chunk);
+    if l_loaded<>l_offset then
+      raise_application_error(-20796,'generated UI load mismatch');
+    end if;
+  end loop;
+  if doom_free_gen_ui_finalize<>l_bytes then
+    raise_application_error(-20796,'generated UI finalize mismatch');
+  end if;
+  dbms_output.put_line(
+    'PMLE_FREE_LIVE_TEAVM_UI_TEXTURE|PASS|bytes='||l_bytes||
     '|sha256='||l_actual_sha);
 end;
 /
@@ -194,5 +258,88 @@ begin
       raise_application_error(-20796,'generated raster did not cover viewport');
     end if;
   end loop;
+end;
+/
+
+declare
+  c_chunk constant pls_integer:=8000;
+  l_raw raw(8000);
+  l_checksum number;
+begin
+  l_checksum:=doom_free_gen_frame(750);
+  for part in 0..7 loop
+    l_raw:=doom_free_gen_frame_chunk(part*c_chunk,c_chunk);
+    dbms_output.put_line(
+      'PMLE_FREE_LIVE_FRAME_CHUNK|PASS|pose=750|part='||part||
+      '|bytes='||utl_raw.length(l_raw)||'|hex='||rawtohex(l_raw));
+  end loop;
+  dbms_output.put_line(
+    'PMLE_FREE_LIVE_FRAME_CAPTURE|PASS|pose=750|bytes=64000'||
+    '|layout=COLUMN_MAJOR|checksum='||l_checksum);
+end;
+/
+
+declare
+  c_passes constant pls_integer:=6;
+  c_frames constant pls_integer:=300;
+  c_start constant pls_integer:=500;
+  type values_t is table of number index by pls_integer;
+  l_sorted values_t;
+  l_started timestamp with time zone;
+  l_pass_started timestamp with time zone;
+  l_wall number;l_value number;l_checksum number:=0;l_j pls_integer;
+  function elapsed_ms(p interval day to second)return number is
+  begin
+    return extract(day from p)*86400000+extract(hour from p)*3600000+
+      extract(minute from p)*60000+extract(second from p)*1000;
+  end;
+begin
+  for pose in 0..99 loop
+    l_checksum:=l_checksum+doom_free_gen_frame_coarse(pose);
+  end loop;
+  for pass in 1..c_passes loop
+    l_pass_started:=systimestamp;
+    for frame_ in 1..c_frames loop
+      l_started:=systimestamp;
+      l_checksum:=l_checksum+
+        doom_free_gen_frame_coarse(c_start+frame_-1);
+      l_sorted(frame_):=elapsed_ms(systimestamp-l_started);
+    end loop;
+    l_wall:=elapsed_ms(systimestamp-l_pass_started);
+    for i in 2..c_frames loop
+      l_value:=l_sorted(i);l_j:=i-1;
+      while l_j>=1 and l_sorted(l_j)>l_value loop
+        l_sorted(l_j+1):=l_sorted(l_j);l_j:=l_j-1;
+      end loop;
+      l_sorted(l_j+1):=l_value;
+    end loop;
+    dbms_output.put_line(
+      'PMLE_FREE_LIVE_TEAVM_COARSE|PASS|pass='||pass||
+      '|frames='||c_frames||
+      '|p50_ms='||round(l_sorted(150),3)||
+      '|p95_ms='||round(l_sorted(285),3)||
+      '|wall_ms='||round(l_wall,3)||
+      '|throughput_fps='||round(c_frames*1000/l_wall,3)||
+      '|pixel_writes='||doom_free_gen_raster_writes||
+      '|checksum='||l_checksum);
+  end loop;
+end;
+/
+
+declare
+  c_chunk constant pls_integer:=8000;
+  l_raw raw(8000);
+  l_checksum number;
+begin
+  l_checksum:=doom_free_gen_frame_coarse(751);
+  for part in 0..7 loop
+    l_raw:=doom_free_gen_frame_chunk(part*c_chunk,c_chunk);
+    dbms_output.put_line(
+      'PMLE_FREE_LIVE_COARSE_FRAME_CHUNK|PASS|pose=751|part='||part||
+      '|bytes='||utl_raw.length(l_raw)||'|hex='||rawtohex(l_raw));
+  end loop;
+  dbms_output.put_line(
+    'PMLE_FREE_LIVE_COARSE_FRAME_CAPTURE|PASS|pose=751|bytes=64000'||
+    '|layout=COLUMN_MAJOR|checksum='||l_checksum);
 end;
 /

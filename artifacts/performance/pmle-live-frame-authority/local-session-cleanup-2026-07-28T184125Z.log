@@ -1,0 +1,22 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PASS SESSION-CLEANUP-LIVE abandoned browser lobby releases capacity
+PASS SESSION-CLEANUP-LIVE abandoned active browser releases retained slot
+declare
+*
+ERROR at line 1:
+ORA-20000: expired match not purged
+ORA-06512: at line 18
+ORA-06512: at line 13
+
+

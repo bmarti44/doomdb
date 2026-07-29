@@ -31,6 +31,16 @@ assert.match(client,/cause instanceof MatchCapacityError/);
 assert.match(client,/Waiting for the next Oracle game slot/);
 assert.match(client,/delayMs = delayMs < 2_000 \? Math\.min\(2_000,delayMs\*2\) : 5_000/);
 assert.match(client,/window\.addEventListener\('pagehide',stopStaleSoloClient/);
+assert.match(client,
+  /window\.addEventListener\('pagehide',releaseLocalMatchOnUnload/);
+assert.match(client,
+  /window\.addEventListener\('beforeunload',releaseLocalMatchOnUnload/);
+assert.match(client,
+  /leaveMatchOnUnload\(leaving\.match,leaving\.playerCapability\)/);
+assert.match(client,/let unloadLeaveSent = false/);
+assert.match(api,/export function leaveMatchOnUnload/);
+assert.match(api,/navigator\.sendBeacon\(url, payload\)/);
+assert.match(api,/keepalive: true/);
 assert.match(client,/event\.key===soloCurrentKey && event\.newValue!==value\.match/);
 assert.match(client,/stopped = true;pollEpoch \+= 1;pollController\?\.abort\(\)/);
 assert.match(api,/export class MatchCapacityError extends Error/);
@@ -60,7 +70,24 @@ assert.match(config,/select 'MAX_ACTIVE_MATCHES', 1/);
 assert.match(rest,/l_open>=l_match_limit/);
 assert.match(rest,/l_usable_authority=0[\s\S]+warm authority unavailable/);
 assert.match(rest,/procedure poll_match_transitions[\s\S]+doom_match_worker\.recover_match\(p_match,20,l_recovery_state\)/);
+assert.match(rest,/procedure ensure_pixel_worker[\s\S]+p_generation,'PIXEL_POLL'[\s\S]+doom_match_worker\.recover_match\(p_match,20,l_recovery_state\)/);
+const restBody=rest.slice(rest.indexOf(
+  'create or replace package body doom_api as'));
+assert.ok(restBody.length<rest.length,'DOOM_API package body is absent');
+for(const procedureName of ['poll_match_pixels','poll_match_pixel_batch']) {
+  const body=restBody.match(new RegExp(
+    `procedure ${procedureName}\\([\\s\\S]*?\\) is`
+      + '([\\s\\S]*?)(?=\\n  procedure |\\nend doom_api)',
+  ))?.[1];
+  assert.ok(body,`${procedureName} body is absent`);
+  assert.ok(
+    body.indexOf('l_slot:=player_capability_slot(p_match,p_player_capability);')
+      <body.indexOf('ensure_pixel_worker('),
+    `${procedureName} can inspect recovery before capability authentication`,
+  );
+}
 assert.match(client,/transientAuthorityFailure/);
+assert.match(client,/const transientAuthorityFailure[\s\S]{0,160}cause instanceof MatchCapacityError/);
 assert.match(client,/Recovering retained MLE authority…/);
 assert.match(api,/p_recovery_status/);
 assert.match(client,/recovery \$\{latestStatus\.recoveryStatus\}/);
@@ -70,6 +97,10 @@ assert.match(warmSchema,/create table doom_mle_warm_slot/);
 assert.match(runtime,/procedure prepare_origin_warm/);
 assert.match(worker,/procedure run_warm_slot/);
 assert.match(worker,/assigned_match=l_match,assigned_role=l_role/);
+assert.match(worker,/l_host_left=1[\s\S]+match_state='FINISHED'[\s\S]+stop_requested=1/);
+assert.match(worker,/disconnected_at<l_now-interval '15' second/);
+assert.match(rest,
+  /match_state='CANCELLED'[\s\S]+expires_at=l_now[\s\S]+select generation into l_generation from doom_match_worker_control[\s\S]+doom_match_worker\.stop_match/);
 assert.match(worker,/if l_role='AUTHORITY' then/);
 assert.match(worker,/Reuse that durable DMC1 BLOB[\s\S]+instead of immediately serializing/);
 

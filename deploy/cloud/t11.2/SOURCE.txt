@@ -1,7 +1,9 @@
-DoomDB browser source and redistribution notice
+DoomDB framebuffer client source and redistribution notice
 
-The JavaScript game engine in this deployment is generated from Mocha Doom,
-licensed GPL-3.0-or-later, repository:
+The hosted browser contains only the input, transport, indexed-palette, and
+canvas presentation client. The authoritative JavaScript game engine and
+framebuffer renderer execute in Oracle MLE and are not shipped to the browser.
+They are generated from Mocha Doom, licensed GPL-3.0-or-later, repository:
 https://github.com/AXDOOMER/mochadoom.git
 Pinned commit: c0af1322ee5fd168b5cf8aaaf504cab2d1aabe93
 
@@ -9,5 +11,7 @@ The complete corresponding DoomDB adapter, build scripts, patch queue, and
 version provenance are in this repository. See versions.lock and
 probes/mle/teavm-engine/.
 
-The included freedoom1 WAD is Freedoom 0.13.0. Its redistribution terms are
-provided as COPYING-freedoom.txt in the same hosted application.
+The database-resident renderer and hosted presentation use assets derived from
+Freedoom 0.13.0. Its redistribution terms are provided as
+COPYING-freedoom.txt in the same hosted application; the full WAD itself is
+not downloaded by the framebuffer-only client.

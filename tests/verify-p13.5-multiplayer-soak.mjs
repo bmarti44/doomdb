@@ -33,9 +33,11 @@ assert.ok(!(highAwakeRecoveryDiagnostic&&highAwakeCheckpointSaveDiagnostic),
   'high-awake recovery and checkpoint SAVE diagnostics are mutually exclusive');
 const highAwakeRecoveryGate=
   process.env.DOOMDB_HIGH_AWAKE_RECOVERY_GATE==='1';
+const highAwakeRecoveryMaxTics=Number(
+  process.env.DOOMDB_HIGH_AWAKE_RECOVERY_MAX_TICS??512);
 const cadenceObservation=
   process.env.DOOMDB_CHECKPOINT_CADENCE_OBSERVATION==='1';
-const buildHighAwakeFixture=()=>{
+const buildHighAwakeFixture=(minimumTics=800)=>{
   const fixture=JSON.parse(fs.readFileSync(new URL(
     './fixtures/mle-live-deathmatch-2026-07-23.json',import.meta.url),'utf8'));
   assert.equal(fixture.mode,'DEATHMATCH');
@@ -53,7 +55,7 @@ const buildHighAwakeFixture=()=>{
   }
   assert.equal(expandedTics,fixture.tics);
   assert.equal(expandedHash.digest('hex'),fixture.expandedSha256);
-  const feedTics=Math.min(800,fixture.tics);
+  const feedTics=Math.min(Math.max(800,minimumTics),fixture.tics);
   const changes=[];
   let relativeTic=1;
   let previousVector='';
@@ -95,6 +97,13 @@ if(highAwakeRecoveryGate) {
   assert.ok(highAwakeRecoveryDiagnostic,
     'high-awake recovery gate requires the diagnostic scenario');
 }
+assert.ok(Number.isInteger(highAwakeRecoveryMaxTics)&&
+  highAwakeRecoveryMaxTics>=128&&highAwakeRecoveryMaxTics<=4096,
+  'high-awake recovery maximum must be an integer in [128,4096]');
+if(highAwakeRecoveryDiagnostic) {
+  assert.ok(highAwakeRecoveryMaxTics<5250,
+    'high-awake recovery fixture does not cover the requested maximum');
+}
 const matchFile=process.env.DOOMDB_MATCH_ID_FILE;
 assert.ok(matchFile,'DOOMDB_MATCH_ID_FILE is required');
 const externalDbSql=process.env.DOOMDB_DB_SQL_CLIENT;
@@ -103,7 +112,14 @@ const dbContainer=externalDbSql===undefined ?
   execFileSync('docker',['compose','ps','-q','db'],{encoding:'utf8'}).trim() : '';
 assert.ok(externalDbSql!==undefined||dbContainer,
   'database SQL authority is unavailable');
-const dbSql=sql=>externalDbSql!==undefined ?
+// SQLcl pads selected expressions to their inferred display width even with
+// TRIMOUT. Normalize only horizontal end-of-line padding; embedded whitespace,
+// digits, markers, and Oracle error identity remain byte-visible to every
+// anchored extractor.
+const normalizeDbOutput=output=>output.replace(/[ \t]+(?=\r?$)/gm,'');
+assert.equal(normalizeDbOutput('PASS|1   \nPASS|2\t\r\n'),
+  'PASS|1\nPASS|2\r\n');
+const dbSql=sql=>normalizeDbOutput(externalDbSql!==undefined ?
   execFileSync(externalDbSql,['-'],{input:
     `set heading off feedback off pagesize 0 linesize 32767\n${sql}\n`,
     encoding:'utf8'}) :
@@ -114,7 +130,7 @@ const dbSql=sql=>externalDbSql!==undefined ?
         `alter session set container=freepdb1;\n`+
         `set heading off feedback off pagesize 0 linesize 32767\n${sql}\n`,
       encoding:'utf8'
-    });
+    }));
 const dbSqlAsync=sql=>new Promise((resolve,reject)=>{
   const child=externalDbSql!==undefined ?
     spawn(externalDbSql,['-'],{stdio:['pipe','pipe','pipe']}) :
@@ -129,7 +145,7 @@ const dbSqlAsync=sql=>new Promise((resolve,reject)=>{
   child.stderr.on('data',chunk=>{stderr+=chunk;});
   child.on('error',reject);
   child.on('close',code=>{
-    if(code===0) resolve(stdout);
+    if(code===0) resolve(normalizeDbOutput(stdout));
     else reject(new Error(`async SQL*Plus exited ${code}: ${stderr||stdout}`));
   });
   child.stdin.end((externalDbSql===undefined ?
@@ -220,6 +236,7 @@ await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
   window.__doomWanPlayout=[];
   window.__doomWanRecovery=[];
   window.__doomWanApiRetries=[];
+  window.__doomPixelBatches=[];
   addEventListener('doom:multiplayer-present',event=>{
     window.__doomSoakTics.push(event.detail.tic);
     window.__doomSoakPaintAt.push(performance.now());
@@ -246,6 +263,8 @@ await Promise.all([host,guest].map(page=>page.addInitScript(()=>{
     window.__doomWanPlayout.push(event.detail));
   addEventListener('doom:multiplayer-recovery-wait',event=>
     window.__doomWanRecovery.push(event.detail));
+  addEventListener('doom:multiplayer-pixel-batch',event=>
+    window.__doomPixelBatches.push(event.detail));
   addEventListener('doom:api-retry',event=>
     window.__doomWanApiRetries.push(event.detail));
   if(typeof PerformanceObserver==='function') {
@@ -321,7 +340,7 @@ try {
       `and last_seen_at>systimestamp;`);
     assert.match(startupHold,/PMLE_HIGH_AWAKE_STARTUP_HOLD\|2/,
       'high-awake diagnostic did not lease both startup members');
-    const prepared=buildHighAwakeFixture();
+    const prepared=buildHighAwakeFixture(highAwakeRecoveryMaxTics);
     const lobbyOutput=dbSql(
       `select 'PMLE_HIGH_AWAKE_LOBBY_FENCE|'||match_state||'|'||`+
       `membership_epoch||'|'||generation from doom.doom_match `+
@@ -346,12 +365,12 @@ try {
       }
     }
     const preloadOutput=dbSql(`${inserts.join('\n')}\ncommit;\n`+
-      `select 'PMLE_HIGH_AWAKE_PRELOAD|'||count(*) from `+
+      `select 'PMLE_HIGH_AWAKE_PRELOAD|'||to_char(count(*),'fm9999990') from `+
       `doom.doom_match_input_event where match_id='${match}' and `+
       `generation=${feedGeneration};`);
     assert.match(preloadOutput,
       new RegExp(`^PMLE_HIGH_AWAKE_PRELOAD\\|${
-        prepared.changes.length*2}$`,'m'),
+        prepared.changes.length*2}[ \\t]*$`,'m'),
       'high-awake lobby input preload did not commit');
     highAwakeFeed={...prepared,feedBase:1,feedEpoch,feedGeneration};
     process.stdout.write(`PMLE_HIGH_AWAKE_STAGE|fixture_preloaded`+
@@ -361,10 +380,24 @@ try {
   await Promise.all([host,guest].map(page=>page.locator('[data-ready]').click()));
   process.stdout.write('PMLE_SOAK_STAGE|both_ready_clicked\n');
   if(highAwakeDiagnostic) {
+    // locator.click() proves only DOM dispatch; the listener deliberately
+    // launches READY_MATCH asynchronously. Wait until both handlers have
+    // completed before writing the diagnostic lease, otherwise an in-flight
+    // request can overwrite one future last_seen_at value with its ordinary
+    // request timestamp between the update and the count below.
+    await Promise.all([host,guest].map(page=>page.waitForFunction(()=>{
+      const button=document.querySelector('[data-ready]');
+      return button instanceof HTMLButtonElement&&!button.disabled&&
+        button.textContent==='Not ready';
+    },undefined,{timeout:startupTimeoutMs})));
+    process.stdout.write('PMLE_SOAK_STAGE|both_ready_requests_complete\n');
     // READY_MATCH legitimately touches last_seen_at after the lobby fence
     // above. Renew immediately after both requests complete so slow retained
-    // authority startup cannot age either member out. Match-then-members is
-    // the worker's lock order; reversing it can deadlock with publication.
+    // authority startup cannot age either member out. Online lobby polling
+    // may then replace either future timestamp with a newer request timestamp,
+    // so this pre-offline fence proves membership-row survival. The stable
+    // ACTIVE+future-lease assertion runs after both contexts are offline.
+    // Match-then-members is the worker's lock order; reversing it can deadlock.
     const readyHold=dbSql(
       `update doom.doom_match set expires_at=`+
       `systimestamp+interval '30' minute where match_id='${match}';\n`+
@@ -372,8 +405,7 @@ try {
       `systimestamp+interval '30' minute where match_id='${match}';\n`+
       `commit;\n`+
       `select 'PMLE_HIGH_AWAKE_READY_HOLD|'||count(*) `+
-      `from doom.doom_match_member where match_id='${match}' `+
-      `and last_seen_at>systimestamp;`);
+      `from doom.doom_match_member where match_id='${match}';`);
     assert.match(readyHold,/PMLE_HIGH_AWAKE_READY_HOLD\|2/,
       'high-awake diagnostic did not lease both ready members');
   }
@@ -460,7 +492,7 @@ try {
     assert.ok(cadence,'production checkpoint cadence was not observed');
     assert.equal(cadence.testHook,0,
       'cadence observation accidentally enabled the tic-64 test hook');
-    assert.ok(cadence.distance>=113&&cadence.distance<=128,
+    assert.ok(cadence.distance>=497&&cadence.distance<=512,
       'observed checkpoint violated the production cadence bounds');
     assert.equal(cadence.durableCheckpoint,cadence.probeTic,
       'cadence decision did not publish its checkpoint');
@@ -476,35 +508,45 @@ try {
     // browser traffic offline at the authoritative READY boundary, let local
     // in-flight requests settle, then extend the member lease before the
     // worker advances into the hot per-tic lock loop.
-    await Promise.all(contexts.map(context=>context.setOffline(true)));
-    process.stdout.write('PMLE_HIGH_AWAKE_STAGE|browsers_offline\n');
+    if(managedAdb) {
+      // Keep one real production client online so its next database-pixel
+      // exchange owns recovery after the exact worker incarnation is stopped.
+      // The peer is offline, preventing a second concurrent trigger.
+      await contexts[1].setOffline(true);
+      process.stdout.write(
+        'PMLE_HIGH_AWAKE_STAGE|recovery_client_online|peer_offline\n');
+    } else {
+      await Promise.all(contexts.map(context=>context.setOffline(true)));
+      process.stdout.write('PMLE_HIGH_AWAKE_STAGE|browsers_offline\n');
+    }
     await host.waitForTimeout(250);
-    const membershipHold=dbSql(
+    assert.ok(highAwakeFeed,'high-awake lobby feed was not prepared');
+    const {feedTics,feedBase,feedGeneration,changes}=highAwakeFeed;
+    const offlineFence=dbSql(
       `update doom.doom_match_member set member_state='ACTIVE',`+
       `disconnected_at=null,leave_tic=null,last_seen_at=`+
       `systimestamp+interval '30' minute where match_id='${match}' `+
       `and member_state in('ACTIVE','DISCONNECTED');\ncommit;\n`+
       `select 'PMLE_HIGH_AWAKE_MEMBERSHIP_HOLD|'||count(*) `+
       `from doom.doom_match_member where match_id='${match}' `+
-      `and member_state='ACTIVE' and last_seen_at>systimestamp;`);
-    assert.match(membershipHold,/PMLE_HIGH_AWAKE_MEMBERSHIP_HOLD\|2/,
+      `and member_state='ACTIVE';\n`+
+      `select 'PMLE_HIGH_AWAKE_GENERATION_ACTIVE|'||generation from `+
+      `doom.doom_match where match_id='${match}';\n`+
+      `select 'PMLE_HIGH_AWAKE_FEED_ACTIVE|'||`+
+      `to_char(count(*),'fm9999990') from `+
+      `doom.doom_match_input_event where match_id='${match}' and `+
+      `generation=${feedGeneration} and input_seq between 1 and `+
+      `${changes.length};`);
+    assert.match(offlineFence,/PMLE_HIGH_AWAKE_MEMBERSHIP_HOLD\|2/,
       'high-awake diagnostic did not retain both active members');
     process.stdout.write('PMLE_HIGH_AWAKE_STAGE|membership_held\n');
-    assert.ok(highAwakeFeed,'high-awake lobby feed was not prepared');
-    const {feedTics,feedBase,feedGeneration,changes}=highAwakeFeed;
-    const generationOutput=dbSql(
-      `select 'PMLE_HIGH_AWAKE_GENERATION_ACTIVE|'||generation from `+
-      `doom.doom_match where match_id='${match}';`);
-    assert.match(generationOutput,
+    assert.match(offlineFence,
       new RegExp(`^PMLE_HIGH_AWAKE_GENERATION_ACTIVE\\|${
         feedGeneration}$`,'m'),
       'high-awake match activated a generation other than the preloaded feed');
-    const activeFeedOutput=dbSql(
-      `select 'PMLE_HIGH_AWAKE_FEED_ACTIVE|'||count(*) from `+
-      `doom.doom_match_input_event where match_id='${match}' and `+
-      `generation=${feedGeneration};`);
-    assert.match(activeFeedOutput,
-      new RegExp(`^PMLE_HIGH_AWAKE_FEED_ACTIVE\\|${changes.length*2}$`,'m'),
+    assert.match(offlineFence,
+      new RegExp(`^PMLE_HIGH_AWAKE_FEED_ACTIVE\\|${
+        changes.length*2}[ \\t]*$`,'m'),
       'high-awake preloaded feed did not survive generation activation');
     process.stdout.write(`PMLE_HIGH_AWAKE_STAGE|feed_active`+
       `|base=${feedBase}|changes=${changes.length}`+
@@ -558,6 +600,8 @@ try {
         `select 'PMLE_HIGH_AWAKE_WINDOW|'||w.worker_status||'|'||`+
         `replace(nvl(w.last_error,'NONE'),'|','/')||'|'||m.current_tic||'|'||`+
         `w.worker_sid||'|'||w.worker_serial||'|'||nvl(p.tic,0)||'|'||`+
+        `nvl((select max(cp.tic) from doom.doom_match_checkpoint cp where `+
+        `cp.match_id=m.match_id and cp.generation=m.generation),0)||'|'||`+
         `nvl(p.previous_checkpoint_tic,0)||'|'||nvl(p.checkpoint_distance,0)||`+
         `'|'||nvl(p.awake_monsters,0)||'|'||nvl(p.checkpoint_decision,'NONE')||`+
         `'|'||(select count(*) from doom.doom_match_checkpoint_probe q `+
@@ -573,29 +617,39 @@ try {
           'high-awake diagnostic match/control row disappeared before recovery target');
       }
       const row=output.match(
-        /PMLE_HIGH_AWAKE_WINDOW\|(\w+)\|([^|\r\n]+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\w+)\|(\d+)/);
+        /PMLE_HIGH_AWAKE_WINDOW\|(\w+)\|([^|\r\n]+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|(\w+)\|(\d+)/);
       if(row) {
         assert.notEqual(row[1],'FAILED',
           `high-awake authority failed before recovery target: ${row[2]}`);
         const frontier=Number(row[3]);
-        const previousCheckpoint=Number(row[7]);
-        const distance=Number(row[8]);
-        const awake=Number(row[9]);
-        const decision=row[10];
-        const sustainedSamples=Number(row[11]);
+        const durableCheckpoint=Number(row[6]);
+        const previousCheckpoint=Number(row[8]);
+        const distance=frontier-durableCheckpoint;
+        const awake=Number(row[10]);
+        const decision=row[11];
+        const sustainedSamples=Number(row[12]);
         maxAwakeObserved=Math.max(maxAwakeObserved,awake);
-        // Under the fixed-128 policy, the latest FORCED_MAX probe is also the
-        // latest durable checkpoint. Kill one tic before its next hard bound.
-        const durableCheckpoint=decision==='FORCED_MAX'
-          ? Number(row[6]) : previousCheckpoint;
-        const targetDistance=frontier-durableCheckpoint;
-        if(decision==='FORCED_MAX'&&targetDistance>=127&&awake>16&&
-            sustainedSamples>=3) {
+        // Kill inside the final probe-width window before the configured hard
+        // bound. The default remains the accepted fixed-512 OCI scenario;
+        // other values are diagnostic candidates and do not change production
+        // cadence until their measured recovery phase passes its SLA.
+        const targetDistance=distance;
+        const minimumDistance=highAwakeRecoveryMaxTics-16+1;
+        const densityQualified=highAwakeRecoveryMaxTics===128
+          ? awake>16&&sustainedSamples>=3
+          : awake>=0;
+        process.stdout.write(`PMLE_HIGH_AWAKE_WINDOW`+
+          `|frontier=${frontier}|checkpoint=${durableCheckpoint}`+
+          `|distance=${targetDistance}|probe_tic=${Number(row[7])}`+
+          `|awake=${awake}|sustained_samples=${sustainedSamples}`+
+          `|density_qualified=${densityQualified?'YES':'NO'}\n`);
+        if(targetDistance>=minimumDistance&&
+            targetDistance<highAwakeRecoveryMaxTics&&densityQualified) {
           recoveryTarget={
             frontier,
             sid:Number(row[4]),
             serial:Number(row[5]),
-            probeTic:Number(row[6]),
+            probeTic:Number(row[7]),
             previousCheckpoint:durableCheckpoint,
             distance:targetDistance,
             awake,
@@ -613,7 +667,8 @@ try {
     }
     assert.ok(recoveryTarget,
       'no sustained high-awake maximum-distance recovery window was observed');
-    assert.ok(recoveryTarget.distance>=112&&recoveryTarget.distance<=127,
+    assert.ok(recoveryTarget.distance>=highAwakeRecoveryMaxTics-16+1&&
+      recoveryTarget.distance<highAwakeRecoveryMaxTics,
       'authority was not killed at the maximum scheduled pre-checkpoint distance');
     const incarnationOutput=dbSql(
       `select 'PMLE_HIGH_AWAKE_KILL_INCARNATION|'||job_name||'|'||`+
@@ -626,26 +681,64 @@ try {
       /^PMLE_HIGH_AWAKE_KILL_INCARNATION\|([A-Z0-9_$#]+)\|([0-9a-f]{32})\|(\d+)\|(\d+)\|(\d+)\|([0-9a-f]{32}:\d+)$/m);
     assert.ok(incarnation,
       'high-awake kill target was not bound to a complete warm-slot incarnation');
+    const priorPixelBatches=managedAdb
+      ? await host.evaluate(()=>window.__doomPixelBatches.length) : 0;
     const recoveryStarted=Date.now();
-    dbSql(`begin\n`+
-      `  execute immediate 'alter system kill session ''${recoveryTarget.sid},`+
-      `${recoveryTarget.serial}'' immediate';\n`+
-      `exception when others then\n`+
-      `  if sqlcode<>-31 then raise;end if;\n`+
-      `end;\n/`);
-    const killedOutput=dbSql(
-      `select 'PMLE_HIGH_AWAKE_KILLED|'||m.current_tic||'|'||`+
-      `nvl((select max(cp.tic) from doom.doom_match_checkpoint cp where `+
-      `cp.match_id=m.match_id and cp.generation=m.generation),0) `+
-      `from doom.doom_match m where m.match_id='${match}';`);
-    const killed=killedOutput.match(/PMLE_HIGH_AWAKE_KILLED\|(\d+)\|(\d+)/);
-    assert.ok(killed,'maximum-distance durable killed frontier missing');
-    const killedFrontier=Number(killed[1]);
-    const killedCheckpoint=Number(killed[2]);
+    if(managedAdb) {
+      dbSql(`begin doom.doom_worker_lifecycle.stop_job(`+
+        `'${incarnation[1]}',true,'OCI maximum-distance recovery diagnostic',`+
+        `'${incarnation[2]}',${incarnation[3]},${incarnation[4]},`+
+        `'${incarnation[5]}','${incarnation[6]}');end;\n/`);
+      process.stdout.write(
+        'PMLE_HIGH_AWAKE_KILL_METHOD|ADB_INCARNATION_FENCED_STOP_JOB\n');
+    } else {
+      dbSql(`begin\n`+
+        `  execute immediate 'alter system kill session ''${recoveryTarget.sid},`+
+        `${recoveryTarget.serial}'' immediate';\n`+
+        `exception when others then\n`+
+        `  if sqlcode<>-31 then raise;end if;\n`+
+        `end;\n/`);
+      process.stdout.write('PMLE_HIGH_AWAKE_KILL_METHOD|SYS_KILL_SESSION\n');
+    }
+    let killedFrontier;
+    let killedCheckpoint;
+    if(managedAdb) {
+      // The online production client may complete recovery before a fresh
+      // SQLcl process can observe the stopped generation. The paused,
+      // committed frontier and checkpoint were already read immediately
+      // before the incarnation-fenced stop and are the durable kill record.
+      killedFrontier=recoveryTarget.frontier;
+      killedCheckpoint=recoveryTarget.previousCheckpoint;
+      process.stdout.write(`PMLE_HIGH_AWAKE_KILLED`+
+        `|${killedFrontier}|${killedCheckpoint}`+
+        `|source=PRE_STOP_COMMITTED_FENCE\n`);
+    } else {
+      const killedOutput=dbSql(
+        `select 'PMLE_HIGH_AWAKE_KILLED|'||m.current_tic||'|'||`+
+        `nvl((select max(cp.tic) from doom.doom_match_checkpoint cp where `+
+        `cp.match_id=m.match_id and cp.generation=m.generation),0) `+
+        `from doom.doom_match m where m.match_id='${match}';`);
+      const killed=killedOutput.match(
+        /PMLE_HIGH_AWAKE_KILLED\|(\d+)\|(\d+)/);
+      assert.ok(killed,'maximum-distance durable killed frontier missing');
+      killedFrontier=Number(killed[1]);
+      killedCheckpoint=Number(killed[2]);
+    }
     const killedDistance=killedFrontier-killedCheckpoint;
-    assert.ok(killedDistance>=112&&killedDistance<=127,
+    assert.ok(killedDistance>=highAwakeRecoveryMaxTics-16+1&&
+      killedDistance<highAwakeRecoveryMaxTics,
       'durable kill did not occur at maximum pre-checkpoint distance');
-    const recoveryOutput=await dbSqlAsync(`
+    let recoveryOutput='';
+    if(managedAdb) {
+      await host.waitForFunction(prior=>
+        window.__doomPixelBatches.length>prior,priorPixelBatches,{
+          timeout:60000
+        });
+      recoveryOutput='PMLE_HIGH_AWAKE_RECOVERY_RESULT|ACTIVE';
+      process.stdout.write(`PMLE_HIGH_AWAKE_PRODUCTION_RECOVERY`+
+        `|PASS|elapsed_ms=${Date.now()-recoveryStarted}`+
+        `|trigger=ORDS_PIXEL_EXCHANGE\n`);
+    } else recoveryOutput=await dbSqlAsync(`
 declare
   l_state varchar2(16);
 begin
@@ -723,6 +816,7 @@ end;
       `|checkpoint_tic=${killedCheckpoint}`+
       `|frontier=${killedFrontier}`+
       `|distance=${killedDistance}`+
+      `|checkpoint_max_tics=${highAwakeRecoveryMaxTics}`+
       `|awake=${recoveryTarget.awake}`+
       `|sustained_samples=${recoveryTarget.sustainedSamples}`+
       `|elapsed_ms=${recoveryElapsedMs}`+

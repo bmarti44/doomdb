@@ -1,0 +1,146 @@
+PMLE_RECOVERY_CADENCE_PREDECLARATION|DIAGNOSTIC_NOT_GATE|venue=OCI_ALWAYS_FREE_26AI|checkpoint_max_tics=1024|checkpoint_min_tics=16|checkpoint_low_awake=-1|kill_window=1009-1023|phase_budget_ms=45000|detection_budget_ms=15000|production_cadence_unchanged=113-128|worker_source_sha256=1c358bcbbb93f3da47067622b3c94100779852630216cad96f42db6f231c4dce|candidate_source_sha256=e6278b1644394581bab17a9169087c49045497a4a3c1e1850971ddcf9c485c60
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_RECOVERY_CADENCE_POOL|PASS|active=0|assigned=0|live=0
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Package DOOM_MATCH_WORKER compiled
+
+
+Package Body DOOM_MATCH_WORKER compiled
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_RECOVERY_CADENCE_DEPLOY|PASS|candidate_sha256=e6278b1644394581bab17a9169087c49045497a4a3c1e1850971ddcf9c485c60
+
+PMLE_SOAK_STAGE|host_dom_ready
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.fill: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('[data-create] input[name=name]')[22m
+
+    at /Users/bmarti44/doomdb/tests/verify-p13.5-multiplayer-soak.mjs:285:56 {
+  log: [ "  - waiting for locator('[data-create] input[name=name]')" ],
+  name: 'TimeoutError'
+}
+
+Node.js v25.9.0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_RECOVERY_CADENCE_POOL|PASS|active=0|assigned=0|live=0
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Package DOOM_MATCH_WORKER compiled
+
+
+Package Body DOOM_MATCH_WORKER compiled
+
+PMLE_RECOVERY_CADENCE_RESTORE|PASS|worker_sha256=1c358bcbbb93f3da47067622b3c94100779852630216cad96f42db6f231c4dce
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+

@@ -1,0 +1,16 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: database frame after tic 389 did not arrive
+    at waitForFrame (file:///Users/bmarti44/doomdb/tests/verify-mle-live-frame-e2e.mjs:92:10)
+    at async file:///Users/bmarti44/doomdb/tests/verify-mle-live-frame-e2e.mjs:319:5 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: undefined,
+  operator: 'fail',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import crypto from 'node:crypto';
 
 function rows(file, marker) {
   const text = fs.readFileSync(file, 'utf8');
@@ -116,6 +117,208 @@ for (let index = 0; index < flatAssets.length; index += 1) {
   flatAssets[index].index = index;
 }
 const flatByName = new Map(flatAssets.map(asset => [asset.name, asset]));
+const seedManifest = JSON.parse(fs.readFileSync(
+  path.join(root, 'sql/seed/seed-manifest.json'), 'utf8',
+));
+const iwadPath = path.join(
+  root, 'probes/mle/teavm-engine/target/iwad-smoke/freedoom1.wad',
+);
+const iwad = fs.readFileSync(iwadPath);
+const iwadSha = crypto.createHash('sha256').update(iwad).digest('hex');
+if (iwadSha !== seedManifest.wadSha256
+    || iwad.toString('ascii', 0, 4) !== 'IWAD') {
+  throw new Error('live renderer IWAD is not the pinned seed IWAD');
+}
+const lumpCount = iwad.readUInt32LE(4);
+const directoryOffset = iwad.readUInt32LE(8);
+const lumps = Array.from({length: lumpCount}, (_, index) => {
+  const at = directoryOffset + index * 16;
+  const offset = iwad.readUInt32LE(at);
+  const size = iwad.readUInt32LE(at + 4);
+  const name = iwad.toString('ascii', at + 8, at + 16)
+    .replace(/\0.*$/s, '');
+  return {index, offset, size, name};
+});
+const lastLump = name => {
+  for (let index = lumps.length - 1; index >= 0; index -= 1) {
+    if (lumps[index].name === name) return lumps[index];
+  }
+  throw new Error(`IWAD lump missing ${name}`);
+};
+const runtimeWallNames = [];
+for (const lumpName of ['TEXTURE1', 'TEXTURE2']) {
+  const lump = lastLump(lumpName);
+  const count = iwad.readUInt32LE(lump.offset);
+  for (let index = 0; index < count; index += 1) {
+    const relative = iwad.readUInt32LE(lump.offset + 4 + index * 4);
+    runtimeWallNames.push(
+      iwad.toString(
+        'ascii', lump.offset + relative, lump.offset + relative + 8,
+      ).replace(/\0.*$/s, ''),
+    );
+  }
+}
+const runtimeWallToAsset = Uint16Array.from(
+  runtimeWallNames,
+  name => wallByName.get(name)?.index ?? 0xffff,
+);
+// Mocha's getFlatTranslation returns an absolute WAD lump number. Keep a
+// direct sparse lookup so animated flat translations need no JS string work.
+const runtimeFlatToAsset = new Uint16Array(lumpCount);
+runtimeFlatToAsset.fill(0xffff);
+for (const asset of flatAssets) {
+  runtimeFlatToAsset[lastLump(asset.name).index] = asset.index;
+}
+const spriteAssets = assetRows
+  .filter(row => text(row[1]) === 'sprite_patch')
+  .map(row => ({
+    id: Number(row[0]),
+    name: text(row[2]),
+    width: Number(row[3]),
+    height: Number(row[4]),
+  }))
+  .sort((left, right) => left.id - right.id);
+const spriteMetricsText = fs.readFileSync(
+  path.join(root, 'sql/render/r2/035_staged_masked.sql'),
+  'utf8',
+);
+const spriteMetrics = new Map();
+for (const match of spriteMetricsText.matchAll(
+  /select '([^']+)' asset_name,(-?\d+) left_offset,(-?\d+) top_offset/g,
+)) {
+  spriteMetrics.set(match[1], {
+    left: Number(match[2]),
+    top: Number(match[3]),
+  });
+}
+let spriteElements = 0;
+for (let index = 0; index < spriteAssets.length; index += 1) {
+  const metrics = spriteMetrics.get(spriteAssets[index].name);
+  if (!metrics) {
+    throw new Error(`sprite metrics missing for ${spriteAssets[index].name}`);
+  }
+  spriteAssets[index].index = index;
+  spriteAssets[index].base = spriteElements;
+  spriteAssets[index].left = metrics.left;
+  spriteAssets[index].top = metrics.top;
+  spriteElements += spriteAssets[index].width * spriteAssets[index].height;
+}
+const spriteByName = new Map(
+  spriteAssets.map(asset => [asset.name, asset]),
+);
+const spriteEnumText = fs.readFileSync(
+  path.join(root, 'third_party/mochadoom/src/data/spritenum_t.java'),
+  'utf8',
+);
+const spritePrefixes = Array.from(
+  spriteEnumText.matchAll(/\bSPR_([A-Z0-9]{4})\b/g),
+  match => match[1],
+);
+if (spritePrefixes.length < 100
+    || new Set(spritePrefixes).size !== spritePrefixes.length) {
+  throw new Error(`invalid Mocha sprite enum: ${spritePrefixes.length}`);
+}
+const spriteFrameCount = 29;
+const spriteLookupSize =
+  spritePrefixes.length * spriteFrameCount * 9;
+const spriteLookupAsset = new Uint16Array(spriteLookupSize);
+spriteLookupAsset.fill(0xffff);
+const spriteLookupFlip = new Uint8Array(spriteLookupSize);
+const spritePrefixIndex = new Map(
+  spritePrefixes.map((prefix, index) => [prefix, index]),
+);
+function spriteLookupIndex(prefix, frame, rotation) {
+  const prefixIndex = spritePrefixIndex.get(prefix);
+  const frameIndex = frame.charCodeAt(0) - 65;
+  if (prefixIndex === undefined
+      || frameIndex < 0 || frameIndex >= spriteFrameCount
+      || rotation < 0 || rotation > 8) {
+    throw new Error(`invalid sprite lookup ${prefix}/${frame}/${rotation}`);
+  }
+  return (prefixIndex * spriteFrameCount + frameIndex) * 9 + rotation;
+}
+for (const asset of spriteAssets) {
+  const prefix = asset.name.slice(0, 4);
+  const pairs = [[asset.name[4], Number(asset.name[5]), 0]];
+  if (asset.name.length >= 8) {
+    pairs.push([asset.name[6], Number(asset.name[7]), 1]);
+  }
+  for (const [frame, rotation, flip] of pairs) {
+    const lookup = spriteLookupIndex(prefix, frame, rotation);
+    if (spriteLookupAsset[lookup] !== 0xffff) {
+      throw new Error(`duplicate sprite lookup ${asset.name}`);
+    }
+    spriteLookupAsset[lookup] = asset.index;
+    spriteLookupFlip[lookup] = flip;
+  }
+}
+
+const uiAssets = assetRows
+  .filter(row => text(row[1]) === 'ui_patch')
+  .map(row => ({
+    id: Number(row[0]),
+    name: text(row[2]),
+    width: Number(row[3]),
+    height: Number(row[4]),
+  }))
+  .sort((left, right) => left.id - right.id);
+let uiElements = 0;
+for (let index = 0; index < uiAssets.length; index += 1) {
+  uiAssets[index].index = index;
+  uiAssets[index].base = uiElements;
+  uiElements += uiAssets[index].width * uiAssets[index].height;
+}
+const uiByName = new Map(uiAssets.map(asset => [asset.name, asset]));
+const uiIndexList = names => names.map(name => {
+  const asset = uiByName.get(name);
+  if (!asset) throw new Error(`UI asset missing ${name}`);
+  return asset.index;
+});
+const faceStraight = uiIndexList(
+  Array.from({length: 5}, (_, pain) =>
+    Array.from({length: 3}, (_, expression) =>
+      `STFST${pain}${expression}`)).flat(),
+);
+const faceTurnLeft = uiIndexList(
+  Array.from({length: 5}, (_, pain) => `STFTL${pain}0`),
+);
+const faceTurnRight = uiIndexList(
+  Array.from({length: 5}, (_, pain) => `STFTR${pain}0`),
+);
+const faceOuch = uiIndexList(
+  Array.from({length: 5}, (_, pain) => `STFOUCH${pain}`),
+);
+const faceEvil = uiIndexList(
+  Array.from({length: 5}, (_, pain) => `STFEVL${pain}`),
+);
+const faceKill = uiIndexList(
+  Array.from({length: 5}, (_, pain) => `STFKILL${pain}`),
+);
+const mainMenuItems = uiIndexList([
+  'M_NEWG', 'M_OPTION', 'M_LOADG', 'M_SAVEG', 'M_RDTHIS', 'M_QUITG',
+]);
+const episodeMenuItems = uiIndexList([
+  'M_EPI1', 'M_EPI2', 'M_EPI3', 'M_EPI4',
+]);
+const skillMenuItems = uiIndexList([
+  'M_JKILL', 'M_ROUGH', 'M_HURT', 'M_ULTRA', 'M_NMARE',
+]);
+const optionMenuItems = uiIndexList([
+  'M_ENDGAM', 'M_MESSG', 'M_DETAIL', 'M_SCRNSZ', 'M_MSENS', 'M_SVOL',
+]);
+const menuSkulls = uiIndexList(['M_SKULL1', 'M_SKULL2']);
+const fullScreens = uiIndexList([
+  'TITLEPIC', 'CREDIT', 'HELP1', 'HELP2', 'INTERPIC', 'VICTORY2',
+  'ENDPIC', 'PFUB1', 'PFUB2', 'BOSSBACK',
+]);
+for (const required of [
+  'STBAR', 'STFB0', 'STFDEAD0', 'STFGOD0', 'TITLEPIC', 'M_PAUSE',
+  'M_DOOM', 'M_NGAME', 'M_EPISOD', 'M_SKILL', 'M_OPTTTL',
+  ...Array.from({length: 10}, (_, digit) => `STTNUM${digit}`),
+  ...Array.from({length: 6}, (_, key) => `STKEYS${key}`),
+]) {
+  if (!uiByName.has(required)) throw new Error(`UI asset missing ${required}`);
+}
 const textureIndex = name => name === '-' || !wallByName.has(name)
   ? 0xffff : wallByName.get(name).index;
 const sides = new Map(sideRows.map(row => [Number(row[0]), {
@@ -210,6 +413,8 @@ const linePresentation = lineRows.map(row => {
     leftXOffset: left === null ? 0 : left.xOffset,
     leftYOffset: left === null ? 0 : left.yOffset,
     flags: Number(row[3]),
+    rightSide: Number(row[6]),
+    leftSide: left === null ? 0xffff : Number(row[7]),
   };
 });
 
@@ -256,7 +461,7 @@ const subsectorSector = ssectors.map((subsector, index) => {
   return sector;
 });
 
-const HEADER = 304;
+const HEADER = 496;
 let cursor = HEADER;
 const offsets = {};
 for (const name of ['lineX1', 'lineY1', 'lineX2', 'lineY2']) {
@@ -347,10 +552,61 @@ offsets.ssectorSector = cursor;
 cursor += ssectors.length * 2;
 offsets.colormaps = cursor;
 cursor += colormaps.length;
+cursor = align(cursor, 4);
+offsets.spriteBase = cursor;
+cursor += spriteAssets.length * 4;
+offsets.spriteWidth = cursor;
+cursor += spriteAssets.length * 2;
+offsets.spriteHeight = cursor;
+cursor += spriteAssets.length * 2;
+offsets.spriteLeft = cursor;
+cursor += spriteAssets.length * 2;
+offsets.spriteTop = cursor;
+cursor += spriteAssets.length * 2;
+offsets.spriteLookupAsset = cursor;
+cursor += spriteLookupAsset.length * 2;
+offsets.spriteLookupFlip = cursor;
+cursor += spriteLookupFlip.length;
+cursor = align(cursor, 4);
+offsets.uiBase = cursor;
+cursor += uiAssets.length * 4;
+offsets.uiWidth = cursor;
+cursor += uiAssets.length * 2;
+offsets.uiHeight = cursor;
+cursor += uiAssets.length * 2;
+offsets.uiDigits = cursor;
+cursor += 10 * 2;
+offsets.uiKeys = cursor;
+cursor += 6 * 2;
+for (const [name, values] of [
+  ['uiFaceStraight', faceStraight],
+  ['uiFaceTurnLeft', faceTurnLeft],
+  ['uiFaceTurnRight', faceTurnRight],
+  ['uiFaceOuch', faceOuch],
+  ['uiFaceEvil', faceEvil],
+  ['uiFaceKill', faceKill],
+  ['uiMainMenuItems', mainMenuItems],
+  ['uiEpisodeMenuItems', episodeMenuItems],
+  ['uiSkillMenuItems', skillMenuItems],
+  ['uiOptionMenuItems', optionMenuItems],
+  ['uiMenuSkulls', menuSkulls],
+  ['uiFullScreens', fullScreens],
+]) {
+  offsets[name] = cursor;
+  cursor += values.length * 2;
+}
+offsets.runtimeWallToAsset = cursor;
+cursor += runtimeWallToAsset.length * 2;
+offsets.runtimeFlatToAsset = cursor;
+cursor += runtimeFlatToAsset.length * 2;
+offsets.lineRightSide = cursor;
+cursor += linePresentation.length * 2;
+offsets.lineLeftSide = cursor;
+cursor += linePresentation.length * 2;
 const pack = Buffer.alloc(cursor);
 
 pack.writeUInt32LE(0x31465244, 0); // DRF1
-pack.writeUInt32LE(4, 4);
+pack.writeUInt32LE(7, 4);
 pack.writeInt32LE(originX, 8);
 pack.writeInt32LE(originY, 12);
 pack.writeUInt32LE(columns, 16);
@@ -424,6 +680,55 @@ pack.writeUInt32LE(offsets.sectorCeilingAsset, 284);
 pack.writeUInt32LE(flatAssets.length, 288);
 pack.writeUInt32LE(flatAssets.length * 4096, 292);
 pack.writeUInt32LE(offsets.ssectorSector, 296);
+pack.writeUInt32LE(spriteAssets.length, 300);
+pack.writeUInt32LE(spriteElements, 304);
+pack.writeUInt32LE(offsets.spriteBase, 308);
+pack.writeUInt32LE(offsets.spriteWidth, 312);
+pack.writeUInt32LE(offsets.spriteHeight, 316);
+pack.writeUInt32LE(offsets.spriteLeft, 320);
+pack.writeUInt32LE(offsets.spriteTop, 324);
+pack.writeUInt32LE(offsets.spriteLookupAsset, 328);
+pack.writeUInt32LE(offsets.spriteLookupFlip, 332);
+pack.writeUInt32LE(spritePrefixes.length, 336);
+pack.writeUInt32LE(spriteFrameCount, 340);
+pack.writeUInt32LE(uiAssets.length, 344);
+pack.writeUInt32LE(uiElements, 348);
+pack.writeUInt32LE(offsets.uiBase, 352);
+pack.writeUInt32LE(offsets.uiWidth, 356);
+pack.writeUInt32LE(offsets.uiHeight, 360);
+pack.writeUInt32LE(uiByName.get('STBAR').index, 364);
+pack.writeUInt32LE(uiByName.get('STFB0').index, 368);
+pack.writeUInt32LE(uiByName.get('STFDEAD0').index, 372);
+pack.writeUInt32LE(uiByName.get('STFGOD0').index, 376);
+pack.writeUInt32LE(uiByName.get('TITLEPIC').index, 380);
+pack.writeUInt32LE(uiByName.get('M_PAUSE').index, 384);
+pack.writeUInt32LE(uiByName.get('M_DOOM').index, 388);
+pack.writeUInt32LE(uiByName.get('M_NGAME').index, 392);
+pack.writeUInt32LE(uiByName.get('M_EPISOD').index, 396);
+pack.writeUInt32LE(uiByName.get('M_SKILL').index, 400);
+pack.writeUInt32LE(offsets.uiDigits, 404);
+pack.writeUInt32LE(offsets.uiKeys, 408);
+pack.writeUInt32LE(offsets.uiFaceStraight, 412);
+pack.writeUInt32LE(offsets.uiFaceTurnLeft, 416);
+pack.writeUInt32LE(offsets.uiFaceTurnRight, 420);
+pack.writeUInt32LE(offsets.uiFaceOuch, 424);
+pack.writeUInt32LE(offsets.uiFaceEvil, 428);
+pack.writeUInt32LE(offsets.uiFaceKill, 432);
+pack.writeUInt32LE(offsets.uiMainMenuItems, 436);
+pack.writeUInt32LE(offsets.uiEpisodeMenuItems, 440);
+pack.writeUInt32LE(offsets.uiSkillMenuItems, 444);
+pack.writeUInt32LE(offsets.uiOptionMenuItems, 448);
+pack.writeUInt32LE(offsets.uiMenuSkulls, 452);
+pack.writeUInt32LE(offsets.uiFullScreens, 456);
+pack.writeUInt32LE(uiByName.get('M_OPTTTL').index, 460);
+pack.writeUInt32LE(offsets.runtimeWallToAsset, 464);
+pack.writeUInt32LE(runtimeWallToAsset.length, 468);
+pack.writeUInt32LE(offsets.runtimeFlatToAsset, 472);
+pack.writeUInt32LE(runtimeFlatToAsset.length, 476);
+pack.writeUInt32LE(offsets.lineRightSide, 480);
+pack.writeUInt32LE(offsets.lineLeftSide, 484);
+pack.writeUInt32LE(sides.size, 488);
+pack.writeUInt32LE(208, 492); // DVL2 header bytes
 
 for (let index = 0; index < lines.length; index += 1) {
   pack.writeInt32LE(lines[index][0], offsets.lineX1 + index * 4);
@@ -464,6 +769,18 @@ for (let index = 0; index < linePresentation.length; index += 1) {
   pack.writeInt16LE(line.leftXOffset, offsets.lineLeftXOffset + index * 2);
   pack.writeInt16LE(line.leftYOffset, offsets.lineLeftYOffset + index * 2);
   pack.writeUInt16LE(line.flags, offsets.lineFlags + index * 2);
+  pack.writeUInt16LE(line.rightSide, offsets.lineRightSide + index * 2);
+  pack.writeUInt16LE(line.leftSide, offsets.lineLeftSide + index * 2);
+}
+for (let index = 0; index < runtimeWallToAsset.length; index += 1) {
+  pack.writeUInt16LE(
+    runtimeWallToAsset[index], offsets.runtimeWallToAsset + index * 2,
+  );
+}
+for (let index = 0; index < runtimeFlatToAsset.length; index += 1) {
+  pack.writeUInt16LE(
+    runtimeFlatToAsset[index], offsets.runtimeFlatToAsset + index * 2,
+  );
 }
 for (let index = 0; index < segs.length; index += 1) {
   const seg = segs[index];
@@ -515,6 +832,57 @@ for (let index = 0; index < subsectorSector.length; index += 1) {
   );
 }
 colormaps.copy(pack, offsets.colormaps);
+for (let index = 0; index < spriteAssets.length; index += 1) {
+  const asset = spriteAssets[index];
+  pack.writeUInt32LE(asset.base, offsets.spriteBase + index * 4);
+  pack.writeUInt16LE(asset.width, offsets.spriteWidth + index * 2);
+  pack.writeUInt16LE(asset.height, offsets.spriteHeight + index * 2);
+  pack.writeInt16LE(asset.left, offsets.spriteLeft + index * 2);
+  pack.writeInt16LE(asset.top, offsets.spriteTop + index * 2);
+}
+for (let index = 0; index < spriteLookupAsset.length; index += 1) {
+  pack.writeUInt16LE(
+    spriteLookupAsset[index],
+    offsets.spriteLookupAsset + index * 2,
+  );
+  pack[offsets.spriteLookupFlip + index] = spriteLookupFlip[index];
+}
+for (let index = 0; index < uiAssets.length; index += 1) {
+  const asset = uiAssets[index];
+  pack.writeUInt32LE(asset.base, offsets.uiBase + index * 4);
+  pack.writeUInt16LE(asset.width, offsets.uiWidth + index * 2);
+  pack.writeUInt16LE(asset.height, offsets.uiHeight + index * 2);
+}
+for (let digit = 0; digit < 10; digit += 1) {
+  pack.writeUInt16LE(
+    uiByName.get(`STTNUM${digit}`).index,
+    offsets.uiDigits + digit * 2,
+  );
+}
+for (let key = 0; key < 6; key += 1) {
+  pack.writeUInt16LE(
+    uiByName.get(`STKEYS${key}`).index,
+    offsets.uiKeys + key * 2,
+  );
+}
+for (const [name, values] of [
+  ['uiFaceStraight', faceStraight],
+  ['uiFaceTurnLeft', faceTurnLeft],
+  ['uiFaceTurnRight', faceTurnRight],
+  ['uiFaceOuch', faceOuch],
+  ['uiFaceEvil', faceEvil],
+  ['uiFaceKill', faceKill],
+  ['uiMainMenuItems', mainMenuItems],
+  ['uiEpisodeMenuItems', episodeMenuItems],
+  ['uiSkillMenuItems', skillMenuItems],
+  ['uiOptionMenuItems', optionMenuItems],
+  ['uiMenuSkulls', menuSkulls],
+  ['uiFullScreens', fullScreens],
+]) {
+  for (let index = 0; index < values.length; index += 1) {
+    pack.writeUInt16LE(values[index], offsets[name] + index * 2);
+  }
+}
 fs.mkdirSync(path.dirname(outputFile), {recursive: true});
 fs.writeFileSync(outputFile, pack);
 process.stdout.write(
@@ -524,6 +892,11 @@ process.stdout.write(
   + `|originX=${originX}|originY=${originY}|columns=${columns}|rows=${rowsCount}`
   + `|wallTextures=${wallAssets.length}|wallElements=${wallElements}`
   + `|flatTextures=${flatAssets.length}|flatElements=${flatAssets.length * 4096}`
+  + `|spriteTextures=${spriteAssets.length}|spriteElements=${spriteElements}`
+  + `|spritePrefixes=${spritePrefixes.length}`
+  + `|uiTextures=${uiAssets.length}|uiElements=${uiElements}`
+  + `|runtimeWalls=${runtimeWallToAsset.length}`
+  + `|runtimeFlats=${runtimeFlatToAsset.length}|sides=${sides.size}`
   + `|sectors=${sectors.length}|segs=${segs.length}`
   + `|ssectors=${ssectors.length}|nodes=${nodes.length}\n`,
 );

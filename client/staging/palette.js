@@ -3,6 +3,11 @@ export function createPalette(bytes) {
         throw new TypeError('palette byte length is invalid');
     return new Uint8Array(bytes);
 }
+export function createPaletteSet(bytes) {
+    if (bytes.length !== 14 * 256 * 3)
+        throw new TypeError('PLAYPAL set byte length is invalid');
+    return new Uint8Array(bytes);
+}
 export function applyPalette(indices, palette) {
     if (indices.length !== 320 * 200 || palette.length !== 256 * 3) {
         throw new TypeError('palette input dimensions are invalid');

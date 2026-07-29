@@ -5,8 +5,8 @@
   "minimumDatabaseMajor": 23,
   "mle": {
     "runtime": "JavaScript",
-    "authorityBytes": 1081335,
-    "authoritySha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
+    "authorityBytes": 1181281,
+    "authoritySha256": "c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1",
     "tablePackBytes": 180272,
     "tablePackSha256": "058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"
   },

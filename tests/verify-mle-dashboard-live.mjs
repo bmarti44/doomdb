@@ -28,7 +28,7 @@ try {
   assert.equal(await page.locator('#authority-artifact').textContent(),
     `${authorityPrefix}…`);
   assert.equal(await page.locator('#presentation-artifact').textContent(),
-    'e55d5f1138fa…');
+    '5092dda164a9…');
   assert.equal(await page.locator('#ledger-state').textContent(),
     'PASS · current authority · 13,272');
   assert.equal(await page.locator('#soak-state').textContent(),

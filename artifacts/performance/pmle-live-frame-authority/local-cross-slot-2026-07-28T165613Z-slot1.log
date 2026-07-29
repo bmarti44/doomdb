@@ -1,0 +1,21 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: tic-zero database framebuffer drifted across retained sessions
++ actual - expected
+
++ 'f8d1fa6d1549d3b9955a89b378157c15218e5acf34c942bfadf0fed22f7680a8'
+- 'ba66eee9741c23bc56744bce51f12fdd7458b8fc8f92d65737db0d6b0e6ae051'
+
+    at file:///Users/bmarti44/doomdb/tests/verify-mle-live-frame-e2e.mjs:489:10
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 'f8d1fa6d1549d3b9955a89b378157c15218e5acf34c942bfadf0fed22f7680a8',
+  expected: 'ba66eee9741c23bc56744bce51f12fdd7458b8fc8f92d65737db0d6b0e6ae051',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

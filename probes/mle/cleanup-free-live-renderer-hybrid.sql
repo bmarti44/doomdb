@@ -5,9 +5,19 @@ begin execute immediate 'drop function doom_free_hybrid_stats';exception when ot
 /
 begin execute immediate 'drop function doom_free_hybrid_frame_chunk';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
+begin execute immediate 'drop function doom_free_hybrid_raster';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_hybrid_commands_half';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_hybrid_commands';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_hybrid_clear';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
 begin execute immediate 'drop function doom_free_hybrid_frame_batch';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
 begin execute immediate 'drop function doom_free_hybrid_frame';exception when others then if sqlcode<>-4043 then raise;end if;end;
+/
+begin execute immediate 'drop function doom_free_hybrid_frame_half';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /
 begin execute immediate 'drop function doom_free_hybrid_texture_finalize';exception when others then if sqlcode<>-4043 then raise;end if;end;
 /

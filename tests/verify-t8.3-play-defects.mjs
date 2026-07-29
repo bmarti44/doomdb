@@ -22,6 +22,17 @@ assert.match(masked, /substr\(asset\.asset_name,1,4\)=state_rotations\.sprite_pr
   'state transitions require a same-sprite authored fallback');
 assert.match(fireball, /'sprite_patch','BAL1A0'/i,
   'the live imp projectile must use its real Freedoom patch');
+assert.match(fireball,
+  /select coalesce\(max\(asset_id\),-1\)\+1 into :fireball_asset_id/i,
+  'incremental assets must allocate above the generated manifest');
+assert.match(fireball,
+  /where asset_kind='sprite_patch' and asset_name='BAL1A0'/i,
+  'incremental assets must resolve an existing row by stable identity');
+assert.doesNotMatch(fireball,
+  /(?:select|values|where\s+a=)\s*\(?570\b/i,
+  'incremental assets must not reuse the stale literal asset id 570');
+assert.ok((fireball.match(/:fireball_asset_id/g) ?? []).length > 200,
+  'all BAL1A0 texels must bind the resolved asset id');
 assert.match(presentation, /player\.weapon_state/i);
 assert.match(presentation, /d\.sprite_prefix\|\|d\.sprite_frame\|\|'0'/i);
 assert.match(renderer, /weaponStateAsset\(selectedWeapon,weaponState\)/,

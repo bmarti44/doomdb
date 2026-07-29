@@ -1,0 +1,84 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_DVL2_AUTHORITY_LOAD|PASS|iwad_bytes=28795076|table_bytes=180272
+
+PMLE_DVL2_RENDERER_LOAD|PASS
+
+PMLE_OCI_DVL2_COMPLETE_STAGE|PASS|stage=AUTHORITY_STEP|frames=300|p50_ms=4.365|p95_ms=5.732|p99_ms=6.284|mean_ms=4.299
+PMLE_OCI_DVL2_COMPLETE_STAGE|PASS|stage=DVL2_SNAPSHOT|frames=300|p50_ms=15.988|p95_ms=21.600|p99_ms=28.435|mean_ms=16.740
+PMLE_OCI_DVL2_COMPLETE_STAGE|PASS|stage=DYNAMIC_IMPORT|frames=300|p50_ms=10.098|p95_ms=11.321|p99_ms=17.798|mean_ms=10.368
+PMLE_OCI_DVL2_COMPLETE_STAGE|PASS|stage=GEOMETRY|frames=300|p50_ms=53.612|p95_ms=70.054|p99_ms=74.553|mean_ms=54.863
+PMLE_OCI_DVL2_COMPLETE_STAGE|PASS|stage=WORLD_SPRITES|frames=300|p50_ms=7.031|p95_ms=9.244|p99_ms=16.393|mean_ms=7.466
+PMLE_OCI_DVL2_COMPLETE_STAGE|PASS|stage=WEAPON_PSPRITES|frames=300|p50_ms=7.470|p95_ms=7.899|p99_ms=13.729|mean_ms=7.606
+PMLE_OCI_DVL2_COMPLETE_STAGE|PASS|stage=STATUS_BAR|frames=300|p50_ms=9.853|p95_ms=10.742|p99_ms=14.881|mean_ms=10.047
+PMLE_OCI_DVL2_COMPLETE_STAGE|PASS|stage=COMPLETE_RASTER|frames=300|p50_ms=88.998|p95_ms=105.985|p99_ms=109.713|mean_ms=90.350
+PMLE_OCI_DVL2_COMPLETE_STAGE|PASS|stage=RAW64K_EGRESS|frames=300|p50_ms=13.293|p95_ms=14.037|p99_ms=19.424|mean_ms=13.504
+PMLE_OCI_DVL2_COMPLETE_STAGE|PASS|stage=TOTAL|frames=300|p50_ms=122.666|p95_ms=139.043|p99_ms=144.373|mean_ms=124.893
+PMLE_OCI_DVL2_COMPLETE_FRAME|PASS|frames=300|warmup=40|unique=300|total_p95_ms=139.043|fps_p95=7.192|budget_ms=33.333|gate=FAIL|authority=MOCHA_TEAVM|renderer=COMPLETE_SPECIALIZED_TEAVM_MLE|client=PIXEL_COPY_ONLY|world_format=DVL2|checksum=2081573952
+

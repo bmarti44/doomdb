@@ -8,16 +8,21 @@ the browser only copies the completed pixels to canvas.
 
 **Public demo:** [Play DoomDB on Oracle Autonomous Database Always Free](https://G53C2244DAB9063-DOOMDB.adb.us-ashburn-1.oraclecloudapps.com/ords/doom/app/)
 
-The hosted release currently uses the confirmed-state browser renderer while
-the database-generated framebuffer replacement described below is being
-qualified. Always Free may stop after an idle period; retry after the database
+The hosted release now uses the database-pixel path: Oracle MLE advances the
+authoritative world and produces each complete 320x200 indexed framebuffer.
+ORDS returns compressed batches of those pixels; the browser only decompresses,
+applies the palette, and copies them to canvas. The terminal two-browser OCI
+gate produced 300 sequential, unique database frames per player at 34.182 and
+34.133 FPS, with 33.0 and 32.8 ms p95 presentation cadence, zero confirmed
+frame drops, distinct player viewpoints, dynamic input, and a checkpoint
+crossing. Always Free may stop after an idle period; retry after the database
 has resumed if the link is temporarily unavailable.
 
 ![DoomDB gameplay recorded from the local stack](media/doomdb-gameplay.gif)
 
-*Real footage from the earlier exact database-frame pipeline. The current MLE
-architecture keeps simulation authority in Oracle and renders confirmed state
-in the browser. Full-quality video:
+*Real footage from an earlier exact database-frame pipeline. The current
+public architecture again generates the final framebuffer in Oracle; the
+browser is a framebuffer consumer. Full-quality video:
 [media/doomdb-gameplay.mp4](media/doomdb-gameplay.mp4).*
 
 ## Wait, what?
@@ -31,11 +36,11 @@ Here's what happens when you press the fire key:
    database** in Oracle MLE.
 3. The engine advances one tic: the bullet traces, the zombie takes damage,
    monsters think. All of it inside your database session's world.
-4. The current release returns a compact, cryptographically chained DMD1
-   transition to a browser renderer. That path is now the regression control:
-   the replacement under active development returns a complete
-   database-generated framebuffer through ORDS, leaving only decode/copy and
-   canvas presentation in the browser.
+4. MLE rasterizes the player-specific view into a complete indexed
+   framebuffer and publishes it through the bounded database pixel ring. ORDS
+   returns compressed batches; the browser decodes and copies the pixels to
+   canvas. The compact DMD1 state chain remains the authority and recovery
+   record, not the live rasterizer.
 
 The target round trip is keypress, HTTP, PL/SQL, MLE JavaScript simulation and
 rasterization, completed pixels, HTTP, canvas. The hard demo gate is sustained
@@ -44,13 +49,13 @@ transaction and the resulting wall, sprite, weapon, and HUD pixels are
 database output. A demon dying is authoritative database state advancement.
 Your save file is rows plus an exact checkpoint.
 
-The first Always Free renderer spike is encouraging: a retained 160x100 MLE
-BLOCKMAP renderer traversing real E1M1 geometry and the accepted 5,250-tic
-camera route measured 2.529 ms worst-final p95. That promotes the architecture,
-but it is strictly a disposable layout proof. The finished output remains
-320x200 with authentic portal geometry, textures/flats, lighting, sprites,
-weapon animation, status bar/face/HUD, automap and game-state screens. Live
-state transfer and the full deployed 30 FPS browser gate remain.
+The renderer program moved through deliberately disposable floor and layout
+probes before reaching the deployed integrated candidate. It emits a complete
+64,000-byte indexed framebuffer with real E1M1 portal geometry, textures and
+flats, dynamic state, sprites, weapon animation, and the Doom status display.
+The public path has passed its deployed two-player 30 FPS gate. Visual and
+gameplay fidelity remain separately reviewable—passing the frame-rate gate
+does not turn this specialized renderer into a byte-for-byte Mocha rasterizer.
 
 The browser has no authority: it cannot predict, simulate ahead, reorder, or
 invent a tic. If you close the tab, the world is still in the database and a
@@ -108,8 +113,9 @@ success. OCI Always Free 26ai's earlier isolated arithmetic probe measured
 ticker result demonstrates that isolated-kernel timing did not predict the
 compiled full workload. A separate on-venue exact-frame persistence diagnostic
 still failed the live-render bar: the best 300-frame arm measured 212.095 ms
-p95 for 300/300 unique, Node-chain-identical frames. Browser rendering remains
-the release architecture.
+p95 for 300/300 unique, Node-chain-identical frames. That result closed the
+general Mocha rasterizer shape; the public database-pixel release instead uses
+the specialized renderer described below.
 
 The hidden-compilation investigation proved that this Free build contains an
 optimizing MLE compiler: a deterministic integer kernel improves from roughly
@@ -128,12 +134,14 @@ build now pins its archive timestamp. Two consecutive builds produced the same
 1,081,335-byte successor, `5ec18cbe…`, which matches `2848ef7a…` across 5,250
 tics and 5,251 full canonical-state comparisons. Its fresh 13,272-tic every-tic
 Oracle differential passed, source promotion and database deployment completed,
-and the dashboard remains fail-closed on the recovery/final-soak gates that
-still must be rerun for this artifact. Evidence is never inherited across
-artifact SHAs. The generated
-`client/dist/mle-status.json` is the authoritative live
-source/deployment/lifecycle state after those transitions, avoiding a prose
-claim that can silently outlive a deployment. Both immediate and hot-threshold
+and the dashboard remains fail-closed on any artifact-specific gate that has
+not been rerun. Evidence is never inherited across artifact SHAs. The selected
+live-frame authority is now `c613bb51…`; its generated
+`client/dist/mle-status.json` binds the terminal 13,272-tic ledger, deployed
+database-pixel renderer/coordinator hashes, two-player browser result, and
+session-cleanup evidence. TeaVM did not reproduce the selected authority bytes,
+so the lock records exact-SHA selection and the non-reproducible emission
+instead of claiming a reproducible build. Both immediate and hot-threshold
 synchronous compiler cells still spend more than five minutes in `MLE park`
 without reaching the ticker.
 
@@ -165,9 +173,11 @@ measured 140.960 ms p95 in the generated linear-memory shape versus 21.478 ms
 for the identical ordinary-MLE-JavaScript operations. The candidate is 6.56×
 slower on raster gathers/stores and was already 3.44× slower than the shipping
 authority in peak combat. It is classified `DVR_ONLY_ON_COST`; the 0.15
-de-CPS authority and browser renderer remain the release. Frame compression is
-suspended until rasterization itself approaches roughly 30 ms, since egress
-and publication are already minor parts of the measured pipeline.
+de-CPS authority remains historical evidence, while the generated wasm2js
+rasterizer is not part of the public live path. The deployed path combines the
+selected MLE authority with a separate specialized framebuffer renderer.
+Compression is a transport implementation detail, not a substitute for
+database-side rasterization.
 
 A final ordinary-MLE pixel-floor cell explains the remaining synthetic
 discrepancy. The 21.478 ms control performs three effective byte-array passes
@@ -176,8 +186,21 @@ to 7.077 ms per frame-sized pass, close to the earlier 5.824 ms one-gather
 probe. It did not asynchronously compile, and managed ADB denied the isolated
 hidden forced-compilation control even to ADMIN, so no compiled pixel number
 is claimed. The exact 207.488 ms renderer is 9.66× slower than the ordinary
-three-pass kernel. Per the predeclared rule, a purpose-built flat typed-array
-renderer is worth costing, but has not been authorized or started.
+three-pass kernel. Per the predeclared rule, that result authorized the
+specialized renderer costing summarized next.
+
+That costing subsequently produced the disposable v84 integrated result:
+authority step, reduced world raster, sprites, weapon, HUD and persistent BLOB
+ring publication completed at 25.272 ms p50 and 32.025 ms p95 across 300
+unique frames on OCI Always Free. The result proves a database-internal
+single-view route can cross 30 FPS at p95, but it does not supersede the
+product gates: p99 was 38.451 ms, one frame stalled for 268.892 ms, the
+world raster was 106x56, two-player rendering is unmeasured, and neither ORDS
+  nor browser canvas delivery was inside the cell. The preserved c613 authority
+  candidate passed its full 13,272-tic differential, but its required patched
+  rebuild did not reproduce the same bytes. Two same-input unpatched rebuilds
+  also differed from each other. Promotion therefore remains closed on build
+  identity rather than simulation determinism.
 
 **Multiplayer, where the database is the server.** Two browsers join one
 authoritative world living in Oracle. The engine advances once per ordered
@@ -204,17 +227,20 @@ Numbers, measured on the local two-core Oracle Free stack:
 | Measurement | Result |
 | --- | --- |
 | Current database authority | `5ec18cbe…` (1,081,335 bytes) |
-| Full E1M1 MLE/OJVM differential | 13,272/13,272 tics exact on current `5ec18cbe…` |
-| Current co-op MLE/OJVM differential | 762/762 tics exact on `5ec18cbe…` |
+| Current database-frame authority | Exact-SHA-selected `c613bb51…`; 13,272/13,272 exact; TeaVM emission is recorded as non-reproducible |
+| Full E1M1 MLE/OJVM differential | 13,272/13,272 tics exact on current `c613bb51…` |
+| Current co-op MLE/OJVM differential | 762/762 tics exact on `c613bb51…` |
 | Pre-deCPS maximum-distance recovery | 57.337 s estimated total at 20 awake monsters |
 | OCI production-shaped deathmatch throughput | 302.419 tics/s slower full pass; 140.845 tics/s slowest selected peak |
 | OCI correctness binding | 5,250-tic full canonical digest chain PASS vs Node |
-| OCI hosted browser | Post-push depth-6 recheck: 300/300 sequential unique frames; 34.319 FPS; 32.2 ms p95 |
+| OCI hosted browser (historical state-rendered release) | Post-push depth-6 recheck: 300/300 sequential unique frames; 34.319 FPS; 32.2 ms p95 |
+| OCI database-internal live-frame diagnostic | v84: 300/300 unique; 25.272 ms p50; 32.025 ms p95; single POV and reduced 106x56 world raster |
+| OCI production database-pixel browser | PASS: two POVs × 300 unique frames; 34.182/34.133 FPS; 33.0/32.8 ms p95; zero drops; tic-512 checkpoint crossing |
 | OCI wait-free WAN qualification | PASS; 3 profiles × 2 clients × 10 scored minutes; cadence p99 34.5–36.2 ms |
 | OCI production Java-removal audit | PASS; zero Java objects/specs/dependencies and zero legacy API objects |
 | Local production-shaped throughput | 19.788 tics/s whole-route; development/capacity evidence only |
-| OCI exact frame persistence diagnostic | Final de-CPS arm: 191.276 ms p95; 100/100 exact unique; live DB rendering CLOSED |
-| De-CPS current build | `5ec18cbe…`, promoted and deployed after every-tic ledger PASS |
+| Historical exact frame persistence diagnostic | Final de-CPS arm: 191.276 ms p95; 100/100 exact unique; superseded as a performance shape by v84 |
+| Historical reproducible de-CPS build | `5ec18cbe…`, superseded by the selected live-frame authority |
 | Pre-de-CPS production-shaped MLE CPU | 253.6 ms/tic on `a942cd2d…` (historical) |
 | De-CPS quiet / peak windows | ~10–11 ms/tic / ~106–141 ms/tic |
 | Last fully qualified soak | 30 min PASS on superseded `a942cd2d…` |

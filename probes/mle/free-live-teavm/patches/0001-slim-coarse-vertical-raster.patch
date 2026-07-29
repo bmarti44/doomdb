@@ -1,0 +1,151 @@
+diff --git a/FreeLiveRendererReachabilityProbe.java b/FreeLiveRendererReachabilityProbe.java
+index 597c698..cc6b86a 100644
+--- a/FreeLiveRendererReachabilityProbe.java
++++ b/FreeLiveRendererReachabilityProbe.java
+@@ -105,6 +105,7 @@ public final class FreeLiveRendererReachabilityProbe {
+   private static int rasterPixelWrites;
+   private static int activeWidth;
+   private static int pixelScale;
++  private static boolean coarseVerticalRaster;
+   private static short[] planeTop;
+   private static short[] planeBottom;
+   private static int[] planeStamp;
+@@ -352,6 +353,19 @@ public final class FreeLiveRendererReachabilityProbe {
+     return render(pose, true, true, true);
+   }
+ 
++  @JSExport
++  public static int renderFrameCoarseVertical(int pose) {
++    if (litTextures == null || litFlats == null) {
++      throw new IllegalStateException("renderer textures are not finalized");
++    }
++    coarseVerticalRaster = true;
++    try {
++      return render(pose, true, true, true);
++    } finally {
++      coarseVerticalRaster = false;
++    }
++  }
++
+   /** Diagnostic stage split: authentic wall columns without plane spans. */
+   @JSExport
+   public static int renderWallsOnly(int pose) {
+@@ -790,7 +804,8 @@ public final class FreeLiveRendererReachabilityProbe {
+       int plane, int y, int x1, int x2,
+       double playerX, double playerY, double viewZ,
+       double directionX, double directionY) {
+-    if (x1 > x2 || y == VIEW_HEIGHT / 2) return;
++    if (x1 > x2 || y == VIEW_HEIGHT / 2
++        || (coarseVerticalRaster && y % 3 != 0)) return;
+     int sector = plane / 2;
+     boolean ceiling = (plane & 1) == 0;
+     int asset = ceiling ? sectorCeilingAsset[sector] : sectorFloorAsset[sector];
+@@ -800,6 +815,14 @@ public final class FreeLiveRendererReachabilityProbe {
+       for (int x = x1; x <= x2; x++) {
+         frame[output] = pixel;
+         frame[output + FRAME_HEIGHT] = pixel;
++        if (coarseVerticalRaster && y + 1 < VIEW_HEIGHT) {
++          frame[output + 1] = pixel;
++          frame[output + FRAME_HEIGHT + 1] = pixel;
++        }
++        if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
++          frame[output + 2] = pixel;
++          frame[output + FRAME_HEIGHT + 2] = pixel;
++        }
+         output += pixelScale * FRAME_HEIGHT;
+       }
+       rasterPixelWrites += (x2 - x1 + 1) * pixelScale;
+@@ -828,6 +851,14 @@ public final class FreeLiveRendererReachabilityProbe {
+       byte pixel = litFlats[assetBase + source];
+       frame[output] = pixel;
+       frame[output + FRAME_HEIGHT] = pixel;
++      if (coarseVerticalRaster && y + 1 < VIEW_HEIGHT) {
++        frame[output + 1] = pixel;
++        frame[output + FRAME_HEIGHT + 1] = pixel;
++      }
++      if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
++        frame[output + 2] = pixel;
++        frame[output + FRAME_HEIGHT + 2] = pixel;
++      }
+       output += pixelScale * FRAME_HEIGHT;
+       worldX += stepX;
+       worldY += stepY;
+@@ -849,12 +880,21 @@ public final class FreeLiveRendererReachabilityProbe {
+     int ceilingAsset = sectorCeilingAsset[sector];
+     int ceilingBase = ceilingAsset == 0xffff
+         ? -1 : lightBank + ceilingAsset * 4096;
+-    for (int y = 0; y < VIEW_HEIGHT; y++) {
++    for (int y = 0; y < VIEW_HEIGHT;
++        y += coarseVerticalRaster ? 3 : 1) {
+       if (y == VIEW_HEIGHT / 2) {
+         for (int x = 0; x < activeWidth; x++) {
+           int output = x * pixelScale * FRAME_HEIGHT + y;
+           frame[output] = backgroundColumn[y];
+           frame[output + FRAME_HEIGHT] = backgroundColumn[y];
++          if (coarseVerticalRaster && y + 1 < VIEW_HEIGHT) {
++            frame[output + 1] = backgroundColumn[y];
++            frame[output + FRAME_HEIGHT + 1] = backgroundColumn[y];
++          }
++          if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
++            frame[output + 2] = backgroundColumn[y];
++            frame[output + FRAME_HEIGHT + 2] = backgroundColumn[y];
++          }
+         }
+         continue;
+       }
+@@ -864,6 +904,14 @@ public final class FreeLiveRendererReachabilityProbe {
+           int output = x * pixelScale * FRAME_HEIGHT + y;
+           frame[output] = backgroundColumn[y];
+           frame[output + FRAME_HEIGHT] = backgroundColumn[y];
++          if (coarseVerticalRaster && y + 1 < VIEW_HEIGHT) {
++            frame[output + 1] = backgroundColumn[y];
++            frame[output + FRAME_HEIGHT + 1] = backgroundColumn[y];
++          }
++          if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
++            frame[output + 2] = backgroundColumn[y];
++            frame[output + FRAME_HEIGHT + 2] = backgroundColumn[y];
++          }
+         }
+         continue;
+       }
+@@ -890,6 +938,14 @@ public final class FreeLiveRendererReachabilityProbe {
+         byte pixel = litFlats[assetBase + source];
+         frame[output] = pixel;
+         frame[output + FRAME_HEIGHT] = pixel;
++        if (coarseVerticalRaster && y + 1 < VIEW_HEIGHT) {
++          frame[output + 1] = pixel;
++          frame[output + FRAME_HEIGHT + 1] = pixel;
++        }
++        if (coarseVerticalRaster && y + 2 < VIEW_HEIGHT) {
++          frame[output + 2] = pixel;
++          frame[output + FRAME_HEIGHT + 2] = pixel;
++        }
+         output += pixelScale * FRAME_HEIGHT;
+         worldX += stepX;
+         worldY += stepY;
+@@ -1229,7 +1265,8 @@ public final class FreeLiveRendererReachabilityProbe {
+     int outputAt = screenX * pixelScale * FRAME_HEIGHT + drawTop;
+     rasterPixelWrites += length * pixelScale;
+     boolean powerOfTwoHeight = (height & (height - 1)) == 0;
+-    for (int output = 0; output < length; output++) {
++    int verticalStep = coarseVerticalRaster ? 3 : 1;
++    for (int output = 0; output < length; output += verticalStep) {
+       int sourceY = fraction >> 16;
+       sourceY = powerOfTwoHeight
+           ? sourceY & (height - 1)
+@@ -1237,7 +1290,15 @@ public final class FreeLiveRendererReachabilityProbe {
+       byte pixel = litTextures[bank + base + sourceY * width + textureX];
+       frame[outputAt + output] = pixel;
+       frame[outputAt + FRAME_HEIGHT + output] = pixel;
+-      fraction += fractionStep;
++      if (coarseVerticalRaster && output + 1 < length) {
++        frame[outputAt + output + 1] = pixel;
++        frame[outputAt + FRAME_HEIGHT + output + 1] = pixel;
++      }
++      if (coarseVerticalRaster && output + 2 < length) {
++        frame[outputAt + output + 2] = pixel;
++        frame[outputAt + FRAME_HEIGHT + output + 2] = pixel;
++      }
++      fraction += fractionStep * verticalStep;
+     }
+   }

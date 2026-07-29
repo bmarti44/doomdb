@@ -1,0 +1,24 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+declare
+*
+ERROR at line 1:
+ORA-04161: Error: hybrid pack header mismatch
+ORA-04171: at finalizePack (DOOM.DOOM_FREE_HYBRID_RENDERER:73:11)
+ORA-06512: at "DOOM.DOOM_FREE_HYBRID_FINALIZE", line 1
+ORA-06512: at line 19
+Help: https://docs.oracle.com/error-help/db/ora-04161/
+

@@ -6119,6 +6119,908 @@
       "sourceLumps": [
         "WIVCTMS"
       ]
+    },
+    {
+      "kind": "ui_patch",
+      "name": "BOSSBACK",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "BOSSBACK"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "CREDIT",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "CREDIT"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "ENDPIC",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "ENDPIC"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "HELP1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "HELP1"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "HELP2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "HELP2"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "INTERPIC",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "INTERPIC"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_DETAIL",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_DETAIL"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_ENDGAM",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_ENDGAM"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_EPI1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_EPI1"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_EPI2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_EPI2"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_EPI3",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_EPI3"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_EPI4",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_EPI4"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_HURT",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_HURT"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_JKILL",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_JKILL"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_LOADG",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_LOADG"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_MESSG",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_MESSG"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_MSENS",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_MSENS"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_MUSVOL",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_MUSVOL"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_NEWG",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_NEWG"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_NMARE",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_NMARE"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_OPTION",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_OPTION"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_OPTTTL",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_OPTTTL"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_QUITG",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_QUITG"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_RDTHIS",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_RDTHIS"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_ROUGH",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_ROUGH"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_SAVEG",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_SAVEG"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_SCRNSZ",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_SCRNSZ"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_SFXVOL",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_SFXVOL"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_SKULL1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_SKULL1"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_SKULL2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_SKULL2"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_SVOL",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_SVOL"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_THERML",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_THERML"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_THERMM",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_THERMM"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_THERMR",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_THERMR"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "M_ULTRA",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "M_ULTRA"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "PFUB1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "PFUB1"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "PFUB2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "PFUB2"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFB1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFB1"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFB2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFB2"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFB3",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFB3"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFEVL0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFEVL0"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFEVL1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFEVL1"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFEVL2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFEVL2"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFEVL3",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFEVL3"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFEVL4",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFEVL4"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFKILL0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFKILL0"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFKILL1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFKILL1"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFKILL2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFKILL2"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFKILL3",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFKILL3"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFKILL4",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFKILL4"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFOUCH0",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFOUCH0"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFOUCH1",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFOUCH1"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFOUCH2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFOUCH2"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFOUCH3",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFOUCH3"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFOUCH4",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFOUCH4"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST00",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST00"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST01",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST01"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST02",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST02"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST10",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST10"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST11",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST11"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST12",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST12"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST20",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST20"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST21",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST21"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST22",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST22"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST30",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST30"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST31",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST31"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST32",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST32"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST40",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST40"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST41",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST41"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFST42",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFST42"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFTL00",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFTL00"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFTL10",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFTL10"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFTL20",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFTL20"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFTL30",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFTL30"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFTL40",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFTL40"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFTR00",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFTR00"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFTR10",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFTR10"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFTR20",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFTR20"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFTR30",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFTR30"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "STFTR40",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "STFTR40"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "ui_patch",
+      "name": "VICTORY2",
+      "reasons": [
+        "menu, HUD, pause, or intermission UI"
+      ],
+      "sourceLumps": [
+        "VICTORY2"
+      ],
+      "seedOrderGroup": 1
+    },
+    {
+      "kind": "sprite_patch",
+      "name": "BAL1A0",
+      "reasons": [
+        "retained imp fireball presentation"
+      ],
+      "sourceLumps": [
+        "BAL1A0"
+      ],
+      "seedOrderGroup": 2
     }
   ]
 }

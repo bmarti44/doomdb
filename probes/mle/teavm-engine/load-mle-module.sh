@@ -5,8 +5,8 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 project="$root/probes/mle/teavm-engine"
 javascript="$project/target/javascript/doom-mle-simulation-engine-headless.js"
 table_pack="$project/target/canonical-runtime-v2.bin"
-expected_source_bytes=1081335
-expected_source_sha256="5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3"
+expected_source_bytes=1181281
+expected_source_sha256="c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1"
 expected_table_pack_sha256="058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"
 base64_fold_width=2000
 build=1
@@ -21,7 +21,7 @@ for option in "$@"; do
     --javascript=*) javascript="${option#--javascript=}";build=0;custom_source=1 ;;
     --table-pack=*) table_pack="${option#--table-pack=}";build=0;custom_source=1 ;;
     --production) production=1;build=0
-      javascript="$root/client/dist/play/doom-mle-authority-5ec18cbe4cff.js"
+      javascript="$root/artifacts/performance/pmle-live-frame-authority/authority-candidate-c613bb5106d6.js"
       table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
       ;;
     *) printf 'unsupported option: %s\n' "$option" >&2;exit 2 ;;
@@ -153,6 +153,10 @@ emit_sql() {
     '/' \
     "begin execute immediate 'drop function doom_teavm_sim_authority_step'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
     '/' \
+    "begin execute immediate 'drop function doom_teavm_sim_world_chunk'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
+    "begin execute immediate 'drop function doom_teavm_sim_world_length'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
+    '/' \
     "begin execute immediate 'drop function doom_teavm_sim_multi_init'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
     '/' \
     "begin execute immediate 'drop function doom_teavm_sim_multi_init_skill'; exception when others then if sqlcode <> -4043 then raise; end if; end;" \
@@ -243,6 +247,10 @@ emit_sql() {
     "create function doom_teavm_sim_multi_step(p_active_players number,p_commands raw) return number as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'stepMultiplayerBare(number, Uint8Array)';" \
     '/' \
     "create function doom_teavm_sim_authority_step(p_active_players number,p_membership_mask number,p_commands raw) return number as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'stepMultiplayerAuthoritative(number, number, Uint8Array)';" \
+    '/' \
+    "create function doom_teavm_sim_world_length(p_player number) return number as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'presentationWorldSnapshotLength(number)';" \
+    '/' \
+    "create function doom_teavm_sim_world_chunk(p_offset number,p_length number) return raw as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'presentationWorldSnapshotChunk(number, number)';" \
     '/' \
     "create function doom_teavm_sim_step(p_forward number,p_side number,p_turn number,p_buttons number) return varchar2 as mle module doom_teavm_simulation env doom_teavm_sim_env signature 'step(number, number, number, number)';" \
     '/' \

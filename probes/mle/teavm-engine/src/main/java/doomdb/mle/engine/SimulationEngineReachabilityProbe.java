@@ -16,6 +16,8 @@ import java.util.Arrays;
 import java.util.IdentityHashMap;
 import mochadoom.Engine;
 import m.fixed_t;
+import org.teavm.jso.JSByRef;
+import org.teavm.jso.JSBody;
 import org.teavm.jso.JSExport;
 import org.teavm.jso.typedarrays.Uint8Array;
 import doom.thinker_t;
@@ -59,6 +61,31 @@ public final class SimulationEngineReachabilityProbe {
   private static ReusableByteArrayOutputStream playerCheckpointOutput;
   private static byte[] checkpointLoadBuffer;
   private static byte[][] presentationStatusBackgrounds;
+  private static byte[] presentationWorldSnapshot;
+  private static int presentationWorldSnapshotLength;
+  private static int[] presentationSectorFloor;
+  private static int[] presentationSectorCeiling;
+  private static char[] presentationSectorLight;
+  private static char[] presentationSectorFloorAsset;
+  private static char[] presentationSectorCeilingAsset;
+  private static char[] presentationSectorSpecial;
+  private static int[] presentationDirtySectors;
+  private static boolean presentationSectorStateInitialized;
+  private static char[] presentationSideTop;
+  private static char[] presentationSideBottom;
+  private static char[] presentationSideMiddle;
+  private static char[] presentationSideRawTop;
+  private static char[] presentationSideRawBottom;
+  private static char[] presentationSideRawMiddle;
+  private static char[] presentationSideSpecial;
+  private static int[] presentationSideTextureOffset;
+  private static int[] presentationSideRowOffset;
+  private static int[] presentationDirtySides;
+  private static int[] presentationCandidateSides;
+  private static boolean[] presentationCandidateSideFlags;
+  private static int presentationCandidateSideCount;
+  private static boolean presentationAnimatedSidesCataloged;
+  private static boolean presentationSideStateInitialized;
   private static int checkpointBytesLoaded;
   private static short[][] multiplayerConsistency;
 
@@ -1177,13 +1204,585 @@ public final class SimulationEngineReachabilityProbe {
     Uint8Array snapshot = Uint8Array.create(32);
     putSnapshotI32(snapshot, 0, player.mo.x);
     putSnapshotI32(snapshot, 4, player.mo.y);
-    putSnapshotI32(snapshot, 8, (int) (player.mo.angle >>> 16));
+    putSnapshotI32(snapshot, 8, (int) player.mo.angle >>> 16);
     putSnapshotI32(snapshot, 12, player.viewz);
     putSnapshotI32(snapshot, 16, player.health[0]);
     putSnapshotI32(snapshot, 20, player.armorpoints[0]);
     putSnapshotI32(snapshot, 24, player.readyweapon.ordinal());
     putSnapshotI32(snapshot, 28, player.ammo[0]);
     return snapshot;
+  }
+
+  /**
+   * Build the bounded binary world snapshot consumed by the live MLE
+   * framebuffer renderer. The format is presentation-only and contains no
+   * authority: it is regenerated from the canonical Mocha world after each
+   * confirmed tic.
+   *
+   * <pre>
+   * DVL2 header/player: 208 bytes
+   * sector records:      16 bytes each
+   * sidedef records:      8 bytes each
+   * visible mobj records:24 bytes each for DVC4, 32 bytes for DVL2
+   * </pre>
+   */
+  @JSExport
+  public static int presentationWorldSnapshotLength(int playerSlot) {
+    return buildPresentationWorldSnapshot(playerSlot, true, true, true, false);
+  }
+
+  /**
+   * Build the retained-renderer update payload without sidedef changes.
+   * This compatibility entry point remains useful for isolated measurements;
+   * the live renderer uses the exact dirty-sidedef entry point below.
+   */
+  @JSExport
+  public static int presentationWorldCompactSnapshotLength(int playerSlot) {
+    return buildPresentationWorldSnapshot(playerSlot, false, true, true, false);
+  }
+
+  /** Camera plus sectors for the isolated world-raster module. */
+  @JSExport
+  public static int presentationWorldGeometrySnapshotLength(int playerSlot) {
+    return buildPresentationWorldSnapshot(playerSlot, false, true, false, false);
+  }
+
+  /**
+   * Camera, sectors, and sidedefs for the retained live world raster.
+   *
+   * <p>The framebuffer compositor owns the independently culled mobj stream,
+   * so this export deliberately omits mobjs. It carries the current sector
+   * heights, light levels, translated flat ids, and (when requested) sidedef
+   * texture ids without making the rasterizer pay for a duplicate actor list.
+   * Animated wall translation and sidedef mutations after the retained
+   * full-side snapshot still require separate dirty-state propagation.
+   */
+  @JSExport
+  public static int presentationWorldGeometryAndSidesSnapshotLength(
+      int playerSlot) {
+    return buildPresentationWorldSnapshot(playerSlot, true, true, false, false);
+  }
+
+  /**
+   * Camera plus exact indexed sector and sidedef changes since the prior call.
+   * DVL6 records only dirty indexes, so moving floors/ceilings, light and flat
+   * changes, switches, animated walls, and scrolling texture offsets remain
+   * current without serializing every sector and sidedef on every tic.
+   */
+  @JSExport
+  public static int presentationWorldGeometryDeltaSnapshotLength(
+      int playerSlot) {
+    return buildPresentationWorldSnapshot(
+        playerSlot, false, false, false, true);
+  }
+
+  /** Full HUD header plus visible mobjs for the isolated compositor. */
+  @JSExport
+  public static int presentationCompositorSnapshotLength(int playerSlot) {
+    return buildPresentationWorldSnapshot(playerSlot, false, false, true, false);
+  }
+
+  private static int buildPresentationWorldSnapshot(
+      int playerSlot, boolean includeSides, boolean includeSectors,
+      boolean includeMobjs, boolean includeDirtySides) {
+    if (engine == null) throw new IllegalStateException("engine is not initialized");
+    if (playerSlot < 0 || playerSlot >= engine.players.length
+        || !engine.playeringame[playerSlot]) {
+      throw new IllegalArgumentException("inactive player slot " + playerSlot);
+    }
+    player_t player = engine.players[playerSlot];
+    if (player.mo == null) {
+      throw new IllegalStateException("player has no mobj " + playerSlot);
+    }
+    int mobjCount = 0;
+    thinker_t cap = engine.actions.getThinkerCap();
+    if (includeSides && includeMobjs) {
+      for (thinker_t current = cap.next;
+           current != null && current != cap;
+           current = current.next) {
+        if (!(current instanceof p.mobj_t)) continue;
+        p.mobj_t mobj = (p.mobj_t) current;
+        if (((int) mobj.flags & p.mobj_t.MF_NOSECTOR) != 0) continue;
+        mobjCount++;
+      }
+    }
+    int dirtySectorCount = 0;
+    if (includeDirtySides) {
+      rr.sector_t[] sectors = engine.levelLoader.sectors;
+      if (presentationSectorFloor == null
+          || presentationSectorFloor.length != sectors.length) {
+        presentationSectorFloor = new int[sectors.length];
+        presentationSectorCeiling = new int[sectors.length];
+        presentationSectorLight = new char[sectors.length];
+        presentationSectorFloorAsset = new char[sectors.length];
+        presentationSectorCeilingAsset = new char[sectors.length];
+        presentationSectorSpecial = new char[sectors.length];
+        presentationDirtySectors = new int[sectors.length];
+        presentationSectorStateInitialized = false;
+      }
+      for (int sectorIndex = 0;
+           sectorIndex < sectors.length; sectorIndex++) {
+        rr.sector_t sector = sectors[sectorIndex];
+        int floor = sector.floorheight;
+        int ceiling = sector.ceilingheight;
+        char light = (char) sector.lightlevel;
+        char floorAsset = (char)
+            engine.textureManager.getFlatTranslation(sector.floorpic);
+        char ceilingAsset = (char)
+            engine.textureManager.getFlatTranslation(sector.ceilingpic);
+        char special = (char) sector.special;
+        if (!presentationSectorStateInitialized
+            || floor != presentationSectorFloor[sectorIndex]
+            || ceiling != presentationSectorCeiling[sectorIndex]
+            || light != presentationSectorLight[sectorIndex]
+            || floorAsset != presentationSectorFloorAsset[sectorIndex]
+            || ceilingAsset != presentationSectorCeilingAsset[sectorIndex]
+            || special != presentationSectorSpecial[sectorIndex]) {
+          presentationDirtySectors[dirtySectorCount++] = sectorIndex;
+          presentationSectorFloor[sectorIndex] = floor;
+          presentationSectorCeiling[sectorIndex] = ceiling;
+          presentationSectorLight[sectorIndex] = light;
+          presentationSectorFloorAsset[sectorIndex] = floorAsset;
+          presentationSectorCeilingAsset[sectorIndex] = ceilingAsset;
+          presentationSectorSpecial[sectorIndex] = special;
+        }
+      }
+      presentationSectorStateInitialized = true;
+    }
+    int dirtySideCount = 0;
+    if (includeDirtySides) {
+      rr.side_t[] sides = engine.levelLoader.sides;
+      if (presentationSideTop == null
+          || presentationSideTop.length != sides.length) {
+        presentationSideTop = new char[sides.length];
+        presentationSideBottom = new char[sides.length];
+        presentationSideMiddle = new char[sides.length];
+        presentationSideRawTop = new char[sides.length];
+        presentationSideRawBottom = new char[sides.length];
+        presentationSideRawMiddle = new char[sides.length];
+        presentationSideSpecial = new char[sides.length];
+        presentationSideTextureOffset = new int[sides.length];
+        presentationSideRowOffset = new int[sides.length];
+        presentationDirtySides = new int[sides.length];
+        presentationCandidateSides = new int[sides.length];
+        presentationCandidateSideFlags = new boolean[sides.length];
+        presentationCandidateSideCount = 0;
+        for (rr.line_t line : engine.levelLoader.lines) {
+          if (line.special == 0) continue;
+          for (int side = 0; side < line.sidenum.length; side++) {
+            int sideIndex = line.sidenum[side];
+            if (sideIndex == 0xffff
+                || presentationCandidateSideFlags[sideIndex]) continue;
+            presentationCandidateSideFlags[sideIndex] = true;
+            presentationCandidateSides[presentationCandidateSideCount++] =
+                sideIndex;
+          }
+        }
+        presentationAnimatedSidesCataloged = false;
+        presentationSideStateInitialized = false;
+      }
+      boolean animationBoundary = engine.leveltime % 8 == 0;
+      boolean scanAll = !presentationSideStateInitialized
+          || (!presentationAnimatedSidesCataloged
+              && animationBoundary && engine.leveltime >= 8);
+      int scanCount = scanAll
+          ? sides.length : presentationCandidateSideCount;
+      for (int scan = 0; scan < scanCount; scan++) {
+        int sideIndex = scanAll ? scan : presentationCandidateSides[scan];
+        rr.side_t side = sides[sideIndex];
+        char rawTop = (char) side.toptexture;
+        char rawBottom = (char) side.bottomtexture;
+        char rawMiddle = (char) side.midtexture;
+        boolean rawChanged = !presentationSideStateInitialized
+            || rawTop != presentationSideRawTop[sideIndex]
+            || rawBottom != presentationSideRawBottom[sideIndex]
+            || rawMiddle != presentationSideRawMiddle[sideIndex];
+        char top = presentationSideTop[sideIndex];
+        char bottom = presentationSideBottom[sideIndex];
+        char middle = presentationSideMiddle[sideIndex];
+        if (rawChanged || animationBoundary) {
+          top = (char) (side.toptexture == 0 ? 0
+              : engine.textureManager.getTextureTranslation(side.toptexture));
+          bottom = (char) (side.bottomtexture == 0 ? 0
+              : engine.textureManager.getTextureTranslation(side.bottomtexture));
+          middle = (char) (side.midtexture == 0 ? 0
+              : engine.textureManager.getTextureTranslation(side.midtexture));
+        }
+        char special = (char) side.special;
+        int textureOffset = side.textureoffset;
+        int rowOffset = side.rowoffset;
+        if (!presentationSideStateInitialized
+            || rawChanged
+            || top != presentationSideTop[sideIndex]
+            || bottom != presentationSideBottom[sideIndex]
+            || middle != presentationSideMiddle[sideIndex]
+            || special != presentationSideSpecial[sideIndex]
+            || textureOffset != presentationSideTextureOffset[sideIndex]
+            || rowOffset != presentationSideRowOffset[sideIndex]) {
+          presentationDirtySides[dirtySideCount++] = sideIndex;
+          presentationSideTop[sideIndex] = top;
+          presentationSideBottom[sideIndex] = bottom;
+          presentationSideMiddle[sideIndex] = middle;
+          presentationSideRawTop[sideIndex] = rawTop;
+          presentationSideRawBottom[sideIndex] = rawBottom;
+          presentationSideRawMiddle[sideIndex] = rawMiddle;
+          presentationSideSpecial[sideIndex] = special;
+          presentationSideTextureOffset[sideIndex] = textureOffset;
+          presentationSideRowOffset[sideIndex] = rowOffset;
+        }
+        if (presentationSideStateInitialized
+            && !presentationCandidateSideFlags[sideIndex]
+            && (top != (char) (side.toptexture == 0 ? 0 : side.toptexture)
+                || bottom != (char) (side.bottomtexture == 0
+                    ? 0 : side.bottomtexture)
+                || middle != (char) (side.midtexture == 0
+                    ? 0 : side.midtexture))) {
+          presentationCandidateSideFlags[sideIndex] = true;
+          presentationCandidateSides[presentationCandidateSideCount++] =
+              sideIndex;
+        }
+      }
+      if (scanAll && presentationSideStateInitialized
+          && animationBoundary && engine.leveltime >= 8) {
+        presentationAnimatedSidesCataloged = true;
+      }
+      presentationSideStateInitialized = true;
+    }
+    int sectorOffset = 208;
+    int sectorCount = includeSectors
+        ? engine.levelLoader.sectors.length
+        : includeDirtySides ? dirtySectorCount : 0;
+    int sectorRecordBytes = includeDirtySides ? 18 : 16;
+    int sideOffset = sectorOffset + sectorCount * sectorRecordBytes;
+    int sideCount = includeSides
+        ? engine.levelLoader.sides.length
+        : includeDirtySides ? dirtySideCount : 0;
+    int sideRecordBytes = includeDirtySides ? 18 : 8;
+    int mobjOffset = sideOffset + sideCount * sideRecordBytes;
+    boolean compactCompositorMobjs =
+        !includeSides && !includeDirtySides && !includeSectors && includeMobjs;
+    int mobjRecordBytes = compactCompositorMobjs ? 24 : 32;
+    int length = includeSides || includeDirtySides
+        ? mobjOffset + mobjCount * mobjRecordBytes : mobjOffset;
+    // DVL6's one-time all-sector/all-side seed includes fixed-point X/Y
+    // offsets and is intentionally larger than RAW's 32,767-byte boundary.
+    // The retained coordinator consumes it as a same-session native
+    // Uint8Array; steady indexed dirty updates remain only a few KB.
+    if (length > 16 * 1024 * 1024) {
+      throw new IllegalStateException("presentation world snapshot too large " + length);
+    }
+    int requiredCapacity = includeSides || includeDirtySides
+        ? Math.max(length, 16384)
+        : 8192;
+    if (presentationWorldSnapshot == null
+        || presentationWorldSnapshot.length < requiredCapacity
+        || (!includeSides && !includeDirtySides
+            && presentationWorldSnapshot.length > 16384)) {
+      presentationWorldSnapshot = new byte[requiredCapacity];
+    }
+    putPresentationI32(0,
+        includeDirtySides ? 0x364c5644
+            : includeSides ? 0x324c5644
+            : includeSectors ? 0x334c5644 : 0x344c5644);
+    putPresentationI32(4, includeDirtySides ? 6
+        : includeSides ? 2 : includeSectors ? 3 : 4);
+    putPresentationI32(8, engine.gametic);
+    putPresentationI32(12, playerSlot);
+    putPresentationI32(16, sectorCount);
+    putPresentationI32(20, mobjCount);
+    putPresentationI32(24, sectorOffset);
+    putPresentationI32(28, mobjOffset);
+    putPresentationI32(32, length);
+    putPresentationI32(36, player.mo.x);
+    putPresentationI32(40, player.mo.y);
+    putPresentationI32(44, player.mo.z);
+    putPresentationI32(48, (int) player.mo.angle >>> 16);
+    putPresentationI32(52, player.viewz);
+    putPresentationI32(56, player.health[0]);
+    putPresentationI32(60, player.armorpoints[0]);
+    putPresentationI32(64, player.readyweapon.ordinal());
+    putPresentationI32(68, player.pendingweapon.ordinal());
+    for (int ammo = 0; ammo < 4; ammo++) {
+      putPresentationI32(72 + ammo * 4, player.ammo[ammo]);
+    }
+    for (int psprite = 0; psprite < 2; psprite++) {
+      p.pspdef_t value = player.psprites[psprite];
+      int offset = 88 + psprite * 20;
+      putPresentationI32(offset, value.state == null ? -1 : value.state.id);
+      putPresentationI32(offset + 4, value.sx);
+      putPresentationI32(offset + 8, value.sy);
+      putPresentationI32(offset + 12,
+          value.state == null || value.state.sprite == null
+              ? -1 : value.state.sprite.ordinal());
+      putPresentationI32(offset + 16,
+          value.state == null ? -1 : value.state.frame);
+    }
+    putPresentationI32(128, player.damagecount);
+    putPresentationI32(132, player.bonuscount);
+    putPresentationI32(136, player.extralight);
+    putPresentationI32(140, player.fixedcolormap);
+    int cards = 0;
+    for (int card = 0; card < player.cards.length; card++) {
+      if (player.cards[card]) cards |= 1 << card;
+    }
+    putPresentationI32(144, cards);
+    int frags = 0;
+    for (int frag : player.frags) frags += frag;
+    putPresentationI32(148, frags);
+    putPresentationI32(152, player.killcount);
+    putPresentationI32(156, player.itemcount);
+    putPresentationI32(160, player.secretcount);
+    putPresentationI32(164, player.playerstate);
+    putPresentationI32(168, player.cheats);
+    putPresentationI32(172, player.armortype);
+    putPresentationI32(176, player.colormap);
+    putPresentationI32(180, player.refire);
+    putPresentationI32(184, player.attackdown ? 1 : 0);
+    putPresentationI32(188, player.usedown ? 1 : 0);
+    putPresentationI32(192, sideCount);
+    putPresentationI32(196, sideOffset);
+    putPresentationI32(200, sideRecordBytes);
+    putPresentationI32(204,
+        includeDirtySides ? sectorRecordBytes : sectorOffset);
+
+    int offset = sectorOffset;
+    if (includeSectors) {
+      for (rr.sector_t sector : engine.levelLoader.sectors) {
+        putPresentationI32(offset, sector.floorheight);
+        putPresentationI32(offset + 4, sector.ceilingheight);
+        putPresentationI16(offset + 8, sector.lightlevel);
+        putPresentationI16(offset + 10,
+            engine.textureManager.getFlatTranslation(sector.floorpic));
+        putPresentationI16(offset + 12,
+            engine.textureManager.getFlatTranslation(sector.ceilingpic));
+        putPresentationI16(offset + 14, sector.special);
+        offset += 16;
+      }
+    } else if (includeDirtySides) {
+      for (int dirty = 0; dirty < dirtySectorCount; dirty++) {
+        int sectorIndex = presentationDirtySectors[dirty];
+        putPresentationI16(offset, sectorIndex);
+        putPresentationI32(
+            offset + 2, presentationSectorFloor[sectorIndex]);
+        putPresentationI32(
+            offset + 6, presentationSectorCeiling[sectorIndex]);
+        putPresentationI16(
+            offset + 10, presentationSectorLight[sectorIndex]);
+        putPresentationI16(
+            offset + 12, presentationSectorFloorAsset[sectorIndex]);
+        putPresentationI16(
+            offset + 14, presentationSectorCeilingAsset[sectorIndex]);
+        putPresentationI16(
+            offset + 16, presentationSectorSpecial[sectorIndex]);
+        offset += 18;
+      }
+    }
+    if (includeSides) {
+      for (rr.side_t side : engine.levelLoader.sides) {
+        putPresentationI16(offset,
+            side.toptexture == 0 ? 0
+                : engine.textureManager.getTextureTranslation(side.toptexture));
+        putPresentationI16(offset + 2,
+            side.bottomtexture == 0 ? 0
+                : engine.textureManager.getTextureTranslation(side.bottomtexture));
+        putPresentationI16(offset + 4,
+            side.midtexture == 0 ? 0
+                : engine.textureManager.getTextureTranslation(side.midtexture));
+        putPresentationI16(offset + 6, side.special);
+        offset += 8;
+      }
+    } else if (includeDirtySides) {
+      for (int dirty = 0; dirty < dirtySideCount; dirty++) {
+        int sideIndex = presentationDirtySides[dirty];
+        putPresentationI16(offset, sideIndex);
+        putPresentationI16(offset + 2, presentationSideTop[sideIndex]);
+        putPresentationI16(offset + 4, presentationSideBottom[sideIndex]);
+        putPresentationI16(offset + 6, presentationSideMiddle[sideIndex]);
+        putPresentationI16(offset + 8, presentationSideSpecial[sideIndex]);
+        putPresentationI32(
+            offset + 10, presentationSideTextureOffset[sideIndex]);
+        putPresentationI32(offset + 14, presentationSideRowOffset[sideIndex]);
+        offset += 18;
+      }
+    }
+    int writtenMobjs = 0;
+    int presentationDirectionX = 0;
+    int presentationDirectionY = 0;
+    if (includeMobjs && !includeSides) {
+      int angle = ((int) player.mo.angle >>> Tables.ANGLETOFINESHIFT)
+          & Tables.FINEMASK;
+      presentationDirectionX = Tables.finecosine[angle] >> 8;
+      presentationDirectionY = Tables.finesine[angle] >> 8;
+    }
+    if (includeMobjs) {
+      for (thinker_t current = cap.next;
+           current != null && current != cap;
+           current = current.next) {
+        if (!(current instanceof p.mobj_t)) continue;
+        p.mobj_t mobj = (p.mobj_t) current;
+        if (((int) mobj.flags & p.mobj_t.MF_NOSECTOR) != 0) continue;
+        if (!includeSides
+            && !presentationMobjCandidate(
+                player.mo, mobj,
+                presentationDirectionX, presentationDirectionY)) {
+          continue;
+        }
+        if (offset > 32767 - mobjRecordBytes) {
+          throw new IllegalStateException("presentation mobj payload too large");
+        }
+        if (offset > presentationWorldSnapshot.length - mobjRecordBytes) {
+          growPresentationCompactSnapshot(offset + mobjRecordBytes);
+        }
+        putPresentationI32(offset, mobj.x);
+        putPresentationI32(offset + 4, mobj.y);
+        putPresentationI32(offset + 8, mobj.z);
+        putPresentationI32(offset + 12, (int) mobj.angle >>> 16);
+        putPresentationI16(offset + 16,
+            mobj.mobj_sprite == null ? -1 : mobj.mobj_sprite.ordinal());
+        putPresentationI16(offset + 18, mobj.mobj_frame);
+        if (compactCompositorMobjs) {
+          putPresentationI16(offset + 20,
+              mobj.subsector == null ? -1 : mobj.subsector.sector.id);
+          putPresentationI16(offset + 22, 0);
+        } else {
+          putPresentationI32(offset + 20,
+              mobj.mobj_state == null ? -1 : mobj.mobj_state.id);
+          putPresentationI32(offset + 24, (int) mobj.flags);
+          putPresentationI16(offset + 28,
+              mobj.type == null ? -1 : mobj.type.ordinal());
+          putPresentationI16(offset + 30,
+              mobj.subsector == null ? -1 : mobj.subsector.sector.id);
+        }
+        offset += mobjRecordBytes;
+        writtenMobjs++;
+        if (!includeSides) mobjCount++;
+      }
+    }
+    if (!includeSides && !includeDirtySides) {
+      length = offset;
+      putPresentationI32(20, mobjCount);
+      putPresentationI32(32, length);
+    }
+    if (writtenMobjs != mobjCount || offset != length) {
+      throw new IllegalStateException(
+          "presentation snapshot cardinality changed during serialization"
+              + " offset=" + offset + " length=" + length
+              + " sectors=" + sectorCount
+              + " dirtySectors=" + dirtySectorCount
+              + " sides=" + sideCount + " dirtySides=" + dirtySideCount);
+    }
+    presentationWorldSnapshotLength = length;
+    return length;
+  }
+
+  /**
+   * Keep the cross-module DVC4 export near its useful payload size.  TeaVM's
+   * {@code @JSByRef} bridge exposes the complete Java backing array, not only
+   * {@link #presentationWorldSnapshotLength}; the former fixed 32,767-byte
+   * allocation therefore paid a multi-millisecond boundary cost for padding
+   * on every frame.  Power-of-two growth avoids a per-frame allocation when
+   * the visible thinker population changes.
+   */
+  private static void growPresentationCompactSnapshot(int required) {
+    int capacity = presentationWorldSnapshot.length;
+    while (capacity < required && capacity < 16384) capacity <<= 1;
+    if (capacity < required) capacity = 32767;
+    byte[] grown = new byte[capacity];
+    for (int index = 0; index < presentationWorldSnapshot.length; index++) {
+      grown[index] = presentationWorldSnapshot[index];
+    }
+    presentationWorldSnapshot = grown;
+  }
+
+  /**
+   * Conservative first-person frustum rejection before serializing a mobj.
+   * The compositor performs the final projection and occlusion tests.  A
+   * two-to-one lateral margin is wider than its 1.5-to-one projection gate,
+   * so this removes records that cannot contribute pixels without clipping
+   * sprites at either edge of the view.
+   */
+  private static boolean presentationMobjCandidate(
+      p.mobj_t viewer, p.mobj_t candidate,
+      int directionX, int directionY) {
+    int dx = (candidate.x - viewer.x) >> 16;
+    int dy = (candidate.y - viewer.y) >> 16;
+    int depth = dx * directionX + dy * directionY;
+    if (depth <= 0) return false;
+    int lateral = -dx * directionY + dy * directionX;
+    if (lateral == Integer.MIN_VALUE || depth > Integer.MAX_VALUE / 2) {
+      return true;
+    }
+    return Math.abs(lateral) <= depth * 2;
+  }
+
+  @JSExport
+  public static Uint8Array presentationWorldSnapshotChunk(
+      int offset, int length) {
+    if (presentationWorldSnapshot == null
+        || presentationWorldSnapshotLength == 0) {
+      throw new IllegalStateException("presentation snapshot length must run first");
+    }
+    if (offset < 0 || length < 0 || length > 32767
+        || offset > presentationWorldSnapshotLength - length) {
+      throw new IllegalArgumentException("presentation snapshot chunk");
+    }
+    Uint8Array result = Uint8Array.create(length);
+    for (int index = 0; index < length; index++) {
+      result.set(index,
+          (short) (presentationWorldSnapshot[offset + index] & 255));
+    }
+    return result;
+  }
+
+  /**
+   * Zero-copy view for a coordinator module running in the same MLE context.
+   * Call {@link #presentationWorldSnapshotLength(int)} first and consume only
+   * that many leading bytes; the retained backing array may be larger after a
+   * higher-mobj frame.
+   */
+  @JSExport
+  @JSByRef
+  public static byte[] presentationWorldSnapshotByRef() {
+    if (presentationWorldSnapshot == null
+        || presentationWorldSnapshotLength == 0) {
+      throw new IllegalStateException("presentation snapshot length must run first");
+    }
+    return presentationWorldSnapshot;
+  }
+
+  /**
+   * Same-isolate view of the retained presentation payload without the
+   * defensive primitive-array clone performed by {@link JSByRef}. Consumers
+   * must finish reading it before the next snapshot build mutates the array.
+   */
+  @JSExport
+  public static Uint8Array presentationWorldSnapshotNativeByRef() {
+    if (presentationWorldSnapshot == null
+        || presentationWorldSnapshotLength == 0) {
+      throw new IllegalStateException("presentation snapshot length must run first");
+    }
+    return nativeByteArrayView(presentationWorldSnapshot);
+  }
+
+  @JSBody(params = {"array"}, script =
+      "return new Uint8Array(array.buffer,"
+          + "array.byteOffset,array.byteLength);")
+  private static native Uint8Array nativeByteArrayView(
+      @JSByRef byte[] array);
+
+  @JSExport
+  public static int presentationWorldSnapshotCurrentLength() {
+    return presentationWorldSnapshotLength;
+  }
+
+  private static void putPresentationI16(int offset, int value) {
+    presentationWorldSnapshot[offset] = (byte) value;
+    presentationWorldSnapshot[offset + 1] = (byte) (value >>> 8);
+  }
+
+  private static void putPresentationI32(int offset, int value) {
+    putPresentationI16(offset, value);
+    putPresentationI16(offset + 2, value >>> 16);
   }
 
   private static void putSnapshotI32(
@@ -1262,6 +1861,31 @@ public final class SimulationEngineReachabilityProbe {
     checkpointBytesLoaded = 0;
     iwad = null;
     presentationStatusBackgrounds = null;
+    presentationWorldSnapshot = null;
+    presentationWorldSnapshotLength = 0;
+    presentationSectorFloor = null;
+    presentationSectorCeiling = null;
+    presentationSectorLight = null;
+    presentationSectorFloorAsset = null;
+    presentationSectorCeilingAsset = null;
+    presentationSectorSpecial = null;
+    presentationDirtySectors = null;
+    presentationSectorStateInitialized = false;
+    presentationSideTop = null;
+    presentationSideBottom = null;
+    presentationSideMiddle = null;
+    presentationSideRawTop = null;
+    presentationSideRawBottom = null;
+    presentationSideRawMiddle = null;
+    presentationSideSpecial = null;
+    presentationSideTextureOffset = null;
+    presentationSideRowOffset = null;
+    presentationDirtySides = null;
+    presentationCandidateSides = null;
+    presentationCandidateSideFlags = null;
+    presentationCandidateSideCount = 0;
+    presentationAnimatedSidesCataloged = false;
+    presentationSideStateInitialized = false;
     tablePack = null;
     tablePackBytesLoaded = 0;
     Tables.clearCanonicalTablePack();
@@ -1279,6 +1903,7 @@ public final class SimulationEngineReachabilityProbe {
       return buf;
     }
   }
+
 
   public static void main(String[] args) {
     // MLE and Node drive the explicit exported lifecycle above.

@@ -11,6 +11,10 @@ const deCpsAuthority = {
   bytes: 1081335,
   sha256: '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3'
 };
+const liveFrameAuthority = {
+  bytes: 1181281,
+  sha256: 'c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1'
+};
 const adbVenueEvidencePath =
   'artifacts/performance/pmle-adb-venue/adb-tier-probe-2026-07-25.log';
 const ociReleaseVenueEvidencePath =
@@ -41,7 +45,21 @@ const ociWasm2jsPresentationCostEvidencePath =
 const ociPlainMleRasterFloorEvidencePath =
   'artifacts/performance/pmle-database-frames/' +
   'plain-mle-raster-floor-verdict-2026-07-26.md';
+const ociDatabasePixelReleaseEvidencePath =
+  'artifacts/performance/pmle-live-frame-authority/' +
+  'oci-two-pov-native35-input20-standby5-terminal-2026-07-29-v37.log';
+const ociBrowserCleanupEvidencePath =
+  'artifacts/performance/pmle-live-frame-authority/' +
+  'oci-session-cleanup-browser-native35-2026-07-29.log';
+const ociDatabaseCleanupEvidencePath =
+  'artifacts/performance/pmle-live-frame-authority/' +
+  'oci-session-cleanup-live-native35-2026-07-29.log';
+const ociActiveLeaveEvidencePath =
+  'artifacts/performance/pmle-live-frame-authority/' +
+  'oci-active-leave-native35-2026-07-29.log';
 const deCpsPromoted = authority.outputSha256 === deCpsAuthority.sha256;
+const liveFramePromoted =
+  authority.outputSha256 === liveFrameAuthority.sha256;
 const deCpsPromotionPath =
   'artifacts/performance/pmle-decps-rank/' +
   'promotion-5ec18cbe-2026-07-25.log';
@@ -49,12 +67,11 @@ const deCpsPrePromotionPath =
   'artifacts/performance/pmle-decps-rank/REPORT.md';
 const deCpsStatePath =
   'artifacts/performance/pmle-decps-rank/database-deployment-state.json';
-const deCpsState = fs.existsSync(path.join(root, deCpsStatePath))
+const deCpsState = deCpsPromoted &&
+    fs.existsSync(path.join(root, deCpsStatePath))
   ? JSON.parse(fs.readFileSync(path.join(root, deCpsStatePath), 'utf8'))
   : null;
 if (deCpsState !== null) {
-  assert.ok(deCpsPromoted,
-    'de-CPS deployment state cannot outlive its source pin');
   assert.equal(deCpsState.schema, 1);
   assert.equal(deCpsState.authoritySha256, deCpsAuthority.sha256);
 }
@@ -156,21 +173,28 @@ const contains = (text, marker, label) =>
 
 const soakPath =
   'artifacts/performance/pmle-worker-soak/run-final-checkpoint-reuse-v3.log';
-const ledgerPath = deCpsPromoted
+const ledgerPath = liveFramePromoted
+  ? 'artifacts/performance/pmle-ledger-every-tic/' +
+    'run-live-frame-c613-2026-07-28.log'
+  : deCpsPromoted
   ? 'artifacts/performance/pmle-ledger-every-tic/' +
     'run-decps-reproducible-5ec18cbe-2026-07-25.log'
   : 'artifacts/performance/pmle-ledger-every-tic/' +
     'run-checkpoint-map-2026-07-24.log';
 const canonicalPath = 'artifacts/performance/pmle-differentials/' +
-  (deCpsPromoted
+  (deCpsPromoted || liveFramePromoted
     ? 'canonical-decps-reproducible-5ec18cbe-2026-07-25.log'
     : 'canonical-warm-restore-e485-2026-07-24.log');
 const coopPath = 'artifacts/performance/pmle-differentials/' +
-  (deCpsPromoted
+  (liveFramePromoted
+    ? 'coop-live-frame-c613-final-2026-07-28.log'
+    : deCpsPromoted
     ? 'coop-decps-reproducible-5ec18cbe-2026-07-25.log'
     : 'coop-warm-restore-e485-2026-07-24.log');
 const membershipPath = 'artifacts/performance/pmle-differentials/' +
-  (deCpsPromoted
+  (liveFramePromoted
+    ? 'membership-live-frame-c613-final-2026-07-28.log'
+    : deCpsPromoted
     ? 'membership-decps-reproducible-5ec18cbe-2026-07-25.log'
     : 'membership-warm-restore-e485-2026-07-24.log');
 const warmRestorePath =
@@ -257,7 +281,13 @@ const ociHostedBrowserFull = JSON.parse(read(ociHostedBrowserFullEvidencePath));
 const warmRestore = read(warmRestorePath);
 const highAwakeRecovery = read(highAwakeRecoveryPath);
 const warmSlotRecycle = read(warmSlotRecyclePath);
-const ledgerAuthority = deCpsPromoted ? deCpsAuthority : {
+const ociDatabasePixelRelease = read(ociDatabasePixelReleaseEvidencePath);
+const ociBrowserCleanup = read(ociBrowserCleanupEvidencePath);
+const ociDatabaseCleanup = read(ociDatabaseCleanupEvidencePath);
+const ociActiveLeave = read(ociActiveLeaveEvidencePath);
+const ledgerAuthority = liveFramePromoted
+  ? liveFrameAuthority
+  : deCpsPromoted ? deCpsAuthority : {
   bytes: 1170639,
   sha256: '103e15e913b3a8f9a84497af601666fde5f47a720ac4b22fd7843db2559b665e'
 };
@@ -275,7 +305,7 @@ contains(soak, 'PMLE_WORKER_SOAK_MEMORY|PASS|role=AUTHORITY', 'authority memory'
 contains(soak, 'PMLE_WORKER_SOAK_MEMORY|PASS|role=STANDBY', 'standby memory');
 contains(soak, 'PMLE_WORKER_SOAK|PASS|duration_s=1800|warmup_s=300',
   'worker soak');
-contains(ledger, `${deCpsPromoted
+contains(ledger, `${deCpsPromoted || liveFramePromoted
   ? 'PMLE_CANDIDATE_PAIR|classification=UNPROMOTED_CANDIDATE'
   : 'PMLE_PINNED_PAIR'}|authority_sha256=${ledgerAuthority.sha256}` +
   `|table_sha256=058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44` +
@@ -294,21 +324,48 @@ contains(initDiet,
   `PMLE_INIT_DIET_ARTIFACT|authority_bytes=${lastSoakedAuthority.bytes}` +
   `|authority_sha256=${lastSoakedAuthority.sha256}`,
   'historical init-diet promoted artifact');
-for (const [evidence, marker, label] of [
+for (const [evidence, marker, label, expectedAuthority] of [
   [canonical, 'PMLE_TEAVM_MULTIPLAYER|PASS|players=4|tics=330',
-    'candidate canonical 330'],
+    'candidate canonical 330',
+    liveFramePromoted ? deCpsAuthority : authority],
   [coop, 'PMLE_TEAVM_COOP_DIFFERENTIAL|PASS|players=2|skill=1|tics=762|deep_every=1',
-    'candidate co-op 762'],
+    'candidate co-op 762', authority],
   [membership,
     'PMLE_TEAVM_MEMBERSHIP_RECOVERY_DIFFERENTIAL|PASS|players=2',
-    'candidate membership recovery']
+    'candidate membership recovery', authority]
 ]) {
   contains(evidence,
-    `PMLE_ARTIFACT|source_bytes=${authority.outputBytes}` +
-    `|source_sha256=${authority.outputSha256}`,
+    `PMLE_ARTIFACT|source_bytes=${expectedAuthority.bytes ??
+      expectedAuthority.outputBytes}` +
+    `|source_sha256=${expectedAuthority.sha256 ??
+      expectedAuthority.outputSha256}`,
     `${label} artifact`);
   contains(evidence, marker, label);
 }
+contains(ociDatabasePixelRelease,
+  'PMLE_OCI_TWO_POV|PASS|frames_per_player=300|minimum_fps=30|' +
+  'renderer=DATABASE_PIXELS',
+  'OCI database-pixel release gate');
+contains(ociDatabasePixelRelease,
+  'PMLE_OCI_TWO_POV_EVALUATOR|PASS|p0_fps=34.182|' +
+  'p0_p95_ms=33.000',
+  'OCI database-pixel player zero cadence');
+contains(ociDatabasePixelRelease,
+  '|p1_fps=34.133|p1_p95_ms=32.800|',
+  'OCI database-pixel player one cadence');
+contains(ociDatabasePixelRelease,
+  'PMLE_OCI_CHECKPOINT_CROSSING|PASS|checkpoint_tic=512|' +
+  'windows=301-600/301-600',
+  'OCI database-pixel checkpoint crossing');
+contains(ociBrowserCleanup,
+  'PASS SESSION-CLEANUP-BROWSER',
+  'browser refresh/close cleanup');
+contains(ociDatabaseCleanup,
+  'PASS SESSION-CLEANUP-LIVE abandoned active browser releases retained slot',
+  'database abandoned-session cleanup');
+contains(ociActiveLeave,
+  'PASS P13.2-ACTIVE-LEAVE',
+  'active leave and host release');
 contains(initDiet,
   'PMLE_INIT_DIET_COLD|PASS|sample_1_ms=4541.733|sample_2_ms=4825.980',
   'init-diet cold gate');
@@ -476,7 +533,7 @@ contains(warmSlotRecycle,
 
 const status = {
   schema: 1,
-  updated: '2026-07-26',
+  updated: '2026-07-29',
   database: {
     product: 'Oracle AI Database 26ai Free',
     imageVersion: '23.26.2',
@@ -487,7 +544,10 @@ const status = {
   },
   architecture: {
     authority: 'TeaVM-generated MLE JavaScript in retained database sessions',
-    livePresentation: 'Browser rendering from confirmed DMD1 transitions',
+    livePresentation:
+      'Complete 320x200 indexed frames generated by MLE and delivered through ORDS',
+    browserRole:
+      'Decompress database pixel batches, apply palette, and copy to canvas',
     soloPresentation: 'One browser player plus an uncredentialed neutral authority slot',
     clientPrediction: false,
     productionOjvm: false
@@ -522,6 +582,14 @@ const status = {
       sha256: presentation.outputSha256,
       profile: presentation.profile
     },
+    liveFrameRenderer: {
+      bytes: authority.liveFrameRenderer.outputBytes,
+      sha256: authority.liveFrameRenderer.deployedOutputSha256,
+      profile: authority.liveFrameRenderer.profile,
+      coordinatorBytes: authority.liveFrameRenderer.coordinatorBytes,
+      coordinatorSha256:
+        authority.liveFrameRenderer.deployedCoordinatorSha256
+    },
     inputBytecodeSha256: authority.inputBytecodeSha256,
     mochaBytecodeSha256: authority.mochaBytecodeSha256,
     tablePackSha256:
@@ -531,12 +599,17 @@ const status = {
   },
   gates: {
     presentationHud96Tics: 'PASS',
-    canonical330: 'PASS',
+    canonical330: liveFramePromoted
+      ? 'HISTORICAL_PASS_5EC'
+      : 'PASS',
     coopEveryTic762: 'PASS',
     membershipRecovery: 'PASS',
-    ledgerEveryTic13272: deCpsPromoted
+    ledgerEveryTic13272: deCpsPromoted || liveFramePromoted
       ? 'PASS_CURRENT_AUTHORITY'
       : 'HISTORICAL_PASS_103E',
+    databasePixelTwoPov300: 'PASS',
+    databasePixelCheckpointCrossing: 'PASS',
+    abandonedSessionCleanup: 'PASS',
     warmRestoreDirectMleAb: deCpsPromoted
       ? (deCpsLifecycleQualified
         ? 'PASS_CURRENT_AUTHORITY'
@@ -621,6 +694,22 @@ const status = {
     guaranteedConcurrentPollReturns: 1,
     localLongPollingDefault: false
   },
+  sessionCleanup: {
+    browserRefreshReleaseMilliseconds: 1557,
+    browserCloseReleaseMilliseconds: 321,
+    terminalState: 'FINISHED',
+    capacityReuse: 'PASS',
+    abandonedLobby: 'PASS',
+    abandonedActiveMatch: 'PASS',
+    expiredCascadePurge: 'PASS',
+    activeGuestLeaveNeutralSubstitution: 'PASS',
+    hostFinishSlotRelease: 'PASS',
+    evidence: [
+      ociBrowserCleanupEvidencePath,
+      ociDatabaseCleanupEvidencePath,
+      ociActiveLeaveEvidencePath
+    ]
+  },
   solo: {
     coldStartBaselineSeconds: 248.629,
     coldAuthorityAdmissionSeconds: 100.314,
@@ -648,8 +737,30 @@ const status = {
     note: 'cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline'
   },
   performance: {
-    state: 'OCI_RELEASE_GATES_AND_WAN_QUALIFICATION_PASS',
-    evidenceArtifactSha256: deCpsAuthority.sha256,
+    state: 'OCI_DATABASE_PIXELS_TWO_POV_30FPS_PASS',
+    evidenceArtifactSha256: authority.outputSha256,
+    authorityTickerEvidenceArtifactSha256: deCpsAuthority.sha256,
+    databasePixelRelease: {
+      venue: 'OCI Autonomous Database Always Free 26ai',
+      renderer: 'DATABASE_PIXELS',
+      width: 320,
+      height: 200,
+      framesPerPlayer: 300,
+      players: 2,
+      fps: [34.182, 34.133],
+      cadenceP95Milliseconds: [33.0, 32.8],
+      cadenceP99Milliseconds: [41.7, 37.5],
+      confirmedFrameDrops: [0, 0],
+      checkpointTic: 512,
+      checkpointCrossing: 'PASS',
+      maximumPublicationGapMilliseconds: 62.666,
+      authoritySha256: authority.outputSha256,
+      rendererSha256:
+        authority.liveFrameRenderer.deployedOutputSha256,
+      coordinatorSha256:
+        authority.liveFrameRenderer.deployedCoordinatorSha256,
+      evidence: ociDatabasePixelReleaseEvidencePath
+    },
     workload: 'two-player deathmatch authoritative exact command stream',
     tics: 5250,
     throughputTicsPerSecond: 302.419,

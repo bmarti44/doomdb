@@ -1,0 +1,1 @@
+PMLE_LIVE_FRAME_E2E|PASS|match=REDACTED|initial_tic=0|moved_tic=2|bytes=64000|initial_sha256=087b69a1363ca972c8de00884d13645360a7530149788ede6b0a36f887724c9c|moved_sha256=ff10a92d5531cf5c6e2698de50948b03cd200104730a35dc784be6dd8caec0dc|generation=1|membership_epoch=1|batch=DPB2x2|batch_soak_polls=0|ring_wrap=NOT_RUN|pixel_recovery=NOT_RUN|invalid_capability=REJECTED

@@ -9,6 +9,7 @@ build_log="$evidence/oci-$tag-build.log"
 pool_log="$evidence/oci-$tag-pool.log"
 install_log="$evidence/oci-$tag-install.log"
 rank_log="$evidence/oci-$tag-rank.log"
+stage_log="$evidence/oci-$tag-stages.log"
 verdict_log="$evidence/oci-$tag-verdict.log"
 cleanup_log="$evidence/oci-$tag-cleanup.log"
 
@@ -20,7 +21,7 @@ for name in ADB_CONNECTION_STRING ADB_USERNAME ADB_PASSWORD ADB_WALLET_DIR \
     printf 'missing hybrid renderer setting: %s\n' "$name" >&2;exit 2; }
 done
 [[ "$ADB_USERNAME" == DOOM ]] || exit 2
-for output in "$build_log" "$pool_log" "$install_log" "$rank_log" \
+for output in "$build_log" "$pool_log" "$install_log" "$rank_log" "$stage_log" \
   "$verdict_log" "$cleanup_log"; do
   [[ ! -e "$output" ]] || {
     printf 'hybrid renderer evidence exists: %s\n' "$output" >&2;exit 1; }
@@ -79,6 +80,42 @@ SQL
 }
 trap finish EXIT HUP INT TERM
 
+if [[ "${PMLE_FREE_LIVE_STEAL_CAPACITY:-NO}" == YES ]]; then
+  "$root/scripts/adb-doom-sql.sh" - >>"$pool_log" <<'SQL'
+set serveroutput on size unlimited heading off feedback off pagesize 0
+declare l_count number;
+begin
+  for match_ in (
+    select match_id,generation from doom_match
+    where match_state in('LOBBY','STARTING','ACTIVE','RECOVERING')
+  ) loop
+    begin
+      if match_.generation>0 then
+        doom_match_worker.stop_match(match_.match_id,match_.generation);
+      end if;
+    exception when others then
+      dbms_output.put_line(
+        'PMLE_FREE_LIVE_HYBRID_RELEASE_NOTE|match='||match_.match_id||
+        '|sqlcode='||sqlcode);
+    end;
+    for i in 1..300 loop
+      select count(*) into l_count from doom_mle_warm_slot
+      where assigned_match=match_.match_id;
+      exit when l_count=0;
+      dbms_session.sleep(.1);
+    end loop;
+    if l_count<>0 then
+      raise_application_error(-20796,'authorized capacity release timed out');
+    end if;
+    delete from doom_match where match_id=match_.match_id;
+    commit;
+  end loop;
+  dbms_output.put_line('PMLE_FREE_LIVE_HYBRID_RELEASE|PASS');
+end;
+/
+SQL
+fi
+
 "$root/scripts/adb-doom-sql.sh" - >"$pool_log" <<'SQL'
 set serveroutput on size unlimited heading off feedback off pagesize 0
 declare l_active number;l_assigned number;l_live number;
@@ -115,10 +152,24 @@ loaded=1
 "$probe/install-free-live-renderer-hybrid.sh" --emit-sql |
   "$root/scripts/adb-doom-sql.sh" - | tee "$install_log"
 grep -Fq 'PMLE_FREE_LIVE_HYBRID_STAGING|PASS|' "$install_log"
+if [[ "${PMLE_HYBRID_STAGE_ONLY:-NO}" == YES ]]; then
+  : >"$rank_log"
+else
+  "$root/scripts/adb-doom-sql.sh" \
+    "$probe/benchmark-oci-free-live-renderer-hybrid.sql" | tee "$rank_log"
+  [[ "$(grep -c '^PMLE_FREE_LIVE_HYBRID_EQUIVALENCE|PASS|' "$rank_log")" == 5 ]]
+  [[ "$(grep -c '^PMLE_FREE_LIVE_HYBRID_PASS|PASS|' "$rank_log")" == 12 ]]
+fi
 "$root/scripts/adb-doom-sql.sh" \
-  "$probe/benchmark-oci-free-live-renderer-hybrid.sql" | tee "$rank_log"
-[[ "$(grep -c '^PMLE_FREE_LIVE_HYBRID_EQUIVALENCE|PASS|' "$rank_log")" == 5 ]]
-[[ "$(grep -c '^PMLE_FREE_LIVE_HYBRID_PASS|PASS|' "$rank_log")" == 12 ]]
+  "$probe/benchmark-oci-free-live-renderer-hybrid-stages.sql" | tee "$stage_log"
+[[ "$(grep -c '^PMLE_FREE_LIVE_HYBRID_STAGE|PASS|' "$stage_log")" == 6 ]]
+[[ "$(grep -c '^PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|' "$stage_log")" == 12 ]]
+if [[ "${PMLE_HYBRID_STAGE_ONLY:-NO}" == YES ]]; then
+  printf '%s\n' \
+    'PMLE_FREE_LIVE_HYBRID_VERDICT|STAGE_DECOMPOSITION_ONLY|classification=DIAGNOSTIC_NOT_GATE' |
+    tee "$verdict_log"
+  exit 0
+fi
 final_p95="$(awk -F'[=|]' '
   $1=="PMLE_FREE_LIVE_HYBRID_PASS" && $2=="PASS" {
     pass=0;p95=0

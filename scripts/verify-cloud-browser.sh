@@ -111,25 +111,9 @@ phase=source_and_build
 bash "$root/tests/verify-t11.2-source.sh" >"$tmp/source.log"
 "$root/node_modules/.bin/tsc" -p "$root/client/tsconfig.json" \
   --noEmit false --outDir "$tmp/client-dist"
-[[ "$(sha "$root/client/dist/play/doom-mle-authority-5ec18cbe4cff.js")" == \
-  5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3 ]]
-[[ "$(sha "$root/client/dist/play/doom-mle-presentation-e55d5f1138fa.js")" == \
-  e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc ]]
-[[ "$(sha "$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin")" == \
-  058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44 ]]
-[[ "$(sha "$root/client/dist/play/freedoom1-7323bcc168c5.bin")" == \
-  7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d ]]
 cp "$root/client/dist/play/index.html" "$tmp/client-dist/index.html"
 cp "$root/client/staging/multiplayer.html" "$tmp/client-dist/multiplayer.html"
 cp "$root/client/staging/solo.html" "$tmp/client-dist/solo.html"
-cp "$root/client/dist/play/doom-mle-authority-5ec18cbe4cff.js" \
-  "$tmp/client-dist/"
-cp "$root/client/dist/play/doom-mle-presentation-e55d5f1138fa.js" \
-  "$tmp/client-dist/"
-cp "$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin" \
-  "$tmp/client-dist/"
-cp "$root/client/dist/play/freedoom1-7323bcc168c5.bin" \
-  "$tmp/client-dist/"
 cp "$root/vendor/freedoom/0.13.0/COPYING.txt" \
   "$tmp/client-dist/COPYING-freedoom.txt"
 cp "$root/deploy/cloud/t11.2/SOURCE.txt" "$tmp/client-dist/SOURCE.txt"
@@ -240,12 +224,85 @@ phase=browser_30fps
 [[ -s "$T112_BROWSER_LEDGER" && -s /tmp/doomdb-t112-playwright.json ]] ||
   die 'browser ledger or Playwright report is absent'
 
+phase=runtime_postflight
+match_sha=$(jq -r '.cleanup.matchSha256' "$T112_BROWSER_LEDGER")
+first_tic=$(jq -r '.performance.firstTic' "$T112_BROWSER_LEDGER")
+last_tic=$(jq -r '.performance.lastTic' "$T112_BROWSER_LEDGER")
+[[ "$match_sha" =~ ^[0-9a-f]{64}$ &&
+    "$first_tic" =~ ^[0-9]+$ && "$last_tic" =~ ^[0-9]+$ ]] ||
+  die 'browser runtime identity is malformed'
+cat >"$tmp/runtime-postflight.sql" <<SQL
+set pagesize 0 feedback off heading off verify off echo off trimout on trimspool on linesize 32767
+select 'T112_RUNTIME|match_sha256='||
+  lower(rawtohex(standard_hash(m.match_id,'SHA256')))||
+  '|authority_sha256='||source_.authority_sha256||
+  '|renderer_sha256='||source_.renderer_sha256||
+  '|coordinator_sha256='||source_.coordinator_sha256||
+  '|current_tic='||m.current_tic||
+  '|checkpoint_count='||
+    (select count(*) from doom_match_checkpoint cp
+      where cp.match_id=m.match_id and cp.generation=m.generation
+        and cp.tic between $first_tic and $last_tic)||
+  '|checkpoint_unmeasured_count='||
+    (select count(*) from doom_match_checkpoint cp
+      where cp.match_id=m.match_id and cp.generation=m.generation
+        and cp.tic between $first_tic and $last_tic and cp.tic>0
+        and cp.save_elapsed_ms=0 and cp.publish_elapsed_ms=0)||
+  '|checkpoint_slow_count='||
+    (select count(*) from doom_match_checkpoint cp
+      where cp.match_id=m.match_id and cp.generation=m.generation
+        and cp.tic between $first_tic and $last_tic
+        and (greatest(cp.save_elapsed_ms,cp.publish_elapsed_ms)>250
+          or exists(select 1 from doom_match_slow_call slow_
+            where slow_.match_id=cp.match_id
+              and slow_.generation=cp.generation and slow_.tic=cp.tic
+              and slow_.checkpoint_save_ms is not null)))||
+  '|checkpoint_max_step_ms='||
+    to_char(coalesce((select max(slow_.elapsed_ms)
+      from doom_match_slow_call slow_
+      where slow_.match_id=m.match_id and slow_.generation=m.generation
+        and slow_.tic between $first_tic and $last_tic
+        and slow_.checkpoint_save_ms is not null),0),
+      'FM999999990D999','NLS_NUMERIC_CHARACTERS=''.,''')||
+  '|checkpoint_max_save_ms='||
+    to_char(coalesce((select max(cp.save_elapsed_ms)
+      from doom_match_checkpoint cp
+      where cp.match_id=m.match_id and cp.generation=m.generation
+        and cp.tic between $first_tic and $last_tic),0),
+      'FM999999990D999','NLS_NUMERIC_CHARACTERS=''.,''')||
+  '|checkpoint_max_publish_ms='||
+    to_char(coalesce((select max(cp.publish_elapsed_ms)
+      from doom_match_checkpoint cp
+      where cp.match_id=m.match_id and cp.generation=m.generation
+        and cp.tic between $first_tic and $last_tic),0),
+      'FM999999990D999','NLS_NUMERIC_CHARACTERS=''.,''')||
+  '|checkpoint_max_stage_ms='||
+    to_char(coalesce((select max(greatest(
+        cp.save_elapsed_ms,cp.publish_elapsed_ms))
+      from doom_match_checkpoint cp
+      where cp.match_id=m.match_id and cp.generation=m.generation
+        and cp.tic between $first_tic and $last_tic),0),
+      'FM999999990D999','NLS_NUMERIC_CHARACTERS=''.,''')
+  from doom_match m cross join doom_mle_live_frame_source source_
+ where source_.artifact_id=1
+   and lower(rawtohex(standard_hash(m.match_id,'SHA256')))='$match_sha';
+SQL
+if ! sql_run "$tmp/runtime-postflight.sql" "$tmp/runtime-postflight.log" \
+    2>"$tmp/runtime-postflight.err"; then
+  show_failure "$tmp/runtime-postflight.err"
+  show_failure "$tmp/runtime-postflight.log"
+  exit 1
+fi
+node "$root/scripts/t11.2-verify-runtime-postflight.mjs" \
+  "$tmp/runtime-postflight.log" "$match_sha" "$first_tic" "$last_tic" \
+  "$root/versions.lock" "$tmp/runtime-postflight.json"
+
 phase=evidence
 candidate="$tmp/doomdb-t112-evidence.json"
 node "$root/scripts/t11.2-build-hosted-evidence.mjs" \
   "$policy" "$tmp/build-manifest.json" "$tmp/catalog-verdict.json" \
   "$tmp/live" "$T112_BROWSER_LEDGER" /tmp/doomdb-t112-playwright.json \
-  "$T112_HOSTED_INDEX_URL" "$candidate"
+  "$tmp/runtime-postflight.json" "$T112_HOSTED_INDEX_URL" "$candidate"
 node "$root/evaluator/t11.2/validate-evidence.mjs" "$candidate" >/dev/null
 if rg -n -i '(authorization|bearer |password|wallet|private_key|adb_ords|https://|jdbc:|oraclecloudapps|game_token|session_id)' \
     "$candidate" >/dev/null; then

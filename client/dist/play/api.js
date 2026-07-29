@@ -202,6 +202,28 @@ export async function leaveMatch(match, playerCapability) {
     });
     return stringField(document, 'p_match_state');
 }
+/**
+ * Best-effort unload cleanup. The server-side lease/janitor remains the
+ * authority because browsers may terminate without dispatching pagehide.
+ */
+export function leaveMatchOnUnload(match, playerCapability) {
+    const body = JSON.stringify({
+        p_match: match, p_player_capability: playerCapability
+    });
+    const url = `${ROOT}LEAVE_MATCH`;
+    const payload = new Blob([body], { type: 'application/json' });
+    if (navigator.sendBeacon(url, payload))
+        return;
+    void fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+        keepalive: true
+    }).catch(() => {
+        // Unload delivery cannot be guaranteed. The database lease and lifecycle
+        // reconciler are the fail-safe reclamation path.
+    });
+}
 export async function matchStatus(match, capability) {
     const document = await post('match_status', {
         p_match: match, p_capability: capability
@@ -353,5 +375,93 @@ export async function pollMatchFrame(match, playerCapability, tic, waitMilliseco
     return {
         currentTic: numberField(document, 'p_current_tic'),
         payload: ready === 1 ? stringField(document, 'p_payload') : null
+    };
+}
+export async function pollMatchPixels(match, playerCapability, afterTic) {
+    const document = await postAsync('poll_match_pixels', {
+        p_match: match,
+        p_player_capability: playerCapability,
+        p_after_tic: afterTic
+    });
+    const ready = numberField(document, 'p_ready');
+    if (ready !== 0 && ready !== 1) {
+        throw new TypeError('p_ready response field is invalid');
+    }
+    return {
+        ready: ready === 1,
+        currentTic: numberField(document, 'p_current_tic'),
+        frameTic: ready === 1 ? numberField(document, 'p_frame_tic') : null,
+        membershipEpoch: numberField(document, 'p_membership_epoch'),
+        generation: numberField(document, 'p_generation'),
+        payload: ready === 1 ? stringField(document, 'p_payload') : null
+    };
+}
+export async function pollMatchPixelBatch(match, playerCapability, afterTic, maximumFrames = 8) {
+    const document = await postAsync('poll_match_pixel_batch', {
+        p_match: match,
+        p_player_capability: playerCapability,
+        p_after_tic: afterTic,
+        p_max_frames: maximumFrames
+    });
+    const frameCount = numberField(document, 'p_frame_count');
+    if (frameCount < 0 || frameCount > maximumFrames) {
+        throw new TypeError('pixel batch count is invalid');
+    }
+    return {
+        frameCount,
+        firstTic: frameCount > 0 ? numberField(document, 'p_first_tic') : null,
+        lastTic: frameCount > 0 ? numberField(document, 'p_last_tic') : null,
+        currentTic: numberField(document, 'p_current_tic'),
+        membershipEpoch: numberField(document, 'p_membership_epoch'),
+        generation: numberField(document, 'p_generation'),
+        payload: frameCount > 0 ? stringField(document, 'p_payload') : null
+    };
+}
+export async function exchangeMatchPixelBatch(match, playerCapability, afterTic, maximumFrames, inputSequence, ticcmdHex, targetTic) {
+    if ((inputSequence === undefined) !== (ticcmdHex === undefined)) {
+        throw new TypeError('pixel exchange input is incomplete');
+    }
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 20_000);
+    let document;
+    try {
+        document = await postAsync('exchange_match_pixel_batch', {
+            p_match: match,
+            p_player_capability: playerCapability,
+            p_after_tic: afterTic,
+            p_max_frames: maximumFrames,
+            p_input_seq: inputSequence,
+            p_ticcmd_hex: ticcmdHex,
+            p_target_tic: targetTic
+        }, controller.signal);
+    }
+    catch (cause) {
+        if (controller.signal.aborted) {
+            throw new Error('exchange_match_pixel_batch request failed: 504');
+        }
+        throw cause;
+    }
+    finally {
+        window.clearTimeout(timeout);
+    }
+    const frameCount = numberField(document, 'p_frame_count');
+    if (frameCount < 0 || frameCount > maximumFrames) {
+        throw new TypeError('pixel exchange batch count is invalid');
+    }
+    const inputAccepted = numberField(document, 'p_input_accepted');
+    if (inputAccepted !== 0 && inputAccepted !== 1) {
+        throw new TypeError('pixel exchange input result is invalid');
+    }
+    return {
+        inputAccepted,
+        effectiveTic: inputAccepted === 1
+            ? numberField(document, 'p_effective_tic') : null,
+        frameCount,
+        firstTic: frameCount > 0 ? numberField(document, 'p_first_tic') : null,
+        lastTic: frameCount > 0 ? numberField(document, 'p_last_tic') : null,
+        currentTic: numberField(document, 'p_current_tic'),
+        membershipEpoch: numberField(document, 'p_membership_epoch'),
+        generation: numberField(document, 'p_generation'),
+        payload: frameCount > 0 ? stringField(document, 'p_payload') : null
     };
 }

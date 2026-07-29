@@ -1,0 +1,20 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: CREATE_MATCH returned HTTP 555
+
+false !== true
+
+    at post (file:///Users/bmarti44/doomdb/tests/verify-mle-live-frame-e2e.mjs:41:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async file:///Users/bmarti44/doomdb/tests/verify-mle-live-frame-e2e.mjs:103:17 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

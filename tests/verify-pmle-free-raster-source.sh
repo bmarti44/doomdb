@@ -27,9 +27,11 @@ snapshot_fixture_test="$probe/verify-free-live-snapshot-node.mjs"
 snapshot_integration_test="$probe/verify-live-authority-renderer-node.mjs"
 fixed_step_test="$probe/verify-free-live-fixed-step.mjs"
 live_pack_builder="$probe/build-free-live-render-pack.mjs"
+live_asset_builder="$probe/build-render-asset-blobs.mjs"
 live_renderer_install="$probe/install-free-live-renderer-teavm.sh"
 live_renderer_cleanup="$probe/cleanup-free-live-renderer-teavm.sql"
 live_renderer_raster="$probe/benchmark-oci-free-live-renderer-teavm-raster.sql"
+live_frame_extractor="$probe/extract-free-live-frame.mjs"
 live_predeclaration="$root/artifacts/performance/pmle-free-live-frames/PREDECLARATION.md"
 
 for input in "$source_file" "$full_source" "$install" "$runner" "$benchmark" \
@@ -38,8 +40,10 @@ for input in "$source_file" "$full_source" "$install" "$runner" "$benchmark" \
   "$capture_runner" "$live_runner" "$live_benchmark" "$live_bisection" \
   "$snapshot_authority" "$snapshot_renderer" "$snapshot_fixture_test" \
   "$snapshot_integration_test" "$fixed_step_test" "$live_pack_builder" \
+  "$live_asset_builder" \
   "$live_renderer_install" \
   "$live_renderer_cleanup" "$live_renderer_raster" "$live_predeclaration" \
+  "$live_frame_extractor" \
   "$probe/build-free-raster-teavm.sh" "$probe/cleanup-free-raster-teavm.sql"; do
   [[ -s "$input" && ! -L "$input" ]] || {
     printf 'free-raster verifier: missing input %s\n' "$input" >&2
@@ -159,6 +163,17 @@ require 'PMLE_LIVE_COMMAND_POSTFLIGHT|PASS|' "$live_runner"
 # authority stream are both executable Node gates.
 require 'public static Uint8Array presentationPlayerSnapshot(int playerSlot)' \
   "$snapshot_authority"
+require 'public static int presentationWorldSnapshotLength(int playerSlot)' \
+  "$snapshot_authority"
+require 'DVL2 header/player: 208 bytes' "$snapshot_authority"
+require 'sideOffset + engine.levelLoader.sides.length * 8' \
+  "$snapshot_authority"
+require 'engine.textureManager.getFlatTranslation(sector.floorpic)' \
+  "$snapshot_authority"
+require 'presentationWorldSnapshotChunk(worldLength, 1)' \
+  "$probe/teavm-engine/run-presentation-node.mjs"
+require 'pov0_world_unique=${worldSnapshotHashes[0].size}' \
+  "$probe/teavm-engine/run-presentation-node.mjs"
 require 'snapshot.getLength() != 32' "$snapshot_renderer"
 require 'return renderView(' "$snapshot_renderer"
 require 'PMLE_FREE_LIVE_SNAPSHOT_NODE|PASS' "$snapshot_fixture_test"
@@ -169,9 +184,45 @@ require 'PMLE_LIVE_COMMAND_BISECTION|DIAGNOSTIC_NOT_GATE' "$live_bisection"
 # Authentic floors/ceilings are IWAD-derived, prelit once, and rendered with
 # Doom's affine row-span shape. Full-frame timing may not silently fall back
 # to the old solid-color background or per-pixel perspective divisions.
-require 'pack.writeUInt32LE(4, 4);' "$live_pack_builder"
+require 'pack.writeUInt32LE(7, 4);' "$live_pack_builder"
 require 'offsets.sectorFloorAsset' "$live_pack_builder"
 require 'offsets.ssectorSector' "$live_pack_builder"
+require 'offsets.spriteLookupAsset' "$live_pack_builder"
+require 'offsets.uiDigits' "$live_pack_builder"
+require 'offsets.uiFaceStraight' "$live_pack_builder"
+require 'offsets.uiMainMenuItems' "$live_pack_builder"
+require 'offsets.runtimeWallToAsset' "$live_pack_builder"
+require 'offsets.runtimeFlatToAsset' "$live_pack_builder"
+require 'offsets.lineRightSide' "$live_pack_builder"
+require "sprite_patch', 'ui_patch'" "$live_asset_builder"
+require 'public static int renderWorldSnapshot(Uint8Array snapshot)' \
+  "$snapshot_renderer"
+require 'drawWorldSprites(snapshot, stagedMobjOffset, stagedMobjCount);' \
+  "$snapshot_renderer"
+require 'public static int renderWorldGeometryStage(Uint8Array snapshot)' \
+  "$snapshot_renderer"
+require 'public static int loadWorldDynamicsStage(Uint8Array snapshot)' \
+  "$snapshot_renderer"
+require 'public static int renderLoadedWorldGeometryStage(Uint8Array snapshot)' \
+  "$snapshot_renderer"
+require 'public static int renderWorldSpritesStage(Uint8Array snapshot)' \
+  "$snapshot_renderer"
+require 'public static int renderWeaponStage(Uint8Array snapshot)' \
+  "$snapshot_renderer"
+require 'public static int renderStatusStage(Uint8Array snapshot)' \
+  "$snapshot_renderer"
+require 'drawPlayerSprites(snapshot);' "$snapshot_renderer"
+require 'drawStatusBar(snapshot);' "$snapshot_renderer"
+require 'dynamicSideMiddle[side]' "$snapshot_renderer"
+require 'wallDepth[x * VIEW_HEIGHT + y]' "$snapshot_renderer"
+require 'wallDepth[base + y] = Math.min(wallDepth[base + y], depth);' \
+  "$snapshot_renderer"
+require 'public static int renderTitleFrame()' "$snapshot_renderer"
+require 'public static int renderMenuFrame(int page)' "$snapshot_renderer"
+require 'public static int renderMenuSelectionFrame(' "$snapshot_renderer"
+require 'public static int renderScreenFrame(int screen)' "$snapshot_renderer"
+require 'face = uiFaceStraight[pain * 3 + (tic / 17) % 3];' \
+  "$snapshot_renderer"
 require 'public static int finalizeFlatTextures()' "$snapshot_renderer"
 require 'litTextures[bank + base + sourceY * width + textureX]' \
   "$snapshot_renderer"
@@ -189,9 +240,30 @@ require 'spanStart[top++] = x;' "$snapshot_renderer"
 require 'int source = ((worldY >> 10) & 4032)' "$snapshot_renderer"
 require '+ ((worldX >> 16) & 63);' "$snapshot_renderer"
 require 'output += pixelScale * FRAME_HEIGHT;' "$snapshot_renderer"
-require "asset_kind='flat'" "$live_renderer_raster"
+require 'select flat_blob,flat_bytes,flat_sha' "$live_renderer_raster"
+require 'PMLE_FREE_LIVE_FRAME_CAPTURE|PASS|pose=750|bytes=64000' \
+  "$live_renderer_raster"
+require 'incomplete frame capture:' "$live_frame_extractor"
+require 'incomplete palette:' "$live_frame_extractor"
 require 'doom_free_gen_flat_finalize' "$live_renderer_install"
+require 'doom_free_gen_sprite_finalize' "$live_renderer_install"
+require 'doom_free_gen_ui_finalize' "$live_renderer_install"
+require 'doom_free_gen_world' "$live_renderer_install"
+require 'doom_free_gen_world_geometry' "$live_renderer_install"
+require 'doom_free_gen_load_dynamics' "$live_renderer_install"
+require 'doom_free_gen_loaded_geometry' "$live_renderer_install"
+require 'doom_free_gen_world_sprites' "$live_renderer_install"
+require 'doom_free_gen_weapon' "$live_renderer_install"
+require 'doom_free_gen_status' "$live_renderer_install"
+require 'doom_free_gen_menu_select' "$live_renderer_install"
 require 'drop function doom_free_gen_flat_finalize' "$live_renderer_cleanup"
+require 'drop function doom_free_gen_world' "$live_renderer_cleanup"
+require 'drop function doom_free_gen_world_geometry' "$live_renderer_cleanup"
+require 'drop function doom_free_gen_load_dynamics' "$live_renderer_cleanup"
+require 'drop function doom_free_gen_loaded_geometry' "$live_renderer_cleanup"
+require 'drop function doom_free_gen_world_sprites' "$live_renderer_cleanup"
+require 'drop function doom_free_gen_weapon' "$live_renderer_cleanup"
+require 'drop function doom_free_gen_status' "$live_renderer_cleanup"
 if grep -Fq 'FrameCommandMetrics' \
   "$snapshot_authority"; then
   printf 'free-raster verifier: capture state reached shipping authority source\n' >&2

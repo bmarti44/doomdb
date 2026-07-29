@@ -1,0 +1,35 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=FULL_WIDTH|pass=1|frames=300|p50_ms=60.424|p95_ms=73.44|wall_ms=18248.554|throughput_fps=16.44|stats=320|286|34|checksum=8052256
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=FULL_WIDTH|pass=2|frames=300|p50_ms=53.62|p95_ms=67.579|wall_ms=16016.79|throughput_fps=18.73|stats=320|308|12|checksum=14143741
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=FULL_WIDTH|pass=3|frames=300|p50_ms=53.04|p95_ms=64.915|wall_ms=15813.412|throughput_fps=18.971|stats=320|308|12|checksum=20235226
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=FULL_WIDTH|pass=4|frames=300|p50_ms=52.774|p95_ms=64.699|wall_ms=15750.813|throughput_fps=19.047|stats=320|308|12|checksum=26326711
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=FULL_WIDTH|pass=5|frames=300|p50_ms=52.857|p95_ms=64.722|wall_ms=15738.42|throughput_fps=19.062|stats=320|308|12|checksum=32418196
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=FULL_WIDTH|pass=6|frames=300|p50_ms=52.965|p95_ms=64.177|wall_ms=15730.584|throughput_fps=19.071|stats=320|308|12|checksum=38509681
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=HALF_WIDTH|pass=1|frames=300|p50_ms=45.725|p95_ms=53.964|wall_ms=13673.691|throughput_fps=21.94|stats=160|153|7|checksum=46264405
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=HALF_WIDTH|pass=2|frames=300|p50_ms=41.87|p95_ms=48.679|wall_ms=12485.232|throughput_fps=24.028|stats=160|154|6|checksum=52221842
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=HALF_WIDTH|pass=3|frames=300|p50_ms=42.613|p95_ms=48.414|wall_ms=13037.987|throughput_fps=23.01|stats=160|154|6|checksum=58179279
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=HALF_WIDTH|pass=4|frames=300|p50_ms=41.376|p95_ms=48.754|wall_ms=12488.437|throughput_fps=24.022|stats=160|154|6|checksum=64136716
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=HALF_WIDTH|pass=5|frames=300|p50_ms=42.108|p95_ms=48.383|wall_ms=12577.666|throughput_fps=23.852|stats=160|154|6|checksum=70094153
+PMLE_FREE_LIVE_HYBRID_INTEGRATED|PASS|variant=HALF_WIDTH|pass=6|frames=300|p50_ms=41.709|p95_ms=48.581|wall_ms=12509.151|throughput_fps=23.982|stats=160|154|6|checksum=76051590
+
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=CLEAR|frames=300|p50_ms=.074|p95_ms=.09|wall_ms=25.794|checksum=20177878
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=COMMAND|frames=300|p50_ms=43.924|p95_ms=53.6|wall_ms=12997.06|checksum=20405141
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=RASTER|frames=300|p50_ms=9.973|p95_ms=12.853|wall_ms=15950.851|checksum=20859667
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=COMMAND_HALF|frames=300|p50_ms=37.214|p95_ms=43.348|wall_ms=11300.624|checksum=20973314
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=RASTER_HALF|frames=300|p50_ms=5.558|p95_ms=7.03|wall_ms=12814.225|checksum=21200608
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=RAW_EGRESS|frames=300|p50_ms=7.014|p95_ms=7.418|wall_ms=18197.485|checksum=46492093
+

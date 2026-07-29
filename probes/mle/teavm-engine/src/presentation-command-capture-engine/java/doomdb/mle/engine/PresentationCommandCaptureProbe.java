@@ -221,6 +221,19 @@ public final class PresentationCommandCaptureProbe {
   }
 
   @JSExport
+  public static int presentationWorldSnapshotLength(int playerSlot) {
+    return PresentationEngineReachabilityProbe.presentationWorldSnapshotLength(
+        playerSlot);
+  }
+
+  @JSExport
+  public static Uint8Array presentationWorldSnapshotChunk(
+      int offset, int length) {
+    return PresentationEngineReachabilityProbe.presentationWorldSnapshotChunk(
+        offset, length);
+  }
+
+  @JSExport
   public static String canonicalOffsetDescription(int materialOffset) {
     return PresentationEngineReachabilityProbe.canonicalOffsetDescription(
         materialOffset);

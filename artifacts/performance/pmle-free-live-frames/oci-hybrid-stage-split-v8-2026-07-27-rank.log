@@ -1,0 +1,28 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_HYBRID_LOAD|PASS|pack_bytes=453282
+
+PMLE_FREE_LIVE_HYBRID_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+declare
+*
+ERROR at line 1:
+ORA-04161: Cd
+ORA-04171: at Cd (DOOM.DOOM_FREE_GENERATED_RENDERER:13:114)
+ORA-06512: at "DOOM.DOOM_FREE_GEN_FRAME", line 1
+ORA-06512: at line 9
+Help: https://docs.oracle.com/error-help/db/ora-04161/
+

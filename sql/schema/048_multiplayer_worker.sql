@@ -81,6 +81,10 @@ create table doom_match_standby_control (
   heartbeat timestamp with time zone not null,
   promote_generation number(12),
   last_error varchar2(2000),
+  checkpoint_request_tic number(12),
+  checkpoint_status varchar2(16) default 'IDLE' not null,
+  checkpoint_error varchar2(2000),
+  checkpoint_completed_tic number(12),
   stop_requested number(1) default 0 not null,
   constraint doom_match_standby_pk primary key(match_id),
   constraint doom_match_standby_match_fk foreign key(match_id)
@@ -90,6 +94,10 @@ create table doom_match_standby_control (
   constraint doom_match_standby_generation_ck check(
     base_generation>0 and
     (promote_generation is null or promote_generation=base_generation+1)),
+  constraint doom_match_standby_checkpoint_ck check(
+    checkpoint_status in('IDLE','QUEUED','PROCESSING','FAILED') and
+    (checkpoint_request_tic is null or checkpoint_request_tic>=0) and
+    (checkpoint_completed_tic is null or checkpoint_completed_tic>=0)),
   constraint doom_match_standby_stop_ck check(stop_requested in(0,1))
 );
 

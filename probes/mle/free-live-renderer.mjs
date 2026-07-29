@@ -18,6 +18,10 @@ let wallTextures;
 let wallTextureExpectedBytes;
 let wallTextureElements;
 let litTextures;
+let flatTextures;
+let flatTextureExpectedBytes;
+let flatTextureElements;
+let litFlats;
 let lightToBank;
 let lightBankCount = 0;
 let textureBase;
@@ -37,10 +41,22 @@ let lineLeftUpper;
 let lineLeftLower;
 let lineLeftMiddle;
 let lineFlags;
+let lineRightSide;
+let lineLeftSide;
 let sectorFloor;
 let sectorCeiling;
 let sectorLight;
+let sectorFloorAsset;
+let sectorCeilingAsset;
+let subsectorSector;
 let colormaps;
+let runtimeWallToAsset;
+let runtimeFlatToAsset;
+let sideCount;
+let dynamicSideTop;
+let dynamicSideBottom;
+let dynamicSideMiddle;
+let liveDynamicsActive = false;
 let poseOffset;
 let poseCount;
 let poseRecordBytes;
@@ -51,6 +67,10 @@ let blockRows;
 let lineTests = 0;
 let cellsVisited = 0;
 const CACHE_SIZE = 262144;
+const WALL_HEIGHT_QUANTUM = 1;
+const WALL_TOP_QUANTUM = 1;
+const WALL_TEXTURE_X_QUANTUM = 1;
+const PLANE_X_STEP = 1;
 let cacheKeyA;
 let cacheKeyB;
 let cacheKeyC;
@@ -100,6 +120,21 @@ let bspBboxChecks = 0;
 let bspBboxRejects = 0;
 let emptyPortalSegsSkipped = 0;
 let clipOnlyPortalColumns = 0;
+let planeTop;
+let planeBottom;
+let planeStamp;
+let planeMinX;
+let planeMaxX;
+let touchedPlanes;
+let touchedPlaneCount = 0;
+let planeSerial = 0;
+let spanStart;
+let planePixelWrites = 0;
+let renderStartColumn = 0;
+let renderEndColumn = WIDTH - 1;
+let captureCommandOnly = false;
+let wallCommandCount = 0;
+let planeCommandCount = 0;
 
 export function allocatePack(length) {
   if (!Number.isInteger(length) || length < 96 || length > 1000000) {
@@ -179,6 +214,54 @@ export function finalizeWallTextures() {
   return loadedBytes;
 }
 
+export function allocateFlatTextures(length) {
+  if (!Number.isInteger(length) || length < 1
+      || length !== flatTextureExpectedBytes) {
+    throw new Error(`invalid flat-texture pack length ${length}`);
+  }
+  flatTextures = new Uint8Array(length);
+  return length;
+}
+
+export function loadFlatTextureChunk(offset, chunk) {
+  if (!(chunk instanceof Uint8Array)
+      || !Number.isInteger(offset)
+      || offset < 0
+      || flatTextures === undefined
+      || offset + chunk.byteLength > flatTextures.byteLength) {
+    throw new Error('flat-texture chunk is outside allocation');
+  }
+  flatTextures.set(chunk, offset);
+  return offset + chunk.byteLength;
+}
+
+export function finalizeFlatTextures() {
+  if (flatTextures === undefined
+      || flatTextures.byteLength !== flatTextureExpectedBytes
+      || lightToBank === undefined) {
+    throw new Error(
+      `flat-texture length mismatch ${flatTextures?.byteLength}`
+      + `/${flatTextureExpectedBytes}`);
+  }
+  litFlats = new Uint8Array(flatTextureElements * lightBankCount);
+  for (let lightMap = 0; lightMap < 32; lightMap += 1) {
+    const bank = lightToBank[lightMap];
+    if (bank < 0) continue;
+    const target = bank * flatTextureElements;
+    const map = lightMap * 256;
+    for (let texel = 0; texel < flatTextureElements; texel += 1) {
+      const encodedAt = texel * 2;
+      const encoded = (flatTextures[encodedAt] << 8)
+        | flatTextures[encodedAt + 1];
+      const sample = encoded === 0 ? 0 : encoded - 1;
+      litFlats[target + texel] = colormaps[map + sample];
+    }
+  }
+  const loadedBytes = flatTextures.byteLength;
+  flatTextures = undefined;
+  return loadedBytes;
+}
+
 function u32(offset) {
   return view.getUint32(offset, true);
 }
@@ -186,7 +269,7 @@ function u32(offset) {
 export function finalizePack() {
   if (pack === undefined) throw new Error('live-render pack is absent');
   view = new DataView(pack.buffer, pack.byteOffset, pack.byteLength);
-  if (u32(0) !== MAGIC || u32(4) !== 3 || u32(76) !== pack.byteLength) {
+  if (u32(0) !== MAGIC || u32(4) !== 7 || u32(76) !== pack.byteLength) {
     throw new Error('live-render pack header mismatch');
   }
   originX = view.getInt32(8, true);
@@ -298,6 +381,36 @@ export function finalizePack() {
     pack.buffer, pack.byteOffset + u32(128), sectorCount);
   sectorLight = new Uint8Array(
     pack.buffer, pack.byteOffset + u32(132), sectorCount);
+  sectorFloorAsset = new Uint16Array(
+    pack.buffer, pack.byteOffset + u32(280), sectorCount);
+  sectorCeilingAsset = new Uint16Array(
+    pack.buffer, pack.byteOffset + u32(284), sectorCount);
+  const flatTextureCount = u32(288);
+  flatTextureElements = u32(292);
+  flatTextureExpectedBytes = flatTextureElements * 2;
+  subsectorSector = new Uint16Array(
+    pack.buffer, pack.byteOffset + u32(296), subsectorCount);
+  if (flatTextureCount < 1
+      || flatTextureElements !== flatTextureCount * 4096) {
+    throw new Error('flat-texture cardinality mismatch');
+  }
+  runtimeWallToAsset = new Uint16Array(
+    pack.buffer, pack.byteOffset + u32(464), u32(468));
+  runtimeFlatToAsset = new Uint16Array(
+    pack.buffer, pack.byteOffset + u32(472), u32(476));
+  lineRightSide = new Uint16Array(
+    pack.buffer, pack.byteOffset + u32(480), lineCount);
+  lineLeftSide = new Uint16Array(
+    pack.buffer, pack.byteOffset + u32(484), lineCount);
+  sideCount = u32(488);
+  if (u32(492) !== 208 || sideCount < 1
+      || runtimeWallToAsset.length < 1
+      || runtimeFlatToAsset.length < 1) {
+    throw new Error('DVL2 mapping cardinality mismatch');
+  }
+  dynamicSideTop = new Uint16Array(sideCount);
+  dynamicSideBottom = new Uint16Array(sideCount);
+  dynamicSideMiddle = new Uint16Array(sideCount);
   colormaps = new Uint8Array(pack.buffer, pack.byteOffset + u32(136), 8192);
   frame = new Uint8Array(PIXELS);
   backgroundColumn = new Uint8Array(HEIGHT);
@@ -314,27 +427,32 @@ export function finalizePack() {
   columnClipTop = new Int16Array(WIDTH);
   columnClipBottom = new Int16Array(WIDTH);
   columnPortalDepth = new Uint8Array(WIDTH);
+  const planeCount = sectorCount * 2;
+  planeTop = new Int16Array(planeCount * WIDTH);
+  planeBottom = new Int16Array(planeCount * WIDTH);
+  planeStamp = new Int32Array(planeCount);
+  planeMinX = new Int16Array(planeCount);
+  planeMaxX = new Int16Array(planeCount);
+  touchedPlanes = new Uint16Array(planeCount);
+  spanStart = new Int16Array(HEIGHT);
   return pack.byteLength;
 }
 
-function cachedWallSegment(
-    texture, textureX, wallHeight, projectedTop, drawTop, drawBottom,
-    lightMap, verticalOffset) {
+function quantizedWallHeight(wallHeight) {
+  return Math.max(
+    WALL_HEIGHT_QUANTUM,
+    Math.round(wallHeight / WALL_HEIGHT_QUANTUM) * WALL_HEIGHT_QUANTUM);
+}
+
+function cachedScaledWallColumn(texture, textureX, wallHeight, lightMap) {
   textureX %= textureWidth[texture];
   if (textureX < 0) textureX += textureWidth[texture];
-  let normalizedOffset = verticalOffset % textureHeight[texture];
-  if (normalizedOffset < 0) normalizedOffset += textureHeight[texture];
+  textureX -= textureX % WALL_TEXTURE_X_QUANTUM;
+  wallHeight = quantizedWallHeight(wallHeight);
   const keyA = (texture | (textureX << 16)) | 0;
-  const keyB = (
-    (Math.min(65535, wallHeight) & 0xffff)
-    | (lightMap << 16)
-    | (normalizedOffset << 21)
-  ) | 0;
-  const keyC = (
-    (projectedTop & 0xffff)
-    | (drawTop << 16)
-    | (drawBottom << 24)
-  ) | 0;
+  const keyB = ((Math.min(65535, wallHeight) & 0xffff)
+    | (lightMap << 16)) | 0;
+  const keyC = 0;
   let hash = keyA ^ Math.imul(keyB, 40503) ^ Math.imul(keyC, 7919);
   hash ^= hash >>> 13;
   hash = Math.imul(hash, -1640531527);
@@ -349,7 +467,7 @@ function cachedWallSegment(
   }
   cacheMisses += 1;
   let column = cacheColumns[slot];
-  const length = drawBottom - drawTop + 1;
+  const length = wallHeight;
   if (column === undefined || column.length !== length) {
     cacheColdMisses += 1;
     column = new Uint8Array(length);
@@ -359,9 +477,8 @@ function cachedWallSegment(
   const width = textureWidth[texture];
   const height = textureHeight[texture];
   const base = textureBase[texture];
-  let textureY = normalizedOffset
-    + (drawTop - projectedTop) * 128 / wallHeight;
-  const textureStep = 128 / wallHeight;
+  let textureY = 0;
+  const textureStep = 128 / length;
   for (let output = 0; output < length; output += 1) {
     let sourceY = Math.floor(textureY) % height;
     if (sourceY < 0) sourceY += height;
@@ -388,13 +505,77 @@ function drawWallSegment(
   const drawTop = Math.max(clipTop, projectedTop, 0);
   const drawBottom = Math.min(clipBottom, projectedBottom, HEIGHT - 1);
   if (drawTop > drawBottom) return;
-  frame.set(cachedWallSegment(
-    texture, textureX, wallHeight, projectedTop, drawTop, drawBottom,
-    lightMap, verticalOffset,
-  ), columnBase + drawTop);
+  if (captureCommandOnly) {
+    wallCommandCount += 1;
+    return;
+  }
+  const scaledHeight = quantizedWallHeight(wallHeight);
+  const scaledTop = Math.round(projectedTop / WALL_TOP_QUANTUM)
+    * WALL_TOP_QUANTUM;
+  const column = cachedScaledWallColumn(
+    texture, textureX, scaledHeight, lightMap);
+  let normalizedOffset = verticalOffset % textureHeight[texture];
+  if (normalizedOffset < 0) normalizedOffset += textureHeight[texture];
+  let source = Math.floor(normalizedOffset * scaledHeight / 128)
+    + drawTop - scaledTop;
+  source %= scaledHeight;
+  if (source < 0) source += scaledHeight;
+  let destination = columnBase + drawTop;
+  let remaining = drawBottom - drawTop + 1;
+  while (remaining > 0) {
+    const copied = Math.min(remaining, scaledHeight - source);
+    frame.set(column.subarray(source, source + copied), destination);
+    destination += copied;
+    remaining -= copied;
+    source = 0;
+  }
 }
 
-function renderRayReference(index) {
+function drawPlaneBackground(
+    sector, playerX, playerY, viewZ, directionX, directionY) {
+  const lightMap = Math.max(
+    0, Math.min(31, Math.floor((255 - sectorLight[sector]) / 8)));
+  const lightBank = lightToBank[lightMap] * flatTextureElements;
+  const floorBase = lightBank + sectorFloorAsset[sector] * 4096;
+  const ceilingAsset = sectorCeilingAsset[sector];
+  const ceilingBase = ceilingAsset === 0xffff
+    ? -1 : lightBank + ceilingAsset * 4096;
+  for (let y = 0; y < HEIGHT; y += 1) {
+    if (y === HEIGHT / 2) {
+      for (let x = 0; x < WIDTH; x += 1) {
+        frame[x * HEIGHT + y] = backgroundColumn[y];
+      }
+      continue;
+    }
+    const ceiling = y < HEIGHT / 2;
+    if (ceiling && ceilingBase < 0) {
+      for (let x = 0; x < WIDTH; x += 1) {
+        frame[x * HEIGHT + y] = backgroundColumn[y];
+      }
+      continue;
+    }
+    const planeHeight = ceiling
+      ? sectorCeiling[sector] - viewZ : viewZ - sectorFloor[sector];
+    const distance = planeHeight * (WIDTH / 2)
+      / Math.abs(y + 0.5 - HEIGHT / 2);
+    const firstCamera = 0.5 / (WIDTH / 2) - 1;
+    const rayX = directionX - directionY * firstCamera;
+    const rayY = directionY + directionX * firstCamera;
+    let worldX = Math.floor((playerX + rayX * distance) * 65536);
+    let worldY = Math.floor((playerY + rayY * distance) * 65536);
+    const stepX = Math.floor((-directionY / (WIDTH / 2) * distance) * 65536);
+    const stepY = Math.floor((directionX / (WIDTH / 2) * distance) * 65536);
+    const assetBase = (ceiling ? ceilingBase : floorBase);
+    for (let x = 0; x < WIDTH; x += 1) {
+      const source = ((worldY >> 10) & 4032) + ((worldX >> 16) & 63);
+      frame[x * HEIGHT + y] = litFlats[assetBase + source];
+      worldX += stepX;
+      worldY += stepY;
+    }
+  }
+}
+
+function renderRayReference(index, snapshot) {
   if (view === undefined || frame === undefined) {
     throw new Error('live-render pack has not been finalized');
   }
@@ -403,10 +584,20 @@ function renderRayReference(index) {
   }
   index %= poseCount;
   const at = poseOffset + index * poseRecordBytes;
-  const playerX = view.getInt32(at, true) / 65536;
-  const playerY = view.getInt32(at + 4, true) / 65536;
-  const angle = (view.getUint32(at + 8, true) >>> 5) & 2047;
-  const viewZ = view.getInt32(at + 12, true) / 65536;
+  const snapshotView = snapshot === undefined ? undefined : new DataView(
+    snapshot.buffer, snapshot.byteOffset, snapshot.byteLength);
+  const playerX = snapshotView === undefined
+    ? view.getInt32(at, true) / 65536
+    : snapshotView.getInt32(36, true) / 65536;
+  const playerY = snapshotView === undefined
+    ? view.getInt32(at + 4, true) / 65536
+    : snapshotView.getInt32(40, true) / 65536;
+  const angle = snapshotView === undefined
+    ? (view.getUint32(at + 8, true) >>> 5) & 2047
+    : (snapshotView.getUint32(48, true) >>> 5) & 2047;
+  const viewZ = snapshotView === undefined
+    ? view.getInt32(at + 12, true) / 65536
+    : snapshotView.getInt32(52, true) / 65536;
   const directionX = cosTable[angle] / 32767;
   const directionY = sinTable[angle] / 32767;
   lineTests = 0;
@@ -418,10 +609,15 @@ function renderRayReference(index) {
   portalHits = 0;
   solidHits = 0;
   maxPortalDepth = 0;
+  if (litFlats !== undefined) {
+    drawPlaneBackground(
+      pointSector(playerX, playerY),
+      playerX, playerY, viewZ, directionX, directionY);
+  }
 
   for (let screenX = 0; screenX < WIDTH; screenX += 1) {
     const columnBase = screenX * HEIGHT;
-    frame.set(backgroundColumn, columnBase);
+    if (litFlats === undefined) frame.set(backgroundColumn, columnBase);
     const cameraX = (screenX * 2 + 1) / WIDTH - 1;
     const rayX = directionX - directionY * cameraX;
     const rayY = directionY + directionX * cameraX;
@@ -502,12 +698,17 @@ function renderRayReference(index) {
           ? lineXOffset[hitLine] : lineLeftXOffset[hitLine];
         const yOffset = fromRight
           ? lineYOffset[hitLine] : lineLeftYOffset[hitLine];
-        const upperTexture = fromRight
-          ? lineRightUpper[hitLine] : lineLeftUpper[hitLine];
-        const lowerTexture = fromRight
-          ? lineRightLower[hitLine] : lineLeftLower[hitLine];
-        let middleTexture = fromRight
-          ? lineRightMiddle[hitLine] : lineLeftMiddle[hitLine];
+        const sideIndex = fromRight
+          ? lineRightSide[hitLine] : lineLeftSide[hitLine];
+        const upperTexture = liveDynamicsActive && sideIndex !== 0xffff
+          ? dynamicSideTop[sideIndex]
+          : (fromRight ? lineRightUpper[hitLine] : lineLeftUpper[hitLine]);
+        const lowerTexture = liveDynamicsActive && sideIndex !== 0xffff
+          ? dynamicSideBottom[sideIndex]
+          : (fromRight ? lineRightLower[hitLine] : lineLeftLower[hitLine]);
+        let middleTexture = liveDynamicsActive && sideIndex !== 0xffff
+          ? dynamicSideMiddle[sideIndex]
+          : (fromRight ? lineRightMiddle[hitLine] : lineLeftMiddle[hitLine]);
         if (middleTexture === 0xffff && farSector === 0xffff) {
           middleTexture = lineTexture[hitLine];
         }
@@ -603,10 +804,12 @@ function renderBspWallColumn(
   const nearBottom = Math.ceil(
     HEIGHT / 2 - (nearFloor - viewZ) * wallHeight / 128) - 1;
   const columnBase = screenX * HEIGHT;
+  const sideIndex = fromRight ? lineRightSide[line] : lineLeftSide[line];
 
   if (farSector === 0xffff) {
-    let middleTexture = fromRight
-      ? lineRightMiddle[line] : lineLeftMiddle[line];
+    let middleTexture = liveDynamicsActive && sideIndex !== 0xffff
+      ? dynamicSideMiddle[sideIndex]
+      : (fromRight ? lineRightMiddle[line] : lineLeftMiddle[line]);
     if (middleTexture === 0xffff) middleTexture = lineTexture[line];
     const segmentX = lineX2[line] - lineX1[line];
     const segmentY = lineY2[line] - lineY1[line];
@@ -646,8 +849,12 @@ function renderBspWallColumn(
     HEIGHT / 2 - (openingCeiling - viewZ) * wallHeight / 128);
   const openingBottom = Math.ceil(
     HEIGHT / 2 - (openingFloor - viewZ) * wallHeight / 128) - 1;
-  const upperTexture = fromRight ? lineRightUpper[line] : lineLeftUpper[line];
-  const lowerTexture = fromRight ? lineRightLower[line] : lineLeftLower[line];
+  const upperTexture = liveDynamicsActive && sideIndex !== 0xffff
+    ? dynamicSideTop[sideIndex]
+    : (fromRight ? lineRightUpper[line] : lineLeftUpper[line]);
+  const lowerTexture = liveDynamicsActive && sideIndex !== 0xffff
+    ? dynamicSideBottom[sideIndex]
+    : (fromRight ? lineRightLower[line] : lineLeftLower[line]);
   const drawUpper = farCeiling < nearCeiling
     && upperTexture !== 0xffff
     && nearTop <= clipBottom && openingTop - 1 >= clipTop;
@@ -725,8 +932,8 @@ function bspBboxMayBeVisible(
     return false;
   }
   if (minimumDepth <= 0.01) return true;
-  const start = Math.max(0, Math.floor(minimumScreen));
-  const end = Math.min(WIDTH - 1, Math.ceil(maximumScreen));
+  const start = Math.max(renderStartColumn, Math.floor(minimumScreen));
+  const end = Math.min(renderEndColumn, Math.ceil(maximumScreen));
   if (start > end) {
     bspBboxRejects += 1;
     return false;
@@ -738,16 +945,150 @@ function bspBboxMayBeVisible(
   return false;
 }
 
-function render(index) {
+function pointSector(playerX, playerY) {
+  let child = nodeCount - 1;
+  while (child >= 0) {
+    const side = (
+      (playerX - nodeX[child]) * nodeDy[child]
+      - (playerY - nodeY[child]) * nodeDx[child]
+    ) >= 0 ? 0 : 1;
+    child = side === 0 ? nodeChild0[child] : nodeChild1[child];
+  }
+  const subsector = child & 0x7fffffff;
+  if (subsector >= subsectorSector.length) {
+    throw new Error('player subsector outside map');
+  }
+  return subsectorSector[subsector];
+}
+
+function startPlaneFrame() {
+  planeSerial = (planeSerial + 1) | 0;
+  if (planeSerial === 0) {
+    planeStamp.fill(0);
+    planeSerial = 1;
+  }
+  touchedPlaneCount = 0;
+  planePixelWrites = 0;
+}
+
+function recordPlaneRange(sector, ceiling, x, top, bottom) {
+  top = Math.max(0, top);
+  bottom = Math.min(HEIGHT - 1, bottom);
+  if (top > bottom || x < 0 || x >= WIDTH) return;
+  const plane = sector * 2 + (ceiling ? 0 : 1);
+  const base = plane * WIDTH;
+  if (planeStamp[plane] !== planeSerial) {
+    planeStamp[plane] = planeSerial;
+    touchedPlanes[touchedPlaneCount++] = plane;
+    planeMinX[plane] = x;
+    planeMaxX[plane] = x;
+    planeTop.fill(HEIGHT, base, base + WIDTH);
+    planeBottom.fill(-1, base, base + WIDTH);
+  } else {
+    if (x < planeMinX[plane]) planeMinX[plane] = x;
+    if (x > planeMaxX[plane]) planeMaxX[plane] = x;
+  }
+  const at = base + x;
+  if (top < planeTop[at]) planeTop[at] = top;
+  if (bottom > planeBottom[at]) planeBottom[at] = bottom;
+}
+
+function drawPlaneSpan(
+    plane, y, x1, x2, playerX, playerY, viewZ,
+    directionX, directionY) {
+  if (x1 > x2 || y === HEIGHT / 2) return;
+  if (captureCommandOnly) {
+    planeCommandCount += 1;
+    return;
+  }
+  const sector = plane >> 1;
+  const ceiling = (plane & 1) === 0;
+  const asset = ceiling
+    ? sectorCeilingAsset[sector] : sectorFloorAsset[sector];
+  if (ceiling && asset === 0xffff) {
+    const pixel = backgroundColumn[y];
+    for (let x = x1; x <= x2; x += 1) frame[x * HEIGHT + y] = pixel;
+    planePixelWrites += x2 - x1 + 1;
+    return;
+  }
+  const planeHeight = ceiling
+    ? sectorCeiling[sector] - viewZ : viewZ - sectorFloor[sector];
+  const distance = planeHeight * (WIDTH / 2)
+    / Math.abs(y + 0.5 - HEIGHT / 2);
+  const cameraX = (x1 * 2 + 1) / WIDTH - 1;
+  const rayX = directionX - directionY * cameraX;
+  const rayY = directionY + directionX * cameraX;
+  let worldX = Math.floor((playerX + rayX * distance) * 65536);
+  let worldY = Math.floor((playerY + rayY * distance) * 65536);
+  const stepX = Math.floor((-directionY / (WIDTH / 2) * distance) * 65536);
+  const stepY = Math.floor((directionX / (WIDTH / 2) * distance) * 65536);
+  const lightMap = Math.max(
+    0, Math.min(31, Math.floor((255 - sectorLight[sector]) / 8)));
+  const bank = lightToBank[lightMap] * flatTextureElements;
+  const assetBase = bank + asset * 4096;
+  for (let x = x1; x <= x2; x += PLANE_X_STEP) {
+    const source = ((worldY >> 10) & 4032) + ((worldX >> 16) & 63);
+    const pixel = litFlats[assetBase + source];
+    frame[x * HEIGHT + y] = pixel;
+    if (x + 1 <= x2) frame[(x + 1) * HEIGHT + y] = pixel;
+    worldX += stepX * PLANE_X_STEP;
+    worldY += stepY * PLANE_X_STEP;
+  }
+  planePixelWrites += x2 - x1 + 1;
+}
+
+function drawRecordedPlanes(
+    playerX, playerY, viewZ, directionX, directionY) {
+  for (let touched = 0; touched < touchedPlaneCount; touched += 1) {
+    const plane = touchedPlanes[touched];
+    const base = plane * WIDTH;
+    const minimum = planeMinX[plane];
+    const maximum = planeMaxX[plane];
+    let previousTop = HEIGHT;
+    let previousBottom = -1;
+    for (let x = minimum; x <= maximum + 1; x += 1) {
+      let top = x <= maximum ? planeTop[base + x] : HEIGHT;
+      let bottom = x <= maximum ? planeBottom[base + x] : -1;
+      while (previousTop < top && previousTop <= previousBottom) {
+        drawPlaneSpan(
+          plane, previousTop, spanStart[previousTop], x - 1,
+          playerX, playerY, viewZ, directionX, directionY);
+        previousTop += 1;
+      }
+      while (previousBottom > bottom && previousBottom >= previousTop) {
+        drawPlaneSpan(
+          plane, previousBottom, spanStart[previousBottom], x - 1,
+          playerX, playerY, viewZ, directionX, directionY);
+        previousBottom -= 1;
+      }
+      while (top < previousTop && top <= bottom) spanStart[top++] = x;
+      while (bottom > previousBottom && bottom >= top) spanStart[bottom--] = x;
+      previousTop = x <= maximum ? planeTop[base + x] : HEIGHT;
+      previousBottom = x <= maximum ? planeBottom[base + x] : -1;
+    }
+  }
+}
+
+function render(index, snapshot, planes = true) {
   if (view === undefined || frame === undefined || litTextures === undefined) {
     throw new Error('BSP live renderer is not finalized');
   }
   index %= poseCount;
   const at = poseOffset + index * poseRecordBytes;
-  const playerX = view.getInt32(at, true) / 65536;
-  const playerY = view.getInt32(at + 4, true) / 65536;
-  const angle = (view.getUint32(at + 8, true) >>> 5) & 2047;
-  const viewZ = view.getInt32(at + 12, true) / 65536;
+  const snapshotView = snapshot === undefined ? undefined : new DataView(
+    snapshot.buffer, snapshot.byteOffset, snapshot.byteLength);
+  const playerX = snapshotView === undefined
+    ? view.getInt32(at, true) / 65536
+    : snapshotView.getInt32(36, true) / 65536;
+  const playerY = snapshotView === undefined
+    ? view.getInt32(at + 4, true) / 65536
+    : snapshotView.getInt32(40, true) / 65536;
+  const angle = snapshotView === undefined
+    ? (view.getUint32(at + 8, true) >>> 5) & 2047
+    : (snapshotView.getUint32(48, true) >>> 5) & 2047;
+  const viewZ = snapshotView === undefined
+    ? view.getInt32(at + 12, true) / 65536
+    : snapshotView.getInt32(52, true) / 65536;
   const directionX = cosTable[angle] / 32767;
   const directionY = sinTable[angle] / 32767;
   lineTests = 0;
@@ -765,17 +1106,22 @@ function render(index) {
   bspBboxRejects = 0;
   emptyPortalSegsSkipped = 0;
   clipOnlyPortalColumns = 0;
-  columnClipTop.fill(0);
-  columnClipBottom.fill(HEIGHT - 1);
+  columnClipTop.fill(1);
+  columnClipBottom.fill(0);
+  columnClipTop.fill(0, renderStartColumn, renderEndColumn + 1);
+  columnClipBottom.fill(
+    HEIGHT - 1, renderStartColumn, renderEndColumn + 1);
   columnPortalDepth.fill(0);
-  for (let screenX = 0; screenX < WIDTH; screenX += 1) {
+  if (planes && litFlats !== undefined) startPlaneFrame();
+  for (let screenX = renderStartColumn;
+    screenX <= renderEndColumn; screenX += 1) {
     frame.set(backgroundColumn, screenX * HEIGHT);
   }
 
   let stackSize = 1;
   bspStack[0] = nodeCount - 1;
   bspStackCheck[0] = -1;
-  let openColumns = WIDTH;
+  let openColumns = renderEndColumn - renderStartColumn + 1;
   while (stackSize > 0 && openColumns > 0) {
     const item = bspStack[--stackSize];
     const pendingCheck = bspStackCheck[stackSize];
@@ -813,8 +1159,10 @@ function render(index) {
         ? lineRightSector[line] : lineLeftSector[line];
       const farSector = fromRight
         ? lineLeftSector[line] : lineRightSector[line];
-      const middleTexture = fromRight
-        ? lineRightMiddle[line] : lineLeftMiddle[line];
+      const sideIndex = fromRight ? lineRightSide[line] : lineLeftSide[line];
+      const middleTexture = liveDynamicsActive && sideIndex !== 0xffff
+        ? dynamicSideMiddle[sideIndex]
+        : (fromRight ? lineRightMiddle[line] : lineLeftMiddle[line]);
       if (farSector !== 0xffff
           && middleTexture === 0xffff
           && sectorFloor[nearSector] === sectorFloor[farSector]
@@ -822,10 +1170,12 @@ function render(index) {
         emptyPortalSegsSkipped += 1;
         continue;
       }
-      const upperTexture = fromRight
-        ? lineRightUpper[line] : lineLeftUpper[line];
-      const lowerTexture = fromRight
-        ? lineRightLower[line] : lineLeftLower[line];
+      const upperTexture = liveDynamicsActive && sideIndex !== 0xffff
+        ? dynamicSideTop[sideIndex]
+        : (fromRight ? lineRightUpper[line] : lineLeftUpper[line]);
+      const lowerTexture = liveDynamicsActive && sideIndex !== 0xffff
+        ? dynamicSideBottom[sideIndex]
+        : (fromRight ? lineRightLower[line] : lineLeftLower[line]);
       const clipOnlyPortal = farSector !== 0xffff
         && !(sectorCeiling[farSector] < sectorCeiling[nearSector]
           && upperTexture !== 0xffff)
@@ -857,9 +1207,11 @@ function render(index) {
       const projectedA = WIDTH / 2 + as / ad * WIDTH / 2;
       const projectedB = WIDTH / 2 + bs / bd * WIDTH / 2;
       let startX = Math.max(
-        0, Math.ceil(Math.min(projectedA, projectedB) - 0.5));
+        renderStartColumn,
+        Math.ceil(Math.min(projectedA, projectedB) - 0.5));
       const endX = Math.min(
-        WIDTH - 1, Math.floor(Math.max(projectedA, projectedB) - 0.5));
+        renderEndColumn,
+        Math.floor(Math.max(projectedA, projectedB) - 0.5));
       if (startX > endX) continue;
 
       const segmentX = segX2[seg] - segX1[seg];
@@ -884,6 +1236,21 @@ function render(index) {
         if (height < 1) continue;
         const wallHeight = Math.min(65535, height);
         if (clipOnlyPortal) {
+          const nearTop = Math.floor(
+            HEIGHT / 2
+              - (sectorCeiling[nearSector] - viewZ) * wallHeight / 128);
+          const nearBottom = Math.ceil(
+            HEIGHT / 2
+              - (sectorFloor[nearSector] - viewZ) * wallHeight / 128) - 1;
+          if (planes && litFlats !== undefined) {
+            recordPlaneRange(
+              nearSector, true, startX, columnClipTop[startX],
+              Math.min(columnClipBottom[startX], nearTop - 1));
+            recordPlaneRange(
+              nearSector, false, startX,
+              Math.max(columnClipTop[startX], nearBottom + 1),
+              columnClipBottom[startX]);
+          }
           clipOnlyPortalColumns += 1;
           portalHits += 1;
           const depth = columnPortalDepth[startX] + 1;
@@ -898,10 +1265,25 @@ function render(index) {
           columnClipBottom[startX] = Math.min(
             columnClipBottom[startX], openingBottom);
         } else {
-        renderBspWallColumn(
-          startX, line, fromRight, wallHeight, numerator, currentDenominator,
-          playerX, playerY, viewZ, directionX, directionY,
-        );
+          if (planes && litFlats !== undefined) {
+            const nearTop = Math.floor(
+              HEIGHT / 2
+                - (sectorCeiling[nearSector] - viewZ) * wallHeight / 128);
+            const nearBottom = Math.ceil(
+              HEIGHT / 2
+                - (sectorFloor[nearSector] - viewZ) * wallHeight / 128) - 1;
+            recordPlaneRange(
+              nearSector, true, startX, columnClipTop[startX],
+              Math.min(columnClipBottom[startX], nearTop - 1));
+            recordPlaneRange(
+              nearSector, false, startX,
+              Math.max(columnClipTop[startX], nearBottom + 1),
+              columnClipBottom[startX]);
+          }
+          renderBspWallColumn(
+            startX, line, fromRight, wallHeight, numerator, currentDenominator,
+            playerX, playerY, viewZ, directionX, directionY,
+          );
         }
         if (columnClipTop[startX] > columnClipBottom[startX]) {
           openColumns -= 1;
@@ -909,12 +1291,146 @@ function render(index) {
       }
     }
   }
+  if (planes && litFlats !== undefined) {
+    drawRecordedPlanes(playerX, playerY, viewZ, directionX, directionY);
+  }
   return (
     Math.imul(frame[index % PIXELS], 65537)
     + frame[(index * 997) % PIXELS]
     + lineTests
     + bspSegsVisited
   ) | 0;
+}
+
+function translatedWall(runtimeTexture) {
+  if (runtimeTexture === 0 || runtimeTexture >= runtimeWallToAsset.length) {
+    return 0xffff;
+  }
+  return runtimeWallToAsset[runtimeTexture];
+}
+
+function translatedFlat(runtimeLump, fallback) {
+  if (runtimeLump >= runtimeFlatToAsset.length) return fallback;
+  const asset = runtimeFlatToAsset[runtimeLump];
+  return asset === 0xffff ? fallback : asset;
+}
+
+function loadWorldDynamics(snapshot) {
+  if (!ArrayBuffer.isView(snapshot) || snapshot.byteLength < 208) {
+    throw new Error('invalid DVL2 world snapshot');
+  }
+  if (!(snapshot instanceof Uint8Array)) {
+    snapshot = new Uint8Array(
+      snapshot.buffer, snapshot.byteOffset, snapshot.byteLength);
+  }
+  const state = new DataView(
+    snapshot.buffer, snapshot.byteOffset, snapshot.byteLength);
+  const sectors = state.getUint32(16, true);
+  const mobjs = state.getUint32(20, true);
+  const sectorOffset = state.getUint32(24, true);
+  const mobjOffset = state.getUint32(28, true);
+  const length = state.getUint32(32, true);
+  const sides = state.getUint32(192, true);
+  const sideOffset = state.getUint32(196, true);
+  if (state.getUint32(0, true) !== 0x324c5644
+      || state.getUint32(4, true) !== 2
+      || sectors !== sectorFloor.length || sectorOffset !== 208
+      || sides !== sideCount || state.getUint32(200, true) !== 8
+      || state.getUint32(204, true) !== sectorOffset
+      || sideOffset !== sectorOffset + sectors * 16
+      || mobjOffset !== sideOffset + sides * 8
+      || length !== mobjOffset + mobjs * 32
+      || length !== snapshot.byteLength) {
+    throw new Error('DVL2 world snapshot layout mismatch');
+  }
+  for (let sector = 0; sector < sectors; sector += 1) {
+    const at = sectorOffset + sector * 16;
+    sectorFloor[sector] = state.getInt32(at, true) >> 16;
+    sectorCeiling[sector] = state.getInt32(at + 4, true) >> 16;
+    sectorLight[sector] = state.getInt16(at + 8, true);
+    sectorFloorAsset[sector] = translatedFlat(
+      state.getUint16(at + 10, true), sectorFloorAsset[sector]);
+    sectorCeilingAsset[sector] = translatedFlat(
+      state.getUint16(at + 12, true), sectorCeilingAsset[sector]);
+  }
+  for (let side = 0; side < sides; side += 1) {
+    const at = sideOffset + side * 8;
+    dynamicSideTop[side] = translatedWall(state.getUint16(at, true));
+    dynamicSideBottom[side] = translatedWall(state.getUint16(at + 2, true));
+    dynamicSideMiddle[side] = translatedWall(state.getUint16(at + 4, true));
+  }
+  return state.getUint32(8, true);
+}
+
+export function renderWorldGeometry(snapshot) {
+  const tic = loadWorldDynamics(snapshot);
+  liveDynamicsActive = true;
+  try {
+    return render(tic, snapshot, true);
+  } finally {
+    liveDynamicsActive = false;
+  }
+}
+
+export function setColumnRange(start, end) {
+  if (!Number.isInteger(start) || !Number.isInteger(end)
+      || start < 0 || end < start || end >= WIDTH) {
+    throw new Error(`invalid renderer column range ${start}/${end}`);
+  }
+  renderStartColumn = start;
+  renderEndColumn = end;
+  return end - start + 1;
+}
+
+export function renderWorldGeometryStatic(snapshot) {
+  if (!ArrayBuffer.isView(snapshot) || snapshot.byteLength < 208) {
+    throw new Error('invalid static DVL2 pose snapshot');
+  }
+  return render(0, snapshot, true);
+}
+
+export function renderWorldFastGeometryStatic(snapshot) {
+  if (!ArrayBuffer.isView(snapshot) || snapshot.byteLength < 208) {
+    throw new Error('invalid fast DVL2 pose snapshot');
+  }
+  return renderRayReference(0, snapshot);
+}
+
+export function renderWorldCommandGeometryStatic(snapshot) {
+  if (!ArrayBuffer.isView(snapshot) || snapshot.byteLength < 208) {
+    throw new Error('invalid command DVL2 pose snapshot');
+  }
+  wallCommandCount = 0;
+  planeCommandCount = 0;
+  captureCommandOnly = true;
+  try {
+    render(0, snapshot, true);
+  } finally {
+    captureCommandOnly = false;
+  }
+  return wallCommandCount + planeCommandCount;
+}
+
+export function loadWorldDynamicsStage(snapshot) {
+  return loadWorldDynamics(snapshot);
+}
+
+export function renderLoadedWorldWalls(snapshot) {
+  liveDynamicsActive = true;
+  try {
+    return render(0, snapshot, false);
+  } finally {
+    liveDynamicsActive = false;
+  }
+}
+
+export function renderLoadedWorldGeometry(snapshot) {
+  liveDynamicsActive = true;
+  try {
+    return render(0, snapshot, true);
+  } finally {
+    liveDynamicsActive = false;
+  }
 }
 
 export function renderPose(index) {
@@ -941,6 +1457,13 @@ export function frameChunk(offset, length) {
   return frame.slice(offset, offset + length);
 }
 
+export function frameByRef() {
+  if (!(frame instanceof Uint8Array) || frame.byteLength !== PIXELS) {
+    throw new Error('retained framebuffer is unavailable');
+  }
+  return frame;
+}
+
 export function stats() {
   return `width=${WIDTH}|height=${HEIGHT}|poses=${poseCount}`
     + `|layout=COLUMN_MAJOR_INDEXED`
@@ -955,7 +1478,10 @@ export function stats() {
     + `|bspBboxChecks=${bspBboxChecks}|bspBboxRejects=${bspBboxRejects}`
     + `|emptyPortalSegsSkipped=${emptyPortalSegsSkipped}`
     + `|clipOnlyPortalColumns=${clipOnlyPortalColumns}`
-    + `|lightBanks=${lightBankCount}|litTextureBytes=${litTextures?.byteLength}`;
+    + `|planePixelWrites=${planePixelWrites}`
+    + `|wallCommands=${wallCommandCount}|planeCommands=${planeCommandCount}`
+    + `|lightBanks=${lightBankCount}|litTextureBytes=${litTextures?.byteLength}`
+    + `|litFlatBytes=${litFlats?.byteLength}`;
 }
 
 export function release() {
@@ -963,13 +1489,18 @@ export function release() {
   lineX1 = lineY1 = lineX2 = lineY2 = undefined;
   cellOffsets = cellLines = sinTable = cosTable = undefined;
   wallTextures = litTextures = lightToBank = undefined;
+  flatTextures = litFlats = undefined;
   textureBase = textureWidth = textureHeight = undefined;
   lineTexture = lineXOffset = lineYOffset = undefined;
   lineLeftXOffset = lineLeftYOffset = lineFlags = undefined;
   lineRightSector = lineLeftSector = undefined;
   lineRightUpper = lineRightLower = lineRightMiddle = undefined;
   lineLeftUpper = lineLeftLower = lineLeftMiddle = undefined;
+  lineRightSide = lineLeftSide = undefined;
   sectorFloor = sectorCeiling = sectorLight = colormaps = undefined;
+  sectorFloorAsset = sectorCeilingAsset = subsectorSector = undefined;
+  runtimeWallToAsset = runtimeFlatToAsset = undefined;
+  dynamicSideTop = dynamicSideBottom = dynamicSideMiddle = undefined;
   cacheKeyA = cacheKeyB = cacheKeyC = cacheColumns = undefined;
   lineSeen = undefined;
   segX1 = segY1 = segX2 = segY2 = segLine = segDirection = undefined;
@@ -979,4 +1510,6 @@ export function release() {
   nodeBbox1Top = nodeBbox1Bottom = nodeBbox1Left = nodeBbox1Right = undefined;
   bspStack = bspStackCheck = undefined;
   columnClipTop = columnClipBottom = columnPortalDepth = undefined;
+  planeTop = planeBottom = planeStamp = undefined;
+  planeMinX = planeMaxX = touchedPlanes = spanStart = undefined;
 }

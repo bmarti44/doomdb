@@ -17,7 +17,7 @@ const mutations = [
   ['T2.4-M07','size:source.size,sha256:source.sha256,selection','size:source.size+1,sha256:source.sha256,selection'],
   ['T2.4-M08',"selection:'last-occurrence'","selection:'first-occurrence'"],
   ['T2.4-M09','const assetKeys = new Set(assets.map((asset) => `${asset.kind}:${asset.name}`));',"{ const source=last(rows,'FLOOR4_8'); assets.push({assetId:assets.length,kind:'flat',name:'FLOOR4_8',sourceLumps:['FLOOR4_8'],sourceSha256:[source.sha256],rawSha256:source.sha256}); }\nconst assetKeys = new Set(assets.map((asset) => `${asset.kind}:${asset.name}`));"],
-  ['T2.4-M10','for (const approved of [...closure.assets].sort','for (const approved of [...closure.assets].filter((a)=>a.name!==\'POSSA1\').sort'],
+  ['T2.4-M10','const orderedAssets = [...closure.assets].sort','const orderedAssets = [...closure.assets].filter((a)=>a.name!==\'POSSA1\').sort'],
   ['T2.4-M11','const pixels = new Int16Array(width * height).fill(-1);','const pixels = new Int16Array(width * height).fill(0);'],
   ['T2.4-M12','for (const placement of definition.patches) {','for (const placement of [...definition.patches].reverse()) {'],
   ['T2.4-M13','sha256:fileHash','sha256:(relative===\'010_things.sql\'?\'0\'.repeat(64):fileHash)'],

@@ -5,8 +5,17 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 builder="$root/probes/mle/teavm-engine/build-tic0-checkpoint-bank.mjs"
 table_pack="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
 iwad_zip="$root/vendor/freedoom/0.13.0/freedoom-0.13.0.zip"
-authority="${DOOMDB_TIC0_AUTHORITY:-$root/client/dist/play/doom-mle-authority-5ec18cbe4cff.js}"
+authority="${DOOMDB_TIC0_AUTHORITY:-$root/probes/mle/teavm-engine/target/javascript/doom-mle-simulation-engine-headless.js}"
 authority_sha256="$(shasum -a 256 "$authority" | awk '{print $1}')"
+expected_authority_sha256="$(
+  node - "$root/versions.lock" <<'NODE'
+import fs from 'node:fs';
+const lock=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+const value=lock.teaVM?.outputSha256;
+if(!/^[0-9a-f]{64}$/.test(value??''))throw new Error('authority pin missing');
+process.stdout.write(value);
+NODE
+)"
 equivalent_authority_sha256="${DOOMDB_TIC0_EXPECT_EQUIVALENT_AUTHORITY_SHA:-}"
 base64_fold_width=2000
 emit_only=0
@@ -23,6 +32,11 @@ for tool in node unzip base64 fold shasum; do
   command -v "$tool" >/dev/null || { printf '%s is unavailable\n' "$tool" >&2;exit 2; }
 done
 test -s "$builder";test -s "$authority";test -s "$table_pack";test -s "$iwad_zip"
+[[ "$authority_sha256" == "$expected_authority_sha256" ]] || {
+  printf 'tic-zero authority pin mismatch: expected=%s actual=%s\n' \
+    "$expected_authority_sha256" "$authority_sha256" >&2
+  exit 2
+}
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/doomdb-tic0-bank.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT HUP INT TERM
 unzip -p "$iwad_zip" freedoom-0.13.0/freedoom1.wad >"$tmp/freedoom1.wad"

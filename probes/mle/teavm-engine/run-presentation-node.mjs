@@ -26,6 +26,8 @@ const {
   loadTablePackChunk,
   memoryDiagnostic,
   presentationPlayerSnapshot,
+  presentationWorldSnapshotChunk,
+  presentationWorldSnapshotLength,
   presentationDiagnostic,
   release,
   renderCapturedPlayerFrameByRef,
@@ -154,6 +156,8 @@ if (commandMetricsEnabled) {
 }
 const frameHashes = [new Set(), new Set()];
 const playerSnapshotHashes = [new Set(), new Set()];
+const worldSnapshotHashes = [new Set(), new Set()];
+const worldSnapshotStats = [null, null];
 const firstFrameStats = [];
 const retainedBrowserFrames = [];
 const retainedBrowserFrameHashes = [];
@@ -217,6 +221,86 @@ for (let tic = 1; tic <= sampleTics; tic += 1) {
     }
     playerSnapshotHashes[player].add(
       createHash('sha256').update(playerSnapshot).digest('hex'),
+    );
+    const worldLength = presentationWorldSnapshotLength(player);
+    if (!Number.isInteger(worldLength)
+        || worldLength < 128 || worldLength > 32767) {
+      throw new Error(
+        `invalid player ${player} world snapshot length ${worldLength}`,
+      );
+    }
+    const worldSnapshot = Buffer.alloc(worldLength);
+    for (let offset = 0; offset < worldLength; offset += 4096) {
+      const size = Math.min(4096, worldLength - offset);
+      const chunk = presentationWorldSnapshotChunk(offset, size);
+      if (!(chunk instanceof Uint8Array) || chunk.length !== size) {
+        throw new Error(
+          `short player ${player} world snapshot chunk at ${tic}/${offset}`,
+        );
+      }
+      worldSnapshot.set(chunk, offset);
+    }
+    const world = new DataView(
+      worldSnapshot.buffer,
+      worldSnapshot.byteOffset,
+      worldSnapshot.byteLength,
+    );
+    const sectorCount = world.getInt32(16, true);
+    const mobjCount = world.getInt32(20, true);
+    const sectorOffset = world.getInt32(24, true);
+    const mobjOffset = world.getInt32(28, true);
+    const sideCount = world.getInt32(192, true);
+    const sideOffset = world.getInt32(196, true);
+    if (world.getUint32(0, true) !== 0x324c5644
+        || world.getInt32(4, true) !== 2
+        || world.getInt32(8, true) !== tic
+        || world.getInt32(12, true) !== player
+        || sectorCount < 1 || mobjCount < 2
+        || sectorOffset !== 208
+        || sideCount < 1
+        || sideOffset !== sectorOffset + sectorCount * 16
+        || world.getInt32(200, true) !== 8
+        || world.getInt32(204, true) !== sectorOffset
+        || mobjOffset !== sideOffset + sideCount * 8
+        || world.getInt32(32, true) !== worldLength
+        || worldLength !== mobjOffset + mobjCount * 32) {
+      throw new Error(
+          `invalid player ${player} DVL2 snapshot at tic ${tic}: `
+          + JSON.stringify({
+            magic: world.getUint32(0, true).toString(16),
+            version: world.getInt32(4, true),
+            tic: world.getInt32(8, true),
+            slot: world.getInt32(12, true),
+            sectorCount,
+            mobjCount,
+            sectorOffset,
+            sideCount,
+            sideOffset,
+            mobjOffset,
+            worldLength,
+          }),
+      );
+    }
+    if (world.getInt32(36, true) !== playerX
+        || world.getInt32(40, true) !== playerY) {
+      throw new Error(
+        `player ${player} compact/world presentation pose mismatch at tic ${tic}`,
+      );
+    }
+    if (tic === 1) {
+      worldSnapshotStats[player] = {worldLength, sectorCount, mobjCount};
+      let rejected = false;
+      try {
+        presentationWorldSnapshotChunk(worldLength, 1);
+      } catch {
+        rejected = true;
+      }
+      if (!rejected) {
+        throw new Error('world snapshot accepted an out-of-range chunk');
+      }
+    }
+    worldSnapshotHashes[player].add(
+      createHash('sha256').update(worldSnapshot).digest('hex'),
     );
     let capturedCommands;
     if (commandMetricsEnabled) frameCommandMetrics(1);
@@ -365,6 +449,12 @@ if (frameHashes[0].size < 2 || frameHashes[1].size < 2) {
   throw new Error(`presentation frames are not moving: ${
     frameHashes[0].size}/${frameHashes[1].size} ${JSON.stringify(firstFrameStats)}`);
 }
+if (worldSnapshotHashes[0].size < 2 || worldSnapshotHashes[1].size < 2) {
+  throw new Error(
+    `presentation world snapshots are not moving: ${
+      worldSnapshotHashes[0].size}/${worldSnapshotHashes[1].size}`,
+  );
+}
 for (let player = 0; player < retainedBrowserFrames.length; player += 1) {
   const finalHash = createHash('sha256')
     .update(retainedBrowserFrames[player]).digest('hex');
@@ -399,6 +489,11 @@ console.log(
   `PMLE_TEAVM_PRESENTATION|PASS|tics=${sampleTics}`
   + `|pov0_snapshot_unique=${playerSnapshotHashes[0].size}`
   + `|pov1_snapshot_unique=${playerSnapshotHashes[1].size}`
+  + `|pov0_world_unique=${worldSnapshotHashes[0].size}`
+  + `|pov1_world_unique=${worldSnapshotHashes[1].size}`
+  + `|world_bytes=${worldSnapshotStats[0].worldLength}`
+  + `|world_sectors=${worldSnapshotStats[0].sectorCount}`
+  + `|world_mobjs=${worldSnapshotStats[0].mobjCount}`
   + `|pov0_unique=${frameHashes[0].size}|pov1_unique=${frameHashes[1].size}`
   + `|pov0_hud_sha256=${firstFrameStats[0].hudSha256}`
   + `|pov0_hud_distinct=${firstFrameStats[0].hudDistinct}`

@@ -1,0 +1,18 @@
+PMLE_OCI_TWO_POV|BEGIN|frames=300|renderer=DATABASE_PIXELS|url_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8
+PMLE_OCI_TWO_POV_ARTIFACT_ATTEST|phase=BEFORE|authority_sha256=c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1|renderer_sha256=5092dda164a9cc7bd712e5e0b6ac82d98e2d441ff461e67443e9b1257a8af64f|coordinator_sha256=8b566aa841ecbfb43c2b035d644bbf033e74d323e0c66f6774e7f97ff2b893f6
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+locator.waitFor: Timeout 60000ms exceeded.
+Call log:
+[2m  - waiting for locator('[data-game][data-active]') to be visible[22m
+
+    at /Users/bmarti44/doomdb/tests/verify-p13.3-multiplayer-client.mjs:116:46 {
+  log: [
+    "  - waiting for locator('[data-game][data-active]') to be visible"
+  ],
+  name: 'TimeoutError'
+}
+
+Node.js v25.9.0

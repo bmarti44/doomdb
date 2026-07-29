@@ -1,0 +1,22 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=CLEAR|frames=300|p50_ms=.075|p95_ms=.089|wall_ms=24.958|checksum=20177878
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=COMMAND|frames=300|p50_ms=42.88|p95_ms=55.151|wall_ms=12728.913|checksum=20405141
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=RASTER|frames=300|p50_ms=17.699|p95_ms=25.778|wall_ms=18189.472|checksum=20859667
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=COMMAND_HALF|frames=300|p50_ms=37.346|p95_ms=42.524|wall_ms=11119.687|checksum=20973314
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=RASTER_HALF|frames=300|p50_ms=7.123|p95_ms=13.076|wall_ms=13376.164|checksum=21200608
+PMLE_FREE_LIVE_HYBRID_STAGE|PASS|stage=RAW_EGRESS|frames=300|p50_ms=6.997|p95_ms=7.318|wall_ms=18131.579|checksum=46492093
+

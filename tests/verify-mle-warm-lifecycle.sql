@@ -5,7 +5,8 @@ declare
   l_job constant varchar2(64):='DOOM_MLE_WARM_01';
   l_token varchar2(32);l_sid number;l_serial number;l_spid varchar2(24);
   l_job_run varchar2(64);l_status varchar2(16);l_intent_status varchar2(16);
-  l_count number;l_seen number;
+  l_count number;l_seen number;l_assignment_status varchar2(16);
+  l_match constant varchar2(32):='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
   procedure capture_slot is
   begin
@@ -127,11 +128,67 @@ begin
   dbms_output.put_line(
     'PMLE_WARM_LIFECYCLE|PASS|scenario=force_path_reset');
 
-  -- Promotion-race fence: even an identity-less, grace-expired row must be a
-  -- hard janitor no-op while an assignment owns CLAIMED/RUNNING lifecycle.
+  -- A live assigned RUNNING incarnation is never reclaimed solely because
+  -- its heartbeat is old.
+  create_sleep_job(60);
+  insert into doom_mle_warm_assignment(
+    slot_id,job_name,incarnation_token,worker_sid,worker_serial,worker_spid,
+    worker_job_run,match_id,assigned_role,assignment_status,requested_at,
+    accepted_at)
+  values(1,l_job,l_token,l_sid,l_serial,l_spid,l_job_run,l_match,'AUTHORITY',
+    'ACCEPTED',systimestamp,systimestamp);
+  update doom_mle_warm_slot set slot_status='RUNNING',
+    assigned_match=l_match,assigned_role='AUTHORITY',
+    heartbeat=systimestamp-numtodsinterval(120,'SECOND') where slot_id=1;
+  commit;
+  doom_worker_lifecycle.reconcile_warm_slots;
+  select slot_status into l_status from doom_mle_warm_slot where slot_id=1;
+  if l_status<>'RUNNING' then
+    raise_application_error(-20000,'janitor reclaimed live assigned worker');
+  end if;
+  doom_worker_lifecycle.stop_job(
+    l_job,true,'live assigned janitor no-op cleanup',
+    l_token,l_sid,l_serial,l_spid,l_job_run);
+  dbms_output.put_line(
+    'PMLE_WARM_LIFECYCLE|PASS|scenario=live_assigned_noop');
+
+  -- A dead assigned RUNNING incarnation must fail both the exact active
+  -- assignment and the slot row after the grace period.
+  l_token:=lower(rawtohex(dbms_crypto.randombytes(16)));
+  l_sid:=999999;l_serial:=999999;l_spid:='fixture-dead';
+  l_job_run:=l_token||':dead';
+  insert into doom_mle_warm_assignment(
+    slot_id,job_name,incarnation_token,worker_sid,worker_serial,worker_spid,
+    worker_job_run,match_id,assigned_role,assignment_status,requested_at,
+    accepted_at)
+  values(1,l_job,l_token,l_sid,l_serial,l_spid,l_job_run,l_match,'AUTHORITY',
+    'ACCEPTED',systimestamp,systimestamp);
+  update doom_mle_warm_slot set slot_status='RUNNING',
+    assigned_match=l_match,assigned_role='AUTHORITY',worker_sid=l_sid,
+    worker_serial=l_serial,worker_spid=l_spid,worker_job_run=l_job_run,
+    incarnation_token=l_token,stop_requested=0,
+    heartbeat=systimestamp-numtodsinterval(120,'SECOND') where slot_id=1;
+  commit;
+  doom_worker_lifecycle.reconcile_warm_slots;
+  select slot_status into l_status from doom_mle_warm_slot where slot_id=1;
+  select assignment_status into l_assignment_status
+    from doom_mle_warm_assignment
+    where assignment_id=(select max(assignment_id)
+      from doom_mle_warm_assignment where slot_id=1);
+  select count(*) into l_count from doom_mle_warm_slot where slot_id=1
+    and assigned_match is null and assigned_role is null
+    and worker_sid is null and worker_serial is null and worker_spid is null
+    and worker_job_run is null and incarnation_token is null;
+  if l_status<>'FAILED' or l_assignment_status<>'FAILED' or l_count<>1 then
+    raise_application_error(-20000,'dead assigned row was not reconciled');
+  end if;
+  dbms_output.put_line(
+    'PMLE_WARM_LIFECYCLE|PASS|scenario=dead_assigned_reconciled');
+
+  -- Promotion-race fence: even an identity-less, grace-expired CLAIMED row
+  -- remains a hard janitor no-op while promotion owns the transition.
   for i in 1..20 loop
-    update doom_mle_warm_slot set slot_status=
-        case when mod(i,2)=0 then 'RUNNING' else 'CLAIMED' end,
+    update doom_mle_warm_slot set slot_status='CLAIMED',
       assigned_match=rpad(to_char(i,'FM00'),32,'0'),
       assigned_role='STANDBY',
       heartbeat=systimestamp-numtodsinterval(120,'SECOND')
@@ -141,7 +198,7 @@ begin
       doom_worker_lifecycle.reconcile_warm_slots;
     end loop;
     select slot_status into l_status from doom_mle_warm_slot where slot_id=1;
-    if l_status not in('CLAIMED','RUNNING') then
+    if l_status<>'CLAIMED' then
       raise_application_error(-20000,
         'janitor mutated assigned promotion iteration '||i);
     end if;
@@ -156,7 +213,7 @@ begin
   begin dbms_scheduler.drop_job(l_job,true);exception when others then null;end;
   doom_match_worker.start_warm_pool;
   dbms_output.put_line(
-    'PMLE_WARM_LIFECYCLE|PASS|scenarios=5|pool_restored=1');
+    'PMLE_WARM_LIFECYCLE|PASS|scenarios=7|pool_restored=1');
 exception when others then
   declare
     l_error number:=sqlcode;

@@ -1,0 +1,22 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+declare l_active number;l_assigned number;l_live number;
+*
+ERROR at line 1:
+ORA-20796: generated renderer requires idle capacity
+ORA-06512: at line 8
+Help: https://docs.oracle.com/error-help/db/ora-20796/
+

@@ -1,0 +1,24 @@
+PMLE_OCI_TWO_POV|BEGIN|frames=300|renderer=DATABASE_PIXELS|url_origin_sha256=13afb058b5b6fbfae22724b5c5fce6aa6a1772085daf7386ed7469510c3208f8
+PMLE_OCI_TWO_POV_ARTIFACT_ATTEST|phase=BEFORE|authority_sha256=c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1|renderer_sha256=302d574ec500330b5fe08c55593ee8d61c81930e37d68ba6dc963c35f6b996c7|coordinator_sha256=9e7d2e17d5d386d12498d65130387e14ee23d478ab794b8538677fa7b9163559
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: player 0 repeated a measured framebuffer
+
+174 !== 300
+
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.3-multiplayer-client.mjs:292:14
+    at Array.map (<anonymous>)
+    at file:///Users/bmarti44/doomdb/tests/verify-p13.3-multiplayer-client.mjs:288:30
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: 174,
+  expected: 300,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

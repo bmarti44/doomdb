@@ -1,0 +1,100 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_OCI_DVL2_SLIM_WORLD_LOAD|PASS
+
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=AUTHORITY_STEP|p50_ms=3.672|p95_ms=5.444|p99_ms=8.286|mean_ms=3.999
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=DVL2_SNAPSHOT_BUILD|p50_ms=6.150|p95_ms=10.296|p99_ms=13.582|mean_ms=6.549
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=DVL2_DYNAMIC_IMPORT|p50_ms=4.231|p95_ms=4.352|p99_ms=11.729|mean_ms=4.434
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=COARSE_WORLD_RASTER|p50_ms=14.989|p95_ms=21.432|p99_ms=25.379|mean_ms=15.495
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=COMPOSITOR_SNAPSHOT_BUILD|p50_ms=3.046|p95_ms=3.868|p99_ms=11.050|mean_ms=3.353
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=COMPOSITOR_SNAPSHOT_EXPORT|p50_ms=0.045|p95_ms=0.064|p99_ms=0.079|mean_ms=0.048
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=COMPOSITOR_BUFFER_COPY|p50_ms=0.015|p95_ms=0.019|p99_ms=0.027|mean_ms=0.015
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=WORLD_SPRITES|p50_ms=2.267|p95_ms=3.631|p99_ms=8.320|mean_ms=2.333
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=WEAPON_PSPRITES|p50_ms=2.762|p95_ms=2.850|p99_ms=3.613|mean_ms=2.666
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=STATUS_BAR_HUD|p50_ms=2.311|p95_ms=2.368|p99_ms=4.449|mean_ms=2.406
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=BLOB_RING_PUBLISH|p50_ms=4.009|p95_ms=4.780|p99_ms=14.719|mean_ms=4.506
+PMLE_OCI_DVL2_SLIM_WORLD_STAGE|PASS|stage=TOTAL|p50_ms=44.569|p95_ms=55.639|p99_ms=63.173|mean_ms=45.805
+PMLE_OCI_DVL2_TAIL|PASS|frame=6|total_ms=57.716|authority_ms=2.775|raster_ms=19.092|snapshot_build_ms=5.596|sprites_ms=5.368|weapon_ms=2.101|hud_ms=4.133|publish_ms=8.187
+PMLE_OCI_DVL2_TAIL|PASS|frame=7|total_ms=65.925|authority_ms=6.239|raster_ms=26.967|snapshot_build_ms=3.767|sprites_ms=3.147|weapon_ms=1.367|hud_ms=2.351|publish_ms=6.191
+PMLE_OCI_DVL2_TAIL|PASS|frame=11|total_ms=63.173|authority_ms=2.888|raster_ms=19.192|snapshot_build_ms=3.769|sprites_ms=3.193|weapon_ms=2.085|hud_ms=2.337|publish_ms=4.349
+PMLE_OCI_DVL2_TAIL|PASS|frame=18|total_ms=55.785|authority_ms=2.883|raster_ms=27.134|snapshot_build_ms=3.555|sprites_ms=3.140|weapon_ms=2.449|hud_ms=2.292|publish_ms=3.760
+PMLE_OCI_DVL2_TAIL|PASS|frame=22|total_ms=56.593|authority_ms=2.749|raster_ms=20.281|snapshot_build_ms=3.714|sprites_ms=3.117|weapon_ms=2.471|hud_ms=2.330|publish_ms=3.826
+PMLE_OCI_DVL2_TAIL|PASS|frame=25|total_ms=57.658|authority_ms=2.817|raster_ms=21.038|snapshot_build_ms=11.222|sprites_ms=3.273|weapon_ms=2.479|hud_ms=2.342|publish_ms=3.951
+PMLE_OCI_DVL2_TAIL|PASS|frame=29|total_ms=56.054|authority_ms=3.116|raster_ms=19.721|snapshot_build_ms=3.648|sprites_ms=3.150|weapon_ms=2.638|hud_ms=2.286|publish_ms=3.749
+PMLE_OCI_DVL2_TAIL|PASS|frame=32|total_ms=58.610|authority_ms=3.335|raster_ms=20.458|snapshot_build_ms=11.564|sprites_ms=3.453|weapon_ms=2.810|hud_ms=2.319|publish_ms=4.106
+PMLE_OCI_DVL2_TAIL|PASS|frame=35|total_ms=56.202|authority_ms=3.550|raster_ms=22.984|snapshot_build_ms=3.994|sprites_ms=4.196|weapon_ms=2.782|hud_ms=2.350|publish_ms=5.157
+PMLE_OCI_DVL2_TAIL|PASS|frame=36|total_ms=59.682|authority_ms=3.178|raster_ms=20.926|snapshot_build_ms=3.614|sprites_ms=4.284|weapon_ms=2.677|hud_ms=2.366|publish_ms=4.201
+PMLE_OCI_DVL2_TAIL|PASS|frame=39|total_ms=60.462|authority_ms=3.104|raster_ms=21.921|snapshot_build_ms=3.734|sprites_ms=3.513|weapon_ms=2.545|hud_ms=10.364|publish_ms=4.501
+PMLE_OCI_DVL2_TAIL|PASS|frame=77|total_ms=56.721|authority_ms=4.862|raster_ms=15.974|snapshot_build_ms=3.328|sprites_ms=2.663|weapon_ms=2.376|hud_ms=2.337|publish_ms=14.719
+PMLE_OCI_DVL2_TAIL|PASS|frame=241|total_ms=116.837|authority_ms=5.220|raster_ms=12.439|snapshot_build_ms=2.707|sprites_ms=1.414|weapon_ms=2.795|hud_ms=2.343|publish_ms=79.453
+PMLE_OCI_DVL2_TAIL|PASS|frame=265|total_ms=55.639|authority_ms=5.024|raster_ms=11.847|snapshot_build_ms=2.709|sprites_ms=1.388|weapon_ms=2.797|hud_ms=2.323|publish_ms=19.123
+PMLE_OCI_DVL2_TAIL|PASS|frame=266|total_ms=56.795|authority_ms=4.738|raster_ms=12.495|snapshot_build_ms=2.678|sprites_ms=1.353|weapon_ms=2.819|hud_ms=2.288|publish_ms=19.981
+PMLE_OCI_DVL2_TAIL|PASS|frame=291|total_ms=66.848|authority_ms=4.895|raster_ms=22.577|snapshot_build_ms=5.177|sprites_ms=2.837|weapon_ms=5.620|hud_ms=4.449|publish_ms=6.130
+PMLE_OCI_DVL2_SLIM_WORLD|PASS|frames=300|unique=300|ring_full=64|ring_unique=64|native_views=3|transport=persistent_returning_oracle_blob|temporary_lobs_before=0|temporary_lobs_after=2|temporary_lobs_delta=2|compositor_bytes_min=2992|compositor_bytes_max=5272|p95_ms=55.639|fps_p95=17.973|gate=FAIL
+

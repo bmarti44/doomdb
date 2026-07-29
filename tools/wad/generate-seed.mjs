@@ -199,7 +199,17 @@ const mapLump = new Map(mapSources.map((source) => [source.name, source])), map 
 const assets = [];
 const decodedImages = new Map();
 let assetTexelCount = 0;
-for (const approved of [...closure.assets].sort((a,b) => { const ak=`${a.kind}:${a.name}`, bk=`${b.kind}:${b.name}`; return ak < bk ? -1 : ak > bk ? 1 : 0; })) {
+// Keep the original kind/name order while allowing a generator-declared
+// extension group to append presentation-only assets without renumbering the
+// established DOOM_ASSET rows and partitioned texel files.
+const orderedAssets = [...closure.assets].sort((a,b) => {
+  const group = (a.seedOrderGroup ?? 0) - (b.seedOrderGroup ?? 0);
+  if (group) return group;
+  const kind = a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0;
+  if (kind) return kind;
+  return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+});
+for (const approved of orderedAssets) {
   if (!approved.kind || !approved.name || !Array.isArray(approved.sourceLumps) || approved.sourceLumps.length === 0) die('invalid asset closure row');
   const sourceRows = approved.sourceLumps.map((name) => last(rows, name));
   let image;

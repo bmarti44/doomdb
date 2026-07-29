@@ -5,6 +5,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 node "$ROOT/tests/verify-production-drop-inventory.mjs"
 node "$ROOT/tests/verify-pmle-checkpoint-cadence.mjs"
 sh "$ROOT/tests/verify-pmle-wasm2js-source.sh"
+sh "$ROOT/tests/verify-dvl2-dynamic-world-source.sh"
 INSTALL=$ROOT/probes/mle/install.sql
 BENCHMARK=$ROOT/probes/mle/benchmark.sql
 RUNNER=$ROOT/probes/mle/run.sh
@@ -29,6 +30,8 @@ TEAVM_TIC0_LOADER=$ROOT/probes/mle/teavm-engine/load-tic0-checkpoint-bank.sh
 TEAVM_SLICE_LOADER=$ROOT/probes/mle/teavm/deploy.sh
 TEAVM_SIM_CLEANUP=$ROOT/probes/mle/teavm-engine/cleanup-mle.sql
 TEAVM_LEDGER=$ROOT/probes/mle/teavm-engine/build-ledger-differential.mjs
+TEAVM_LEDGER_PROGRESS_AUDIT=$ROOT/probes/mle/teavm-engine/compare-ledger-progress.mjs
+TEAVM_LIVE_FRAME_REPRODUCIBILITY=$ROOT/probes/mle/teavm-engine/run-live-frame-authority-reproducibility.sh
 TEAVM_LEDGER_COMPONENTS=$ROOT/probes/mle/teavm-engine/build-ledger-component-profile.mjs
 TEAVM_LEDGER_COMPONENT_RUNNER=$ROOT/probes/mle/teavm-engine/run-ledger-component-ab.sh
 TEAVM_LEDGER_COMPONENT_EXTRACTOR=$ROOT/probes/mle/teavm-engine/extract-ledger-component-digest.sh
@@ -47,6 +50,7 @@ TEAVM_DECPS_PATCH=$ROOT/probes/mle/teavm-engine/0006-teavm-authority-no-blocking
 TEAVM_DECPS_RUNNER=$ROOT/probes/mle/teavm-engine/run-decps-rank-mle.sh
 TEAVM_DECPS_PARITY=$ROOT/probes/mle/teavm-engine/run-javascript-candidate-parity.mjs
 TEAVM_DECPS_GATES=$ROOT/probes/mle/teavm-engine/run-decps-promotion-gates.sh
+TEAVM_LIVE_FRAME_GATES=$ROOT/probes/mle/teavm-engine/run-live-frame-authority-differentials.sh
 TEAVM_DECPS_LEDGER=$ROOT/probes/mle/teavm-engine/run-decps-ledger.sh
 TEAVM_DECPS_LEDGER_POSTFLIGHT=$ROOT/probes/mle/teavm-engine/attest-decps-ledger-postflight.sh
 TEAVM_DECPS_READINESS=$ROOT/probes/mle/teavm-engine/check-decps-promotion-readiness.mjs
@@ -85,7 +89,7 @@ TEAVM_DISPATCH_AB=$ROOT/probes/mle/teavm-engine/run-dispatch-ab.sh
 TEAVM_DIFFERENTIAL_RUNNER=$ROOT/probes/mle/teavm-engine/run-differential.sh
 TEAVM_LEDGER_RUNNER=$ROOT/probes/mle/teavm-engine/run-ledger-differential.sh
 TEAVM_WORKER_CUTOVER_RUNNER=$ROOT/probes/mle/teavm-engine/run-worker-cutover.sh
-TEAVM_CADENCE_DECISION=$ROOT/artifacts/performance/pmle-worker-soak/checkpoint-cadence-decision-2026-07-24.md
+TEAVM_CADENCE_DECISION=$ROOT/artifacts/performance/pmle-worker-soak/checkpoint-cadence-decision-2026-07-29.md
 TEAVM_BROWSER_REPLICA_PROFILE=$ROOT/probes/mle/teavm-engine/profile-browser-replica.mjs
 TEAVM_WAN_RUNNER=$ROOT/probes/mle/teavm-engine/run-wan-matrix.sh
 ALERT_SCANNER=$ROOT/scripts/oracle-alert-window.sh
@@ -132,12 +136,40 @@ AUTHORITY_TRANSPORT=$ROOT/sql/sim/087_mle_transition_transport.sql
 AUTHORITY_TRANSPORT_SCHEMA=$ROOT/sql/schema/052_mle_authority_transport.sql
 AUTHORITY_TRANSPORT_TEST=$ROOT/tests/verify-mle-transition-transport.sql
 MLE_MATCH_RUNTIME=$ROOT/sql/sim/088_mle_match_runtime.sql
+MLE_LIVE_FRAME_LOADER=$ROOT/probes/mle/load-live-frame-module.sh
+MLE_LIVE_FRAME_SCHEMA=$ROOT/sql/schema/064_mle_live_frame.sql
+MLE_LIVE_FRAME_TRANSPORT=$ROOT/sql/sim/089_mle_live_frame_transport.sql
+MLE_LIVE_FRAME_COORDINATOR=$ROOT/probes/mle/dvl2-world-raster-coordinator.mjs
+MLE_RENDERER_ASSET_PACK_BUILDER=$ROOT/probes/mle/build-renderer-asset-packs.mjs
+MLE_LIVE_WORLD_BUILDER=$ROOT/probes/mle/free-live-teavm/build-world-raster-source.mjs
+MLE_LIVE_UNIFIED_MODULE=$ROOT/probes/mle/free-live-teavm/src/main/java/doomdb/mle/renderer/FreeLiveUnifiedRendererModule.java
+MLE_LIVE_FRAME_E2E=$ROOT/tests/verify-mle-live-frame-e2e.mjs
+MLE_LIVE_FRAME_E2E_RUNNER=$ROOT/tests/run-mle-live-frame-e2e.sh
+MLE_LIVE_FRAME_CROSS_SLOT=$ROOT/tests/run-mle-live-frame-cross-slot.sh
+MLE_LIVE_FRAME_RECOVERY=$ROOT/tests/run-mle-live-frame-recovery.sh
+MLE_LIVE_FRAME_TRANSPORT_SOAK=$ROOT/tests/run-mle-live-frame-transport-soak.sh
+MLE_LIVE_FRAME_RING_WRAP=$ROOT/tests/run-mle-live-frame-ring-wrap.sh
+MLE_LIVE_FRAME_DIFFERENTIALS=$ROOT/probes/mle/teavm-engine/run-live-frame-authority-differentials.sh
+MLE_LIVE_FRAME_TWO_POV=$ROOT/tests/run-oci-live-frame-two-pov.sh
+MLE_LIVE_FRAME_TWO_POV_EVALUATOR=$ROOT/tests/evaluate-live-frame-two-pov.mjs
+MLE_LIVE_FRAME_ARTIFACT_MARKER=$ROOT/scripts/verify-live-frame-artifact-marker.mjs
+MULTIPLAYER_CLIENT=$ROOT/tests/verify-p13.3-multiplayer-client.mjs
+MULTIPLAYER_PERFORMANCE=$ROOT/tests/verify-p13.5-multiplayer-performance.sh
+MLE_PIXEL_BATCH_SOURCE=$ROOT/client/src/pixel-batch.ts
+MLE_PIXEL_BATCH_STAGING=$ROOT/client/staging/pixel-batch.js
+MLE_PIXEL_BATCH_DIST=$ROOT/client/dist/play/pixel-batch.js
+MLE_COLUMN_MAJOR_TEST=$ROOT/tests/verify-column-major-blitter.mjs
 MLE_WORKER_LIFECYCLE=$ROOT/sql/sim/083_worker_lifecycle.sql
 MLE_WORKER_LIFECYCLE_SCHEMA=$ROOT/sql/schema/062_mle_warm_lifecycle.sql
+MLE_WARM_LIFECYCLE_TEST=$ROOT/tests/verify-mle-warm-lifecycle.sql
 MLE_RECOVERY_TELEMETRY_SCHEMA=$ROOT/sql/schema/064_mle_recovery_telemetry.sql
+MLE_ASYNC_CHECKPOINT_SCHEMA=$ROOT/sql/schema/066_async_standby_checkpoint.sql
 MLE_MATCH_WORKER=$ROOT/sql/sim/084_multiplayer_worker.sql
 MLE_MATCH_WORKER_TEST=$ROOT/tests/verify-mle-match-worker-cutover.sql
+MLE_SESSION_CLEANUP=$ROOT/sql/sim/085_session_cleanup.sql
+MULTIPLAYER_SCHEMA=$ROOT/sql/schema/047_multiplayer.sql
 DOOM_API=$ROOT/sql/rest/010_doom_api.sql
+MULTIPLAYER_CLIENT_TS=$ROOT/client/src/multiplayer.ts
 MULTIPLAYER_SOAK=$ROOT/tests/verify-p13.5-multiplayer-soak.mjs
 IWAD_LOADER=$ROOT/tools/mochadoom/DoomMochaIwadLoader.java
 RUNTIME_GRANTS=$ROOT/deploy/local/initdb/10-doom-runtime-grants.sql
@@ -204,12 +236,14 @@ for file in "$INSTALL" "$BENCHMARK" "$RUNNER" "$CLEANUP" \
   "$TEAVM_PRESENTATION_BIND_BENCH" \
   "$TEAVM_PRESENTATION_BIND_CLEANUP" "$TEAVM_PRESENTATION_DECPS_RUNNER" \
   "$TEAVM_SIM_SOURCE" "$TEAVM_BSP_PROPERTY" \
+  "$MLE_RENDERER_ASSET_PACK_BUILDER" \
   "$REPORT" "$TEAVM_REPORT" "$VERSIONS" \
   "$AUTHORITY_TS" "$AUTHORITY_MIRROR_TS" "$AUTHORITY_BATCH_TS" \
   "$AUTHORITY_WAN_TS" \
   "$AUTHORITY_SQL" "$AUTHORITY_TRANSPORT" "$AUTHORITY_TRANSPORT_SCHEMA" \
   "$MLE_MATCH_RUNTIME" "$MLE_WORKER_LIFECYCLE" \
-  "$MLE_WORKER_LIFECYCLE_SCHEMA" "$MLE_MATCH_WORKER" "$MLE_MATCH_WORKER_TEST" \
+  "$MLE_WORKER_LIFECYCLE_SCHEMA" "$MLE_ASYNC_CHECKPOINT_SCHEMA" \
+  "$MLE_MATCH_WORKER" "$MLE_MATCH_WORKER_TEST" \
   "$DOOM_API" "$IWAD_LOADER" "$RUNTIME_GRANTS" \
   "$ENVIRONMENT_SQL" "$ARTIFACT_SQL" \
   "$AUTHORITY_TRANSPORT_TEST" "$AUTHORITY_TEST" "$AUTHORITY_MIRROR_TEST" \
@@ -229,6 +263,8 @@ done
 [ -x "$TEAVM_DISPATCH_AB" ] || fail 'TeaVM dispatch A/B runner is not executable'
 [ -x "$TEAVM_DIFFERENTIAL_RUNNER" ] || fail 'TeaVM differential runner is not executable'
 [ -x "$TEAVM_LEDGER_RUNNER" ] || fail 'TeaVM ledger differential runner is not executable'
+[ -x "$MLE_LIVE_FRAME_DIFFERENTIALS" ] ||
+  fail 'live-frame authority differential runner is not executable'
 [ -x "$TEAVM_DECPS_READINESS" ] || fail 'de-CPS promotion readiness checker is not executable'
 [ -x "$TEAVM_DECPS_LEDGER_POSTFLIGHT" ] ||
   fail 'de-CPS ledger postflight is not executable'
@@ -391,6 +427,51 @@ grep -q 'doom_teavm_sim_step_command' "$TEAVM_LEDGER" || fail 'exact ledger comm
 grep -q 'doom_teavm_sim_canonical_chunk' "$TEAVM_LEDGER" || fail 'canonical ledger export missing'
 grep -q 'PMLE_LEDGER_PROGRESS' "$TEAVM_LEDGER" || fail 'ledger cumulative progress marker missing'
 grep -q 'l_progress_digest' "$TEAVM_LEDGER" || fail 'ledger cumulative digest state missing'
+node "$TEAVM_LEDGER_PROGRESS_AUDIT" --self-test >/dev/null ||
+  fail 'ledger progress comparator self-test failed'
+bash -n "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" ||
+  fail 'live-frame authority reproducibility runner has invalid shell syntax'
+grep -Fq '[[ "${PMLE_LIVE_FRAME_REPRODUCIBILITY:-NO}" == YES ]]' \
+  "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" ||
+  fail 'live-frame authority rebuild lacks an explicit activation fence'
+grep -Fq 'candidate_patch_set" == none' \
+  "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" ||
+  fail 'live-frame authority rebuild does not bind the candidate patch-set truth'
+grep -Fq 'DOOMDB_TEAVM_AUTHORITY_EXTRA_PATCH="$patch"' \
+  "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" ||
+  fail 'live-frame authority rebuild does not apply the production patch'
+grep -Fq 'classification=TERMINAL|markers=133|through_tic=13272' \
+  "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" &&
+  grep -Fq \
+    'ledger_terminal_sha=089ba1518faf0e62be1c59d09e576c00e75c1845c00c3d45e497f7e3b7048584' \
+    "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" &&
+  grep -Fq 'PMLE_CANDIDATE_PAIR|classification=UNPROMOTED_CANDIDATE' \
+    "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" &&
+  grep -Fq 'PMLE_ARTIFACT|source_bytes=' \
+    "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" &&
+  grep -Fq 'PMLE_LEDGER_PROVENANCE|CONFIRMED|executions=1|terminal_markers=1' \
+    "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" &&
+  grep -Fq 'ledger_terminal_sha256=%s' \
+    "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" ||
+  fail 'live-frame authority rebuild is not bound to terminal ledger evidence'
+grep -Fq 'file_identity "$rebuilt" "$expected_bytes" "$expected_sha"' \
+  "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" &&
+  grep -Fq 'cmp -s "$candidate" "$rebuilt"' \
+    "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" ||
+  fail 'live-frame authority rebuild does not require byte-exact c613 reproduction'
+grep -Fq 'PMLE_LIVE_FRAME_REPRODUCIBILITY|PASS|' \
+  "$TEAVM_LIVE_FRAME_REPRODUCIBILITY" ||
+  fail 'live-frame authority rebuild lacks a terminal evidence marker'
+test "$(line_of 'PMLE_LIVE_FRAME_REPRODUCIBILITY=YES after' \
+  "$TEAVM_LIVE_FRAME_REPRODUCIBILITY")" -lt \
+  "$(line_of '"$project/build-simulation.sh"' \
+  "$TEAVM_LIVE_FRAME_REPRODUCIBILITY")" ||
+  fail 'live-frame authority rebuild activation fence follows execution'
+test "$(line_of 'expected_ledger_audit=' \
+  "$TEAVM_LIVE_FRAME_REPRODUCIBILITY")" -lt \
+  "$(line_of '"$project/build-simulation.sh"' \
+  "$TEAVM_LIVE_FRAME_REPRODUCIBILITY")" ||
+  fail 'live-frame authority terminal-ledger fence follows execution'
 if grep -Eq 'doom_teavm_sim_(checkpoint|restore)|doom_mocha_[a-z_]*(checkpoint|restore)' "$TEAVM_LEDGER"; then
   fail 'promotion ledger must not checkpoint or restore'
 fi
@@ -610,7 +691,15 @@ grep -q 'PLAYOUT_ACCELERATION_MARGIN_TICS = 2' \
   grep -q 'MAX_DECELERATED_PLAYOUT_INTERVAL_MS = 31.4' \
     "$ROOT/client/src/authority-wan.ts" &&
   grep -q "mode==='DECELERATE' && bufferedFrames>=selectedDepth" \
-    "$ROOT/client/src/authority-wan.ts" ||
+    "$ROOT/client/src/authority-wan.ts" &&
+  grep -q 'observeConfirmedBatch(nowMs: number, frameCount: number)' \
+    "$ROOT/client/src/authority-wan.ts" &&
+  grep -q 'Math.max(0,nowMs-this.lastBatchDeliveryMs-representedMs)' \
+    "$ROOT/client/src/authority-wan.ts" &&
+  grep -q 'confirmedBatchPlayoutDecision(' \
+    "$ROOT/client/src/authority-wan.ts" &&
+  grep -q 'batchPolicy.observeConfirmedBatch(0,7)' \
+    "$AUTHORITY_WAN_TEST" ||
   fail 'WAN confirmed-presentation setpoint or bounded margins regressed'
 grep -q 'MANAGED_ORDS_SESSION_GROWTH_CAP=6' "$WAN_SOAK" &&
   grep -q 'ordsSessionGrowthCap=' "$WAN_SOAK" ||
@@ -700,8 +789,19 @@ grep -q 'procedure sample_authority_cpu' "$ROOT/sql/sim/084_multiplayer_worker.s
   fail 'authority CPU telemetry sampler missing'
 grep -q 'dbms_utility.get_cpu_time' "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
   fail 'authority session CPU source missing'
-grep -q "set_action('MLE_CHECKPOINT')" "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
-  fail 'authority checkpoint liveness action missing'
+grep -q "set_action('MLE_CHECKPOINT_PREPARE')" \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
+grep -q "set_action('MLE_CHECKPOINT_EXPORT')" \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
+grep -q "set_action('CHECKPOINT_FRAME_FLUSH')" \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
+grep -q 'doom_mle_match_runtime.flush_live_frames(' \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
+grep -q 'doom_mle_match_runtime.prepare_checkpoint' \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
+grep -q 'doom_mle_match_runtime.export_prepared_checkpoint' \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
+  fail 'two-phase authority checkpoint liveness actions are missing'
 grep -q 'function worker_liveness_suppresses' "$DOOM_API" ||
   fail 'REST checkpoint liveness discriminator missing'
 grep -q 'where sid=p_sid and serial#=p_serial' "$DOOM_API" ||
@@ -732,12 +832,416 @@ grep -q 'prompt_return_ms' "$AUTHORITY_TRANSPORT_TEST" || fail 'DMB1 prompt-retu
 grep -q "utl_raw.cast_to_raw('DMD1')" "$AUTHORITY_SQL" || fail 'DMD1 SQL encoder missing'
 grep -q 'dbms_crypto.hash' "$AUTHORITY_SQL" || fail 'DMD1 SQL chain missing'
 grep -q "utl_raw.cast_to_raw('DMB1')" "$AUTHORITY_TRANSPORT" || fail 'DMB1 batch name drift'
-grep -q 'doom_teavm_sim_multi_init_game' "$MLE_MATCH_RUNTIME" || fail 'MLE worker game initialization missing'
-grep -q 'doom_teavm_sim_authority_step' "$MLE_MATCH_RUNTIME" || fail 'MLE worker authoritative step missing'
-grep -q 'doom_teavm_sim_checkpoint_chunk' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint export missing'
-grep -q 'doom_teavm_sim_restore_load' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint recovery missing'
-grep -q 'doom_teavm_sim_restore_warm' "$MLE_MATCH_RUNTIME" ||
+grep -q 'doom_mle_live_init_game' "$MLE_MATCH_RUNTIME" || fail 'MLE worker game initialization missing'
+grep -q 'doom_mle_live_step' "$MLE_MATCH_RUNTIME" || fail 'MLE worker authoritative step missing'
+grep -q 'doom_mle_live_checkpoint_chunk' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint export missing'
+grep -q 'doom_mle_live_restore_load' "$MLE_MATCH_RUNTIME" || fail 'MLE worker checkpoint recovery missing'
+grep -q 'doom_mle_live_restore_warm' "$MLE_MATCH_RUNTIME" ||
   fail 'fail-closed warm MLE checkpoint restore missing'
+grep -q 'create mle env doom_mle_live_env imports' "$MLE_LIVE_FRAME_LOADER" ||
+  fail 'live-frame coordinator environment missing'
+grep -q "live-frame authority source mismatch" "$MLE_LIVE_FRAME_LOADER" &&
+grep -q 'live.authorityCandidateSha256' "$MLE_LIVE_FRAME_LOADER" ||
+  fail 'live-frame environment is not fenced to its authority artifact'
+grep -Fq 'lock="${PMLE_LIVE_FRAME_LOCK:-$root/versions.lock}"' \
+  "$MLE_LIVE_FRAME_LOADER" &&
+grep -q 'candidate live-frame lock requires PMLE_LIVE_FRAME_CANDIDATE=YES' \
+  "$MLE_LIVE_FRAME_LOADER" &&
+grep -q 'ACTIVE_LIVE_CONTEXTS=' "$MLE_LIVE_FRAME_LOADER" &&
+grep -q 'live-frame module deployment requires the retained pool parked' \
+  "$MLE_LIVE_FRAME_LOADER" ||
+  fail 'diagnostic live-frame pin override is not explicit/fail-closed'
+grep -q "signature 'renderAndPublishMatchFrame" "$MLE_LIVE_FRAME_LOADER" ||
+  fail 'live-frame render/publish call spec missing'
+grep -q 'renderAndPublishMatchFrame' "$MLE_LIVE_FRAME_COORDINATOR" ||
+  fail 'live-frame coordinator pipeline missing'
+node --check "$MLE_RENDERER_ASSET_PACK_BUILDER" >/dev/null ||
+  fail 'renderer asset-pack builder syntax is invalid'
+(
+  asset_tmp=$(mktemp -d "${TMPDIR:-/tmp}/doomdb-asset-pack.XXXXXX")
+  trap 'rm -rf "$asset_tmp"' EXIT
+  node "$MLE_RENDERER_ASSET_PACK_BUILDER" "$ROOT" "$asset_tmp" >/dev/null
+  for kind in wall_texture flat sprite_patch ui_patch; do
+    cmp "$asset_tmp/$kind.bin" \
+      "$ROOT/probes/mle/target/free-live-renderer/assets-v1/$kind.bin"
+  done
+) || fail 'renderer asset packs do not match the canonical seed manifest'
+test "$(grep -Fc 'renderer.resetPresentationState() !== 9' \
+  "$MLE_LIVE_FRAME_COORDINATOR")" -eq 5 ||
+  fail 'live-frame coordinator does not reset retained presentation state'
+grep -q 'const MATCH_LIVE_BATCH_FRAMES = 2' \
+  "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'update doom_match_live_frame_batch' \
+  "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'payload_blob=empty_blob(),published_at=systimestamp' \
+  "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -Fq 'state.bytes.set([68, 80, 66, 50], 0)' \
+  "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'changed || state.count === MATCH_LIVE_BATCH_FRAMES' \
+  "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'flushMatchLiveFrameBatches' "$MLE_LIVE_FRAME_COORDINATOR" ||
+  fail 'two-frame persistent DPB2 locator publication missing'
+grep -q 'presentationWorldGeometryAndSidesSnapshotLength' \
+  "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'renderCompleteMatchFrame(playerSlot, changed, frameTic)' \
+  "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'Seed every match/generation once with the full DVL2 world snapshot' \
+  "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'Apply both before the first render' "$MLE_LIVE_FRAME_COORDINATOR" &&
+perl -0777 -ne 'exit !(/if \(fullWorld\).*?prepareCurrentSnapshot\(playerSlot, true\);.*?loadPreparedDynamics\(\);.*?prepareCurrentSnapshot\(playerSlot, false\);.*?loadPreparedDynamics\(\);/s)' \
+  "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'renderer.resetWorldState() < 1' "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'baselineSectorFloor = sectorFloor.clone()' "$MLE_LIVE_WORLD_BUILDER" &&
+grep -q 'baselineSideRowOffset = dynamicSideRowOffset.clone()' \
+  "$MLE_LIVE_WORLD_BUILDER" &&
+grep -q 'public static int resetDynamicWorldState()' \
+  "$MLE_LIVE_WORLD_BUILDER" &&
+grep -q 'return FreeLiveWorldRasterCore.resetDynamicWorldState()' \
+  "$MLE_LIVE_UNIFIED_MODULE" ||
+  fail 'new retained assignments do not seed full renderer world state'
+grep -q 'paletteIndexFromSnapshot' "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'snapshotI32(snapshot, 128)' "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'snapshotI32(snapshot, 132)' "$MLE_LIVE_FRAME_COORDINATOR" &&
+grep -q 'appendMatchLiveFrame(state, frameTic, retainedPaletteIndex)' \
+  "$MLE_LIVE_FRAME_COORDINATOR" ||
+  fail 'authoritative damage/bonus PLAYPAL selection is not published'
+grep -q 'create table doom_match_live_frame' "$MLE_LIVE_FRAME_SCHEMA" &&
+grep -q 'create table doom_match_live_frame_batch' "$MLE_LIVE_FRAME_SCHEMA" &&
+grep -q 'frame_count between 1 and 6' "$MLE_LIVE_FRAME_SCHEMA" &&
+grep -Fq 'payload_bytes=8+frame_count*64008' "$MLE_LIVE_FRAME_SCHEMA" ||
+  fail 'bounded live-frame ring schema missing'
+grep -q 'authority_bytes number(10) not null' "$MLE_LIVE_FRAME_SCHEMA" &&
+grep -q 'authority_sha256 varchar2(64) not null' "$MLE_LIVE_FRAME_SCHEMA" &&
+grep -q "regexp_like(authority_sha256,'\\^\\[0-9a-f\\]{64}\\$')" \
+  "$MLE_LIVE_FRAME_SCHEMA" ||
+  fail 'live-frame deployed-authority provenance is not schema-fenced'
+grep -Fq "and authority_sha256='\$authority_sha'" \
+  "$MLE_LIVE_FRAME_LOADER" &&
+grep -q 'and authority_bytes=$authority_bytes' "$MLE_LIVE_FRAME_LOADER" ||
+  fail 'live-frame loader does not bind staged authority provenance'
+grep -q 'ring_slot between 0 and 63' "$MLE_LIVE_FRAME_SCHEMA" ||
+  fail 'live-frame ring bound missing'
+grep -q 'palette_index number(2) default 0 not null' \
+  "$MLE_LIVE_FRAME_SCHEMA" &&
+grep -q 'palette_index between 0 and 13' "$MLE_LIVE_FRAME_SCHEMA" ||
+  fail 'live-frame PLAYPAL selector is not schema-fenced'
+grep -q 'procedure advance_generation' "$MLE_LIVE_FRAME_TRANSPORT" ||
+  fail 'live-frame recovery generation fence missing'
+grep -q 'procedure poll_match_pixels' "$DOOM_API" ||
+  fail 'authenticated live-frame REST procedure missing'
+grep -q "'PLAYPAL','PLAYPAL_ALL','TITLEPIC'" "$DOOM_API" &&
+grep -q "p_asset_name='PLAYPAL_ALL'" "$DOOM_API" &&
+grep -q "l_lump_size<>14\\*256\\*3" "$DOOM_API" &&
+grep -q 'PLAYPAL set integrity mismatch' "$DOOM_API" &&
+grep -q "request('ASSET_PLAYPAL_ALL','GET_ASSET'" \
+  "$ROOT/scripts/t11.1-cloud-api.mjs" &&
+grep -q '3d6069acf11e7c8cf6ae77869a3b67eade15c5df686ca3a49fa31e4517359312' \
+  "$ROOT/scripts/t11.1-cloud-api.mjs" &&
+grep -q 'api.observations.length,20' \
+  "$ROOT/scripts/t11.1-build-evidence.mjs" ||
+  fail 'full PLAYPAL asset endpoint is absent or not integrity-fenced'
+grep -q 'procedure poll_match_pixel_batch' "$DOOM_API" &&
+grep -q 'procedure ensure_pixel_worker' "$DOOM_API" &&
+test "$(grep -c 'procedure ensure_pixel_worker(' "$DOOM_API")" -eq 1 &&
+test "$(grep -n -m1 'create or replace package body doom_api as' "$DOOM_API" |
+  cut -d: -f1)" -lt \
+  "$(grep -n -m1 'procedure ensure_pixel_worker(' "$DOOM_API" |
+    cut -d: -f1)" &&
+grep -q "p_generation,'PIXEL_POLL'" "$DOOM_API" &&
+grep -q 'doom_match_worker.recover_match(p_match,20,l_recovery_state)' \
+  "$DOOM_API" &&
+test "$(grep -c 'if p_after_tic>=p_current_tic then' "$DOOM_API")" -eq 2 &&
+test "$(grep -c 'ensure_pixel_worker(' "$DOOM_API")" -eq 5 &&
+grep -q 'p_ready=0 and p_current_tic>0 and p_after_tic<p_current_tic' \
+  "$DOOM_API" &&
+grep -q 'p_frame_count=0 and p_current_tic>0' "$DOOM_API" &&
+perl -0777 -ne 'exit !(/create or replace package body doom_api as.*?\n  procedure poll_match_pixels\(.*?l_slot:=player_capability_slot\(p_match,p_player_capability\);.*?ensure_pixel_worker\(.*?(?=\n  procedure)/s)' \
+  "$DOOM_API" &&
+perl -0777 -ne 'exit !(/create or replace package body doom_api as.*?\n  procedure poll_match_pixel_batch\(.*?l_slot:=player_capability_slot\(p_match,p_player_capability\);.*?ensure_pixel_worker\(.*?(?=\n  procedure)/s)' \
+  "$DOOM_API" &&
+perl -0777 -ne 'exit !(/\n  procedure poll_match_pixels\(.*?last_seen_at=l_now.*?commit;.*?ensure_pixel_worker\(.*?doom_mle_live_frame_transport\.poll_latest/s)' \
+  "$DOOM_API" &&
+perl -0777 -ne 'exit !(/\n  procedure poll_match_pixel_batch\(.*?last_seen_at=l_now.*?commit;.*?ensure_pixel_worker\(.*?doom_mle_live_frame_transport\.poll_batch/s)' \
+  "$DOOM_API" &&
+grep -q 'p_after_tic: 2_147_483_647' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'invalid capability changed pixel-worker recovery state' \
+  "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'procedure poll_batch' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q "hextoraw('44504232'" "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -Fq 'dbms_lob.getlength(l_batch)<>8+l_batch_count*64008' \
+  "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'p_payload:=l_batch' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -Fq 'l_source_offset:=9+l_skip*64008' \
+  "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -Fq 'coalesce(max(latest_.tic),-1)-64' \
+  "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'ring-gap resync without a permanent ORA-20796 loop' \
+  "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'dbms_lob.copy(' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -Fq '8+p_frame_count*64008' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'procedure encode_gzip_dpb2' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'utl_compress.lz_compress(l_raw_payload,6)' \
+  "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'GZIP_DPB2_V1 encoding failed' "$MLE_LIVE_FRAME_TRANSPORT" &&
+! grep -q 'select count(\*) into p_frame_count' \
+  "$MLE_LIVE_FRAME_TRANSPORT" ||
+  fail 'persistent DPB2 batch/suffix transport contract missing'
+test "$(grep -c "last_seen_at<l_now-numtodsinterval(1,'SECOND')" \
+  "$DOOM_API")" -eq 2 ||
+  fail 'live-frame poll lease writes are not throttled to one per second'
+perl -0777 -ne 'exit !(/\n  procedure revise_match_input\(.*?select ticcmd_raw,effective_tic into l_existing,p_effective_tic.*?input revision mismatch.*?update doom_match_member set member_state='\''ACTIVE'\'',last_seen_at=l_now,.*?disconnected_at=null.*?renew_match_lease\(p_match,l_now\);p_accepted:=1;commit;return;/s)' \
+  "$DOOM_API" ||
+  fail 'idempotent fused-input retry does not preserve member liveness'
+grep -q 'doom_mle_match_runtime.render_and_publish' "$MLE_MATCH_WORKER" ||
+  fail 'worker live-frame render/publication missing'
+perl -0777 -ne 'exit !(/procedure publish_initial\(.*?initialize_ring\(.*?Never publish that pre-ticker presentation state: tic 1.*?update doom_match set match_state=\x27ACTIVE\x27/s)' \
+  "$MLE_MATCH_WORKER" &&
+grep -q 'if l_tic>l_checkpoint_tic then' "$MLE_MATCH_WORKER" ||
+  fail 'worker publishes checkpoint presentation before a ticker refresh'
+grep -q 'doom_mle_match_runtime.flush_live_frames' "$MLE_MATCH_WORKER" &&
+grep -q 'doom_mle_live_frame_prewarm(600)' "$MLE_MATCH_RUNTIME" &&
+grep -q "sys_context('USERENV','CLOUD_SERVICE') is not null" \
+  "$MLE_MATCH_RUNTIME" ||
+  fail 'batch flush or cloud renderer plateau prewarm missing'
+grep -q 'function authority_sha256 return varchar2' "$MLE_MATCH_RUNTIME" &&
+grep -q 'from doom_mle_live_frame_source source_' "$MLE_MATCH_RUNTIME" &&
+grep -q 'l_authority_sha:=authority_sha256' "$MLE_MATCH_RUNTIME" &&
+grep -q 'l_authority_sha:=doom_mle_match_runtime.authority_sha256' \
+  "$MLE_MATCH_WORKER" &&
+test "$(grep -h -o 'authority_sha256=l_authority_sha' \
+  "$MLE_MATCH_RUNTIME" "$MLE_MATCH_WORKER" | wc -l | tr -d '[:space:]')" \
+  -eq 2 &&
+! grep -q \
+  "authority_sha256=[[:space:]]*'5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3'" \
+  "$MLE_MATCH_RUNTIME" "$MLE_MATCH_WORKER" ||
+  fail 'warm checkpoint selection is not bound to deployed authority provenance'
+grep -q 'l_render_member.player_slot' "$MLE_MATCH_WORKER" &&
+! grep -q 'for l_player in 0..l_render_players-1' "$MLE_MATCH_WORKER" ||
+  fail 'worker live-frame POV selection assumes dense membership slots'
+! grep -q "standard_hash('\\[\\]'" "$MLE_MATCH_WORKER" &&
+test "$(grep -c '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945' \
+  "$MLE_MATCH_WORKER")" -eq 4 ||
+  fail 'per-tic invariant empty-event SHA still uses the SQL engine'
+grep -q 'await startDatabaseFrameGame(local, latestStatus)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'exchangeMatchPixelBatch(' "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'decodeDatabasePixelTransport' "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'createColumnMajorIndexedPaletteBlitter' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q "getAsset('PLAYPAL_ALL')" "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'if(!transportEstablished)' "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'batch[0]!.tic!==expectedTic' "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'cause instanceof MatchCapacityError' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q "reason:'generation'" "$ROOT/client/src/multiplayer.ts" &&
+grep -q "reason:'ring-gap'" "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'serverTic=result.currentTic' "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'if(result.generation>requestGeneration)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'lastFrameBatchAt+1000/35-finished' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'wan.observeConfirmedBatch(finished,batch.length)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'const wan=new ConfirmedWanPolicy(6,6)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'const pixelInputCatchupFloor=2' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'interval=inputCatchup?20:nativePixelInterval/2' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'interval=31' "$ROOT/client/src/multiplayer.ts" &&
+! grep -q 'decelerationPhase\|interval=.*53' \
+  "$ROOT/client/src/multiplayer.ts" &&
+! grep -q 'exchangePixelBatchWithHedge\|pixel-poll-hedge' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'frames.size>wan.playoutBufferTics' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q '+wan.expectedConfirmedBatchTics)return' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'const pixelInputLeadTics=1' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'nextPollDelayMs=0' "$ROOT/client/src/multiplayer.ts" &&
+perl -0777 -ne 'exit !(/if\(changed\) \{.*?urgentPixelInput=true;.*?schedulePixelPolls\(0\);.*?\}/s)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'let urgentPixelInput=false' "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'if(playoutStarted&&!urgentPixelInput' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'frames.size>wan.playoutBufferTics' \
+  "$ROOT/client/src/multiplayer.ts" &&
+! grep -Fq 'pendingInput===null&&!inputPosting)queueInput(latest)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'Pixel polling is the authenticated presence heartbeat' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'const sequence=pendingInput?.sequence??inputSequence+1' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'const input=retryInput??pendingInput;' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'retryInput=input' "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'const changedInput=input.hex!==lastEffectiveInputHex;' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'if(playoutStarted&&changedInput)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'void reviseMatchInput(' "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq "throw new Error('input-free database-frame exchange changed')" \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'value.match,value.playerCapability,requestAfterTic,8)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'confirmedDropTics.has(expected)' \
+  "$ROOT/tests/verify-p13.3-multiplayer-client.mjs" &&
+grep -Fq 'expected=nextDatabaseFrameTic(expected)' \
+  "$ROOT/tests/verify-p13.3-multiplayer-client.mjs" &&
+grep -Fq 'return tic+1;' "$ROOT/client/src/pixel-batch.ts" &&
+! grep -q 'DATABASE_FRAME_MODULUS\|c_live_render_modulus' \
+  "$ROOT/client/src/pixel-batch.ts" \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
+grep -Fq 'l_view.tic<>p_last_tic+1' \
+  "$ROOT/sql/sim/089_mle_live_frame_transport.sql" &&
+grep -q 'wan.playoutBufferTics+wan.expectedConfirmedBatchTics' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'confirmedBatchPlayoutDecision(' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q "trace('pixel-starvation'" "$ROOT/client/src/multiplayer.ts" &&
+grep -q "reason:'visibility',hiddenMilliseconds" \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'const requestEpoch=pixelPollEpoch' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'if(requestEpoch!==pixelPollEpoch||stopped||suspended)return' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'pixelPollEpoch+=1' "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'pixelPollInFlight.clear()' "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'paintedAt.length=0;lastFrameBatchAt=0' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'payload.subarray(offset,offset+FRAME_BYTES)' \
+  "$MLE_PIXEL_BATCH_SOURCE" &&
+grep -q 'pixel batch palette field is invalid' "$MLE_PIXEL_BATCH_SOURCE" &&
+grep -q 'pixel batch tics are not consecutive' "$MLE_PIXEL_BATCH_SOURCE" ||
+  fail 'production client is not a database-frame canvas consumer'
+post_input_source=$(sed -n \
+  '/const postInput=():void=>{/,/const pump=():void=>{/p' \
+  "$ROOT/client/src/multiplayer.ts")
+test "$(printf '%s\n' "$post_input_source" |
+  grep -c 'generation=result.generation')" -eq 1 &&
+printf '%s\n' "$post_input_source" |
+  perl -0777 -ne \
+    'exit !(/if\(result\.generation>generation\) \{\s*generation=result\.generation;\s*resetPixelTransport\(\);\s*\}/s)' ||
+  fail 'database-frame input response bypasses the generation reset'
+for built_pixel_batch in "$MLE_PIXEL_BATCH_STAGING" "$MLE_PIXEL_BATCH_DIST"; do
+  test -s "$built_pixel_batch" &&
+  grep -Eq '0x44504232|1146110514' "$built_pixel_batch" &&
+  grep -q 'pixel batch palette field is invalid' "$built_pixel_batch" &&
+  grep -q 'pixel batch tics are not consecutive' "$built_pixel_batch" ||
+    fail "compiled DPB2 decoder is stale or absent: $built_pixel_batch"
+done
+node "$AUTHORITY_WAN_TEST" >/dev/null ||
+  fail 'compiled confirmed WAN/batched-frame behavior failed'
+for built_multiplayer in \
+    "$ROOT/client/staging/multiplayer.js" \
+    "$ROOT/client/dist/play/multiplayer.js"; do
+  grep -q 'exchangeMatchPixelBatch' "$built_multiplayer" &&
+  grep -q 'createColumnMajorIndexedPaletteBlitter' "$built_multiplayer" &&
+  grep -q 'PLAYPAL_ALL' "$built_multiplayer" &&
+  grep -q "reason: 'generation'" "$built_multiplayer" &&
+  grep -q "reason: 'ring-gap'" "$built_multiplayer" ||
+    fail "compiled database-frame client is stale: $built_multiplayer"
+done
+grep -Fq '1*200+2' "$MLE_COLUMN_MAJOR_TEST" &&
+grep -Fq '2*320+1' "$MLE_COLUMN_MAJOR_TEST" &&
+grep -q 'createColumnMajorIndexedPaletteBlitter' "$MLE_COLUMN_MAJOR_TEST" &&
+grep -q 'paletteBlit(indices,13)' "$MLE_COLUMN_MAJOR_TEST" ||
+  fail 'column-major PLAYPAL-aware database framebuffer gate missing'
+if grep -q 'await startMleGame(local, latestStatus)' \
+    "$ROOT/client/src/multiplayer.ts"; then
+  fail 'production admission still selects browser-side rasterization'
+fi
+grep -q 'PMLE_LIVE_FRAME_E2E|PASS' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'invalid_capability=REJECTED' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'batch=DPB2x6' "$MLE_LIVE_FRAME_E2E" &&
+grep -q "toString('ascii'), 'DPB2'" "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'assert.equal(batchBytes.length, 8 + 6 * 64_008);' \
+  "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'assert.equal(initialBytes.length, 64_000)' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'assert.notDeepEqual(movedBytes,ticTwoBytes' "$MLE_LIVE_FRAME_E2E" ||
+  fail 'live-frame authenticated moving-frame behavioral gate missing'
+grep -q '564f58f98d194c5c4177f340a3eeadb2a4840e4609110795c7f38a0a476eb7c4' \
+  "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'e9137f16a4e60a924ff9ec1286a80fb3477c51bcbad51a0b7243c19e3e30f426' \
+  "$MLE_LIVE_FRAME_E2E" ||
+  fail 'retained-session database framebuffer identity is not pinned'
+grep -q 'function readArtifactTuple()' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'dbms_crypto.hash(' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'l_authority,dbms_crypto.hash_sh256' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'l_renderer,dbms_crypto.hash_sh256' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'l_coordinator,dbms_crypto.hash_sh256' "$MLE_LIVE_FRAME_E2E" &&
+grep -q "raise_application_error(-20000,'live-frame artifact SHA mismatch')" \
+  "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'authority_sha256=${artifacts.authoritySha}' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'renderer_sha256=${artifacts.rendererSha}' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'coordinator_sha256=${artifacts.coordinatorSha}' \
+  "$MLE_LIVE_FRAME_E2E" ||
+  fail 'live-frame runtime evidence is not bound to database-hashed artifacts'
+test "$(grep -c 'created.p_player_capability' "$MLE_LIVE_FRAME_E2E")" -ge 4 &&
+! grep -q 'created.p_playerCapability' "$MLE_LIVE_FRAME_E2E" ||
+  fail 'live-frame soak capability binding is stale'
+grep -q 'refusing to overwrite live-frame evidence' \
+  "$MLE_LIVE_FRAME_E2E_RUNNER" &&
+grep -q 'PMLE_LIVE_FRAME_E2E_EVIDENCE|PASS' \
+  "$MLE_LIVE_FRAME_E2E_RUNNER" ||
+  fail 'live-frame behavioral evidence runner is not fail-closed'
+grep -q 'DOOMDB_LIVE_FRAME_RECOVERY=YES' "$MLE_LIVE_FRAME_RECOVERY" &&
+grep -q 'refusing to overwrite pixel-recovery evidence' \
+  "$MLE_LIVE_FRAME_RECOVERY" &&
+grep -q 'PMLE_LIVE_FRAME_RECOVERY_EVIDENCE|PASS' \
+  "$MLE_LIVE_FRAME_RECOVERY" &&
+grep -q 'PMLE_PIXEL_RECOVERY_KILL|PASS' "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'pixelRecoveryResult=`GENERATION_${recovered.p_generation}`' \
+  "$MLE_LIVE_FRAME_E2E" ||
+  fail 'database-pixel recovery trigger lacks an adversarial runtime gate'
+grep -q 'refusing to overwrite DPB2 soak evidence' \
+  "$MLE_LIVE_FRAME_TRANSPORT_SOAK" &&
+grep -q 'from v[$]temporary_lobs' "$MLE_LIVE_FRAME_TRANSPORT_SOAK" &&
+grep -q 'PMLE_DPB2_SOAK|PASS' "$MLE_LIVE_FRAME_TRANSPORT_SOAK" &&
+grep -q 'PMLE_DPB2_PROGRESSIVE|PASS' "$MLE_LIVE_FRAME_TRANSPORT_SOAK" &&
+grep -q 'progressive=1' "$MLE_LIVE_FRAME_TRANSPORT_SOAK" &&
+grep -q 'batchSoakLastTic' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'soakAfter=sample.p_last_tic' "$MLE_LIVE_FRAME_E2E" &&
+  grep -q 'temporary_lob_growth=0' "$MLE_LIVE_FRAME_TRANSPORT_SOAK" ||
+  fail 'progressive DPB2 temporary-LOB soak runner is not fail-closed'
+[ -x "$MLE_LIVE_FRAME_TWO_POV" ] &&
+[ -x "$MLE_LIVE_FRAME_TWO_POV_EVALUATOR" ] &&
+[ -x "$MLE_LIVE_FRAME_ARTIFACT_MARKER" ] &&
+test "$(node "$MLE_LIVE_FRAME_TWO_POV_EVALUATOR" --self-test)" = \
+  'PMLE_OCI_TWO_POV_EVALUATOR_SELFTEST|PASS|mutations=10' &&
+test "$(node "$MLE_LIVE_FRAME_ARTIFACT_MARKER" --self-test)" = \
+  'PMLE_LIVE_FRAME_ARTIFACT_MARKER_SELFTEST|PASS|mutations=4' &&
+grep -q 'DOOMDB_REQUIRE_DATABASE_PIXELS=1' "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -q 'DOOMDB_MULTIPLAYER_FRAMES=300' "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -q 'live-frame authority candidate is not promoted' \
+  "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -q 'from doom_mle_live_frame_source where artifact_id=1' \
+  "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -q 'PMLE_OCI_TWO_POV_ARTIFACT|authority_sha256=' \
+  "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -q 'verify-live-frame-artifact-marker[.]mjs' \
+  "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -q 'query_deployed_artifact BEFORE' "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -q 'query_deployed_artifact AFTER' "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -q 'PMLE_OCI_TWO_POV_ARTIFACT_ATTEST|phase=%s' \
+  "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -q 'minimum_fps=30|renderer=DATABASE_PIXELS' \
+  "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -q 'samples_sha256=%s' "$MLE_LIVE_FRAME_TWO_POV" &&
+grep -Fq 'p99<=2*1000/35&&paintMax<=100' "$MULTIPLAYER_CLIENT" &&
+grep -q "row.source==='database-framebuffer'" "$MULTIPLAYER_CLIENT" &&
+grep -q 'repeated a measured framebuffer' "$MULTIPLAYER_CLIENT" &&
+grep -q 'RAW_TWO_POV_BROWSER_SAMPLES' "$MULTIPLAYER_CLIENT" &&
+grep -q 'DOOMDB_REQUIRE_DATABASE_PIXELS=1' "$MULTIPLAYER_PERFORMANCE" ||
+  fail 'two-POV database-pixel 30 FPS acceptance is absent or weakened'
+grep -q 'refusing to overwrite live-frame ring-wrap evidence' \
+  "$MLE_LIVE_FRAME_RING_WRAP" &&
+grep -q 'DOOMDB_LIVE_FRAME_RING_WRAP=YES' "$MLE_LIVE_FRAME_RING_WRAP" &&
+grep -q 'ring_wrap=RESET_GAP' "$MLE_LIVE_FRAME_RING_WRAP" &&
+grep -q 'PMLE_LIVE_FRAME_RING_WRAP_EVIDENCE|PASS' \
+  "$MLE_LIVE_FRAME_RING_WRAP" ||
+  fail 'live-frame bounded-ring overrun evidence runner is not fail-closed'
 grep -q 'restoreCheckpointWarm' "$TEAVM_SIM_SOURCE" ||
   fail 'warm checkpoint restore export missing'
 grep -q 'warm checkpoint origin does not match retained engine' "$TEAVM_SIM_SOURCE" ||
@@ -746,6 +1250,50 @@ grep -q 'create table doom_worker_stop_intent' "$MLE_WORKER_LIFECYCLE_SCHEMA" ||
   fail 'durable worker stop intent schema missing'
 grep -q 'procedure reconcile_warm_slots' "$MLE_WORKER_LIFECYCLE" ||
   fail 'retained worker janitor missing'
+grep -q "where slot_status='RUNNING' and assigned_match is not null" \
+  "$MLE_WORKER_LIFECYCLE" &&
+grep -q "failure_detail='janitor: assigned scheduler/session absent'" \
+  "$MLE_WORKER_LIFECYCLE" &&
+grep -q "last_error='janitor: stale assigned scheduler/session absent'" \
+  "$MLE_WORKER_LIFECYCLE" ||
+  fail 'dead assigned retained-worker reconciliation is absent or weakened'
+grep -q "where slot_status in('WARMING','READY') and assigned_match is null" \
+  "$MLE_WORKER_LIFECYCLE" ||
+  fail 'unassigned retained-worker reconciliation fence changed'
+grep -q "slot_status='CLAIMED'" "$MLE_WARM_LIFECYCLE_TEST" &&
+grep -q 'scenario=dead_assigned_reconciled' "$MLE_WARM_LIFECYCLE_TEST" &&
+grep -q 'scenario=live_assigned_noop' "$MLE_WARM_LIFECYCLE_TEST" ||
+  fail 'assigned-worker janitor race coverage is absent'
+grep -q 'function lifecycleCleanupAudit(match)' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'lifecycle_cleanup=PASS' "$MLE_LIVE_FRAME_E2E" ||
+  fail 'database-pixel recovery does not gate retained-slot cleanup'
+grep -q 'function assignedSlotAudit(match)' "$MLE_LIVE_FRAME_E2E" &&
+grep -q 'DOOMDB_LIVE_FRAME_EXPECTED_SLOT' "$MLE_LIVE_FRAME_E2E" &&
+[ -x "$MLE_LIVE_FRAME_CROSS_SLOT" ] &&
+grep -q 'DOOMDB_LIVE_FRAME_EXPECTED_SLOT=1' "$MLE_LIVE_FRAME_CROSS_SLOT" &&
+grep -q 'DOOMDB_LIVE_FRAME_EXPECTED_SLOT=2' "$MLE_LIVE_FRAME_CROSS_SLOT" &&
+grep -q 'PMLE_LIVE_FRAME_CROSS_SLOT|PASS' "$MLE_LIVE_FRAME_CROSS_SLOT" &&
+grep -q 'full_world_seed=1|pool_restored=1' "$MLE_LIVE_FRAME_CROSS_SLOT" &&
+grep -q "slot_status='READY' and assigned_match is null" \
+  "$MLE_LIVE_FRAME_CROSS_SLOT" ||
+  fail 'retained live-frame cross-slot equality gate is absent or weakened'
+grep -Fq 'set linesize 32767 trimspool on' "$MLE_LIVE_FRAME_DIFFERENTIALS" &&
+grep -Fq 'PMLE_LIVE_FRAME_DIFFERENTIAL_PREFLIGHT|PASS|' \
+  "$MLE_LIVE_FRAME_DIFFERENTIALS" &&
+grep -Fq 'PMLE_LIVE_FRAME_AUTHORITY_DIFFERENTIALS|PASS|' \
+  "$MLE_LIVE_FRAME_DIFFERENTIALS" ||
+  fail 'live-frame differential wrapper is vulnerable to SHA marker wrapping'
+grep -q 'procedure reap_abandoned_matches' "$MLE_SESSION_CLEANUP" &&
+grep -q "l_now-numtodsinterval(15,'SECOND')" "$MLE_SESSION_CLEANUP" &&
+grep -q 'doom_session_cleanup.reap_abandoned_matches(4)' "$DOOM_API" &&
+grep -q "disconnected_at<l_now-interval '15' second" "$MLE_MATCH_WORKER" &&
+grep -q "select generation into l_generation from doom_match_worker_control" \
+  "$DOOM_API" &&
+grep -q 'window.addEventListener.*pagehide.*releaseLocalMatchOnUnload' \
+  "$MULTIPLAYER_CLIENT_TS" &&
+grep -q 'window.addEventListener.*beforeunload.*releaseLocalMatchOnUnload' \
+  "$MULTIPLAYER_CLIENT_TS" ||
+  fail 'browser-death match/slot reclamation is absent or weakened'
 grep -q 'expected incarnation mismatch' "$MLE_WORKER_LIFECYCLE" ||
   fail 'stop incarnation rejection fence missing'
 grep -q 'forced after bounded honor timeout' "$MLE_WORKER_LIFECYCLE" ||
@@ -759,10 +1307,40 @@ grep -q 'publish_initial(p_match,l_generation,p_warm)' "$MLE_MATCH_WORKER" || fa
 grep -q 'reconstruct_existing(p_match,l_generation' "$MLE_MATCH_WORKER" || fail 'RUN_MATCH MLE recovery missing'
 grep -q 'doom_mle_match_runtime.step_game' "$MLE_MATCH_WORKER" || fail 'MLE worker step missing'
 grep -q 'doom_mle_transition_transport.publish' "$MLE_MATCH_WORKER" || fail 'MLE worker DMD1 publication missing'
-grep -q 'doom_mle_match_runtime.save_checkpoint' "$MLE_MATCH_WORKER" || fail 'MLE worker DMC1 checkpoint missing'
-grep -q 'c_checkpoint_min_tics constant pls_integer:=113' "$MLE_MATCH_WORKER" ||
+grep -q 'doom_mle_match_runtime.save_checkpoint(' "$MLE_MATCH_WORKER" &&
+grep -q 'l_state,l_checkpoint_sha,l_checkpoint_bytes,l_checkpoint' \
+  "$MLE_MATCH_WORKER" &&
+grep -q 'tic<p_tic-c_checkpoint_max_tics\*2' "$MLE_MATCH_WORKER" ||
+  fail 'MLE worker temporary checkpoint publication or three-checkpoint retention missing'
+if grep -q 'doom_mle_match_runtime.save_checkpoint_into' "$MLE_MATCH_WORKER"; then
+  fail 'MLE worker regained the measured-slow direct SecureFile checkpoint path'
+fi
+grep -q "checkpoint_status in('IDLE','QUEUED','PROCESSING','FAILED')" \
+  "$MLE_ASYNC_CHECKPOINT_SCHEMA" &&
+grep -q "standby_status='READY' and checkpoint_status='IDLE'" \
+  "$MLE_MATCH_WORKER" &&
+grep -q "checkpoint_status in('QUEUED','PROCESSING')" "$MLE_MATCH_WORKER" &&
+grep -q 'procedure build_standby_checkpoint' "$MLE_MATCH_WORKER" &&
+grep -q 'standby checkpoint replay mismatch tic=' "$MLE_MATCH_WORKER" &&
+grep -q 'c_standby_checkpoint_replay_batch constant pls_integer:=1' \
+  "$MLE_MATCH_WORKER" &&
+grep -q 'dbms_session.sleep(c_standby_checkpoint_replay_yield)' \
+  "$MLE_MATCH_WORKER" &&
+grep -q "l_checkpoint_diagnostic=0" "$MLE_MATCH_WORKER" &&
+grep -q "checkpoint_status='PROCESSING'" "$MLE_MATCH_WORKER" ||
+  fail 'periodic DMC1 work is not fenced onto the retained standby'
+grep -q 'save_elapsed_ms number(12,3) default 0 not null' \
+  "$MULTIPLAYER_SCHEMA" &&
+grep -q 'publish_elapsed_ms number(12,3) default 0 not null' \
+  "$MULTIPLAYER_SCHEMA" &&
+grep -q 'checkpoint timing publication fence' "$MLE_MATCH_WORKER" ||
+  fail 'every-checkpoint save/publication timing is not durably fenced'
+grep -q 'l_checkpoint_save_ms<=0 or l_checkpoint_publish_ms<0' \
+  "$MLE_MATCH_WORKER_TEST" ||
+  fail 'worker cutover gate does not exercise durable checkpoint timings'
+grep -q 'c_checkpoint_min_tics constant pls_integer:=497' "$MLE_MATCH_WORKER" ||
   fail 'MLE checkpoint minimum opportunity missing'
-grep -q 'c_checkpoint_max_tics constant pls_integer:=128' "$MLE_MATCH_WORKER" ||
+grep -q 'c_checkpoint_max_tics constant pls_integer:=512' "$MLE_MATCH_WORKER" ||
   fail 'MLE checkpoint recovery hard bound missing'
 grep -q 'c_checkpoint_probe_tics constant pls_integer:=16' "$MLE_MATCH_WORKER" ||
   fail 'MLE checkpoint opportunity cadence missing'
@@ -770,6 +1348,12 @@ grep -q "l_memory_status,'awakeMonsters'" "$MLE_MATCH_WORKER" ||
   fail 'MLE low-awake checkpoint placement missing'
 grep -q 'c_checkpoint_low_awake constant pls_integer:=16' "$MLE_MATCH_WORKER" ||
   fail 'MLE low-awake threshold missing'
+grep -q 'c_checkpoint_recovery_diagnostic_tic constant pls_integer:=0' \
+  "$MLE_MATCH_WORKER" &&
+grep -q "dbms_application_info.set_action('RECOVERY_DISTANCE_WINDOW')" \
+  "$MLE_MATCH_WORKER" &&
+grep -q 'p_tic=c_checkpoint_recovery_diagnostic_tic' "$MLE_MATCH_WORKER" ||
+  fail 'maximum-distance recovery pause is absent or live in production'
 grep -q 'Test scaffold only: CHECKPOINT_TEST_HOOK may force a tic-64 checkpoint' "$MLE_MATCH_WORKER" ||
   fail 'tic-64 checkpoint scaffold is not fenced from production cadence'
 grep -q 'checkpoint_test_hook number(1) default 0 not null' \
@@ -812,24 +1396,27 @@ grep -q 'DOOMDB_HIGH_AWAKE_RECOVERY_GATE' "$WAN_SOAK" ||
   fail 'density-stratified maximum-distance recovery acceptance mode missing'
 grep -q "highAwakeRecoveryGate?recoveryVerdict:'DIAGNOSTIC_NOT_GATE'" "$WAN_SOAK" ||
   fail 'high-awake recovery measurement is not honestly classified'
-grep -q 'requires a durable kill distance of 112–127 tics' \
+grep -q 'kill window: 497–511 tics' "$TEAVM_CADENCE_DECISION" &&
+grep -q 'browser/ORDS-observed recovery: 22,377 ms' \
   "$TEAVM_CADENCE_DECISION" &&
-  ! grep -q 'acceptance mode requires.*240–255 tics' \
-    "$TEAVM_CADENCE_DECISION" ||
-  fail 'checkpoint cadence decision still presents the superseded range as current'
+grep -q 'checked-in value is zero' "$TEAVM_CADENCE_DECISION" ||
+  fail 'OCI checkpoint cadence decision is absent or incomplete'
 grep -q 'PMLE_HIGH_AWAKE_GENERATION_ACTIVE' "$WAN_SOAK" ||
   fail 'high-awake feed is not fenced to the activated generation'
 grep -Fq 'new RegExp(`^PMLE_HIGH_AWAKE_PRELOAD\\|' "$WAN_SOAK" ||
   fail 'high-awake preload extractor is not start-anchored'
-grep -q 'prepared[.]changes[.]length[*]2}[$]' "$WAN_SOAK" ||
+grep -Fq 'prepared.changes.length*2}[ \\t]*$`' "$WAN_SOAK" ||
   fail 'high-awake preload extractor is not end-anchored'
 grep -Fq 'new RegExp(`^PMLE_HIGH_AWAKE_FEED_ACTIVE\\|' "$WAN_SOAK" ||
   fail 'high-awake active-feed extractor is not start-anchored'
-grep -q 'changes[.]length[*]2}[$]' "$WAN_SOAK" ||
+grep -Fq 'changes.length*2}[ \\t]*$`' "$WAN_SOAK" ||
   fail 'high-awake active-feed extractor is not end-anchored'
-grep -q "recoveryTarget.distance>=112&&recoveryTarget.distance<=127" "$WAN_SOAK" ||
+grep -q "DOOMDB_HIGH_AWAKE_RECOVERY_MAX_TICS" "$WAN_SOAK" &&
+grep -q "highAwakeRecoveryMaxTics-16+1" "$WAN_SOAK" &&
+grep -q "recoveryTarget.distance<highAwakeRecoveryMaxTics" "$WAN_SOAK" ||
   fail 'high-awake recovery is not killed at maximum scheduled distance'
-grep -q "killedDistance>=112&&killedDistance<=127" "$WAN_SOAK" ||
+grep -q "killedDistance>=highAwakeRecoveryMaxTics-16+1" "$WAN_SOAK" &&
+grep -q "killedDistance<highAwakeRecoveryMaxTics" "$WAN_SOAK" ||
   fail 'high-awake recovery does not verify the durable killed distance'
 grep -q "recoveryElapsedMs<=45000" "$WAN_SOAK" ||
   fail 'high-awake recovery does not reserve the production detection budget'
@@ -877,8 +1464,11 @@ test "$(line_of 'RECOVERY_TIER_2' "$MLE_MATCH_WORKER")" -lt \
   fail 'recovery preference does not reserve cold init for last'
 grep -q 'case when p_warm or g_warm_promotion then 1 else 0 end' "$MLE_MATCH_WORKER" ||
   fail 'unbound retained recovery does not select warm checkpoint restore'
-grep -q 'c_standby_poll_seconds constant number:=1' "$MLE_MATCH_WORKER" ||
+grep -q 'c_standby_poll_seconds constant number:=5' "$MLE_MATCH_WORKER" ||
   fail 'active-match standby coarse poll missing'
+perl -0777 -ne 'exit !(/dbms_session[.]sleep\(c_standby_poll_seconds\);.*?update doom_match_standby_control.*?commit;/s)' \
+  "$MLE_MATCH_WORKER" ||
+  fail 'passive standby heartbeat is not committed per coarse poll'
 grep -q 'performs no checkpoint restore or simulation work until promotion' "$MLE_MATCH_WORKER" ||
   fail 'active-match standby passive contract missing'
 grep -q "'_G'||to_char(p_generation)" "$MLE_MATCH_WORKER" || fail 'standby generation-scoped Scheduler name missing'
@@ -1566,6 +2156,24 @@ grep -q 'compareCanonical(stepped)' "$TEAVM_DECPS_PARITY" ||
   fail 'de-CPS Node parity does not compare every tic'
 grep -q 'DOOMDB_MLE_MEMBERSHIP_SQL' "$TEAVM_DECPS_GATES" ||
   fail 'de-CPS promotion gate does not bind membership to candidate bytes'
+grep -Fq 'membership source must contain exactly one strict MLE SHA binding' \
+    "$TEAVM_DECPS_GATES" &&
+  grep -Fq "c_mle_sha constant varchar2\\\\(64\\\\):='[0-9a-f]{64}';" \
+    "$TEAVM_DECPS_GATES" &&
+  grep -Fq '[0-9a-f]{64}' "$TEAVM_DECPS_GATES" ||
+  fail 'de-CPS promotion membership binding is not generic and fail-closed'
+if grep -q 'pinned_sha=' "$TEAVM_DECPS_GATES"; then
+  fail 'de-CPS promotion gate still replaces one stale historical SHA'
+fi
+[ -x "$TEAVM_LIVE_FRAME_GATES" ] &&
+grep -q 'PMLE_LIVE_FRAME_DIFFERENTIAL_PREFLIGHT|PASS' \
+  "$TEAVM_LIVE_FRAME_GATES" &&
+grep -q 'l_live_sha<>l_source_sha' "$TEAVM_LIVE_FRAME_GATES" &&
+grep -q 'PMLE_LIVE_FRAME_AUTHORITY_DIFFERENTIALS|PASS' \
+  "$TEAVM_LIVE_FRAME_GATES" &&
+grep -q 'artifact_mutation=0' "$TEAVM_LIVE_FRAME_GATES" &&
+! grep -q 'load-mle-module.sh' "$TEAVM_LIVE_FRAME_GATES" ||
+  fail 'live-frame differential battery can mutate or misbind authority bytes'
 grep -q 'PMLE_PROMOTION_MODES' "$TEAVM_DECPS_GATES" &&
   grep -q 'invalid or duplicate promotion mode sequence' "$TEAVM_DECPS_GATES" &&
   grep -q 'canonical|coop|membership' "$TEAVM_DECPS_GATES" ||
@@ -1719,9 +2327,13 @@ grep -q 'procedure match_checkpoint' "$DOOM_API" ||
 grep -q 'match checkpoint SHA fence' "$DOOM_API" ||
   fail 'confirmed browser checkpoint database SHA fence missing'
 grep -q '"version": "0.15.0"' "$VERSIONS" || fail 'TeaVM version pin missing'
-grep -q '"inputBytecodeSha256": "2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
-grep -q '"mochaBytecodeSha256": "c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4"' "$VERSIONS" || fail 'TeaVM Mocha bytecode pin missing'
-grep -q '"outputSha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3"' "$VERSIONS" || fail 'TeaVM output pin missing'
+grep -q '"inputBytecodeSha256": "b80f697e8a49775c4b98db6b5ce47df46aee99398b22227a8408585c103ceaa4"' "$VERSIONS" || fail 'TeaVM input bytecode pin missing'
+grep -q '"mochaBytecodeSha256": "42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e"' "$VERSIONS" || fail 'TeaVM Mocha bytecode pin missing'
+grep -q '"outputSha256": "c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1"' "$VERSIONS" || fail 'TeaVM output pin missing'
+grep -q '"authoritySelection": "EXACT_SHA_SELECTED_TEA_VM_0_15_NONDETERMINISTIC_EMISSION"' \
+  "$VERSIONS" &&
+grep -q '"authorityReproducible": false' "$VERSIONS" ||
+  fail 'exact-SHA authority selection is not explicitly classified'
 grep -q '"outputSha256": "e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc"' "$VERSIONS" || fail 'TeaVM presentation output pin missing'
 grep -q 'mle-js-plsql-ffi' "$HYBRID_INSTALL" || fail 'FFI comparison path missing'
 grep -q 'PMLE_GATE|PASS|scope=mechanics_only|architecture=mle_command_stream' "$RUNNER" || fail 'mechanics-only architecture marker missing'

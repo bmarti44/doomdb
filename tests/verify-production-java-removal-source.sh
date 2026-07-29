@@ -107,7 +107,7 @@ grep -q "hosted_modules=1|hosted_templates=2|hosted_handlers=2" \
   "$root/probes/mle/teavm-engine/run-oci-java-removal-audit.sh"
 grep -q "verify-production-java-removal-source.sh" \
   "$root/probes/mle/teavm-engine/run-oci-java-removal-audit.sh"
-grep -q "l_mle_specs<>25" \
+grep -q "l_mle_specs<>27" \
   "$root/deploy/cloud/t11.1/catalog-observation.sql"
 grep -q "LEGACY_NEW_GAME_ABSENT" "$root/scripts/t11.1-cloud-api.mjs"
 grep -q "POLL_TRANSITIONS" "$root/scripts/t11.1-cloud-api.mjs"

@@ -1,0 +1,24 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+declare
+*
+ERROR at line 1:
+ORA-04161: Error: hybrid wall textures are not finalized
+ORA-04171: at renderFrame (DOOM.DOOM_FREE_HYBRID_RENDERER:222:11)
+ORA-06512: at "DOOM.DOOM_FREE_HYBRID_FRAME", line 1
+ORA-06512: at line 22
+Help: https://docs.oracle.com/error-help/db/ora-04161/
+

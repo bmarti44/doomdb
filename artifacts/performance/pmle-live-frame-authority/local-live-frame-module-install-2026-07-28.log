@@ -1,0 +1,19 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+insert into doom_mle_live_frame_source values(1,1181281,'c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1',empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),57846,'9cee835dc427f41fcd6a01c0e819cec74719c0378ccadacc1f4dedbe96d35e7c',21667,'2bde1c03a1a0591c67a910a4ddd329bb635ff559767f827128e321e4dabd2ebb',342236,'4f5fed82d21a01cad1c16d2ac9f77525dbf30d7007a7d4e27b963f9b96ee760b',453282,'b08cd5be67f6873bcd68bbfa7988b82403b91c9829da6413dd9d7986bf630d36',2545152,'4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001',401408,'bd6225c381118fd2fb75bb15cd2e5d2922eb7dc027b24abd919e3880e86247cf',662948,'5c27d1e5d08d35fd59310a308355b2a883296e12363e72e1590eb7935daa4ed7',1656584,'12a10ed3c72d36ef9298307838f4dbf7e669c721c74208e241c5d47b74792225')
+            *
+ERROR at line 1:
+ORA-00913: too many values
+Help: https://docs.oracle.com/error-help/db/ora-00913/
+
+

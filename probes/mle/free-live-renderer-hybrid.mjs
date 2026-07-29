@@ -27,6 +27,8 @@ let cacheKeyB;
 let cacheKeyC;
 let cacheColumns;
 let retainedCommandCount;
+let retainedCommands;
+let retainedPixelScale = 1;
 let cacheHits;
 let cacheMisses;
 
@@ -68,7 +70,7 @@ export function finalizePack() {
     throw new Error('hybrid pack is absent');
   }
   packView = new DataView(pack.buffer, pack.byteOffset, pack.byteLength);
-  if (u32(0) !== MAGIC || u32(4) !== 3 || u32(76) !== pack.byteLength) {
+  if (u32(0) !== MAGIC || u32(4) !== 7 || u32(76) !== pack.byteLength) {
     throw new Error('hybrid pack header mismatch');
   }
   const generatedLength = geometry.finalizePack();
@@ -220,10 +222,46 @@ export function renderFrame(pose) {
   if (!(litTextures instanceof Uint8Array)) {
     throw new Error('hybrid wall textures are not finalized');
   }
+  clearFrame();
+  generateCommands(pose);
+  rasterizeCommands();
+  return retainedCommandCount
+    + frame[pose % PIXELS]
+    + (frame[(pose * 997) % PIXELS] << 8);
+}
+
+export function renderFrameHalfWidth(pose) {
+  if (!(litTextures instanceof Uint8Array)) {
+    throw new Error('hybrid wall textures are not finalized');
+  }
+  clearFrame();
+  generateCommandsHalfWidth(pose);
+  rasterizeCommands();
+  return retainedCommandCount
+    + frame[pose % PIXELS]
+    + (frame[(pose * 997) % PIXELS] << 8);
+}
+
+export function clearFrame() {
   for (let x = 0; x < WIDTH; x += 1) {
     frame.set(backgroundColumn, x * HEIGHT);
   }
+  return PIXELS;
+}
+
+export function generateCommands(pose) {
   const commandCount = geometry.renderCommands(pose);
+  retainedPixelScale = 1;
+  return retainGeneratedCommands(commandCount);
+}
+
+export function generateCommandsHalfWidth(pose) {
+  const commandCount = geometry.renderCommandsHalfWidth(pose);
+  retainedPixelScale = 2;
+  return retainGeneratedCommands(commandCount);
+}
+
+function retainGeneratedCommands(commandCount) {
   const exported = geometry.commandBufferByRef();
   if (!ArrayBuffer.isView(exported)
       || !Number.isInteger(commandCount)
@@ -233,35 +271,47 @@ export function renderFrame(pose) {
       `invalid generated command tape ${commandCount}/${exported?.byteLength}`,
     );
   }
-  const commands = new DataView(
+  retainedCommands = new DataView(
     exported.buffer, exported.byteOffset, commandCount * COMMAND_BYTES);
+  retainedCommandCount = commandCount;
+  return commandCount;
+}
+
+export function rasterizeCommands() {
+  if (!(retainedCommands instanceof DataView)
+      || !Number.isInteger(retainedCommandCount)
+      || retainedCommandCount < 0) {
+    throw new Error('hybrid wall command tape is absent');
+  }
   cacheHits = 0;
   cacheMisses = 0;
-  for (let command = 0; command < commandCount; command += 1) {
+  for (let command = 0; command < retainedCommandCount; command += 1) {
     const at = command * COMMAND_BYTES;
-    const screenX = commands.getUint16(at, true);
-    const texture = commands.getUint16(at + 2, true);
-    const textureX = commands.getInt32(at + 4, true);
-    const wallHeight = commands.getUint16(at + 8, true);
-    const lightMap = commands.getUint8(at + 10);
-    const projectedTop = commands.getInt32(at + 12, true);
-    const drawTop = commands.getUint16(at + 16, true);
-    const drawBottom = commands.getUint16(at + 18, true);
-    const verticalOffset = commands.getInt32(at + 20, true);
-    if (screenX >= WIDTH || texture >= textureBase.length
+    const screenX = retainedCommands.getUint16(at, true);
+    const texture = retainedCommands.getUint16(at + 2, true);
+    const textureX = retainedCommands.getInt32(at + 4, true);
+    const wallHeight = retainedCommands.getUint16(at + 8, true);
+    const lightMap = retainedCommands.getUint8(at + 10);
+    const projectedTop = retainedCommands.getInt32(at + 12, true);
+    const drawTop = retainedCommands.getUint16(at + 16, true);
+    const drawBottom = retainedCommands.getUint16(at + 18, true);
+    const verticalOffset = retainedCommands.getInt32(at + 20, true);
+    if (screenX * retainedPixelScale >= WIDTH || texture >= textureBase.length
         || wallHeight < 1 || lightToBank[lightMap] < 0
         || drawTop > drawBottom || drawBottom >= HEIGHT) {
       throw new Error(`invalid generated wall command ${command}`);
     }
-    frame.set(cachedWallSegment(
+    const column = cachedWallSegment(
       texture, textureX, wallHeight, projectedTop,
       drawTop, drawBottom, lightMap, verticalOffset,
-    ), screenX * HEIGHT + drawTop);
+    );
+    const outputX = screenX * retainedPixelScale;
+    frame.set(column, outputX * HEIGHT + drawTop);
+    if (retainedPixelScale === 2) {
+      frame.set(column, (outputX + 1) * HEIGHT + drawTop);
+    }
   }
-  retainedCommandCount = commandCount;
-  return commandCount
-    + frame[pose % PIXELS]
-    + (frame[(pose * 997) % PIXELS] << 8);
+  return retainedCommandCount;
 }
 
 export function renderFrameBatch(start, count) {

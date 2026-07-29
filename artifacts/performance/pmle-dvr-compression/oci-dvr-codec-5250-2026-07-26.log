@@ -1,0 +1,73 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_OCI_DVR_CODEC|PASS|classification=POST_RELEASE_DVR_GATE|codec=DOOM_DFR1_RLE|version=1|tics=5250|whole_compress_p50_ms=95.074|whole_compress_p95_ms=100.789|whole_ratio_p50=0.730781|whole_ratio_p95=0.871547|peak_compress_p50_ms=96.957|peak_compress_p95_ms=101.938|peak_ratio_p50=0.785250|peak_ratio_p95=0.926359|quiet_compress_p50_ms=76.256|quiet_compress_p95_ms=79.224|quiet_ratio_p50=0.569563|quiet_ratio_p95=0.569672|wall_ms=1989191.530|get_time_ms=1989200.000|clock_suspects=0|clock_exclusion_cap=0|temporary_lobs_before=0|temporary_lobs_after=0|temporary_lobs_delta=0|frame_chain_sha256=dc0cfe6a9cc79f592e9b04409508c7db29866308d2a886d7f344d1b75294330c|compressed_chain_sha256=2dc3a49eaf8a749f95be0293c8150807268846a35cbe71951eb52ab1ebdb7d8f|presentation_sha256=118c37717b362d9e7669b5a3a1e73c87b3916479b6e53651f08e85be9ae8f2d3|codec_sha256=e44884a58a0b1767919b65e141b8a1c3fdec6560b7b90db519fc1008134c4353|stream_sha256=fa7637570c30d3a33cbf8456e98268890e9f5bd82f5ba39fd7f69b139ddc4085|compress_gate=FAIL
+

@@ -6,7 +6,6 @@ project="$root/probes/mle/teavm-engine"
 candidate="${PMLE_CANDIDATE_FILE:-$root/artifacts/performance/pmle-decps-rank/authority-candidate-5ec18cbe4cff.js}"
 tables="$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin"
 candidate_sha="${PMLE_EXPECTED_AUTHORITY_SHA256:-5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3}"
-pinned_sha="e485b9418e5845b78e9e1593918d8bbb6f3c441c41a43cb8f3faf046e595148b"
 tag="${PMLE_EVIDENCE_TAG:-decps-reproducible-5ec18cbe-2026-07-25}"
 modes="${PMLE_PROMOTION_MODES:-canonical coop membership}"
 alert_state="$(mktemp "${TMPDIR:-/tmp}/doomdb-decps-gates-alert.XXXXXX")"
@@ -38,7 +37,12 @@ for mode in $modes; do
 done
 [[ "$(shasum -a 256 "$candidate" | awk '{print $1}')" == "$candidate_sha" ]] ||
   { printf 'de-CPS candidate SHA mismatch\n' >&2; exit 1; }
-sed "s/$pinned_sha/$candidate_sha/g" \
+[[ "$(grep -Ec "c_mle_sha constant varchar2\\(64\\):='[0-9a-f]{64}';" \
+  "$project/membership-recovery-differential.sql")" == 1 ]] || {
+  printf 'membership source must contain exactly one strict MLE SHA binding\n' >&2
+  exit 1
+}
+sed -E "s/(c_mle_sha constant varchar2\\(64\\):=')[0-9a-f]{64}(';)/\\1${candidate_sha}\\2/" \
   "$project/membership-recovery-differential.sql" >"$membership_sql"
 grep -q "c_mle_sha constant varchar2(64):='$candidate_sha'" "$membership_sql" ||
   { printf 'membership candidate binding failed\n' >&2; exit 1; }

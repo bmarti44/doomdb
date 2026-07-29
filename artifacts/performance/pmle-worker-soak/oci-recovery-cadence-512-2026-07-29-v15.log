@@ -1,0 +1,154 @@
+PMLE_RECOVERY_CADENCE_PREDECLARATION|DIAGNOSTIC_NOT_GATE|venue=OCI_ALWAYS_FREE_26AI|checkpoint_max_tics=512|checkpoint_min_tics=16|checkpoint_low_awake=-1|kill_window=497-511|committed_frontier_pause_tic=511|pause_seconds=135|busy_lease_renewals=3|candidate_pause_activation=UNCONDITIONAL|phase_budget_ms=45000|detection_budget_ms=15000|production_cadence_unchanged=113-128|worker_source_sha256=295a7e03724f73291b0a033555c708b7ab2480fc6a6ebb3f5af974927dc684d0|candidate_source_sha256=9fb7fe6ee509a352e39597b92dd1a0672139a186bb172c583b62b2152b3b97ec
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_RECOVERY_CADENCE_POOL|PASS|active=0|assigned=0|live=0
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Package DOOM_MATCH_WORKER compiled
+
+
+Package Body DOOM_MATCH_WORKER compiled
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_RECOVERY_CADENCE_DEPLOY|PASS|candidate_sha256=9fb7fe6ee509a352e39597b92dd1a0672139a186bb172c583b62b2152b3b97ec
+
+PMLE_SOAK_STAGE|host_dom_ready
+PMLE_SOAK_STAGE|host_name_filled
+PMLE_SOAK_STAGE|create_click_begin
+PMLE_SOAK_STAGE|create_clicked
+PMLE_SOAK_STAGE|host_room_visible
+PMLE_SOAK_STAGE|guest_dom_ready
+PMLE_SOAK_STAGE|join_clicked
+PMLE_SOAK_STAGE|guest_room_visible
+PMLE_HIGH_AWAKE_STAGE|fixture_preloaded|tics=800|changes=379|generation=1
+PMLE_SOAK_STAGE|both_ready_clicked
+PMLE_SOAK_STAGE|both_ready_requests_complete
+PMLE_ROUTE_DIAGNOSTICS|ENABLED|match=09f78adb8286218ffde7929b435bd59b
+PMLE_HIGH_AWAKE_AUTHORITY_READY|ACTIVE|READY|511
+PMLE_HIGH_AWAKE_STAGE|recovery_client_online|peer_offline
+PMLE_HIGH_AWAKE_STAGE|membership_held
+PMLE_HIGH_AWAKE_STAGE|feed_active|base=1|changes=379|generation=1
+PMLE_HIGH_AWAKE_WINDOW|frontier=511|checkpoint=0|distance=511|probe_tic=0|awake=0|sustained_samples=0|density_qualified=YES
+PMLE_HIGH_AWAKE_KILL_METHOD|ADB_INCARNATION_FENCED_STOP_JOB
+PMLE_HIGH_AWAKE_KILLED|511|0|source=PRE_STOP_COMMITTED_FENCE
+PMLE_HIGH_AWAKE_PRODUCTION_RECOVERY|PASS|elapsed_ms=22377|trigger=ORDS_PIXEL_EXCHANGE
+PMLE_HIGH_AWAKE_RECOVERY_STAGES|PASS|checkpoint_tic=0|frontier=511|restore_ms=482.635|replay_ms=3674.282|publish_ms=73.437|worker_total_ms=4230.354|caller_overhead_ms=18146.646
+PMLE_HIGH_AWAKE_RECOVERY|DIAGNOSTIC_NOT_GATE|probe_tic=0|checkpoint_tic=0|frontier=511|distance=511|checkpoint_max_tics=512|awake=0|sustained_samples=0|elapsed_ms=22377|detection_budget_ms=15000|estimated_total_ms=37377|phase_budget_45s=PASS|sla_60s=PASS
+PMLE_RECOVERY_CADENCE_DIAGNOSTIC|PASS|checkpoint_max_tics=512
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_RECOVERY_CADENCE_POOL|PASS|active=0|assigned=0|live=0
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Package DOOM_MATCH_WORKER compiled
+
+
+Package Body DOOM_MATCH_WORKER compiled
+
+PMLE_RECOVERY_CADENCE_RESTORE|PASS|worker_sha256=295a7e03724f73291b0a033555c708b7ab2480fc6a6ebb3f5af974927dc684d0
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+PL/SQL procedure successfully completed.
+

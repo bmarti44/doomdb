@@ -15,10 +15,11 @@ grep -q 'OCI_AUTONOMOUS_DATABASE_HOSTED_ORDS' \
 grep -q 'database_asset_load' "$root/scripts/verify-cloud-browser.sh"
 grep -q 'browser_30fps' "$root/scripts/verify-cloud-browser.sh"
 ! grep -q 'package-browser-assets.sh' "$root/scripts/verify-cloud-browser.sh"
-grep -q '5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3' \
+grep -q 'runtime_postflight' "$root/scripts/verify-cloud-browser.sh"
+grep -q 't11.2-verify-runtime-postflight.mjs' \
   "$root/scripts/verify-cloud-browser.sh"
-grep -q 'e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc' \
-  "$root/scripts/verify-cloud-browser.sh"
+grep -q "new URL('../versions.lock',import.meta.url)" \
+  "$root/scripts/t11.2-build-hosted-evidence.mjs"
 grep -q "appUrl.pathname.*ords" "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
 grep -q 'test.afterEach' "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
 [[ "$(grep -c 'T112_MOVING_INPUT_EFFECTIVE_FENCE' \
@@ -67,6 +68,15 @@ node "$root/scripts/t11.2-verify-not-modified.mjs" \
   0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
   >"$tmp/not-modified-no-cache-header.json"
 node --check "$root/scripts/t11.2-build-hosted-evidence.mjs"
+node --check "$root/scripts/t11.2-verify-runtime-postflight.mjs"
+cat >"$tmp/runtime-postflight.log" <<'EOF'
+T112_RUNTIME|match_sha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|authority_sha256=c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1|renderer_sha256=5092dda164a9cc7bd712e5e0b6ac82d98e2d441ff461e67443e9b1257a8af64f|coordinator_sha256=da9ff7a653b893712821d25b3b6b40fc1097497740550c32939d610763916192|current_tic=300|checkpoint_count=0|checkpoint_unmeasured_count=0|checkpoint_slow_count=0|checkpoint_max_step_ms=0|checkpoint_max_save_ms=0|checkpoint_max_publish_ms=0|checkpoint_max_stage_ms=0
+EOF
+node "$root/scripts/t11.2-verify-runtime-postflight.mjs" \
+  "$tmp/runtime-postflight.log" \
+  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+  1 300 "$root/versions.lock" "$tmp/runtime-postflight.json"
+node -e "const r=require('$tmp/runtime-postflight.json');if(r.result!=='PASS'||r.checkpointCount!==0)process.exit(1)"
 grep -q "dbms_output.put_line('T112_ENABLED|'||trim(r.parsing_object)" \
   "$root/scripts/verify-cloud-browser.sh"
 grep -q 'trimout on trimspool on' "$root/scripts/verify-cloud-browser.sh"
@@ -94,6 +104,44 @@ grep -q ':cache_control_header:=l_cache_control' \
   "$root/deploy/cloud/t11.2/install-hosted-statics.sql"
 grep -q "wpg_docload.download_file(l_payload)" \
   "$root/deploy/cloud/t11.2/install-hosted-statics.sql"
+grep -q "database-generated framebuffer client" \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -q "operations).toContain('EXCHANGE_MATCH_PIXEL_BATCH')" \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -q 'selectedDepths.every(value=>value===6)' \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -q "operations).not.toContain('POLL_MATCH_TRANSITIONS')" \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -q 'expect(verifiedBlobModuleLoads).toBe(0)' \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -q "frame.source==='database-framebuffer'" \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -Fq 'expect(p99).toBeLessThanOrEqual(2*1000/35)' \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -Fq 'expect(maximumInterval).toBeLessThanOrEqual(100)' \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -Fq 'expect(pixelPollsPerScoredFrame).toBeLessThanOrEqual(2.5)' \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -Fq 'bufferOccupancyMin:bufferedFrames[0]' \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -Fq 'selectedDepthMax:Math.max(...selectedDepths)' \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -Fq "['doom:multiplayer-pixel-starvation','pixel-starvation']" \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -Fq 'const scoredNetworkStart=network.length' \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -Fq 'Number(row.detail.bufferedFrames)>=' \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -Fq "row.name==='pixel-starvation'||row.name==='pixel-resync'" \
+  "$root/deploy/cloud/t11.2/cloud-browser.spec.ts"
+grep -q "checkpointTimingSource:'EXACT_STAGE_PLUS_SPARSE_GT_100MS_TOTAL'" \
+  "$root/scripts/t11.2-verify-runtime-postflight.mjs"
+grep -Fq 'greatest(cp.save_elapsed_ms,cp.publish_elapsed_ms)>250' \
+  "$root/scripts/verify-cloud-browser.sh"
+! grep -Eq 'doom-mle-(authority|presentation)|canonical-runtime|freedoom1-[0-9a-f]' \
+  "$root/scripts/verify-cloud-browser.sh"
+grep -Fq "'authority.js','authority-batch.js','authority-mirror.js','teavm-browser.js'" \
+  "$root/scripts/t11.2-build-client.mjs"
 grep -q 'dbms_crypto.hash(payload' \
   "$root/tools/cloud/DoomHostedStaticLoader.java"
 grep -q 'redact-cloud-output.mjs.*load.log' \
@@ -102,10 +150,6 @@ grep -q 'redact-cloud-output.mjs.*load.log' \
 cp "$root/client/dist/play/index.html" "$tmp/client/index.html"
 cp "$root/client/staging/multiplayer.html" "$tmp/client/multiplayer.html"
 cp "$root/client/staging/solo.html" "$tmp/client/solo.html"
-cp "$root/client/dist/play/doom-mle-authority-5ec18cbe4cff.js" "$tmp/client/"
-cp "$root/client/dist/play/doom-mle-presentation-e55d5f1138fa.js" "$tmp/client/"
-cp "$root/client/dist/play/canonical-runtime-v2-058cd0df9444.bin" "$tmp/client/"
-cp "$root/client/dist/play/freedoom1-7323bcc168c5.bin" "$tmp/client/"
 cp "$root/vendor/freedoom/0.13.0/COPYING.txt" \
   "$tmp/client/COPYING-freedoom.txt"
 cp "$root/deploy/cloud/t11.2/SOURCE.txt" "$tmp/client/SOURCE.txt"
@@ -120,7 +164,7 @@ const tmp=process.argv[2],manifest=JSON.parse(fs.readFileSync(path.join(tmp,'bui
 const keys=fs.readFileSync(path.join(tmp,'allowlist.txt'),'utf8').trim().split('\n');
 const loader=fs.readFileSync(path.join(tmp,'loader.tsv'),'utf8').trim().split('\n');
 assert.equal(manifest.objects.length,keys.length);
-assert.equal(keys.length,24);
+assert.equal(keys.length,17);
 assert.equal(loader.length,keys.length+1);
 assert.ok(keys.includes('index.html'));
 assert.ok(keys.includes('multiplayer.html'));
@@ -128,6 +172,11 @@ assert.ok(keys.includes('solo.html'));
 assert.equal(keys.filter(key=>/^main-[0-9a-f]{12}\.js$/.test(key)).length,1);
 assert.equal(keys.filter(key=>/^multiplayer-[0-9a-f]{12}\.js$/.test(key)).length,1);
 assert.ok(!keys.includes('multiplayer.js'));
+assert.ok(!keys.some(key=>/^doom-mle-(?:authority|presentation)-/.test(key)));
+assert.ok(!keys.some(key=>/^(?:canonical-runtime|freedoom1)-/.test(key)));
+for(const diagnosticOnly of [
+  'authority.js','authority-batch.js','authority-mirror.js','teavm-browser.js'
+]) assert.ok(!keys.includes(diagnosticOnly));
 NODE
 
 rm -f /tmp/doomdb-t112-evidence.json
@@ -156,4 +205,4 @@ grep -q 'schema must be DOOM' "$tmp/schema-err"
 T112_REQUIRE_PRODUCTION=1 node "$root/evaluator/t11.2/source-audit.mjs"
 node "$root/evaluator/t11.2/self-check.mjs"
 node "$root/evaluator/t11.2/mutation-self-check.mjs"
-printf 'PASS T11.2-SOURCE-FIRST (24-object single/multiplayer build, licenses present, fail-closed authority)\n'
+printf 'PASS T11.2-SOURCE-FIRST (17-object DB-pixel build, licenses present, fail-closed runtime)\n'

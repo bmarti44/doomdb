@@ -1,0 +1,23 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_DVR_BIND_STAGING|PASS|source_bytes=7808|source_sha256=6067f28e3ce20efb1780c98981966b85d274d34bbd343d872066ca70a2f117c1|engine_sha256=118c37717b362d9e7669b5a3a1e73c87b3916479b6e53651f08e85be9ae8f2d3|codec_sha256=e44884a58a0b1767919b65e141b8a1c3fdec6560b7b90db519fc1008134c4353
+
+Usage: SHOW ERRORS [{ FUNCTION | PROCEDURE | PACKAGE |
+    PACKAGE BODY | TRIGGER | VIEW
+    | TYPE | TYPE BODY | DIMENSION
+    | JAVA SOURCE | JAVA CLASS } [schema.]name]
+PMLE_DVR_BIND_INSTALL|PASS|codec=DOOM_DFR1_RLE|version=1|transport=persistent_returning_oracle_blob|temp_lobs=ZERO_BY_CONSTRUCTION|imports=2|source_bytes=7808|source_sha256=6067f28e3ce20efb1780c98981966b85d274d34bbd343d872066ca70a2f117c1|engine_sha256=118c37717b362d9e7669b5a3a1e73c87b3916479b6e53651f08e85be9ae8f2d3|codec_sha256=e44884a58a0b1767919b65e141b8a1c3fdec6560b7b90db519fc1008134c4353
+

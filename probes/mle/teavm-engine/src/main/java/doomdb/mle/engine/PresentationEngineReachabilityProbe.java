@@ -45,11 +45,43 @@ public final class PresentationEngineReachabilityProbe {
         activePlayers, deathmatch, skill, episode, map);
   }
 
+  /** Single-player E1M1 route fixture for live presentation mutation gates. */
+  @JSExport
+  public static String initializeSinglePlayerGame() throws Exception {
+    return SimulationEngineReachabilityProbe.initialize();
+  }
+
+  /** Apply one exact accepted-route command to the single-player fixture. */
+  @JSExport
+  public static int stepSinglePlayerCommand(
+      int forward, int side, int turn, int consistency, int buttons) {
+    return SimulationEngineReachabilityProbe.stepCommandBare(
+        forward, side, turn, consistency, buttons);
+  }
+
   @JSExport
   public static int stepMultiplayerAuthoritative(
       int activePlayers, int membershipMask, Uint8Array commandVector) {
     return SimulationEngineReachabilityProbe.stepMultiplayerAuthoritative(
         activePlayers, membershipMask, commandVector);
+  }
+
+  @JSExport
+  @JSByRef
+  public static byte[] presentationWorldSnapshotByRef() {
+    return SimulationEngineReachabilityProbe.presentationWorldSnapshotByRef();
+  }
+
+  @JSExport
+  public static Uint8Array presentationWorldSnapshotNativeByRef() {
+    return SimulationEngineReachabilityProbe
+        .presentationWorldSnapshotNativeByRef();
+  }
+
+  @JSExport
+  public static int presentationWorldSnapshotCurrentLength() {
+    return SimulationEngineReachabilityProbe
+        .presentationWorldSnapshotCurrentLength();
   }
 
   @JSExport
@@ -114,6 +146,51 @@ public final class PresentationEngineReachabilityProbe {
   public static Uint8Array presentationPlayerSnapshot(int playerSlot) {
     return SimulationEngineReachabilityProbe.presentationPlayerSnapshot(
         playerSlot);
+  }
+
+  @JSExport
+  public static int presentationWorldSnapshotLength(int playerSlot) {
+    return SimulationEngineReachabilityProbe.presentationWorldSnapshotLength(
+        playerSlot);
+  }
+
+  @JSExport
+  public static int presentationWorldCompactSnapshotLength(int playerSlot) {
+    return SimulationEngineReachabilityProbe
+        .presentationWorldCompactSnapshotLength(playerSlot);
+  }
+
+  @JSExport
+  public static int presentationWorldGeometrySnapshotLength(int playerSlot) {
+    return SimulationEngineReachabilityProbe
+        .presentationWorldGeometrySnapshotLength(playerSlot);
+  }
+
+  @JSExport
+  public static int presentationWorldGeometryAndSidesSnapshotLength(
+      int playerSlot) {
+    return SimulationEngineReachabilityProbe
+        .presentationWorldGeometryAndSidesSnapshotLength(playerSlot);
+  }
+
+  @JSExport
+  public static int presentationWorldGeometryDeltaSnapshotLength(
+      int playerSlot) {
+    return SimulationEngineReachabilityProbe
+        .presentationWorldGeometryDeltaSnapshotLength(playerSlot);
+  }
+
+  @JSExport
+  public static int presentationCompositorSnapshotLength(int playerSlot) {
+    return SimulationEngineReachabilityProbe
+        .presentationCompositorSnapshotLength(playerSlot);
+  }
+
+  @JSExport
+  public static Uint8Array presentationWorldSnapshotChunk(
+      int offset, int length) {
+    return SimulationEngineReachabilityProbe.presentationWorldSnapshotChunk(
+        offset, length);
   }
 
   @JSExport

@@ -20,11 +20,23 @@ const mutations=[
   ['badCache',e=>{e.deployment.objects[0].cacheControl=fixture.cachePolicy.immutable;}],
   ['missingLicense',e=>{e.deployment.objects=e.deployment.objects.filter(x=>x.key!=='COPYING-freedoom.txt');}],
   ['routeMock',e=>{e.browser.routeFulfillCount=1;}],
-  ['blobModuleDrift',e=>{e.browser.verifiedBlobModuleLoads=3;}],
+  ['blobModuleDrift',e=>{e.browser.verifiedBlobModuleLoads=1;}],
   ['slowFps',e=>{e.browser.performance.fps=29.9;}],
   ['slowP95',e=>{e.browser.performance.p95IntervalMs=33.334;}],
+  ['slowP99',e=>{e.browser.performance.p99IntervalMs=57.144;}],
+  ['longPause',e=>{e.browser.performance.maxIntervalMs=100.001;}],
+  ['browserRenderer',e=>{e.browser.performance.databasePixelFrames=false;}],
   ['duplicateFrame',e=>{e.browser.performance.uniqueFrames=299;}],
   ['ticGap',e=>{e.browser.performance.sequentialTics=false;}],
+  ['multipleCheckpoints',e=>{e.runtime.checkpointCount=2;}],
+  ['unmeasuredCheckpoint',e=>{e.runtime.checkpointUnmeasuredCount=1;}],
+  ['slowCheckpoint',e=>{
+    e.runtime.checkpointSlowCount=1;e.runtime.checkpointMaxStepMs=101;
+  }],
+  ['checkpointTimingLie',e=>{
+    e.runtime.checkpointTimingSource='SPARSE_GT_100MS_SLOW_CALLS';
+  }],
+  ['runtimeAuthorityDrift',e=>{e.runtime.authoritySha256='0'.repeat(64);}],
   ['capacityLeak',e=>{e.browser.cleanup.released=false;}],
   ['otherOrigin',e=>{e.network[0].originSha256='f'.repeat(64);}],
   ['redirect',e=>{e.network[0].redirected=true;}],

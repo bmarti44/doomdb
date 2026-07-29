@@ -59,7 +59,7 @@ export function validateEvidence(evidence,policy){
     'anonymous AutoREST surface');
   assert.ok(hex(deployment.buildManifestSha256));
   assert.ok(hex(deployment.databaseCatalogSha256));
-  assert.equal(deployment.objects.length,24);
+  assert.equal(deployment.objects.length,17);
   assert.equal(new Set(deployment.objects.map(object=>object.key)).size,
     deployment.objects.length);
   assert.ok(deployment.objects.some(object=>object.key==='index.html'));
@@ -90,8 +90,9 @@ export function validateEvidence(evidence,policy){
   assert.equal(audit.privateFiles,0);
   assert.equal(audit.sourceMaps,0);
   assert.equal(audit.staleEngineArtifacts,0);
-  for(const key of ['authoritySha256','presentationSha256','iwadSha256',
-    'freedoomLicenseSha256','sourceNoticeSha256'])assert.ok(hex(audit[key]),key);
+  for(const key of ['authoritySha256','presentationSha256',
+    'coordinatorSha256','iwadSha256','freedoomLicenseSha256',
+    'sourceNoticeSha256'])assert.ok(hex(audit[key]),key);
 
   const browser=evidence.browser;
   assert.equal(browser.playwrightReportStatus,'passed');
@@ -100,7 +101,7 @@ export function validateEvidence(evidence,policy){
   assert.equal(browser.routeFulfillCount,0);
   assert.equal(browser.proxy,false);
   assert.equal(browser.serviceWorkers,'block');
-  assert.equal(browser.verifiedBlobModuleLoads,2);
+  assert.equal(browser.verifiedBlobModuleLoads,0);
   assert.equal(browser.consoleErrors,0);
   assert.equal(browser.pageErrors,0);
   assert.equal(browser.failedRequests,0);
@@ -108,7 +109,8 @@ export function validateEvidence(evidence,policy){
   exact(browser.cases.map(row=>row.id),[
     'DATABASE_HOSTED_DOCUMENT','SAME_ORIGIN_API',
     'AUTHORITATIVE_MLE_MATCH','CONFIRMED_ONLY_CHAIN',
-    'UNIQUE_MOVING_300','CLIENT_30_FPS','CAPACITY_RELEASE'
+    'DATABASE_FRAMEBUFFER_SOURCE','UNIQUE_MOVING_300','CLIENT_30_FPS',
+    'CHECKPOINT_TAIL','CAPACITY_RELEASE'
   ],'browser cases');
   for(const row of browser.cases){
     assert.equal(row.status,'PASS');
@@ -117,12 +119,45 @@ export function validateEvidence(evidence,policy){
   assert.equal(browser.performance.frames,300);
   assert.equal(browser.performance.uniqueFrames,300);
   assert.equal(browser.performance.sequentialTics,true);
+  assert.equal(browser.performance.databasePixelFrames,true);
   assert.ok(browser.performance.fps>=30);
   assert.ok(browser.performance.p95IntervalMs<=33.333);
+  assert.ok(browser.performance.p99IntervalMs<=2*1000/35);
+  assert.ok(browser.performance.maxIntervalMs<=100);
   assert.ok(hex(browser.performance.frameChainSha256));
   assert.equal(browser.cleanup.released,true);
   assert.ok(hex(browser.cleanup.matchSha256));
   assert.ok(hex(browser.reportSha256));
+
+  const runtime=evidence.runtime;
+  assert.equal(runtime.source,'DATABASE_POSTFLIGHT');
+  assert.equal(runtime.matchSha256,browser.cleanup.matchSha256);
+  assert.equal(runtime.firstTic,browser.performance.firstTic);
+  assert.equal(runtime.lastTic,browser.performance.lastTic);
+  assert.ok(Number.isInteger(runtime.currentTic)&&
+    runtime.currentTic>=runtime.lastTic);
+  assert.ok(Number.isInteger(runtime.checkpointCount)&&
+    runtime.checkpointCount<=1);
+  assert.equal(runtime.checkpointUnmeasuredCount,0);
+  assert.equal(runtime.checkpointSlowCount,0);
+  assert.ok(runtime.checkpointMaxStepMs>=0&&runtime.checkpointMaxStepMs<=100);
+  assert.ok(runtime.checkpointMaxSaveMs>=0&&runtime.checkpointMaxSaveMs<=250);
+  assert.ok(runtime.checkpointMaxPublishMs>=0&&
+    runtime.checkpointMaxPublishMs<=250);
+  assert.ok(runtime.checkpointMaxStageMs>=0&&runtime.checkpointMaxStageMs<=250);
+  assert.ok(runtime.checkpointMaxStageMs>=
+    Math.max(runtime.checkpointMaxSaveMs,runtime.checkpointMaxPublishMs));
+  assert.ok(runtime.checkpointMaxStageMs<=
+    runtime.checkpointMaxSaveMs+runtime.checkpointMaxPublishMs);
+  assert.equal(runtime.checkpointTimingSource,
+    'EXACT_STAGE_PLUS_SPARSE_GT_100MS_TOTAL');
+  assert.equal(runtime.checkpointTailGateMs,250);
+  assert.equal(runtime.browserPresentationTailGateMs,100);
+  assert.equal(runtime.checkpointStageSemantics,
+    'MAX_INDIVIDUAL_PREPARE_OR_EXPORT');
+  assert.equal(runtime.authoritySha256,audit.authoritySha256);
+  assert.equal(runtime.rendererSha256,audit.presentationSha256);
+  assert.equal(runtime.coordinatorSha256,audit.coordinatorSha256);
 
   assert.ok(evidence.network.length>deployment.objects.length);
   for(const row of evidence.network){
@@ -146,7 +181,8 @@ export function validateEvidence(evidence,policy){
   assert.equal(evidence.credentials.retainedFiles,0);
   assert.equal(evidence.credentials.secretRedactionPassed,true);
   for(const key of ['canonicalEvidenceSha256','buildSha256',
-    'databaseEvidenceSha256','browserEvidenceSha256'])
+    'databaseEvidenceSha256','browserEvidenceSha256',
+    'runtimeEvidenceSha256'])
     assert.ok(hex(evidence.provenance[key]),key);
   assert.equal(evidence.provenance.atomicWrite,true);
   assert.deepEqual(evidence.provenance.ancestry,policy.ancestry);
@@ -157,14 +193,9 @@ export function makeEvidence(policy){
   const digest=sha('asset');
   const names=[
     'index.html','solo.html','multiplayer.html','api.js','audio.js',
-    'authority-batch.js','authority-mirror.js','authority-wan.js',
-    'authority.js','canvas.js','codec.js','input.js','palette.js','patch.js',
-    'presentation-state.js','teavm-browser.js',
+    'authority-wan.js','canvas.js','codec.js','input.js','palette.js','patch.js',
+    'pixel-batch.js','presentation-state.js',
     `main-${digest.slice(0,12)}.js`,`multiplayer-${digest.slice(0,12)}.js`,
-    `doom-mle-authority-${digest.slice(0,12)}.js`,
-    `doom-mle-presentation-${digest.slice(0,12)}.js`,
-    `canonical-runtime-v2-${digest.slice(0,12)}.bin`,
-    `freedoom1-${digest.slice(0,12)}.bin`,
     'COPYING-freedoom.txt','SOURCE.txt'
   ];
   const objects=names.map((key,index)=>{
@@ -184,16 +215,18 @@ export function makeEvidence(policy){
   });
   const origin=sha('origin');
   const network=Array.from({length:26},(_,index)=>({
-    kind:index<24?'DATABASE_STATIC':'ORACLE_API',
+    kind:index<17?'DATABASE_STATIC':'ORACLE_API',
     urlSha256:sha(`url-${index}`),originSha256:origin,method:'GET',status:200,
     redirected:false,failed:false,websocket:false,mocked:false
   }));
   const performance={frames:300,uniqueFrames:300,sequentialTics:true,
-    fps:34.9,p95IntervalMs:29.2,firstTic:1,lastTic:300,
+    databasePixelFrames:true,fps:34.9,p95IntervalMs:29.2,
+    p99IntervalMs:31.1,maxIntervalMs:34.0,firstTic:1,lastTic:300,
     frameChainSha256:sha('frames')};
   const cases=['DATABASE_HOSTED_DOCUMENT','SAME_ORIGIN_API',
     'AUTHORITATIVE_MLE_MATCH','CONFIRMED_ONLY_CHAIN','UNIQUE_MOVING_300',
-    'CLIENT_30_FPS','CAPACITY_RELEASE'].map(id=>({
+    'DATABASE_FRAMEBUFFER_SOURCE','CLIENT_30_FPS','CHECKPOINT_TAIL',
+    'CAPACITY_RELEASE'].map(id=>({
       id,status:'PASS',assertions:1,evidenceSha256:sha(id)}));
   return {schema:2,task:'T11.2',result:'PASS',live:true,dryRun:false,
     localSubstitute:false,target:{provider:'OCI_AUTONOMOUS_DATABASE_HOSTED_ORDS',
@@ -206,20 +239,32 @@ export function makeEvidence(policy){
       handlerCount:2,autoRestObjects:['DOOM_API','PUBLIC_HEALTH'],objects},
     payloadAudit:{privateFiles:0,sourceMaps:0,staleEngineArtifacts:0,
       authoritySha256:sha('authority'),presentationSha256:sha('presentation'),
+      coordinatorSha256:sha('coordinator'),
       iwadSha256:sha('iwad'),freedoomLicenseSha256:sha('license'),
       sourceNoticeSha256:sha('source')},
     browser:{playwrightReportStatus:'passed',workers:1,retries:0,
       routeFulfillCount:0,proxy:false,serviceWorkers:'block',
-      verifiedBlobModuleLoads:2,consoleErrors:0,
+      verifiedBlobModuleLoads:0,consoleErrors:0,
       pageErrors:0,failedRequests:0,redirects:0,cases,performance,
       cleanup:{released:true,status:200,matchSha256:sha('match')},
       reportSha256:sha('report')},
+    runtime:{source:'DATABASE_POSTFLIGHT',matchSha256:sha('match'),
+      firstTic:1,lastTic:300,currentTic:300,checkpointCount:0,
+      checkpointUnmeasuredCount:0,checkpointSlowCount:0,
+      checkpointMaxStepMs:0,checkpointMaxSaveMs:1,
+      checkpointMaxPublishMs:.5,checkpointMaxStageMs:1,
+      checkpointTimingSource:'EXACT_STAGE_PLUS_SPARSE_GT_100MS_TOTAL',
+      checkpointTailGateMs:250,browserPresentationTailGateMs:100,
+      checkpointStageSemantics:'MAX_INDIVIDUAL_PREPARE_OR_EXPORT',
+      authoritySha256:sha('authority'),rendererSha256:sha('presentation'),
+      coordinatorSha256:sha('coordinator')},
     network,networkSummary:{unclassified:0,otherOrigins:0,websockets:0,
       redirects:0,failed:0,ledgerSha256:sha('network')},
     credentials:{envOnly:true,repositoryMatches:0,evidenceMatches:0,
       retainedFiles:0,secretRedactionPassed:true},
     provenance:{canonicalEvidenceSha256:sha('canonical'),
       buildSha256:sha('build'),databaseEvidenceSha256:sha('db'),
-      browserEvidenceSha256:sha('browser'),atomicWrite:true,
+      browserEvidenceSha256:sha('browser'),
+      runtimeEvidenceSha256:sha('runtime'),atomicWrite:true,
       ancestry:{...policy.ancestry}}};
 }

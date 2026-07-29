@@ -1,0 +1,80 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+	added freedoom1.wad (zipped: false network: true)
+ITicker: Using nanosecond accuracy timer.
+                         The Ultimate DOOM Startup v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+                 Commercial product - do not distribute!
+         Please report software piracy to the SPA: 1-800-388-PIR8
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+R_InitData
+Init Texture and Flat Manager
+InitTextures[................
+InitFlats
+InitSprites..............
+InitColormaps		
+R_InitPointToAngle
+R_InitTables
+R_InitPlanes
+R_InitLightTables
+R_InitSkyMap: 119
+R_InitTranslationsTables
+R_InitTranMap: 
+R_InitDrawingFunctions: 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_OCI_DVL2_PLAIN_GEOMETRY_LOAD|PASS
+
+PMLE_OCI_DVL2_PLAIN_FINE_STAGE|PASS|stage=AUTHORITY_STEP|p50_ms=2.299|p95_ms=3.726
+PMLE_OCI_DVL2_PLAIN_FINE_STAGE|PASS|stage=DVL2_DYNAMIC_IMPORT|p50_ms=16.268|p95_ms=17.005
+PMLE_OCI_DVL2_PLAIN_FINE_STAGE|PASS|stage=WALLS_ONLY|p50_ms=41.274|p95_ms=70.208
+PMLE_OCI_DVL2_PLAIN_FINE_STAGE|PASS|stage=WALLS_AND_VISPLANES|p50_ms=22.615|p95_ms=39.492
+
+PMLE_OCI_DVL2_PLAIN_STAGE|PASS|stage=AUTHORITY_QUANTIZED_BSP_PLAIN_GEOMETRY|p50_ms=31.346|p95_ms=61.229|mean_ms=35.729
+PMLE_OCI_DVL2_PLAIN_STAGE|PASS|stage=RAW64K_EGRESS|p50_ms=6.817|p95_ms=7.439|mean_ms=7.119
+PMLE_OCI_DVL2_PLAIN_STAGE|PASS|stage=TOTAL|p50_ms=38.537|p95_ms=68.137|mean_ms=42.848
+PMLE_OCI_DVL2_PLAIN_QUANTIZED_BSP|PASS|frames=300|unique=300|p95_ms=68.137|fps_p95=14.676|gate=FAIL
+

@@ -1,19 +1,13 @@
-import { createMatch, getAsset, joinMatch, leaveMatch, matchStatus, matchInputFrontier, matchCheckpoint, pollMatchTransitions, readyMatch, reviseMatchInput, MatchCapacityError, MatchUnavailableError } from './api.js';
-import { AudioPresenter } from './audio.js';
-import { createDoomCanvas, createIndexedBlitter } from './canvas.js';
+import { createMatch, getAsset, joinMatch, leaveMatch, leaveMatchOnUnload, matchStatus, exchangeMatchPixelBatch, matchInputFrontier, matchCheckpoint, pollMatchTransitions, readyMatch, reviseMatchInput, MatchCapacityError, MatchUnavailableError } from './api.js';
+import { createColumnMajorIndexedPaletteBlitter, createDoomCanvas, createIndexedBlitter } from './canvas.js';
 import { decodeBytes } from './codec.js';
 import { bindInput } from './input.js';
-import { createPalette } from './palette.js';
-import { decodeAuthorityBatch } from './authority-batch.js';
-import { ConfirmedAuthorityMirror } from './authority-mirror.js';
-import { authorityRootChainSha } from './authority.js';
-import { ConfirmedWanPolicy, confirmedPlayoutIntervalMs } from './authority-wan.js';
-import { createBrowserAuthorityEngines, restoreBrowserAuthorityCheckpoint } from './teavm-browser.js';
+import { createPalette, createPaletteSet } from './palette.js';
+import { decodeDatabasePixelTransport, nextDatabaseFrameTic } from './pixel-batch.js';
+import { ConfirmedWanPolicy, confirmedBatchPlayoutDecision, confirmedPlayoutDecision } from './authority-wan.js';
 // Ordinary internet stalls are drained from the already-confirmed queue at
-// the bounded 2x playout rate. Do not skip presentation snapshots for a
-// sub-second WAN pause: the release contract requires sequential unique
-// moving frames. Hidden tabs use the explicit checkpoint-resync path instead.
-const MAX_CONFIRMED_PRESENTATION_BACKLOG = 64;
+// the bounded 2x playout rate. Visible clients never discard presentation
+// snapshots; hidden tabs use the explicit checkpoint-resync path instead.
 const HIDDEN_CHECKPOINT_THRESHOLD_MS = 5_000;
 const HIDDEN_POLL_LEASE_RELEASE_MS = 1_500;
 const soloMode = document.body.hasAttribute('data-doom-solo');
@@ -113,7 +107,7 @@ const hud = main.querySelector('[data-hud]');
 const canvas = createDoomCanvas();
 game.prepend(canvas);
 const soloPresentationAssets = soloMode ?
-    Promise.all([getAsset('PLAYPAL'), getAsset('TITLEPIC')]) : null;
+    Promise.all([getAsset('PLAYPAL_ALL'), getAsset('TITLEPIC')]) : null;
 const trace = (name, detail) => {
     window.dispatchEvent(new CustomEvent(`doom:multiplayer-${name}`, {
         detail: { at: performance.now(), ...detail }
@@ -209,8 +203,9 @@ const showSoloError = (cause) => {
     hud.textContent = `SINGLE PLAYER\n${cause instanceof Error ? cause.message : String(cause)}`;
     setBusy(false);
 };
-const transientAuthorityFailure = (cause) => cause instanceof Error &&
-    /request failed: (?:429|502|503|504|555)\b/.test(cause.message);
+const transientAuthorityFailure = (cause) => cause instanceof MatchCapacityError ||
+    cause instanceof Error &&
+        /request failed: (?:429|502|503|504|555)\b/.test(cause.message);
 let local = null;
 let latestStatus = null;
 let ready = false;
@@ -219,6 +214,22 @@ let lobbyDelay = 500;
 let priorLobbyState = '';
 let gameStarted = false;
 let admissionController = null;
+let unloadLeaveSent = false;
+const releaseLocalMatchOnUnload = () => {
+    admissionController?.abort();
+    if (unloadLeaveSent || local === null)
+        return;
+    unloadLeaveSent = true;
+    const leaving = local;
+    local = null;
+    for (const store of [localStorage, sessionStorage]) {
+        store.removeItem(storageKey(leaving.match));
+        if (store.getItem(soloCurrentKey) === leaving.match) {
+            store.removeItem(soloCurrentKey);
+        }
+    }
+    leaveMatchOnUnload(leaving.match, leaving.playerCapability);
+};
 for (const button of main.querySelectorAll('[data-switch-mode]')) {
     button.addEventListener('click', () => {
         const mode = button.dataset.switchMode;
@@ -297,7 +308,11 @@ cancelQueueButton.addEventListener('click', () => {
     message.textContent = 'Admission wait cancelled.';
     setBusy(false);
 });
-window.addEventListener('pagehide', () => admissionController?.abort(), { once: true });
+// pagehide is the primary lifecycle signal; beforeunload covers engines that
+// omit it during a hard refresh/window close. The idempotent guard ensures the
+// authenticated LEAVE_MATCH request is queued only once.
+window.addEventListener('pagehide', releaseLocalMatchOnUnload, { once: true });
+window.addEventListener('beforeunload', releaseLocalMatchOnUnload, { once: true });
 function scheduleLobbyRefresh() {
     window.clearTimeout(lobbyTimer);
     if (gameStarted || local === null)
@@ -342,7 +357,7 @@ async function refreshLobby() {
     if (latestStatus.state === 'ACTIVE' && !gameStarted) {
         gameStarted = true;
         window.clearTimeout(lobbyTimer);
-        await startMleGame(local, latestStatus);
+        await startDatabaseFrameGame(local, latestStatus);
     }
 }
 async function enterLobby(value) {
@@ -410,7 +425,481 @@ function ticcmd(command) {
     bytes[7] = buttons;
     return Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
 }
-async function startMleGame(value, status) {
+async function startDatabaseFrameGame(value, status) {
+    lobby.hidden = true;
+    game.dataset.active = '';
+    hud.textContent = 'Loading the database framebuffer stream…';
+    const [presentationAssets, initialInputSequence] = await Promise.all([
+        soloPresentationAssets ??
+            Promise.all([getAsset('PLAYPAL_ALL'), getAsset('TITLEPIC')]),
+        matchInputFrontier(value.match, value.playerCapability)
+    ]);
+    const [paletteAsset, titleAsset] = presentationAssets;
+    const palettes = createPaletteSet(decodeBytes(paletteAsset.payload));
+    const basePalette = createPalette(palettes.subarray(0, 256 * 3));
+    const blitTitle = createIndexedBlitter(canvas, basePalette);
+    const blitDatabaseFrame = createColumnMajorIndexedPaletteBlitter(canvas, palettes);
+    blitTitle(decodeBytes(titleAsset.payload));
+    let latest = { seq: 0, turn: 0, forward: 0, strafe: 0, run: 0, fire: 0, use: 0,
+        weapon: 0, pause: 0, automap: 0, menu: 'NONE', cheat: '' };
+    let inputSequence = initialInputSequence;
+    let retryInput = null;
+    let pendingInput = null;
+    let stopped = false;
+    let suspended = document.hidden;
+    let hiddenAt = suspended ? performance.now() : 0;
+    let serverTic = status.currentTic;
+    let presentedTic = -1;
+    let transportTic = -1;
+    let membershipEpoch = status.membershipEpoch;
+    let generation = status.generation;
+    let nextFrameAt = 0;
+    let playoutStarted = false;
+    let playoutMode = 'FREE';
+    let starvationActive = false;
+    let inputCatchupThroughTic = -1;
+    let lastEffectiveInputHex = null;
+    let pixelPollEpoch = 0;
+    let lastFrameBatchAt = 0;
+    let transportEstablished = false;
+    let urgentPixelInput = false;
+    let inputPostInFlight = false;
+    // Six confirmed frames cover the compressed, contention-free OCI poll
+    // tail. Input response catches up by accelerating already-confirmed frames;
+    // it never deletes or predicts presentation state.
+    const wan = new ConfirmedWanPolicy(6, 6);
+    // A real input transition may time-compress already-confirmed frames down
+    // to two frames of reserve. With native 35-Hz database publication the
+    // reserve refills without dropping, predicting, or reordering any frame.
+    const pixelInputCatchupFloor = 2;
+    const pixelInputLeadTics = 1;
+    const paintedAt = [];
+    const frames = new Map();
+    const pixelPollInFlight = new Set();
+    const arrivedTransportTics = new Set();
+    const pixelPollLegs = 1;
+    const buttons = new Map();
+    let schedulePixelPolls = (_delayMs = 0) => { };
+    const fail = (cause) => {
+        stopped = true;
+        hud.className = 'error';
+        hud.textContent = cause instanceof Error ? cause.message : String(cause);
+    };
+    const updateHud = () => {
+        const elapsed = paintedAt.length > 1 ? paintedAt.at(-1) - paintedAt[0] : 0;
+        const fps = elapsed > 0 ? (paintedAt.length - 1) * 1000 / elapsed : 0;
+        const role = soloMode ? 'SINGLE PLAYER' : `${status.mode} · PLAYER ${value.playerSlot + 1}`;
+        hud.textContent = `${role} · DB FRAME ${presentedTic} · SERVER ${serverTic}`
+            + `\n${fps.toFixed(1)} FPS · database pixels · buffer ${frames.size}`
+            + `/${wan.playoutBufferTics} · canvas copy only`;
+    };
+    const queueInput = (command) => {
+        const inputHex = ticcmd(command);
+        const changed = inputHex !== ticcmd(latest);
+        latest = command;
+        // Coalesce UI samples that have not started an HTTP post without
+        // consuming another idempotent sequence. Forward+turn key events commonly
+        // arrive in the same browser task; replacing N with N+1 here creates a
+        // permanent hole that the authoritative API correctly refuses.
+        const sequence = pendingInput?.sequence ?? inputSequence + 1;
+        if (pendingInput === null)
+            inputSequence = sequence;
+        pendingInput = { sequence, hex: inputHex,
+            targetTic: serverTic + pixelInputLeadTics, command: { ...latest } };
+        trace('input', { inputSequence: sequence, command: latest,
+            targetTic: pendingInput.targetTic, source: 'database-frame-client' });
+        if (changed) {
+            urgentPixelInput = true;
+            schedulePixelPolls(0);
+        }
+    };
+    bindInput(canvas, buttons, queueInput, () => { }, () => { });
+    queueInput(latest);
+    canvas.addEventListener('click', () => {
+        if (document.pointerLockElement !== canvas)
+            void canvas.requestPointerLock();
+    });
+    canvas.focus();
+    // Genuine input changes use the compact revision endpoint. Folding input
+    // into an already-running framebuffer exchange made controls wait behind
+    // BLOB selection/compression; this remains serialized per player and never
+    // emits unchanged keepalives.
+    const postInput = () => {
+        if (stopped || suspended || inputPostInFlight)
+            return;
+        const input = retryInput ?? pendingInput;
+        if (input === null)
+            return;
+        if (retryInput !== null)
+            retryInput = null;
+        else
+            pendingInput = null;
+        inputPostInFlight = true;
+        let retryDelayMs = 0;
+        const started = performance.now();
+        void reviseMatchInput(value.match, value.playerCapability, input.sequence, input.hex, input.targetTic)
+            .then(result => {
+            if (stopped || suspended)
+                return;
+            const finished = performance.now();
+            if (result.accepted !== 1
+                || result.membershipEpoch !== membershipEpoch
+                || result.generation < generation) {
+                throw new Error('database-frame input fence changed');
+            }
+            if (result.generation > generation) {
+                generation = result.generation;
+                resetPixelTransport();
+            }
+            trace('input-effective', { inputSequence: input.sequence,
+                effectiveTic: result.effectiveTic, command: input.command,
+                targetTic: input.targetTic, roundTripMs: finished - started,
+                source: 'database-frame-client' });
+            const changedInput = input.hex !== lastEffectiveInputHex;
+            lastEffectiveInputHex = input.hex;
+            if (playoutStarted && changedInput) {
+                inputCatchupThroughTic = Math.max(inputCatchupThroughTic, result.effectiveTic);
+            }
+            urgentPixelInput = true;
+            schedulePixelPolls(0);
+        }).catch(cause => {
+            if (stopped || suspended)
+                return;
+            retryInput = input;
+            urgentPixelInput = true;
+            if (transientAuthorityFailure(cause))
+                retryDelayMs = 250;
+            else
+                fail(cause);
+        }).finally(() => {
+            inputPostInFlight = false;
+            if (!stopped && !suspended && (retryInput !== null || pendingInput !== null))
+                window.setTimeout(postInput, retryDelayMs);
+        });
+    };
+    const pump = () => {
+        if (stopped || suspended)
+            return;
+        postInput();
+        const now = performance.now();
+        // Present every confirmed database framebuffer. Input latency must be
+        // controlled by transport and reserve depth, never by deleting gun,
+        // sprite, or world-animation frames from the authoritative stream.
+        const nextTic = presentedTic < 0
+            ? Math.min(...frames.keys())
+            : nextDatabaseFrameTic(presentedTic);
+        const frame = frames.get(nextTic);
+        if (frame === undefined) {
+            if (playoutStarted && now >= nextFrameAt + 1000 / 70 && !starvationActive) {
+                starvationActive = true;
+                trace('pixel-starvation', {
+                    presentedTic, transportTic, selectedDepth: wan.playoutBufferTics,
+                    expectedBatchTics: wan.expectedConfirmedBatchTics,
+                    source: 'database-framebuffer'
+                });
+            }
+            return;
+        }
+        if (now < nextFrameAt)
+            return;
+        if (!playoutStarted) {
+            // A batched transport's real display offset is reserve plus one batch:
+            // starting after only the first batch creates a sawtooth that reaches
+            // zero immediately before every response. Retain the selected reserve
+            // after consuming a normal batch by waiting for depth+batch frames.
+            const startupFrames = Math.min(64, wan.playoutBufferTics + wan.expectedConfirmedBatchTics);
+            if (frames.size < startupFrames)
+                return;
+            playoutStarted = true;
+            playoutMode = 'FREE';
+            trace('pixel-playout-start', {
+                tic: nextTic, bufferedFrames: frames.size,
+                selectedDepth: wan.playoutBufferTics,
+                expectedBatchTics: wan.expectedConfirmedBatchTics, startupFrames,
+                source: 'database-framebuffer'
+            });
+        }
+        starvationActive = false;
+        frames.delete(nextTic);
+        blitDatabaseFrame(frame.indices, frame.paletteIndex);
+        presentedTic = nextTic;
+        paintedAt.push(now);
+        if (paintedAt.length > 120)
+            paintedAt.shift();
+        // Keep the atomic transport centered on a spendable confirmed reserve.
+        // The database emits every authoritative 35-Hz tic. Drive presentation
+        // from the confirmed-occupancy setpoint so service tails consume reserve
+        // rather than becoming visible pauses.
+        const decision = confirmedBatchPlayoutDecision(frames.size, wan.playoutBufferTics, wan.expectedConfirmedBatchTics, playoutMode);
+        const inputCatchup = inputCatchupThroughTic > presentedTic
+            && frames.size > pixelInputCatchupFloor;
+        playoutMode = inputCatchup ? 'ACCELERATE' : decision.mode;
+        const nativePixelInterval = 1000 / 35;
+        let interval = nativePixelInterval;
+        if (playoutMode === 'ACCELERATE') {
+            // Input catch-up needs less than the general 2x backlog ceiling. A
+            // 20-ms clock preserves more confirmed reserve during rapid fire/turn
+            // changes while still removing roughly one tic of visual latency per
+            // three presented frames.
+            interval = inputCatchup ? 20 : nativePixelInterval / 2;
+        }
+        else if (playoutMode === 'DECELERATE') {
+            // Recover reserve continuously without manufacturing a long paint gap.
+            // 31 ms remains above the strict 30-FPS/33.3-ms presentation gate.
+            interval = 31;
+        }
+        nextFrameAt = nextFrameAt <= 0 ? now + interval :
+            Math.max(nextFrameAt + interval, now + 1000 / 70);
+        if (inputCatchupThroughTic >= 0 && presentedTic >= inputCatchupThroughTic) {
+            inputCatchupThroughTic = -1;
+            if (pendingInput === null && retryInput === null && !inputPostInFlight)
+                urgentPixelInput = false;
+        }
+        trace('present', { tic: presentedTic, serverTic,
+            bufferedFrames: frames.size, selectedDepth: wan.playoutBufferTics,
+            expectedBatchTics: wan.expectedConfirmedBatchTics,
+            playoutMode, frameIndices: frame.indices,
+            source: 'database-framebuffer' });
+        updateHud();
+        schedulePixelPolls(0);
+    };
+    const resetPixelTransport = () => {
+        pixelPollEpoch += 1;
+        pixelPollInFlight.clear();
+        arrivedTransportTics.clear();
+        transportEstablished = false;
+        frames.clear();
+        transportTic = -1;
+        presentedTic = -1;
+        nextFrameAt = 0;
+        playoutStarted = false;
+        playoutMode = 'FREE';
+        urgentPixelInput = pendingInput !== null || retryInput !== null;
+        inputCatchupThroughTic = -1;
+        lastEffectiveInputHex = null;
+        starvationActive = false;
+        wan.resetConfirmedBatchDelivery();
+        paintedAt.length = 0;
+        lastFrameBatchAt = 0;
+    };
+    const launchPixelPoll = (expectedTic) => {
+        if (stopped || suspended || pixelPollInFlight.has(expectedTic))
+            return;
+        pixelPollInFlight.add(expectedTic);
+        const requestEpoch = pixelPollEpoch;
+        const requestAfterTic = expectedTic < 0 ? -1 : expectedTic - 1;
+        const requestGeneration = generation;
+        let nextPollDelayMs = 8;
+        void exchangeMatchPixelBatch(value.match, value.playerCapability, requestAfterTic, 8)
+            .then(async (result) => {
+            if (requestEpoch !== pixelPollEpoch || stopped || suspended)
+                return;
+            const finished = performance.now();
+            if (result.inputAccepted !== 0 || result.effectiveTic !== null) {
+                throw new Error('input-free database-frame exchange changed');
+            }
+            if (result.membershipEpoch !== membershipEpoch) {
+                throw new Error('database-frame generation fence changed');
+            }
+            if (result.generation < requestGeneration) {
+                throw new Error('database-frame generation regressed');
+            }
+            if (result.generation > requestGeneration) {
+                trace('pixel-resync', { reason: 'generation', fromGeneration: generation,
+                    toGeneration: result.generation, source: 'database-framebuffer' });
+                generation = result.generation;
+                serverTic = result.currentTic;
+                resetPixelTransport();
+                postInput();
+                schedulePixelPolls();
+                return;
+            }
+            serverTic = Math.max(serverTic, result.currentTic);
+            if (result.frameCount > 0 && result.firstTic !== null
+                && result.lastTic !== null && result.payload !== null) {
+                const batch = await decodeDatabasePixelTransport(decodeBytes(result.payload), value.playerSlot);
+                if (batch.length !== result.frameCount
+                    || batch[0]?.tic !== result.firstTic
+                    || batch.at(-1)?.tic !== result.lastTic) {
+                    throw new Error('database frame batch fence changed');
+                }
+                if (!transportEstablished) {
+                    trace('pixel-resync', { reason: 'ring-gap',
+                        expectedTic: transportTic + 1, firstTic: batch[0].tic,
+                        generation, source: 'database-framebuffer' });
+                    frames.clear();
+                    arrivedTransportTics.clear();
+                    presentedTic = batch[0].tic - 1;
+                    transportTic = batch[0].tic - 1;
+                    nextFrameAt = 0;
+                    playoutStarted = false;
+                    playoutMode = 'FREE';
+                    starvationActive = false;
+                    wan.resetConfirmedBatchDelivery();
+                    paintedAt.length = 0;
+                    transportEstablished = true;
+                }
+                else if (batch[0].tic !== expectedTic) {
+                    // The 64-entry ring advanced beyond an exact reserved request.
+                    // Establish a new confirmed cursor and invalidate the other lane;
+                    // no frame is invented, skipped inside the new stream, or reused.
+                    trace('pixel-resync', { reason: 'ring-gap',
+                        expectedTic, firstTic: batch[0].tic,
+                        generation, source: 'database-framebuffer' });
+                    resetPixelTransport();
+                    transportEstablished = true;
+                    presentedTic = batch[0].tic - 1;
+                    transportTic = batch[0].tic - 1;
+                }
+                for (const frame of batch) {
+                    if (frame.tic > presentedTic)
+                        frames.set(frame.tic, frame);
+                    arrivedTransportTics.add(frame.tic);
+                }
+                for (let next = nextDatabaseFrameTic(transportTic); arrivedTransportTics.delete(next); next = nextDatabaseFrameTic(transportTic)) {
+                    transportTic = next;
+                }
+                if (frames.size > 64) {
+                    if (playoutStarted) {
+                        throw new Error('database frame backlog exceeded');
+                    }
+                    // A worker starts ticking before a newly attached browser has
+                    // fetched palettes and entered playout. Joining live does not
+                    // require replaying that pre-attachment history: retain one
+                    // confirmed batch plus the selected reserve and establish the
+                    // cursor immediately before it. Live playout remains consecutive.
+                    const retain = Math.min(64, wan.playoutBufferTics + wan.expectedConfirmedBatchTics + 2);
+                    const firstRetained = transportTic - retain + 1;
+                    for (const tic of frames.keys()) {
+                        if (tic < firstRetained)
+                            frames.delete(tic);
+                    }
+                    presentedTic = firstRetained - 1;
+                    trace('pixel-resync', {
+                        reason: 'startup-backlog', firstRetained, transportTic,
+                        retainedFrames: frames.size, source: 'database-framebuffer'
+                    });
+                }
+                wan.observeConfirmedBatch(finished, batch.length);
+                trace('pixel-batch', {
+                    frameCount: batch.length, selectedDepth: wan.playoutBufferTics,
+                    preClampDepth: wan.preClampPlayoutBufferTics,
+                    expectedBatchTics: wan.expectedConfirmedBatchTics,
+                    bufferedFrames: frames.size, source: 'database-framebuffer'
+                });
+                pump();
+                lastFrameBatchAt = finished;
+                // Drain available confirmed frames immediately. Deliberately
+                // delaying this crossing caused a retained-ring resync stall on the
+                // qualified OCI path; payload-size reduction must happen below this
+                // scheduling layer.
+                nextPollDelayMs = 0;
+                if (requestEpoch !== pixelPollEpoch)
+                    schedulePixelPolls();
+            }
+            else {
+                // Once caught up, aim the next request at the following native tic
+                // instead of issuing several empty database calls per frame. A real
+                // backlog still drains immediately through the branch above.
+                const predicted = lastFrameBatchAt > 0
+                    ? lastFrameBatchAt + 1000 / 35 - finished
+                    : 1000 / 70;
+                nextPollDelayMs = Math.max(4, Math.min(20, predicted));
+            }
+            postInput();
+        }).catch(cause => {
+            if (requestEpoch !== pixelPollEpoch || stopped || suspended)
+                return;
+            if (transientAuthorityFailure(cause)) {
+                nextPollDelayMs = 250;
+                hud.textContent = `${soloMode ? 'SINGLE PLAYER' : status.mode}`
+                    + ` · DB FRAME ${presentedTic}\nRecovering retained MLE authority…`;
+            }
+            else
+                fail(cause);
+        }).finally(() => {
+            if (requestEpoch !== pixelPollEpoch)
+                return;
+            pixelPollInFlight.delete(expectedTic);
+            if (!stopped && !suspended)
+                schedulePixelPolls(nextPollDelayMs);
+        });
+    };
+    schedulePixelPolls = (delayMs = 0) => {
+        if (stopped || suspended)
+            return;
+        window.setTimeout(() => {
+            if (stopped || suspended)
+                return;
+            if (!transportEstablished) {
+                // Attach at the live frontier. Replaying the retained 64-tic ring
+                // before presentation starts creates artificial backlog and latency;
+                // those frames predate this browser's live viewing interval.
+                if (pixelPollInFlight.size === 0)
+                    launchPixelPoll(Math.max(0, serverTic));
+                return;
+            }
+            // Refill while one complete batch still sits above the selected reserve.
+            // Waiting until only the reserve remained exposed ordinary 100-250 ms
+            // Free-tier database tails directly to the canvas. One outstanding
+            // request per client avoids the ORDS/session convoy caused by delayed
+            // duplicate hedges while preserving a spendable confirmed reserve.
+            if (playoutStarted && !urgentPixelInput
+                && frames.size > wan.playoutBufferTics
+                    + wan.expectedConfirmedBatchTics)
+                return;
+            // One wait-free request returns every immediately available DPD1 tic as
+            // a player-specific DPB2. This amortizes ORDS and temporary-response
+            // work without delaying worker publication to fill a batch.
+            for (let expected = nextDatabaseFrameTic(transportTic), leg = 0; leg < pixelPollLegs && pixelPollInFlight.size < pixelPollLegs; expected = nextDatabaseFrameTic(expected), leg += 1) {
+                if (!pixelPollInFlight.has(expected)
+                    && !arrivedTransportTics.has(expected))
+                    launchPixelPoll(expected);
+            }
+        }, delayMs);
+    };
+    document.addEventListener('visibilitychange', () => {
+        suspended = document.hidden;
+        if (suspended) {
+            resetPixelTransport();
+            hiddenAt = performance.now();
+            trace('visibility', {
+                state: 'hidden', strategy: 'immediate-pixel-poll-release',
+                source: 'database-framebuffer'
+            });
+            return;
+        }
+        if (!suspended && !stopped) {
+            const hiddenMilliseconds = Math.max(0, performance.now() - hiddenAt);
+            trace('pixel-resync', {
+                reason: 'visibility', hiddenMilliseconds,
+                source: 'database-framebuffer'
+            });
+            schedulePixelPolls();
+        }
+    });
+    window.addEventListener('pagehide', () => { stopped = true; }, { once: true });
+    // Pixel polling is the authenticated presence heartbeat and PACED_INPUT
+    // reuses the latest accepted command. Reposting an unchanged command every
+    // 250 ms only convoys on the worker's 35-Hz match-row linearization lock.
+    // Genuine keyboard/pointer transitions enter through queueInput directly.
+    // A four-millisecond sampler turned a 32 ms target into a visible 36 ms
+    // bucket, while requestAnimationFrame produced a 40 ms cloud-browser p95.
+    // One-millisecond sampling remains the measured best scheduler on this
+    // venue; the pump's deadline check prevents early presentation.
+    updateHud();
+    schedulePixelPolls();
+    window.setInterval(pump, 1);
+}
+/** Retained diagnostic fallback; production admission uses database pixels. */
+export async function startMleGame(value, status) {
+    const [{ AudioPresenter }, { decodeAuthorityBatch }, { ConfirmedAuthorityMirror }, { authorityRootChainSha }, { createBrowserAuthorityEngines, restoreBrowserAuthorityCheckpoint },] = await Promise.all([
+        import('./audio.js'),
+        import('./authority-batch.js'),
+        import('./authority-mirror.js'),
+        import('./authority.js'),
+        import('./teavm-browser.js'),
+    ]);
     lobby.hidden = true;
     game.dataset.active = '';
     hud.textContent = 'Loading SHA-verified Doom engine and IWAD…';
@@ -422,7 +911,7 @@ async function startMleGame(value, status) {
         createBrowserAuthorityEngines(status)
     ]);
     const [paletteAsset, titleAsset] = presentationAssets;
-    const blitIndexed = createIndexedBlitter(canvas, createPalette(decodeBytes(paletteAsset.payload)));
+    const blitIndexed = createIndexedBlitter(canvas, createPalette(decodeBytes(paletteAsset.payload).subarray(0, 256 * 3)));
     blitIndexed(decodeBytes(titleAsset.payload));
     const rootChainSha = await authorityRootChainSha(value.match, status.membershipEpoch);
     let mirror = new ConfirmedAuthorityMirror(engines.verifier, engines.presenter, value.playerSlot, { tic: 0, generation: 1, membershipEpoch: status.membershipEpoch,
@@ -452,6 +941,7 @@ async function startMleGame(value, status) {
     let serverTic = status.currentTic;
     let nextPresentationAt = 0;
     let presentationStarted = false;
+    let playoutMode = 'FREE';
     const paintedAt = [];
     const buttons = new Map();
     const observeWanRoundTrip = (roundTripMs, nowMs, minimumLeadTics = 2) => {
@@ -587,7 +1077,7 @@ async function startMleGame(value, status) {
                 // remainder is the observed transport/ORDS round trip. The batch
                 // frontier gap is a second, direct estimate of how far ahead input
                 // must be scheduled from this verified frontier.
-                observeWanRoundTrip(Math.max(0, pollFinished - pollStarted - batch.holdElapsedMs), pollFinished, batch.committedFrontierTic - frontier.tic + 1);
+                observeWanRoundTrip(Math.max(0, pollFinished - pollStarted - batch.holdElapsedMs), pollFinished, batch.committedFrontierTic - mirror.frontier.tic + 1);
             }
             trace('batch', { holdElapsedMs: batch.holdElapsedMs,
                 wallMs: pollFinished - pollStarted, count: batch.transitions.length,
@@ -631,11 +1121,12 @@ async function startMleGame(value, status) {
                     // repeatedly and halve paint cadence. Offer the already-confirmed
                     // frame directly after each completed transition.
                     requestPresentationPump();
-                    // Promise continuations alone remain in the microtask queue. Pace
-                    // catch-up apply work to the existing 2x presentation ceiling so
-                    // every generated confirmed frame gets a paint opportunity instead
-                    // of racing ahead and being cleared at the visual-debt bound.
-                    const yieldMs = Math.max(0, Math.min(1000 / 70, nextPresentationAt - performance.now()));
+                    // Promise continuations alone remain in the microtask queue. Give
+                    // every generated frame a paint opportunity, but let confirmed
+                    // mirror apply catch up at 4x. Visible presentation retains its
+                    // separate 2x ceiling below; this only shortens verification/render
+                    // preparation backlog and never skips or presents a transition.
+                    const yieldMs = Math.max(0, Math.min(1000 / 140, nextPresentationAt - performance.now()));
                     await new Promise(resolve => window.setTimeout(resolve, yieldMs));
                 }
                 if (batch.transitions.length > 0) {
@@ -643,6 +1134,10 @@ async function startMleGame(value, status) {
                     // the same response as a zero-gap network arrival falsely inflates
                     // jitter and then drains the resulting buffer at 2x.
                     wan.observeConfirmedDelivery(performance.now());
+                    trace('playout', {
+                        selectedTics: wan.playoutBufferTics,
+                        preClampDesiredTics: wan.preClampPlayoutBufferTics
+                    });
                 }
                 trace('apply-batch', { count: batch.transitions.length,
                     wallMs: performance.now() - applyBatchStarted,
@@ -718,6 +1213,7 @@ async function startMleGame(value, status) {
             presentedTic = checkpoint.checkpointTic;
             presentationStarted = false;
             nextPresentationAt = 0;
+            playoutMode = 'FREE';
             trace('resync', { tic: presentedTic, reason: 'confirmed-checkpoint' });
             trace('visibility', { state: 'visible', strategy: 'checkpoint-resync',
                 hiddenMs: hiddenMilliseconds, frontierTic: presentedTic });
@@ -787,23 +1283,13 @@ async function startMleGame(value, status) {
                     presentations.delete(tic);
             presentedTic = target - 1;
             presentationStarted = true;
+            playoutMode = 'FREE';
             trace('resync', { tic: presentedTic, reason: 'confirmed-startup' });
-        }
-        if (presentationStarted &&
-            target - presentedTic > MAX_CONFIRMED_PRESENTATION_BACKLOG &&
-            presentations.has(target)) {
-            for (const tic of presentations.keys())
-                if (tic < target)
-                    presentations.delete(tic);
-            presentedTic = target - 1;
-            nextPresentationAt = now;
-            trace('resync', { tic: presentedTic, reason: 'confirmed-backlog' });
         }
         if (!presentationStarted)
             return;
         const next = presentations.get(presentedTic + 1);
-        if (next !== undefined && next.presentation.tic <= target &&
-            now >= nextPresentationAt) {
+        if (next !== undefined && now >= nextPresentationAt) {
             // Keep the playout clock on its original 35 Hz timeline. Resetting it
             // to `now` after a delayed callback permanently preserved every
             // transport/event-loop stall as additional presentation lag. One frame
@@ -818,18 +1304,23 @@ async function startMleGame(value, status) {
             paintedAt.push(now);
             if (paintedAt.length > 60)
                 paintedAt.shift();
-            // A fixed-rate consumer preserves any startup or WAN burst backlog
-            // forever. Time-compress already-confirmed frames at at most 2x until
-            // the configured playout offset is restored, then resume native 35 Hz.
-            // This changes presentation timing only; no transition is skipped.
-            const playoutInterval = confirmedPlayoutIntervalMs(target - presentedTic);
-            // Never leave the deadline in the past. Doing so lets a 4 ms pump
-            // burst through a confirmed batch, empty the jitter buffer, and then
-            // expose the next ORDS round trip as a 60–80 ms visual stall.
-            nextPresentationAt = Math.max(nextPresentationAt + playoutInterval, now + playoutInterval);
+            // The free-running playout clock spends only already-applied confirmed
+            // frames. Buffer occupancy, not a frozen frontier-relative target,
+            // controls bounded acceleration/deceleration.
+            const bufferOccupancy = mirror.frontier.tic - presentedTic;
+            const playoutDecision = confirmedPlayoutDecision(bufferOccupancy, wan.playoutBufferTics, playoutMode);
+            playoutMode = playoutDecision.mode;
+            const playoutInterval = playoutDecision.intervalMs;
+            // Recover clock debt at no more than the approved 2x visible ceiling.
+            // Waiting a fresh 28.6 ms after every late callback adds an avoidable
+            // fractional tic to confirmed-to-presented latency; using the original
+            // deadline while retaining a 14.3 ms floor preserves the ceiling.
+            nextPresentationAt = Math.max(nextPresentationAt + playoutInterval, now + 1000 / 70);
             trace('present', { tic: presentedTic, chainSha: next.presentation.chainSha,
                 leadTics: wan.inputLeadTics,
                 playoutTics: wan.playoutBufferTics,
+                bufferOccupancy,
+                playoutMode,
                 confirmedFrontierTic: mirror.frontier.tic,
                 presentationLagTics: mirror.frontier.tic - presentedTic,
                 serverTic });
@@ -1107,7 +1598,7 @@ if (soloMode) {
     game.dataset.active = '';
     hud.textContent = 'SINGLE PLAYER\nStarting a new game inside Oracle…';
     void soloPresentationAssets?.then(([paletteAsset, titleAsset]) => {
-        const blit = createIndexedBlitter(canvas, createPalette(decodeBytes(paletteAsset.payload)));
+        const blit = createIndexedBlitter(canvas, createPalette(decodeBytes(paletteAsset.payload).subarray(0, 256 * 3)));
         blit(decodeBytes(titleAsset.payload));
     }).catch(showSoloError);
     ready = true;

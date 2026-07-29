@@ -42,6 +42,52 @@ begin
   drop_object('drop package doom_worker_lifecycle', -4043);
   drop_object('drop package doom_mle_authority_delta', -4043);
   drop_object('drop package doom_mle_transition_transport', -4043);
+  drop_object('drop package doom_mle_live_frame_transport', -4043);
+  drop_object('drop procedure doom_mle_live_release', -4043);
+  for l_name in (
+    select column_value function_name
+      from table(sys.odcivarchar2list(
+        'DOOM_MLE_LIVE_RENDER_PUBLISH',
+        'DOOM_MLE_LIVE_FRAME_FLUSH',
+        'DOOM_MLE_LIVE_FRAME_PREWARM',
+        'DOOM_MLE_LIVE_UI_FINALIZE','DOOM_MLE_LIVE_UI_LOAD',
+        'DOOM_MLE_LIVE_UI_ALLOCATE','DOOM_MLE_LIVE_SPRITE_FINALIZE',
+        'DOOM_MLE_LIVE_SPRITE_LOAD','DOOM_MLE_LIVE_SPRITE_ALLOCATE',
+        'DOOM_MLE_LIVE_FLAT_FINALIZE','DOOM_MLE_LIVE_FLAT_LOAD',
+        'DOOM_MLE_LIVE_FLAT_ALLOCATE','DOOM_MLE_LIVE_WALL_FINALIZE',
+        'DOOM_MLE_LIVE_WALL_LOAD','DOOM_MLE_LIVE_WALL_ALLOCATE',
+        'DOOM_MLE_LIVE_COMPOSITOR_PACK_FINALIZE',
+        'DOOM_MLE_LIVE_COMPOSITOR_PACK_LOAD',
+        'DOOM_MLE_LIVE_COMPOSITOR_PACK_ALLOCATE',
+        'DOOM_MLE_LIVE_WORLD_PACK_FINALIZE',
+        'DOOM_MLE_LIVE_WORLD_PACK_LOAD','DOOM_MLE_LIVE_WORLD_PACK_ALLOCATE',
+        'DOOM_MLE_LIVE_MEMORY','DOOM_MLE_LIVE_WORLD_CHUNK',
+        'DOOM_MLE_LIVE_WORLD_LENGTH','DOOM_MLE_LIVE_RESTORE_WARM',
+        'DOOM_MLE_LIVE_RESTORE','DOOM_MLE_LIVE_RESTORE_LOAD',
+        'DOOM_MLE_LIVE_RESTORE_ALLOCATE','DOOM_MLE_LIVE_CHECKPOINT_CHUNK',
+        'DOOM_MLE_LIVE_CHECKPOINT_LENGTH','DOOM_MLE_LIVE_STATE',
+        'DOOM_MLE_LIVE_CANONICAL_STATE','DOOM_MLE_LIVE_STEP',
+        'DOOM_MLE_LIVE_INIT_GAME','DOOM_MLE_LIVE_TABLE_LOAD',
+        'DOOM_MLE_LIVE_TABLE_ALLOCATE','DOOM_MLE_LIVE_IWAD_LOAD',
+        'DOOM_MLE_LIVE_IWAD_ALLOCATE'))
+  ) loop
+    drop_object('drop function '||l_name.function_name, -4043);
+  end loop;
+  begin
+    execute immediate 'drop mle module doom_mle_live_coordinator';
+  exception when others then
+    if sqlcode not in(-4080,-4103) then raise;end if;
+  end;
+  begin
+    execute immediate 'drop mle env doom_mle_live_env';
+  exception when others then
+    if sqlcode not in(-4080,-4103,-4104,-4105) then raise;end if;
+  end;
+  begin
+    execute immediate 'drop mle module doom_mle_live_renderer';
+  exception when others then
+    if sqlcode not in(-4080,-4103) then raise;end if;
+  end;
   drop_object('drop package doom_unified_worker', -4043);
   drop_object('drop package doom_session_cleanup', -4043);
   drop_object('drop package doom_render_worker', -4043);
@@ -159,7 +205,7 @@ begin
         -- Legacy retained-render overlap objects are teardown-only. Their
         -- defining schema is deliberately absent from production-order.txt.
         'DOOM_RENDER_STAGE','DOOM_RENDER_WORKER_CONTROL',
-        'DOOM_WORKER_STOP_INTENT','DOOM_MLE_WARM_ASSIGNMENT','DOOM_MLE_WARM_LAUNCH','DOOM_MLE_PREWARM_RUN','DOOM_MLE_WARM_SLOT','DOOM_MLE_TIC0_CHECKPOINT','DOOM_MATCH_POLL_LEASE','DOOM_MATCH_POLL_CAPACITY','DOOM_MATCH_LIVENESS_PROBE','DOOM_MATCH_SLOW_CALL','DOOM_MATCH_TRANSITION','DOOM_MATCH_ROUTE_TRACE','DOOM_MATCH_CHECKPOINT_PROBE','DOOM_MATCH_STANDBY_CONTROL','DOOM_MATCH_WORKER_CONTROL','DOOM_MATCH_CHECKPOINT','DOOM_MATCH_FRAME','DOOM_MATCH_INPUT_EVENT','DOOM_MATCH_COMMAND','DOOM_MATCH_TIC','DOOM_MATCH_MEMBER','DOOM_MATCH',
+        'DOOM_WORKER_STOP_INTENT','DOOM_MLE_WARM_ASSIGNMENT','DOOM_MLE_WARM_LAUNCH','DOOM_MLE_PREWARM_RUN','DOOM_MLE_WARM_SLOT','DOOM_MLE_TIC0_CHECKPOINT','DOOM_MLE_LIVE_FRAME_SOURCE','DOOM_MATCH_LIVE_FRAME_VIEWS','DOOM_MATCH_LIVE_FRAME_BATCH','DOOM_MATCH_LIVE_FRAME','DOOM_MATCH_POLL_LEASE','DOOM_MATCH_POLL_CAPACITY','DOOM_MATCH_LIVENESS_PROBE','DOOM_MATCH_SLOW_CALL','DOOM_MATCH_TRANSITION','DOOM_MATCH_ROUTE_TRACE','DOOM_MATCH_CHECKPOINT_PROBE','DOOM_MATCH_STANDBY_CONTROL','DOOM_MATCH_WORKER_CONTROL','DOOM_MATCH_CHECKPOINT','DOOM_MATCH_FRAME','DOOM_MATCH_INPUT_EVENT','DOOM_MATCH_COMMAND','DOOM_MATCH_TIC','DOOM_MATCH_MEMBER','DOOM_MATCH',
         'DOOM_MOCHA_FRAME_LEDGER','DOOM_MOCHA_INITIAL_FRAME','DOOM_MOCHA_SAVE_SLOT','DOOM_MOCHA_FRAME_CACHE',
         'DOOM_ROUTE_TRACE','DOOM_MOCHA_COMMAND','DOOM_MOCHA_LINEAGE','DOOM_WORKER_AUDIT','DOOM_WORKER_RESULT','DOOM_WORKER_REQUEST','DOOM_WORKER_CONTROL',
         'TIC_COMMANDS','ACTIVE_SWITCHES','ACTIVE_MOVERS','LINE_STATE','SECTOR_STATE',

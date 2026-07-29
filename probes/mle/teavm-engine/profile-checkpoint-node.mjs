@@ -14,6 +14,13 @@ const profilePath = process.env.DOOMDB_MLE_CHECKPOINT_PROFILE;
 const checkpointOutputPath = process.env.DOOMDB_MLE_CHECKPOINT_BYTES;
 const restoreEnabled = process.env.DOOMDB_MLE_CHECKPOINT_RESTORE === '1';
 const warmRestore = process.env.DOOMDB_MLE_CHECKPOINT_WARM_RESTORE === '1';
+const hotProfile = process.env.DOOMDB_MLE_CHECKPOINT_PROFILE_HOT === '1';
+const hotIterations = Number(
+  process.env.DOOMDB_MLE_CHECKPOINT_PROFILE_ITERATIONS ?? 1);
+if (!Number.isInteger(hotIterations) || hotIterations < 1 ||
+    hotIterations > 1_000) {
+  throw new TypeError('checkpoint profile iteration count is invalid');
+}
 const engine = await import(new URL(modulePath, here));
 const iwad = fs.readFileSync(new URL(iwadPath, here));
 const tables = fs.readFileSync(new URL(tablePath, here));
@@ -39,9 +46,11 @@ for (let tic = 1; tic <= 32; tic++) {
 }
 
 let session;
+let profile;
 const post = (method, params = {}) => new Promise((resolve, reject) =>
   session.post(method, params, (error, result) =>
     error === null ? resolve(result) : reject(error)));
+if (hotProfile && !restoreEnabled) engine.checkpointLength();
 if (profilePath !== undefined && !restoreEnabled) {
   session = new inspector.Session();
   session.connect();
@@ -49,8 +58,16 @@ if (profilePath !== undefined && !restoreEnabled) {
   await post('Profiler.start');
 }
 const started = performance.now();
-const bytes = engine.checkpointLength();
-const firstMs = performance.now() - started;
+let bytes = 0;
+for (let iteration = 0; iteration < hotIterations; iteration += 1) {
+  bytes = engine.checkpointLength();
+}
+const firstMs = (performance.now() - started) / hotIterations;
+if (profilePath !== undefined && !restoreEnabled && hotProfile) {
+  ({profile} = await post('Profiler.stop'));
+  session.disconnect();
+  fs.writeFileSync(profilePath, JSON.stringify(profile));
+}
 const checkpointHash = createHash('sha256');
 const checkpointMaterial = checkpointOutputPath === undefined && !restoreEnabled
   ? null : Buffer.alloc(bytes);
@@ -65,8 +82,7 @@ const expectedCanonical = engine.canonicalState();
 if (checkpointOutputPath !== undefined) {
   fs.writeFileSync(checkpointOutputPath, checkpointMaterial);
 }
-let profile;
-if (profilePath !== undefined && !restoreEnabled) {
+if (profilePath !== undefined && !restoreEnabled && !hotProfile) {
   ({profile} = await post('Profiler.stop'));
   session.disconnect();
   fs.writeFileSync(profilePath, JSON.stringify(profile));

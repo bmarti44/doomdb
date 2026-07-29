@@ -50,9 +50,9 @@ grep -q "normalizeDbOutput(catalogRaw)" \
 bash -n "$root/scripts/sqlcl-dedicated-container.sh"
 grep -q 'SQLcl is deliberately isolated from the Oracle database container' \
   "$root/scripts/sqlcl-dedicated-container.sh"
-grep -q 'l_mle_specs<>25' \
+grep -q 'l_mle_specs<>27' \
   "$root/deploy/cloud/t11.1/catalog-observation.sql"
-grep -q 'mleCallSpecs:25' "$root/scripts/t11.1-build-evidence.mjs"
+grep -q 'mleCallSpecs:27' "$root/scripts/t11.1-build-evidence.mjs"
 grep -q "dbms_output.put_line('T111_PUBLIC_EXECUTE|'||trim(r.table_name))" \
   "$root/deploy/cloud/t11.1/catalog-observation.sql"
 grep -q "dbms_output.put_line('T111_REST|'||trim(r.parsing_object)" \
@@ -60,10 +60,10 @@ grep -q "dbms_output.put_line('T111_REST|'||trim(r.parsing_object)" \
 grep -q 'trimout on trimspool on' \
   "$root/deploy/cloud/t11.1/catalog-observation.sql"
 grep -q 'e.catalog.javaObjects,0' "$root/evaluator/t11.1/reference.mjs"
-grep -q 'e.catalog.mleCallSpecs,25' "$root/evaluator/t11.1/reference.mjs"
+grep -q 'e.catalog.mleCallSpecs,27' "$root/evaluator/t11.1/reference.mjs"
 grep -q "case'javaProductionLeak':e.catalog.javaObjects=1" \
   "$root/evaluator/t11.1/mutation-self-check.mjs"
-grep -q "case'mleSpecDrift':e.catalog.mleCallSpecs=24" \
+grep -q "case'mleSpecDrift':e.catalog.mleCallSpecs=26" \
   "$root/evaluator/t11.1/mutation-self-check.mjs"
 T111_REQUIRE_PRODUCTION=1 node "$root/evaluator/t11.1/source-audit.mjs"
 node "$root/evaluator/t11.1/self-check.mjs"
@@ -100,9 +100,9 @@ printf '%s\n' \
   'seed|sql/seed/b.sql|bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' \
   'engine|sql/engine/c.sql|cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc' \
   'rest|sql/rest/d.sql|dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd' >"$tmp/ledger"
-printf '%s\n' '{"schema":1,"runtime":"MLE_JAVASCRIPT","teaVMVersion":"0.15.0","compilerRelease":11,"targetType":"JAVASCRIPT","moduleType":"ES2015","optimizationLevel":"ADVANCED","minifying":true,"profile":"simulation-engine-headless","inputBytecodeSha256":"2ca1278998385efb83aba0358119f70f2e135b569b446f6b43f6afddf51ca914","mochaBytecodeSha256":"c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4","authority":{"bytes":1081335,"sha256":"5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3"},"tablePack":{"bytes":180272,"sha256":"058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"},"iwadSha256":"7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"}' >"$tmp/mle.json"
+printf '%s\n' '{"schema":1,"runtime":"MLE_JAVASCRIPT","teaVMVersion":"0.15.0","compilerRelease":11,"targetType":"JAVASCRIPT","moduleType":"ES2015","optimizationLevel":"ADVANCED","minifying":true,"profile":"simulation-engine-headless","inputBytecodeSha256":"b80f697e8a49775c4b98db6b5ce47df46aee99398b22227a8408585c103ceaa4","mochaBytecodeSha256":"42b25147133bb5c84c3b19c1511583bbd36219fb2a68996244106f40078f943e","authority":{"bytes":1181281,"sha256":"c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1"},"tablePack":{"bytes":180272,"sha256":"058cd0df9444131b356762a096fd422d5131ac3aea91163aee056e8ad4965b44"},"liveFrameRenderer":{"requiredAuthoritySha256":"c613bb5106d6572d1023ae6caf9045f52d493005bc1be001326acd3826d8eae1","bytes":47094,"sha256":"302d574ec500330b5fe08c55593ee8d61c81930e37d68ba6dc963c35f6b996c7","coordinatorBytes":36221,"coordinatorSha256":"9e7d2e17d5d386d12498d65130387e14ee23d478ab794b8538677fa7b9163559"},"iwadSha256":"7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d"}' >"$tmp/mle.json"
 node "$root/scripts/t11.1-deployment-manifest.mjs" "$tmp/ledger" "$tmp/manifest.json" "$tmp/mle.json"
-jq -e '(.domains|map(.domain)==["schema","seed","engine","rest"] and map(.order)==[1,2,3,4] and all(.files==1)) and .mleArtifact.runtime=="MLE_JAVASCRIPT" and .mleArtifact.authority.bytes==1081335 and (.javaArtifact|not)' "$tmp/manifest.json" >/dev/null
+jq -e '(.domains|map(.domain)==["schema","seed","engine","rest"] and map(.order)==[1,2,3,4] and all(.files==1)) and .mleArtifact.runtime=="MLE_JAVASCRIPT" and .mleArtifact.authority.bytes==1181281 and (.javaArtifact|not)' "$tmp/manifest.json" >/dev/null
 cp "$tmp/ledger" "$tmp/mutant";printf '%s\n' 'rest|../escape.sql|eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' >>"$tmp/mutant"
 if node "$root/scripts/t11.1-deployment-manifest.mjs" "$tmp/mutant" "$tmp/mutant.json" "$tmp/mle.json" >/dev/null 2>&1; then printf 'unsafe deployment mutation survived\n' >&2;exit 1;fi
 printf 'PASS T11.1-SOURCE-FIRST (shell/static/self 22/22; mutations 26/26; guards fail closed)\n'

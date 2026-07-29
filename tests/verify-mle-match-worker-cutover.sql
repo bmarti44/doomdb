@@ -7,6 +7,7 @@ declare
   l_epoch number;l_generation number;l_tic number;l_accepted number;
   l_ready number;l_frontier number;l_payload blob;l_count number;
   l_state32 varchar2(64);l_checkpoint_sha varchar2(64);l_checkpoint_bytes number;
+  l_checkpoint_save_ms number;l_checkpoint_publish_ms number;
   l_job varchar2(64);l_error varchar2(2000);l_old_mode varchar2(16);
   l_chain32 varchar2(64);l_chain33_previous varchar2(64);
   l_started timestamp with time zone;l_start_ms number;l_recovery_ms number;
@@ -170,10 +171,13 @@ begin
   for tic_ in 1..32 loop submit_vector(tic_,1);end loop;
   select state_sha into l_state32 from doom_match_tic
     where match_id=l_match and tic=32;
-  select checkpoint_sha,checkpoint_bytes into l_checkpoint_sha,l_checkpoint_bytes
+  select checkpoint_sha,checkpoint_bytes,save_elapsed_ms,publish_elapsed_ms
+    into l_checkpoint_sha,l_checkpoint_bytes,
+      l_checkpoint_save_ms,l_checkpoint_publish_ms
     from doom_match_checkpoint where match_id=l_match and tic=32;
   if l_checkpoint_bytes<1000 or
-     not regexp_like(l_checkpoint_sha,'^[0-9a-f]{64}$') then
+     not regexp_like(l_checkpoint_sha,'^[0-9a-f]{64}$') or
+     l_checkpoint_save_ms<=0 or l_checkpoint_publish_ms<0 then
     raise_application_error(-20799,'DMC1 checkpoint invalid');
   end if;
   select count(*) into l_count from doom_match_transition where match_id=l_match;
@@ -239,7 +243,9 @@ begin
     'recovery_generation=2|dmd1=33|legacy_frames=0|engine=MLE|'||
     'public_admission=STANDBY_READY|pre_admission_command=REJECTED|'||
     'cold_start_ms='||l_start_ms||'|standby_wait_ms='||l_standby_ms||
-    '|warm_recovery_ms='||l_recovery_ms);
+    '|warm_recovery_ms='||l_recovery_ms||
+    '|checkpoint_save_ms='||l_checkpoint_save_ms||
+    '|checkpoint_publish_ms='||l_checkpoint_publish_ms);
   cleanup;
 exception when others then
   l_error:=sqlerrm;cleanup;raise_application_error(-20799,l_error);

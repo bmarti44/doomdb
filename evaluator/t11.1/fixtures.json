@@ -16,7 +16,7 @@
   "scriptDomains": ["schema","seed","engine","rest"],
   "seedDomains": ["wad_lumps","vertexes","linedefs","sidedefs","sectors","things","segs","subsectors","nodes","reject_bytes","blockmap_words","playpal","colormap","textures","patches","sprites","sounds","music","engine_states","engine_actions","engine_objects","engine_weapons","engine_specials","engine_rng"],
   "restObjects": ["DOOM_API","PUBLIC_HEALTH"],
-  "directApiCases": ["PUBLIC_HEALTH","CREATE_MATCH","READY_MATCH","MATCH_STATUS_ACTIVE","REVISE_INPUT","INPUT_FRONTIER","POLL_TRANSITIONS","ASSET_PLAYPAL","ASSET_AUDIO","BAD_AUTH_REJECTED","BAD_BODY_4XX","METHOD_405","LEGACY_NEW_GAME_ABSENT","LEGACY_FRAME_ABSENT","CORS_SIMPLE","CORS_PREFLIGHT","LEAVE_MATCH"],
+  "directApiCases": ["PUBLIC_HEALTH","CREATE_MATCH","READY_MATCH","MATCH_STATUS_ACTIVE","POLL_PIXELS","POLL_PIXEL_BATCH","REVISE_INPUT","INPUT_FRONTIER","POLL_TRANSITIONS","ASSET_PLAYPAL","ASSET_PLAYPAL_ALL","ASSET_AUDIO","BAD_AUTH_REJECTED","BAD_BODY_4XX","METHOD_405","LEGACY_NEW_GAME_ABSENT","LEGACY_FRAME_ABSENT","CORS_SIMPLE","CORS_PREFLIGHT","LEAVE_MATCH"],
   "forbiddenEvidencePatterns": ["password","authorization","bearer ","wallet","private_key","aws_access","secret_access","connection_string","adb_username","adb_password","https://","jdbc:","oracle.net","tnsnames"],
   "requiredGrantPolicy": {"publicExecute":["DOOM_API","PUBLIC_HEALTH"],"forbiddenSystemPrivileges":["DBA","SYSDBA","SYSOPER","CREATE ANY PROCEDURE","ALTER ANY PROCEDURE","DROP ANY TABLE","UNLIMITED TABLESPACE"]}
 }

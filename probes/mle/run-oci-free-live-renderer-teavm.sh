@@ -14,6 +14,16 @@ if [[ "$raster" == YES ]]; then
 elif [[ "$raster" != NO ]]; then
   printf 'PMLE_FREE_LIVE_TEAVM_RASTER must be YES or NO\n' >&2;exit 2
 fi
+if [[ -n "${PMLE_FREE_LIVE_BENCHMARK_OVERRIDE:-}" ]]; then
+  [[ -f "$PMLE_FREE_LIVE_BENCHMARK_OVERRIDE"
+      && ! -L "$PMLE_FREE_LIVE_BENCHMARK_OVERRIDE" ]] || exit 2
+  benchmark="$PMLE_FREE_LIVE_BENCHMARK_OVERRIDE"
+fi
+if [[ "${PMLE_FREE_LIVE_WORLD_ARTIFACT:-NO}" == YES ]]; then
+  [[ "$raster" == YES ]] || {
+    printf 'world raster artifact requires raster benchmark mode\n' >&2;exit 2; }
+  benchmark="$probe/free-live-teavm/target/world-raster-benchmark.sql"
+fi
 build_log="$evidence/oci-$tag-build.log"
 pool_log="$evidence/oci-$tag-pool.log"
 install_log="$evidence/oci-$tag-install.log"
@@ -37,8 +47,14 @@ competing="$(ps ax -o command= | awk '
   printf 'generated renderer refuses competing OCI work:\n%s\n' \
     "$competing" >&2;exit 1; }
 
-"$probe/build-free-live-renderer-teavm.sh" | tee "$build_log"
-grep -Fq 'PMLE_FREE_LIVE_TEAVM_BUILD|PASS|' "$build_log"
+if [[ "${PMLE_FREE_LIVE_WORLD_ARTIFACT:-NO}" == YES ]]; then
+  "$probe/build-free-live-world-raster-teavm.sh" | tee "$build_log"
+  grep -Fq 'PMLE_FREE_LIVE_WORLD_BUILD|PASS|' "$build_log"
+  grep -Fq 'PMLE_FREE_LIVE_WORLD_PACK|PASS|' "$build_log"
+else
+  "$probe/build-free-live-renderer-teavm.sh" | tee "$build_log"
+  grep -Fq 'PMLE_FREE_LIVE_TEAVM_BUILD|PASS|' "$build_log"
+fi
 
 pool_parked=0
 loaded=0
@@ -81,10 +97,38 @@ SQL
 }
 trap finish EXIT HUP INT TERM
 
-"$root/scripts/adb-doom-sql.sh" - >"$pool_log" <<'SQL'
+steal_capacity=0
+[[ "${PMLE_FREE_LIVE_STEAL_CAPACITY:-NO}" == YES ]] && steal_capacity=1
+"$root/scripts/adb-doom-sql.sh" - >"$pool_log" <<SQL
 set serveroutput on size unlimited heading off feedback off pagesize 0
-declare l_active number;l_assigned number;l_live number;
+declare l_active number;l_assigned number;l_live number;l_lock number;
 begin
+  if $steal_capacity=1 then
+    for match_ in (
+      select match_id,generation from doom_match
+      where match_state in('LOBBY','STARTING','ACTIVE','RECOVERING')
+    ) loop
+      begin
+        if match_.generation>0 then
+          doom_match_worker.stop_match(match_.match_id,match_.generation);
+        end if;
+      exception when others then null;
+      end;
+      for i in 1..300 loop
+        select count(*) into l_live from doom_mle_warm_slot
+        where assigned_match=match_.match_id;
+        exit when l_live=0;
+        dbms_session.sleep(.1);
+      end loop;
+      if l_live<>0 then
+        raise_application_error(-20796,'authorized capacity release timed out');
+      end if;
+      delete from doom_match where match_id=match_.match_id;
+      commit;
+    end loop;
+    select number_value into l_lock from doom_config
+    where config_key='MAX_ACTIVE_SESSIONS' for update;
+  end if;
   select count(*) into l_active from doom_match
    where match_state in('LOBBY','STARTING','ACTIVE','RECOVERING');
   select count(*) into l_assigned from doom_mle_warm_slot

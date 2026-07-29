@@ -5,13 +5,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const [policyPath,manifestPath,catalogPath,liveDir,browserPath,reportPath,
-  indexUrl,outputPath]=process.argv.slice(2);
-assert.ok(outputPath,'eight hosted evidence arguments are required');
+  runtimePath,indexUrl,outputPath]=process.argv.slice(2);
+assert.ok(outputPath,'nine hosted evidence arguments are required');
 const read=file=>fs.readFileSync(file);
 const json=file=>JSON.parse(read(file));
 const sha=value=>crypto.createHash('sha256').update(value).digest('hex');
 const policy=json(policyPath),manifest=json(manifestPath),
-  catalog=json(catalogPath),browser=json(browserPath),report=json(reportPath);
+  catalog=json(catalogPath),browser=json(browserPath),report=json(reportPath),
+  runtime=json(runtimePath),
+  versions=json(new URL('../versions.lock',import.meta.url));
+const live=versions.teaVM?.liveFrameRenderer;
+assert.ok(live,'live-frame provenance is absent');
+const deployedRendererSha256=live.deployedOutputSha256??live.outputSha256;
+const deployedCoordinatorSha256=
+  live.deployedCoordinatorSha256??live.coordinatorSha256;
+assert.match(deployedRendererSha256,/^[0-9a-f]{64}$/);
+assert.match(deployedCoordinatorSha256,/^[0-9a-f]{64}$/);
 const index=new URL(indexUrl);
 assert.equal(index.protocol,'https:');
 assert.match(index.pathname,/\/ords\/doom\/app\/$/);
@@ -25,7 +34,35 @@ assert.equal(browser.performance.sequentialTics,true);
 assert.ok(browser.performance.fps>=30);
 assert.ok(browser.performance.p95IntervalMs<=33.333);
 assert.equal(browser.cleanup.released,true);
-assert.equal(browser.verifiedBlobModuleLoads,2);
+assert.equal(browser.verifiedBlobModuleLoads,0);
+assert.equal(browser.performance.databasePixelFrames,true);
+assert.equal(browser.performance.p99IntervalMs<=2*1000/35,true);
+assert.equal(browser.performance.maxIntervalMs<=100,true);
+assert.equal(runtime.schema,1);
+assert.equal(runtime.result,'PASS');
+assert.equal(runtime.matchSha256,browser.cleanup.matchSha256);
+assert.equal(runtime.firstTic,browser.performance.firstTic);
+assert.equal(runtime.lastTic,browser.performance.lastTic);
+assert.ok(runtime.checkpointCount<=1);
+assert.equal(runtime.checkpointUnmeasuredCount,0);
+assert.equal(runtime.checkpointSlowCount,0);
+assert.ok(runtime.checkpointMaxStepMs<=100);
+assert.ok(runtime.checkpointMaxSaveMs<=250);
+assert.ok(runtime.checkpointMaxPublishMs<=250);
+assert.ok(runtime.checkpointMaxStageMs<=250);
+assert.ok(runtime.checkpointMaxStageMs>=
+  Math.max(runtime.checkpointMaxSaveMs,runtime.checkpointMaxPublishMs));
+assert.ok(runtime.checkpointMaxStageMs<=
+  runtime.checkpointMaxSaveMs+runtime.checkpointMaxPublishMs);
+assert.equal(runtime.checkpointTimingSource,
+  'EXACT_STAGE_PLUS_SPARSE_GT_100MS_TOTAL');
+assert.equal(runtime.checkpointTailGateMs,250);
+assert.equal(runtime.browserPresentationTailGateMs,100);
+assert.equal(runtime.checkpointStageSemantics,
+  'MAX_INDIVIDUAL_PREPARE_OR_EXPORT');
+assert.equal(runtime.authoritySha256,live.authorityCandidateSha256);
+assert.equal(runtime.rendererSha256,deployedRendererSha256);
+assert.equal(runtime.coordinatorSha256,deployedCoordinatorSha256);
 assert.equal(report.errors?.length??0,0);
 const results=[];
 const walk=suite=>{
@@ -78,7 +115,8 @@ assert.ok(network.every(row=>['DATABASE_STATIC','ORACLE_API'].includes(row.kind)
 const reportSha=sha(read(reportPath));
 const cases=['DATABASE_HOSTED_DOCUMENT','SAME_ORIGIN_API',
   'AUTHORITATIVE_MLE_MATCH','CONFIRMED_ONLY_CHAIN',
-  'UNIQUE_MOVING_300','CLIENT_30_FPS','CAPACITY_RELEASE']
+  'DATABASE_FRAMEBUFFER_SOURCE','UNIQUE_MOVING_300','CLIENT_30_FPS',
+  'CHECKPOINT_TAIL','CAPACITY_RELEASE']
   .map(id=>({id,status:'PASS',assertions:1,
     evidenceSha256:sha(`${id}:${reportSha}`)}));
 const evidence={
@@ -97,9 +135,10 @@ const evidence={
     autoRestObjects:catalog.ords.enabled.map(row=>row.object).sort(),
     objects},
   payloadAudit:{privateFiles:0,sourceMaps:0,staleEngineArtifacts:0,
-    authoritySha256:'5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3',
-    presentationSha256:'e55d5f1138fa94d4fc7efd0acf27cbc89cb8a894e3d6828d84837a364b4426dc',
-    iwadSha256:'7323bcc168c5a45ff10749b339960e98314740a734c30d4b9f3337001f9e703d',
+    authoritySha256:live.authorityCandidateSha256,
+    presentationSha256:deployedRendererSha256,
+    coordinatorSha256:deployedCoordinatorSha256,
+    iwadSha256:versions.freedoom.freedoom1WadSha256,
     freedoomLicenseSha256:sha(read('vendor/freedoom/0.13.0/COPYING.txt')),
     sourceNoticeSha256:sha(read('deploy/cloud/t11.2/SOURCE.txt'))},
   browser:{playwrightReportStatus:'passed',workers:1,retries:0,
@@ -108,6 +147,26 @@ const evidence={
     consoleErrors:0,pageErrors:0,failedRequests:0,redirects:0,cases,
     performance:browser.performance,cleanup:browser.cleanup,
     reportSha256:reportSha},
+  runtime:{
+    source:'DATABASE_POSTFLIGHT',
+    matchSha256:runtime.matchSha256,
+    firstTic:runtime.firstTic,lastTic:runtime.lastTic,
+    currentTic:runtime.currentTic,
+    checkpointCount:runtime.checkpointCount,
+    checkpointUnmeasuredCount:runtime.checkpointUnmeasuredCount,
+    checkpointSlowCount:runtime.checkpointSlowCount,
+    checkpointMaxStepMs:runtime.checkpointMaxStepMs,
+    checkpointMaxSaveMs:runtime.checkpointMaxSaveMs,
+    checkpointMaxPublishMs:runtime.checkpointMaxPublishMs,
+    checkpointMaxStageMs:runtime.checkpointMaxStageMs,
+    checkpointTimingSource:runtime.checkpointTimingSource,
+    checkpointTailGateMs:runtime.checkpointTailGateMs,
+    browserPresentationTailGateMs:runtime.browserPresentationTailGateMs,
+    checkpointStageSemantics:runtime.checkpointStageSemantics,
+    authoritySha256:runtime.authoritySha256,
+    rendererSha256:runtime.rendererSha256,
+    coordinatorSha256:runtime.coordinatorSha256
+  },
   network,
   networkSummary:{unclassified:0,otherOrigins:0,websockets:0,redirects:0,
     failed:0,ledgerSha256:sha(JSON.stringify(network))},
@@ -117,6 +176,7 @@ const evidence={
     buildSha256:sha(read(manifestPath)),
     databaseEvidenceSha256:sha(read(catalogPath)),
     browserEvidenceSha256:sha(read(browserPath)),
+    runtimeEvidenceSha256:sha(read(runtimePath)),
     atomicWrite:true,ancestry:policy.ancestry}
 };
 let raw=JSON.stringify(evidence);

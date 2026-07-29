@@ -41,6 +41,8 @@ public final class FreeLiveRendererReachabilityProbe {
   private static char[] lineLeftUpper;
   private static char[] lineLeftLower;
   private static char[] lineLeftMiddle;
+  private static char[] lineRightSide;
+  private static char[] lineLeftSide;
   private static char[] lineTexture;
   private static short[] lineXOffset;
   private static short[] lineYOffset;
@@ -52,6 +54,13 @@ public final class FreeLiveRendererReachabilityProbe {
   private static int sectorCount;
   private static char[] sectorFloorAsset;
   private static char[] sectorCeilingAsset;
+  private static char[] runtimeWallToAsset;
+  private static char[] runtimeFlatToAsset;
+  private static char[] dynamicSideTop;
+  private static char[] dynamicSideBottom;
+  private static char[] dynamicSideMiddle;
+  private static int sideCount;
+  private static boolean liveDynamicsActive;
   private static char[] subsectorSector;
   private static byte[] colormaps;
   private static int[] textureBase;
@@ -60,12 +69,64 @@ public final class FreeLiveRendererReachabilityProbe {
   private static int wallTextureElements;
   private static byte[] encodedWallTextures;
   private static byte[] encodedFlatTextures;
+  private static byte[] encodedSpriteTextures;
+  private static byte[] encodedUiTextures;
   private static byte[] litTextures;
   private static byte[] litFlats;
   private static int flatTextureElements;
   private static int[] lightToBank;
   private static int lightBankCount;
+  private static int spriteTextureElements;
+  private static int[] spriteBase;
+  private static char[] spriteWidth;
+  private static char[] spriteHeight;
+  private static short[] spriteLeft;
+  private static short[] spriteTop;
+  private static char[] spriteLookupAsset;
+  private static byte[] spriteLookupFlip;
+  private static int spritePrefixCount;
+  private static int spriteFrameCount;
+  private static char[] spriteTexels;
+  private static int uiTextureElements;
+  private static int[] uiBase;
+  private static char[] uiWidth;
+  private static char[] uiHeight;
+  private static char[] uiDigits;
+  private static char[] uiKeys;
+  private static char[] uiFaceStraight;
+  private static char[] uiFaceTurnLeft;
+  private static char[] uiFaceTurnRight;
+  private static char[] uiFaceOuch;
+  private static char[] uiFaceEvil;
+  private static char[] uiFaceKill;
+  private static char[] uiMainMenuItems;
+  private static char[] uiEpisodeMenuItems;
+  private static char[] uiSkillMenuItems;
+  private static char[] uiOptionMenuItems;
+  private static char[] uiMenuSkulls;
+  private static char[] uiFullScreens;
+  private static char[] uiTexels;
+  private static int[] uiAssetRunStart;
+  private static int[] uiAssetRunEnd;
+  private static int[] uiRunPixelStart;
+  private static short[] uiRunX;
+  private static short[] uiRunY;
+  private static short[] uiRunLength;
+  private static byte[] uiRunPixels;
+  private static int uiStatusBar;
+  private static int uiFaceNormal;
+  private static int uiFaceDead;
+  private static int uiFaceGod;
+  private static int uiTitle;
+  private static int uiPause;
+  private static int uiMenuLogo;
+  private static int uiNewGame;
+  private static int uiEpisode;
+  private static int uiSkill;
+  private static int uiOptions;
   private static byte[] frame;
+  private static byte[] statusBarBackground;
+  private static boolean statusBarInitialized;
   private static byte[] backgroundColumn;
   private static short[] sinTable;
   private static short[] cosTable;
@@ -93,11 +154,16 @@ public final class FreeLiveRendererReachabilityProbe {
   private static int[] bbox1Right;
   private static int[] clipTop;
   private static int[] clipBottom;
+  private static double[] solidDepth;
+  private static double[] wallDepth;
+  private static int stagedMobjOffset;
+  private static int stagedMobjCount;
   private static int[] stack;
   private static short[] stackCheck;
   private static byte[] commandBuffer;
   private static int commandLength;
   private static boolean captureCommands;
+  private static int commandCaptureWidth = WIDTH;
   private static boolean captureResolvedCommands;
   private static boolean captureNativeTape;
   private static int nativeCommandCount;
@@ -105,6 +171,7 @@ public final class FreeLiveRendererReachabilityProbe {
   private static int rasterPixelWrites;
   private static int activeWidth;
   private static int pixelScale;
+  private static boolean coarseVerticalRaster;
   private static short[] planeTop;
   private static short[] planeBottom;
   private static int[] planeStamp;
@@ -118,12 +185,14 @@ public final class FreeLiveRendererReachabilityProbe {
   private static int[] nativeCacheKeyB;
   private static int[] nativeCacheKeyC;
   private static byte[] nativeCacheValid;
+  private static int[] worldSpriteOrder;
+  private static double[] worldSpriteDepth;
 
   private FreeLiveRendererReachabilityProbe() {}
 
   @JSExport
   public static int allocatePack(int length) {
-    if (length < 288 || length > 1_000_000) {
+    if (length < 496 || length > 1_000_000) {
       throw new IllegalArgumentException("invalid pack length");
     }
     pack = new byte[length];
@@ -164,7 +233,7 @@ public final class FreeLiveRendererReachabilityProbe {
 
   @JSExport
   public static int finalizePack() {
-    if (u32(0) != MAGIC || u32(4) != 4 || u32(76) != pack.length) {
+    if (u32(0) != MAGIC || u32(4) != 7 || u32(76) != pack.length) {
       throw new IllegalStateException("pack header mismatch");
     }
     int lineCount = u32(24);
@@ -179,11 +248,22 @@ public final class FreeLiveRendererReachabilityProbe {
     wallTextureElements = u32(84);
     int flatTextureCount = u32(288);
     flatTextureElements = u32(292);
+    int spriteTextureCount = u32(300);
+    spriteTextureElements = u32(304);
+    spritePrefixCount = u32(336);
+    spriteFrameCount = u32(340);
+    int uiTextureCount = u32(344);
+    uiTextureElements = u32(348);
     if (poseCount != 5250 || poseRecordBytes != 32 || nodeCount < 1) {
       throw new IllegalStateException("pack cardinality mismatch");
     }
     if (flatTextureCount < 1 || flatTextureElements != flatTextureCount * 4096) {
       throw new IllegalStateException("flat cardinality mismatch");
+    }
+    if (spriteTextureCount < 1 || spriteTextureElements < 1
+        || spritePrefixCount < 100 || spriteFrameCount != 29
+        || uiTextureCount < 1 || uiTextureElements < 1) {
+      throw new IllegalStateException("presentation asset cardinality mismatch");
     }
     lineX1 = ints(u32(40), lineCount);
     lineY1 = ints(u32(44), lineCount);
@@ -236,8 +316,60 @@ public final class FreeLiveRendererReachabilityProbe {
     bbox1Bottom = ints(u32(268), nodeCount);
     bbox1Left = ints(u32(272), nodeCount);
     bbox1Right = ints(u32(276), nodeCount);
+    spriteBase = ints(u32(308), spriteTextureCount);
+    spriteWidth = chars(u32(312), spriteTextureCount);
+    spriteHeight = chars(u32(316), spriteTextureCount);
+    spriteLeft = shorts(u32(320), spriteTextureCount);
+    spriteTop = shorts(u32(324), spriteTextureCount);
+    int spriteLookupCount =
+        spritePrefixCount * spriteFrameCount * 9;
+    spriteLookupAsset = chars(u32(328), spriteLookupCount);
+    spriteLookupFlip = bytes(u32(332), spriteLookupCount);
+    uiBase = ints(u32(352), uiTextureCount);
+    uiWidth = chars(u32(356), uiTextureCount);
+    uiHeight = chars(u32(360), uiTextureCount);
+    uiStatusBar = u32(364);
+    uiFaceNormal = u32(368);
+    uiFaceDead = u32(372);
+    uiFaceGod = u32(376);
+    uiTitle = u32(380);
+    uiPause = u32(384);
+    uiMenuLogo = u32(388);
+    uiNewGame = u32(392);
+    uiEpisode = u32(396);
+    uiSkill = u32(400);
+    uiDigits = chars(u32(404), 10);
+    uiKeys = chars(u32(408), 6);
+    uiFaceStraight = chars(u32(412), 15);
+    uiFaceTurnLeft = chars(u32(416), 5);
+    uiFaceTurnRight = chars(u32(420), 5);
+    uiFaceOuch = chars(u32(424), 5);
+    uiFaceEvil = chars(u32(428), 5);
+    uiFaceKill = chars(u32(432), 5);
+    uiMainMenuItems = chars(u32(436), 6);
+    uiEpisodeMenuItems = chars(u32(440), 4);
+    uiSkillMenuItems = chars(u32(444), 5);
+    uiOptionMenuItems = chars(u32(448), 6);
+    uiMenuSkulls = chars(u32(452), 2);
+    uiFullScreens = chars(u32(456), 10);
+    uiOptions = u32(460);
+    runtimeWallToAsset = chars(u32(464), u32(468));
+    runtimeFlatToAsset = chars(u32(472), u32(476));
+    lineRightSide = chars(u32(480), lineCount);
+    lineLeftSide = chars(u32(484), lineCount);
+    sideCount = u32(488);
+    if (u32(492) != 208 || sideCount < 1
+        || runtimeWallToAsset.length < 1
+        || runtimeFlatToAsset.length < 1) {
+      throw new IllegalStateException("DVL2 mapping cardinality mismatch");
+    }
+    dynamicSideTop = new char[sideCount];
+    dynamicSideBottom = new char[sideCount];
+    dynamicSideMiddle = new char[sideCount];
     clipTop = new int[WIDTH];
     clipBottom = new int[WIDTH];
+    solidDepth = new double[WIDTH];
+    wallDepth = new double[LIVE_RENDER_WIDTH * VIEW_HEIGHT];
     stack = new int[nodeCount + subsectorCount + 8];
     stackCheck = new short[stack.length];
     frame = new byte[PIXELS];
@@ -258,6 +390,8 @@ public final class FreeLiveRendererReachabilityProbe {
     planeMaxX = new int[planeCount];
     touchedPlanes = new int[planeCount];
     spanStart = new int[VIEW_HEIGHT];
+    worldSpriteOrder = new int[1024];
+    worldSpriteDepth = new double[1024];
     return pack.length;
   }
 
@@ -340,6 +474,186 @@ public final class FreeLiveRendererReachabilityProbe {
   }
 
   @JSExport
+  public static int allocateSpriteTextures(int length) {
+    if (spriteTextureElements < 1 || length != spriteTextureElements * 2) {
+      throw new IllegalArgumentException("invalid sprite texture length");
+    }
+    encodedSpriteTextures = new byte[length];
+    return length;
+  }
+
+  @JSExport
+  public static int loadSpriteTextureChunk(int offset, Uint8Array chunk) {
+    if (encodedSpriteTextures == null || offset < 0
+        || offset + chunk.getLength() > encodedSpriteTextures.length) {
+      throw new IllegalArgumentException("sprite texture chunk outside allocation");
+    }
+    for (int index = 0; index < chunk.getLength(); index++) {
+      encodedSpriteTextures[offset + index] = (byte) chunk.get(index);
+    }
+    return offset + chunk.getLength();
+  }
+
+  @JSExport
+  public static int finalizeSpriteTextures() {
+    if (encodedSpriteTextures == null
+        || encodedSpriteTextures.length != spriteTextureElements * 2) {
+      throw new IllegalStateException("sprite texture length mismatch");
+    }
+    spriteTexels = decodeTransparentTexels(
+        encodedSpriteTextures, spriteTextureElements);
+    int length = encodedSpriteTextures.length;
+    encodedSpriteTextures = null;
+    return length;
+  }
+
+  @JSExport
+  public static int allocateUiTextures(int length) {
+    if (uiTextureElements < 1 || length != uiTextureElements * 2) {
+      throw new IllegalArgumentException("invalid UI texture length");
+    }
+    encodedUiTextures = new byte[length];
+    return length;
+  }
+
+  @JSExport
+  public static int loadUiTextureChunk(int offset, Uint8Array chunk) {
+    if (encodedUiTextures == null || offset < 0
+        || offset + chunk.getLength() > encodedUiTextures.length) {
+      throw new IllegalArgumentException("UI texture chunk outside allocation");
+    }
+    for (int index = 0; index < chunk.getLength(); index++) {
+      encodedUiTextures[offset + index] = (byte) chunk.get(index);
+    }
+    return offset + chunk.getLength();
+  }
+
+  @JSExport
+  public static int finalizeUiTextures() {
+    if (encodedUiTextures == null
+        || encodedUiTextures.length != uiTextureElements * 2) {
+      throw new IllegalStateException("UI texture length mismatch");
+    }
+    uiTexels = decodeTransparentTexels(encodedUiTextures, uiTextureElements);
+    buildUiRuns();
+    int statusWidth = uiWidth[uiStatusBar];
+    int statusHeight = uiHeight[uiStatusBar];
+    statusBarBackground = new byte[WIDTH * (FRAME_HEIGHT - VIEW_HEIGHT)];
+    int statusBase = uiBase[uiStatusBar];
+    for (int y = 0; y < statusHeight; y++) {
+      for (int x = 0; x < statusWidth; x++) {
+        int encoded = uiTexels[statusBase + y * statusWidth + x];
+        if (encoded != 0) {
+          statusBarBackground[
+              x * (FRAME_HEIGHT - VIEW_HEIGHT) + y] =
+              (byte) (encoded - 1);
+        }
+      }
+    }
+    int length = encodedUiTextures.length;
+    encodedUiTextures = null;
+    return length;
+  }
+
+  /**
+   * Convert row-major transparent UI patches into opaque vertical runs once.
+   * The framebuffer is column-major, so every unclipped run becomes one
+   * native array copy instead of interpreted per-pixel transparency checks.
+   */
+  private static void buildUiRuns() {
+    int runCount = 0;
+    int pixelCount = 0;
+    for (int asset = 0; asset < uiBase.length; asset++) {
+      int width = uiWidth[asset];
+      int height = uiHeight[asset];
+      int base = uiBase[asset];
+      for (int x = 0; x < width; x++) {
+        int y = 0;
+        while (y < height) {
+          while (y < height && uiTexels[base + y * width + x] == 0) y++;
+          if (y >= height) break;
+          runCount++;
+          while (y < height && uiTexels[base + y * width + x] != 0) {
+            pixelCount++;
+            y++;
+          }
+        }
+      }
+    }
+    uiAssetRunStart = new int[uiBase.length];
+    uiAssetRunEnd = new int[uiBase.length];
+    uiRunPixelStart = new int[runCount];
+    uiRunX = new short[runCount];
+    uiRunY = new short[runCount];
+    uiRunLength = new short[runCount];
+    uiRunPixels = new byte[pixelCount];
+    int run = 0;
+    int pixel = 0;
+    for (int asset = 0; asset < uiBase.length; asset++) {
+      uiAssetRunStart[asset] = run;
+      int width = uiWidth[asset];
+      int height = uiHeight[asset];
+      int base = uiBase[asset];
+      for (int x = 0; x < width; x++) {
+        int y = 0;
+        while (y < height) {
+          while (y < height && uiTexels[base + y * width + x] == 0) y++;
+          if (y >= height) break;
+          int first = y;
+          uiRunPixelStart[run] = pixel;
+          uiRunX[run] = (short) x;
+          uiRunY[run] = (short) y;
+          while (y < height) {
+            int encoded = uiTexels[base + y * width + x];
+            if (encoded == 0) break;
+            uiRunPixels[pixel++] = (byte) (encoded - 1);
+            y++;
+          }
+          uiRunLength[run] = (short) (y - first);
+          run++;
+        }
+      }
+      uiAssetRunEnd[asset] = run;
+    }
+    if (run != runCount || pixel != pixelCount) {
+      throw new IllegalStateException("UI run cardinality mismatch");
+    }
+    byte[] verified = new byte[uiTextureElements];
+    for (int asset = 0; asset < uiBase.length; asset++) {
+      int width = uiWidth[asset];
+      int base = uiBase[asset];
+      for (int index = uiAssetRunStart[asset];
+           index < uiAssetRunEnd[asset]; index++) {
+        int x = uiRunX[index];
+        int y = uiRunY[index];
+        int source = uiRunPixelStart[index];
+        int length = uiRunLength[index];
+        for (int at = 0; at < length; at++) {
+          verified[base + (y + at) * width + x] =
+              uiRunPixels[source + at];
+        }
+      }
+    }
+    for (int index = 0; index < uiTextureElements; index++) {
+      int encoded = uiTexels[index];
+      int expected = encoded == 0 ? 0 : encoded - 1;
+      if ((verified[index] & 255) != expected) {
+        throw new IllegalStateException("UI run mismatch at " + index);
+      }
+    }
+  }
+
+  private static char[] decodeTransparentTexels(
+      byte[] encoded, int elementCount) {
+    char[] decoded = new char[elementCount];
+    for (int texel = 0; texel < elementCount; texel++) {
+      decoded[texel] = (char) (((encoded[texel * 2] & 255) << 8)
+          | (encoded[texel * 2 + 1] & 255));
+    }
+    return decoded;
+  }
+
+  @JSExport
   public static int renderGeometry(int pose) {
     return render(pose, false, false, true);
   }
@@ -350,6 +664,24 @@ public final class FreeLiveRendererReachabilityProbe {
       throw new IllegalStateException("renderer textures are not finalized");
     }
     return render(pose, true, true, true);
+  }
+
+  /**
+   * Authentic Doom projection and assets with a 160x84 world raster doubled
+   * into the 320x168 view. Weapon sprites and the 320x32 status bar remain at
+   * their native output resolution.
+   */
+  @JSExport
+  public static int renderFrameCoarseVertical(int pose) {
+    if (litTextures == null || litFlats == null) {
+      throw new IllegalStateException("renderer textures are not finalized");
+    }
+    coarseVerticalRaster = true;
+    try {
+      return render(pose, true, true, true);
+    } finally {
+      coarseVerticalRaster = false;
+    }
   }
 
   /** Diagnostic stage split: authentic wall columns without plane spans. */
@@ -403,6 +735,250 @@ public final class FreeLiveRendererReachabilityProbe {
         true);
   }
 
+  /**
+   * Render a complete live 320x200 frame from the bounded DVL2 authority
+   * snapshot. Walls, floors, ceilings, world sprites, weapon psprites and the
+   * status bar are all authored here in MLE; the browser receives only the
+   * resulting indexed pixels.
+   */
+  @JSExport
+  public static int renderWorldSnapshot(Uint8Array snapshot) {
+    loadWorldDynamics(snapshot);
+    int checksum = renderLoadedWorldGeometry(snapshot);
+    drawWorldSprites(snapshot, stagedMobjOffset, stagedMobjCount);
+    drawPlayerSprites(snapshot);
+    drawStatusBar(snapshot);
+    checksum ^= (frame[snapshotI32(snapshot, 8) % PIXELS] & 255)
+        | ((frame[(snapshotI32(snapshot, 8) * 997) % PIXELS] & 255) << 8);
+    return checksum;
+  }
+
+  /**
+   * Import dynamic sectors/sides and draw walls plus visplanes. The retained
+   * frame is the input to the following sprite, weapon, and HUD stage calls.
+   */
+  @JSExport
+  public static int renderWorldGeometryStage(Uint8Array snapshot) {
+    loadWorldDynamics(snapshot);
+    return renderLoadedWorldGeometry(snapshot);
+  }
+
+  /** Import only the per-frame sector and sidedef state. */
+  @JSExport
+  public static int loadWorldDynamicsStage(Uint8Array snapshot) {
+    loadWorldDynamics(snapshot);
+    return stagedMobjOffset ^ stagedMobjCount;
+  }
+
+  /** Draw geometry after {@link #loadWorldDynamicsStage(Uint8Array)}. */
+  @JSExport
+  public static int renderLoadedWorldGeometryStage(Uint8Array snapshot) {
+    validateWorldSnapshot(snapshot);
+    return renderLoadedWorldGeometry(snapshot);
+  }
+
+  /** Compose world mobjs onto the retained geometry frame. */
+  @JSExport
+  public static int renderWorldSpritesStage(Uint8Array snapshot) {
+    validateWorldSnapshot(snapshot);
+    drawWorldSprites(snapshot, stagedMobjOffset, stagedMobjCount);
+    return frame[0] & 255;
+  }
+
+  /** Compose the active weapon and muzzle-flash psprites. */
+  @JSExport
+  public static int renderWeaponStage(Uint8Array snapshot) {
+    validateWorldSnapshot(snapshot);
+    drawPlayerSprites(snapshot);
+    return frame[VIEW_HEIGHT - 1] & 255;
+  }
+
+  /**
+   * Compose the currently supported Doom status-bar subset. The ARMS ownership
+   * grid, ammo maxima, percent patches, and multiplayer frag widgets remain
+   * fidelity work.
+   */
+  @JSExport
+  public static int renderStatusStage(Uint8Array snapshot) {
+    validateWorldSnapshot(snapshot);
+    drawStatusBar(snapshot);
+    return frame[PIXELS - 1] & 255;
+  }
+
+  private static void validateWorldSnapshot(Uint8Array snapshot) {
+    if (litTextures == null || litFlats == null
+        || spriteTexels == null || uiTexels == null) {
+      throw new IllegalStateException("complete renderer assets are not finalized");
+    }
+    if (snapshot == null || snapshot.getLength() < 208
+        || snapshotI32(snapshot, 0) != 0x324c5644
+        || snapshotI32(snapshot, 4) != 2) {
+      throw new IllegalArgumentException("invalid DVL2 world snapshot");
+    }
+    int sectors = snapshotI32(snapshot, 16);
+    int mobjs = snapshotI32(snapshot, 20);
+    int sectorOffset = snapshotI32(snapshot, 24);
+    int mobjOffset = snapshotI32(snapshot, 28);
+    int length = snapshotI32(snapshot, 32);
+    int sides = snapshotI32(snapshot, 192);
+    int sideOffset = snapshotI32(snapshot, 196);
+    if (sectors != sectorCount || sectorOffset != 208
+        || sides != sideCount || snapshotI32(snapshot, 200) != 8
+        || snapshotI32(snapshot, 204) != sectorOffset
+        || sideOffset != sectorOffset + sectors * 16
+        || mobjOffset != sideOffset + sides * 8
+        || mobjs < 0 || mobjs > worldSpriteOrder.length
+        || length != mobjOffset + mobjs * 32
+        || length != snapshot.getLength()) {
+      throw new IllegalArgumentException("DVL2 world snapshot layout mismatch");
+    }
+    stagedMobjOffset = mobjOffset;
+    stagedMobjCount = mobjs;
+  }
+
+  private static void loadWorldDynamics(Uint8Array snapshot) {
+    validateWorldSnapshot(snapshot);
+    int sectors = snapshotI32(snapshot, 16);
+    int sectorOffset = snapshotI32(snapshot, 24);
+    int sides = snapshotI32(snapshot, 192);
+    int sideOffset = snapshotI32(snapshot, 196);
+    for (int sector = 0; sector < sectors; sector++) {
+      int at = sectorOffset + sector * 16;
+      sectorFloor[sector] = (short) (snapshotI32(snapshot, at) >> 16);
+      sectorCeiling[sector] =
+          (short) (snapshotI32(snapshot, at + 4) >> 16);
+      sectorLight[sector] = (byte) snapshotI16(snapshot, at + 8);
+      sectorFloorAsset[sector] = translatedFlat(
+          snapshotU16(snapshot, at + 10), sectorFloorAsset[sector]);
+      sectorCeilingAsset[sector] = translatedFlat(
+          snapshotU16(snapshot, at + 12), sectorCeilingAsset[sector]);
+    }
+    for (int side = 0; side < sides; side++) {
+      int at = sideOffset + side * 8;
+      dynamicSideTop[side] = translatedWall(snapshotU16(snapshot, at));
+      dynamicSideBottom[side] =
+          translatedWall(snapshotU16(snapshot, at + 2));
+      dynamicSideMiddle[side] =
+          translatedWall(snapshotU16(snapshot, at + 4));
+    }
+  }
+
+  private static int renderLoadedWorldGeometry(Uint8Array snapshot) {
+    int checksum;
+    liveDynamicsActive = true;
+    try {
+      checksum = renderView(
+          snapshotI32(snapshot, 36),
+          snapshotI32(snapshot, 40),
+          snapshotI32(snapshot, 48),
+          snapshotI32(snapshot, 52),
+          snapshotI32(snapshot, 8),
+          true,
+          true,
+          true);
+    } finally {
+      liveDynamicsActive = false;
+    }
+    return checksum;
+  }
+
+  @JSExport
+  public static int renderTitleFrame() {
+    if (uiTexels == null) {
+      throw new IllegalStateException("UI textures are not finalized");
+    }
+    clearFrame();
+    blitUi(uiTitle, 0, 0);
+    return frameChecksum();
+  }
+
+  /**
+   * Compatibility entry point for the first selected item on a menu page.
+   */
+  @JSExport
+  public static int renderMenuFrame(int page) {
+    return renderMenuSelectionFrame(page, 0, 0);
+  }
+
+  /**
+   * Database-authored Doom menu. Page 0 is the main menu, 1 is episode
+   * selection, 2 is skill selection and 3 is options. Selection and skull
+   * animation are presentation inputs; the final pixels are still produced
+   * entirely by this MLE renderer.
+   */
+  @JSExport
+  public static int renderMenuSelectionFrame(
+      int page, int selection, int tic) {
+    renderTitleFrame();
+    char[] items;
+    int header;
+    int y;
+    if (page == 1) {
+      header = uiEpisode;
+      items = uiEpisodeMenuItems;
+      y = 72;
+    } else if (page == 2) {
+      header = uiSkill;
+      items = uiSkillMenuItems;
+      y = 68;
+    } else if (page == 3) {
+      header = uiOptions;
+      items = uiOptionMenuItems;
+      y = 56;
+    } else {
+      // TITLEPIC already carries Freedoom's full logo. M_DOOM is retained in
+      // the pack for in-game overlays, but drawing both duplicates the logo.
+      header = -1;
+      items = uiMainMenuItems;
+      y = 64;
+    }
+    if (header >= 0) {
+      blitUi(header, (WIDTH - uiWidth[header]) / 2, 28);
+    }
+    selection = Math.max(0, Math.min(items.length - 1, selection));
+    int lineHeight = 16;
+    int minimumX = WIDTH;
+    for (int item : items) {
+      minimumX = Math.min(minimumX, (WIDTH - uiWidth[item]) / 2);
+    }
+    for (int index = 0; index < items.length; index++) {
+      int item = items[index];
+      blitUi(item, (WIDTH - uiWidth[item]) / 2, y + index * lineHeight);
+    }
+    int skull = uiMenuSkulls[(tic / 8) & 1];
+    blitUi(skull, minimumX - uiWidth[skull] - 5,
+        y + selection * lineHeight - 3);
+    return frameChecksum();
+  }
+
+  /**
+   * Render full-screen loading/help/intermission/finale art by stable screen
+   * id: title, credit, help1, help2, intermission, victory, end, finale-left,
+   * finale-right and boss backdrop.
+   */
+  @JSExport
+  public static int renderScreenFrame(int screen) {
+    if (uiTexels == null) {
+      throw new IllegalStateException("UI textures are not finalized");
+    }
+    screen = Math.max(0, Math.min(uiFullScreens.length - 1, screen));
+    clearFrame();
+    blitUi(uiFullScreens[screen], 0, 0);
+    return frameChecksum();
+  }
+
+  private static void clearFrame() {
+    for (int index = 0; index < frame.length; index++) frame[index] = 0;
+  }
+
+  private static int frameChecksum() {
+    int checksum = 1;
+    for (int index = 0; index < frame.length; index += 257) {
+      checksum = checksum * 31 + (frame[index] & 255);
+    }
+    return checksum;
+  }
+
   /** Geometry-only counterpart used to measure the live snapshot boundary. */
   @JSExport
   public static int renderPlayerSnapshotGeometry(Uint8Array snapshot) {
@@ -423,11 +999,28 @@ public final class FreeLiveRendererReachabilityProbe {
   @JSExport
   public static int renderCommands(int pose) {
     commandLength = 0;
+    commandCaptureWidth = WIDTH;
     captureCommands = true;
     try {
       render(pose, false, false, true);
     } finally {
       captureCommands = false;
+      commandCaptureWidth = WIDTH;
+    }
+    return commandLength / COMMAND_BYTES;
+  }
+
+  /** 160-column command tape for a horizontally doubled live framebuffer. */
+  @JSExport
+  public static int renderCommandsHalfWidth(int pose) {
+    commandLength = 0;
+    commandCaptureWidth = LIVE_RENDER_WIDTH;
+    captureCommands = true;
+    try {
+      render(pose, false, false, true);
+    } finally {
+      captureCommands = false;
+      commandCaptureWidth = WIDTH;
     }
     return commandLength / COMMAND_BYTES;
   }
@@ -485,7 +1078,9 @@ public final class FreeLiveRendererReachabilityProbe {
     double directionX = cosTable[angle] / 32767.0;
     double directionY = sinTable[angle] / 32767.0;
     rasterPixelWrites = 0;
-    activeWidth = raster ? LIVE_RENDER_WIDTH : WIDTH;
+    activeWidth = raster
+        ? LIVE_RENDER_WIDTH
+        : (captureCommands ? commandCaptureWidth : WIDTH);
     pixelScale = WIDTH / activeWidth;
     int viewSector = raster && planes
         ? pointSector(playerX, playerY) : -1;
@@ -505,6 +1100,12 @@ public final class FreeLiveRendererReachabilityProbe {
     for (int x = 0; x < activeWidth; x++) {
       clipTop[x] = 0;
       clipBottom[x] = VIEW_HEIGHT - 1;
+      solidDepth[x] = Double.POSITIVE_INFINITY;
+    }
+    if (raster) {
+      for (int index = 0; index < wallDepth.length; index++) {
+        wallDepth[index] = Double.POSITIVE_INFINITY;
+      }
     }
     int stackSize = 1;
     stack[0] = nodeX.length - 1;
@@ -538,12 +1139,21 @@ public final class FreeLiveRendererReachabilityProbe {
         if (playerRight != fromRight) continue;
         int near = fromRight ? lineRightSector[line] : lineLeftSector[line];
         int far = fromRight ? lineLeftSector[line] : lineRightSector[line];
-        int middle = fromRight ? lineRightMiddle[line] : lineLeftMiddle[line];
+        int rightSide = lineRightSide[line];
+        int leftSide = lineLeftSide[line];
+        int side = fromRight ? rightSide : leftSide;
+        int middle = liveDynamicsActive && side != 0xffff
+            ? dynamicSideMiddle[side]
+            : (fromRight ? lineRightMiddle[line] : lineLeftMiddle[line]);
         if (far != 0xffff && middle == 0xffff
             && sectorFloor[near] == sectorFloor[far]
             && sectorCeiling[near] == sectorCeiling[far]) continue;
-        int upper = fromRight ? lineRightUpper[line] : lineLeftUpper[line];
-        int lower = fromRight ? lineRightLower[line] : lineLeftLower[line];
+        int upper = liveDynamicsActive && side != 0xffff
+            ? dynamicSideTop[side]
+            : (fromRight ? lineRightUpper[line] : lineLeftUpper[line]);
+        int lower = liveDynamicsActive && side != 0xffff
+            ? dynamicSideBottom[side]
+            : (fromRight ? lineRightLower[line] : lineLeftLower[line]);
         boolean clipOnly = far != 0xffff
             && !(sectorCeiling[far] < sectorCeiling[near] && upper != 0xffff)
             && !(sectorFloor[far] > sectorFloor[near] && lower != 0xffff);
@@ -596,6 +1206,7 @@ public final class FreeLiveRendererReachabilityProbe {
           if (wallHeight > 65535) wallHeight = 65535;
           checksum += wallHeight + line;
           if (far == 0xffff) {
+            solidDepth[x] = Math.min(solidDepth[x], numerator / current);
             int texture = middle;
             if (texture == 0xffff) texture = lineTexture[line];
             int nearTop = (int) Math.floor(
@@ -620,7 +1231,8 @@ public final class FreeLiveRendererReachabilityProbe {
               drawWallSegment(
                   x, texture, textureX, wallHeight, nearTop, nearBottom,
                   clipTop[x], clipBottom[x], lightMap(near),
-                  fromRight ? lineYOffset[line] : lineLeftYOffset[line]);
+                  fromRight ? lineYOffset[line] : lineLeftYOffset[line],
+                  numerator / current);
             }
             clipTop[x] = 1;
             clipBottom[x] = 0;
@@ -665,12 +1277,14 @@ public final class FreeLiveRendererReachabilityProbe {
                 if (drawUpper) {
                   drawWallSegment(
                       x, upper, textureX, wallHeight, nearTop, openingTop - 1,
-                      clipTop[x], clipBottom[x], lightMap, yOffset);
+                      clipTop[x], clipBottom[x], lightMap, yOffset,
+                      numerator / current);
                 }
                 if (drawLower) {
                   drawWallSegment(
                       x, lower, textureX, wallHeight, openingBottom + 1,
-                      nearBottom, clipTop[x], clipBottom[x], lightMap, yOffset);
+                      nearBottom, clipTop[x], clipBottom[x], lightMap, yOffset,
+                      numerator / current);
                 }
               }
             }
@@ -697,6 +1311,314 @@ public final class FreeLiveRendererReachabilityProbe {
         | ((snapshot.get(offset + 1) & 255) << 8)
         | ((snapshot.get(offset + 2) & 255) << 16)
         | ((snapshot.get(offset + 3) & 255) << 24);
+  }
+
+  private static int snapshotI16(Uint8Array snapshot, int offset) {
+    int value = (snapshot.get(offset) & 255)
+        | ((snapshot.get(offset + 1) & 255) << 8);
+    return value >= 32768 ? value - 65536 : value;
+  }
+
+  private static int snapshotU16(Uint8Array snapshot, int offset) {
+    return (snapshot.get(offset) & 255)
+        | ((snapshot.get(offset + 1) & 255) << 8);
+  }
+
+  private static char translatedWall(int runtimeTexture) {
+    if (runtimeTexture == 0 || runtimeTexture >= runtimeWallToAsset.length) {
+      return 0xffff;
+    }
+    return runtimeWallToAsset[runtimeTexture];
+  }
+
+  private static char translatedFlat(int runtimeLump, char fallback) {
+    if (runtimeLump >= runtimeFlatToAsset.length) return fallback;
+    char asset = runtimeFlatToAsset[runtimeLump];
+    return asset == 0xffff ? fallback : asset;
+  }
+
+  private static int spriteLookup(int sprite, int frame, int rotation) {
+    frame &= 0x7fff;
+    if (sprite < 0 || sprite >= spritePrefixCount
+        || frame < 0 || frame >= spriteFrameCount) {
+      return -1;
+    }
+    int lookup = (sprite * spriteFrameCount + frame) * 9 + rotation;
+    int asset = spriteLookupAsset[lookup];
+    if (asset == 0xffff && rotation != 0) {
+      lookup -= rotation;
+      asset = spriteLookupAsset[lookup];
+    }
+    return asset == 0xffff ? -1 : lookup;
+  }
+
+  private static void drawWorldSprites(
+      Uint8Array snapshot, int mobjOffset, int mobjCount) {
+    double playerX = snapshotI32(snapshot, 36) / 65536.0;
+    double playerY = snapshotI32(snapshot, 40) / 65536.0;
+    int viewAngle = (snapshotI32(snapshot, 48) >>> 5) & 2047;
+    double directionX = cosTable[viewAngle] / 32767.0;
+    double directionY = sinTable[viewAngle] / 32767.0;
+    int visible = 0;
+    for (int mobj = 0; mobj < mobjCount; mobj++) {
+      int at = mobjOffset + mobj * 32;
+      double dx = snapshotI32(snapshot, at) / 65536.0 - playerX;
+      double dy = snapshotI32(snapshot, at + 4) / 65536.0 - playerY;
+      double depth = dx * directionX + dy * directionY;
+      double lateral = -dx * directionY + dy * directionX;
+      if (depth <= 1.0 || Math.abs(lateral) > depth * 1.5) continue;
+      int sprite = snapshotI16(snapshot, at + 16);
+      int spriteFrame = snapshotI16(snapshot, at + 18);
+      if (spriteLookup(sprite, spriteFrame, 0) < 0
+          && spriteLookup(sprite, spriteFrame, 1) < 0) {
+        continue;
+      }
+      int insert = visible;
+      while (insert > 0 && worldSpriteDepth[insert - 1] < depth) {
+        worldSpriteDepth[insert] = worldSpriteDepth[insert - 1];
+        worldSpriteOrder[insert] = worldSpriteOrder[insert - 1];
+        insert--;
+      }
+      worldSpriteDepth[insert] = depth;
+      worldSpriteOrder[insert] = mobj;
+      visible++;
+    }
+    for (int index = 0; index < visible; index++) {
+      drawWorldSprite(
+          snapshot, mobjOffset + worldSpriteOrder[index] * 32,
+          playerX, playerY, directionX, directionY,
+          worldSpriteDepth[index]);
+    }
+  }
+
+  private static void drawWorldSprite(
+      Uint8Array snapshot, int at,
+      double playerX, double playerY,
+      double directionX, double directionY, double depth) {
+    double mobjX = snapshotI32(snapshot, at) / 65536.0;
+    double mobjY = snapshotI32(snapshot, at + 4) / 65536.0;
+    double mobjZ = snapshotI32(snapshot, at + 8) / 65536.0;
+    int mobjAngle = snapshotI32(snapshot, at + 12) & 0xffff;
+    int sprite = snapshotI16(snapshot, at + 16);
+    int spriteFrame = snapshotI16(snapshot, at + 18);
+    int viewerOctant = 0;
+    double viewerX = playerX - mobjX;
+    double viewerY = playerY - mobjY;
+    double bestDot = -Double.MAX_VALUE;
+    for (int octant = 0; octant < 8; octant++) {
+      int angle = octant * 256;
+      double dot = viewerX * cosTable[angle]
+          + viewerY * sinTable[angle];
+      if (dot > bestDot) {
+        bestDot = dot;
+        viewerOctant = octant;
+      }
+    }
+    int viewerAngle = viewerOctant * 8192;
+    int rotation =
+        (((viewerAngle - mobjAngle + 36864) & 0xffff) >>> 13) + 1;
+    int lookup = spriteLookup(sprite, spriteFrame, rotation);
+    if (lookup < 0) return;
+    int asset = spriteLookupAsset[lookup];
+    boolean flip = spriteLookupFlip[lookup] != 0;
+    int width = spriteWidth[asset];
+    int height = spriteHeight[asset];
+    double lateral = -(mobjX - playerX) * directionY
+        + (mobjY - playerY) * directionX;
+    double scale = (LIVE_RENDER_WIDTH / 2.0) / depth;
+    double center = LIVE_RENDER_WIDTH / 2.0
+        + lateral * (LIVE_RENDER_WIDTH / 2.0) / depth;
+    int left = (int) Math.floor(center - spriteLeft[asset] * scale);
+    int right = (int) Math.ceil(
+        center + (width - spriteLeft[asset]) * scale) - 1;
+    double viewZ = snapshotI32(snapshot, 52) / 65536.0;
+    int top = (int) Math.floor(
+        VIEW_HEIGHT / 2.0
+            - (mobjZ + spriteTop[asset] - viewZ) * scale);
+    int bottom = (int) Math.ceil(
+        VIEW_HEIGHT / 2.0
+            - (mobjZ + spriteTop[asset] - height - viewZ) * scale) - 1;
+    int screenWidth = right - left + 1;
+    int screenHeight = bottom - top + 1;
+    if (screenWidth < 1 || screenHeight < 1) return;
+    int sector = snapshotI16(snapshot, at + 30);
+    int map = (spriteFrame & 0x8000) != 0 || sector < 0
+        || sector >= sectorCount ? 0 : lightMap(sector);
+    int sourceBase = spriteBase[asset];
+    for (int x = Math.max(0, left);
+         x <= Math.min(LIVE_RENDER_WIDTH - 1, right); x++) {
+      if (depth >= solidDepth[x]) continue;
+      int sourceX = (x - left) * width / screenWidth;
+      if (flip) sourceX = width - sourceX - 1;
+      int outputX = x * 2;
+      for (int y = Math.max(0, top);
+           y <= Math.min(VIEW_HEIGHT - 1, bottom); y++) {
+        if (depth >= wallDepth[x * VIEW_HEIGHT + y]) continue;
+        int sourceY = (y - top) * height / screenHeight;
+        int encoded = spriteTexels[
+            sourceBase + sourceY * width + sourceX];
+        if (encoded == 0) continue;
+        byte pixel = colormaps[map * 256 + encoded - 1];
+        frame[outputX * FRAME_HEIGHT + y] = pixel;
+        frame[(outputX + 1) * FRAME_HEIGHT + y] = pixel;
+      }
+    }
+  }
+
+  private static void drawPlayerSprites(Uint8Array snapshot) {
+    for (int psprite = 0; psprite < 2; psprite++) {
+      int at = 88 + psprite * 20;
+      int sprite = snapshotI32(snapshot, at + 12);
+      int spriteFrame = snapshotI32(snapshot, at + 16);
+      int lookup = spriteLookup(sprite, spriteFrame, 0);
+      if (lookup < 0) continue;
+      int asset = spriteLookupAsset[lookup];
+      int width = spriteWidth[asset];
+      int height = spriteHeight[asset];
+      int sx = snapshotI32(snapshot, at + 4) >> 16;
+      int sy = snapshotI32(snapshot, at + 8) >> 16;
+      // Doom's WEAPONTOP is 32. A newly spawned weapon begins at
+      // WEAPONBOTTOM (128-ish) and rises into place; anchoring against the
+      // tic-1 value made the ready weapon float 84 pixels too high.
+      int left = (WIDTH - width) / 2 + sx;
+      int top = VIEW_HEIGHT - height + sy - 32;
+      blitSprite(asset, left, top, 0);
+    }
+  }
+
+  private static void drawStatusBar(Uint8Array snapshot) {
+    if (!statusBarInitialized) {
+      for (int x = 0; x < WIDTH; x++) {
+        System.arraycopy(
+            statusBarBackground, x * (FRAME_HEIGHT - VIEW_HEIGHT),
+            frame, x * FRAME_HEIGHT + VIEW_HEIGHT,
+            FRAME_HEIGHT - VIEW_HEIGHT);
+      }
+      statusBarInitialized = true;
+    } else {
+      // The world raster never writes the bottom 32 rows.  Preserve the
+      // invariant status-bar background and restore only rectangles whose
+      // widgets can change, rather than issuing 320 tiny array copies.
+      restoreStatusRect(4, 44, 168, FRAME_HEIGHT);
+      restoreStatusRect(51, 90, 168, FRAME_HEIGHT);
+      restoreStatusRect(142, 185, 168, FRAME_HEIGHT);
+      restoreStatusRect(182, 221, 168, FRAME_HEIGHT);
+      restoreStatusRect(238, 269, 168, FRAME_HEIGHT);
+    }
+    int ammo = snapshotI32(snapshot, 72);
+    int weapon = snapshotI32(snapshot, 64);
+    if (weapon == 2 || weapon == 8) ammo = snapshotI32(snapshot, 76);
+    else if (weapon == 4) ammo = snapshotI32(snapshot, 80);
+    else if (weapon == 5 || weapon == 6) ammo = snapshotI32(snapshot, 84);
+    drawHudNumber(Math.max(0, ammo), 44);
+    int health = Math.max(0, snapshotI32(snapshot, 56));
+    int armor = Math.max(0, snapshotI32(snapshot, 60));
+    drawHudNumber(health, 90);
+    drawHudNumber(armor, 221);
+    // STFB0 is the player-color background behind Doomguy's animated face.
+    blitUi(uiFaceNormal, 143, 169);
+    int pain = Math.max(0, Math.min(4, (100 - health) * 5 / 101));
+    int damage = snapshotI32(snapshot, 128);
+    int bonus = snapshotI32(snapshot, 132);
+    int cheats = snapshotI32(snapshot, 168);
+    int refire = snapshotI32(snapshot, 180);
+    int tic = snapshotI32(snapshot, 8);
+    int face;
+    if (health <= 0) {
+      face = uiFaceDead;
+    } else if ((cheats & 1) != 0) {
+      face = uiFaceGod;
+    } else if (damage > 20) {
+      face = uiFaceOuch[pain];
+    } else if (damage > 0) {
+      face = (tic & 8) == 0
+          ? uiFaceTurnLeft[pain] : uiFaceTurnRight[pain];
+    } else if (bonus > 0) {
+      face = uiFaceEvil[pain];
+    } else if (refire > 2) {
+      face = uiFaceKill[pain];
+    } else {
+      face = uiFaceStraight[pain * 3 + (tic / 17) % 3];
+    }
+    blitUi(face, 148, 169);
+    int cards = snapshotI32(snapshot, 144);
+    for (int key = 0; key < 6; key++) {
+      if ((cards & (1 << key)) != 0) {
+        blitUi(uiKeys[key], 239 + (key % 3) * 10, 171);
+      }
+    }
+  }
+
+  private static void restoreStatusRect(
+      int left, int right, int top, int bottom) {
+    int clippedLeft = Math.max(0, left);
+    int clippedRight = Math.min(WIDTH, right);
+    int clippedTop = Math.max(VIEW_HEIGHT, top);
+    int clippedBottom = Math.min(FRAME_HEIGHT, bottom);
+    int height = clippedBottom - clippedTop;
+    if (height <= 0) return;
+    for (int x = clippedLeft; x < clippedRight; x++) {
+      System.arraycopy(
+          statusBarBackground,
+          x * (FRAME_HEIGHT - VIEW_HEIGHT) + clippedTop - VIEW_HEIGHT,
+          frame, x * FRAME_HEIGHT + clippedTop, height);
+    }
+  }
+
+  private static void drawHudNumber(int value, int rightEdge) {
+    value = Math.min(999, value);
+    int hundreds = value / 100;
+    int tens = (value / 10) % 10;
+    if (hundreds > 0) blitUi(uiDigits[hundreds], rightEdge - 39, 171);
+    if (hundreds > 0 || tens > 0) {
+      blitUi(uiDigits[tens], rightEdge - 26, 171);
+    }
+    blitUi(uiDigits[value % 10], rightEdge - 13, 171);
+  }
+
+  private static void blitSprite(
+      int asset, int left, int top, int map) {
+    int width = spriteWidth[asset];
+    int height = spriteHeight[asset];
+    int base = spriteBase[asset];
+    for (int y = 0; y < height; y++) {
+      int screenY = top + y;
+      if (screenY < 0 || screenY >= VIEW_HEIGHT) continue;
+      for (int x = 0; x < width; x++) {
+        int screenX = left + x;
+        if (screenX < 0 || screenX >= WIDTH) continue;
+        int encoded = spriteTexels[base + y * width + x];
+        if (encoded != 0) {
+          frame[screenX * FRAME_HEIGHT + screenY] =
+              colormaps[map * 256 + encoded - 1];
+        }
+      }
+    }
+  }
+
+  private static void blitUi(int asset, int left, int top) {
+    for (int run = uiAssetRunStart[asset];
+         run < uiAssetRunEnd[asset]; run++) {
+      int screenX = left + uiRunX[run];
+      int screenY = top + uiRunY[run];
+      int source = uiRunPixelStart[run];
+      int length = uiRunLength[run];
+      if (screenX < 0 || screenX >= WIDTH
+          || screenY >= FRAME_HEIGHT || screenY + length <= 0) continue;
+      if (screenY < 0) {
+        source -= screenY;
+        length += screenY;
+        screenY = 0;
+      }
+      if (screenY + length > FRAME_HEIGHT) {
+        length = FRAME_HEIGHT - screenY;
+      }
+      if (length > 0) {
+        System.arraycopy(
+            uiRunPixels, source,
+            frame, screenX * FRAME_HEIGHT + screenY, length);
+      }
+    }
   }
 
   private static int pointSector(double playerX, double playerY) {
@@ -790,7 +1712,8 @@ public final class FreeLiveRendererReachabilityProbe {
       int plane, int y, int x1, int x2,
       double playerX, double playerY, double viewZ,
       double directionX, double directionY) {
-    if (x1 > x2 || y == VIEW_HEIGHT / 2) return;
+    if (x1 > x2 || y == VIEW_HEIGHT / 2
+        || (coarseVerticalRaster && (y & 1) != 0)) return;
     int sector = plane / 2;
     boolean ceiling = (plane & 1) == 0;
     int asset = ceiling ? sectorCeilingAsset[sector] : sectorFloorAsset[sector];
@@ -800,6 +1723,10 @@ public final class FreeLiveRendererReachabilityProbe {
       for (int x = x1; x <= x2; x++) {
         frame[output] = pixel;
         frame[output + FRAME_HEIGHT] = pixel;
+        if (coarseVerticalRaster && y + 1 < VIEW_HEIGHT) {
+          frame[output + 1] = pixel;
+          frame[output + FRAME_HEIGHT + 1] = pixel;
+        }
         output += pixelScale * FRAME_HEIGHT;
       }
       rasterPixelWrites += (x2 - x1 + 1) * pixelScale;
@@ -828,6 +1755,10 @@ public final class FreeLiveRendererReachabilityProbe {
       byte pixel = litFlats[assetBase + source];
       frame[output] = pixel;
       frame[output + FRAME_HEIGHT] = pixel;
+      if (coarseVerticalRaster && y + 1 < VIEW_HEIGHT) {
+        frame[output + 1] = pixel;
+        frame[output + FRAME_HEIGHT + 1] = pixel;
+      }
       output += pixelScale * FRAME_HEIGHT;
       worldX += stepX;
       worldY += stepY;
@@ -849,12 +1780,17 @@ public final class FreeLiveRendererReachabilityProbe {
     int ceilingAsset = sectorCeilingAsset[sector];
     int ceilingBase = ceilingAsset == 0xffff
         ? -1 : lightBank + ceilingAsset * 4096;
-    for (int y = 0; y < VIEW_HEIGHT; y++) {
+    for (int y = 0; y < VIEW_HEIGHT;
+        y += coarseVerticalRaster ? 2 : 1) {
       if (y == VIEW_HEIGHT / 2) {
         for (int x = 0; x < activeWidth; x++) {
           int output = x * pixelScale * FRAME_HEIGHT + y;
           frame[output] = backgroundColumn[y];
           frame[output + FRAME_HEIGHT] = backgroundColumn[y];
+          if (coarseVerticalRaster && y + 1 < VIEW_HEIGHT) {
+            frame[output + 1] = backgroundColumn[y];
+            frame[output + FRAME_HEIGHT + 1] = backgroundColumn[y];
+          }
         }
         continue;
       }
@@ -864,6 +1800,10 @@ public final class FreeLiveRendererReachabilityProbe {
           int output = x * pixelScale * FRAME_HEIGHT + y;
           frame[output] = backgroundColumn[y];
           frame[output + FRAME_HEIGHT] = backgroundColumn[y];
+          if (coarseVerticalRaster && y + 1 < VIEW_HEIGHT) {
+            frame[output + 1] = backgroundColumn[y];
+            frame[output + FRAME_HEIGHT + 1] = backgroundColumn[y];
+          }
         }
         continue;
       }
@@ -890,6 +1830,10 @@ public final class FreeLiveRendererReachabilityProbe {
         byte pixel = litFlats[assetBase + source];
         frame[output] = pixel;
         frame[output + FRAME_HEIGHT] = pixel;
+        if (coarseVerticalRaster && y + 1 < VIEW_HEIGHT) {
+          frame[output + 1] = pixel;
+          frame[output + FRAME_HEIGHT + 1] = pixel;
+        }
         output += pixelScale * FRAME_HEIGHT;
         worldX += stepX;
         worldY += stepY;
@@ -1051,7 +1995,7 @@ public final class FreeLiveRendererReachabilityProbe {
   private static void drawWallSegment(
       int screenX, int texture, int textureX, int wallHeight,
       int projectedTop, int projectedBottom, int clipTopValue,
-      int clipBottomValue, int lightMap, int verticalOffset) {
+      int clipBottomValue, int lightMap, int verticalOffset, double depth) {
     if (texture == 0xffff || projectedTop > clipBottomValue
         || projectedBottom < clipTopValue || projectedTop > projectedBottom) {
       return;
@@ -1081,6 +2025,12 @@ public final class FreeLiveRendererReachabilityProbe {
     drawWallPixels(
         screenX, texture, textureX, wallHeight, projectedTop,
         drawTop, drawBottom, lightMap, verticalOffset);
+    if (activeWidth == LIVE_RENDER_WIDTH) {
+      int base = screenX * VIEW_HEIGHT;
+      for (int y = drawTop; y <= drawBottom; y++) {
+        wallDepth[base + y] = Math.min(wallDepth[base + y], depth);
+      }
+    }
   }
 
   private static void appendCommand(
@@ -1229,7 +2179,8 @@ public final class FreeLiveRendererReachabilityProbe {
     int outputAt = screenX * pixelScale * FRAME_HEIGHT + drawTop;
     rasterPixelWrites += length * pixelScale;
     boolean powerOfTwoHeight = (height & (height - 1)) == 0;
-    for (int output = 0; output < length; output++) {
+    int verticalStep = coarseVerticalRaster ? 2 : 1;
+    for (int output = 0; output < length; output += verticalStep) {
       int sourceY = fraction >> 16;
       sourceY = powerOfTwoHeight
           ? sourceY & (height - 1)
@@ -1237,7 +2188,11 @@ public final class FreeLiveRendererReachabilityProbe {
       byte pixel = litTextures[bank + base + sourceY * width + textureX];
       frame[outputAt + output] = pixel;
       frame[outputAt + FRAME_HEIGHT + output] = pixel;
-      fraction += fractionStep;
+      if (coarseVerticalRaster && output + 1 < length) {
+        frame[outputAt + output + 1] = pixel;
+        frame[outputAt + FRAME_HEIGHT + output + 1] = pixel;
+      }
+      fraction += fractionStep * verticalStep;
     }
   }
 

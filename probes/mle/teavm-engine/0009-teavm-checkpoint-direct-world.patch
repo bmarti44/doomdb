@@ -1,0 +1,89 @@
+diff --git a/src/savegame/VanillaDSG.java b/src/savegame/VanillaDSG.java
+--- a/src/savegame/VanillaDSG.java
++++ b/src/savegame/VanillaDSG.java
+@@ -148,6 +148,12 @@ public class VanillaDSG<T, V> implements IDoomSaveGame {
+     //
+     //P_ArchiveWorld
+     //
++    private static int putLEShort(byte[] target, int offset, int value) {
++        target[offset] = (byte) value;
++        target[offset + 1] = (byte) (value >>> 8);
++        return offset + 2;
++    }
++
+     @P_SaveG.C(P_ArchiveWorld)
+     protected void ArchiveWorld() throws IOException {
+         int i;
+@@ -156,48 +162,57 @@ public class VanillaDSG<T, V> implements IDoomSaveGame {
+         line_t li;
+         side_t si;
+ 
+-        // do sectors (allocate 14 bytes per sector)
+-        ByteBuffer buffer = ByteBuffer.allocate(DOOM.levelLoader.numsectors * 14);
+-        buffer.order(ByteOrder.LITTLE_ENDIAN);
++        // Pack the vanilla little-endian records directly. TeaVM's generic
++        // ByteBuffer putShort path is interpreted and dominates checkpoint
++        // serialization in MLE even though these records contain only shorts.
++        byte[] buffer = new byte[DOOM.levelLoader.numsectors * 14];
++        int offset = 0;
+ 
+         deAdaptSectors();
+         for (i = 0; i < DOOM.levelLoader.numsectors; i++) {
+             sec = DOOM.levelLoader.sectors[i];
+-            // MAES: sectors are actually carefully
+-            // marshalled, so we don't just read/write
+-            // their entire memory footprint to disk.
+-            sec.pack(buffer);
++            offset = putLEShort(buffer, offset, sec.floorheight >> 16);
++            offset = putLEShort(buffer, offset, sec.ceilingheight >> 16);
++            offset = putLEShort(buffer, offset, sec.floorpic);
++            offset = putLEShort(buffer, offset, sec.ceilingpic);
++            offset = putLEShort(buffer, offset, sec.lightlevel);
++            offset = putLEShort(buffer, offset, sec.special);
++            offset = putLEShort(buffer, offset, sec.tag);
+         }
+ 
+         adaptSectors();
+-        fo.write(buffer.array(), 0, buffer.position());
++        fo.write(buffer, 0, offset);
+ 
+         // do lines 
+         // Allocate for the worst-case scenario (6+20 per line)
+-        buffer = ByteBuffer.allocate(DOOM.levelLoader.numlines * (6 + 20));
+-        buffer.order(ByteOrder.LITTLE_ENDIAN);
+-        buffer.position(0);
++        buffer = new byte[DOOM.levelLoader.numlines * (6 + 20)];
++        offset = 0;
+ 
+         //final side_t test1=new side_t(0x11111111,0x11111111,(short) 0x1111,(short)0x1111,(short)0x1111,null);
+        //final side_t test2=new side_t(0x22222222,0x22222222,(short) 0x2222,(short)0x2222,(short)0x2222,null);
+         for (i = 0; i < DOOM.levelLoader.numlines; i++) {
+             li = DOOM.levelLoader.lines[i];
+-            li.pack(buffer);
++            offset = putLEShort(buffer, offset, li.flags);
++            offset = putLEShort(buffer, offset, li.special);
++            offset = putLEShort(buffer, offset, li.tag);
+ 
+             for (j = 0; j < 2; j++) {
+                 if (li.sidenum[j] == line_t.NO_INDEX) {
+                     continue;
+                 }
+                 si = DOOM.levelLoader.sides[li.sidenum[j]];
+-                si.pack(buffer);
++                offset = putLEShort(buffer, offset, si.textureoffset >> 16);
++                offset = putLEShort(buffer, offset, si.rowoffset >> 16);
++                offset = putLEShort(buffer, offset, si.toptexture);
++                offset = putLEShort(buffer, offset, si.bottomtexture);
++                offset = putLEShort(buffer, offset, si.midtexture);
+                 //if (j==0) test1.pack(buffer);
+                 //else test2.pack(buffer);
+ 
+             }
+         }
+ 
+-        int write = buffer.position();
+-        fo.write(buffer.array(), 0, write);
++        fo.write(buffer, 0, offset);
+     }
+ 
+     //

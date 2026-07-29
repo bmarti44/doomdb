@@ -8,6 +8,7 @@ create or replace package doom_session_cleanup authid definer as
   $if $$doom_dev_ojvm $then
   procedure purge_expired(p_limit in number default 4);
   $end
+  procedure reap_abandoned_matches(p_limit in number default 4);
   procedure purge_expired_matches(p_limit in number default 4);
 end doom_session_cleanup;
 /
@@ -87,6 +88,63 @@ create or replace package body doom_session_cleanup as
   end purge_expired;
   $end
 
+  -- Browser unload delivery is best-effort. Reconcile a match whose host has
+  -- stopped all authenticated presence traffic without waiting for its
+  -- twenty-minute idle lease. Fifteen seconds preserves bounded network/tab
+  -- suspension recovery while preventing a dead browser from retaining the
+  -- Free-tier game slot indefinitely.
+  procedure reap_abandoned_matches(p_limit in number default 4) is
+    l_limit pls_integer:=least(8,greatest(1,trunc(coalesce(p_limit,4))));
+    l_now timestamp with time zone:=localtimestamp at time zone 'UTC';
+    l_state varchar2(16);l_generation number;l_current_tic number;
+  begin
+    for abandoned_ in (
+      select m.match_id
+      from doom_match m
+      join doom_match_member host_
+        on host_.match_id=m.match_id and host_.player_slot=0
+      where m.match_state in('LOBBY','ACTIVE')
+        and host_.member_state<>'LEFT'
+        and host_.last_seen_at<
+          l_now-numtodsinterval(15,'SECOND')
+      order by host_.last_seen_at
+      fetch first l_limit rows only
+    ) loop
+      begin
+        select m.match_state,m.generation,m.current_tic
+          into l_state,l_generation,l_current_tic
+          from doom_match m
+          where m.match_id=abandoned_.match_id
+            and m.match_state in('LOBBY','ACTIVE')
+            and exists(
+              select 1 from doom_match_member host_
+              where host_.match_id=m.match_id and host_.player_slot=0
+                and host_.member_state<>'LEFT'
+                and host_.last_seen_at<
+                  l_now-numtodsinterval(15,'SECOND'))
+          for update skip locked;
+      exception when no_data_found then continue;end;
+      update doom_match_member set member_state='LEFT',
+        leave_tic=case when l_state='ACTIVE'
+          then l_current_tic+1 else 0 end,
+        disconnected_at=coalesce(disconnected_at,l_now),last_seen_at=l_now
+        where match_id=abandoned_.match_id and player_slot=0
+          and member_state<>'LEFT';
+      update doom_match set
+        match_state=case l_state
+          when 'ACTIVE' then 'FINISHED' else 'CANCELLED' end,
+        finished_at=l_now,last_activity_at=l_now,expires_at=l_now
+        where match_id=abandoned_.match_id
+          and match_state=l_state and generation=l_generation;
+      update doom_match_worker_control set stop_requested=1,heartbeat=l_now
+        where match_id=abandoned_.match_id;
+      update doom_match_standby_control set stop_requested=1,heartbeat=l_now
+        where match_id=abandoned_.match_id
+          and standby_status in('STARTING','READY');
+    end loop;
+    commit;
+  end reap_abandoned_matches;
+
   procedure purge_expired_matches(p_limit in number default 4) is
     l_limit pls_integer:=least(8,greatest(1,trunc(coalesce(p_limit,4))));
     l_job varchar2(64);l_generation number;l_assigned number;
@@ -143,9 +201,9 @@ begin
     job_name=>'DOOM_EXPIRED_SESSION_PURGE',
     job_type=>'PLSQL_BLOCK',
     $if $$doom_dev_ojvm $then
-    job_action=>'begin doom_session_cleanup.purge_expired(4); doom_session_cleanup.purge_expired_matches(4); end;',
+    job_action=>'begin doom_session_cleanup.purge_expired(4); doom_session_cleanup.reap_abandoned_matches(4); doom_session_cleanup.purge_expired_matches(4); end;',
     $else
-    job_action=>'begin doom_session_cleanup.purge_expired_matches(4); end;',
+    job_action=>'begin doom_session_cleanup.reap_abandoned_matches(4); doom_session_cleanup.purge_expired_matches(4); end;',
     $end
     start_date=>systimestamp+numtodsinterval(1,'MINUTE'),
     repeat_interval=>'FREQ=MINUTELY;INTERVAL=1',

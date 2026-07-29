@@ -199,6 +199,14 @@ while IFS= read -r entry || [[ -n "$entry" ]]; do
     printf '%s\n' 'commit;' >>"$post_sql"
     continue
   fi
+  if [[ "$entry" == '@mle-live-frame-module' ]]; then
+    [[ "$deployment_phase" == post ]] ||
+      die 'live-frame module must follow the MLE authority boundary'
+    printf 'engine|%s|%s\n' \
+      'probes/mle/load-live-frame-module.sh' \
+      "$(sha "$root/probes/mle/load-live-frame-module.sh")" >>"$ledger"
+    continue
+  fi
   [[ "$deployment_phase" == pre ]] &&
     deploy_sql="$pre_sql" || deploy_sql="$post_sql"
   if [[ "$entry" == '@seed-manifest' ]]; then
@@ -246,6 +254,26 @@ const artifact={schema:1,runtime:'MLE_JAVASCRIPT',teaVMVersion:t.version,
   authority:{bytes:t.outputBytes,sha256:t.outputSha256},
   tablePack:{bytes:t.canonicalTablePackBytes,
     sha256:t.canonicalTablePackSha256},
+  liveFrameRenderer:{
+    profile:t.liveFrameRenderer.profile,
+    requiredAuthorityBytes:t.liveFrameRenderer.authorityCandidateBytes,
+    requiredAuthoritySha256:t.liveFrameRenderer.authorityCandidateSha256,
+    bytes:t.liveFrameRenderer.outputBytes,
+    sha256:t.liveFrameRenderer.outputSha256,
+    coordinatorBytes:t.liveFrameRenderer.coordinatorBytes,
+    coordinatorSha256:t.liveFrameRenderer.coordinatorSha256,
+    worldPackBytes:t.liveFrameRenderer.worldPackBytes,
+    worldPackSha256:t.liveFrameRenderer.worldPackSha256,
+    compositorPackBytes:t.liveFrameRenderer.compositorPackBytes,
+    compositorPackSha256:t.liveFrameRenderer.compositorPackSha256,
+    wallAssetBytes:t.liveFrameRenderer.wallAssetBytes,
+    wallAssetSha256:t.liveFrameRenderer.wallAssetSha256,
+    flatAssetBytes:t.liveFrameRenderer.flatAssetBytes,
+    flatAssetSha256:t.liveFrameRenderer.flatAssetSha256,
+    spriteAssetBytes:t.liveFrameRenderer.spriteAssetBytes,
+    spriteAssetSha256:t.liveFrameRenderer.spriteAssetSha256,
+    uiAssetBytes:t.liveFrameRenderer.uiAssetBytes,
+    uiAssetSha256:t.liveFrameRenderer.uiAssetSha256},
   iwadSha256:lock.freedoom.freedoom1WadSha256};
 fs.writeFileSync(outPath,`${JSON.stringify(artifact)}\n`,{mode:0o600});
 NODE
@@ -267,6 +295,13 @@ phase=mle_load
 if ! sql_file_timeout 14400 "$tmp/load-mle-module.sql" \
     >"$tmp/mle-load.log" 2>&1; then
   show_failure "$tmp/mle-load.log";exit 1
+fi
+phase=live_frame_mle_load
+"$root/probes/mle/load-live-frame-module.sh" --emit-sql \
+  >"$tmp/load-live-frame-module.sql"
+if ! sql_file_timeout 14400 "$tmp/load-live-frame-module.sql" \
+    >"$tmp/live-frame-mle-load.log" 2>&1; then
+  show_failure "$tmp/live-frame-mle-load.log";exit 1
 fi
 phase=deployment_post_mle
 if ! timeout 14400 "$sql_client" -s /nolog <"$post_sql" |

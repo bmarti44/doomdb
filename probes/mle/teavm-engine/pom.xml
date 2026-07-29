@@ -112,6 +112,32 @@
       </properties>
     </profile>
     <profile>
+      <id>dvr-frame-codec</id>
+      <properties>
+        <teavm.mainClass>doomdb.mle.engine.DvrFrameCodecReachabilityProbe</teavm.mainClass>
+        <teavm.targetFile>doom-mle-dvr-frame-codec.js</teavm.targetFile>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.6.1</version>
+            <executions>
+              <execution>
+                <id>add-dvr-codec-source</id>
+                <phase>generate-sources</phase>
+                <goals><goal>add-source</goal></goals>
+                <configuration>
+                  <sources><source>src/dvr/java</source></sources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
       <id>presentation-command-capture</id>
       <properties>
         <teavm.mainClass>doomdb.mle.engine.PresentationCommandCaptureProbe</teavm.mainClass>

@@ -1,0 +1,29 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_FREE_LIVE_TEAVM_RASTER_LOAD|PASS|pack_bytes=329242
+
+PMLE_FREE_LIVE_TEAVM_RASTER_TEXTURE|PASS|bytes=2545152|sha256=4e23605106fef6735948da519ddd78ec0527a8f6b1ddacfe9dddb07c511bc001
+
+PMLE_FREE_LIVE_TEAVM_FLAT_TEXTURE|PASS|bytes=401408|sha256=bd6225c381118fd2fb75bb15cd2e5d2922eb7dc027b24abd919e3880e86247cf
+
+declare
+*
+ERROR at line 1:
+ORA-04169: SIGNATURE clause of call specification DOOM_FREE_GEN_SPRITE_ALLOCATE specifies a function name allocateSpriteTextures that is not exported by module DOOM.DOOM_FREE_GENERATED_RENDERER.
+ORA-06512: at "DOOM.DOOM_FREE_GEN_SPRITE_ALLOCATE", line 1
+ORA-06512: at line 14
+Help: https://docs.oracle.com/error-help/db/ora-04169/
+
