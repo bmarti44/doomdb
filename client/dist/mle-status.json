@@ -241,7 +241,12 @@
         0,
         0
       ],
-      "evidence": "artifacts/performance/pmle-live-frame-hud-fix/OCI-160X84-DEPLOYMENT.md",
+      "evidence": [
+        "artifacts/performance/pmle-live-frame-hud-fix/OCI-160X84-DEPLOYMENT.md",
+        "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-solo-browser-pass-2026-07-29.json",
+        "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-solo-browser-repeat-2026-07-29.json",
+        "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-db-postflight-2026-07-29.log"
+      ],
       "historicalTwoPovProducer": {
         "profile": "unified-160x56-live-frame",
         "rendererSha256": "c60a34dd81d6e184be7262f494ff3070adb1ab2fb926ecaafedc4043b22cf93c",
@@ -445,7 +450,7 @@
       "mleCallSpecs": 25,
       "evidence": "artifacts/performance/pmle-cloud/oci-exact-release-java-removal-2026-07-26.log"
     },
-    "note": "HUD-complete OCI database-pixel build is deployed; strict two-browser cadence requalification is pending after a narrow p95 miss"
+    "note": "160x84 OCI database-pixel solo performance passes; the current artifact still needs a sustained two-POV producer cell"
   },
   "remaining": [
     {
@@ -481,7 +486,7 @@
     {
       "id": "ADB",
       "state": "DONE",
-      "label": "Complete OCI database pixels deployed; sustained two-POV producer is 25.701 FPS and the 30 FPS gate remains open"
+      "label": "Current 160x84 OCI solo path clears 30 FPS; its sustained two-POV producer cell remains unmeasured"
     }
   ],
   "evidence": {
@@ -522,6 +527,9 @@
     "ociWaitFreeWanQualification": "artifacts/performance/pmle-wan/oci-wait-free-setpoint-depth6-qualification-v2-pass-2026-07-26.md",
     "ociJavaRemovalAudit": "artifacts/performance/pmle-cloud/oci-exact-release-java-removal-2026-07-26.log",
     "ociHudDatabasePixelRequalification": "artifacts/performance/pmle-live-frame-hud-fix/OCI-160X84-DEPLOYMENT.md",
+    "ociHudSoloPrimary": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-solo-browser-pass-2026-07-29.json",
+    "ociHudSoloRepeat": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-solo-browser-repeat-2026-07-29.json",
+    "ociHudSoloPostflight": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-db-postflight-2026-07-29.log",
     "ociFrameStageDecomposition": "artifacts/performance/pmle-live-frame-stage-split/oci-static-copy-observe-2026-07-29.log",
     "ociDeCpsPresentationDiagnostic": "artifacts/performance/pmle-presentation-decps/REPORT.md",
     "ociDatabaseFrameDiagnostic": "artifacts/performance/pmle-database-frames/REPORT.md",

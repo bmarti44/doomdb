@@ -55,6 +55,15 @@ const ociDatabasePixelReleaseEvidencePath =
 const ociHudDatabasePixelEvidencePath =
   'artifacts/performance/pmle-live-frame-hud-fix/' +
   'OCI-160X84-DEPLOYMENT.md';
+const ociHudSoloPrimaryEvidencePath =
+  'artifacts/performance/pmle-live-frame-hud-fix/' +
+  'oci-160x84-solo-browser-pass-2026-07-29.json';
+const ociHudSoloRepeatEvidencePath =
+  'artifacts/performance/pmle-live-frame-hud-fix/' +
+  'oci-160x84-solo-browser-repeat-2026-07-29.json';
+const ociHudSoloPostflightEvidencePath =
+  'artifacts/performance/pmle-live-frame-hud-fix/' +
+  'oci-160x84-db-postflight-2026-07-29.log';
 const ociFrameStageEvidencePath =
   'artifacts/performance/pmle-live-frame-stage-split/' +
   'oci-static-copy-observe-2026-07-29.log';
@@ -298,6 +307,15 @@ const ociDatabasePixelRelease = read(ociDatabasePixelReleaseEvidencePath);
 const ociHudDatabasePixel = hudLiveFramePromoted
   ? read(ociHudDatabasePixelEvidencePath)
   : null;
+const ociHudSoloPrimary = hudLiveFramePromoted
+  ? JSON.parse(read(ociHudSoloPrimaryEvidencePath))
+  : null;
+const ociHudSoloRepeat = hudLiveFramePromoted
+  ? JSON.parse(read(ociHudSoloRepeatEvidencePath))
+  : null;
+const ociHudSoloPostflight = hudLiveFramePromoted
+  ? read(ociHudSoloPostflightEvidencePath)
+  : null;
 const ociFrameStage = hudLiveFramePromoted
   ? read(ociFrameStageEvidencePath)
   : null;
@@ -395,6 +413,54 @@ if (hudLiveFramePromoted) {
     'frames=300|unique_frames=300|sequential_tics=true|fps=34.117|' +
     'p50_ms=28.300|p95_ms=32.400|p99_ms=33.200|max_ms=225.000',
     'OCI HUD database-pixel repeat venue tail');
+  assert.deepEqual(
+    {
+      frames: ociHudSoloPrimary.performance.frames,
+      uniqueFrames: ociHudSoloPrimary.performance.uniqueFrames,
+      sequentialTics: ociHudSoloPrimary.performance.sequentialTics,
+      fps: Number(ociHudSoloPrimary.performance.fps.toFixed(3)),
+      p95: Number(ociHudSoloPrimary.performance.p95IntervalMs.toFixed(3)),
+      drops: ociHudSoloPrimary.performance.confirmedDropCount,
+      starvations: ociHudSoloPrimary.performance.scoredPixelStarvations,
+      resyncs: ociHudSoloPrimary.performance.scoredPixelResyncs,
+      cleanup: ociHudSoloPrimary.cleanup.status,
+    },
+    {
+      frames: 300, uniqueFrames: 300, sequentialTics: true,
+      fps: 34.995, p95: 31.9, drops: 0, starvations: 0, resyncs: 0,
+      cleanup: 200,
+    },
+    'OCI solo primary raw ledger drifted',
+  );
+  assert.deepEqual(
+    {
+      frames: ociHudSoloRepeat.performance.frames,
+      uniqueFrames: ociHudSoloRepeat.performance.uniqueFrames,
+      sequentialTics: ociHudSoloRepeat.performance.sequentialTics,
+      fps: Number(ociHudSoloRepeat.performance.fps.toFixed(3)),
+      p95: Number(ociHudSoloRepeat.performance.p95IntervalMs.toFixed(3)),
+      maximum: Number(ociHudSoloRepeat.performance.maxIntervalMs.toFixed(3)),
+      starvations: ociHudSoloRepeat.performance.scoredPixelStarvations,
+      cleanup: ociHudSoloRepeat.cleanup.status,
+    },
+    {
+      frames: 300, uniqueFrames: 300, sequentialTics: true,
+      fps: 34.117, p95: 32.4, maximum: 225, starvations: 1,
+      cleanup: 200,
+    },
+    'OCI solo repeat raw ledger drifted',
+  );
+  contains(ociHudSoloPostflight,
+    `PMLE_160X84_SOURCE|authority_sha256=${hudLiveFrameAuthority.sha256}` +
+    `|renderer_sha256=${authority.liveFrameRenderer.deployedOutputSha256}` +
+    `|coordinator_sha256=${authority.liveFrameRenderer.deployedCoordinatorSha256}`,
+    'OCI solo database source postflight');
+  contains(ociHudSoloPostflight,
+    'PMLE_160X84_ACTIVE_MATCHES|0', 'OCI solo active-match postflight');
+  contains(ociHudSoloPostflight,
+    'PMLE_160X84_READY_SLOTS|2', 'OCI solo ready-slot postflight');
+  contains(ociHudSoloPostflight,
+    'PMLE_160X84_NONREADY_SLOTS|0', 'OCI solo nonready-slot postflight');
   contains(ociFrameStage,
     'PMLE_TWO_POV_PRODUCER|DIAGNOSTIC_NOT_GATE|mode=OBSERVE_ONLY|' +
     'first_tic=264|last_tic=912|elapsed_ms=25213.249|fps=25.701',
@@ -843,7 +909,12 @@ const status = {
       repeatPublicSoloMaximumIntervalMilliseconds: 225,
       repeatPublicSoloStarvations: 1,
       confirmedFrameDrops: [0, 0],
-      evidence: ociHudDatabasePixelEvidencePath,
+      evidence: [
+        ociHudDatabasePixelEvidencePath,
+        ociHudSoloPrimaryEvidencePath,
+        ociHudSoloRepeatEvidencePath,
+        ociHudSoloPostflightEvidencePath
+      ],
       historicalTwoPovProducer: {
         profile: 'unified-160x56-live-frame',
         rendererSha256:
@@ -1057,7 +1128,7 @@ const status = {
       evidence: ociJavaRemovalEvidencePath
     },
     note: hudLiveFramePromoted
-      ? 'HUD-complete OCI database-pixel build is deployed; strict two-browser cadence requalification is pending after a narrow p95 miss'
+      ? '160x84 OCI database-pixel solo performance passes; the current artifact still needs a sustained two-POV producer cell'
       : 'OCI authority, confirmed browser presentation, WAN qualification, and Java-removal audit pass'
   },
   remaining: [
@@ -1083,7 +1154,7 @@ const status = {
       label: 'HUD, automap, intermission, finale and audit/DVR presentation'},
     {id: 'ADB', state: 'DONE',
       label: hudLiveFramePromoted
-        ? 'Complete OCI database pixels deployed; sustained two-POV producer is 25.701 FPS and the 30 FPS gate remains open'
+        ? 'Current 160x84 OCI solo path clears 30 FPS; its sustained two-POV producer cell remains unmeasured'
         : 'OCI authority 35 Hz, full digest chain, hosted statics, and browser 30 FPS passed'}
   ],
   evidence: {
@@ -1118,6 +1189,12 @@ const status = {
     ociJavaRemovalAudit: ociJavaRemovalEvidencePath,
     ociHudDatabasePixelRequalification:
       hudLiveFramePromoted ? ociHudDatabasePixelEvidencePath : null,
+    ociHudSoloPrimary:
+      hudLiveFramePromoted ? ociHudSoloPrimaryEvidencePath : null,
+    ociHudSoloRepeat:
+      hudLiveFramePromoted ? ociHudSoloRepeatEvidencePath : null,
+    ociHudSoloPostflight:
+      hudLiveFramePromoted ? ociHudSoloPostflightEvidencePath : null,
     ociFrameStageDecomposition:
       hudLiveFramePromoted ? ociFrameStageEvidencePath : null,
     ociDeCpsPresentationDiagnostic: ociDeCpsPresentationEvidencePath,

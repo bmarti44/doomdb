@@ -17,8 +17,8 @@ Primary public-browser result:
 `PMLE_OCI_SOLO_160X84|PERFORMANCE_PASS|frames=300|unique_frames=300|sequential_tics=true|fps=34.995|p50_ms=28.200|p95_ms=31.900|p99_ms=32.300|max_ms=32.799|confirmed_drops=0|scored_starvations=0|scored_resyncs=0|first_tic=80|last_tic=379|cleanup_http=200`
 
 The Playwright process classified the cell as failed because two requests
-were cancelled by the intentional page-hide/leave cleanup. Those cancellations
-occurred after scoring; the performance data and database cleanup result are
+were cancelled after scoring during key-release/cleanup activity. Their exact
+cause was not retained. The performance data and database cleanup result are
 retained, but this is not called an unqualified full-harness PASS.
 
 Immediate repeat:
