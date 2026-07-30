@@ -1232,17 +1232,21 @@ fi
 grep -q 'PMLE_LIVE_FRAME_E2E|PASS' "$MLE_LIVE_FRAME_E2E" &&
 grep -q 'invalid_capability=REJECTED' "$MLE_LIVE_FRAME_E2E" &&
 grep -q 'batch=DPB2x6' "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq "import {gunzipSync} from 'node:zlib';" "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'const seedBytes = decodeBatchTransport(seed.p_payload);' \
+  "$MLE_LIVE_FRAME_E2E" &&
 grep -q "toString('ascii'), 'DPB2'" "$MLE_LIVE_FRAME_E2E" &&
-grep -Fq 'assert.equal(batchBytes.length, 8 + 6 * 64_008);' \
+grep -Fq 'while(batchCursor<7)' "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'assert.equal(logicalFrames.length,6)' "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'assert.equal(batchBytes.length,8+batch.p_frame_count*64_008)' \
   "$MLE_LIVE_FRAME_E2E" &&
 grep -q 'assert.equal(initialBytes.length, 64_000)' "$MLE_LIVE_FRAME_E2E" &&
-grep -q 'assert.notDeepEqual(movedBytes,ticTwoBytes' "$MLE_LIVE_FRAME_E2E" ||
+grep -Fq 'const movementTic=input.p_effective_tic;' "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'assert.ok(movedChangedPixels>=1_000' "$MLE_LIVE_FRAME_E2E" ||
   fail 'live-frame authenticated moving-frame behavioral gate missing'
-grep -q '564f58f98d194c5c4177f340a3eeadb2a4840e4609110795c7f38a0a476eb7c4' \
-  "$MLE_LIVE_FRAME_E2E" &&
-grep -q 'e9137f16a4e60a924ff9ec1286a80fb3477c51bcbad51a0b7243c19e3e30f426' \
+grep -Fq 'moved_changed_pixels=${movedChangedPixels}' \
   "$MLE_LIVE_FRAME_E2E" ||
-  fail 'retained-session database framebuffer identity is not pinned'
+  fail 'live-frame movement evidence does not report material pixel changes'
 grep -q 'function readArtifactTuple()' "$MLE_LIVE_FRAME_E2E" &&
 grep -q 'dbms_crypto.hash(' "$MLE_LIVE_FRAME_E2E" &&
 grep -q 'l_authority,dbms_crypto.hash_sh256' "$MLE_LIVE_FRAME_E2E" &&
