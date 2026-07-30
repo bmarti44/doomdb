@@ -1,14 +1,19 @@
 import {readFileSync, writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 
-const [inputPath, outputPath, intervalText = '2'] = process.argv.slice(2);
+const [inputPath, outputPath, intervalText = '2',
+  multiplayerIntervalText = '2'] = process.argv.slice(2);
 if (!inputPath || !outputPath) {
   throw new Error(
-    'usage: patch-coordinator-temporal-solo.mjs INPUT OUTPUT [INTERVAL]');
+    'usage: patch-coordinator-temporal-solo.mjs INPUT OUTPUT ' +
+    '[SOLO_INTERVAL] [MULTIPLAYER_INTERVAL]');
 }
 const keyframeInterval = Number.parseInt(intervalText, 10);
-if (![2, 3].includes(keyframeInterval)) {
-  throw new Error('temporal solo keyframe interval must be 2 or 3');
+const multiplayerKeyframeInterval =
+  Number.parseInt(multiplayerIntervalText, 10);
+if (![2, 3, 4].includes(keyframeInterval)
+    || ![2, 3, 4].includes(multiplayerKeyframeInterval)) {
+  throw new Error('temporal keyframe intervals must be 2, 3, or 4');
 }
 const expectedInput =
   'a987e6ac95b4f06886b0a73f5f4925cc2f60872221f9a8ca048350fa25317aa0';
@@ -40,6 +45,7 @@ let retainedTemporalExactBuffers = [undefined, undefined];
 let retainedTemporalExactBufferIndex = 0;
 let retainedTemporalSynthesis;
 const TEMPORAL_SOLO_KEYFRAME_INTERVAL = ${keyframeInterval};
+const TEMPORAL_MULTIPLAYER_KEYFRAME_INTERVAL = ${multiplayerKeyframeInterval};
 `,
   'globals');
 
@@ -53,10 +59,17 @@ function resetTemporalSoloState() {
 
 function temporalSoloIdentityMatches(
     matchId, membershipEpoch, generation, playerMask) {
-  return playerMask === 1 && retainedTemporalIdentity !== undefined
+  return retainedTemporalIdentity !== undefined
     && retainedTemporalIdentity.matchId === matchId
     && retainedTemporalIdentity.membershipEpoch === membershipEpoch
-    && retainedTemporalIdentity.generation === generation;
+    && retainedTemporalIdentity.generation === generation
+    && retainedTemporalIdentity.playerMask === playerMask;
+}
+
+function temporalKeyframeInterval(playerMask) {
+  return playerMask === 1
+    ? TEMPORAL_SOLO_KEYFRAME_INTERVAL
+    : TEMPORAL_MULTIPLAYER_KEYFRAME_INTERVAL;
 }
 
 function captureTemporalExact(payloadBytes) {
@@ -79,7 +92,9 @@ function synthesizeTemporalSoloFrame(
   const output = retainedTemporalSynthesis;
   output.set(current.subarray(0, MATCH_VIEW_HEADER_BYTES), 0);
   putU32Be(output, 4, frameTic >>> 0);
-  const samePalette = previous[9] === current[9];
+  const playerMask = current[8];
+  const samePalette = previous[9] === current[9]
+    && (playerMask !== 3 || previous[10] === current[10]);
   const sameLayout = previous[11] === current[11];
   if (!samePalette || !sameLayout) {
     // Palette flashes are rare and fidelity wins over an invalid cross-palette
@@ -88,7 +103,8 @@ function synthesizeTemporalSoloFrame(
       MATCH_VIEW_HEADER_BYTES);
     return output;
   }
-  const words = FRAME_BYTES >>> 2;
+  const words = (payloadBytes - MATCH_VIEW_HEADER_BYTES) >>> 2;
+  const totalRows = FRAME_HEIGHT * (playerMask === 3 ? 2 : 1);
   const previous32 = new Uint32Array(
     previous.buffer, previous.byteOffset + MATCH_VIEW_HEADER_BYTES, words);
   const current32 = new Uint32Array(
@@ -96,7 +112,7 @@ function synthesizeTemporalSoloFrame(
   const output32 = new Uint32Array(
     output.buffer, output.byteOffset + MATCH_VIEW_HEADER_BYTES, words);
   if (denominator === 2) {
-    for (let row = 0; row < FRAME_HEIGHT; row++) {
+    for (let row = 0; row < totalRows; row++) {
       const mask = ((row + frameTic) & 1) === 0
         ? 0x00ff00ff : 0xff00ff00;
       const inverse = ~mask;
@@ -107,40 +123,39 @@ function synthesizeTemporalSoloFrame(
           (previous32[index] & mask) | (current32[index] & inverse);
       }
     }
-  } else if (denominator === 3 && (numerator === 1 || numerator === 2)) {
-    const masks = new Int32Array(3);
-    for (let startMod = 0; startMod < 3; startMod++) {
+  } else if ((denominator === 3 || denominator === 4)
+      && numerator >= 1 && numerator < denominator) {
+    const masks = new Int32Array(denominator);
+    for (let startMod = 0; startMod < denominator; startMod++) {
       let mask = 0;
       for (let byte = 0; byte < 4; byte++) {
-        if (((startMod + byte + frameTic) % 3) < numerator) {
+        if (((startMod + byte + frameTic) % denominator) < numerator) {
           mask |= 255 << (byte * 8);
         }
       }
       masks[startMod] = mask;
     }
-    for (let row = 0; row < FRAME_HEIGHT; row++) {
+    for (let row = 0; row < totalRows; row++) {
       let index = row * (FRAME_WIDTH >>> 2);
       const end = index + (FRAME_WIDTH >>> 2);
-      let phase = (row * FRAME_WIDTH) % 3;
-      while (index + 2 < end) {
+      let phase = (row * FRAME_WIDTH) % denominator;
+      while (index + denominator - 1 < end) {
         let mask = masks[phase];
         output32[index] =
           (previous32[index] & ~mask) | (current32[index] & mask);
-        mask = masks[(phase + 1) % 3];
-        output32[index + 1] =
-          (previous32[index + 1] & ~mask)
-            | (current32[index + 1] & mask);
-        mask = masks[(phase + 2) % 3];
-        output32[index + 2] =
-          (previous32[index + 2] & ~mask)
-            | (current32[index + 2] & mask);
-        index += 3;
+        for (let word = 1; word < denominator; word++) {
+          mask = masks[(phase + word * 4) % denominator];
+          output32[index + word] =
+            (previous32[index + word] & ~mask)
+              | (current32[index + word] & mask);
+        }
+        index += denominator;
       }
       while (index < end) {
         const mask = masks[phase];
         output32[index] =
           (previous32[index] & ~mask) | (current32[index] & mask);
-        phase = (phase + 1) % 3;
+        phase = (phase + 1) % denominator;
         index++;
       }
     }
@@ -152,10 +167,11 @@ function synthesizeTemporalSoloFrame(
 }
 
 function persistTemporalMatchView(
-    payloadBytes, matchId, membershipEpoch, generation, frameTic) {
+    payloadBytes, matchId, playerMask,
+    membershipEpoch, generation, frameTic) {
   const result = oracledb.defaultConnection().execute(
     \`update doom_match_live_frame_views
-        set tic=:frameTic,player_mask=1,
+        set tic=:frameTic,player_mask=:playerMask,
             payload_bytes=:payloadBytes,payload_blob=empty_blob(),
             published_at=systimestamp
       where match_id=:matchId
@@ -165,6 +181,7 @@ function persistTemporalMatchView(
       returning payload_blob into :payload\`,
     {
       frameTic,
+      playerMask,
       payloadBytes: payloadBytes.byteLength,
       matchId,
       membershipEpoch,
@@ -211,9 +228,10 @@ replaceOnce(
   '  const changed = retainedMatchViewIdentity === undefined\n',
   `  const temporalSame = temporalSoloIdentityMatches(
     matchId, membershipEpoch, generation, playerMask);
+  const temporalInterval = temporalKeyframeInterval(playerMask);
   if (temporalSame
       && retainedTemporalDeferredTics.length
-        < TEMPORAL_SOLO_KEYFRAME_INTERVAL - 1
+        < temporalInterval - 1
       && frameTic === retainedTemporalPreviousTic
         + retainedTemporalDeferredTics.length + 1) {
     retainedTemporalDeferredTics.push(frameTic);
@@ -223,12 +241,13 @@ replaceOnce(
       membershipEpoch,
       generation,
       frameTic,
-      outputOffset: MATCH_VIEW_HEADER_BYTES + FRAME_BYTES,
+      outputOffset: MATCH_VIEW_HEADER_BYTES
+        + (playerMask === 3 ? 2 : 1) * FRAME_BYTES,
       temporalDeferred: true,
     };
-    return MATCH_VIEW_HEADER_BYTES + FRAME_BYTES;
+    return retainedPreparedMatchViews.outputOffset;
   }
-  if (playerMask !== 1 || !temporalSame) resetTemporalSoloState();
+  if (!temporalSame) resetTemporalSoloState();
   const changed = retainedMatchViewIdentity === undefined
 `,
   'defer branch');
@@ -252,14 +271,14 @@ replaceOnce(
     frameTic,
     outputOffset,
   };
-  if (playerMask === 1) {
+  if (playerMask === 1 || playerMask === 3) {
     const current = captureTemporalExact(outputOffset);
     const payloads = [];
     if (temporalSame && retainedTemporalPrevious instanceof Uint8Array
         && retainedTemporalDeferredTics.length
-          === TEMPORAL_SOLO_KEYFRAME_INTERVAL - 1
+          === temporalInterval - 1
         && retainedTemporalPreviousTic
-          === frameTic - TEMPORAL_SOLO_KEYFRAME_INTERVAL) {
+          === frameTic - temporalInterval) {
       for (let phase = 0;
           phase < retainedTemporalDeferredTics.length; phase++) {
         const deferredTic = retainedTemporalDeferredTics[phase];
@@ -268,12 +287,13 @@ replaceOnce(
         const synthesized = new Uint8Array(outputOffset);
         synthesized.set(synthesizeTemporalSoloFrame(
           retainedTemporalPrevious, current, deferredTic, outputOffset,
-          phase + 1, TEMPORAL_SOLO_KEYFRAME_INTERVAL));
+          phase + 1, temporalInterval));
         payloads.push({tic: deferredTic, payload: synthesized});
       }
     }
     payloads.push({tic: frameTic, payload: current});
-    retainedTemporalIdentity = {matchId, membershipEpoch, generation};
+    retainedTemporalIdentity = {
+      matchId, membershipEpoch, generation, playerMask};
     retainedTemporalPrevious = current;
     retainedTemporalPreviousTic = frameTic;
     retainedTemporalDeferredTics = [];
@@ -293,7 +313,8 @@ replaceOnce(
   if (Array.isArray(prepared.temporalPayloads)) {
     for (const entry of prepared.temporalPayloads) {
       persistTemporalMatchView(
-        entry.payload, matchId, membershipEpoch, generation, entry.tic);
+        entry.payload, matchId, playerMask,
+        membershipEpoch, generation, entry.tic);
     }
     retainedPreparedMatchViews = undefined;
     return outputOffset;
@@ -318,4 +339,5 @@ console.log(
   + `|output_bytes=${output.byteLength}`
   + `|output_sha256=${sha(output)}`
   + `|solo_keyframe_interval=${keyframeInterval}`
+  + `|multiplayer_keyframe_interval=${multiplayerKeyframeInterval}`
   + '|synthesis=PIXEL_PHASE_DITHER_U32');

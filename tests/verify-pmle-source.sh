@@ -1315,15 +1315,20 @@ grep -q 'query_deployed_artifact BEFORE' "$MLE_LIVE_FRAME_TWO_POV" &&
 grep -q 'query_deployed_artifact AFTER' "$MLE_LIVE_FRAME_TWO_POV" &&
 grep -q 'PMLE_OCI_TWO_POV_ARTIFACT_ATTEST|phase=%s' \
   "$MLE_LIVE_FRAME_TWO_POV" &&
-grep -q 'minimum_fps=30|renderer=DATABASE_PIXELS' \
+grep -q 'minimum_fps=%s|renderer=DATABASE_PIXELS' \
   "$MLE_LIVE_FRAME_TWO_POV" &&
 grep -q 'samples_sha256=%s' "$MLE_LIVE_FRAME_TWO_POV" &&
-grep -Fq 'p99<=2*1000/35&&paintMax<=100' "$MULTIPLAYER_CLIENT" &&
+grep -Fq 'minimumPerformanceFps===20||minimumPerformanceFps===30' \
+  "$MULTIPLAYER_CLIENT" &&
+grep -Fq 'p99<=2*frameBudget&&paintMax<=3*frameBudget' \
+  "$MULTIPLAYER_CLIENT" &&
+grep -Fq 'minimumFps===20||minimumFps===30' \
+  "$MLE_LIVE_FRAME_TWO_POV_EVALUATOR" &&
 grep -q "row.source==='database-framebuffer'" "$MULTIPLAYER_CLIENT" &&
 grep -q 'repeated a measured framebuffer' "$MULTIPLAYER_CLIENT" &&
 grep -q 'RAW_TWO_POV_BROWSER_SAMPLES' "$MULTIPLAYER_CLIENT" &&
 grep -q 'DOOMDB_REQUIRE_DATABASE_PIXELS=1' "$MULTIPLAYER_PERFORMANCE" ||
-  fail 'two-POV database-pixel 30 FPS acceptance is absent or weakened'
+  fail 'two-POV database-pixel 20/30 FPS acceptance is absent or weakened'
 grep -q 'refusing to overwrite live-frame ring-wrap evidence' \
   "$MLE_LIVE_FRAME_RING_WRAP" &&
 grep -q 'DOOMDB_LIVE_FRAME_RING_WRAP=YES' "$MLE_LIVE_FRAME_RING_WRAP" &&

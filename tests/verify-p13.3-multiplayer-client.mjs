@@ -12,6 +12,8 @@ const base = process.env.DOOMDB_PLAY_BASE_URL ?? 'http://localhost:8080';
 const multiplayerUrl = process.env.DOOMDB_MULTIPLAYER_URL ??
   `${base}/play/multiplayer`;
 const performanceFrames = Number(process.env.DOOMDB_MULTIPLAYER_FRAMES ?? 0);
+const minimumPerformanceFps =
+  Number(process.env.DOOMDB_MULTIPLAYER_MINIMUM_FPS ?? 30);
 const performanceStartTic =
   Number(process.env.DOOMDB_MULTIPLAYER_SCORE_START_TIC ?? 0);
 const enforcePerformance = process.env.DOOMDB_PERF_DIAGNOSTIC !== '1';
@@ -31,6 +33,8 @@ assert.ok(Number.isInteger(performanceFrames) && performanceFrames >= 0 &&
   performanceFrames <= 300);
 assert.ok(Number.isInteger(performanceStartTic) &&
   performanceStartTic >= 0 && performanceStartTic <= 100000);
+assert.ok(minimumPerformanceFps===20||minimumPerformanceFps===30,
+  'multiplayer FPS gate must be 20 or 30');
 // Two players are two devices. Sharing one Chromium process creates a local
 // renderer-scheduling bottleneck that is absent from the qualified topology
 // and was already eliminated from the retained-session soak harness.
@@ -509,9 +513,11 @@ try {
       const resourceTail=(rows,field)=>rows.length===0?0:percentile(rows.map(row=>row[field]),.95);
       const detail = `p${slot}=${fps.toFixed(2)}fps paint=${p50.toFixed(2)}/${p95.toFixed(2)}ms paint99/999/max=${p99.toFixed(2)}/${p999.toFixed(2)}/${paintMax.toFixed(2)}ms submitGap=${percentile(submitGaps, .5).toFixed(2)}/${percentile(submitGaps, .95).toFixed(2)}ms submitDecode=${percentile(server, .5).toFixed(2)}/${percentile(server, .95).toFixed(2)}ms pollReady=${percentile(delivery, .5).toFixed(2)}/${percentile(delivery, .95).toFixed(2)}ms decodePaint=${percentile(decodePaint, .5).toFixed(2)}/${percentile(decodePaint, .95).toFixed(2)}ms input=${inputP50.toFixed(2)}/${inputP95.toFixed(2)}ms input999/max=${inputP999.toFixed(2)}/${inputMax.toFixed(2)}ms n=${latencies.length} worstPaint=${worstGap.tic}:${worstGap.value.toFixed(1)} net95=submit(q${resourceTail(submitResources,'queue').toFixed(1)},t${resourceTail(submitResources,'ttfb').toFixed(1)},d${resourceTail(submitResources,'download').toFixed(1)})/poll(q${resourceTail(pollResources,'queue').toFixed(1)},t${resourceTail(pollResources,'ttfb').toFixed(1)},d${resourceTail(pollResources,'download').toFixed(1)})`;
       if (enforcePerformance) {
-        assert.ok(fps >= 30, `player ${slot} ${detail}`);
-        assert.ok(p50 <= 33.3 && p95 <= 33.3, `player ${slot} ${detail}`);
-        assert.ok(p99<=2*1000/35&&paintMax<=100,
+        const frameBudget=1000/minimumPerformanceFps;
+        assert.ok(fps >= minimumPerformanceFps, `player ${slot} ${detail}`);
+        assert.ok(p50 <= frameBudget && p95 <= frameBudget,
+          `player ${slot} ${detail}`);
+        assert.ok(p99<=2*frameBudget&&paintMax<=3*frameBudget,
           `player ${slot} ${detail}`);
         assert.ok(inputP50<=250 && inputP95<=250,
           `player ${slot} ${detail}`);

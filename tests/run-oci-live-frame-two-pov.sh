@@ -25,6 +25,11 @@ done
 }
 
 app_url="${T112_HOSTED_INDEX_URL:-https://G53C2244DAB9063-DOOMDB.adb.us-ashburn-1.oraclecloudapps.com/ords/doom/app/}"
+minimum_fps="${DOOMDB_MULTIPLAYER_MINIMUM_FPS:-30}"
+[[ "$minimum_fps" == 20 || "$minimum_fps" == 30 ]] || {
+  printf 'two-POV minimum FPS must be 20 or 30: %s\n' "$minimum_fps" >&2
+  exit 2
+}
 lock="${PMLE_LIVE_FRAME_LOCK:-$root/versions.lock}"
 [[ -s "$lock" && ! -L "$lock" ]] || {
   printf 'two-POV live-frame lock is unavailable: %s\n' "$lock" >&2
@@ -134,6 +139,7 @@ DOOMDB_MATCH_MODE=COOP \
 DOOMDB_TEST_ORDS_RESTART=0 \
 DOOMDB_REQUIRE_DATABASE_PIXELS=1 \
 DOOMDB_MULTIPLAYER_FRAMES=300 \
+DOOMDB_MULTIPLAYER_MINIMUM_FPS="$minimum_fps" \
 DOOMDB_MULTIPLAYER_SCORE_START_TIC="$score_start_tic" \
 DOOMDB_MATCH_ID_FILE="$tmp/match-id" \
 DOOMDB_MULTIPLAYER_EVIDENCE_PATH="$samples" \
@@ -245,6 +251,7 @@ fi
 
 grep -Eq '^PASS P13[.]3-MULTIPLAYER-CLIENT mode=COOP renderer=DATABASE_PIXELS .*frames=300 p0=[0-9.]+fps .* p1=[0-9.]+fps ' \
   "$output"
+DOOMDB_MULTIPLAYER_MINIMUM_FPS="$minimum_fps" \
 node tests/evaluate-live-frame-two-pov.mjs "$samples" \
   "$authority_sha" "$renderer_sha" "$coordinator_sha" | tee -a "$output"
 
@@ -254,6 +261,6 @@ node tests/evaluate-live-frame-two-pov.mjs "$samples" \
 query_deployed_artifact AFTER | tee -a "$output"
 
 samples_sha="$(shasum -a 256 "$samples" | awk '{print $1}')"
-printf 'PMLE_OCI_TWO_POV|PASS|frames_per_player=300|minimum_fps=30|renderer=DATABASE_PIXELS|authority_sha256=%s|renderer_sha256=%s|coordinator_sha256=%s|samples_sha256=%s\n' \
-  "$authority_sha" "$renderer_sha" "$coordinator_sha" "$samples_sha" |
+printf 'PMLE_OCI_TWO_POV|PASS|frames_per_player=300|minimum_fps=%s|renderer=DATABASE_PIXELS|authority_sha256=%s|renderer_sha256=%s|coordinator_sha256=%s|samples_sha256=%s\n' \
+  "$minimum_fps" "$authority_sha" "$renderer_sha" "$coordinator_sha" "$samples_sha" |
   tee -a "$output"

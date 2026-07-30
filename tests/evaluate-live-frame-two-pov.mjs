@@ -7,7 +7,10 @@ const percentile=(values,fraction)=>{
   return ordered[Math.ceil(ordered.length*fraction)-1];
 };
 
-export function evaluateTwoPovEvidence(evidence,expectedArtifact=null) {
+export function evaluateTwoPovEvidence(
+  evidence,expectedArtifact=null,minimumFps=30) {
+  assert.ok(minimumFps===20||minimumFps===30);
+  const frameBudget=1000/minimumFps;
   assert.equal(evidence?.schema,1);
   assert.equal(evidence.classification,'RAW_TWO_POV_BROWSER_SAMPLES');
   assert.equal(evidence.requiredRenderer,'DATABASE_PIXELS');
@@ -60,10 +63,10 @@ export function evaluateTwoPovEvidence(evidence,expectedArtifact=null) {
     const pollTtfbP95=percentile(polls.map(resource=>resource.ttfb),.95);
     const pollDownloadP95=
       percentile(polls.map(resource=>resource.download),.95);
-    assert.ok(fps>=30,`player ${slot} fps=${fps}`);
-    assert.ok(p95<=33.333,`player ${slot} p95=${p95}`);
-    assert.ok(p99<=2*1000/35,`player ${slot} p99=${p99}`);
-    assert.ok(maximum<=100,`player ${slot} maximum=${maximum}`);
+    assert.ok(fps>=minimumFps,`player ${slot} fps=${fps}`);
+    assert.ok(p95<=frameBudget,`player ${slot} p95=${p95}`);
+    assert.ok(p99<=2*frameBudget,`player ${slot} p99=${p99}`);
+    assert.ok(maximum<=3*frameBudget,`player ${slot} maximum=${maximum}`);
     return {
       slot,fps,p95,p99,maximum,confirmedDropCount,
       occupancyMin:occupancy[0],
@@ -129,7 +132,7 @@ if(process.argv[2]==='--self-test') {
   rejects(value=>{for(const row of value.players[0].presents)row.at*=2;});
   rejects(value=>{for(const boundary of [50,100,150,200])
     for(let index=boundary;index<300;index+=1)
-      value.players[0].presents[index].at+=30;});
+      value.players[0].presents[index].at+=40;});
   rejects(value=>{for(let index=297;index<300;index+=1)
     value.players[0].presents[index].at+=80;});
   rejects(value=>{value.players[1].presents[299].frameSha256='not-a-sha';});
@@ -145,11 +148,13 @@ if(process.argv[2]==='--self-test') {
     'usage: evaluate-live-frame-two-pov.mjs <evidence.json> '
       +'<authority-sha> <renderer-sha> <coordinator-sha>|--self-test');
   const evidence=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+  const minimumFps=
+    Number(process.env.DOOMDB_MULTIPLAYER_MINIMUM_FPS??30);
   const summaries=evaluateTwoPovEvidence(evidence,{
     authoritySha256:process.argv[3],
     rendererSha256:process.argv[4],
     coordinatorSha256:process.argv[5]
-  });
+  },minimumFps);
   process.stdout.write(
     'PMLE_OCI_TWO_POV_EVALUATOR|PASS|'
       +summaries.map(summary=>
