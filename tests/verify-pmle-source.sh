@@ -145,6 +145,7 @@ MLE_RENDERER_ASSET_PACK_BUILDER=$ROOT/probes/mle/build-renderer-asset-packs.mjs
 MLE_LIVE_WORLD_BUILDER=$ROOT/probes/mle/free-live-teavm/build-world-raster-source.mjs
 MLE_LIVE_UNIFIED_MODULE=$ROOT/probes/mle/free-live-teavm/src/main/java/doomdb/mle/renderer/FreeLiveUnifiedRendererModule.java
 MLE_LIVE_FRAME_E2E=$ROOT/tests/verify-mle-live-frame-e2e.mjs
+ADB_ADMIN_SQL=$ROOT/scripts/adb-admin-sql.sh
 MLE_LIVE_FRAME_E2E_RUNNER=$ROOT/tests/run-mle-live-frame-e2e.sh
 MLE_LIVE_FRAME_CROSS_SLOT=$ROOT/tests/run-mle-live-frame-cross-slot.sh
 MLE_LIVE_FRAME_RECOVERY=$ROOT/tests/run-mle-live-frame-recovery.sh
@@ -1090,7 +1091,7 @@ grep -q 'interval=inputCatchup?20:nativePixelInterval/2' \
 grep -q 'interval=31' "$ROOT/client/src/multiplayer.ts" &&
 ! grep -q 'decelerationPhase\|interval=.*53' \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'const hedgeDelayMs=120' "$ROOT/client/src/api.ts" &&
+grep -q 'const hedgeDelayMs=750' "$ROOT/client/src/api.ts" &&
 grep -Fq "Promise.any([primaryRequest,hedgeRequest])" \
   "$ROOT/client/src/api.ts" &&
 grep -Fq 'primary.abort();hedge.abort()' "$ROOT/client/src/api.ts" &&
@@ -1154,6 +1155,10 @@ grep -q 'wan.playoutBufferTics+wan.expectedConfirmedBatchTics' \
 grep -q 'confirmedBatchPlayoutDecision(' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q "trace('pixel-starvation'" "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq "playoutStarted=true;" "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq "playoutMode='DECELERATE';" "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq "firstTic:batch[0]!.tic,lastTic:batch.at(-1)!.tic" \
+  "$ROOT/client/src/multiplayer.ts" &&
 grep -q "reason:'visibility',hiddenMilliseconds" \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'const requestEpoch=pixelPollEpoch' \
@@ -1230,6 +1235,9 @@ if grep -q 'await startMleGame(local, latestStatus)' \
   fail 'production admission still selects browser-side rasterization'
 fi
 grep -q 'PMLE_LIVE_FRAME_E2E|PASS' "$MLE_LIVE_FRAME_E2E" &&
+[[ -x "$ADB_ADMIN_SQL" ]] && bash -n "$ADB_ADMIN_SQL" &&
+grep -Fq 'DOOMDB_DB_ADMIN_SQL_CLIENT' "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'ADB_ADMIN_PASSWORD' "$ADB_ADMIN_SQL" &&
 grep -q 'invalid_capability=REJECTED' "$MLE_LIVE_FRAME_E2E" &&
 grep -q 'batch=DPB2x6' "$MLE_LIVE_FRAME_E2E" &&
 grep -Fq "import {gunzipSync} from 'node:zlib';" "$MLE_LIVE_FRAME_E2E" &&
@@ -1403,6 +1411,9 @@ grep -q "standby_status='READY' and checkpoint_status='IDLE'" \
 grep -q "checkpoint_status in('QUEUED','PROCESSING')" "$MLE_MATCH_WORKER" &&
 grep -q 'procedure build_standby_checkpoint' "$MLE_MATCH_WORKER" &&
 grep -q 'standby checkpoint replay mismatch tic=' "$MLE_MATCH_WORKER" &&
+grep -Fq "and s.checkpoint_status<>'FAILED'" "$MLE_MATCH_WORKER" &&
+grep -Fq 'Continuing to advertise that' "$MLE_MATCH_WORKER" &&
+grep -Fq 'context. Escape to RUN_WARM_SLOT' "$MLE_MATCH_WORKER" &&
 grep -q 'c_standby_checkpoint_replay_batch constant pls_integer:=1' \
   "$MLE_MATCH_WORKER" &&
 grep -q 'dbms_session.sleep(c_standby_checkpoint_replay_yield)' \

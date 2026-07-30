@@ -51,11 +51,11 @@
       "profile": "presentation-engine-headless"
     },
     "liveFrameRenderer": {
-      "bytes": 48242,
-      "sha256": "50835b7130486e5e705bec501c785a43e8158ce5e77202afe2ad9ff4f4133d17",
-      "profile": "unified-160x84-live-frame",
-      "coordinatorBytes": 48960,
-      "coordinatorSha256": "b8d2250f998f7fc5a1a7e4209dff0508abf02fec1672ba41e42de1dda73a5145"
+      "bytes": 1706614,
+      "sha256": "51aadc21bcb619928cee3e73217c8150cebf19aa3186dfd273ea3535d88e2edb",
+      "profile": "exact-320x200-temporal-solo-interval3",
+      "coordinatorBytes": 61397,
+      "coordinatorSha256": "d3d0571ac93f594f340b61b51545c97be73046535b1204c87769e9d2b15f4b84"
     },
     "inputBytecodeSha256": "289edf1d678f9aced34c969ed24dcc9c90b9dce38f1b15701b284a2e5384df7e",
     "mochaBytecodeSha256": "c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4",
@@ -69,7 +69,7 @@
     "coopEveryTic762": "HISTORICAL_PASS_C613",
     "membershipRecovery": "HISTORICAL_PASS_C613",
     "ledgerEveryTic13272": "HISTORICAL_PASS_C613_NODE_5250_PARITY_CURRENT",
-    "databasePixelTwoPov300": "SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_AVERAGE_P95_OPEN",
+    "databasePixelTwoPov300": "CURRENT_EXACT_SOLO_30FPS_PASS_TWO_POV_20FPS_OPEN",
     "databasePixelCheckpointCrossing": "HISTORICAL_PASS_C613",
     "abandonedSessionCleanup": "PASS",
     "warmRestoreDirectMleAb": "PASS",
@@ -189,7 +189,7 @@
     "note": "cold work is paid at deployment; 100.314 seconds is the no-pool authority baseline"
   },
   "performance": {
-    "state": "DATABASE_RENDERER_DEPLOYED_SOLO_160X84_34_995FPS",
+    "state": "DATABASE_EXACT_RENDERER_DEPLOYED_SOLO_320X200_34_234FPS",
     "evidenceArtifactSha256": "66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873",
     "authorityTickerEvidenceArtifactSha256": "5ec18cbe4cff7192d384e81d1010e0133d357d44ff17fa65821e1489c4fd1ee3",
     "databasePixelRelease": {
@@ -225,44 +225,45 @@
     },
     "currentHudDeployment": {
       "authoritySha256": "66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873",
-      "rendererSha256": "50835b7130486e5e705bec501c785a43e8158ce5e77202afe2ad9ff4f4133d17",
-      "coordinatorSha256": "b8d2250f998f7fc5a1a7e4209dff0508abf02fec1672ba41e42de1dda73a5145",
-      "status": "SOLO_160X84_PERFORMANCE_PASS_TWO_POV_30FPS_AVERAGE_P95_OPEN",
-      "productionShapeServerFps": 72.562,
-      "productionShapeServerP50Milliseconds": 13.145,
-      "productionShapeServerP95Milliseconds": 18.598,
-      "latestPublicSoloFps": 34.691,
-      "latestPublicSoloCadenceP95Milliseconds": 32.1,
-      "repeatPublicSoloFps": 34.752,
-      "repeatPublicSoloCadenceP95Milliseconds": 32.1,
-      "repeatPublicSoloMaximumIntervalMilliseconds": 63.4,
-      "repeatPublicSoloStarvations": 1,
+      "rendererSha256": "51aadc21bcb619928cee3e73217c8150cebf19aa3186dfd273ea3535d88e2edb",
+      "coordinatorSha256": "d3d0571ac93f594f340b61b51545c97be73046535b1204c87769e9d2b15f4b84",
+      "status": "EXACT_320X200_TEMPORAL_SOLO_30FPS_PASS_TWO_POV_20FPS_OPEN",
+      "productionShapeServerFps": 34.234,
+      "productionShapeServerP50Milliseconds": 28.2,
+      "productionShapeServerP95Milliseconds": 32.6,
+      "latestPublicSoloFps": 34.234,
+      "latestPublicSoloCadenceP95Milliseconds": 32.6,
+      "repeatPublicSoloFps": 33.277,
+      "repeatPublicSoloCadenceP95Milliseconds": 32.6,
+      "repeatPublicSoloMaximumIntervalMilliseconds": 99.5,
+      "repeatPublicSoloStarvations": 6,
       "confirmedFrameDrops": [
         0,
         0
       ],
       "currentTwoPovDiagnostic": {
-        "status": "AVERAGE_30FPS_PASS_P95_OPEN",
+        "status": "EXACT_EVERY_TIC_20FPS_OPEN_TEMPORAL_INTERVAL2_CANDIDATE",
         "fps": [
-          30.599,
-          30.536
+          11.11,
+          null
         ],
         "cadenceP95Milliseconds": [
-          47.7,
-          51.2
+          137.8,
+          null
         ],
         "uniqueFrames": [
-          300,
-          300
+          26,
+          null
         ],
         "confirmedFrameDrops": [
           0,
           0
         ],
-        "coordinatorSha256": "b8d2250f998f7fc5a1a7e4209dff0508abf02fec1672ba41e42de1dda73a5145",
+        "coordinatorSha256": "d3d0571ac93f594f340b61b51545c97be73046535b1204c87769e9d2b15f4b84",
         "evidence": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-two-pov-phase-stagger-2026-07-29.json"
       },
       "evidence": [
+        "artifacts/performance/pmle-exact-live/user-stall-fixed-public-final-2026-07-30.log",
         "artifacts/performance/pmle-live-frame-hud-fix/OCI-160X84-DEPLOYMENT.md",
         "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-solo-browser-repeat-2026-07-29.json",
         "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-solo-browser-2026-07-29.json",
@@ -471,7 +472,7 @@
       "mleCallSpecs": 25,
       "evidence": "artifacts/performance/pmle-cloud/oci-exact-release-java-removal-2026-07-26.log"
     },
-    "note": "160x84 OCI solo passes; current two-POV path clears 30 FPS average while its strict p95 cadence gate remains open"
+    "note": "Exact 320x200 OCI solo database frames pass 30 FPS with material held-input motion; exact two-POV performance remains open"
   },
   "remaining": [
     {
@@ -507,7 +508,7 @@
     {
       "id": "ADB",
       "state": "DONE",
-      "label": "Current 160x84 OCI solo passes; two-POV average clears 30 FPS and p95 remains open"
+      "label": "Current exact 320x200 OCI solo passes 30 FPS; multiplayer temporal interval-2 qualification remains open"
     }
   ],
   "evidence": {
@@ -552,6 +553,7 @@
     "ociHudSoloRepeat": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-solo-browser-2026-07-29.json",
     "ociHudSoloPostflight": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-db-postflight-2026-07-29.log",
     "ociFrameStageDecomposition": "artifacts/performance/pmle-live-frame-stage-split/oci-static-copy-observe-2026-07-29.log",
+    "currentExactPublic": "artifacts/performance/pmle-exact-live/user-stall-fixed-public-final-2026-07-30.log",
     "ociDeCpsPresentationDiagnostic": "artifacts/performance/pmle-presentation-decps/REPORT.md",
     "ociDatabaseFrameDiagnostic": "artifacts/performance/pmle-database-frames/REPORT.md",
     "ociWasm2jsPresentationCost": "artifacts/performance/pmle-database-frames/wasm2js-presentation-cost-verdict-2026-07-26.md",

@@ -45,6 +45,15 @@ function dbSql(sql) {
   });
 }
 function dbSysSql(sql) {
+  const cloudAdminSql=process.env.DOOMDB_DB_ADMIN_SQL_CLIENT;
+  if(cloudAdminSql!==undefined&&cloudAdminSql!=='') {
+    const result=spawnSync(cloudAdminSql,['-'],{
+      input:sql,encoding:'utf8',stdio:['pipe','pipe','pipe']
+    });
+    assert.equal(result.status,0,
+      `cloud admin database diagnostic failed: ${result.stdout}${result.stderr}`);
+    return result.stdout;
+  }
   const service=process.env.DOOMDB_DB_COMPOSE_SERVICE??'db';
   const result=spawnSync('docker',[
     'compose','-f',`${repository}compose.yaml`,
@@ -172,7 +181,11 @@ begin
       where assigned_match='${match}';
     select count(*) into l_active_assignments from doom_mle_warm_assignment
       where match_id='${match}' and assignment_status in('PENDING','ACCEPTED');
-    exit when l_assigned=0 and l_active_assignments=0;
+    select count(*) into l_ready from doom_mle_warm_slot s
+      where s.slot_status='READY' and s.assigned_match is null
+        and exists(select 1 from user_scheduler_running_jobs r
+          where r.job_name=s.job_name and r.session_id=s.worker_sid);
+    exit when l_assigned=0 and l_active_assignments=0 and l_ready>=1;
     if systimestamp>=l_deadline then
       raise_application_error(-20000,'retained lifecycle cleanup timeout');
     end if;
@@ -182,13 +195,6 @@ begin
     end if;
     dbms_session.sleep(.1);
   end loop;
-  select count(*) into l_ready from doom_mle_warm_slot s
-    where s.slot_status='READY' and s.assigned_match is null
-      and exists(select 1 from user_scheduler_running_jobs r
-        where r.job_name=s.job_name and r.session_id=s.worker_sid);
-  if l_ready<1 then
-    raise_application_error(-20000,'no reusable authority capacity');
-  end if;
   dbms_output.put_line('PMLE_LIFECYCLE_CLEANUP|PASS|assigned='||l_assigned||
     '|active_assignments='||l_active_assignments||'|ready='||l_ready);
 end;
@@ -213,6 +219,36 @@ from doom_mle_warm_slot where assigned_match='${match}'
     assert.equal(slot,expectedSlot,'match used the wrong retained slot');
   }
   return slot;
+}
+
+async function recoveryFailureAudit(match) {
+  return dbSql(`
+set heading off feedback off pagesize 0 linesize 32767 trimspool on
+select 'PMLE_PIXEL_RECOVERY_DIAGNOSTIC|match_state='||m.match_state
+  ||'|match_generation='||m.generation||'|current_tic='||m.current_tic
+  ||'|control_generation='||c.generation
+  ||'|worker_status='||c.worker_status
+  ||'|request_status='||c.request_status
+  ||'|job='||c.job_name
+  ||'|last_error='||replace(replace(coalesce(c.last_error,'NONE'),'|','/'),
+      chr(10),' ')
+  from doom_match m join doom_match_worker_control c on c.match_id=m.match_id
+ where m.match_id='${match}';
+select 'PMLE_PIXEL_RECOVERY_PROBE|generation='||generation
+  ||'|session_found='||session_found
+  ||'|action='||coalesce(observed_action,'NONE')
+  ||'|heartbeat_age_ms='||coalesce(to_char(heartbeat_age_ms),'NULL')
+  ||'|decision='||decision
+  from doom_match_liveness_probe
+ where match_id='${match}'
+ order by probe_id;
+select 'PMLE_PIXEL_RECOVERY_SLOT|slot='||slot_id
+  ||'|status='||slot_status
+  ||'|role='||coalesce(assigned_role,'NONE')
+  ||'|job='||job_name
+  from doom_mle_warm_slot
+ order by slot_id;
+`);
 }
 
 async function readArtifactTuple() {
@@ -548,6 +584,9 @@ select 'PMLE_PIXEL_RECOVERY_KILL|PASS|generation=${active.p_generation}'
       }
       await new Promise(resolve=>setTimeout(resolve,100));
     }
+    if(recovered===null) {
+      process.stderr.write(await recoveryFailureAudit(created.p_match));
+    }
     assert.ok(recovered,'pixel polling did not recover the retained authority');
     assert.equal(recovered.p_generation,active.p_generation+1);
     assert.ok(recovered.p_frame_count>=1&&recovered.p_frame_count<=8);
@@ -555,6 +594,11 @@ select 'PMLE_PIXEL_RECOVERY_KILL|PASS|generation=${active.p_generation}'
     assert.equal(recoveredBytes.subarray(0,4).toString('ascii'),'DPB2');
     assert.equal(recoveredBytes.readUInt32BE(4),recovered.p_frame_count);
     pixelRecoveryResult=`GENERATION_${recovered.p_generation}`;
+    process.stdout.write(
+      `PMLE_PIXEL_RECOVERY|PASS|from_generation=${active.p_generation}`
+        + `|to_generation=${recovered.p_generation}`
+        + `|first_tic=${recovered.p_first_tic}`
+        + `|last_tic=${recovered.p_last_tic}\n`);
   }
 
   const result = await post('LEAVE_MATCH', {

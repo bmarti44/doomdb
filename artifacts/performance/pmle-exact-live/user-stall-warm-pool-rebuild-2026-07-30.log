@@ -1,0 +1,26 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PUBLIC_WARM_POOL_REBUILD|PASS
+
+
+PL/SQL procedure successfully completed.
+
+
+   [1mSLOT_ID[m [1mSLOT_STATUS[m    [1mASSIGNED_MATCH[m       [1mWORKER_SID[m    [1mWORKER_SERIAL[m 
+__________ ______________ _________________ _____________ ________________ 
+         1 READY                                    36618            64251 
+         2 READY                                    21852            12507 
+

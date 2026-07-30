@@ -1586,6 +1586,12 @@ create or replace package body doom_match_worker as
               heartbeat=(localtimestamp at time zone 'UTC')
               where match_id=p_match and base_generation=l_generation;
             commit;
+            -- restore_checkpoint_warm releases and clears a retained context
+            -- after any restore/replay failure. Continuing to advertise that
+            -- session as a READY standby lets recovery promote a poisoned
+            -- context. Escape to RUN_WARM_SLOT so it rebuilds the default
+            -- origin before publishing a genuinely READY slot.
+            raise;
           end;
         end;
         dbms_application_info.set_action('MLE_STANDBY_PASSIVE');
@@ -2067,6 +2073,7 @@ create or replace package body doom_match_worker as
       select s.job_name into l_standby_job from doom_match_standby_control s
         where s.match_id=p_match and s.base_generation=l_generation
           and s.standby_status='READY' and s.stop_requested=0
+          and s.checkpoint_status<>'FAILED'
           and exists(select 1 from doom_match_checkpoint cp
             where cp.match_id=p_match and cp.tic<=
               (select current_tic from doom_match where match_id=p_match))

@@ -588,11 +588,13 @@ export async function exchangeMatchPixelBatch(
   }
   // Managed ORDS occasionally strands one otherwise read-only request for
   // seconds while the peer browser continues normally. Keep the ordinary
-  // path at one request, but issue one idempotent tail hedge after 120 ms.
-  // The first valid response wins and both fetches are then aborted. This
-  // protects the finite confirmed-frame ring without doubling steady-state
-  // request pressure on the Always Free execution lane.
-  const hedgeDelayMs=120;
+  // path at one request, but issue one idempotent tail hedge only after
+  // 750 ms. A 120-ms threshold fired on healthy 100-200 ms WAN traffic,
+  // duplicated most pixel reads against Free's single runnable API lane, and
+  // caused multi-second canvas stalls. The first valid response still wins
+  // and both fetches are then aborted, but ordinary WAN latency now remains
+  // single-flight.
+  const hedgeDelayMs=750;
   const primary=new AbortController();
   const hedge=new AbortController();
   const timeout=window.setTimeout(()=>{

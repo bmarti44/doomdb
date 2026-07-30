@@ -809,6 +809,14 @@ async function startDatabaseFrameGame(
             transportEstablished=true;
             presentedTic=batch[0]!.tic-1;
             transportTic=batch[0]!.tic-1;
+            // The missing interval is already outside the finite authoritative
+            // ring. Waiting for depth+batch before painting the new suffix can
+            // repeatedly lose the frontier on a bandwidth-limited client and
+            // turn one overrun into a multi-second frozen canvas. Present the
+            // first available confirmed frame immediately, then let the
+            // occupancy controller rebuild reserve without prediction.
+            playoutStarted=true;
+            playoutMode='DECELERATE';
           }
           for(const frame of batch) {
             if(frame.tic>presentedTic)frames.set(frame.tic,frame);
@@ -844,6 +852,7 @@ async function startDatabaseFrameGame(
             frameCount:batch.length,selectedDepth:wan.playoutBufferTics,
             preClampDepth:wan.preClampPlayoutBufferTics,
             expectedBatchTics:wan.expectedConfirmedBatchTics,
+            firstTic:batch[0]!.tic,lastTic:batch.at(-1)!.tic,
             bufferedFrames:frames.size,source:'database-framebuffer'});
           pump();
           lastFrameBatchAt=finished;

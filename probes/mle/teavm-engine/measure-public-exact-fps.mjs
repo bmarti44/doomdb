@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdirSync} from 'node:fs';
+import {mkdirSync,writeFileSync} from 'node:fs';
 import {chromium} from '@playwright/test';
 
 const url = process.argv[2];
@@ -7,6 +7,7 @@ const seconds = Number(process.argv[3] ?? '30');
 const holdSeconds = Number(process.argv[4] ?? '0');
 const fireDuringRoute = process.env.DOOMDB_PUBLIC_FIRE !== 'NO';
 const turnDuringRoute = process.env.DOOMDB_PUBLIC_TURN === 'YES';
+const injectedRttMs = Number(process.env.DOOMDB_PUBLIC_NETWORK_RTT_MS ?? '0');
 const captureDir = process.env.DOOMDB_PUBLIC_CAPTURE_DIR;
 if(captureDir!==undefined)mkdirSync(captureDir,{recursive:true});
 if (!url || !Number.isFinite(seconds) || seconds < 10 || seconds > 300) {
@@ -17,8 +18,23 @@ if (!url || !Number.isFinite(seconds) || seconds < 10 || seconds > 300) {
 if (!Number.isFinite(holdSeconds) || holdSeconds < 0 || holdSeconds > 300) {
   throw new Error('invalid post-measurement hold');
 }
+if (!Number.isFinite(injectedRttMs) || injectedRttMs < 0 ||
+    injectedRttMs > 2_000) {
+  throw new Error('invalid injected public-network RTT');
+}
 const browser = await chromium.launch();
 const page = await browser.newPage({viewport: {width: 1280, height: 840}});
+if (injectedRttMs > 0) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Network.enable');
+  await cdp.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency: injectedRttMs / 2,
+    downloadThroughput: 10 * 1024 * 1024 / 8,
+    uploadThroughput: 2 * 1024 * 1024 / 8,
+    connectionType: 'cellular4g',
+  });
+}
 const errors = [];
 const apiFailures = [];
 const exchangeRequests = new Map();
@@ -55,7 +71,7 @@ page.on('requestfailed', request => {
 await page.addInitScript(() => {
   window.__doomPresented = [];
   window.__doomPixelTrace = {
-    present: [], batch: [], starvation: [], input: [], effective: []
+    present: [], batch: [], starvation: [], resync: [], input: [], effective: []
   };
   window.__doomPreviousIndices = null;
   const fingerprint = bytes => {
@@ -97,6 +113,9 @@ await page.addInitScript(() => {
   });
   window.addEventListener('doom:multiplayer-pixel-starvation', event => {
     window.__doomPixelTrace.starvation.push(event.detail);
+  });
+  window.addEventListener('doom:multiplayer-pixel-resync', event => {
+    window.__doomPixelTrace.resync.push(event.detail);
   });
   window.addEventListener('doom:multiplayer-input', event => {
     window.__doomPixelTrace.input.push(event.detail);
@@ -209,11 +228,17 @@ const result = await page.evaluate(start => {
     hud: document.body.textContent,
   };
 }, startIndex);
+if(captureDir!==undefined) {
+  writeFileSync(`${captureDir}/trace.json`,`${JSON.stringify({
+    injectedRttMs,result,exchangeResults,apiFailures,errors
+  })}\n`);
+}
 if (errors.length !== 0) {
   throw new Error(`public exact-frame browser errors: ${errors.join(' | ')}`);
 }
 console.log(
   `PMLE_PUBLIC_EXACT_FPS|PASS|seconds=${seconds}|frames=${result.frames}`
+    + `|injected_rtt_ms=${injectedRttMs}`
     + `|elapsed_ms=${result.elapsed.toFixed(3)}`
     + `|fps=${result.fps.toFixed(3)}`
     + `|gap_p50_ms=${result.p50.toFixed(3)}`
