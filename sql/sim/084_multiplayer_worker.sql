@@ -1786,6 +1786,8 @@ create or replace package body doom_match_worker as
     l_spid varchar2(24);l_job_run varchar2(64);
     l_warm_checkpoint blob;l_warm_checkpoint_sha varchar2(64);
     l_warm_checkpoint_bytes number;
+    l_populated_checkpoint blob;l_populated_checkpoint_sha varchar2(64);
+    l_populated_checkpoint_bytes number;
     l_ticker_prewarm_state varchar2(64);
   begin
     if p_slot not in(1,2) or
@@ -1836,6 +1838,17 @@ create or replace package body doom_match_worker as
           2,3,l_preload_tic,hextoraw(rpad('00',64,'0')),
           l_ticker_prewarm_state);
       end loop;
+      -- The first populated-state serialization has a separate, much larger
+      -- first-touch cost than the tic-zero checkpoint above. Pay that cost
+      -- while the slot is still WARMING so the first in-game checkpoint
+      -- cannot freeze an admitted match.
+      dbms_application_info.set_action('MLE_POPULATED_CHECKPOINT_PREWARM');
+      doom_mle_match_runtime.save_checkpoint(
+        l_populated_checkpoint,l_populated_checkpoint_sha,
+        l_populated_checkpoint_bytes);
+      if dbms_lob.istemporary(l_populated_checkpoint)=1 then
+        dbms_lob.freetemporary(l_populated_checkpoint);
+      end if;
       dbms_application_info.set_action('MLE_TICKER_RESTORE_ORIGIN');
       doom_mle_match_runtime.restore_checkpoint(
         2,0,3,1,1,0,l_warm_checkpoint,l_state);
@@ -1934,6 +1947,9 @@ create or replace package body doom_match_worker as
     begin
       if dbms_lob.istemporary(l_warm_checkpoint)=1 then
         dbms_lob.freetemporary(l_warm_checkpoint);
+      end if;
+      if dbms_lob.istemporary(l_populated_checkpoint)=1 then
+        dbms_lob.freetemporary(l_populated_checkpoint);
       end if;
       begin doom_mle_match_runtime.release;exception when others then null;end;
       if l_assignment<>0 then

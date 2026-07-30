@@ -90,6 +90,11 @@ public final class PresentationEngineReachabilityProbe {
   }
 
   @JSExport
+  public static String canonicalState() throws Exception {
+    return SimulationEngineReachabilityProbe.canonicalState();
+  }
+
+  @JSExport
   public static Uint8Array canonicalStateChunk(int offset, int length) {
     return SimulationEngineReachabilityProbe.canonicalStateChunk(offset, length);
   }
@@ -105,8 +110,29 @@ public final class PresentationEngineReachabilityProbe {
   }
 
   @JSExport
+  public static int checkpointLength() throws Exception {
+    return SimulationEngineReachabilityProbe.checkpointLength();
+  }
+
+  @JSExport
+  public static Uint8Array checkpointChunk(int offset, int length) {
+    return SimulationEngineReachabilityProbe.checkpointChunk(offset, length);
+  }
+
+  @JSExport
   public static String restoreCheckpoint(int expectedTic) {
-    return SimulationEngineReachabilityProbe.restoreCheckpoint(expectedTic);
+    String result =
+        SimulationEngineReachabilityProbe.restoreCheckpoint(expectedTic);
+    SimulationEngineReachabilityProbe.resetPresentationStatusAfterRestore();
+    return result;
+  }
+
+  @JSExport
+  public static String restoreCheckpointWarm(int expectedTic) {
+    String result =
+        SimulationEngineReachabilityProbe.restoreCheckpointWarm(expectedTic);
+    SimulationEngineReachabilityProbe.resetPresentationStatusAfterRestore();
+    return result;
   }
 
   @JSExport
@@ -140,6 +166,11 @@ public final class PresentationEngineReachabilityProbe {
   @JSExport
   public static String presentationDiagnostic() {
     return SimulationEngineReachabilityProbe.presentationDiagnostic();
+  }
+
+  @JSExport
+  public static int presentationPaletteIndex() {
+    return SimulationEngineReachabilityProbe.presentationPaletteIndex();
   }
 
   @JSExport

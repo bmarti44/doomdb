@@ -24,6 +24,8 @@ assert.equal(decoded[0].tic,41);
 assert.equal(decoded[1].tic,42);
 assert.equal(decoded[0].paletteIndex,7);
 assert.equal(decoded[1].paletteIndex,11);
+assert.equal(decoded[0].layout,'COLUMN_MAJOR');
+assert.equal(decoded[1].layout,'COLUMN_MAJOR');
 assert.deepEqual(Buffer.from(decoded[0].indices),frame0);
 assert.deepEqual(Buffer.from(decoded[1].indices),frame1);
 assert.equal(decoded[0].indices.buffer,decoded[1].indices.buffer,
@@ -42,6 +44,7 @@ shared.writeUInt32BE(77,4);
 shared.writeUInt8(3,8);
 shared.writeUInt8(2,9);
 shared.writeUInt8(9,10);
+shared.writeUInt8(1,11);
 frame0.copy(shared,16);
 frame1.copy(shared,16+64_000);
 const shared0=decodeDatabasePixelBatch(new Uint8Array(shared),0);
@@ -52,6 +55,8 @@ assert.equal(shared0[0].tic,77);
 assert.equal(shared1[0].tic,77);
 assert.equal(shared0[0].paletteIndex,2);
 assert.equal(shared1[0].paletteIndex,9);
+assert.equal(shared0[0].layout,'ROW_MAJOR');
+assert.equal(shared1[0].layout,'ROW_MAJOR');
 assert.deepEqual(Buffer.from(shared0[0].indices),frame0);
 assert.deepEqual(Buffer.from(shared1[0].indices),frame1);
 assert.throws(()=>decodeDatabasePixelBatch(
@@ -62,7 +67,7 @@ for(const mutation of [
   payload.subarray(0,payload.length-1),
   Buffer.from(payload).fill(0,0,4),
   (()=>{const value=Buffer.from(payload);value.writeUInt8(14,12);return value;})(),
-  (()=>{const value=Buffer.from(payload);value.writeUInt8(1,13);return value;})(),
+  (()=>{const value=Buffer.from(payload);value.writeUInt8(2,13);return value;})(),
   (()=>{const value=Buffer.from(payload);value.writeUInt32BE(41,16+64_000);return value;})(),
   (()=>{const value=Buffer.from(payload);value.writeUInt32BE(43,16+64_000);return value;})(),
 ]) {
@@ -74,4 +79,4 @@ assert.equal(databasePixelBatchDisposition(4,41,4,45),'RESET_GAP');
 assert.throws(()=>databasePixelBatchDisposition(5,41,4,42),
   /generation regressed/);
 process.stdout.write(
-  'PASS PIXEL-BATCH DPB2/DPD1 palette/exact/length/magic/order/viewpoint\n');
+  'PASS PIXEL-BATCH DPB2/DPD1 palette/layout/exact/length/magic/order/viewpoint\n');

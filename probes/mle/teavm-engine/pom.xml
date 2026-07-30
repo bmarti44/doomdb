@@ -164,5 +164,32 @@
         </plugins>
       </build>
     </profile>
+    <profile>
+      <id>presentation-stage-telemetry</id>
+      <properties>
+        <teavm.mainClass>doomdb.mle.engine.ExactRenderStageTelemetryProbe</teavm.mainClass>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.6.1</version>
+            <executions>
+              <execution>
+                <id>add-presentation-stage-telemetry-source</id>
+                <phase>generate-sources</phase>
+                <goals><goal>add-source</goal></goals>
+                <configuration>
+                  <sources>
+                    <source>src/presentation-stage-telemetry/java</source>
+                  </sources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 </project>

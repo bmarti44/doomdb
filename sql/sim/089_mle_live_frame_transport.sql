@@ -24,6 +24,9 @@ end doom_mle_live_frame_transport;
 
 create or replace package body doom_mle_live_frame_transport as
   c_error constant pls_integer := -20796;
+  -- Level 1 is measurably faster end to end than raw 64 KiB DPB2 over the
+  -- public ORDS path, despite sharing the single effective Free-tier CPU.
+  c_compress_live_frames constant boolean := true;
 
   procedure initialize_ring(
     p_match in varchar2,p_players in number,
@@ -158,8 +161,9 @@ create or replace package body doom_mle_live_frame_transport as
 
   -- DPB2 is persisted directly by the compiled MLE renderer: four-byte magic,
   -- big-endian uint32 frame count, then repeated big-endian uint32 tic +
-  -- palette byte + three reserved zero bytes + one complete 64,000-byte
-  -- indexed framebuffer. The normal path returns the persistent BLOB without
+  -- palette byte + layout byte (0 column-major, 1 row-major) + two reserved
+  -- zero bytes + one complete 64,000-byte indexed framebuffer. The normal
+  -- path returns the persistent BLOB without
   -- PL/SQL frame assembly; only a suffix/bounded response needs a temporary.
   procedure poll_batch(
     p_match in varchar2,p_player_slot in number,
@@ -177,6 +181,7 @@ create or replace package body doom_mle_live_frame_transport as
     l_source_offset number;
     l_view_header raw(16);
     l_view_palette number;
+    l_view_layout number;
     l_view_source_offset number;
     l_view_record_header raw(8);
     procedure encode_gzip_dpb2 is
@@ -185,7 +190,7 @@ create or replace package body doom_mle_live_frame_transport as
     begin
       if l_raw_payload is null then return;end if;
       l_raw_bytes:=dbms_lob.getlength(l_raw_payload);
-      p_payload:=utl_compress.lz_compress(l_raw_payload,6);
+      p_payload:=utl_compress.lz_compress(l_raw_payload,1);
       if dbms_lob.getlength(p_payload)<18
          or dbms_lob.substr(p_payload,4,1)<>hextoraw('1F8B0800') then
         raise_application_error(c_error,'GZIP_DPB2_V1 encoding failed');
@@ -201,7 +206,8 @@ create or replace package body doom_mle_live_frame_transport as
       raise_application_error(c_error,'invalid live-frame batch bound');
     end if;
     -- DPD1 is the immediate one-tic path: magic, tic, player mask, two
-    -- palette bytes, five reserved bytes, then complete frames in slot order.
+    -- palette bytes, layout byte, four reserved bytes, then complete frames
+    -- in slot order.
     -- The worker still performs one locator write for both POVs. The read
     -- facade uses native LOB copy to return only the authenticated 64 KiB
     -- viewpoint, halving ORDS/Base64/network work versus shipping both views.
@@ -243,7 +249,9 @@ create or replace package body doom_mle_live_frame_transport as
               'XXXXXXXX')<>l_view.tic
          or to_number(rawtohex(utl_raw.substr(l_view_header,9,1)),'XX')
               <>l_view.player_mask
-         or utl_raw.substr(l_view_header,12,5)<>hextoraw('0000000000')
+         or to_number(rawtohex(utl_raw.substr(l_view_header,12,1)),'XX')
+              not in(0,1)
+         or utl_raw.substr(l_view_header,13,4)<>hextoraw('00000000')
          or (p_frame_count>0 and l_view.tic<>p_last_tic+1) then
         raise_application_error(c_error,'persistent DPD1 view mismatch');
       end if;
@@ -252,6 +260,8 @@ create or replace package body doom_mle_live_frame_transport as
       if l_view_palette not between 0 and 13 then
         raise_application_error(c_error,'persistent DPD1 palette mismatch');
       end if;
+      l_view_layout:=to_number(rawtohex(
+        utl_raw.substr(l_view_header,12,1)),'XX');
       if p_frame_count=0 then
         dbms_lob.createtemporary(p_payload,true,dbms_lob.call);
         dbms_lob.writeappend(p_payload,8,hextoraw('4450423200000000'));
@@ -259,7 +269,8 @@ create or replace package body doom_mle_live_frame_transport as
       end if;
       l_view_record_header:=hextoraw(
         lpad(to_char(l_view.tic,'FMXXXXXXXX'),8,'0')||
-        lpad(to_char(l_view_palette,'FMXX'),2,'0')||'000000');
+        lpad(to_char(l_view_palette,'FMXX'),2,'0')||
+        lpad(to_char(l_view_layout,'FMXX'),2,'0')||'0000');
       dbms_lob.writeappend(p_payload,8,l_view_record_header);
       l_view_source_offset:=
         17+case p_player_slot when 0 then 0 else 64000 end;
@@ -276,7 +287,7 @@ create or replace package body doom_mle_live_frame_transport as
       if dbms_lob.getlength(p_payload)<>8+p_frame_count*64008 then
         raise_application_error(c_error,'assembled DPD1 batch length mismatch');
       end if;
-      encode_gzip_dpb2;
+      if c_compress_live_frames then encode_gzip_dpb2; end if;
       return;
     end if;
     begin
@@ -325,7 +336,7 @@ create or replace package body doom_mle_live_frame_transport as
     if dbms_lob.getlength(p_payload)<>8+p_frame_count*64008 then
       raise_application_error(c_error,'live-frame batch length mismatch');
     end if;
-    encode_gzip_dpb2;
+    if c_compress_live_frames then encode_gzip_dpb2; end if;
   exception when others then
     if p_payload is not null and dbms_lob.istemporary(p_payload)=1 then
       dbms_lob.freetemporary(p_payload);

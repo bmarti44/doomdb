@@ -1,6 +1,7 @@
 export type DatabasePixelFrame = {
   tic: number;
   paletteIndex: number;
+  layout: 'COLUMN_MAJOR'|'ROW_MAJOR';
   indices: Uint8Array<ArrayBuffer>;
 };
 
@@ -51,10 +52,11 @@ export function decodeDatabasePixelBatch(
     const playerMask=view.getUint8(8);
     const palette0=view.getUint8(9);
     const palette1=view.getUint8(10);
+    const layout=view.getUint8(11);
     if((playerMask!==1&&playerMask!==3)
         ||(playerMask&(1<<playerSlot))===0
         ||palette0>13||(playerMask===3&&palette1>13)
-        ||view.getUint8(11)!==0||view.getUint32(12)!==0
+        ||layout>1||view.getUint32(12)!==0
         ||payload.byteLength!==16+
           (playerMask===1?FRAME_BYTES:2*FRAME_BYTES)) {
       throw new TypeError('shared pixel dimensions are invalid');
@@ -63,6 +65,7 @@ export function decodeDatabasePixelBatch(
     return [{
       tic,
       paletteIndex:playerSlot===0?palette0:palette1,
+      layout:layout===1?'ROW_MAJOR':'COLUMN_MAJOR',
       indices:payload.subarray(offset,offset+FRAME_BYTES)
     }];
   }
@@ -80,7 +83,8 @@ export function decodeDatabasePixelBatch(
   for(let index=0;index<count;index+=1) {
     const tic=view.getUint32(offset);offset+=4;
     const paletteIndex=view.getUint8(offset);
-    if(paletteIndex>13||view.getUint8(offset+1)!==0
+    const layout=view.getUint8(offset+1);
+    if(paletteIndex>13||layout>1
         ||view.getUint8(offset+2)!==0||view.getUint8(offset+3)!==0)
       throw new TypeError('pixel batch palette field is invalid');
     offset+=4;
@@ -92,7 +96,11 @@ export function decodeDatabasePixelBatch(
     // additional 64 KiB allocations and copies on every successful poll.
     const indices=payload.subarray(offset,offset+FRAME_BYTES);
     offset+=FRAME_BYTES;
-    frames.push({tic,paletteIndex,indices});priorTic=tic;
+    frames.push({
+      tic,paletteIndex,
+      layout:layout===1?'ROW_MAJOR':'COLUMN_MAJOR',
+      indices
+    });priorTic=tic;
   }
   return frames;
 }

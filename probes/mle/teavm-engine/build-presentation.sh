@@ -9,13 +9,25 @@ presentation_extra_patch="${DOOMDB_TEAVM_PRESENTATION_EXTRA_PATCH:-}"
 presentation_candidate="${PMLE_PRESENTATION_CANDIDATE_BUILD:-NO}"
 presentation_candidate_reason="${PMLE_PRESENTATION_CANDIDATE_REASON:-}"
 presentation_minifying="${DOOMDB_TEAVM_PRESENTATION_MINIFYING:-true}"
+presentation_optimization_level="${DOOMDB_TEAVM_PRESENTATION_OPTIMIZATION_LEVEL:-ADVANCED}"
 candidate_patch_set_sha="none"
 presentation_capture_patch=""
 presentation_capture_source=""
 presentation_maven_profiles="presentation-engine-headless"
+presentation_stage_telemetry_patch=""
+presentation_jsbody_wall_column=false
+presentation_jsbody_wall_batch=false
+presentation_jsbody_bsp_events=false
+presentation_bsp_event_patch=""
+presentation_overlay_tmp=""
 table_pack="$project/target/canonical-runtime-v2.bin"
 iwad="$project/target/iwad-smoke/freedoom1.wad"
 artifact="$project/target/javascript/doom-mle-presentation-engine-headless.js"
+cleanup() {
+  [[ -z "$presentation_overlay_tmp" ]] ||
+    rm -rf "$presentation_overlay_tmp"
+}
+trap cleanup EXIT HUP INT TERM
 expected_input_sha="$(node -e \
   "const fs=require('fs');const v=JSON.parse(fs.readFileSync('$root/versions.lock'));process.stdout.write(v.teaVM.presentation.inputBytecodeSha256)")"
 expected_mocha_sha="${PMLE_PRESENTATION_MOCHA_SHA256:-$(node -e \
@@ -33,6 +45,16 @@ expected_output_sha="$(node -e \
   printf 'DOOMDB_TEAVM_PRESENTATION_MINIFYING must be true or false\n' >&2
   exit 2
 }
+[[ "$presentation_optimization_level" == ADVANCED ||
+    "$presentation_optimization_level" == FULL ]] || {
+  printf 'DOOMDB_TEAVM_PRESENTATION_OPTIMIZATION_LEVEL must be ADVANCED or FULL\n' >&2
+  exit 2
+}
+if [[ "$presentation_optimization_level" != ADVANCED &&
+      "$presentation_candidate" != YES ]]; then
+  printf 'non-ADVANCED presentation optimization requires PMLE_PRESENTATION_CANDIDATE_BUILD=YES\n' >&2
+  exit 2
+fi
 if [[ -n "$presentation_extra_patch" ]]; then
   IFS=',' read -r -a candidate_patches <<<"$presentation_extra_patch"
   for candidate_patch in "${candidate_patches[@]}"; do
@@ -81,6 +103,103 @@ if [[ "$presentation_candidate" == YES
       shasum -a 256 | awk '{print $1}'
   )"
 fi
+if [[ "$presentation_candidate" == YES
+      && ("$presentation_candidate_reason" == exact-render-stage-telemetry ||
+          "$presentation_candidate_reason" == exact-jsbody-wall-column-stage ||
+          "$presentation_candidate_reason" == exact-jsbody-wall-batch-stage ||
+          "$presentation_candidate_reason" == exact-jsbody-bsp-events-stage) ]]; then
+  presentation_stage_telemetry_patch="$project/0007-teavm-exact-render-stage-telemetry.patch"
+  presentation_maven_profiles+=",presentation-stage-telemetry"
+  [[ -s "$presentation_stage_telemetry_patch" ]] || {
+    printf 'presentation stage telemetry patch is missing\n' >&2
+    exit 2
+  }
+  candidate_patch_set_sha="$(
+    {
+      printf '%s\n' "$candidate_patch_set_sha"
+      shasum -a 256 "$presentation_stage_telemetry_patch"
+      find "$project/src/presentation-stage-telemetry/java" \
+        -type f -name '*.java' -print0 |
+        LC_ALL=C sort -z |
+        xargs -0 shasum -a 256
+    } | shasum -a 256 | awk '{print $1}'
+  )"
+fi
+if [[ "$presentation_candidate" == YES
+      && ("$presentation_candidate_reason" == exact-jsbody-wall-column ||
+          "$presentation_candidate_reason" == exact-jsbody-wall-column-stage ||
+          "$presentation_candidate_reason" == exact-jsbody-wall-batch ||
+          "$presentation_candidate_reason" == exact-jsbody-wall-batch-stage ||
+          "$presentation_candidate_reason" == exact-jsbody-bsp-events ||
+          "$presentation_candidate_reason" == exact-jsbody-bsp-events-stage) ]]; then
+  presentation_jsbody_wall_column=true
+  wall_column_source="$project/src/presentation-jsbody-wall-column/mocha"
+  [[ -d "$wall_column_source" ]] || {
+    printf 'presentation JSBody wall-column overlay is missing\n' >&2
+    exit 2
+  }
+  if [[ "$presentation_candidate_reason" == exact-jsbody-wall-batch ||
+        "$presentation_candidate_reason" == exact-jsbody-wall-batch-stage ||
+        "$presentation_candidate_reason" == exact-jsbody-bsp-events ||
+        "$presentation_candidate_reason" == exact-jsbody-bsp-events-stage ]]; then
+    presentation_jsbody_wall_batch=true
+    wall_batch_source="$project/src/presentation-jsbody-wall-batch/mocha"
+    [[ -d "$wall_batch_source" ]] || {
+      printf 'presentation JSBody wall-batch overlay is missing\n' >&2
+      exit 2
+    }
+    presentation_overlay_tmp="$(
+      mktemp -d "${TMPDIR:-/tmp}/doomdb-wall-batch-overlay.XXXXXX"
+    )"
+    cp -R "$wall_column_source/." "$presentation_overlay_tmp/"
+    cp -R "$wall_batch_source/." "$presentation_overlay_tmp/"
+    if [[ "$presentation_candidate_reason" == exact-jsbody-bsp-events ||
+          "$presentation_candidate_reason" == exact-jsbody-bsp-events-stage ]]; then
+      presentation_jsbody_bsp_events=true
+      bsp_event_source="$project/src/presentation-jsbody-bsp-events/mocha"
+      [[ -d "$bsp_event_source" ]] || {
+        printf 'presentation BSP event-stream overlay is missing\n' >&2
+        exit 2
+      }
+      cp -R "$bsp_event_source/." "$presentation_overlay_tmp/"
+    fi
+    presentation_capture_source="$presentation_overlay_tmp"
+  else
+    presentation_capture_source="$wall_column_source"
+  fi
+  candidate_patch_set_sha="$(
+    {
+      printf '%s\n' "$candidate_patch_set_sha"
+      if [[ "$presentation_jsbody_wall_batch" == true ]]; then
+        overlay_sources=("$wall_column_source" "$wall_batch_source")
+        if [[ "$presentation_jsbody_bsp_events" == true ]]; then
+          overlay_sources+=("$bsp_event_source")
+        fi
+        find "${overlay_sources[@]}" \
+          -type f -name '*.java' -print0
+      else
+        find "$wall_column_source" -type f -name '*.java' -print0
+      fi |
+        LC_ALL=C sort -z |
+        xargs -0 shasum -a 256
+    } | shasum -a 256 | awk '{print $1}'
+  )"
+fi
+if [[ "$presentation_candidate" == YES
+      && ("$presentation_candidate_reason" == exact-jsbody-bsp-events ||
+          "$presentation_candidate_reason" == exact-jsbody-bsp-events-stage) ]]; then
+  presentation_bsp_event_patch="$project/0029-teavm-jsbody-bsp-event-stream.patch"
+  [[ -s "$presentation_bsp_event_patch" ]] || {
+    printf 'presentation BSP event-stream patch is missing\n' >&2
+    exit 2
+  }
+  candidate_patch_set_sha="$(
+    {
+      printf '%s\n' "$candidate_patch_set_sha"
+      shasum -a 256 "$presentation_bsp_event_patch"
+    } | shasum -a 256 | awk '{print $1}'
+  )"
+fi
 
 for input in "$mocha_jar" "$table_pack" "$iwad"; do
   [[ -s "$input" ]] || { printf 'presentation prerequisite missing: %s\n' "$input" >&2;exit 2; }
@@ -90,13 +209,33 @@ presentation_class_count=828
 if [[ "$presentation_candidate" == YES
       && "$presentation_candidate_reason" == full-command-census ]]; then
   presentation_class_count=831
+elif [[ "$presentation_jsbody_wall_column" == true ]]; then
+  presentation_class_count=833
+  if [[ "$presentation_jsbody_wall_batch" == true ]]; then
+    presentation_class_count=834
+  fi
 fi
 DOOMDB_MOCHA_EXPECTED_CLASS_COUNT="$presentation_class_count" \
-  DOOMDB_MOCHA_EXTRA_PATCH="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch,$project/0005-teavm-statusbar-compat.patch${presentation_capture_patch:+,$presentation_capture_patch}${presentation_extra_patch:+,$presentation_extra_patch}" \
+  DOOMDB_MOCHA_EXTRA_PATCH="$project/0002-teavm-simulation-headless.patch,$project/0003-teavm-presentation-compat.patch,$project/0004-teavm-authority-init-diet.patch,$project/0005-teavm-statusbar-compat.patch${presentation_capture_patch:+,$presentation_capture_patch}${presentation_stage_telemetry_patch:+,$presentation_stage_telemetry_patch}${presentation_bsp_event_patch:+,$presentation_bsp_event_patch}${presentation_extra_patch:+,$presentation_extra_patch}" \
   DOOMDB_MOCHA_EXTRA_ADAPTER_SOURCE="$presentation_capture_source" \
   "$root/scripts/mochadoom/build-ojvm-jar.sh" \
   "$presentation_mocha_jar" \
   "$project/target/mochadoom-mle-presentation.json"
+if [[ "$presentation_jsbody_wall_column" == true ]]; then
+  command -v zip >/dev/null || {
+    printf 'zip is required for the JSBody wall-column class override\n' >&2
+    exit 2
+  }
+  zip -dq "$presentation_mocha_jar" \
+    'org/teavm/jso/JSBody.class' \
+    'org/teavm/jso/JSBodyImport.class' \
+    'org/teavm/jso/JSByRef.class'
+  if unzip -Z1 "$presentation_mocha_jar" |
+      grep -Eq '^org/teavm/jso/(JSBody|JSBodyImport|JSByRef)\\.class$'; then
+    printf 'candidate-only TeaVM annotation stubs survived JAR cleanup\n' >&2
+    exit 1
+  fi
+fi
 actual_mocha_sha="$(shasum -a 256 "$presentation_mocha_jar" | awk '{print $1}')"
 if [[ "$presentation_candidate" == NO && "$actual_mocha_sha" != "$expected_mocha_sha" ]]; then
   printf 'presentation Mocha bytecode drift: %s (expected %s)\n' \
@@ -108,6 +247,7 @@ docker run --rm -v doomdb-maven-cache:/root/.m2 -v "$root:/work" \
   -w /work/probes/mle/teavm-engine maven:3.9.11-eclipse-temurin-17 \
   mvn -B -DskipTests -P"$presentation_maven_profiles" \
   -Dteavm.minifying="$presentation_minifying" \
+  -Dteavm.optimizationLevel="$presentation_optimization_level" \
   -Dmochadoom.jar=/work/probes/mle/teavm-engine/target/mochadoom-mle-presentation.jar \
   package
 test -s "$artifact"
@@ -144,9 +284,17 @@ if rg -F 'Math[' "$artifact" >/dev/null; then
   exit 1
 fi
 
-node "$project/run-presentation-node.mjs" "$iwad" "$table_pack"
-printf 'PASS PMLE-TEAVM-PRESENTATION-BUILD optimization_level=ADVANCED minifying=%s bytes=%s sha256=%s input_bytecode_sha256=%s mocha_bytecode_sha256=%s profile=presentation-engine-headless classification=%s candidate_reason=%s patch_set_sha256=%s\n' \
-  "$presentation_minifying" "$artifact_bytes" "$artifact_sha" \
+if [[ "$presentation_candidate_reason" == exact-render-stage-telemetry ||
+      "$presentation_candidate_reason" == exact-jsbody-wall-column-stage ||
+      "$presentation_candidate_reason" == exact-jsbody-wall-batch-stage ||
+      "$presentation_candidate_reason" == exact-jsbody-bsp-events-stage ]]; then
+  node "$project/rank-presentation-frame-node.mjs" \
+    "$iwad" "$table_pack" "$artifact" 100 10
+else
+  node "$project/run-presentation-node.mjs" "$iwad" "$table_pack"
+fi
+printf 'PASS PMLE-TEAVM-PRESENTATION-BUILD optimization_level=%s minifying=%s bytes=%s sha256=%s input_bytecode_sha256=%s mocha_bytecode_sha256=%s profile=presentation-engine-headless classification=%s candidate_reason=%s patch_set_sha256=%s\n' \
+  "$presentation_optimization_level" "$presentation_minifying" "$artifact_bytes" "$artifact_sha" \
   "$actual_input_sha" "$actual_mocha_sha" \
   "$([[ "$presentation_candidate" == YES ]] && printf UNPROMOTED_CANDIDATE || printf PINNED)" \
   "$([[ "$presentation_candidate" == YES ]] && printf '%s' "${presentation_candidate_reason:-extra-patch}" || printf none)" \

@@ -26,6 +26,7 @@ import savegame.IDoomSaveGame;
 import savegame.IDoomSaveGameHeader;
 import savegame.VanillaDSG;
 import savegame.VanillaDSGHeader;
+import utils.C2JUtils;
 import v.renderers.DoomScreen;
 import w.InputStreamSugar;
 
@@ -525,8 +526,11 @@ public final class SimulationEngineReachabilityProbe {
       vanillaCheckpointOutput.reset();
     }
     boolean saved;
+    C2JUtils.setCanonicalSavePointers(true);
     try (DataOutputStream data = new DataOutputStream(vanillaCheckpointOutput)) {
       saved = save.doSave(data);
+    } finally {
+      C2JUtils.setCanonicalSavePointers(false);
     }
     if (!saved) throw new IllegalStateException("Mocha checkpoint save failed");
     int vanillaLength = vanillaCheckpointOutput.size();
@@ -578,8 +582,12 @@ public final class SimulationEngineReachabilityProbe {
         } else {
           playerCheckpointOutput.reset();
         }
-        try (DataOutputStream playerData = new DataOutputStream(playerCheckpointOutput)) {
+        C2JUtils.setCanonicalSavePointers(true);
+        try (DataOutputStream playerData =
+                 new DataOutputStream(playerCheckpointOutput)) {
           player.write(playerData);
+        } finally {
+          C2JUtils.setCanonicalSavePointers(false);
         }
         int playerBytes = playerCheckpointOutput.size();
         if (playerBytes != 280) {
@@ -1148,6 +1156,26 @@ public final class SimulationEngineReachabilityProbe {
   static void initializePresentationView() {
     if (engine == null) throw new IllegalStateException("engine is not initialized");
     engine.sceneRenderer.SetViewSize(10, 0);
+  }
+
+  /**
+   * Candidate-only diagnostic access for the exact raster stage harness.
+   * This method is not exported and is unreachable from production roots.
+   */
+  static DoomMain<?, ?> presentationEngineForDiagnostic() {
+    if (engine == null) throw new IllegalStateException("engine is not initialized");
+    return engine;
+  }
+
+  /** Presentation caches are derived state and must full-refresh after restore. */
+  static void resetPresentationStatusAfterRestore() {
+    presentationStatusBackgrounds = null;
+  }
+
+  /** Palette selected by the exact Mocha status-bar presentation pass. */
+  static int presentationPaletteIndex() {
+    if (engine == null) throw new IllegalStateException("engine is not initialized");
+    return engine.graphicSystem.getPalette();
   }
 
   /** Expose presentation geometry without adding it to the authority root. */

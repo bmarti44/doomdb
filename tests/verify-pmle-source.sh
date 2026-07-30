@@ -160,6 +160,8 @@ MLE_PIXEL_BATCH_SOURCE=$ROOT/client/src/pixel-batch.ts
 MLE_PIXEL_BATCH_STAGING=$ROOT/client/staging/pixel-batch.js
 MLE_PIXEL_BATCH_DIST=$ROOT/client/dist/play/pixel-batch.js
 MLE_COLUMN_MAJOR_TEST=$ROOT/tests/verify-column-major-blitter.mjs
+MLE_TEMPORAL_SOLO_TEST=$ROOT/tests/verify-temporal-solo-coordinator-node.mjs
+MLE_PUBLIC_MOVEMENT_GATE=$ROOT/probes/mle/teavm-engine/measure-public-exact-fps.mjs
 MLE_WORKER_LIFECYCLE=$ROOT/sql/sim/083_worker_lifecycle.sql
 MLE_WORKER_LIFECYCLE_SCHEMA=$ROOT/sql/schema/062_mle_warm_lifecycle.sql
 MLE_WARM_LIFECYCLE_TEST=$ROOT/tests/verify-mle-warm-lifecycle.sql
@@ -222,6 +224,7 @@ for file in "$INSTALL" "$BENCHMARK" "$RUNNER" "$CLEANUP" \
   "$TEAVM_DISPATCH_RUNNER" "$TEAVM_DISPATCH_AB" "$TEAVM_DIFFERENTIAL_RUNNER" \
   "$TEAVM_WORKER_CUTOVER_RUNNER" "$TEAVM_BROWSER_REPLICA_PROFILE" \
   "$TEAVM_WAN_RUNNER" \
+  "$MLE_TEMPORAL_SOLO_TEST" "$MLE_PUBLIC_MOVEMENT_GATE" \
   "$WASM2JS_README" "$WASM2JS_PARITY" "$WASM2JS_PROBE" "$WASM2JS_TOOLCHAIN_BUILD" \
   "$WASM2JS_TOOLCHAIN_PATCH" "$WASM2JS_I64_DIAGNOSTIC" \
   "$WASM2JS_SERIALIZER_WORKAROUND" "$WASM2JS_SERIALIZER_PATCH" \
@@ -1010,7 +1013,7 @@ grep -q 'ring-gap resync without a permanent ORA-20796 loop' \
 grep -q 'dbms_lob.copy(' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -Fq '8+p_frame_count*64008' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'procedure encode_gzip_dpb2' "$MLE_LIVE_FRAME_TRANSPORT" &&
-grep -q 'utl_compress.lz_compress(l_raw_payload,6)' \
+grep -q 'utl_compress.lz_compress(l_raw_payload,1)' \
   "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'GZIP_DPB2_V1 encoding failed' "$MLE_LIVE_FRAME_TRANSPORT" &&
 ! grep -q 'select count(\*) into p_frame_count' \
@@ -1056,7 +1059,7 @@ grep -q 'await startDatabaseFrameGame(local, latestStatus)' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'exchangeMatchPixelBatch(' "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'decodeDatabasePixelTransport' "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'createColumnMajorIndexedPaletteBlitter' \
+grep -q 'createDatabaseIndexedPaletteBlitter' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q "getAsset('PLAYPAL_ALL')" "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'if(!transportEstablished)' "$ROOT/client/src/multiplayer.ts" &&
@@ -1175,6 +1178,15 @@ printf '%s\n' "$post_input_source" |
   perl -0777 -ne \
     'exit !(/if\(result\.generation>generation\) \{\s*generation=result\.generation;\s*resetPixelTransport\(\);\s*\}/s)' ||
   fail 'database-frame input response bypasses the generation reset'
+grep -Fq "lastEffectiveInputTic=result.effectiveTic" \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'lastInputRoundTripMs=finished-started' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq '`tic ${lastEffectiveInputTic} · ${lastInputRoundTripMs.toFixed(0)} ms`' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq '`\nINPUT ${command} · ${effective}`' \
+  "$ROOT/client/src/multiplayer.ts" ||
+  fail 'database-frame HUD does not expose authoritative input effectiveness'
 for built_pixel_batch in "$MLE_PIXEL_BATCH_STAGING" "$MLE_PIXEL_BATCH_DIST"; do
   test -s "$built_pixel_batch" &&
   grep -Eq '0x44504232|1146110514' "$built_pixel_batch" &&
@@ -1188,7 +1200,7 @@ for built_multiplayer in \
     "$ROOT/client/staging/multiplayer.js" \
     "$ROOT/client/dist/play/multiplayer.js"; do
   grep -q 'exchangeMatchPixelBatch' "$built_multiplayer" &&
-  grep -q 'createColumnMajorIndexedPaletteBlitter' "$built_multiplayer" &&
+  grep -q 'createDatabaseIndexedPaletteBlitter' "$built_multiplayer" &&
   grep -q 'PLAYPAL_ALL' "$built_multiplayer" &&
   grep -q "reason: 'generation'" "$built_multiplayer" &&
   grep -q "reason: 'ring-gap'" "$built_multiplayer" ||
@@ -1199,6 +1211,20 @@ grep -Fq '2*320+1' "$MLE_COLUMN_MAJOR_TEST" &&
 grep -q 'createColumnMajorIndexedPaletteBlitter' "$MLE_COLUMN_MAJOR_TEST" &&
 grep -q 'paletteBlit(indices,13)' "$MLE_COLUMN_MAJOR_TEST" ||
   fail 'column-major PLAYPAL-aware database framebuffer gate missing'
+grep -Fq 'function playerCamera(api)' "$MLE_TEMPORAL_SOLO_TEST" &&
+grep -Fq "'held forward command did not move the authoritative player'" \
+  "$MLE_TEMPORAL_SOLO_TEST" &&
+grep -Fq "'held turn command did not rotate the authoritative player'" \
+  "$MLE_TEMPORAL_SOLO_TEST" ||
+  fail 'temporal coordinator does not gate authoritative movement and turning'
+grep -Fq "await page.keyboard.down('ArrowUp')" "$MLE_PUBLIC_MOVEMENT_GATE" &&
+grep -Fq 'changedPixels.filter(value=>value>=1_000)' \
+  "$MLE_PUBLIC_MOVEMENT_GATE" &&
+grep -Fq "'held-arrow route did not paint enough distinct canvas buffers'" \
+  "$MLE_PUBLIC_MOVEMENT_GATE" &&
+grep -Fq "'ArrowUp did not reach an effective authoritative input revision'" \
+  "$MLE_PUBLIC_MOVEMENT_GATE" ||
+  fail 'public framebuffer gate does not prove material ArrowUp canvas motion'
 if grep -q 'await startMleGame(local, latestStatus)' \
     "$ROOT/client/src/multiplayer.ts"; then
   fail 'production admission still selects browser-side rasterization'

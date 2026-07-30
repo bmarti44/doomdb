@@ -1,0 +1,5 @@
+PMLE_PUBLIC_EXACT_FPS|PASS|seconds=10|frames=327|elapsed_ms=9993.800|fps=32.620|gap_p50_ms=28.900|gap_p95_ms=32.700|gap_max_ms=264.600|starvations=5
+PMLE_PUBLIC_EXACT_PLAYOUT|PASS|present=327|buffer_min=0|buffer_p50=4|buffer_p95=6|mode_accelerate=11|mode_free=120|mode_decelerate=196|batches=136|starvations=5
+PMLE_PUBLIC_EXACT_PIXELS|PASS|present=327|database_unique=324|database_consecutive_changes=323|canvas_unique=324|canvas_consecutive_changes=323|changed_pixels_p50=14280|changed_pixels_p95=15797|material_frames=310|arrow_up_inputs=5|arrow_up_effective=5
+PMLE_PUBLIC_EXCHANGE|PASS|requests=234|http_200=231|cancelled=3|failed=0|elapsed_p50_ms=41.838|elapsed_p95_ms=54.810
+PMLE_PUBLIC_CLIENT|multiplayer_asset=multiplayer-c3c2014586cc.js|sha256=c3c2014586cc6ef51101c4c5d88beef276eaa8602ddcbe12c2abbdddae82d96e|hud=AUTHORITATIVE_INPUT_EFFECTIVE_TIC

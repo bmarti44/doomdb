@@ -8,7 +8,7 @@ import {
 } from './api.js';
 
 import {
-  createColumnMajorIndexedPaletteBlitter, createDoomCanvas,
+  createDatabaseIndexedPaletteBlitter, createDoomCanvas,
   createIndexedBlitter
 } from './canvas.js';
 import {decodeBytes} from './codec.js';
@@ -461,7 +461,7 @@ async function startDatabaseFrameGame(
   const basePalette=createPalette(palettes.subarray(0,256*3));
   const blitTitle = createIndexedBlitter(canvas,basePalette);
   const blitDatabaseFrame =
-    createColumnMajorIndexedPaletteBlitter(canvas,palettes);
+    createDatabaseIndexedPaletteBlitter(canvas,palettes);
   blitTitle(decodeBytes(titleAsset.payload));
 
   let latest:Command={seq:0,turn:0,forward:0,strafe:0,run:0,fire:0,use:0,
@@ -493,6 +493,8 @@ async function startDatabaseFrameGame(
   let urgentPixelInput=false;
   let inputPostInFlight=false;
   let presenceInFlight=false;
+  let lastEffectiveInputTic=-1;
+  let lastInputRoundTripMs=0;
   // Six confirmed frames cover the compressed, contention-free OCI poll
   // tail. Input response catches up by accelerating already-confirmed frames;
   // it never deletes or predicts presentation state.
@@ -548,9 +550,19 @@ async function startDatabaseFrameGame(
     const elapsed=paintedAt.length>1?paintedAt.at(-1)!-paintedAt[0]!:0;
     const fps=elapsed>0?(paintedAt.length-1)*1000/elapsed:0;
     const role=soloMode?'SINGLE PLAYER':`${status.mode} · PLAYER ${value.playerSlot+1}`;
+    const command=[
+      latest.forward>0?'↑':latest.forward<0?'↓':'',
+      latest.turn<0?'←':latest.turn>0?'→':'',
+      latest.fire?'FIRE':'',
+      latest.use?'USE':''
+    ].filter(Boolean).join('+')||'IDLE';
+    const effective=lastEffectiveInputTic<0
+      ? 'pending'
+      : `tic ${lastEffectiveInputTic} · ${lastInputRoundTripMs.toFixed(0)} ms`;
     hud.textContent=`${role} · DB FRAME ${presentedTic} · SERVER ${serverTic}`
       + `\n${fps.toFixed(1)} FPS · database pixels · buffer ${frames.size}`
-      + `/${wan.playoutBufferTics} · canvas copy only`;
+      + `/${wan.playoutBufferTics} · canvas copy only`
+      + `\nINPUT ${command} · ${effective}`;
   };
   const queueInput=(command:Command):void=>{
     const inputHex=ticcmd(command);
@@ -609,6 +621,8 @@ async function startDatabaseFrameGame(
           effectiveTic:result.effectiveTic,command:input.command,
           targetTic:input.targetTic,roundTripMs:finished-started,
           source:'database-frame-client'});
+        lastEffectiveInputTic=result.effectiveTic;
+        lastInputRoundTripMs=finished-started;
         const changedInput=input.hex!==lastEffectiveInputHex;
         lastEffectiveInputHex=input.hex;
         if(playoutStarted&&changedInput) {
@@ -675,7 +689,7 @@ async function startDatabaseFrameGame(
     }
     starvationActive=false;
     frames.delete(nextTic);
-    blitDatabaseFrame(frame.indices,frame.paletteIndex);
+    blitDatabaseFrame(frame.indices,frame.paletteIndex,frame.layout);
     presentedTic=nextTic;
     paintedAt.push(now);
     if(paintedAt.length>120)paintedAt.shift();

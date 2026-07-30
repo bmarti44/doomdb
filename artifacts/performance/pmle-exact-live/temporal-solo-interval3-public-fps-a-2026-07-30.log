@@ -1,0 +1,2 @@
+PMLE_PUBLIC_EXACT_FPS|PASS|seconds=30|frames=992|elapsed_ms=29977.100|fps=33.059|gap_p50_ms=31.300|gap_p95_ms=33.000|gap_max_ms=378.500|starvations=36
+PMLE_PUBLIC_EXACT_PLAYOUT|PASS|present=992|buffer_min=0|buffer_p50=3|buffer_p95=5|mode_accelerate=205|mode_free=41|mode_decelerate=746|batches=347|starvations=36

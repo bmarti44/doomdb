@@ -296,6 +296,15 @@ export async function reviseMatchInput(match, playerCapability, inputSequence, t
         membershipEpoch: numberField(document, 'p_membership_epoch'),
         generation: numberField(document, 'p_generation') };
 }
+export async function touchMatchPresence(match, playerCapability) {
+    const document = await postAsync('touch_match_presence', {
+        p_match: match, p_player_capability: playerCapability
+    });
+    return {
+        membershipEpoch: numberField(document, 'p_membership_epoch'),
+        generation: numberField(document, 'p_generation')
+    };
+}
 export async function matchInputFrontier(match, playerCapability) {
     const document = await post('match_input_frontier', {
         p_match: match, p_player_capability: playerCapability
@@ -421,28 +430,51 @@ export async function exchangeMatchPixelBatch(match, playerCapability, afterTic,
     if ((inputSequence === undefined) !== (ticcmdHex === undefined)) {
         throw new TypeError('pixel exchange input is incomplete');
     }
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 20_000);
+    // Managed ORDS occasionally strands one otherwise read-only request for
+    // seconds while the peer browser continues normally. Keep the ordinary
+    // path at one request, but issue one idempotent tail hedge after 120 ms.
+    // The first valid response wins and both fetches are then aborted. This
+    // protects the finite confirmed-frame ring without doubling steady-state
+    // request pressure on the Always Free execution lane.
+    const hedgeDelayMs = 120;
+    const primary = new AbortController();
+    const hedge = new AbortController();
+    const timeout = window.setTimeout(() => {
+        primary.abort();
+        hedge.abort();
+    }, 20_000);
+    let hedgeTimer = 0;
     let document;
+    const body = {
+        p_match: match,
+        p_player_capability: playerCapability,
+        p_after_tic: afterTic,
+        p_max_frames: maximumFrames,
+        p_input_seq: inputSequence,
+        p_ticcmd_hex: ticcmdHex,
+        p_target_tic: targetTic
+    };
     try {
-        document = await postAsync('exchange_match_pixel_batch', {
-            p_match: match,
-            p_player_capability: playerCapability,
-            p_after_tic: afterTic,
-            p_max_frames: maximumFrames,
-            p_input_seq: inputSequence,
-            p_ticcmd_hex: ticcmdHex,
-            p_target_tic: targetTic
-        }, controller.signal);
+        const primaryRequest = postAsync('exchange_match_pixel_batch', body, primary.signal);
+        const hedgeRequest = new Promise((resolve, reject) => {
+            hedgeTimer = window.setTimeout(() => {
+                void postAsync('exchange_match_pixel_batch', body, hedge.signal)
+                    .then(resolve, reject);
+            }, hedgeDelayMs);
+        });
+        document = await Promise.any([primaryRequest, hedgeRequest]);
     }
     catch (cause) {
-        if (controller.signal.aborted) {
+        if (primary.signal.aborted && hedge.signal.aborted) {
             throw new Error('exchange_match_pixel_batch request failed: 504');
         }
         throw cause;
     }
     finally {
         window.clearTimeout(timeout);
+        window.clearTimeout(hedgeTimer);
+        primary.abort();
+        hedge.abort();
     }
     const frameCount = numberField(document, 'p_frame_count');
     if (frameCount < 0 || frameCount > maximumFrames) {

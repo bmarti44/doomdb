@@ -14,11 +14,21 @@ ui_asset="$root/artifacts/performance/pmle-live-frame-hud/ui-assets-8961a242c674
 lock="${PMLE_LIVE_FRAME_LOCK:-$root/versions.lock}"
 fold_width=2000
 emit_only=0
+reuse_assets="${PMLE_LIVE_FRAME_REUSE_ASSETS:-NO}"
 
 if [[ "$lock" != "$root/versions.lock" &&
       "${PMLE_LIVE_FRAME_CANDIDATE:-NO}" != YES ]]; then
   printf '%s\n' \
     'candidate live-frame lock requires PMLE_LIVE_FRAME_CANDIDATE=YES' >&2
+  exit 2
+fi
+if [[ "$reuse_assets" != NO && "$reuse_assets" != YES ]]; then
+  printf 'PMLE_LIVE_FRAME_REUSE_ASSETS must be YES or NO\n' >&2
+  exit 2
+fi
+if [[ "$reuse_assets" == YES &&
+      "${PMLE_LIVE_FRAME_CANDIDATE:-NO}" != YES ]]; then
+  printf 'asset reuse is restricted to an explicit candidate deployment\n' >&2
   exit 2
 fi
 
@@ -68,6 +78,15 @@ verify_file() {
     exit 2
   }
 }
+if [[ "${PMLE_LIVE_FRAME_CANDIDATE:-NO}" == YES ]]; then
+  renderer_bytes="$(wc -c <"$renderer" | tr -d '[:space:]')"
+  renderer_sha="$(shasum -a 256 "$renderer" | awk '{print $1}')"
+  coordinator_bytes="$(wc -c <"$coordinator" | tr -d '[:space:]')"
+  coordinator_sha="$(shasum -a 256 "$coordinator" | awk '{print $1}')"
+  printf 'PMLE_LIVE_FRAME_CANDIDATE_PIN|renderer=%s/%s|coordinator=%s/%s\n' \
+    "$renderer_bytes" "$renderer_sha" \
+    "$coordinator_bytes" "$coordinator_sha" >&2
+fi
 verify_file "$renderer" "$renderer_bytes" "$renderer_sha"
 verify_file "$coordinator" "$coordinator_bytes" "$coordinator_sha"
 verify_file "$world_pack" "$world_bytes" "$world_sha"
@@ -145,21 +164,37 @@ emit_sql() {
     "begin execute immediate 'drop mle env doom_mle_live_env';exception when others then if sqlcode not in(-4080,-4103,-4104,-4105) then raise;end if;end;" \
     '/' \
     "begin execute immediate 'drop mle module doom_mle_live_renderer';exception when others then if sqlcode not in(-4080,-4103) then raise;end if;end;" \
-    '/' \
-    'delete from doom_mle_live_frame_source;' \
-    "insert into doom_mle_live_frame_source values(1,$authority_bytes,'$authority_sha',empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),$renderer_bytes,'$renderer_sha',$coordinator_bytes,'$coordinator_sha',$world_bytes,'$world_sha',$compositor_bytes,'$compositor_sha',$wall_bytes,'$wall_sha',$flat_bytes,'$flat_sha',$sprite_bytes,'$sprite_sha',$ui_bytes,'$ui_sha');" \
-    'declare l_renderer blob;l_coordinator blob;l_world blob;l_compositor blob;l_wall blob;l_flat blob;l_sprite blob;l_ui blob;l_raw raw(32767);begin' \
-    'select renderer_source,coordinator_source,world_pack,compositor_pack,wall_asset,flat_asset,sprite_asset,ui_asset' \
-    'into l_renderer,l_coordinator,l_world,l_compositor,l_wall,l_flat,l_sprite,l_ui' \
-    'from doom_mle_live_frame_source where artifact_id=1 for update;'
-  emit_blob "$renderer" l_renderer
-  emit_blob "$coordinator" l_coordinator
-  emit_blob "$world_pack" l_world
-  emit_blob "$compositor_pack" l_compositor
-  emit_blob "$wall_asset" l_wall
-  emit_blob "$flat_asset" l_flat
-  emit_blob "$sprite_asset" l_sprite
-  emit_blob "$ui_asset" l_ui
+    '/'
+  if [[ "$reuse_assets" == YES ]]; then
+    printf '%s\n' \
+      'begin update doom_mle_live_frame_source set' \
+      "renderer_source=empty_blob(),renderer_bytes=$renderer_bytes,renderer_sha256='$renderer_sha'," \
+      "coordinator_source=empty_blob(),coordinator_bytes=$coordinator_bytes,coordinator_sha256='$coordinator_sha'" \
+      'where artifact_id=1;' \
+      "if sql%rowcount<>1 then raise_application_error(-20796,'candidate asset-reuse source row absent');end if;end;" \
+      '/' \
+      'declare l_renderer blob;l_coordinator blob;l_raw raw(32767);begin' \
+      'select renderer_source,coordinator_source into l_renderer,l_coordinator' \
+      'from doom_mle_live_frame_source where artifact_id=1 for update;'
+    emit_blob "$renderer" l_renderer
+    emit_blob "$coordinator" l_coordinator
+  else
+    printf '%s\n' \
+      'delete from doom_mle_live_frame_source;' \
+      "insert into doom_mle_live_frame_source values(1,$authority_bytes,'$authority_sha',empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),empty_blob(),$renderer_bytes,'$renderer_sha',$coordinator_bytes,'$coordinator_sha',$world_bytes,'$world_sha',$compositor_bytes,'$compositor_sha',$wall_bytes,'$wall_sha',$flat_bytes,'$flat_sha',$sprite_bytes,'$sprite_sha',$ui_bytes,'$ui_sha');" \
+      'declare l_renderer blob;l_coordinator blob;l_world blob;l_compositor blob;l_wall blob;l_flat blob;l_sprite blob;l_ui blob;l_raw raw(32767);begin' \
+      'select renderer_source,coordinator_source,world_pack,compositor_pack,wall_asset,flat_asset,sprite_asset,ui_asset' \
+      'into l_renderer,l_coordinator,l_world,l_compositor,l_wall,l_flat,l_sprite,l_ui' \
+      'from doom_mle_live_frame_source where artifact_id=1 for update;'
+    emit_blob "$renderer" l_renderer
+    emit_blob "$coordinator" l_coordinator
+    emit_blob "$world_pack" l_world
+    emit_blob "$compositor_pack" l_compositor
+    emit_blob "$wall_asset" l_wall
+    emit_blob "$flat_asset" l_flat
+    emit_blob "$sprite_asset" l_sprite
+    emit_blob "$ui_asset" l_ui
+  fi
   printf '%s\n' \
     'end;' \
     '/' \

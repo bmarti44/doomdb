@@ -287,7 +287,9 @@ try {
   assert.equal(seedBytes.length, 8 + 64_008);
   assert.equal(seedBytes.readUInt32BE(8), 1);
   assert.ok(seedBytes.readUInt8(12)>=0&&seedBytes.readUInt8(12)<=13);
-  assert.deepEqual(seedBytes.subarray(13,16),Buffer.alloc(3));
+  assert.equal(seedBytes.readUInt8(13),1,
+    'exact Mocha framebuffer must declare row-major layout');
+  assert.deepEqual(seedBytes.subarray(14,16),Buffer.alloc(2));
   const initialBytes=seedBytes.subarray(16);
 
   const batch = await waitForBatch(
@@ -306,7 +308,9 @@ try {
     assert.equal(batchBytes.readUInt32BE(offset),frame+2);
     assert.ok(batchBytes.readUInt8(offset+4)>=0
       &&batchBytes.readUInt8(offset+4)<=13);
-    assert.deepEqual(batchBytes.subarray(offset+5,offset+8),Buffer.alloc(3));
+    assert.equal(batchBytes.readUInt8(offset+5),1,
+      'exact Mocha framebuffer must declare row-major layout');
+    assert.deepEqual(batchBytes.subarray(offset+6,offset+8),Buffer.alloc(2));
   }
   const ticTwoBytes=batchBytes.subarray(16,16+64_000);
   assert.equal(initialBytes.length, 64_000);

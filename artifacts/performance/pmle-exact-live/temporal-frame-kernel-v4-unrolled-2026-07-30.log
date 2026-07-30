@@ -1,0 +1,21 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_TEMPORAL_KERNEL|PASS|mode=1|frames=300|p50_ms=3.708|p95_ms=3.804|mean_ms=3.835|sample=33|plausible=YES
+PMLE_TEMPORAL_KERNEL|PASS|mode=2|frames=300|p50_ms=2.792|p95_ms=2.881|mean_ms=2.895|sample=42|plausible=YES
+PMLE_TEMPORAL_KERNEL|PASS|mode=3|frames=300|p50_ms=0.183|p95_ms=0.199|mean_ms=0.184|sample=33|plausible=YES
+PMLE_TEMPORAL_KERNEL|PASS|mode=4|frames=300|p50_ms=8.410|p95_ms=8.495|mean_ms=8.498|sample=37|plausible=NO
+PMLE_TEMPORAL_KERNEL|PASS|mode=5|frames=300|p50_ms=2.708|p95_ms=2.844|mean_ms=2.812|sample=42|plausible=YES
+
