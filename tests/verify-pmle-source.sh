@@ -162,6 +162,8 @@ MLE_PIXEL_BATCH_STAGING=$ROOT/client/staging/pixel-batch.js
 MLE_PIXEL_BATCH_DIST=$ROOT/client/dist/play/pixel-batch.js
 MLE_COLUMN_MAJOR_TEST=$ROOT/tests/verify-column-major-blitter.mjs
 MLE_TEMPORAL_SOLO_TEST=$ROOT/tests/verify-temporal-solo-coordinator-node.mjs
+MLE_TEMPORAL_VIEW_BUNDLE_PATCHER=$ROOT/probes/mle/teavm-engine/patch-coordinator-temporal-view-bundle.mjs
+MLE_TEMPORAL_VIEW_BUNDLE_TEST=$ROOT/tests/verify-mle-live-frame-dpv2.sql
 MLE_PUBLIC_MOVEMENT_GATE=$ROOT/probes/mle/teavm-engine/measure-public-exact-fps.mjs
 MLE_WORKER_LIFECYCLE=$ROOT/sql/sim/083_worker_lifecycle.sql
 MLE_WORKER_LIFECYCLE_SCHEMA=$ROOT/sql/schema/062_mle_warm_lifecycle.sql
@@ -1017,6 +1019,12 @@ grep -q 'procedure encode_gzip_dpb2' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'utl_compress.lz_compress(l_raw_payload,1)' \
   "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'GZIP_DPB2_V1 encoding failed' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q "hextoraw('44505632')" "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'persistent DPV2 header mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'persistent DPV2 record mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'assembled DPV2 batch mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
+perl -0777 -ne 'exit !(/DPV2 amortizes.*?if l_view_bundle is not null.*?DPD1 is the immediate/s)' \
+  "$MLE_LIVE_FRAME_TRANSPORT" &&
 ! grep -q 'select count(\*) into p_frame_count' \
   "$MLE_LIVE_FRAME_TRANSPORT" ||
   fail 'persistent DPB2 batch/suffix transport contract missing'
@@ -1222,6 +1230,13 @@ grep -Fq "'held forward command did not move the authoritative player'" \
 grep -Fq "'held turn command did not rotate the authoritative player'" \
   "$MLE_TEMPORAL_SOLO_TEST" ||
   fail 'temporal coordinator does not gate authoritative movement and turning'
+node --check "$MLE_TEMPORAL_VIEW_BUNDLE_PATCHER" >/dev/null &&
+grep -Fq 'DPV2_COMBINED_TEMPORAL_AND_POV' \
+  "$MLE_TEMPORAL_VIEW_BUNDLE_PATCHER" &&
+grep -Fq 'PMLE_DPV2_TRANSPORT|PASS' "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" &&
+grep -Fq 'malformed DPV2 did not fail closed' \
+  "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" ||
+  fail 'combined temporal/two-POV locator contract is absent or unfenced'
 grep -Fq "await page.keyboard.down('ArrowUp')" "$MLE_PUBLIC_MOVEMENT_GATE" &&
 grep -Fq 'changedPixels.filter(value=>value>=1_000)' \
   "$MLE_PUBLIC_MOVEMENT_GATE" &&

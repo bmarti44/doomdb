@@ -1,6 +1,32 @@
 whenever sqlerror exit failure rollback
 set define off
 
+-- Existing installations originally constrained the shared-view ring to one
+-- DPD1 tic. DPV2 adds one-to-six consecutive records while retaining the
+-- original exact DPD1 size. Payload magic and every record are validated by
+-- the authenticated read facade before any pixels are returned.
+alter table doom_match_live_frame_views
+  drop constraint doom_match_live_frame_views_fence_ck;
+alter table doom_match_live_frame_views
+  add constraint doom_match_live_frame_views_fence_ck check(
+    membership_epoch>0 and generation>0 and
+    ((tic=-1 and player_mask=0 and payload_bytes=0
+       and published_at is null) or
+     (tic>=0 and player_mask in(1,3)
+       and (payload_bytes=16+
+              case player_mask when 1 then 64000 when 3 then 128000 end
+         or (payload_bytes between
+               16+(8+case player_mask
+                 when 1 then 64000 when 3 then 128000 end)
+             and
+               16+6*(8+case player_mask
+                 when 1 then 64000 when 3 then 128000 end)
+             and mod(
+               payload_bytes-16,
+               8+case player_mask
+                 when 1 then 64000 when 3 then 128000 end)=0))
+       and published_at is not null)));
+
 -- The worker owns writes and transaction durability.  REST receives only an
 -- authenticated, generation-fenced read facade through DOOM_API.
 create or replace package doom_mle_live_frame_transport authid definer as
@@ -184,6 +210,16 @@ create or replace package body doom_mle_live_frame_transport as
     l_view_layout number;
     l_view_source_offset number;
     l_view_record_header raw(8);
+    l_view_bundle blob;
+    l_view_bundle_last number;
+    l_view_bundle_mask number;
+    l_view_bundle_bytes number;
+    l_view_bundle_first number;
+    l_view_bundle_count number;
+    l_view_bundle_players number;
+    l_view_bundle_record_bytes number;
+    l_view_bundle_record_tic number;
+    l_view_bundle_record_offset number;
     procedure encode_gzip_dpb2 is
       l_raw_payload blob:=p_payload;
       l_raw_bytes number;
@@ -204,6 +240,119 @@ create or replace package body doom_mle_live_frame_transport as
     if p_max_frames is null or p_max_frames<>trunc(p_max_frames)
        or p_max_frames not between 1 and 8 then
       raise_application_error(c_error,'invalid live-frame batch bound');
+    end if;
+    -- DPV2 amortizes a complete temporal interval and both authenticated
+    -- viewpoints through one persistent locator.  The BLOB never crosses
+    -- the REST boundary intact: this definer-rights facade validates every
+    -- record and extracts only the requesting member's POV into DPB2.
+    begin
+      select tic,player_mask,payload_bytes,payload_blob
+        into l_view_bundle_last,l_view_bundle_mask,l_view_bundle_bytes,
+             l_view_bundle
+        from (
+          select tic,player_mask,payload_bytes,payload_blob
+            from doom_match_live_frame_views
+           where match_id=p_match
+             and membership_epoch=p_membership_epoch
+             and generation=p_generation
+             and tic>p_after_tic
+             and tic>(
+               select coalesce(max(latest_.tic),-1)-64
+                 from doom_match_live_frame_views latest_
+                where latest_.match_id=p_match
+                  and latest_.membership_epoch=p_membership_epoch
+                  and latest_.generation=p_generation
+                  and latest_.tic>=0)
+             and bitand(player_mask,power(2,p_player_slot))<>0
+             and dbms_lob.substr(payload_blob,4,1)=hextoraw('44505632')
+           order by tic
+        )
+       where rownum=1;
+    exception when no_data_found then l_view_bundle:=null;end;
+    if l_view_bundle is not null then
+      l_view_header:=dbms_lob.substr(l_view_bundle,16,1);
+      l_view_bundle_first:=to_number(rawtohex(
+        utl_raw.substr(l_view_header,5,4)),'XXXXXXXX');
+      l_view_bundle_count:=to_number(rawtohex(
+        utl_raw.substr(l_view_header,9,4)),'XXXXXXXX');
+      if l_view_bundle_mask not in(1,3)
+         or l_view_bundle_count not between 1 and 6
+         or utl_raw.substr(l_view_header,1,4)<>hextoraw('44505632')
+         or to_number(rawtohex(utl_raw.substr(l_view_header,13,1)),'XX')
+              <>l_view_bundle_mask
+         or utl_raw.substr(l_view_header,14,3)<>hextoraw('000000')
+         or l_view_bundle_last
+              <>l_view_bundle_first+l_view_bundle_count-1 then
+        raise_application_error(c_error,'persistent DPV2 header mismatch');
+      end if;
+      l_view_bundle_players:=
+        case l_view_bundle_mask when 1 then 1 else 2 end;
+      l_view_bundle_record_bytes:=8+l_view_bundle_players*64000;
+      if l_view_bundle_bytes
+            <>16+l_view_bundle_count*l_view_bundle_record_bytes
+         or dbms_lob.getlength(l_view_bundle)<>l_view_bundle_bytes then
+        raise_application_error(c_error,'persistent DPV2 length mismatch');
+      end if;
+      for l_index in 0..l_view_bundle_count-1 loop
+        l_view_bundle_record_offset:=
+          17+l_index*l_view_bundle_record_bytes;
+        l_view_record_header:=dbms_lob.substr(
+          l_view_bundle,8,l_view_bundle_record_offset);
+        l_view_bundle_record_tic:=to_number(rawtohex(
+          utl_raw.substr(l_view_record_header,1,4)),'XXXXXXXX');
+        if l_view_bundle_record_tic<>l_view_bundle_first+l_index
+           or to_number(rawtohex(
+                utl_raw.substr(l_view_record_header,5,1)),'XX')
+                not between 0 and 13
+           or (l_view_bundle_mask=3 and to_number(rawtohex(
+                utl_raw.substr(l_view_record_header,6,1)),'XX')
+                not between 0 and 13)
+           or (l_view_bundle_mask=1
+               and utl_raw.substr(l_view_record_header,6,1)
+                 <>hextoraw('FF'))
+           or to_number(rawtohex(
+                utl_raw.substr(l_view_record_header,7,1)),'XX')
+                not in(0,1)
+           or utl_raw.substr(l_view_record_header,8,1)<>hextoraw('00') then
+          raise_application_error(c_error,'persistent DPV2 record mismatch');
+        end if;
+        if l_view_bundle_record_tic>p_after_tic
+           and p_frame_count<p_max_frames then
+          l_view_palette:=to_number(rawtohex(utl_raw.substr(
+            l_view_record_header,5+p_player_slot,1)),'XX');
+          l_view_layout:=to_number(rawtohex(utl_raw.substr(
+            l_view_record_header,7,1)),'XX');
+          if p_frame_count=0 then
+            dbms_lob.createtemporary(p_payload,true,dbms_lob.call);
+            dbms_lob.writeappend(
+              p_payload,8,hextoraw('4450423200000000'));
+            p_first_tic:=l_view_bundle_record_tic;
+          end if;
+          l_header:=hextoraw(
+            lpad(to_char(l_view_bundle_record_tic,'FMXXXXXXXX'),8,'0')||
+            lpad(to_char(l_view_palette,'FMXX'),2,'0')||
+            lpad(to_char(l_view_layout,'FMXX'),2,'0')||'0000');
+          dbms_lob.writeappend(p_payload,8,l_header);
+          l_view_source_offset:=l_view_bundle_record_offset+8
+            +p_player_slot*64000;
+          dbms_lob.copy(
+            p_payload,l_view_bundle,64000,dbms_lob.getlength(p_payload)+1,
+            l_view_source_offset);
+          p_frame_count:=p_frame_count+1;
+          p_last_tic:=l_view_bundle_record_tic;
+        end if;
+      end loop;
+      if p_frame_count<1 then
+        raise_application_error(c_error,'persistent DPV2 frontier mismatch');
+      end if;
+      l_header:=hextoraw(
+        '44504232'||lpad(to_char(p_frame_count,'FMXXXXXXXX'),8,'0'));
+      dbms_lob.write(p_payload,8,1,l_header);
+      if dbms_lob.getlength(p_payload)<>8+p_frame_count*64008 then
+        raise_application_error(c_error,'assembled DPV2 batch mismatch');
+      end if;
+      if c_compress_live_frames then encode_gzip_dpb2; end if;
+      return;
     end if;
     -- DPD1 is the immediate one-tic path: magic, tic, player mask, two
     -- palette bytes, layout byte, four reserved bytes, then complete frames

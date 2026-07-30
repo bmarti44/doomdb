@@ -1,0 +1,21 @@
+PMLE_PUBLIC_EXACT_FPS|PASS|seconds=20|frames=317|injected_rtt_ms=200|elapsed_ms=20115.400|fps=15.709|gap_p50_ms=32.900|gap_p95_ms=141.100|gap_max_ms=159.400|starvations=116
+PMLE_PUBLIC_EXACT_PLAYOUT|PASS|present=317|buffer_min=0|buffer_p50=1|buffer_p95=2|mode_accelerate=0|mode_free=0|mode_decelerate=317|batches=121|starvations=116
+PMLE_PUBLIC_EXACT_PIXELS|PASS|present=317|database_unique=303|database_consecutive_changes=304|canvas_unique=303|canvas_consecutive_changes=304|changed_pixels_p50=8600|changed_pixels_p95=46104|material_frames=282|arrow_up_inputs=63|arrow_up_effective=62
+PMLE_PUBLIC_EXCHANGE|PASS|requests=121|http_200=121|cancelled=0|failed=0|elapsed_p50_ms=107.820|elapsed_p95_ms=111.893
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: database-frame canvas cadence 15.709 FPS
+    at file:///Users/bmarti44/doomdb/probes/mle/teavm-engine/measure-public-exact-fps.mjs:309:8
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

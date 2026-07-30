@@ -14,7 +14,12 @@ const coordinatorPath = path.resolve(
 const keyframeInterval = Number.parseInt(process.argv[3] ?? '2', 10);
 const multiplayerKeyframeInterval =
   Number.parseInt(process.argv[4] ?? '2', 10);
-const bundleMode=process.argv[5]==='BATCH';
+const persistenceMode=process.argv[5]??'DPD1';
+const bundleMode=persistenceMode==='BATCH';
+const viewBundleMode=persistenceMode==='VIEW_BUNDLE';
+if (!['DPD1','BATCH','VIEW_BUNDLE'].includes(persistenceMode)) {
+  throw new Error(`invalid temporal persistence mode: ${persistenceMode}`);
+}
 if (![2,3,4].includes(keyframeInterval)
     || ![2,3,4].includes(multiplayerKeyframeInterval)) {
   throw new Error('temporal coordinator test intervals must be 2, 3, or 4');
@@ -63,10 +68,49 @@ function playerCamera(api) {
 }
 
 function logicalViewWrites(rawWrites,playerMask) {
-  if(!bundleMode)return rawWrites;
+  if(!bundleMode&&!viewBundleMode)return rawWrites;
   const byTic=new Map();
   for(const entry of rawWrites) {
     const batch=entry.payload.bytes;
+    if(viewBundleMode) {
+      assert.deepEqual([...batch.subarray(0,4)],[68,80,86,50]);
+      const view=new DataView(batch.buffer,batch.byteOffset,batch.byteLength);
+      const firstTic=view.getUint32(4);
+      const count=view.getUint32(8);
+      assert.equal(batch[12],playerMask);
+      assert.deepEqual([...batch.subarray(13,16)],[0,0,0]);
+      const players=playerMask===3?2:1;
+      const recordBytes=8+players*64_000;
+      assert.equal(batch.byteLength,16+count*recordBytes);
+      assert.equal(entry.binds.lastTic,firstTic+count-1);
+      assert.equal(entry.binds.payloadBytes,batch.byteLength);
+      for(let index=0;index<count;index++) {
+        const record=16+index*recordBytes;
+        const tic=view.getUint32(record);
+        assert.equal(tic,firstTic+index);
+        assert.equal(batch[record+5],playerMask===3
+          ? batch[record+5]:255);
+        assert.ok(batch[record+4]>=0&&batch[record+4]<=13);
+        if(playerMask===3)assert.ok(
+          batch[record+5]>=0&&batch[record+5]<=13);
+        assert.ok(batch[record+6]===0||batch[record+6]===1);
+        assert.equal(batch[record+7],0);
+        const bytes=new Uint8Array(16+players*64_000);
+        bytes.set([68,80,68,49],0);
+        new DataView(bytes.buffer).setUint32(4,tic);
+        bytes[8]=playerMask;
+        bytes[9]=batch[record+4];
+        bytes[10]=batch[record+5];
+        bytes[11]=batch[record+6];
+        bytes.set(
+          batch.subarray(record+8,record+recordBytes),16);
+        byTic.set(tic,{
+          binds:{frameTic:tic,playerMask},
+          payload:{bytes},
+        });
+      }
+      continue;
+    }
     assert.deepEqual([...batch.subarray(0,4)],[68,80,66,50]);
     const view=new DataView(batch.buffer,batch.byteOffset,batch.byteLength);
     const count=view.getUint32(4);
@@ -165,7 +209,7 @@ export default {
       const tic=index+1;
       if(tic===1)return 1;
       if((tic-1)%keyframeInterval!==0)return 0;
-      return bundleMode?1:keyframeInterval;
+      return bundleMode||viewBundleMode?1:keyframeInterval;
     }));
   const writes = logicalViewWrites(globalThis.__doomdbTemporalWrites,1);
   assert.deepEqual(writes.map(entry => entry.binds.frameTic),
@@ -274,6 +318,8 @@ export default {
   assert.deepEqual(multiplayerWritesPerTic,
     Array.from({length:multiplayerLastTic},(_,index)=>{
       const tic=index+1;
+      if(viewBundleMode)
+        return tic===1?1:(tic-1)%multiplayerKeyframeInterval===0?1:0;
       if(bundleMode)
         return tic===1?2:(tic-1)%multiplayerKeyframeInterval===0?2:0;
       return tic===1?1:(tic-1)%multiplayerKeyframeInterval===0
@@ -335,7 +381,9 @@ export default {
       + ` keyframe_changed_pixels=${exactEndpointDiffs.join('/')}`
       + ' movement=PASS consecutive=YES generation_reset=PASS'
       + ` multiplayer_two_pov_temporal=PASS`
-      + ` temporal_bundle=${bundleMode?'DPB2_PER_PLAYER':'DPD1_PER_TIC'}`
+      + ` temporal_bundle=${
+        viewBundleMode?'DPV2_COMBINED_TEMPORAL_AND_POV':
+          bundleMode?'DPB2_PER_PLAYER':'DPD1_PER_TIC'}`
       + ` multiplayer_interval=${multiplayerKeyframeInterval}\n`);
 } finally {
   rmSync(temporary, {recursive: true, force: true});

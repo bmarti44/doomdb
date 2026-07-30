@@ -25,8 +25,18 @@ create table doom_match_live_frame_views (
     ((tic=-1 and player_mask=0 and payload_bytes=0
        and published_at is null) or
      (tic>=0 and player_mask in(1,3)
-       and payload_bytes=16+
-         case player_mask when 1 then 64000 when 3 then 128000 end
+       and (payload_bytes=16+
+              case player_mask when 1 then 64000 when 3 then 128000 end
+         or (payload_bytes between
+               16+(8+case player_mask
+                 when 1 then 64000 when 3 then 128000 end)
+             and
+               16+6*(8+case player_mask
+                 when 1 then 64000 when 3 then 128000 end)
+             and mod(
+               payload_bytes-16,
+               8+case player_mask
+                 when 1 then 64000 when 3 then 128000 end)=0))
        and published_at is not null)))
 ) lob(payload_blob) store as securefile(cache logging retention none);
 
