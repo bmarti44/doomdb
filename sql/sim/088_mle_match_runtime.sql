@@ -20,7 +20,7 @@ create or replace package doom_mle_match_runtime authid definer as
     p_generation in number,p_tic in number);
   procedure prepare_views(
     p_match in varchar2,p_player_mask in number,p_membership_epoch in number,
-    p_generation in number,p_tic in number);
+    p_generation in number,p_tic in number,p_input_mask in number default 0);
   procedure publish_prepared_views(
     p_match in varchar2,p_player_mask in number,p_membership_epoch in number,
     p_generation in number,p_tic in number);
@@ -357,15 +357,20 @@ create or replace package body doom_mle_match_runtime as
 
   procedure prepare_views(
     p_match in varchar2,p_player_mask in number,p_membership_epoch in number,
-    p_generation in number,p_tic in number
+    p_generation in number,p_tic in number,p_input_mask in number default 0
   ) is
     l_bytes number;
     l_players number;
   begin
     validate_view_mask(p_player_mask);
+    if p_input_mask not between 0 and 3
+       or bitand(p_input_mask,p_player_mask)<>p_input_mask then
+      raise_application_error(c_error,'MLE shared-view input mask');
+    end if;
     l_players:=case p_player_mask when 1 then 1 when 3 then 2 end;
     l_bytes:=doom_mle_live_prepare_views(
-      p_match,p_player_mask,p_membership_epoch,p_generation,p_tic);
+      p_match,p_player_mask,p_membership_epoch,p_generation,p_tic,
+      p_input_mask);
     if l_bytes<>16+l_players*64000 then
       raise_application_error(c_error,'MLE shared-view preparation length');
     end if;

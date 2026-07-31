@@ -15,6 +15,7 @@ const keyframeInterval = Number.parseInt(process.argv[3] ?? '2', 10);
 const multiplayerKeyframeInterval =
   Number.parseInt(process.argv[4] ?? '2', 10);
 const persistenceMode=process.argv[5]??'DPD1';
+const schedulerMode=process.argv[6]??'BASELINE';
 const bundleMode=persistenceMode==='BATCH';
 const staggeredMode=persistenceMode==='STAGGERED';
 const nativeTemporalMode=persistenceMode==='NATIVE'||staggeredMode;
@@ -23,6 +24,17 @@ const viewBundleMode=
 if (!['DPD1','BATCH','VIEW_BUNDLE','NATIVE','STAGGERED']
     .includes(persistenceMode)) {
   throw new Error(`invalid temporal persistence mode: ${persistenceMode}`);
+}
+if(!['BASELINE','INPUT_AWARE','SOLO_INPUT_AWARE'].includes(schedulerMode)) {
+  throw new Error(`invalid temporal scheduler mode: ${schedulerMode}`);
+}
+const inputAwareMode=schedulerMode==='INPUT_AWARE';
+const soloInputAwareMode=schedulerMode==='SOLO_INPUT_AWARE';
+if(inputAwareMode&&!staggeredMode) {
+  throw new Error('input-aware scheduling requires staggered persistence');
+}
+if(soloInputAwareMode&&(!staggeredMode||keyframeInterval!==3)) {
+  throw new Error('solo input-aware scheduling requires staggered/interval 3');
 }
 if (![2,3,4,5].includes(keyframeInterval)
     || ![2,3,4,5].includes(multiplayerKeyframeInterval)) {
@@ -296,12 +308,14 @@ export default {
   const writesPerTic = [];
   let cameraAtFirstForwardTic;
   const lastTic=1+2*keyframeInterval;
+  const soloInputTics=new Set(soloInputAwareMode?[2,5,7]:[]);
   for (let tic = 1; tic <= lastTic; tic++) {
     assert.equal(api.stepOnly(2, 1, command), tic, `step tic ${tic}`);
     if (tic === 1) cameraAtFirstForwardTic = playerCamera(api);
     const before = globalThis.__doomdbTemporalWrites.length;
     assert.equal(
-      api.prepareMatchViews(matchId, 1, 1, 1, tic), 64_016,
+      api.prepareMatchViews(
+        matchId, 1, 1, 1, tic, soloInputTics.has(tic)?1:0), 64_016,
       `prepare tic ${tic}`);
     assert.equal(
       api.publishPreparedMatchViews(matchId, 1, 1, 1, tic), 64_016,
@@ -311,6 +325,7 @@ export default {
   assert.deepEqual(writesPerTic,
     Array.from({length:lastTic},(_,index)=>{
       const tic=index+1;
+      if(soloInputAwareMode)return [1,2,5,7].includes(tic)?1:0;
       if(tic===1)return 1;
       if((tic-1)%keyframeInterval!==0)return 0;
       return bundleMode||viewBundleMode?1:keyframeInterval;
@@ -328,9 +343,13 @@ export default {
     assert.equal(bytes[11], 1);
   }
   const exactEndpointDiffs=[];
-  for(let tic=1;tic+keyframeInterval<=lastTic;tic+=keyframeInterval) {
+  const soloEndpoints=soloInputAwareMode?[1,2,5,7]:Array.from(
+    {length:3},(_,index)=>1+index*keyframeInterval);
+  for(let pair=0;pair<soloEndpoints.length-1;pair++) {
+    const tic=soloEndpoints[pair];
+    const currentTic=soloEndpoints[pair+1];
     const previous=writes[tic-1].payload.bytes;
-    const current=writes[tic+keyframeInterval-1].payload.bytes;
+    const current=writes[currentTic-1].payload.bytes;
     let changed=0;
     for(let offset=16;offset<64_016;offset+=1) {
       if(previous[offset]!==current[offset])changed+=1;
@@ -342,24 +361,24 @@ export default {
 
   // Every intermediate frame is the exact spatial phase mix between adjacent
   // keyframes. This checks every pixel, not a sampled visual checksum.
-  for (let priorTic = 1;
-      priorTic + keyframeInterval <= lastTic;
-      priorTic += keyframeInterval) {
+  for (let pair=0;pair<soloEndpoints.length-1;pair++) {
+    const priorTic=soloEndpoints[pair];
+    const currentTic=soloEndpoints[pair+1];
+    const interval=currentTic-priorTic;
     const previous = writes[priorTic - 1].payload.bytes;
-    const current =
-      writes[priorTic + keyframeInterval - 1].payload.bytes;
-    assert.equal(previous[9], current[9], `palette changed at tic ${priorTic}`);
-    for (let phase = 1; phase < keyframeInterval; phase++) {
+    const current = writes[currentTic - 1].payload.bytes;
+    const sameMetadata=previous[9]===current[9]
+      &&previous[11]===current[11];
+    for (let phase = 1; phase < interval; phase++) {
       const synthetic = writes[priorTic + phase - 1].payload.bytes;
       const tic = priorTic + phase;
       for (let row = 0; row < 200; row++) {
         for (let column = 0; column < 320; column++) {
           const offset = 16 + row * 320 + column;
-          const choosePrevious = keyframeInterval === 2
-            ? ((row + column + tic) & 1) === 0
-            : ((row * 320 + column + tic) % keyframeInterval) >= phase;
-          const expected = choosePrevious
-            ? previous[offset] : current[offset];
+          const pixel=row*320+column;
+          const expected=!sameMetadata
+            ?current[offset]
+            :(pixel+tic)%interval<phase?current[offset]:previous[offset];
           assert.equal(
             synthetic[offset], expected,
             `synthetic mismatch tic=${tic} row=${row} column=${column}`);
@@ -411,12 +430,16 @@ export default {
   const multiplayerWriteStart=globalThis.__doomdbTemporalWrites.length;
   const multiplayerWritesPerTic=[];
   const multiplayerLastTic=staggeredMode
-    ? 3*multiplayerKeyframeInterval-1
+    ? inputAwareMode?17:3*multiplayerKeyframeInterval-1
     : 1+2*multiplayerKeyframeInterval;
   for (let tic = 1; tic <= multiplayerLastTic; tic++) {
     assert.equal(api.stepOnly(2, 3, command), tic);
     before = globalThis.__doomdbTemporalWrites.length;
-    assert.equal(api.prepareMatchViews(matchId, 3, 1, 3, tic), 128_016);
+    const inputMask=inputAwareMode
+      ? ({2:1,3:1,5:2,6:2,7:3}[tic]??0)
+      : 0;
+    assert.equal(
+      api.prepareMatchViews(matchId,3,1,3,tic,inputMask),128_016);
     assert.equal(api.publishPreparedMatchViews(matchId, 3, 1, 3, tic), 128_016);
     multiplayerWritesPerTic.push(
       globalThis.__doomdbTemporalWrites.length-before);
@@ -425,6 +448,9 @@ export default {
     Array.from({length:multiplayerLastTic},(_,index)=>{
       const tic=index+1;
       if(staggeredMode) {
+        if(inputAwareMode) {
+          return [1,3,4,6,7,11,12,16,17].includes(tic)?1:0;
+        }
         const playerZeroDue=tic>1
           &&(tic-1)%multiplayerKeyframeInterval===0;
         const playerOneDue=tic>=multiplayerKeyframeInterval-1
@@ -448,7 +474,8 @@ export default {
     multiplayerWrites.map(entry=>entry.binds.frameTic),
     Array.from(
       {length:staggeredMode
-        ?2*multiplayerKeyframeInterval+1:multiplayerLastTic},
+        ?inputAwareMode?16:2*multiplayerKeyframeInterval+1
+        :multiplayerLastTic},
       (_,index)=>index+1));
   for(const entry of multiplayerWrites) {
     const payload=entry.payload.bytes;
@@ -492,13 +519,15 @@ export default {
   } else {
     const byTic=new Map(allMultiplayerWrites.map(
       entry=>[entry.binds.frameTic,entry]));
-    const endpoints=[
-      [1,1+multiplayerKeyframeInterval,
-        1+2*multiplayerKeyframeInterval],
-      [1,multiplayerKeyframeInterval-1,
-        2*multiplayerKeyframeInterval-1,
-        3*multiplayerKeyframeInterval-1],
-    ];
+    const endpoints=inputAwareMode
+      ? [[1,3,7,12,17],[1,4,6,11,16]]
+      : [
+        [1,1+multiplayerKeyframeInterval,
+          1+2*multiplayerKeyframeInterval],
+        [1,multiplayerKeyframeInterval-1,
+          2*multiplayerKeyframeInterval-1,
+          3*multiplayerKeyframeInterval-1],
+      ];
     for(let playerSlot=0;playerSlot<2;playerSlot++) {
       const frameOffset=16+playerSlot*64_000;
       for(let pair=0;pair<endpoints[playerSlot].length-1;pair++) {
@@ -509,18 +538,26 @@ export default {
         const current=byTic.get(currentTic);
         assert.ok((previous.logicalMask&(1<<playerSlot))!==0);
         assert.ok((current.logicalMask&(1<<playerSlot))!==0);
+        const sameMetadata=[9+playerSlot,11].every(offset=>
+          previous.payload.bytes[offset]===current.payload.bytes[offset]);
         for(let tic=previousTic+1;tic<currentTic;tic++) {
           const synthetic=byTic.get(tic);
           assert.ok((synthetic.logicalMask&(1<<playerSlot))!==0);
           const numerator=tic-previousTic;
           for(let pixel=0;pixel<64_000;pixel++) {
-            const expected=(pixel+tic)%interval<numerator
+            const expected=!sameMetadata
               ?current.payload.bytes[frameOffset+pixel]
-              :previous.payload.bytes[frameOffset+pixel];
+              :(pixel+tic)%interval<numerator
+                ?current.payload.bytes[frameOffset+pixel]
+                :previous.payload.bytes[frameOffset+pixel];
             assert.equal(
               synthetic.payload.bytes[frameOffset+pixel],expected,
               `staggered temporal mismatch slot=${playerSlot}`
-                + ` tic=${tic} pixel=${pixel}`);
+                + ` tic=${tic} pixel=${pixel}`
+                + ` interval=${interval} numerator=${numerator}`
+                + ` metadata=${sameMetadata}`
+                + ` previous=${previous.payload.bytes[frameOffset+pixel]}`
+                + ` current=${current.payload.bytes[frameOffset+pixel]}`);
           }
         }
       }

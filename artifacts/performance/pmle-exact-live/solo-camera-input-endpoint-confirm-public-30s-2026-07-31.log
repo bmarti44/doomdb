@@ -1,0 +1,24 @@
+PMLE_PUBLIC_MATCH|id=de3600b455a2cb39c32e60fe7c11628d
+PMLE_PUBLIC_EXACT_FPS|PASS|seconds=30|frames=820|injected_rtt_ms=0|elapsed_ms=29999.700|fps=27.300|gap_p50_ms=28.400|gap_p95_ms=32.600|gap_max_ms=4593.500|gap_max_tic=254|starvations=17
+PMLE_PUBLIC_EXACT_PLAYOUT|PASS|present=820|buffer_min=0|buffer_p50=6|buffer_p95=8|mode_accelerate=14|mode_free=584|mode_decelerate=222|batches=297|batch_zero=0|batch_count_p50=3|batch_count_p95=6|starvations=17
+PMLE_PUBLIC_EXACT_PIXELS|PASS|present=820|database_unique=820|database_consecutive_changes=819|canvas_unique=820|canvas_consecutive_changes=819|changed_pixels_p50=1898|changed_pixels_p95=14488|material_frames=674|arrow_up_inputs=91|arrow_up_effective=76
+PMLE_PUBLIC_EXCHANGE|PASS|requests=465|http_200=464|cancelled=1|failed=0|elapsed_p50_ms=39.829|elapsed_p95_ms=52.757
+PMLE_PUBLIC_INPUT_MOTION|PASS|input_sequence=2|effective_tic=95|paint_tic=95|confirmed_frames_skipped=6|input_to_paint_ms=179.500|effective_to_paint_ms=125.000|changed_pixels=12602
+PMLE_PUBLIC_DIRECTION_LATENCY|FAIL|samples=3|p50_ms=174.200|p95_ms=178.300|max_ms=178.300
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: direction-change latency sample coverage changed
+    at file:///Users/bmarti44/doomdb/probes/mle/teavm-engine/measure-public-exact-fps.mjs:409:8
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

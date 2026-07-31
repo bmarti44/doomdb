@@ -894,6 +894,8 @@ grep -q 'live-frame module deployment requires the retained pool parked' \
 grep -q "signature 'renderAndPublishMatchFrame" "$MLE_LIVE_FRAME_LOADER" ||
   fail 'live-frame render/publish call spec missing'
 grep -q "signature 'prepareMatchViews" "$MLE_LIVE_FRAME_LOADER" &&
+grep -Fq "prepareMatchViews(string, number, number, number, number, number)" \
+  "$MLE_LIVE_FRAME_LOADER" &&
 grep -q "signature 'publishPreparedMatchViews" "$MLE_LIVE_FRAME_LOADER" &&
 grep -q 'doom_mle_match_runtime.prepare_views' "$MLE_MATCH_WORKER" &&
 grep -q 'doom_mle_match_runtime.publish_prepared_views' "$MLE_MATCH_WORKER" &&
@@ -1576,6 +1578,11 @@ grep -q "checkpoint_status='PROCESSING'" "$MLE_MATCH_WORKER" ||
   fail 'periodic DMC1 work is not fenced to solo-local/co-op-standby ownership'
 grep -Fq 'if l_input_effective_tic=p_tic then' "$MLE_MATCH_WORKER" &&
 grep -Fq 'if l_effective_input_mask>0 then' "$MLE_MATCH_WORKER" &&
+grep -Fq 'l_effective_camera_mask);' "$MLE_MATCH_WORKER" &&
+grep -Fq 'utl_raw.substr(l_input,1,4)' "$MLE_MATCH_WORKER" &&
+grep -Fq 'p_input_mask in number default 0' "$MLE_MATCH_RUNTIME" &&
+grep -Fq 'bitand(p_input_mask,p_player_mask)<>p_input_mask' \
+  "$MLE_MATCH_RUNTIME" &&
 perl -0777 -ne 'exit !(/if l_effective_input_mask>0 then.*?doom_mle_match_runtime[.]flush_live_frames/s)' \
   "$MLE_MATCH_WORKER" ||
   fail 'effective input does not flush its confirmed database framebuffer'

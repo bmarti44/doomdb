@@ -307,7 +307,7 @@ emit_sql() {
     '/' \
     "create function doom_mle_live_render_publish_views(p_match varchar2,p_player_mask number,p_epoch number,p_generation number,p_tic number)return number as mle module doom_mle_live_coordinator env doom_mle_live_env signature 'renderAndPublishMatchViews(string, number, number, number, number)';" \
     '/' \
-    "create function doom_mle_live_prepare_views(p_match varchar2,p_player_mask number,p_epoch number,p_generation number,p_tic number)return number as mle module doom_mle_live_coordinator env doom_mle_live_env signature 'prepareMatchViews(string, number, number, number, number)';" \
+    "create function doom_mle_live_prepare_views(p_match varchar2,p_player_mask number,p_epoch number,p_generation number,p_tic number,p_input_mask number)return number as mle module doom_mle_live_coordinator env doom_mle_live_env signature 'prepareMatchViews(string, number, number, number, number, number)';" \
     '/' \
     "create function doom_mle_live_publish_prepared_views(p_match varchar2,p_player_mask number,p_epoch number,p_generation number,p_tic number)return number as mle module doom_mle_live_coordinator env doom_mle_live_env signature 'publishPreparedMatchViews(string, number, number, number, number)';" \
     '/' \

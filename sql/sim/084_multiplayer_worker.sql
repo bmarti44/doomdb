@@ -570,7 +570,8 @@ create or replace package body doom_match_worker as
     l_render_mask number:=0;
     l_now timestamp with time zone:=utc_now;l_deadline timestamp with time zone;
     l_eligible timestamp with time zone;l_input raw(8);l_payload raw(32767);
-    l_input_effective_tic number;l_effective_input_mask number:=0;
+    l_input_effective_tic number;l_input_seq number;l_prior_input raw(8);
+    l_effective_input_mask number:=0;l_effective_camera_mask number:=0;
     l_checkpoint blob;l_checkpoint_sha varchar2(64);l_checkpoint_bytes number;
     l_step_started timestamp with time zone:=utc_now;
     l_step_ended timestamp with time zone;l_step_elapsed_ms number;
@@ -624,8 +625,9 @@ create or replace package body doom_match_worker as
     if l_deadline>l_now then l_deadline:=l_now;end if;
     if p_paced=0 then for l_slot in 0..1 loop
       begin
-        select ticcmd_raw,effective_tic into l_input,l_input_effective_tic
-          from (select ticcmd_raw,effective_tic
+        select ticcmd_raw,effective_tic,input_seq
+          into l_input,l_input_effective_tic,l_input_seq
+          from (select ticcmd_raw,effective_tic,input_seq
           from doom_match_input_event where match_id=p_match
             and player_slot=l_slot and membership_epoch=p_epoch
             and effective_tic<=p_tic order by input_seq desc) where rownum=1;
@@ -633,6 +635,19 @@ create or replace package body doom_match_worker as
           substr(l_vector_hex,l_slot*16+17);
         if l_input_effective_tic=p_tic then
           l_effective_input_mask:=l_effective_input_mask+power(2,l_slot);
+          begin
+            select ticcmd_raw into l_prior_input from (
+              select ticcmd_raw from doom_match_input_event
+              where match_id=p_match and player_slot=l_slot
+                and membership_epoch=p_epoch and input_seq<l_input_seq
+              order by input_seq desc) where rownum=1;
+          exception when no_data_found then l_prior_input:=hextoraw('0000000000000000');
+          end;
+          if utl_raw.compare(
+              utl_raw.substr(l_input,1,4),utl_raw.substr(l_prior_input,1,4))<>0
+          then
+            l_effective_camera_mask:=l_effective_camera_mask+power(2,l_slot);
+          end if;
         end if;
       exception when no_data_found then null;end;
     end loop;end if;
@@ -689,7 +704,8 @@ create or replace package body doom_match_worker as
     else
       l_frame_render_started:=utc_now;
       doom_mle_match_runtime.prepare_views(
-        p_match,l_render_mask,p_epoch,p_generation,p_tic);
+        p_match,l_render_mask,p_epoch,p_generation,p_tic,
+        l_effective_camera_mask);
       l_frame_render_ended:=utc_now;
       doom_mle_match_runtime.publish_prepared_views(
         p_match,l_render_mask,p_epoch,p_generation,p_tic);

@@ -11,16 +11,19 @@ the browser only copies the completed pixels to canvas.
 The hosted release now uses the database-pixel path: Oracle MLE advances the
 authoritative world and produces each complete 320x200 indexed framebuffer.
 ORDS returns bounded batches of those pixels; the browser only applies the
-palette and copies them to canvas. Two July 31 public runs from fully READY
-retained slots produced 966 database frames apiece at 32.209 and 32.166 FPS;
-every frame was unique and every consecutive pair changed. A solo control
-revision seeks directly to its exact MLE-rendered effective frame instead of
-painting obsolete confirmed history first. Input now gives an ordinary
+palette and copies them to canvas. The July 31 camera-aware endpoint build
+produced 996 frames at 33.159 FPS; 995 were unique and every consecutive pair
+changed. A solo camera/movement revision moves the next already-budgeted exact
+MLE raster endpoint to its authoritative effective tic, while fire-only
+revisions retain the normal three-tic temporal path. That reduced the clean
+direction-change sample from 201.4/230.8 ms p50/p95 to 177.9/219.1 ms without
+changing multiplayer endpoint scheduling. A solo control revision also seeks
+directly to its exact MLE-rendered effective frame instead of painting obsolete
+confirmed history first. Input gives an ordinary
 read-only frame request at most 75 ms to finish, then takes the next Free-tier
 API lane; this avoids both lane contention and the cancellation backlog seen
-when an ORDS request was aborted. Five forward/turn changes measured
-180.1/203.2 ms p50 and 189.9/248.5 ms p95 input-to-canvas in the two clean
-runs, with zero cancelled or failed pixel exchanges. Retained slots also
+when an ORDS request was aborted. The clean endpoint run had zero cancelled or
+failed pixel exchanges. Retained slots also
 prewarm 96 representative
 moving/firing frames before READY so the first portal, weapon, and sprite
 paths are not paid on a player's direction change. The July 31 coordinator
@@ -28,9 +31,12 @@ expands the confirmed database-pixel ring from 64 to 128 entries so a
 managed-ORDS tail cannot overwrite movement frames while old lighting frames
 remain visible. Solo checkpoint creation now stays in the authority context;
 that removed the measured 13.2-second standby replay and reduced the clean-run
-maximum canvas gaps to 393 and 275 ms. One immediate back-to-back recycle run
-still recorded 27.261 FPS and a 274.6 ms direction tail, so that operational
-transition remains visible rather than being hidden by the clean headline.
+maximum canvas gaps to 393 and 275 ms. Always Free can still produce rare
+multi-second `MLE_FRAME` stalls; a confirmation cell recorded 4.594 seconds
+and therefore did not count as a clean gate. Endpoint scheduling shortens
+normal input response but does not hide a period in which the venue generates
+no pixels. That limitation remains visible rather than being hidden by the
+clean headline.
 Its phase-staggered two-view
 path clears 20 FPS average, but the stricter multiplayer p95 cadence gate
 remains open. Always Free may stop
