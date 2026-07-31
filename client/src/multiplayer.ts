@@ -19,7 +19,8 @@ import {decodeDatabasePixelTransport,nextDatabaseFrameTic}
 import type {DatabasePixelFrame} from './pixel-batch.js';
 import type {ConfirmedPresentation} from './authority-mirror.js';
 import {
-  ConfirmedWanPolicy,confirmedBatchPlayoutDecision,confirmedPlayoutDecision
+  ConfirmedWanPolicy,confirmedBatchPlayoutDecision,confirmedPlayoutDecision,
+  databasePixelPlayoutIntervalMs
 }
   from './authority-wan.js';
 
@@ -626,6 +627,34 @@ async function startDatabaseFrameGame(
         const changedInput=input.hex!==lastEffectiveInputHex;
         lastEffectiveInputHex=input.hex;
         if(playoutStarted&&changedInput) {
+          // The confirmed playout reserve is valuable for ordinary network
+          // jitter, but it becomes stale visual history as soon as the
+          // authority accepts a changed command. Advance the presentation
+          // cursor to the last pre-effect tic and wait for the exact
+          // database-authored effective frame. This never predicts or
+          // fabricates pixels: every omitted tic is already confirmed and is
+          // named in telemetry. Without this step a six-frame reserve plus
+          // batched delivery made movement appear 10-16 tics after the input
+          // response, and an ORDS tail could stretch that into seconds.
+          let skippedTic=nextDatabaseFrameTic(presentedTic);
+          let skippedCount=0;
+          while(skippedTic<result.effectiveTic) {
+            frames.delete(skippedTic);
+            trace('pixel-confirmed-drop',{
+              tic:skippedTic,reason:'effective-input-catchup',
+              inputSequence:input.sequence,effectiveTic:result.effectiveTic,
+              source:'database-framebuffer'});
+            skippedCount+=1;
+            skippedTic=nextDatabaseFrameTic(skippedTic);
+          }
+          if(skippedCount>0) {
+            presentedTic=result.effectiveTic-1;
+            nextFrameAt=0;
+            starvationActive=false;
+            trace('pixel-input-catchup',{
+              inputSequence:input.sequence,effectiveTic:result.effectiveTic,
+              skippedCount,source:'database-framebuffer'});
+          }
           inputCatchupThroughTic=Math.max(
             inputCatchupThroughTic,result.effectiveTic);
           // A control response that already spent most of the 250-ms visual
@@ -662,7 +691,9 @@ async function startDatabaseFrameGame(
       : nextDatabaseFrameTic(presentedTic);
     const frame=frames.get(nextTic);
     if(frame===undefined) {
-      if(playoutStarted&&now>=nextFrameAt+1000/70&&!starvationActive) {
+      if(playoutStarted&&now>=nextFrameAt+
+          databasePixelPlayoutIntervalMs(
+            soloMode,'FREE',false)/2&&!starvationActive) {
         starvationActive=true;
         trace('pixel-starvation',{
           presentedTic,transportTic,selectedDepth:wan.playoutBufferTics,
@@ -703,20 +734,12 @@ async function startDatabaseFrameGame(
     const inputCatchup=inputCatchupThroughTic>presentedTic
       &&frames.size>activePixelInputCatchupFloor;
     playoutMode=inputCatchup?'ACCELERATE':decision.mode;
-    const nativePixelInterval=1000/35;
-    let interval=nativePixelInterval;
-    if(playoutMode==='ACCELERATE') {
-      // Input catch-up needs less than the general 2x backlog ceiling. A
-      // 20-ms clock preserves more confirmed reserve during rapid fire/turn
-      // changes while still removing roughly one tic of visual latency per
-      // three presented frames.
-      interval=inputCatchup?20:nativePixelInterval/2;
-    } else if(playoutMode==='DECELERATE') {
-      // Recover reserve continuously without manufacturing a long paint gap.
-      // 31 ms remains above 30 FPS and gives the Free-tier publication path
-      // enough headroom to refill the confirmed reserve.
-      interval=31;
-    }
+    // Solo remains native 35 Hz. The Free-tier two-POV producer is qualified
+    // against the user-authorized 20 FPS floor and must be consumed at that
+    // sustainable cadence instead of being drained at 35 Hz into a visible
+    // three-frame burst followed by starvation.
+    const interval=databasePixelPlayoutIntervalMs(
+      soloMode,playoutMode,inputCatchup);
     nextFrameAt=nextFrameAt<=0?now+interval:
       Math.max(nextFrameAt+interval,now+1000/70);
     if(inputCatchupThroughTic>=0&&presentedTic>=inputCatchupThroughTic) {

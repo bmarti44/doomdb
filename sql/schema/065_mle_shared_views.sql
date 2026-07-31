@@ -27,6 +27,10 @@ create table doom_match_live_frame_views (
      (tic>=0 and player_mask in(1,3)
        and (payload_bytes=16+
               case player_mask when 1 then 64000 when 3 then 128000 end
+         -- EPT1 is an uncommitted endpoint pair consumed synchronously by
+         -- DOOM_MLE_LIVE_FRAME_TRANSPORT before the worker commits.
+         or payload_bytes=24+
+              2*case player_mask when 1 then 64000 when 3 then 128000 end
          or (payload_bytes between
                16+(8+case player_mask
                  when 1 then 64000 when 3 then 128000 end)

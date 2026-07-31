@@ -428,8 +428,8 @@ try {
             `player ${slot} unaccounted confirmed frame skip ${expected}`);
           confirmedDropCount+=1;
           boundedDrops+=1;
-          assert.ok(boundedDrops<=4,
-            `player ${slot} confirmed input drop burst exceeded four frames`);
+          assert.ok(boundedDrops<=32,
+            `player ${slot} confirmed input drop burst exceeded 32 frames`);
           expected=nextDatabaseFrameTic(expected);
         }
         assert.equal(expected,presents[index].tic,

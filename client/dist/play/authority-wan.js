@@ -7,6 +7,8 @@ const MAX_BATCH_PLAYOUT_TICS = 12;
 const PLAYOUT_ACCELERATION_MARGIN_TICS = 2;
 const PLAYOUT_DECELERATION_MARGIN_TICS = 2;
 const MAX_DECELERATED_PLAYOUT_INTERVAL_MS = 31.4;
+const MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS = 49.5;
+const MULTIPLAYER_DATABASE_FRAME_DECELERATED_MS = 49.8;
 const MAX_SAMPLES = 64;
 const LEAD_HYSTERESIS_MS = 10_000;
 function clamp(value, minimum, maximum) {
@@ -42,6 +44,36 @@ export function confirmedPlayoutIntervalMs(backlogTics) {
     // The production controller below adds hysteresis around its selected-depth
     // occupancy setpoint.
     return backlogTics > MAX_PLAYOUT_TICS ? TIC_MS / 2 : TIC_MS;
+}
+/**
+ * Canvas clock for complete database-authored framebuffers.
+ *
+ * Solo retains native Doom's 35 Hz presentation contract. Two-POV Free-tier
+ * matches use the separately authorized 20 FPS floor: the retained worker
+ * now sustains just over 20 complete two-view tics/s, so draining that queue
+ * at 35 Hz creates visible burst/starvation cycles even though aggregate
+ * throughput passes. Input catch-up still time-compresses confirmed frames;
+ * this function never predicts, reorders, or skips one.
+ */
+export function databasePixelPlayoutIntervalMs(solo, mode, inputCatchup) {
+    if (typeof solo !== 'boolean'
+        || !['ACCELERATE', 'FREE', 'DECELERATE'].includes(mode)
+        || typeof inputCatchup !== 'boolean') {
+        throw new TypeError('database pixel playout mode is invalid');
+    }
+    if (solo) {
+        if (mode === 'ACCELERATE')
+            return inputCatchup ? 20 : TIC_MS / 2;
+        if (mode === 'DECELERATE')
+            return 31;
+        return TIC_MS;
+    }
+    if (mode === 'ACCELERATE') {
+        return inputCatchup ? 25 : MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS / 2;
+    }
+    if (mode === 'DECELERATE')
+        return MULTIPLAYER_DATABASE_FRAME_DECELERATED_MS;
+    return MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS;
 }
 export function confirmedPlayoutDecision(bufferedFrames, selectedDepth, priorMode) {
     if (!Number.isInteger(bufferedFrames) || bufferedFrames < 0 ||

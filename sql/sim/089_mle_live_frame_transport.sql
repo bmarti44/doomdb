@@ -15,6 +15,8 @@ alter table doom_match_live_frame_views
      (tic>=0 and player_mask in(1,3)
        and (payload_bytes=16+
               case player_mask when 1 then 64000 when 3 then 128000 end
+         or payload_bytes=24+
+              2*case player_mask when 1 then 64000 when 3 then 128000 end
          or (payload_bytes between
                16+(8+case player_mask
                  when 1 then 64000 when 3 then 128000 end)
@@ -36,6 +38,9 @@ create or replace package doom_mle_live_frame_transport authid definer as
   procedure advance_generation(
     p_match in varchar2,p_membership_epoch in number,
     p_old_generation in number,p_new_generation in number);
+  procedure materialize_temporal_bundle(
+    p_match in varchar2,p_membership_epoch in number,
+    p_generation in number,p_last_tic in number);
   procedure poll_latest(
     p_match in varchar2,p_player_slot in number,
     p_membership_epoch in number,p_generation in number,p_after_tic in number,
@@ -141,6 +146,201 @@ create or replace package body doom_mle_live_frame_transport as
         c_error,'live-frame recovery shared-view ring unavailable');
     end if;
   end advance_generation;
+
+  -- Convert one uncommitted EPT1 pair of exact MLE-rendered endpoints into a
+  -- DPV2 interval-three bundle. UTL_RAW performs the identical spatial phase
+  -- mask in native database code; the authoritative uncompressed pixels never
+  -- leave the database and the worker's surrounding transaction remains the
+  -- only durability boundary.
+  procedure materialize_temporal_bundle(
+    p_match in varchar2,p_membership_epoch in number,
+    p_generation in number,p_last_tic in number
+  ) is
+    c_chunk_bytes constant pls_integer:=32766;
+    type raw_table is table of raw(32767) index by pls_integer;
+    l_current_mask raw_table;
+    l_previous_mask raw_table;
+    l_source blob;
+    l_output blob;
+    l_payload_bytes number;
+    l_player_mask number;
+    l_header raw(16);
+    l_previous_meta raw(4);
+    l_current_meta raw(4);
+    l_previous_tic number;
+    l_current_tic number;
+    l_interval number;
+    l_players number;
+    l_frame_bytes number;
+    l_endpoint_record_bytes number;
+    l_previous_source number;
+    l_current_source number;
+    l_amount pls_integer;
+    l_offset pls_integer;
+    l_pattern pls_integer;
+    l_previous_raw raw(32767);
+    l_current_raw raw(32767);
+    l_output_raw raw(32767);
+    l_record raw(8);
+    l_same_metadata boolean;
+
+    procedure append_current_frame is
+      l_copy_offset pls_integer:=1;
+      l_copy_amount pls_integer;
+    begin
+      while l_copy_offset<=l_frame_bytes loop
+        l_copy_amount:=least(
+          c_chunk_bytes,l_frame_bytes-l_copy_offset+1);
+        l_current_raw:=dbms_lob.substr(
+          l_source,l_copy_amount,l_current_source+l_copy_offset-1);
+        dbms_lob.writeappend(l_output,l_copy_amount,l_current_raw);
+        l_copy_offset:=l_copy_offset+l_copy_amount;
+      end loop;
+    end append_current_frame;
+  begin
+    if p_match is null or not regexp_like(p_match,'^[0-9a-f]{32}$')
+       or p_membership_epoch is null or p_membership_epoch<1
+       or p_generation is null or p_generation<1
+       or p_last_tic is null or p_last_tic<1
+       or p_last_tic<>trunc(p_last_tic) then
+      raise_application_error(c_error,'invalid EPT1 materialization fence');
+    end if;
+    select player_mask,payload_bytes,payload_blob
+      into l_player_mask,l_payload_bytes,l_source
+      from doom_match_live_frame_views
+     where match_id=p_match
+       and ring_slot=mod(p_last_tic,64)
+       and membership_epoch=p_membership_epoch
+       and generation=p_generation
+       and tic=p_last_tic
+     for update;
+    l_header:=dbms_lob.substr(l_source,16,1);
+    l_previous_tic:=to_number(rawtohex(
+      utl_raw.substr(l_header,5,4)),'XXXXXXXX');
+    l_current_tic:=to_number(rawtohex(
+      utl_raw.substr(l_header,9,4)),'XXXXXXXX');
+    l_interval:=to_number(rawtohex(
+      utl_raw.substr(l_header,14,1)),'XX');
+    if l_player_mask not in(1,3)
+       or utl_raw.substr(l_header,1,4)<>hextoraw('45505431')
+       or to_number(rawtohex(utl_raw.substr(l_header,13,1)),'XX')
+            <>l_player_mask
+       or l_interval<>3
+       or utl_raw.substr(l_header,15,2)<>hextoraw('0000')
+       or l_current_tic<>p_last_tic
+       or l_current_tic<>l_previous_tic+l_interval then
+      raise_application_error(c_error,'persistent EPT1 header mismatch');
+    end if;
+    l_players:=case l_player_mask when 1 then 1 else 2 end;
+    l_frame_bytes:=l_players*64000;
+    l_endpoint_record_bytes:=4+l_frame_bytes;
+    if l_payload_bytes<>16+2*l_endpoint_record_bytes
+       or dbms_lob.getlength(l_source)<>l_payload_bytes then
+      raise_application_error(c_error,'persistent EPT1 length mismatch');
+    end if;
+    l_previous_meta:=dbms_lob.substr(l_source,4,17);
+    l_current_meta:=dbms_lob.substr(
+      l_source,4,17+l_endpoint_record_bytes);
+    if to_number(rawtohex(utl_raw.substr(l_previous_meta,1,1)),'XX')
+           not between 0 and 13
+       or to_number(rawtohex(utl_raw.substr(l_current_meta,1,1)),'XX')
+           not between 0 and 13
+       or (l_player_mask=3 and (
+         to_number(rawtohex(utl_raw.substr(l_previous_meta,2,1)),'XX')
+             not between 0 and 13
+         or to_number(rawtohex(utl_raw.substr(l_current_meta,2,1)),'XX')
+             not between 0 and 13))
+       or (l_player_mask=1 and (
+         utl_raw.substr(l_previous_meta,2,1)<>hextoraw('FF')
+         or utl_raw.substr(l_current_meta,2,1)<>hextoraw('FF')))
+       or to_number(rawtohex(utl_raw.substr(l_previous_meta,3,1)),'XX')
+            not in(0,1)
+       or to_number(rawtohex(utl_raw.substr(l_current_meta,3,1)),'XX')
+            not in(0,1)
+       or utl_raw.substr(l_previous_meta,4,1)<>hextoraw('00')
+       or utl_raw.substr(l_current_meta,4,1)<>hextoraw('00') then
+      raise_application_error(c_error,'persistent EPT1 metadata mismatch');
+    end if;
+    l_previous_source:=21;
+    l_current_source:=21+l_endpoint_record_bytes;
+    l_same_metadata:=utl_raw.compare(
+      l_previous_meta,l_current_meta)=0;
+
+    l_current_mask(3):=utl_raw.copies(hextoraw('FF0000'),10922);
+    l_current_mask(4):=utl_raw.copies(hextoraw('0000FF'),10922);
+    l_current_mask(5):=utl_raw.copies(hextoraw('00FF00'),10922);
+    l_previous_mask(3):=utl_raw.copies(hextoraw('00FFFF'),10922);
+    l_previous_mask(4):=utl_raw.copies(hextoraw('FFFF00'),10922);
+    l_previous_mask(5):=utl_raw.copies(hextoraw('FF00FF'),10922);
+    l_current_mask(6):=utl_raw.copies(hextoraw('FFFF00'),10922);
+    l_current_mask(7):=utl_raw.copies(hextoraw('00FFFF'),10922);
+    l_current_mask(8):=utl_raw.copies(hextoraw('FF00FF'),10922);
+    l_previous_mask(6):=utl_raw.copies(hextoraw('0000FF'),10922);
+    l_previous_mask(7):=utl_raw.copies(hextoraw('FF0000'),10922);
+    l_previous_mask(8):=utl_raw.copies(hextoraw('00FF00'),10922);
+
+    dbms_lob.createtemporary(l_output,true,dbms_lob.call);
+    dbms_lob.writeappend(l_output,16,hextoraw(
+      '44505632'||
+      lpad(to_char(l_previous_tic+1,'FMXXXXXXXX'),8,'0')||
+      '00000003'||
+      lpad(to_char(l_player_mask,'FMXX'),2,'0')||'000000'));
+    for l_numerator in 1..2 loop
+      l_record:=hextoraw(
+        lpad(to_char(l_previous_tic+l_numerator,'FMXXXXXXXX'),8,'0')||
+        rawtohex(l_current_meta));
+      dbms_lob.writeappend(l_output,8,l_record);
+      if not l_same_metadata then
+        append_current_frame;
+      else
+        l_offset:=1;
+        while l_offset<=l_frame_bytes loop
+          l_amount:=least(c_chunk_bytes,l_frame_bytes-l_offset+1);
+          l_pattern:=l_numerator*3+
+            mod((l_offset-1)+(l_previous_tic+l_numerator),3);
+          l_previous_raw:=dbms_lob.substr(
+            l_source,l_amount,l_previous_source+l_offset-1);
+          l_current_raw:=dbms_lob.substr(
+            l_source,l_amount,l_current_source+l_offset-1);
+          l_output_raw:=utl_raw.bit_or(
+            utl_raw.bit_and(l_previous_raw,
+              utl_raw.substr(l_previous_mask(l_pattern),1,l_amount)),
+            utl_raw.bit_and(l_current_raw,
+              utl_raw.substr(l_current_mask(l_pattern),1,l_amount)));
+          dbms_lob.writeappend(l_output,l_amount,l_output_raw);
+          l_offset:=l_offset+l_amount;
+        end loop;
+      end if;
+    end loop;
+    l_record:=hextoraw(
+      lpad(to_char(l_current_tic,'FMXXXXXXXX'),8,'0')||
+      rawtohex(l_current_meta));
+    dbms_lob.writeappend(l_output,8,l_record);
+    append_current_frame;
+    if dbms_lob.getlength(l_output)<>16+3*(8+l_frame_bytes) then
+      raise_application_error(c_error,'materialized DPV2 length mismatch');
+    end if;
+    update doom_match_live_frame_views
+       set payload_bytes=dbms_lob.getlength(l_output),
+           payload_blob=l_output,published_at=systimestamp
+     where match_id=p_match
+       and ring_slot=mod(p_last_tic,64)
+       and membership_epoch=p_membership_epoch
+       and generation=p_generation
+       and tic=p_last_tic;
+    if sql%rowcount<>1 then
+      raise_application_error(c_error,'EPT1 materialization row lost');
+    end if;
+    dbms_lob.freetemporary(l_output);
+  exception
+    when no_data_found then
+      raise_application_error(c_error,'EPT1 materialization row unavailable');
+    when others then
+      if l_output is not null and dbms_lob.istemporary(l_output)=1 then
+        dbms_lob.freetemporary(l_output);
+      end if;
+      raise;
+  end materialize_temporal_bundle;
 
   procedure poll_latest(
     p_match in varchar2,p_player_slot in number,

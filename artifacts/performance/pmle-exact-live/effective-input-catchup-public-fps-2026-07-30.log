@@ -1,0 +1,4 @@
+PMLE_PUBLIC_EXACT_FPS|PASS|seconds=15|frames=521|injected_rtt_ms=0|elapsed_ms=15168.900|fps=34.281|gap_p50_ms=28.200|gap_p95_ms=32.300|gap_max_ms=233.900|starvations=2
+PMLE_PUBLIC_EXACT_PLAYOUT|PASS|present=521|buffer_min=1|buffer_p50=7|buffer_p95=9|mode_accelerate=0|mode_free=477|mode_decelerate=44|batches=208|starvations=2
+PMLE_PUBLIC_EXACT_PIXELS|PASS|present=521|database_unique=484|database_consecutive_changes=483|canvas_unique=484|canvas_consecutive_changes=483|changed_pixels_p50=15756|changed_pixels_p95=17273|material_frames=443|arrow_up_inputs=1|arrow_up_effective=1
+PMLE_PUBLIC_EXCHANGE|PASS|requests=331|http_200=331|cancelled=0|failed=0|elapsed_p50_ms=41.305|elapsed_p95_ms=51.998

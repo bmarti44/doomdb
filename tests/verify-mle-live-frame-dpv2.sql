@@ -61,6 +61,46 @@ declare
       dbms_lob.freetemporary(l_local);
     end if;
   end assert_wire;
+
+  procedure assert_native_materialized(
+    p_slot in number,p_phase1 in varchar2,p_phase2 in varchar2,
+    p_current in varchar2
+  ) is
+    l_local blob;
+    l_unpacked blob;
+    l_local_count number;
+    l_local_first number;
+    l_local_last number;
+  begin
+    doom_mle_live_frame_transport.poll_batch(
+      c_match,p_slot,1,1,1,8,
+      l_local_count,l_local_first,l_local_last,l_local);
+    l_unpacked:=utl_compress.lz_uncompress(l_local);
+    dbms_output.put_line(
+      'PMLE_EPT1_SAMPLE|slot='||p_slot
+        ||'|phase1='||rawtohex(dbms_lob.substr(l_unpacked,3,17))
+        ||'|phase2='||rawtohex(dbms_lob.substr(l_unpacked,3,64025))
+        ||'|exact='||rawtohex(dbms_lob.substr(l_unpacked,3,128033)));
+    if l_local_count<>3 or l_local_first<>2 or l_local_last<>4
+       or dbms_lob.getlength(l_unpacked)<>8+3*64008
+       -- Phase 1, tic 2: previous/current/previous at pixels 0/1/2.
+       or rawtohex(dbms_lob.substr(l_unpacked,3,17))
+            <>p_phase1
+       -- Phase 2, tic 3: current/current/previous at pixels 0/1/2.
+       or rawtohex(dbms_lob.substr(l_unpacked,3,64025))
+            <>p_phase2
+       or rawtohex(dbms_lob.substr(l_unpacked,3,128033))
+            <>p_current||p_current||p_current then
+      raise_application_error(
+        -20995,'native EPT1 temporal materialization mismatch');
+    end if;
+    if dbms_lob.istemporary(l_unpacked)=1 then
+      dbms_lob.freetemporary(l_unpacked);
+    end if;
+    if dbms_lob.istemporary(l_local)=1 then
+      dbms_lob.freetemporary(l_local);
+    end if;
+  end assert_native_materialized;
 begin
   delete from doom_match where match_id=c_match;
   insert into doom_match(
@@ -112,6 +152,41 @@ begin
   assert_wire(0,0,8,3,1,'11');
   assert_wire(1,0,8,3,1,'21');
   assert_wire(0,1,1,1,2,'12');
+  update doom_match_live_frame_views
+     set tic=-1,player_mask=0,payload_bytes=0,payload_blob=empty_blob(),
+         published_at=null
+   where match_id=c_match and ring_slot=3;
+
+  -- Replace the row with two exact MLE endpoint frames. The package must
+  -- reproduce the former JS interval-three phase mask byte-for-byte in
+  -- native UTL_RAW operations and leave a normal authenticated DPV2 row.
+  dbms_lob.trim(l_source,0);
+  dbms_lob.writeappend(
+    l_source,16,hextoraw('45505431000000010000000403030000'));
+  dbms_lob.writeappend(l_source,4,hextoraw('01040100'));
+  append_frame(hextoraw('11'));
+  append_frame(hextoraw('21'));
+  dbms_lob.writeappend(l_source,4,hextoraw('01040100'));
+  append_frame(hextoraw('14'));
+  append_frame(hextoraw('24'));
+  update doom_match_live_frame_views
+     set tic=4,player_mask=3,payload_bytes=dbms_lob.getlength(l_source),
+         payload_blob=empty_blob(),published_at=systimestamp
+   where match_id=c_match and ring_slot=4
+     and membership_epoch=1 and generation=1
+  returning payload_blob into l_target;
+  dbms_lob.copy(l_target,l_source,dbms_lob.getlength(l_source),1,1);
+  doom_mle_live_frame_transport.materialize_temporal_bundle(
+    c_match,1,1,4);
+  select payload_blob into l_target
+    from doom_match_live_frame_views
+   where match_id=c_match and ring_slot=4;
+  if dbms_lob.substr(l_target,4,1)<>hextoraw('44505632') then
+    raise_application_error(-20994,'EPT1 was not replaced by DPV2');
+  end if;
+  assert_native_materialized(0,'111411','141411','14');
+  -- Player 1 begins at global pixel 64,000, whose modulo-three phase is one.
+  assert_native_materialized(1,'242121','242124','24');
 
   -- A payload that still carries the DPV2 discriminator must fail closed;
   -- it may not fall through to a legacy row after validation starts.
@@ -130,7 +205,8 @@ begin
 
   dbms_output.put_line(
     'PMLE_DPV2_TRANSPORT|PASS|frames=3|players=2'
-      ||'|suffix=PASS|authentication=PASS|malformed=REJECTED');
+      ||'|suffix=PASS|authentication=PASS'
+      ||'|ept1_native_exact=PASS|malformed=REJECTED');
   if dbms_lob.istemporary(l_source)=1 then
     dbms_lob.freetemporary(l_source);
   end if;

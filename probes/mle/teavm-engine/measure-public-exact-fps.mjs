@@ -47,7 +47,12 @@ page.on('request', request => {
 });
 page.on('response', response => {
   if (response.url().includes('/doom_api/') && response.status() >= 400) {
-    apiFailures.push(`${response.status()} ${response.url()}`);
+    void response.text().then(body=>{
+      apiFailures.push(`${response.status()} ${response.url()} `
+        +body.slice(0,2_000));
+    }).catch(()=>{
+      apiFailures.push(`${response.status()} ${response.url()}`);
+    });
   }
   const started=exchangeRequests.get(response.request());
   if(started!==undefined) {
@@ -71,7 +76,8 @@ page.on('requestfailed', request => {
 await page.addInitScript(() => {
   window.__doomPresented = [];
   window.__doomPixelTrace = {
-    present: [], batch: [], starvation: [], resync: [], input: [], effective: []
+    present: [], batch: [], starvation: [], resync: [], input: [], effective: [],
+    confirmedDrop: [], inputCatchup: []
   };
   window.__doomPreviousIndices = null;
   const fingerprint = bytes => {
@@ -122,6 +128,12 @@ await page.addInitScript(() => {
   });
   window.addEventListener('doom:multiplayer-input-effective', event => {
     window.__doomPixelTrace.effective.push(event.detail);
+  });
+  window.addEventListener('doom:multiplayer-pixel-confirmed-drop', event => {
+    window.__doomPixelTrace.confirmedDrop.push(event.detail);
+  });
+  window.addEventListener('doom:multiplayer-pixel-input-catchup', event => {
+    window.__doomPixelTrace.inputCatchup.push(event.detail);
   });
 });
 await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 60_000});
@@ -306,6 +318,32 @@ console.log(
     + `|elapsed_p50_ms=${percentile(exchangeElapsed,.5).toFixed(3)}`
     + `|elapsed_p95_ms=${percentile(exchangeElapsed,.95).toFixed(3)}`,
 );
+const forwardInput=result.trace.input.find(
+  entry=>entry.command?.forward===1);
+const forwardEffective=forwardInput===undefined?undefined:
+  result.trace.effective.find(entry=>
+    entry.inputSequence===forwardInput.inputSequence);
+const effectivePaint=forwardEffective===undefined?undefined:
+  result.trace.present.find(entry=>entry.tic>=forwardEffective.effectiveTic);
+const inputToPaintMs=forwardInput===undefined||effectivePaint===undefined
+  ? Number.POSITIVE_INFINITY : effectivePaint.at-forwardInput.at;
+const effectiveToPaintMs=forwardEffective===undefined||effectivePaint===undefined
+  ? Number.POSITIVE_INFINITY : effectivePaint.at-forwardEffective.at;
+const inputDrops=forwardEffective===undefined?[]:
+  result.trace.confirmedDrop.filter(entry=>
+    entry.inputSequence===forwardEffective.inputSequence);
+console.log(
+  `PMLE_PUBLIC_INPUT_MOTION|${
+    Number.isFinite(inputToPaintMs)&&inputToPaintMs<=350
+      &&(effectivePaint?.changedPixels??0)>=1_000?'PASS':'FAIL'}`
+    + `|input_sequence=${forwardInput?.inputSequence??-1}`
+    + `|effective_tic=${forwardEffective?.effectiveTic??-1}`
+    + `|paint_tic=${effectivePaint?.tic??-1}`
+    + `|confirmed_frames_skipped=${inputDrops.length}`
+    + `|input_to_paint_ms=${inputToPaintMs.toFixed(3)}`
+    + `|effective_to_paint_ms=${effectiveToPaintMs.toFixed(3)}`
+    + `|changed_pixels=${effectivePaint?.changedPixels??-1}`,
+);
 assert.ok(result.fps>=30,
   `database-frame canvas cadence ${result.fps.toFixed(3)} FPS`);
 assert.equal(databaseFingerprints.length,scoredTrace.length,
@@ -325,6 +363,10 @@ assert.ok(result.trace.input.some(entry=>entry.command?.forward===1),
   'ArrowUp did not enter the browser command register');
 assert.ok(result.trace.effective.some(entry=>entry.command?.forward===1),
   'ArrowUp did not reach an effective authoritative input revision');
+assert.ok(inputToPaintMs<=350,
+  `effective ArrowUp frame reached canvas after ${inputToPaintMs.toFixed(3)} ms`);
+assert.ok((effectivePaint?.changedPixels??0)>=1_000,
+  'effective ArrowUp frame did not produce material canvas motion');
 if (holdSeconds > 0) {
   await page.waitForTimeout(holdSeconds * 1000);
 }

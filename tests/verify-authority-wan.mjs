@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import {
   ConfirmedWanPolicy,confirmedBatchPlayoutDecision,
-  confirmedPlayoutDecision,confirmedPlayoutIntervalMs
+  confirmedPlayoutDecision,confirmedPlayoutIntervalMs,
+  databasePixelPlayoutIntervalMs
 }
   from '../client/staging/authority-wan.js';
 
@@ -178,4 +179,13 @@ jitterDecision=confirmedBatchPlayoutDecision(
 assert.equal(jitterDecision.mode,'FREE');
 assert.throws(()=>confirmedPlayoutIntervalMs(-1),/invalid/);
 assert.throws(()=>confirmedPlayoutIntervalMs(1.5),/invalid/);
+assert.equal(databasePixelPlayoutIntervalMs(true,'FREE',false),1000/35);
+assert.equal(databasePixelPlayoutIntervalMs(true,'ACCELERATE',true),20);
+assert.equal(databasePixelPlayoutIntervalMs(true,'DECELERATE',false),31);
+assert.equal(databasePixelPlayoutIntervalMs(false,'FREE',false),49.5);
+assert.equal(databasePixelPlayoutIntervalMs(false,'ACCELERATE',false),24.75);
+assert.equal(databasePixelPlayoutIntervalMs(false,'ACCELERATE',true),25);
+assert.equal(databasePixelPlayoutIntervalMs(false,'DECELERATE',false),49.8);
+assert.throws(
+  ()=>databasePixelPlayoutIntervalMs(false,'INVALID',false),/invalid/);
 console.log('PASS confirmed WAN lead/playout/hysteresis/substitution policy');

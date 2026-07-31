@@ -164,6 +164,8 @@ MLE_COLUMN_MAJOR_TEST=$ROOT/tests/verify-column-major-blitter.mjs
 MLE_TEMPORAL_SOLO_TEST=$ROOT/tests/verify-temporal-solo-coordinator-node.mjs
 MLE_TEMPORAL_VIEW_BUNDLE_PATCHER=$ROOT/probes/mle/teavm-engine/patch-coordinator-temporal-view-bundle.mjs
 MLE_TEMPORAL_VIEW_BUNDLE_TEST=$ROOT/tests/verify-mle-live-frame-dpv2.sql
+MLE_NATIVE_TEMPORAL_PATCHER=$ROOT/probes/mle/teavm-engine/patch-coordinator-native-temporal-synthesis.mjs
+MLE_NATIVE_TEMPORAL_BENCH=$ROOT/probes/mle/teavm-engine/benchmark-oci-temporal-native-synthesis.sql
 MLE_PUBLIC_MOVEMENT_GATE=$ROOT/probes/mle/teavm-engine/measure-public-exact-fps.mjs
 MLE_WORKER_LIFECYCLE=$ROOT/sql/sim/083_worker_lifecycle.sql
 MLE_WORKER_LIFECYCLE_SCHEMA=$ROOT/sql/schema/062_mle_warm_lifecycle.sql
@@ -1023,6 +1025,11 @@ grep -q "hextoraw('44505632')" "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'persistent DPV2 header mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'persistent DPV2 record mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'assembled DPV2 batch mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'procedure materialize_temporal_bundle' \
+  "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'persistent EPT1 header mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'utl_raw.bit_or(' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'materialized DPV2 length mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
 perl -0777 -ne 'exit !(/DPV2 amortizes.*?if l_view_bundle is not null.*?DPD1 is the immediate/s)' \
   "$MLE_LIVE_FRAME_TRANSPORT" &&
 ! grep -q 'select count(\*) into p_frame_count' \
@@ -1094,9 +1101,18 @@ grep -q 'frames.size>activePixelInputCatchupFloor' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'const pixelPollBatchDelayMs=35' \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'interval=inputCatchup?20:nativePixelInterval/2' \
+grep -q 'const interval=databasePixelPlayoutIntervalMs(' \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'interval=31' "$ROOT/client/src/multiplayer.ts" &&
+grep -q "reason:'effective-input-catchup'" \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'presentedTic=result.effectiveTic-1' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'const MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS = 49.5' \
+  "$ROOT/client/src/authority-wan.ts" &&
+grep -q 'const MULTIPLAYER_DATABASE_FRAME_DECELERATED_MS = 49.8' \
+  "$ROOT/client/src/authority-wan.ts" &&
+grep -q "databasePixelPlayoutIntervalMs(false,'FREE',false),49.5" \
+  "$ROOT/tests/verify-authority-wan.mjs" &&
 ! grep -q 'decelerationPhase\|interval=.*53' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'const hedgeDelayMs=750' "$ROOT/client/src/api.ts" &&
@@ -1231,9 +1247,15 @@ grep -Fq "'held turn command did not rotate the authoritative player'" \
   "$MLE_TEMPORAL_SOLO_TEST" ||
   fail 'temporal coordinator does not gate authoritative movement and turning'
 node --check "$MLE_TEMPORAL_VIEW_BUNDLE_PATCHER" >/dev/null &&
+node --check "$MLE_NATIVE_TEMPORAL_PATCHER" >/dev/null &&
 grep -Fq 'DPV2_COMBINED_TEMPORAL_AND_POV' \
   "$MLE_TEMPORAL_VIEW_BUNDLE_PATCHER" &&
+grep -Fq 'EPT1_NATIVE_EXACT_DPV2' "$MLE_TEMPORAL_SOLO_TEST" &&
+grep -Fq 'materialize_temporal_bundle' "$MLE_NATIVE_TEMPORAL_PATCHER" &&
+grep -Fq 'PMLE_NATIVE_TEMPORAL_SYNTHESIS|PASS' \
+  "$MLE_NATIVE_TEMPORAL_BENCH" &&
 grep -Fq 'PMLE_DPV2_TRANSPORT|PASS' "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" &&
+grep -Fq 'ept1_native_exact=PASS' "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" &&
 grep -Fq 'malformed DPV2 did not fail closed' \
   "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" ||
   fail 'combined temporal/two-POV locator contract is absent or unfenced'

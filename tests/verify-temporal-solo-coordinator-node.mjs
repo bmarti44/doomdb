@@ -16,8 +16,10 @@ const multiplayerKeyframeInterval =
   Number.parseInt(process.argv[4] ?? '2', 10);
 const persistenceMode=process.argv[5]??'DPD1';
 const bundleMode=persistenceMode==='BATCH';
-const viewBundleMode=persistenceMode==='VIEW_BUNDLE';
-if (!['DPD1','BATCH','VIEW_BUNDLE'].includes(persistenceMode)) {
+const nativeTemporalMode=persistenceMode==='NATIVE';
+const viewBundleMode=
+  persistenceMode==='VIEW_BUNDLE'||nativeTemporalMode;
+if (!['DPD1','BATCH','VIEW_BUNDLE','NATIVE'].includes(persistenceMode)) {
   throw new Error(`invalid temporal persistence mode: ${persistenceMode}`);
 }
 if (![2,3,4].includes(keyframeInterval)
@@ -34,6 +36,55 @@ const tablePath = path.join(
 const temporary = mkdtempSync(path.join(os.tmpdir(), 'doomdb-temporal-solo-'));
 
 globalThis.__doomdbTemporalWrites = [];
+globalThis.__doomdbMaterializeTemporal = () => {
+  const entry=globalThis.__doomdbTemporalWrites.at(-1);
+  assert.ok(entry!==undefined,'EPT1 materialization has no endpoint write');
+  const source=entry.payload.bytes;
+  assert.deepEqual([...source.subarray(0,4)],[69,80,84,49]);
+  const sourceView=new DataView(
+    source.buffer,source.byteOffset,source.byteLength);
+  const previousTic=sourceView.getUint32(4);
+  const currentTic=sourceView.getUint32(8);
+  const playerMask=source[12];
+  assert.equal(source[13],3);
+  assert.deepEqual([...source.subarray(14,16)],[0,0]);
+  const players=playerMask===3?2:1;
+  const frameBytes=players*64_000;
+  assert.equal(source.byteLength,24+2*frameBytes);
+  const previousMeta=source.subarray(16,20);
+  const previous=source.subarray(20,20+frameBytes);
+  const currentRecord=20+frameBytes;
+  const currentMeta=source.subarray(currentRecord,currentRecord+4);
+  const current=source.subarray(currentRecord+4);
+  const recordBytes=8+frameBytes;
+  const output=new Uint8Array(16+3*recordBytes);
+  output.set([68,80,86,50],0);
+  const outputView=new DataView(output.buffer);
+  outputView.setUint32(4,previousTic+1);
+  outputView.setUint32(8,3);
+  output[12]=playerMask;
+  const sameMetadata=previousMeta.every(
+    (value,index)=>value===currentMeta[index]);
+  for(let numerator=1;numerator<=2;numerator++) {
+    const tic=previousTic+numerator;
+    const record=16+(numerator-1)*recordBytes;
+    outputView.setUint32(record,tic);
+    output.set(currentMeta,record+4);
+    if(!sameMetadata) {
+      output.set(current,record+8);
+    } else {
+      for(let pixel=0;pixel<frameBytes;pixel++) {
+        output[record+8+pixel]=(pixel+tic)%3<numerator
+          ?current[pixel]:previous[pixel];
+      }
+    }
+  }
+  const lastRecord=16+2*recordBytes;
+  outputView.setUint32(lastRecord,currentTic);
+  output.set(currentMeta,lastRecord+4);
+  output.set(current,lastRecord+8);
+  entry.payload.bytes=output;
+};
 globalThis.OracleBlob = class OracleBlob {
   static LOB_READWRITE = 2;
   open() {}
@@ -73,6 +124,12 @@ function logicalViewWrites(rawWrites,playerMask) {
   for(const entry of rawWrites) {
     const batch=entry.payload.bytes;
     if(viewBundleMode) {
+      if(nativeTemporalMode
+          &&batch[0]===68&&batch[1]===80
+          &&batch[2]===68&&batch[3]===49) {
+        byTic.set(entry.binds.frameTic,entry);
+        continue;
+      }
       assert.deepEqual([...batch.subarray(0,4)],[68,80,86,50]);
       const view=new DataView(batch.buffer,batch.byteOffset,batch.byteLength);
       const firstTic=view.getUint32(4);
@@ -82,8 +139,11 @@ function logicalViewWrites(rawWrites,playerMask) {
       const players=playerMask===3?2:1;
       const recordBytes=8+players*64_000;
       assert.equal(batch.byteLength,16+count*recordBytes);
-      assert.equal(entry.binds.lastTic,firstTic+count-1);
-      assert.equal(entry.binds.payloadBytes,batch.byteLength);
+      assert.equal(
+        nativeTemporalMode?entry.binds.currentTic:entry.binds.lastTic,
+        firstTic+count-1);
+      if(!nativeTemporalMode)
+        assert.equal(entry.binds.payloadBytes,batch.byteLength);
       for(let index=0;index<count;index++) {
         const record=16+index*recordBytes;
         const tic=view.getUint32(record);
@@ -149,6 +209,10 @@ export default {
   defaultConnection() {
     return {
       execute(sql, binds) {
+        if (sql.includes('materialize_temporal_bundle')) {
+          globalThis.__doomdbMaterializeTemporal();
+          return {rowsAffected: 1};
+        }
         const payload = new globalThis.OracleBlob();
         globalThis.__doomdbTemporalWrites.push({sql, binds, payload});
         return {rowsAffected: 1, outBinds: {payload: [payload]}};
@@ -382,7 +446,8 @@ export default {
       + ' movement=PASS consecutive=YES generation_reset=PASS'
       + ` multiplayer_two_pov_temporal=PASS`
       + ` temporal_bundle=${
-        viewBundleMode?'DPV2_COMBINED_TEMPORAL_AND_POV':
+        nativeTemporalMode?'EPT1_NATIVE_EXACT_DPV2':
+          viewBundleMode?'DPV2_COMBINED_TEMPORAL_AND_POV':
           bundleMode?'DPB2_PER_PLAYER':'DPD1_PER_TIC'}`
       + ` multiplayer_interval=${multiplayerKeyframeInterval}\n`);
 } finally {
