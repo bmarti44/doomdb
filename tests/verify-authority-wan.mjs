@@ -182,10 +182,10 @@ assert.throws(()=>confirmedPlayoutIntervalMs(1.5),/invalid/);
 assert.equal(databasePixelPlayoutIntervalMs(true,'FREE',false),1000/35);
 assert.equal(databasePixelPlayoutIntervalMs(true,'ACCELERATE',true),20);
 assert.equal(databasePixelPlayoutIntervalMs(true,'DECELERATE',false),31);
-assert.equal(databasePixelPlayoutIntervalMs(false,'FREE',false),33);
-assert.equal(databasePixelPlayoutIntervalMs(false,'ACCELERATE',false),16.5);
+assert.equal(databasePixelPlayoutIntervalMs(false,'FREE',false),30);
+assert.equal(databasePixelPlayoutIntervalMs(false,'ACCELERATE',false),15);
 assert.equal(databasePixelPlayoutIntervalMs(false,'ACCELERATE',true),25);
-assert.equal(databasePixelPlayoutIntervalMs(false,'DECELERATE',false),33.2);
+assert.equal(databasePixelPlayoutIntervalMs(false,'DECELERATE',false),31.4);
 assert.throws(
   ()=>databasePixelPlayoutIntervalMs(false,'INVALID',false),/invalid/);
 assert.equal(confirmedInputCatchupCursor(100,110,104),104);

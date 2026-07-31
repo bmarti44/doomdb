@@ -7,7 +7,7 @@
 
 create table doom_match_live_frame_views (
   match_id varchar2(32) not null,
-  ring_slot number(2) not null,
+  ring_slot number(3) not null,
   membership_epoch number(12) not null,
   generation number(12) not null,
   tic number(12) default -1 not null,
@@ -19,28 +19,28 @@ create table doom_match_live_frame_views (
   constraint doom_match_live_frame_views_match_fk foreign key(match_id)
     references doom_match(match_id) on delete cascade,
   constraint doom_match_live_frame_views_slot_ck check(
-    ring_slot between 0 and 63 and player_mask in(0,1,3)),
+    ring_slot between 0 and 127 and player_mask in(0,1,2,3)),
   constraint doom_match_live_frame_views_fence_ck check(
     membership_epoch>0 and generation>0 and
     ((tic=-1 and player_mask=0 and payload_bytes=0
        and published_at is null) or
-     (tic>=0 and player_mask in(1,3)
+     (tic>=0 and player_mask in(1,2,3)
        and (payload_bytes=16+
-              case player_mask when 1 then 64000 when 3 then 128000 end
+              case player_mask when 3 then 128000 else 64000 end
          -- EPT1 is an uncommitted endpoint pair consumed synchronously by
          -- DOOM_MLE_LIVE_FRAME_TRANSPORT before the worker commits.
          or payload_bytes=24+
-              2*case player_mask when 1 then 64000 when 3 then 128000 end
+              2*case player_mask when 3 then 128000 else 64000 end
          or (payload_bytes between
                16+(8+case player_mask
-                 when 1 then 64000 when 3 then 128000 end)
+                 when 3 then 128000 else 64000 end)
              and
                16+6*(8+case player_mask
-                 when 1 then 64000 when 3 then 128000 end)
+                 when 3 then 128000 else 64000 end)
              and mod(
                payload_bytes-16,
                8+case player_mask
-                 when 1 then 64000 when 3 then 128000 end)=0))
+                 when 3 then 128000 else 64000 end)=0))
        and published_at is not null)))
 ) lob(payload_blob) store as securefile(cache logging retention none);
 

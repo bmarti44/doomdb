@@ -166,6 +166,7 @@ MLE_TEMPORAL_SOLO_TEST=$ROOT/tests/verify-temporal-solo-coordinator-node.mjs
 MLE_TEMPORAL_VIEW_BUNDLE_PATCHER=$ROOT/probes/mle/teavm-engine/patch-coordinator-temporal-view-bundle.mjs
 MLE_TEMPORAL_VIEW_BUNDLE_TEST=$ROOT/tests/verify-mle-live-frame-dpv2.sql
 MLE_NATIVE_TEMPORAL_PATCHER=$ROOT/probes/mle/teavm-engine/patch-coordinator-native-temporal-synthesis.mjs
+MLE_STAGGERED_MULTIVIEW_PATCHER=$ROOT/probes/mle/teavm-engine/patch-coordinator-staggered-multiview.mjs
 MLE_NATIVE_TEMPORAL_BENCH=$ROOT/probes/mle/teavm-engine/benchmark-oci-temporal-native-synthesis.sql
 MLE_PUBLIC_MOVEMENT_GATE=$ROOT/probes/mle/teavm-engine/measure-public-exact-fps.mjs
 MLE_WORKER_LIFECYCLE=$ROOT/sql/sim/083_worker_lifecycle.sql
@@ -961,7 +962,7 @@ grep -Fq "and authority_sha256='\$authority_sha'" \
   "$MLE_LIVE_FRAME_LOADER" &&
 grep -q 'and authority_bytes=$authority_bytes' "$MLE_LIVE_FRAME_LOADER" ||
   fail 'live-frame loader does not bind staged authority provenance'
-grep -q 'ring_slot between 0 and 63' "$MLE_LIVE_FRAME_SCHEMA" ||
+grep -q 'ring_slot between 0 and 127' "$MLE_LIVE_FRAME_SCHEMA" ||
   fail 'live-frame ring bound missing'
 grep -q 'palette_index number(2) default 0 not null' \
   "$MLE_LIVE_FRAME_SCHEMA" &&
@@ -1053,6 +1054,9 @@ grep -q 'persistent DPV2 sequence mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'procedure materialize_temporal_bundle' \
   "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'persistent EPT1 header mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -Fq 'l_player_mask not in(1,2,3)' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -Fq 'l_interval not between 2 and 5' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -Fq 'case when l_view_bundle_mask=3' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'utl_raw.bit_or(' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'materialized DPV2 length mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
 perl -0777 -ne 'exit !(/DPV2 amortizes.*?for l_bundle in \(.*?exit when p_frame_count>=p_max_frames;.*?if p_frame_count>0 then.*?DPD1 is the immediate/s)' \
@@ -1073,7 +1077,25 @@ perl -0777 -ne 'exit !(/procedure publish_initial\(.*?initialize_ring\(.*?Never 
 grep -q 'if l_tic>l_checkpoint_tic then' "$MLE_MATCH_WORKER" ||
   fail 'worker publishes checkpoint presentation before a ticker refresh'
 grep -q 'doom_mle_match_runtime.flush_live_frames' "$MLE_MATCH_WORKER" &&
+grep -q 'MLE_RECOVERY_REUSE_RETAINED_CHECKPOINT' "$MLE_MATCH_WORKER" &&
+grep -q 'MLE_RECOVERY_COLD_CHECKPOINT_FALLBACK' "$MLE_MATCH_WORKER" &&
+grep -q 'restore_checkpoint_recovery' "$MLE_MATCH_WORKER" &&
+grep -q 'p_render_prewarm in boolean' "$MLE_MATCH_RUNTIME" &&
+grep -q 'cold recovery fallback failed checkpoint=' "$MLE_MATCH_WORKER" &&
+grep -q 'where match_id=p_match and tic=l_runtime_tic' \
+  "$MLE_MATCH_WORKER" &&
+grep -Fq "standby_status in('READY','PROMOTING')" \
+  "$MLE_MATCH_WORKER" &&
+grep -q 'Persist its stage decomposition' "$MLE_MATCH_WORKER" &&
+grep -Fq "'state=current|gametic='||to_char(l_checkpoint_tic)||'|%'" \
+  "$MLE_MATCH_WORKER" &&
 grep -q 'doom_mle_live_frame_prewarm(600)' "$MLE_MATCH_RUNTIME" &&
+grep -q 'l_ticker_prewarm_vector:=hextoraw(' "$MLE_MATCH_WORKER" &&
+grep -q '2,3,l_preload_tic,l_ticker_prewarm_vector' "$MLE_MATCH_WORKER" &&
+grep -Fq 'doom_mle_match_runtime.restore_checkpoint(' \
+  "$MLE_MATCH_WORKER" &&
+grep -Fq "status_field(l_status,'gametic')<>'0'" \
+  "$MLE_MATCH_RUNTIME" &&
 grep -q "sys_context('USERENV','CLOUD_SERVICE') is not null" \
   "$MLE_MATCH_RUNTIME" ||
   fail 'batch flush or cloud renderer plateau prewarm missing'
@@ -1130,9 +1152,13 @@ grep -q 'const interval=databasePixelPlayoutIntervalMs(' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q "reason:'effective-input-catchup'" \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'if(soloMode)' \
+grep -q 'confirmedInputCatchupCursor(' \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'const catchupTic=result.effectiveTic-1' \
+! grep -q 'pendingPixelSeek\\|effective-input-seek\\|futureGap' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'Do not seek the transport into a future effective tic' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'const confirmedCatchupTic=confirmedInputCatchupCursor(' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'requiresPresentationCatchup(lastEffectiveCommand,input.command)' \
   "$ROOT/client/src/multiplayer.ts" &&
@@ -1140,12 +1166,14 @@ grep -q 'requiresPresentationCatchup(lastEffectiveCommand,input.command)' \
 grep -Fq 'lastEffectiveCommand=null' "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'presentedTic=catchupTic' \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'const MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS = 49.5' \
+grep -q 'const MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS = 30' \
   "$ROOT/client/src/authority-wan.ts" &&
-grep -q 'const MULTIPLAYER_DATABASE_FRAME_DECELERATED_MS = 49.8' \
+grep -q 'const MULTIPLAYER_DATABASE_FRAME_DECELERATED_MS = 31.4' \
   "$ROOT/client/src/authority-wan.ts" &&
-grep -q "databasePixelPlayoutIntervalMs(false,'FREE',false),49.5" \
+grep -q "databasePixelPlayoutIntervalMs(false,'FREE',false),30" \
   "$ROOT/tests/verify-authority-wan.mjs" &&
+grep -q 'const pixelInputCatchupFloor=3' \
+  "$ROOT/client/src/multiplayer.ts" &&
 ! grep -q 'decelerationPhase\|interval=.*53' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'const hedgeDelayMs=750' "$ROOT/client/src/api.ts" &&
@@ -1166,7 +1194,7 @@ grep -q "set_action('MLE_TICKER_PREWARM')" \
   "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
 grep -q 'for l_preload_tic in 1..600 loop' \
   "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
-grep -Fq "2,3,l_preload_tic,hextoraw(rpad('00',64,'0'))" \
+grep -Fq '2,3,l_preload_tic,l_ticker_prewarm_vector' \
   "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
 grep -q "set_action('MLE_TICKER_RESTORE_ORIGIN')" \
   "$ROOT/sql/sim/084_multiplayer_worker.sql" &&
@@ -1287,14 +1315,28 @@ grep -Fq "'held turn command did not rotate the authoritative player'" \
   fail 'temporal coordinator does not gate authoritative movement and turning'
 node --check "$MLE_TEMPORAL_VIEW_BUNDLE_PATCHER" >/dev/null &&
 node --check "$MLE_NATIVE_TEMPORAL_PATCHER" >/dev/null &&
+node --check "$MLE_STAGGERED_MULTIVIEW_PATCHER" >/dev/null &&
 grep -Fq 'DPV2_COMBINED_TEMPORAL_AND_POV' \
   "$MLE_TEMPORAL_VIEW_BUNDLE_PATCHER" &&
 grep -Fq 'EPT1_NATIVE_EXACT_DPV2' "$MLE_TEMPORAL_SOLO_TEST" &&
+grep -Fq 'EPT1_STAGGERED_MASKED_DPV2' "$MLE_TEMPORAL_SOLO_TEST" &&
 grep -Fq 'materialize_temporal_bundle' "$MLE_NATIVE_TEMPORAL_PATCHER" &&
+grep -Fq '55d86b81e6e76ee4416622a59052526481ff2d14536b68f2535ca291b246d85b' \
+  "$MLE_STAGGERED_MULTIVIEW_PATCHER" &&
+grep -Fq "const [inputPath, outputPath, intervalArgument = '4']" \
+  "$MLE_STAGGERED_MULTIVIEW_PATCHER" &&
+grep -Fq "if (![4,5].includes(staggeredInterval)" \
+  "$MLE_STAGGERED_MULTIVIEW_PATCHER" &&
+grep -Fq 'const playerOneReseedInterval = staggeredInterval - 2;' \
+  "$MLE_STAGGERED_MULTIVIEW_PATCHER" &&
+grep -Fq 'renderCompleteMatchFrame(1);' \
+  "$MLE_STAGGERED_MULTIVIEW_PATCHER" &&
 grep -Fq 'PMLE_NATIVE_TEMPORAL_SYNTHESIS|PASS' \
   "$MLE_NATIVE_TEMPORAL_BENCH" &&
 grep -Fq 'PMLE_DPV2_TRANSPORT|PASS' "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" &&
 grep -Fq 'ept1_native_exact=PASS' "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" &&
+grep -Fq 'stagger_mask2=PASS|intervals=2,3,4,5' \
+  "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" &&
 grep -Fq 'malformed DPV2 did not fail closed' \
   "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" ||
   fail 'combined temporal/two-POV locator contract is absent or unfenced'

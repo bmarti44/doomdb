@@ -542,6 +542,7 @@ select 'PMLE_PIXEL_RECOVERY_TARGET|sid='||worker_sid
     const target=incarnation.match(
       /PMLE_PIXEL_RECOVERY_TARGET[|]sid=(\d+)[|]serial=(\d+)/);
     assert.ok(target,'pixel recovery worker incarnation is unavailable');
+    const recoveryStarted=performance.now();
     const killOutput=dbSysSql(`
 begin
   execute immediate
@@ -554,6 +555,7 @@ end;
 select 'PMLE_PIXEL_RECOVERY_KILL|PASS|generation=${active.p_generation}'
   from dual;
 `);
+    const killAcknowledged=performance.now();
     assert.match(killOutput,
       new RegExp(`PMLE_PIXEL_RECOVERY_KILL[|]PASS[|]generation=`
         +`${active.p_generation}`));
@@ -597,11 +599,37 @@ select 'PMLE_PIXEL_RECOVERY_KILL|PASS|generation=${active.p_generation}'
     assert.equal(recoveredBytes.subarray(0,4).toString('ascii'),'DPB2');
     assert.equal(recoveredBytes.readUInt32BE(4),recovered.p_frame_count);
     pixelRecoveryResult=`GENERATION_${recovered.p_generation}`;
+    const recoveryElapsedMs=performance.now()-recoveryStarted;
+    const killRequestMs=killAcknowledged-recoveryStarted;
+    const killAckToFrameMs=performance.now()-killAcknowledged;
     process.stdout.write(
       `PMLE_PIXEL_RECOVERY|PASS|from_generation=${active.p_generation}`
         + `|to_generation=${recovered.p_generation}`
         + `|first_tic=${recovered.p_first_tic}`
-        + `|last_tic=${recovered.p_last_tic}\n`);
+        + `|last_tic=${recovered.p_last_tic}`
+        + `|kill_request_ms=${killRequestMs.toFixed(3)}`
+        + `|kill_ack_to_frame_ms=${killAckToFrameMs.toFixed(3)}`
+        + `|kill_to_frame_ms=${recoveryElapsedMs.toFixed(3)}\n`);
+    const timing=await dbSql(`
+set heading off feedback off pages 0 lines 32767
+select 'PMLE_PIXEL_RECOVERY_STAGES|checkpoint_tic='
+  ||nvl(to_char(recovery_checkpoint_tic),'-1')
+  ||'|frontier_tic='||nvl(to_char(recovery_frontier_tic),'-1')
+  ||'|restore_ms='||nvl(to_char(recovery_restore_ms,'FM999999990D000',
+    'NLS_NUMERIC_CHARACTERS=''.,'''),'-1')
+  ||'|replay_ms='||nvl(to_char(recovery_replay_ms,'FM999999990D000',
+    'NLS_NUMERIC_CHARACTERS=''.,'''),'-1')
+  ||'|publish_ms='||nvl(to_char(recovery_publish_ms,'FM999999990D000',
+    'NLS_NUMERIC_CHARACTERS=''.,'''),'-1')
+  ||'|worker_total_ms='||nvl(to_char(recovery_worker_total_ms,
+    'FM999999990D000','NLS_NUMERIC_CHARACTERS=''.,'''),'-1')
+  from doom_match_worker_control
+ where match_id='${created.p_match}'
+   and generation=${recovered.p_generation};
+`);
+    const stageMarker=timing.match(/PMLE_PIXEL_RECOVERY_STAGES[|][^\r\n]*/);
+    assert.ok(stageMarker,'pixel recovery stage decomposition is unavailable');
+    process.stdout.write(`${stageMarker[0]}\n`);
   }
 
   const result = await post('LEAVE_MATCH', {

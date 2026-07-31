@@ -7,11 +7,11 @@ const MAX_BATCH_PLAYOUT_TICS = 12;
 const PLAYOUT_ACCELERATION_MARGIN_TICS = 2;
 const PLAYOUT_DECELERATION_MARGIN_TICS = 2;
 const MAX_DECELERATED_PLAYOUT_INTERVAL_MS = 31.4;
-// The staggered two-POV database producer sustains just over 30 complete
-// framebuffers per second. The former 49.5 ms (20 FPS) canvas clock
-// accumulated roughly ten stale frames per second.
-const MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS = 33;
-const MULTIPLAYER_DATABASE_FRAME_DECELERATED_MS = 33.2;
+// Keep normal browser timer jitter inside the 33.333 ms presentation gate.
+// Confirmed frames retain their authoritative 35 Hz tic ids; this clock only
+// controls when an already-confirmed database pixel frame reaches the canvas.
+const MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS = 30;
+const MULTIPLAYER_DATABASE_FRAME_DECELERATED_MS = 31.4;
 const MAX_SAMPLES = 64;
 const LEAD_HYSTERESIS_MS = 10_000;
 function clamp(value, minimum, maximum) {
@@ -80,10 +80,9 @@ export function databasePixelPlayoutIntervalMs(solo, mode, inputCatchup) {
  * Last cursor that may be discarded after an authoritative input revision.
  *
  * The effective tic can be ahead of the pixel transport frontier. This
- * helper consumes only already-arrived confirmed pixels. If the caller then
- * seeks to the effective tic, it must advance the transport cursor and
- * invalidate old requests atomically; advancing only the canvas cursor caused
- * the observed 10-30 second movement freeze.
+ * helper consumes only already-arrived confirmed pixels. The caller continues
+ * fetching from the authenticated transport frontier; seeking to a future
+ * effective tic caused the observed 10-30 second movement freeze.
  */
 export function confirmedInputCatchupCursor(presentedTic, effectiveTic, transportTic) {
     if (!Number.isInteger(presentedTic) || presentedTic < -1

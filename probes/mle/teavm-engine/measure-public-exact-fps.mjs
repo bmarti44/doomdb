@@ -142,17 +142,22 @@ await page.addInitScript(() => {
 });
 await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 60_000});
 await page.waitForFunction(
-  () => document.body.textContent.includes('press Enter to start'),
-  null, {timeout: 60_000});
-await page.keyboard.press('Enter');
-await page.waitForFunction(
-  () => document.body.textContent.includes('MAIN MENU'),
-  null, {timeout: 30_000});
-await page.keyboard.press('Enter');
-await page.waitForFunction(
-  () => document.body.textContent.includes('Choose a skill level'),
-  null, {timeout: 30_000});
-await page.keyboard.press('Enter');
+  () => document.body.textContent.includes('press Enter to start')
+    || window.__doomPresented.length >= 1,
+  null, {timeout: 180_000});
+const menuDriven = await page.evaluate(
+  () => document.body.textContent.includes('press Enter to start'));
+if (menuDriven) {
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    () => document.body.textContent.includes('MAIN MENU'),
+    null, {timeout: 30_000});
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    () => document.body.textContent.includes('Choose a skill level'),
+    null, {timeout: 30_000});
+  await page.keyboard.press('Enter');
+}
 try {
   await page.waitForFunction(
     () => window.__doomPresented.length >= 10,

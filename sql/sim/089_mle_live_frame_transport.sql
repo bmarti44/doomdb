@@ -6,27 +6,46 @@ set define off
 -- original exact DPD1 size. Payload magic and every record are validated by
 -- the authenticated read facade before any pixels are returned.
 alter table doom_match_live_frame_views
+  drop constraint doom_match_live_frame_views_slot_ck;
+alter table doom_match_live_frame_views modify ring_slot number(3);
+alter table doom_match_live_frame_views
+  add constraint doom_match_live_frame_views_slot_ck check(
+    ring_slot between 0 and 127 and player_mask in(0,1,2,3));
+alter table doom_match_live_frame
+  drop constraint doom_match_live_frame_slot_ck;
+alter table doom_match_live_frame modify ring_slot number(3);
+alter table doom_match_live_frame
+  add constraint doom_match_live_frame_slot_ck check(
+    player_slot between 0 and 3 and ring_slot between 0 and 127
+    and palette_index between 0 and 13);
+alter table doom_match_live_frame_batch
+  drop constraint doom_match_live_frame_batch_slot_ck;
+alter table doom_match_live_frame_batch modify ring_slot number(3);
+alter table doom_match_live_frame_batch
+  add constraint doom_match_live_frame_batch_slot_ck check(
+    player_slot between 0 and 3 and ring_slot between 0 and 127);
+alter table doom_match_live_frame_views
   drop constraint doom_match_live_frame_views_fence_ck;
 alter table doom_match_live_frame_views
   add constraint doom_match_live_frame_views_fence_ck check(
     membership_epoch>0 and generation>0 and
     ((tic=-1 and player_mask=0 and payload_bytes=0
        and published_at is null) or
-     (tic>=0 and player_mask in(1,3)
+     (tic>=0 and player_mask in(1,2,3)
        and (payload_bytes=16+
-              case player_mask when 1 then 64000 when 3 then 128000 end
+              case player_mask when 3 then 128000 else 64000 end
          or payload_bytes=24+
-              2*case player_mask when 1 then 64000 when 3 then 128000 end
+              2*case player_mask when 3 then 128000 else 64000 end
          or (payload_bytes between
                16+(8+case player_mask
-                 when 1 then 64000 when 3 then 128000 end)
+                 when 3 then 128000 else 64000 end)
              and
                16+6*(8+case player_mask
-                 when 1 then 64000 when 3 then 128000 end)
+                 when 3 then 128000 else 64000 end)
              and mod(
                payload_bytes-16,
                8+case player_mask
-                 when 1 then 64000 when 3 then 128000 end)=0))
+                 when 3 then 128000 else 64000 end)=0))
        and published_at is not null)));
 
 -- The worker owns writes and transaction durability.  REST receives only an
@@ -55,6 +74,7 @@ end doom_mle_live_frame_transport;
 
 create or replace package body doom_mle_live_frame_transport as
   c_error constant pls_integer := -20796;
+  c_ring_entries constant pls_integer := 128;
   -- Level 1 is measurably faster end to end than raw 64 KiB DPB2 over the
   -- public ORDS path, despite sharing the single effective Free-tier CPU.
   c_compress_live_frames constant boolean := true;
@@ -82,7 +102,7 @@ create or replace package body doom_mle_live_frame_transport as
     delete from doom_match_live_frame where match_id=p_match;
     delete from doom_match_live_frame_batch where match_id=p_match;
     delete from doom_match_live_frame_views where match_id=p_match;
-    for l_slot in 0..63 loop
+    for l_slot in 0..c_ring_entries-1 loop
       insert into doom_match_live_frame_views(
         match_id,ring_slot,membership_epoch,generation,tic,player_mask,
         payload_bytes,payload_blob,published_at)
@@ -91,7 +111,7 @@ create or replace package body doom_mle_live_frame_transport as
         0,empty_blob(),null);
     end loop;
     for l_player in 0..p_players-1 loop
-      for l_slot in 0..63 loop
+      for l_slot in 0..c_ring_entries-1 loop
         insert into doom_match_live_frame(
           match_id,player_slot,ring_slot,membership_epoch,generation,
           tic,palette_index,payload_bytes,payload_blob,published_at)
@@ -148,10 +168,12 @@ create or replace package body doom_mle_live_frame_transport as
   end advance_generation;
 
   -- Convert one uncommitted EPT1 pair of exact MLE-rendered endpoints into a
-  -- DPV2 interval-three bundle. UTL_RAW performs the identical spatial phase
-  -- mask in native database code; the authoritative uncompressed pixels never
-  -- leave the database and the worker's surrounding transaction remains the
-  -- only durability boundary.
+  -- DPV2 interval-two through interval-five bundle. UTL_RAW performs the identical
+  -- spatial phase mask in native database code; the authoritative
+  -- uncompressed pixels never leave the database and the worker's surrounding
+  -- transaction remains the only durability boundary. Single-POV masks 1
+  -- and 2 allow multiplayer keyframes to be staggered without collapsing
+  -- either authenticated viewpoint.
   procedure materialize_temporal_bundle(
     p_match in varchar2,p_membership_epoch in number,
     p_generation in number,p_last_tic in number
@@ -184,6 +206,36 @@ create or replace package body doom_mle_live_frame_transport as
     l_record raw(8);
     l_same_layout boolean;
 
+    function phase_mask(
+      p_numerator pls_integer,p_phase pls_integer,p_current boolean
+    ) return raw is
+      l_hex varchar2(10):='';
+      l_pattern raw(5);
+      l_mask raw(32767);
+      l_copies pls_integer;
+      l_remainder pls_integer;
+      l_is_current boolean;
+    begin
+      for l_byte in 0..l_interval-1 loop
+        l_is_current:=mod(p_phase+l_byte,l_interval)<p_numerator;
+        if (l_is_current and p_current)
+           or (not l_is_current and not p_current) then
+          l_hex:=l_hex||'FF';
+        else
+          l_hex:=l_hex||'00';
+        end if;
+      end loop;
+      l_pattern:=hextoraw(l_hex);
+      l_copies:=floor(c_chunk_bytes/l_interval);
+      l_remainder:=mod(c_chunk_bytes,l_interval);
+      l_mask:=utl_raw.copies(l_pattern,l_copies);
+      if l_remainder>0 then
+        l_mask:=utl_raw.concat(
+          l_mask,utl_raw.substr(l_pattern,1,l_remainder));
+      end if;
+      return l_mask;
+    end phase_mask;
+
     procedure append_current_frame is
       l_copy_offset pls_integer:=1;
       l_copy_amount pls_integer;
@@ -209,7 +261,7 @@ create or replace package body doom_mle_live_frame_transport as
       into l_player_mask,l_payload_bytes,l_source
       from doom_match_live_frame_views
      where match_id=p_match
-       and ring_slot=mod(p_last_tic,64)
+       and ring_slot=mod(p_last_tic,c_ring_entries)
        and membership_epoch=p_membership_epoch
        and generation=p_generation
        and tic=p_last_tic
@@ -221,17 +273,17 @@ create or replace package body doom_mle_live_frame_transport as
       utl_raw.substr(l_header,9,4)),'XXXXXXXX');
     l_interval:=to_number(rawtohex(
       utl_raw.substr(l_header,14,1)),'XX');
-    if l_player_mask not in(1,3)
+    if l_player_mask not in(1,2,3)
        or utl_raw.substr(l_header,1,4)<>hextoraw('45505431')
        or to_number(rawtohex(utl_raw.substr(l_header,13,1)),'XX')
             <>l_player_mask
-       or l_interval<>3
+       or l_interval not between 2 and 5
        or utl_raw.substr(l_header,15,2)<>hextoraw('0000')
        or l_current_tic<>p_last_tic
        or l_current_tic<>l_previous_tic+l_interval then
       raise_application_error(c_error,'persistent EPT1 header mismatch');
     end if;
-    l_players:=case l_player_mask when 1 then 1 else 2 end;
+    l_players:=case l_player_mask when 3 then 2 else 1 end;
     l_frame_bytes:=l_players*64000;
     l_endpoint_record_bytes:=4+l_frame_bytes;
     if l_payload_bytes<>16+2*l_endpoint_record_bytes
@@ -241,10 +293,11 @@ create or replace package body doom_mle_live_frame_transport as
     l_previous_meta:=dbms_lob.substr(l_source,4,17);
     l_current_meta:=dbms_lob.substr(
       l_source,4,17+l_endpoint_record_bytes);
-    if to_number(rawtohex(utl_raw.substr(l_previous_meta,1,1)),'XX')
-           not between 0 and 13
-       or to_number(rawtohex(utl_raw.substr(l_current_meta,1,1)),'XX')
-           not between 0 and 13
+    if (l_player_mask in(1,3) and (
+         to_number(rawtohex(utl_raw.substr(l_previous_meta,1,1)),'XX')
+             not between 0 and 13
+         or to_number(rawtohex(utl_raw.substr(l_current_meta,1,1)),'XX')
+             not between 0 and 13))
        or (l_player_mask=3 and (
          to_number(rawtohex(utl_raw.substr(l_previous_meta,2,1)),'XX')
              not between 0 and 13
@@ -253,6 +306,13 @@ create or replace package body doom_mle_live_frame_transport as
        or (l_player_mask=1 and (
          utl_raw.substr(l_previous_meta,2,1)<>hextoraw('FF')
          or utl_raw.substr(l_current_meta,2,1)<>hextoraw('FF')))
+       or (l_player_mask=2 and (
+         utl_raw.substr(l_previous_meta,1,1)<>hextoraw('FF')
+         or utl_raw.substr(l_current_meta,1,1)<>hextoraw('FF')
+         or to_number(rawtohex(utl_raw.substr(l_previous_meta,2,1)),'XX')
+              not between 0 and 13
+         or to_number(rawtohex(utl_raw.substr(l_current_meta,2,1)),'XX')
+              not between 0 and 13))
        or to_number(rawtohex(utl_raw.substr(l_previous_meta,3,1)),'XX')
             not in(0,1)
        or to_number(rawtohex(utl_raw.substr(l_current_meta,3,1)),'XX')
@@ -267,26 +327,23 @@ create or replace package body doom_mle_live_frame_transport as
       utl_raw.substr(l_previous_meta,3,2),
       utl_raw.substr(l_current_meta,3,2))=0;
 
-    l_current_mask(3):=utl_raw.copies(hextoraw('FF0000'),10922);
-    l_current_mask(4):=utl_raw.copies(hextoraw('0000FF'),10922);
-    l_current_mask(5):=utl_raw.copies(hextoraw('00FF00'),10922);
-    l_previous_mask(3):=utl_raw.copies(hextoraw('00FFFF'),10922);
-    l_previous_mask(4):=utl_raw.copies(hextoraw('FFFF00'),10922);
-    l_previous_mask(5):=utl_raw.copies(hextoraw('FF00FF'),10922);
-    l_current_mask(6):=utl_raw.copies(hextoraw('FFFF00'),10922);
-    l_current_mask(7):=utl_raw.copies(hextoraw('00FFFF'),10922);
-    l_current_mask(8):=utl_raw.copies(hextoraw('FF00FF'),10922);
-    l_previous_mask(6):=utl_raw.copies(hextoraw('0000FF'),10922);
-    l_previous_mask(7):=utl_raw.copies(hextoraw('FF0000'),10922);
-    l_previous_mask(8):=utl_raw.copies(hextoraw('00FF00'),10922);
+    for l_numerator in 1..l_interval-1 loop
+      for l_phase in 0..l_interval-1 loop
+        l_pattern:=l_numerator*10+l_phase;
+        l_current_mask(l_pattern):=
+          phase_mask(l_numerator,l_phase,true);
+        l_previous_mask(l_pattern):=
+          phase_mask(l_numerator,l_phase,false);
+      end loop;
+    end loop;
 
     dbms_lob.createtemporary(l_output,true,dbms_lob.call);
     dbms_lob.writeappend(l_output,16,hextoraw(
       '44505632'||
       lpad(to_char(l_previous_tic+1,'FMXXXXXXXX'),8,'0')||
-      '00000003'||
+      lpad(to_char(l_interval,'FMXXXXXXXX'),8,'0')||
       lpad(to_char(l_player_mask,'FMXX'),2,'0')||'000000'));
-    for l_numerator in 1..2 loop
+    for l_numerator in 1..l_interval-1 loop
       l_record:=hextoraw(
         lpad(to_char(l_previous_tic+l_numerator,'FMXXXXXXXX'),8,'0')||
         rawtohex(case l_numerator
@@ -298,8 +355,8 @@ create or replace package body doom_mle_live_frame_transport as
         l_offset:=1;
         while l_offset<=l_frame_bytes loop
           l_amount:=least(c_chunk_bytes,l_frame_bytes-l_offset+1);
-          l_pattern:=l_numerator*3+
-            mod((l_offset-1)+(l_previous_tic+l_numerator),3);
+          l_pattern:=l_numerator*10+
+            mod((l_offset-1)+(l_previous_tic+l_numerator),l_interval);
           l_previous_raw:=dbms_lob.substr(
             l_source,l_amount,l_previous_source+l_offset-1);
           l_current_raw:=dbms_lob.substr(
@@ -319,14 +376,15 @@ create or replace package body doom_mle_live_frame_transport as
       rawtohex(l_current_meta));
     dbms_lob.writeappend(l_output,8,l_record);
     append_current_frame;
-    if dbms_lob.getlength(l_output)<>16+3*(8+l_frame_bytes) then
+    if dbms_lob.getlength(l_output)
+         <>16+l_interval*(8+l_frame_bytes) then
       raise_application_error(c_error,'materialized DPV2 length mismatch');
     end if;
     update doom_match_live_frame_views
        set payload_bytes=dbms_lob.getlength(l_output),
            payload_blob=l_output,published_at=systimestamp
      where match_id=p_match
-       and ring_slot=mod(p_last_tic,64)
+       and ring_slot=mod(p_last_tic,c_ring_entries)
        and membership_epoch=p_membership_epoch
        and generation=p_generation
        and tic=p_last_tic;
@@ -478,7 +536,7 @@ create or replace package body doom_mle_live_frame_transport as
         utl_raw.substr(l_view_header,5,4)),'XXXXXXXX');
       l_view_bundle_count:=to_number(rawtohex(
         utl_raw.substr(l_view_header,9,4)),'XXXXXXXX');
-      if l_view_bundle_mask not in(1,3)
+      if l_view_bundle_mask not in(1,2,3)
          or l_view_bundle_count not between 1 and 6
          or utl_raw.substr(l_view_header,1,4)<>hextoraw('44505632')
          or to_number(rawtohex(utl_raw.substr(l_view_header,13,1)),'XX')
@@ -489,7 +547,7 @@ create or replace package body doom_mle_live_frame_transport as
         raise_application_error(c_error,'persistent DPV2 header mismatch');
       end if;
       l_view_bundle_players:=
-        case l_view_bundle_mask when 1 then 1 else 2 end;
+        case l_view_bundle_mask when 3 then 2 else 1 end;
       l_view_bundle_record_bytes:=8+l_view_bundle_players*64000;
       if l_view_bundle_bytes
             <>16+l_view_bundle_count*l_view_bundle_record_bytes
@@ -504,14 +562,18 @@ create or replace package body doom_mle_live_frame_transport as
         l_view_bundle_record_tic:=to_number(rawtohex(
           utl_raw.substr(l_view_record_header,1,4)),'XXXXXXXX');
         if l_view_bundle_record_tic<>l_view_bundle_first+l_index
-           or to_number(rawtohex(
-                utl_raw.substr(l_view_record_header,5,1)),'XX')
-                not between 0 and 13
+           or (l_view_bundle_mask in(1,3)
+             and to_number(rawtohex(
+               utl_raw.substr(l_view_record_header,5,1)),'XX')
+                 not between 0 and 13)
            or (l_view_bundle_mask=3 and to_number(rawtohex(
                 utl_raw.substr(l_view_record_header,6,1)),'XX')
                 not between 0 and 13)
            or (l_view_bundle_mask=1
                and utl_raw.substr(l_view_record_header,6,1)
+                 <>hextoraw('FF'))
+           or (l_view_bundle_mask=2
+               and utl_raw.substr(l_view_record_header,5,1)
                  <>hextoraw('FF'))
            or to_number(rawtohex(
                 utl_raw.substr(l_view_record_header,7,1)),'XX')
@@ -542,7 +604,8 @@ create or replace package body doom_mle_live_frame_transport as
             lpad(to_char(l_view_layout,'FMXX'),2,'0')||'0000');
           dbms_lob.writeappend(p_payload,8,l_header);
           l_view_source_offset:=l_view_bundle_record_offset+8
-            +p_player_slot*64000;
+            +case when l_view_bundle_mask=3
+              then p_player_slot*64000 else 0 end;
           dbms_lob.copy(
             p_payload,l_view_bundle,64000,dbms_lob.getlength(p_payload)+1,
             l_view_source_offset);
@@ -602,9 +665,9 @@ create or replace package body doom_mle_live_frame_transport as
        where rownum<=p_max_frames
     ) loop
       l_view_header:=dbms_lob.substr(l_view.payload_blob,16,1);
-      if l_view.player_mask not in(1,3)
+      if l_view.player_mask not in(1,2,3)
          or l_view.payload_bytes<>16+
-           case l_view.player_mask when 1 then 64000 when 3 then 128000 end
+           case l_view.player_mask when 3 then 128000 else 64000 end
          or dbms_lob.getlength(l_view.payload_blob)<>l_view.payload_bytes
          or utl_raw.substr(l_view_header,1,4)<>hextoraw('44504431')
          or to_number(rawtohex(utl_raw.substr(l_view_header,5,4)),
@@ -635,7 +698,8 @@ create or replace package body doom_mle_live_frame_transport as
         lpad(to_char(l_view_layout,'FMXX'),2,'0')||'0000');
       dbms_lob.writeappend(p_payload,8,l_view_record_header);
       l_view_source_offset:=
-        17+case p_player_slot when 0 then 0 else 64000 end;
+        17+case when l_view.player_mask=3
+          then p_player_slot*64000 else 0 end;
       dbms_lob.copy(
         p_payload,l_view.payload_blob,64000,dbms_lob.getlength(p_payload)+1,
         l_view_source_offset);

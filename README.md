@@ -11,15 +11,15 @@ the browser only copies the completed pixels to canvas.
 The hosted release now uses the database-pixel path: Oracle MLE advances the
 authoritative world and produces each complete 320x200 indexed framebuffer.
 ORDS returns bounded batches of those pixels; the browser only applies the
-palette and copies them to canvas. The current 160x84-world public solo cell
-produced 300 sequential, unique database frames at 34.691 FPS with 32.1 ms p95
-presentation cadence, zero confirmed frame drops, and zero scored
-starvation/resync events. An adjacent diagnostic sustained 34.752 FPS and
-32.1 ms p95 but recorded one 63.4 ms managed-service tail. The July 29 coordinator fix
-keeps the full-resolution Doom status bar intact during both moving and
-stationary temporal world reuse. Its phase-staggered two-view path sustained
-30.599/30.536 FPS with 300 unique frames per player, although the stricter p95
-cadence gate remains open. Always Free may stop
+palette and copies them to canvas. The current public solo movement gate
+produced 1,013 sequential, unique database frames at 33.747 FPS over 30
+seconds: all 1,012 consecutive pairs changed, ArrowUp produced 11,061 changed
+pixels in 294 ms, and all 536 pixel exchanges completed without cancellation
+or failure. The July 31 coordinator also expands the confirmed database-pixel
+ring from 64 to 128 entries so a managed-ORDS tail cannot overwrite movement
+frames while old lighting frames remain visible. Its phase-staggered two-view
+path clears 20 FPS average, but the stricter multiplayer p95 cadence gate
+remains open. Always Free may stop
 after an idle period; retry after the database has resumed if the link is
 temporarily unavailable.
 
@@ -58,20 +58,21 @@ The renderer program moved through deliberately disposable floor and layout
 probes before reaching the deployed integrated candidate. It emits a complete
 64,000-byte indexed framebuffer with real E1M1 portal geometry, textures and
 flats, dynamic state, sprites, weapon animation, and the Doom status display.
-The current public default solo path delivered 300 consecutive
-database-generated frames through ORDS at 34.691 FPS with 32.1 ms p95. The
-adjacent diagnostic delivered 34.752 FPS with 32.1 ms p95 and one isolated
-63.4 ms venue tail. The current 160x84 two-independent-POV path sustained
-30.599/30.536 FPS after staggering its exact-raster phases; its 47.7/51.2 ms
-p95 cadence means the strict multi-POV gate remains open. A prior co-op browser sample averaged just
+The current public default solo path delivered 1,013 consecutive unique
+database-generated frames through ORDS at 33.747 FPS over 30 seconds, with
+every consecutive canvas buffer changing and visible forward movement in 294
+ms. The current two-independent-POV path clears the approved 20 FPS average
+floor after staggering its exact-raster phases, but managed-service tails
+still miss the strict p95 cadence gate. A prior co-op browser sample averaged just
 over 30 FPS by spending startup backlog; it was not sustained producer
 evidence and is no longer described as a pass. Visual and gameplay fidelity
 also remain separately reviewable—the specialized renderer is not a
 byte-for-byte Mocha rasterizer and is the active defect being replaced.
 
 The browser has no authority: it cannot predict, simulate ahead, reorder, or
-invent a tic. If you close the tab, the world is still in the database and a
-reconnecting client verifies and resumes the confirmed chain.
+invent a tic. A refresh may resume the confirmed chain; closing or abandoning
+the host transitions the match through a short disconnect grace period and
+then releases its retained database slot.
 
 ## The parts I'm proud of
 
@@ -339,8 +340,9 @@ rejected alternatives, and the honest list of what remains. The reproducible
 throughput gate, and lifecycle race battery. T11.1's clean/idempotent managed
 schema gate, T11.2's database-hosted browser gate, the complete OCI WAN
 qualification, and the production Java-removal catalog audit are green. The
-current 160x84-world hosted solo cell presents 300 sequential unique database
-frames at 34.691 FPS with 32.1 ms p95. Local throughput is no longer on the
+current hosted solo movement cell presents 1,013 sequential unique database
+frames at 33.747 FPS over 30 seconds, with 11,061 pixels changed by the first
+visible ArrowUp frame. Local throughput is no longer on the
 release path. The
 artifact-specific 30-minute soak and unfinished HUD/automap/intermission/finale
 surfaces remain explicitly separate open work; the current two-player path

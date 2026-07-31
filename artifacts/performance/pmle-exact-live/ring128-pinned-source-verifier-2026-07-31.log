@@ -1,0 +1,6 @@
+PASS production-drop-inventory (102 manifest tables covered)
+PASS PMLE-CHECKPOINT-CADENCE offsets=512 minimum=497 maximum=512 probe=16 low_awake=16
+PMLE_INPUT_REPEAT_RECOVERY|PASS|first_repeat=forward|ordinary_repeat=suppressed|keyup=neutral
+PASS PMLE-WASM2JS-SOURCE verdict=REJECT_CURRENT_TRANSLATOR
+PASS DVL2-DYNAMIC-WORLD-SOURCE
+PASS PMLE-SOURCE (pure MLE, native PL/SQL, FFI, command boundary, and cleanup gates)

@@ -299,6 +299,8 @@ create or replace package body doom_match_worker as
     l_epoch number;l_old_generation number;l_tic number;l_checkpoint_tic number:=0;
     l_state varchar2(64);l_expected varchar2(64);l_ignored varchar2(64);
     l_checkpoint blob;
+    l_runtime_status varchar2(32767);
+    l_runtime_tic number;
     l_count number;l_render_players number;l_render_mask number:=0;
     l_serial number;l_now timestamp with time zone:=utc_now;
     l_diagnostics number;
@@ -322,8 +324,59 @@ create or replace package body doom_match_worker as
         from (select tic,checkpoint_blob,state_sha from doom_match_checkpoint
           where match_id=p_match and tic<=l_tic order by tic desc) where rownum=1;
       if p_warm=1 then
-        doom_mle_match_runtime.restore_checkpoint_warm(2,l_deathmatch,l_skill,
-          l_episode,l_map,l_checkpoint_tic,l_checkpoint,l_state);
+        l_runtime_status:=doom_mle_match_runtime.current_status;
+        if l_runtime_status like 'state=current|gametic=%'
+           and status_field(l_runtime_status,'episode')=to_char(l_episode)
+           and status_field(l_runtime_status,'map')=to_char(l_map) then
+          l_runtime_tic:=to_number(status_field(l_runtime_status,'gametic'));
+          if l_runtime_tic<>l_checkpoint_tic and l_runtime_tic<=l_tic then
+            begin
+              -- The passive standby can legitimately trail a newer durable
+              -- checkpoint request. Prefer the exact checkpoint represented
+              -- by its retained world, then replay the confirmed suffix.
+              select checkpoint_blob,state_sha
+                into l_checkpoint,l_expected
+                from doom_match_checkpoint
+                where match_id=p_match and tic=l_runtime_tic;
+              l_checkpoint_tic:=l_runtime_tic;
+            exception when no_data_found then null;
+            end;
+          end if;
+        end if;
+        if l_runtime_status like
+             'state=current|gametic='||to_char(l_checkpoint_tic)||'|%'
+           and status_field(l_runtime_status,'episode')=to_char(l_episode)
+           and status_field(l_runtime_status,'map')=to_char(l_map) then
+          -- A match-bound standby builds the durable checkpoint in this exact
+          -- retained context and performs no simulation while passive. On
+          -- promotion, reloading the same checkpoint through the origin-only
+          -- warm primitive is both redundant and invalid once gametic > 0.
+          -- The replay chain and checkpoint publication already fenced this
+          -- state; matching the complete durable frontier lets recovery reuse
+          -- it directly and continue from checkpoint+1.
+          dbms_application_info.set_action(
+            'MLE_RECOVERY_REUSE_RETAINED_CHECKPOINT');
+          l_state:=l_expected;
+        else
+          -- Any non-exact frontier can also carry a different multiplayer
+          -- origin fingerprint (for example the generic two-active-player
+          -- pool versus a solo checkpoint with a neutral second player).
+          -- Reinitialize for the durable checkpoint but skip the deploy-only
+          -- 600-frame compilation plateau.
+          dbms_application_info.set_action(
+            'MLE_RECOVERY_COLD_CHECKPOINT_FALLBACK');
+          begin
+            doom_mle_match_runtime.restore_checkpoint_recovery(
+              2,l_deathmatch,l_skill,l_episode,l_map,
+              l_checkpoint_tic,l_checkpoint,l_state);
+          exception when others then
+            raise_application_error(c_error,
+              'cold recovery fallback failed checkpoint='
+              ||to_char(l_checkpoint_tic)||' runtime='
+              ||substr(l_runtime_status,1,700)||' cause='
+              ||substr(sqlerrm,1,700));
+          end;
+        end if;
       else
         doom_mle_match_runtime.restore_checkpoint(2,l_deathmatch,l_skill,
           l_episode,l_map,l_checkpoint_tic,l_checkpoint,l_state);
@@ -405,22 +458,23 @@ create or replace package body doom_match_worker as
     if sql%rowcount<>1 then raise_application_error(c_error,'recovery control fence');end if;
     commit;
     l_publish_ended:=utc_now;
-    if l_diagnostics=1 then
-      l_restore_ms:=elapsed_micros(l_recovery_started,l_restore_ended)/1000;
-      l_replay_ms:=elapsed_micros(l_restore_ended,l_replay_ended)/1000;
-      l_publish_ms:=elapsed_micros(l_replay_ended,l_publish_ended)/1000;
-      l_total_ms:=elapsed_micros(l_recovery_started,l_publish_ended)/1000;
-      update doom_match_worker_control set
-        recovery_checkpoint_tic=l_checkpoint_tic,
-        recovery_frontier_tic=l_tic,
-        recovery_restore_ms=l_restore_ms,
-        recovery_replay_ms=l_replay_ms,
-        recovery_publish_ms=l_publish_ms,
-        recovery_worker_total_ms=l_total_ms,
-        recovery_measured_at=l_publish_ended
-        where match_id=p_match and generation=p_generation;
-      commit;
-    end if;
+    -- Recovery is rare and contract-bearing. Persist its stage decomposition
+    -- unconditionally so a production failure/recovery gate never has to
+    -- infer restore versus replay cost from an end-to-end polling clock.
+    l_restore_ms:=elapsed_micros(l_recovery_started,l_restore_ended)/1000;
+    l_replay_ms:=elapsed_micros(l_restore_ended,l_replay_ended)/1000;
+    l_publish_ms:=elapsed_micros(l_replay_ended,l_publish_ended)/1000;
+    l_total_ms:=elapsed_micros(l_recovery_started,l_publish_ended)/1000;
+    update doom_match_worker_control set
+      recovery_checkpoint_tic=l_checkpoint_tic,
+      recovery_frontier_tic=l_tic,
+      recovery_restore_ms=l_restore_ms,
+      recovery_replay_ms=l_replay_ms,
+      recovery_publish_ms=l_publish_ms,
+      recovery_worker_total_ms=l_total_ms,
+      recovery_measured_at=l_publish_ended
+      where match_id=p_match and generation=p_generation;
+    commit;
   end;
 
   procedure record_slow_call(
@@ -1599,7 +1653,7 @@ create or replace package body doom_match_worker as
             checkpoint_request_tic=null,checkpoint_error=null,
             heartbeat=(localtimestamp at time zone 'UTC')
             where match_id=p_match and base_generation=l_generation
-              and standby_status='READY'
+              and standby_status in('READY','PROMOTING')
               and checkpoint_status='PROCESSING'
               and checkpoint_request_tic=l_checkpoint_tic;
           if sql%rowcount<>1 then
@@ -1825,6 +1879,7 @@ create or replace package body doom_match_worker as
     l_populated_checkpoint blob;l_populated_checkpoint_sha varchar2(64);
     l_populated_checkpoint_bytes number;
     l_ticker_prewarm_state varchar2(64);
+    l_ticker_prewarm_vector raw(32);
   begin
     if p_slot not in(1,2) or
        not regexp_like(p_incarnation,'^[0-9a-f]{32}$') then
@@ -1860,18 +1915,35 @@ create or replace package body doom_match_worker as
     doom_mle_match_runtime.save_checkpoint(
       l_warm_checkpoint,l_warm_checkpoint_sha,l_warm_checkpoint_bytes);
     -- The cloud engine compiles the renderer during INITIALIZE_GAME, but the
-    -- authoritative ticker previously entered a live match cold. Its delayed
-    -- compilation/first-GC plateau produced a repeatable ~100 ms MLE_STEP
-    -- around tic 496 and drained both browsers' confirmed-frame reserve.
-    -- Exercise the real ticker before READY, then restore the byte-fenced
+    -- authoritative ticker previously entered a live match cold. A neutral
+    -- prewarm did not compile the movement/combat receiver shapes and a real
+    -- held-forward route still paid a repeatable 10-13 second MLE_STEP at tic
+    -- 512. Exercise both players with movement, turning, and weapon state
+    -- transitions before READY, then restore the byte-fenced
     -- tic-zero checkpoint. Compiled code remains resident in this MLE context;
     -- authoritative world state, RNG, membership, and replay identity return
     -- exactly to the durable origin before the slot can be claimed.
     if sys_context('USERENV','CLOUD_SERVICE') is not null then
       dbms_application_info.set_action('MLE_TICKER_PREWARM');
       for l_preload_tic in 1..600 loop
+        -- Two complete eight-byte ticcmds followed by the unused two-player
+        -- suffix expected by the four-slot engine adapter. Alternate turn and
+        -- fire state so compilation sees the real live-route call graph
+        -- instead of specializing only the neutral/idle path.
+        l_ticker_prewarm_vector:=hextoraw(
+          '19'|| -- player 0: forward 25
+          '00'||
+          case when mod(l_preload_tic,128)<64 then 'FEC0' else '0140' end||
+          '000000'||
+          case when mod(l_preload_tic,8)<4 then '01' else '00' end||
+          '19'|| -- player 1: forward 25, opposing turn phase
+          '00'||
+          case when mod(l_preload_tic,128)<64 then '0140' else 'FEC0' end||
+          '000000'||
+          case when mod(l_preload_tic+4,8)<4 then '01' else '00' end||
+          rpad('00',32,'0'));
         doom_mle_match_runtime.step_game(
-          2,3,l_preload_tic,hextoraw(rpad('00',64,'0')),
+          2,3,l_preload_tic,l_ticker_prewarm_vector,
           l_ticker_prewarm_state);
       end loop;
       -- The first populated-state serialization has a separate, much larger

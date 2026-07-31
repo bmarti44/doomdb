@@ -43,6 +43,10 @@ create or replace package doom_mle_match_runtime authid definer as
     p_active_players in number,p_deathmatch in number,p_skill in number,
     p_episode in number,p_map in number,p_tic in number,p_checkpoint in blob,
     p_state_sha out varchar2);
+  procedure restore_checkpoint_recovery(
+    p_active_players in number,p_deathmatch in number,p_skill in number,
+    p_episode in number,p_map in number,p_tic in number,p_checkpoint in blob,
+    p_state_sha out varchar2);
   -- Candidate recovery path for a Scheduler session that has already loaded
   -- the pinned assets and initialized the exact durable match configuration.
   -- Production recovery continues to use RESTORE_CHECKPOINT until the
@@ -231,9 +235,10 @@ create or replace package body doom_mle_match_runtime as
     load_renderer_assets;
   end;
 
-  procedure initialize_game(
+  procedure initialize_game_internal(
     p_active_players in number,p_deathmatch in number,p_skill in number,
-    p_episode in number,p_map in number,p_state_sha out varchar2
+    p_episode in number,p_map in number,p_state_sha out varchar2,
+    p_render_prewarm in boolean
   ) is
     l_status varchar2(32767);
     l_prewarmed number;
@@ -250,7 +255,8 @@ create or replace package body doom_mle_match_runtime as
     -- ADB's supported async compilation tier needs a real raster plateau.
     -- Prepay it in retained cloud slots before READY; the local interpreted
     -- Free container skips work that cannot improve its generated code.
-    if sys_context('USERENV','CLOUD_SERVICE') is not null then
+    if p_render_prewarm
+       and sys_context('USERENV','CLOUD_SERVICE') is not null then
       dbms_application_info.set_action('MLE_RENDER_PREWARM');
       l_prewarmed:=doom_mle_live_frame_prewarm(600);
       if l_prewarmed<>600 then
@@ -270,6 +276,16 @@ create or replace package body doom_mle_match_runtime as
     clear_match_config;
     begin doom_mle_live_release;exception when others then null;end;
     raise;
+  end;
+
+  procedure initialize_game(
+    p_active_players in number,p_deathmatch in number,p_skill in number,
+    p_episode in number,p_map in number,p_state_sha out varchar2
+  ) is
+  begin
+    initialize_game_internal(
+      p_active_players,p_deathmatch,p_skill,p_episode,p_map,
+      p_state_sha,true);
   end;
 
   procedure step_game(
@@ -511,7 +527,8 @@ create or replace package body doom_mle_match_runtime as
       l_status := doom_mle_live_restore(p_tic);
     end if;
     if l_status not like 'state=restored|gametic='||to_char(p_tic)||'|%' then
-      raise_application_error(c_error,'MLE checkpoint restore mismatch');
+      raise_application_error(
+        c_error,'MLE checkpoint restore mismatch: '||substr(l_status,1,1600));
     end if;
     p_state_sha := state_identity;
   end;
@@ -524,6 +541,26 @@ create or replace package body doom_mle_match_runtime as
     l_ignored varchar2(64);
   begin
     initialize_game(p_active_players,p_deathmatch,p_skill,p_episode,p_map,l_ignored);
+    restore_loaded_checkpoint(p_tic,p_checkpoint,p_state_sha);
+  exception when others then
+    clear_match_config;
+    begin doom_mle_live_release;exception when others then null;end;
+    raise;
+  end;
+
+  procedure restore_checkpoint_recovery(
+    p_active_players in number,p_deathmatch in number,p_skill in number,
+    p_episode in number,p_map in number,p_tic in number,p_checkpoint in blob,
+    p_state_sha out varchar2
+  ) is
+    l_ignored varchar2(64);
+  begin
+    -- A retained slot already paid the deployment-time 600-frame renderer
+    -- compilation plateau. Repeating it after an authority loss dominated the
+    -- recovery phase (~60 s) while restore/replay/publication were cheap.
+    initialize_game_internal(
+      p_active_players,p_deathmatch,p_skill,p_episode,p_map,
+      l_ignored,false);
     restore_loaded_checkpoint(p_tic,p_checkpoint,p_state_sha);
   exception when others then
     clear_match_config;
@@ -545,7 +582,8 @@ create or replace package body doom_mle_match_runtime as
         'warm MLE context durable match configuration mismatch');
     end if;
     l_status:=doom_mle_live_state;
-    if l_status not like 'state=current|gametic=0|%'
+    if l_status not like 'state=current|gametic=%'
+       or status_field(l_status,'gametic')<>'0'
        or status_field(l_status,'episode')<>to_char(p_episode)
        or status_field(l_status,'map')<>to_char(p_map) then
       raise_application_error(c_error,

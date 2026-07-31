@@ -2,7 +2,7 @@
 --
 -- The renderer and coordinator sources are staged as hash-fenced BLOBs by the
 -- @mle-live-frame-module bootstrap boundary.  The per-match table is a bounded
--- 64-entry ring for each POV; the production entry contains six complete
+-- 128-entry ring for each POV; the production entry contains six complete
 -- frames, so storage remains bounded while locator crossings are amortized.
 
 create table doom_mle_live_frame_source (
@@ -62,7 +62,7 @@ create table doom_mle_live_frame_source (
 create table doom_match_live_frame (
   match_id varchar2(32) not null,
   player_slot number(1) not null,
-  ring_slot number(2) not null,
+  ring_slot number(3) not null,
   membership_epoch number(12) not null,
   generation number(12) not null,
   tic number(12) default -1 not null,
@@ -76,7 +76,7 @@ create table doom_match_live_frame (
     foreign key(match_id,player_slot)
     references doom_match_member(match_id,player_slot) on delete cascade,
   constraint doom_match_live_frame_slot_ck check(
-    player_slot between 0 and 3 and ring_slot between 0 and 63
+    player_slot between 0 and 3 and ring_slot between 0 and 127
     and palette_index between 0 and 13),
   constraint doom_match_live_frame_fence_ck check(
     membership_epoch>0 and generation>0 and tic>=-1 and
@@ -93,7 +93,7 @@ create index doom_match_live_frame_poll_ix on doom_match_live_frame(
 create table doom_match_live_frame_batch (
   match_id varchar2(32) not null,
   player_slot number(1) not null,
-  ring_slot number(2) not null,
+  ring_slot number(3) not null,
   membership_epoch number(12) not null,
   generation number(12) not null,
   first_tic number(12) default -1 not null,
@@ -108,7 +108,7 @@ create table doom_match_live_frame_batch (
     foreign key(match_id,player_slot)
     references doom_match_member(match_id,player_slot) on delete cascade,
   constraint doom_match_live_frame_batch_slot_ck check(
-    player_slot between 0 and 3 and ring_slot between 0 and 63),
+    player_slot between 0 and 3 and ring_slot between 0 and 127),
   constraint doom_match_live_frame_batch_fence_ck check(
     membership_epoch>0 and generation>0 and
     ((first_tic=-1 and last_tic=-1 and frame_count=0

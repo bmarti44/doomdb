@@ -271,10 +271,125 @@ begin
     raise_application_error(-20996,'malformed DPV2 did not fail closed');
   end if;
 
+  -- A staggered player-one keyframe uses mask 2 and a compact single-frame
+  -- payload. Exercise all three interval-four native phases and prove that
+  -- authentication exposes the pixels only to player slot 1.
+  update doom_match_live_frame_views
+     set tic=-1,player_mask=0,payload_bytes=0,payload_blob=empty_blob(),
+         published_at=null
+   where match_id=c_match;
+  dbms_lob.trim(l_source,0);
+  dbms_lob.writeappend(
+    l_source,16,hextoraw('45505431000000080000000C02040000'));
+  dbms_lob.writeappend(l_source,4,hextoraw('FF040100'));
+  append_frame(hextoraw('21'));
+  dbms_lob.writeappend(l_source,4,hextoraw('FF050100'));
+  append_frame(hextoraw('24'));
+  update doom_match_live_frame_views
+     set tic=12,player_mask=2,payload_bytes=dbms_lob.getlength(l_source),
+         payload_blob=empty_blob(),published_at=systimestamp
+   where match_id=c_match and ring_slot=12
+     and membership_epoch=1 and generation=1
+  returning payload_blob into l_target;
+  dbms_lob.copy(l_target,l_source,dbms_lob.getlength(l_source),1,1);
+  doom_mle_live_frame_transport.materialize_temporal_bundle(
+    c_match,1,1,12);
+  doom_mle_live_frame_transport.poll_batch(
+    c_match,1,1,1,8,8,l_count,l_first,l_last,l_wire);
+  l_raw:=utl_compress.lz_uncompress(l_wire);
+  if l_count<>4 or l_first<>9 or l_last<>12
+     or rawtohex(dbms_lob.substr(l_raw,4,17))<>'21212124'
+     or rawtohex(dbms_lob.substr(l_raw,4,64025))<>'21212424'
+     or rawtohex(dbms_lob.substr(l_raw,4,128033))<>'21242424'
+     or rawtohex(dbms_lob.substr(l_raw,4,192041))<>'24242424' then
+    raise_application_error(
+      -20990,'mask-two interval-four materialization mismatch');
+  end if;
+  if dbms_lob.istemporary(l_raw)=1 then dbms_lob.freetemporary(l_raw);end if;
+  if dbms_lob.istemporary(l_wire)=1 then dbms_lob.freetemporary(l_wire);end if;
+  doom_mle_live_frame_transport.poll_batch(
+    c_match,0,1,1,8,8,l_count,l_first,l_last,l_wire);
+  if l_count<>0 or l_wire is not null then
+    raise_application_error(-20989,'mask-two pixels crossed authentication');
+  end if;
+
+  -- Interval two remains available for a generation/recovery reseed without
+  -- weakening the ordinary interval-three or candidate interval-four paths.
+  update doom_match_live_frame_views
+     set tic=-1,player_mask=0,payload_bytes=0,payload_blob=empty_blob(),
+         published_at=null
+   where match_id=c_match;
+  dbms_lob.trim(l_source,0);
+  dbms_lob.writeappend(
+    l_source,16,hextoraw('455054310000000C0000000E01020000'));
+  dbms_lob.writeappend(l_source,4,hextoraw('04FF0100'));
+  append_frame(hextoraw('31'));
+  dbms_lob.writeappend(l_source,4,hextoraw('05FF0100'));
+  append_frame(hextoraw('34'));
+  update doom_match_live_frame_views
+     set tic=14,player_mask=1,payload_bytes=dbms_lob.getlength(l_source),
+         payload_blob=empty_blob(),published_at=systimestamp
+   where match_id=c_match and ring_slot=14
+     and membership_epoch=1 and generation=1
+  returning payload_blob into l_target;
+  dbms_lob.copy(l_target,l_source,dbms_lob.getlength(l_source),1,1);
+  doom_mle_live_frame_transport.materialize_temporal_bundle(
+    c_match,1,1,14);
+  doom_mle_live_frame_transport.poll_batch(
+    c_match,0,1,1,12,8,l_count,l_first,l_last,l_wire);
+  l_raw:=utl_compress.lz_uncompress(l_wire);
+  if l_count<>2 or l_first<>13 or l_last<>14
+     or rawtohex(dbms_lob.substr(l_raw,2,17))<>'3134'
+     or rawtohex(dbms_lob.substr(l_raw,2,64025))<>'3434' then
+    raise_application_error(
+      -20988,'mask-one interval-two materialization mismatch');
+  end if;
+  if dbms_lob.istemporary(l_raw)=1 then dbms_lob.freetemporary(l_raw);end if;
+  if dbms_lob.istemporary(l_wire)=1 then dbms_lob.freetemporary(l_wire);end if;
+
+  -- The interval-five candidate lowers exact-raster duty cycle far enough to
+  -- test the 30 FPS multiplayer gate. Prove all four native spatial phases
+  -- in Oracle before that generated coordinator is eligible for an OCI cell.
+  update doom_match_live_frame_views
+     set tic=-1,player_mask=0,payload_bytes=0,payload_blob=empty_blob(),
+         published_at=null
+   where match_id=c_match;
+  dbms_lob.trim(l_source,0);
+  dbms_lob.writeappend(
+    l_source,16,hextoraw('45505431000000140000001902050000'));
+  dbms_lob.writeappend(l_source,4,hextoraw('FF060100'));
+  append_frame(hextoraw('41'));
+  dbms_lob.writeappend(l_source,4,hextoraw('FF070100'));
+  append_frame(hextoraw('45'));
+  update doom_match_live_frame_views
+     set tic=25,player_mask=2,payload_bytes=dbms_lob.getlength(l_source),
+         payload_blob=empty_blob(),published_at=systimestamp
+   where match_id=c_match and ring_slot=25
+     and membership_epoch=1 and generation=1
+  returning payload_blob into l_target;
+  dbms_lob.copy(l_target,l_source,dbms_lob.getlength(l_source),1,1);
+  doom_mle_live_frame_transport.materialize_temporal_bundle(
+    c_match,1,1,25);
+  doom_mle_live_frame_transport.poll_batch(
+    c_match,1,1,1,20,8,l_count,l_first,l_last,l_wire);
+  l_raw:=utl_compress.lz_uncompress(l_wire);
+  if l_count<>5 or l_first<>21 or l_last<>25
+     or rawtohex(dbms_lob.substr(l_raw,5,17))<>'4141414145'
+     or rawtohex(dbms_lob.substr(l_raw,5,64025))<>'4141414545'
+     or rawtohex(dbms_lob.substr(l_raw,5,128033))<>'4141454545'
+     or rawtohex(dbms_lob.substr(l_raw,5,192041))<>'4145454545'
+     or rawtohex(dbms_lob.substr(l_raw,5,256049))<>'4545454545' then
+    raise_application_error(
+      -20987,'mask-two interval-five materialization mismatch');
+  end if;
+  if dbms_lob.istemporary(l_raw)=1 then dbms_lob.freetemporary(l_raw);end if;
+  if dbms_lob.istemporary(l_wire)=1 then dbms_lob.freetemporary(l_wire);end if;
+
   dbms_output.put_line(
     'PMLE_DPV2_TRANSPORT|PASS|frames=3|players=2'
       ||'|suffix=PASS|authentication=PASS'
       ||'|ept1_native_exact=PASS|palette_temporal=PASS'
+      ||'|stagger_mask2=PASS|intervals=2,3,4,5'
       ||'|multi_locator_batch=PASS'
       ||'|fallback_race=IGNORED'
       ||'|malformed=REJECTED');

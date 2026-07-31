@@ -525,8 +525,7 @@ async function startDatabaseFrameGame(
   // reserve refills without dropping, predicting, or reordering any frame.
   // Input catch-up may spend part of the confirmed reserve, but two frames
   // did not cover an ordinary 40-60 ms managed-ORDS tail after HUD payloads
-  // were enabled. Retain three exact database frames before accelerating;
-  // four crossed the 250-ms visual input gate on the same OCI workload.
+  // were enabled. Retain three exact database frames before accelerating.
   const pixelInputCatchupFloor=3;
   let activePixelInputCatchupFloor=pixelInputCatchupFloor;
   const pixelInputLeadTics=1;
@@ -669,8 +668,15 @@ async function startDatabaseFrameGame(
           // be ahead of the pixel transport frontier after an ORDS tail. The
           // former direct assignment to effectiveTic-1 made the canvas wait
           // 10-30 seconds while old light-animation frames kept painting.
-          const catchupTic=confirmedInputCatchupCursor(
+          const confirmedCatchupTic=confirmedInputCatchupCursor(
             presentedTic,result.effectiveTic,transportTic);
+          // Multiplayer retains the last three confirmed frames while a small
+          // effective-frontier gap closes. At the 25 ms catch-up clock that is
+          // still inside the 250 ms control gate and avoids throwing away the
+          // jitter reserve on every key transition.
+          const catchupTic=soloMode?confirmedCatchupTic:
+            Math.max(presentedTic,
+              confirmedCatchupTic-pixelInputCatchupFloor);
           let skippedTic=nextDatabaseFrameTic(presentedTic);
           let skippedCount=0;
           while(skippedTic<=catchupTic) {
@@ -691,32 +697,12 @@ async function startDatabaseFrameGame(
               catchupTic,transportTic,skippedCount,
               source:'database-framebuffer'});
           }
-          if(result.effectiveTic-1>transportTic) {
-            // The accepted input is newer than the prefetched visual reserve.
-            // Seek both cursors together and invalidate requests for the stale
-            // suffix. Advancing only presentedTic (the former implementation)
-            // made those old requests crawl toward the future cursor for
-            // seconds. The next request now asks Oracle directly for the
-            // first database-authored frame affected by this command.
-            pixelPollEpoch+=1;
-            pixelPollInFlight.clear();
-            arrivedTransportTics.clear();
-            frames.clear();
-            presentedTic=result.effectiveTic-1;
-            transportTic=result.effectiveTic-1;
-            transportEstablished=true;
-            nextFrameAt=0;
-            playoutStarted=true;
-            playoutMode='DECELERATE';
-            starvationActive=false;
-            wan.resetConfirmedBatchDelivery();
-            trace('pixel-resync',{
-              reason:'effective-input-seek',
-              inputSequence:input.sequence,
-              effectiveTic:result.effectiveTic,
-              transportTic,
-              source:'database-framebuffer'});
-          }
+          // Do not seek the transport into a future effective tic. That
+          // abandoned the consecutive confirmed suffix on every transition:
+          // buffered lighting frames kept painting, then the canvas stalled
+          // while a direct request waited for unpublished movement pixels.
+          // Continue from the authenticated frontier and accelerate only
+          // already-confirmed frames until the effective tic is presented.
           inputCatchupThroughTic=Math.max(
             inputCatchupThroughTic,result.effectiveTic);
           // A control response that already spent most of the 250-ms visual
@@ -777,7 +763,7 @@ async function startDatabaseFrameGame(
       // starting after only the first batch creates a sawtooth that reaches
       // zero immediately before every response. Retain the selected reserve
       // after consuming a normal batch by waiting for depth+batch frames.
-      const startupFrames=Math.min(64,
+      const startupFrames=Math.min(128,
         wan.playoutBufferTics+wan.expectedConfirmedBatchTics);
       if(frames.size<startupFrames)return;
       playoutStarted=true;playoutMode='FREE';
@@ -891,7 +877,7 @@ async function startDatabaseFrameGame(
             paintedAt.length=0;
             transportEstablished=true;
           } else if(batch[0]!.tic!==expectedTic) {
-            // The 64-entry ring advanced beyond an exact reserved request.
+            // The 128-entry ring advanced beyond an exact reserved request.
             // Establish a new confirmed cursor and invalidate the other lane;
             // no frame is invented, skipped inside the new stream, or reused.
             trace('pixel-resync',{reason:'ring-gap',
@@ -928,7 +914,7 @@ async function startDatabaseFrameGame(
             // require replaying that pre-attachment history: retain one
             // confirmed batch plus the selected reserve and establish the
             // cursor immediately before it. Live playout remains consecutive.
-            const retain=Math.min(64,
+            const retain=Math.min(128,
               wan.playoutBufferTics+wan.expectedConfirmedBatchTics+2);
             const firstRetained=transportTic-retain+1;
             for(const tic of frames.keys()) {

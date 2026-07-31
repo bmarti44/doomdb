@@ -16,15 +16,17 @@ const multiplayerKeyframeInterval =
   Number.parseInt(process.argv[4] ?? '2', 10);
 const persistenceMode=process.argv[5]??'DPD1';
 const bundleMode=persistenceMode==='BATCH';
-const nativeTemporalMode=persistenceMode==='NATIVE';
+const staggeredMode=persistenceMode==='STAGGERED';
+const nativeTemporalMode=persistenceMode==='NATIVE'||staggeredMode;
 const viewBundleMode=
   persistenceMode==='VIEW_BUNDLE'||nativeTemporalMode;
-if (!['DPD1','BATCH','VIEW_BUNDLE','NATIVE'].includes(persistenceMode)) {
+if (!['DPD1','BATCH','VIEW_BUNDLE','NATIVE','STAGGERED']
+    .includes(persistenceMode)) {
   throw new Error(`invalid temporal persistence mode: ${persistenceMode}`);
 }
-if (![2,3,4].includes(keyframeInterval)
-    || ![2,3,4].includes(multiplayerKeyframeInterval)) {
-  throw new Error('temporal coordinator test intervals must be 2, 3, or 4');
+if (![2,3,4,5].includes(keyframeInterval)
+    || ![2,3,4,5].includes(multiplayerKeyframeInterval)) {
+  throw new Error('temporal coordinator test intervals must be 2 through 5');
 }
 const rendererPath = path.join(
   root, 'artifacts/performance/pmle-exact-live/'
@@ -46,7 +48,9 @@ globalThis.__doomdbMaterializeTemporal = () => {
   const previousTic=sourceView.getUint32(4);
   const currentTic=sourceView.getUint32(8);
   const playerMask=source[12];
-  assert.equal(source[13],3);
+  const interval=source[13];
+  assert.ok(interval>=2&&interval<=5);
+  assert.equal(currentTic,previousTic+interval);
   assert.deepEqual([...source.subarray(14,16)],[0,0]);
   const players=playerMask===3?2:1;
   const frameBytes=players*64_000;
@@ -57,29 +61,29 @@ globalThis.__doomdbMaterializeTemporal = () => {
   const currentMeta=source.subarray(currentRecord,currentRecord+4);
   const current=source.subarray(currentRecord+4);
   const recordBytes=8+frameBytes;
-  const output=new Uint8Array(16+3*recordBytes);
+  const output=new Uint8Array(16+interval*recordBytes);
   output.set([68,80,86,50],0);
   const outputView=new DataView(output.buffer);
   outputView.setUint32(4,previousTic+1);
-  outputView.setUint32(8,3);
+  outputView.setUint32(8,interval);
   output[12]=playerMask;
   const sameMetadata=previousMeta.every(
     (value,index)=>value===currentMeta[index]);
-  for(let numerator=1;numerator<=2;numerator++) {
+  for(let numerator=1;numerator<interval;numerator++) {
     const tic=previousTic+numerator;
     const record=16+(numerator-1)*recordBytes;
     outputView.setUint32(record,tic);
-    output.set(currentMeta,record+4);
+    output.set(numerator===1?previousMeta:currentMeta,record+4);
     if(!sameMetadata) {
       output.set(current,record+8);
     } else {
       for(let pixel=0;pixel<frameBytes;pixel++) {
-        output[record+8+pixel]=(pixel+tic)%3<numerator
+        output[record+8+pixel]=(pixel+tic)%interval<numerator
           ?current[pixel]:previous[pixel];
       }
     }
   }
-  const lastRecord=16+2*recordBytes;
+  const lastRecord=16+(interval-1)*recordBytes;
   outputView.setUint32(lastRecord,currentTic);
   output.set(currentMeta,lastRecord+4);
   output.set(current,lastRecord+8);
@@ -127,16 +131,39 @@ function logicalViewWrites(rawWrites,playerMask) {
       if(nativeTemporalMode
           &&batch[0]===68&&batch[1]===80
           &&batch[2]===68&&batch[3]===49) {
-        byTic.set(entry.binds.frameTic,entry);
+        const mask=batch[8];
+        let logical=byTic.get(entry.binds.frameTic);
+        if(logical===undefined) {
+          const bytes=new Uint8Array(
+            16+(playerMask===3?2:1)*64_000);
+          bytes.set([68,80,68,49],0);
+          new DataView(bytes.buffer).setUint32(4,entry.binds.frameTic);
+          bytes[8]=playerMask;bytes[9]=255;bytes[10]=255;bytes[11]=batch[11];
+          logical={
+            binds:{frameTic:entry.binds.frameTic,playerMask},
+            payload:{bytes},logicalMask:0,
+          };
+          byTic.set(entry.binds.frameTic,logical);
+        }
+        for(let slot=0,ordinal=0;slot<2;slot++) {
+          if((mask&(1<<slot))===0)continue;
+          logical.payload.bytes[9+slot]=batch[9+slot];
+          logical.payload.bytes.set(
+            batch.subarray(16+ordinal*64_000,16+(ordinal+1)*64_000),
+            16+slot*64_000);
+          logical.logicalMask|=1<<slot;
+          ordinal+=1;
+        }
         continue;
       }
       assert.deepEqual([...batch.subarray(0,4)],[68,80,86,50]);
       const view=new DataView(batch.buffer,batch.byteOffset,batch.byteLength);
       const firstTic=view.getUint32(4);
       const count=view.getUint32(8);
-      assert.equal(batch[12],playerMask);
+      const bundleMask=batch[12];
+      assert.ok((bundleMask&playerMask)===bundleMask&&bundleMask>0);
       assert.deepEqual([...batch.subarray(13,16)],[0,0,0]);
-      const players=playerMask===3?2:1;
+      const players=bundleMask===3?2:1;
       const recordBytes=8+players*64_000;
       assert.equal(batch.byteLength,16+count*recordBytes);
       assert.equal(
@@ -148,26 +175,39 @@ function logicalViewWrites(rawWrites,playerMask) {
         const record=16+index*recordBytes;
         const tic=view.getUint32(record);
         assert.equal(tic,firstTic+index);
-        assert.equal(batch[record+5],playerMask===3
-          ? batch[record+5]:255);
-        assert.ok(batch[record+4]>=0&&batch[record+4]<=13);
-        if(playerMask===3)assert.ok(
+        if((bundleMask&1)!==0)
+          assert.ok(batch[record+4]>=0&&batch[record+4]<=13);
+        else assert.equal(batch[record+4],255);
+        if((bundleMask&2)!==0)assert.ok(
           batch[record+5]>=0&&batch[record+5]<=13);
+        else assert.equal(batch[record+5],255);
         assert.ok(batch[record+6]===0||batch[record+6]===1);
         assert.equal(batch[record+7],0);
-        const bytes=new Uint8Array(16+players*64_000);
-        bytes.set([68,80,68,49],0);
-        new DataView(bytes.buffer).setUint32(4,tic);
-        bytes[8]=playerMask;
-        bytes[9]=batch[record+4];
-        bytes[10]=batch[record+5];
-        bytes[11]=batch[record+6];
-        bytes.set(
-          batch.subarray(record+8,record+recordBytes),16);
-        byTic.set(tic,{
-          binds:{frameTic:tic,playerMask},
-          payload:{bytes},
-        });
+        let logical=byTic.get(tic);
+        if(logical===undefined) {
+          const bytes=new Uint8Array(
+            16+(playerMask===3?2:1)*64_000);
+          bytes.set([68,80,68,49],0);
+          new DataView(bytes.buffer).setUint32(4,tic);
+          bytes[8]=playerMask;bytes[9]=255;bytes[10]=255;
+          bytes[11]=batch[record+6];
+          logical={
+            binds:{frameTic:tic,playerMask},
+            payload:{bytes},logicalMask:0,
+          };
+          byTic.set(tic,logical);
+        }
+        for(let slot=0,ordinal=0;slot<2;slot++) {
+          if((bundleMask&(1<<slot))===0)continue;
+          logical.payload.bytes[9+slot]=batch[record+4+slot];
+          logical.payload.bytes.set(
+            batch.subarray(
+              record+8+ordinal*64_000,
+              record+8+(ordinal+1)*64_000),
+            16+slot*64_000);
+          logical.logicalMask|=1<<slot;
+          ordinal+=1;
+        }
       }
       continue;
     }
@@ -370,7 +410,9 @@ export default {
   assert.match(multiplayer, /state=multiplayer-initialized\|gametic=0\|/);
   const multiplayerWriteStart=globalThis.__doomdbTemporalWrites.length;
   const multiplayerWritesPerTic=[];
-  const multiplayerLastTic=1+2*multiplayerKeyframeInterval;
+  const multiplayerLastTic=staggeredMode
+    ? 3*multiplayerKeyframeInterval-1
+    : 1+2*multiplayerKeyframeInterval;
   for (let tic = 1; tic <= multiplayerLastTic; tic++) {
     assert.equal(api.stepOnly(2, 3, command), tic);
     before = globalThis.__doomdbTemporalWrites.length;
@@ -382,6 +424,14 @@ export default {
   assert.deepEqual(multiplayerWritesPerTic,
     Array.from({length:multiplayerLastTic},(_,index)=>{
       const tic=index+1;
+      if(staggeredMode) {
+        const playerZeroDue=tic>1
+          &&(tic-1)%multiplayerKeyframeInterval===0;
+        const playerOneDue=tic>=multiplayerKeyframeInterval-1
+          &&(tic-(multiplayerKeyframeInterval-1))
+            %multiplayerKeyframeInterval===0;
+        return tic===1||playerZeroDue||playerOneDue?1:0;
+      }
       if(viewBundleMode)
         return tic===1?1:(tic-1)%multiplayerKeyframeInterval===0?1:0;
       if(bundleMode)
@@ -389,11 +439,17 @@ export default {
       return tic===1?1:(tic-1)%multiplayerKeyframeInterval===0
         ?multiplayerKeyframeInterval:0;
     }));
-  const multiplayerWrites=logicalViewWrites(
+  const allMultiplayerWrites=logicalViewWrites(
     globalThis.__doomdbTemporalWrites.slice(multiplayerWriteStart),3);
+  const multiplayerWrites=staggeredMode
+    ?allMultiplayerWrites.filter(entry=>entry.logicalMask===3)
+    :allMultiplayerWrites;
   assert.deepEqual(
     multiplayerWrites.map(entry=>entry.binds.frameTic),
-    Array.from({length:multiplayerLastTic},(_,index)=>index+1));
+    Array.from(
+      {length:staggeredMode
+        ?2*multiplayerKeyframeInterval+1:multiplayerLastTic},
+      (_,index)=>index+1));
   for(const entry of multiplayerWrites) {
     const payload=entry.payload.bytes;
     assert.equal(payload.byteLength, 128_016);
@@ -404,33 +460,70 @@ export default {
         .getUint32(4),
       entry.binds.frameTic);
   }
-  for(let exactTic=1;exactTic<=multiplayerLastTic;
-      exactTic+=multiplayerKeyframeInterval) {
-    const payload=multiplayerWrites[exactTic-1].payload.bytes;
+  for(const entry of multiplayerWrites) {
+    const payload=entry.payload.bytes;
     assert.notDeepEqual(
       payload.subarray(16,64_016),payload.subarray(64_016,128_016),
-      `multiplayer viewpoints collapsed at exact tic ${exactTic}`);
+      `multiplayer viewpoints collapsed at tic ${entry.binds.frameTic}`);
   }
-  for(let syntheticTic=2;syntheticTic<multiplayerLastTic;syntheticTic++) {
-    const numerator=(syntheticTic-1)%multiplayerKeyframeInterval;
-    if(numerator===0)continue;
-    const previousTic=syntheticTic-numerator;
-    const currentTic=previousTic+multiplayerKeyframeInterval;
-    const previous=multiplayerWrites[previousTic-1].payload.bytes;
-    const synthetic=multiplayerWrites[syntheticTic-1].payload.bytes;
-    const current=multiplayerWrites[currentTic-1].payload.bytes;
-    assert.equal(previous[9],current[9]);
-    assert.equal(previous[10],current[10]);
-    for(let offset=16;offset<128_016;offset+=1) {
-      const pixel=offset-16;
-      const row=Math.floor((pixel%64_000)/320);
-      const column=pixel%320;
-      const choosePrevious=multiplayerKeyframeInterval===2
-        ? ((row+column+syntheticTic)&1)===0
-        : (pixel+syntheticTic)%multiplayerKeyframeInterval>=numerator;
-      assert.equal(synthetic[offset],
-        choosePrevious?previous[offset]:current[offset],
-        `multiplayer temporal mismatch tic=${syntheticTic} offset=${offset}`);
+  if(!staggeredMode) {
+    for(let syntheticTic=2;syntheticTic<multiplayerLastTic;syntheticTic++) {
+      const numerator=(syntheticTic-1)%multiplayerKeyframeInterval;
+      if(numerator===0)continue;
+      const previousTic=syntheticTic-numerator;
+      const currentTic=previousTic+multiplayerKeyframeInterval;
+      const previous=multiplayerWrites[previousTic-1].payload.bytes;
+      const synthetic=multiplayerWrites[syntheticTic-1].payload.bytes;
+      const current=multiplayerWrites[currentTic-1].payload.bytes;
+      assert.equal(previous[9],current[9]);
+      assert.equal(previous[10],current[10]);
+      for(let offset=16;offset<128_016;offset+=1) {
+        const pixel=offset-16;
+        const row=Math.floor((pixel%64_000)/320);
+        const column=pixel%320;
+        const choosePrevious=multiplayerKeyframeInterval===2
+          ? ((row+column+syntheticTic)&1)===0
+          : (pixel+syntheticTic)%multiplayerKeyframeInterval>=numerator;
+        assert.equal(synthetic[offset],
+          choosePrevious?previous[offset]:current[offset],
+          `multiplayer temporal mismatch tic=${syntheticTic} offset=${offset}`);
+      }
+    }
+  } else {
+    const byTic=new Map(allMultiplayerWrites.map(
+      entry=>[entry.binds.frameTic,entry]));
+    const endpoints=[
+      [1,1+multiplayerKeyframeInterval,
+        1+2*multiplayerKeyframeInterval],
+      [1,multiplayerKeyframeInterval-1,
+        2*multiplayerKeyframeInterval-1,
+        3*multiplayerKeyframeInterval-1],
+    ];
+    for(let playerSlot=0;playerSlot<2;playerSlot++) {
+      const frameOffset=16+playerSlot*64_000;
+      for(let pair=0;pair<endpoints[playerSlot].length-1;pair++) {
+        const previousTic=endpoints[playerSlot][pair];
+        const currentTic=endpoints[playerSlot][pair+1];
+        const interval=currentTic-previousTic;
+        const previous=byTic.get(previousTic);
+        const current=byTic.get(currentTic);
+        assert.ok((previous.logicalMask&(1<<playerSlot))!==0);
+        assert.ok((current.logicalMask&(1<<playerSlot))!==0);
+        for(let tic=previousTic+1;tic<currentTic;tic++) {
+          const synthetic=byTic.get(tic);
+          assert.ok((synthetic.logicalMask&(1<<playerSlot))!==0);
+          const numerator=tic-previousTic;
+          for(let pixel=0;pixel<64_000;pixel++) {
+            const expected=(pixel+tic)%interval<numerator
+              ?current.payload.bytes[frameOffset+pixel]
+              :previous.payload.bytes[frameOffset+pixel];
+            assert.equal(
+              synthetic.payload.bytes[frameOffset+pixel],expected,
+              `staggered temporal mismatch slot=${playerSlot}`
+                + ` tic=${tic} pixel=${pixel}`);
+          }
+        }
+      }
     }
   }
   api.release();
@@ -446,7 +539,8 @@ export default {
       + ' movement=PASS consecutive=YES generation_reset=PASS'
       + ` multiplayer_two_pov_temporal=PASS`
       + ` temporal_bundle=${
-        nativeTemporalMode?'EPT1_NATIVE_EXACT_DPV2':
+        staggeredMode?'EPT1_STAGGERED_MASKED_DPV2':
+          nativeTemporalMode?'EPT1_NATIVE_EXACT_DPV2':
           viewBundleMode?'DPV2_COMBINED_TEMPORAL_AND_POV':
           bundleMode?'DPB2_PER_PLAYER':'DPD1_PER_TIC'}`
       + ` multiplayer_interval=${multiplayerKeyframeInterval}\n`);
