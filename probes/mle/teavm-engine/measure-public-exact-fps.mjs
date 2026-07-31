@@ -6,7 +6,11 @@ const url = process.argv[2];
 const seconds = Number(process.argv[3] ?? '30');
 const holdSeconds = Number(process.argv[4] ?? '0');
 const fireDuringRoute = process.env.DOOMDB_PUBLIC_FIRE !== 'NO';
-const turnDuringRoute = process.env.DOOMDB_PUBLIC_TURN === 'YES';
+// A forward-only E1M1 route reaches a solid wall in roughly two seconds.
+// Keep the default movement gate traversing the map so later static frames
+// cannot be misclassified as a transport failure; callers can still request
+// the collision-only diagnostic explicitly.
+const turnDuringRoute = process.env.DOOMDB_PUBLIC_TURN !== 'NO';
 const injectedRttMs = Number(process.env.DOOMDB_PUBLIC_NETWORK_RTT_MS ?? '0');
 const captureDir = process.env.DOOMDB_PUBLIC_CAPTURE_DIR;
 if(captureDir!==undefined)mkdirSync(captureDir,{recursive:true});
