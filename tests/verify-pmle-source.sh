@@ -4,6 +4,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 node "$ROOT/tests/verify-production-drop-inventory.mjs"
 node "$ROOT/tests/verify-pmle-checkpoint-cadence.mjs"
+node "$ROOT/tests/verify-input-repeat-recovery.mjs"
 sh "$ROOT/tests/verify-pmle-wasm2js-source.sh"
 sh "$ROOT/tests/verify-dvl2-dynamic-world-source.sh"
 INSTALL=$ROOT/probes/mle/install.sql
@@ -1168,6 +1169,12 @@ grep -q 'Presence has a dedicated one-Hz lifecycle leg' \
 grep -Fq 'const sequence=pendingInput?.sequence??inputSequence+1' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -Fq 'const input=retryInput??pendingInput;' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'if(urgentPixelInput' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq '&&(pendingInput!==null||retryInput!==null||inputPostInFlight))' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'Input owns the next Free-tier API lane' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'retryInput=input' "$ROOT/client/src/multiplayer.ts" &&
 grep -Fq 'const changedInput=input.hex!==lastEffectiveInputHex;' \

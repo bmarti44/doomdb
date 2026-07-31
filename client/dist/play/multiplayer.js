@@ -574,7 +574,6 @@ async function startDatabaseFrameGame(value, status) {
             targetTic: pendingInput.targetTic, source: 'database-frame-client' });
         if (changed) {
             urgentPixelInput = true;
-            schedulePixelPolls(0);
         }
     };
     bindInput(canvas, buttons, queueInput, () => { }, () => { });
@@ -690,8 +689,16 @@ async function startDatabaseFrameGame(value, status) {
                 fail(cause);
         }).finally(() => {
             inputPostInFlight = false;
-            if (!stopped && !suspended && (retryInput !== null || pendingInput !== null))
+            if (!stopped && !suspended && (retryInput !== null || pendingInput !== null)) {
                 window.setTimeout(postInput, retryDelayMs);
+            }
+            else if (!stopped && !suspended) {
+                // Input owns the next Free-tier API lane. Resume framebuffer
+                // acquisition only after the authoritative revision has completed;
+                // launching both together made the larger BLOB exchange win and
+                // left movement waiting behind its SQL/ORDS work.
+                schedulePixelPolls(0);
+            }
         });
     };
     const pump = () => {
@@ -957,6 +964,10 @@ async function startDatabaseFrameGame(value, status) {
         window.setTimeout(() => {
             if (stopped || suspended)
                 return;
+            if (urgentPixelInput
+                && (pendingInput !== null || retryInput !== null || inputPostInFlight)) {
+                return;
+            }
             if (!transportEstablished) {
                 // Attach at the live frontier. Replaying the retained 64-tic ring
                 // before presentation starts creates artificial backlog and latency;

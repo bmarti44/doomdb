@@ -72,8 +72,12 @@ export function bindInput(canvas: HTMLCanvasElement,
     if (name === undefined) return;
     // A held key continues producing repeat events; cancel those as well as
     // the initial press so browser shortcuts do not consume game controls.
+    // The first event observed by this handler can itself be a repeat when a
+    // player starts holding a key while the retained database game is still
+    // attaching its input surface. Recover that state once, then suppress
+    // ordinary repeats so they do not create redundant authority revisions.
     event.preventDefault();
-    if (event.repeat) return;
+    if (event.repeat && held.has(name)) return;
     gesture();
     update(name, true);
   }, {capture: true});
