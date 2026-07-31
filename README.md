@@ -78,16 +78,21 @@ The renderer program moved through deliberately disposable floor and layout
 probes before reaching the deployed integrated candidate. It emits a complete
 64,000-byte indexed framebuffer with real E1M1 portal geometry, textures and
 flats, dynamic state, sprites, weapon animation, and the Doom status display.
-The current public default solo path delivered 1,013 consecutive unique
-database-generated frames through ORDS at 33.747 FPS over 30 seconds, with
-every consecutive canvas buffer changing and visible forward movement in 294
-ms. The current two-independent-POV path clears the approved 20 FPS average
+The current public default solo path delivered 1,999 consecutive unique
+database-generated frames through ORDS at 33.309 FPS over 60 seconds, with
+every consecutive canvas buffer changing. Camera-changing input now uses one
+fused input-plus-exact-pixel exchange: the confirmed effective frame reached
+canvas 4.5 ms after it was returned, and five normal-route direction changes
+were visible at 191 ms p50 / 212 ms p95 and max. A separate 120-second,
+81-direction-change stress route sustained 30.103 FPS and measured 166/228 ms
+p50/p95; one database producer tail reached 421 ms and remains an open tail
+issue rather than being hidden by client prediction. The current
+two-independent-POV path clears the approved 20 FPS average
 floor after staggering its exact-raster phases, but managed-service tails
 still miss the strict p95 cadence gate. A prior co-op browser sample averaged just
 over 30 FPS by spending startup backlog; it was not sustained producer
 evidence and is no longer described as a pass. Visual and gameplay fidelity
-also remain separately reviewable—the specialized renderer is not a
-byte-for-byte Mocha rasterizer and is the active defect being replaced.
+remain separately reviewable against the pinned Mocha reference.
 
 The browser has no authority: it cannot predict, simulate ahead, reorder, or
 invent a tic. A refresh may resume the confirmed chain; closing or abandoning

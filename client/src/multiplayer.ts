@@ -51,6 +51,18 @@ const requiresPresentationCatchup = (
   ||previous.menu!==current.menu
   ||previous.cheat!==current.cheat;
 
+// Camera revisions are sparse and need the exact effective framebuffer.  Keep
+// this narrower than presentation catch-up: use/weapon/menu changes still use
+// the compact input endpoint, while movement and view rotation may amortize
+// their one required pixel response into the same authenticated ORDS call.
+const requiresCameraPixelResponse = (
+    previous:Command|null,current:Command):boolean =>
+  previous===null
+  ||previous.turn!==current.turn
+  ||previous.forward!==current.forward
+  ||previous.strafe!==current.strafe
+  ||previous.run!==current.run;
+
 // Ordinary internet stalls are drained from the already-confirmed queue at
 // the bounded 2x playout rate. Visible clients never discard presentation
 // snapshots; hidden tabs use the explicit checkpoint-resync path instead.
@@ -631,9 +643,53 @@ async function startDatabaseFrameGame(
     inputPostInFlight=true;
     let retryDelayMs=0;
     const started=performance.now();
-    void reviseMatchInput(
-      value.match,value.playerCapability,input.sequence,input.hex,input.targetTic)
-      .then(result=>{
+    const fusedCameraResponse=soloMode&&requiresCameraPixelResponse(
+      lastEffectiveCommand,input.command);
+    const operation:Promise<{
+      accepted:number;effectiveTic:number;membershipEpoch:number;
+      generation:number;currentTic?:number;frames?:DatabasePixelFrame[]
+    }>=fusedCameraResponse
+      ?exchangeMatchPixelBatch(
+        value.match,value.playerCapability,transportTic,1,
+        input.sequence,input.hex,input.targetTic,225).then(async result=>{
+          if(result.inputAccepted!==1||result.effectiveTic===null
+              ||result.frameCount<0||result.frameCount>1) {
+            throw new Error('camera input pixel response fence changed');
+          }
+          // Input durability and frame readiness are separate facts.  A
+          // legitimate renderer tail may outlast this bounded 225-ms call;
+          // preserve the accepted revision and let the existing exact-tic
+          // seek acquire its pixels instead of terminating presentation.
+          if(result.frameCount===0) {
+            if(result.firstTic!==null||result.lastTic!==null
+                ||result.payload!==null) {
+              throw new Error('empty camera input pixel payload changed');
+            }
+            return {accepted:result.inputAccepted,
+              effectiveTic:result.effectiveTic,
+              membershipEpoch:result.membershipEpoch,
+              generation:result.generation,currentTic:result.currentTic};
+          }
+          if(result.firstTic!==result.effectiveTic
+              ||result.lastTic!==result.effectiveTic
+              ||result.payload===null) {
+            throw new Error('camera input pixel frontier changed');
+          }
+          const decoded=await decodeDatabasePixelTransport(
+            decodeBytes(result.payload),value.playerSlot);
+          if(decoded.length!==1||decoded[0]!.tic!==result.effectiveTic) {
+            throw new Error('camera input pixel payload fence changed');
+          }
+          return {accepted:result.inputAccepted,
+            effectiveTic:result.effectiveTic,
+            membershipEpoch:result.membershipEpoch,
+            generation:result.generation,currentTic:result.currentTic,
+            frames:decoded};
+        })
+      :reviseMatchInput(
+        value.match,value.playerCapability,input.sequence,input.hex,
+        input.targetTic);
+    void operation.then(result=>{
         if(stopped||suspended)return;
         const finished=performance.now();
         if(result.accepted!==1
@@ -644,6 +700,30 @@ async function startDatabaseFrameGame(
         if(result.generation>generation) {
           generation=result.generation;
           resetPixelTransport();
+        }
+        if(fusedCameraResponse&&result.frames!==undefined) {
+          const effectiveFrame=result.frames[0]!;
+          serverTic=Math.max(serverTic,result.currentTic??effectiveFrame.tic);
+          for(const tic of frames.keys()) {
+            if(tic<effectiveFrame.tic)frames.delete(tic);
+          }
+          presentedTic=effectiveFrame.tic-1;
+          frames.set(effectiveFrame.tic,effectiveFrame);
+          if(transportTic<effectiveFrame.tic) {
+            // The accepted effective tic explicitly re-establishes the
+            // confirmed cursor.  No future frame can be contiguous with the
+            // skipped prefix, so rebuild only that sparse arrival set.
+            arrivedTransportTics.clear();
+            transportTic=effectiveFrame.tic;
+          } else {
+            arrivedTransportTics.delete(effectiveFrame.tic);
+          }
+          nextFrameAt=0;playoutStarted=true;playoutMode='FREE';
+          starvationActive=false;
+          soloPixelSeekTic=-1;
+          trace('pixel-resync',{reason:'fused-camera-input',
+            expectedTic:effectiveFrame.tic,generation,
+            source:'database-framebuffer'});
         }
         trace('input-effective',{inputSequence:input.sequence,
           effectiveTic:result.effectiveTic,command:input.command,
@@ -721,7 +801,8 @@ async function startDatabaseFrameGame(
             ? pixelInputCatchupFloor-1
             : pixelInputCatchupFloor;
         }
-        if(soloMode&&changedInput&&presentationCatchup) {
+        if(soloMode&&changedInput&&presentationCatchup
+            &&result.frames===undefined) {
           soloPixelSeekTic=result.effectiveTic;
         }
         urgentPixelInput=true;

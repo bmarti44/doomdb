@@ -1176,6 +1176,21 @@ grep -q 'const confirmedCatchupTic=confirmedInputCatchupCursor(' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'requiresPresentationCatchup(lastEffectiveCommand,input.command)' \
   "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'const fusedCameraResponse=soloMode&&requiresCameraPixelResponse(' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'value.match,value.playerCapability,transportTic,1,' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'input.sequence,input.hex,input.targetTic,225)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'if(result.frameCount===0)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'result.frames===undefined' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq "reason:'fused-camera-input'" \
+  "$ROOT/client/src/multiplayer.ts" &&
+! sed -n '/const requiresCameraPixelResponse/,/;$/p' \
+  "$ROOT/client/src/multiplayer.ts" | grep -q \
+  'previous\.fire\|previous\.use\|previous\.weapon\|previous\.menu' &&
 ! grep -Fq 'previous.fire' "$ROOT/client/src/multiplayer.ts" &&
 grep -Fq 'lastEffectiveCommand=null' "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'presentedTic=catchupTic' \

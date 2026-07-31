@@ -11,6 +11,7 @@ const fireDuringRoute = process.env.DOOMDB_PUBLIC_FIRE !== 'NO';
 // cannot be misclassified as a transport failure; callers can still request
 // the collision-only diagnostic explicitly.
 const turnDuringRoute = process.env.DOOMDB_PUBLIC_TURN !== 'NO';
+const repeatTurns = process.env.DOOMDB_PUBLIC_REPEAT_TURNS === 'YES';
 const injectedRttMs = Number(process.env.DOOMDB_PUBLIC_NETWORK_RTT_MS ?? '0');
 const captureDir = process.env.DOOMDB_PUBLIC_CAPTURE_DIR;
 if(captureDir!==undefined)mkdirSync(captureDir,{recursive:true});
@@ -189,23 +190,36 @@ let turningLeft = false;
 let turningRight = false;
 let capturedAfterLeft=false;
 let capturedAfterRight=false;
+const setTurn=async desired=>{
+  if(turningLeft&&desired!=='LEFT') {
+    turningLeft=false;await page.keyboard.up('ArrowLeft');
+  }
+  if(turningRight&&desired!=='RIGHT') {
+    turningRight=false;await page.keyboard.up('ArrowRight');
+  }
+  if(!turningLeft&&desired==='LEFT') {
+    turningLeft=true;await page.keyboard.down('ArrowLeft');
+  }
+  if(!turningRight&&desired==='RIGHT') {
+    turningRight=true;await page.keyboard.down('ArrowRight');
+  }
+};
 while (Date.now() < deadline) {
   const routeElapsed = Date.now() - routeStarted;
-  if (turnDuringRoute && routeElapsed >= 1_000 && routeElapsed < 1_700
-      && !turningLeft) {
-    turningLeft = true;
-    await page.keyboard.down('ArrowLeft');
-  } else if (turningLeft && routeElapsed >= 1_700) {
-    turningLeft = false;
-    await page.keyboard.up('ArrowLeft');
-  }
-  if (turnDuringRoute && routeElapsed >= 4_000 && routeElapsed < 4_700
-      && !turningRight) {
-    turningRight = true;
-    await page.keyboard.down('ArrowRight');
-  } else if (turningRight && routeElapsed >= 4_700) {
-    turningRight = false;
-    await page.keyboard.up('ArrowRight');
+  if(turnDuringRoute&&routeElapsed<7_000) {
+    const desired=routeElapsed>=1_000&&routeElapsed<1_700
+      ?'LEFT':routeElapsed>=4_000&&routeElapsed<4_700?'RIGHT':'NONE';
+    await setTurn(desired);
+  } else if(turnDuringRoute&&repeatTurns) {
+    // Continue exercising genuine camera revisions after the five startup
+    // samples.  A 600-ms turn every three seconds crosses renderer/resource
+    // tails throughout a 120-second route without flooding the idempotent
+    // input endpoint or changing the held-forward traversal contract.
+    const cycle=Math.floor((routeElapsed-7_000)/3_000);
+    const within=(routeElapsed-7_000)%3_000;
+    await setTurn(within<600?(cycle%2===0?'LEFT':'RIGHT'):'NONE');
+  } else {
+    await setTurn('NONE');
   }
   if (fireDuringRoute && Date.now() >= nextFire) {
     await page.keyboard.down('KeyF');

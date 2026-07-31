@@ -33,8 +33,10 @@ const soloInputAwareMode=schedulerMode==='SOLO_INPUT_AWARE';
 if(inputAwareMode&&!staggeredMode) {
   throw new Error('input-aware scheduling requires staggered persistence');
 }
-if(soloInputAwareMode&&(!staggeredMode||keyframeInterval!==3)) {
-  throw new Error('solo input-aware scheduling requires staggered/interval 3');
+if(soloInputAwareMode&&(!staggeredMode
+    ||![3,4].includes(keyframeInterval))) {
+  throw new Error(
+    'solo input-aware scheduling requires staggered/interval 3 or 4');
 }
 if (![2,3,4,5].includes(keyframeInterval)
     || ![2,3,4,5].includes(multiplayerKeyframeInterval)) {
@@ -308,7 +310,10 @@ export default {
   const writesPerTic = [];
   let cameraAtFirstForwardTic;
   const lastTic=1+2*keyframeInterval;
-  const soloInputTics=new Set(soloInputAwareMode?[2,5,7]:[]);
+  const soloInputEndpoints=[
+    1,2,2+keyframeInterval,1+2*keyframeInterval];
+  const soloInputTics=new Set(
+    soloInputAwareMode?soloInputEndpoints.slice(1):[]);
   for (let tic = 1; tic <= lastTic; tic++) {
     assert.equal(api.stepOnly(2, 1, command), tic, `step tic ${tic}`);
     if (tic === 1) cameraAtFirstForwardTic = playerCamera(api);
@@ -325,7 +330,7 @@ export default {
   assert.deepEqual(writesPerTic,
     Array.from({length:lastTic},(_,index)=>{
       const tic=index+1;
-      if(soloInputAwareMode)return [1,2,5,7].includes(tic)?1:0;
+      if(soloInputAwareMode)return soloInputEndpoints.includes(tic)?1:0;
       if(tic===1)return 1;
       if((tic-1)%keyframeInterval!==0)return 0;
       return bundleMode||viewBundleMode?1:keyframeInterval;
@@ -343,7 +348,7 @@ export default {
     assert.equal(bytes[11], 1);
   }
   const exactEndpointDiffs=[];
-  const soloEndpoints=soloInputAwareMode?[1,2,5,7]:Array.from(
+  const soloEndpoints=soloInputAwareMode?soloInputEndpoints:Array.from(
     {length:3},(_,index)=>1+index*keyframeInterval);
   for(let pair=0;pair<soloEndpoints.length-1;pair++) {
     const tic=soloEndpoints[pair];
