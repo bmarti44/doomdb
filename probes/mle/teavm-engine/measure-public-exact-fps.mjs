@@ -385,6 +385,8 @@ console.log(
 );
 let previousCamera={forward:0,turn:0,strafe:0,run:0};
 const cameraLatencies=[];
+const cameraPostLatencies=[];
+const cameraEffectivePaintLatencies=[];
 for(const effective of result.trace.effective) {
   const camera={forward:effective.command?.forward??0,
     turn:effective.command?.turn??0,
@@ -405,10 +407,15 @@ for(const effective of result.trace.effective) {
       &&(entry.command?.run??0)===camera.run);
   const paint=result.trace.present.find(
     entry=>entry.tic>=effective.effectiveTic);
-  if(input!==undefined&&paint!==undefined)
+  if(input!==undefined&&paint!==undefined) {
     cameraLatencies.push(paint.at-input.at);
+    cameraPostLatencies.push(effective.at-input.at);
+    cameraEffectivePaintLatencies.push(paint.at-effective.at);
+  }
 }
 cameraLatencies.sort((left,right)=>left-right);
+cameraPostLatencies.sort((left,right)=>left-right);
+cameraEffectivePaintLatencies.sort((left,right)=>left-right);
 const cameraP50=percentile(cameraLatencies,.5);
 const cameraP95=percentile(cameraLatencies,.95);
 const cameraMax=cameraLatencies.at(-1)??Number.POSITIVE_INFINITY;
@@ -419,6 +426,15 @@ console.log(
     +`|p50_ms=${cameraP50.toFixed(3)}`
     +`|p95_ms=${cameraP95.toFixed(3)}`
     +`|max_ms=${cameraMax.toFixed(3)}`,
+);
+console.log(
+  `PMLE_PUBLIC_DIRECTION_DECOMPOSITION|PASS|samples=${cameraLatencies.length}`
+    +`|input_to_effective_p50_ms=${percentile(cameraPostLatencies,.5).toFixed(3)}`
+    +`|input_to_effective_p95_ms=${percentile(cameraPostLatencies,.95).toFixed(3)}`
+    +`|effective_to_paint_p50_ms=${percentile(
+      cameraEffectivePaintLatencies,.5).toFixed(3)}`
+    +`|effective_to_paint_p95_ms=${percentile(
+      cameraEffectivePaintLatencies,.95).toFixed(3)}`,
 );
 assert.ok(cameraLatencies.length>=5,
   'direction-change latency sample coverage changed');

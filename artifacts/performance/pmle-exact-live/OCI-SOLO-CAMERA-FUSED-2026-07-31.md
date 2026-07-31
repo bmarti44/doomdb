@@ -23,6 +23,7 @@ admission reopened.
 | Exact endpoint + camera fusion, repeated turns | 30.103 | 165.9 / 228.2 / 420.8 ms | 4.0 ms | promoted incrementally |
 | Temporal parent + camera fusion | 30.820 | 169.0 / 244.4 / 593.5 ms | 4.0 ms | rejected on latency tail |
 | Exact endpoint + camera fusion, normal route | 33.309 | 191.0 / 212.4 / 212.4 ms | 4.5 ms | PASS |
+| Camera request bypasses active pixel poll | 30.015 | 169.9 / 235.5 / 646.6 ms | 2.7 / 5.0 ms p50/p95 | rejected |
 
 The normal 60-second route returned 1,999 unique database frames, made
 999/999 successful pixel exchanges, and had no cancelled or failed exchange.
@@ -41,6 +42,13 @@ buffering, SQL row locks, commits, or ORDS cancellation. The client now adds
 about 4 ms after the effective framebuffer exists; further tail improvement
 must come from the database producer.
 
+A subsequent scheduling A/B let camera input bypass an in-flight read-only
+pixel request. It worsened p95 and maximum latency despite zero HTTP failures,
+so concurrent ORDS work is not a priority lane under the Always Free session
+cage. Its explicit decomposition put input-to-effective at 165.7/232.8 ms
+p50/p95 and effective-to-canvas at 2.7/5.0 ms. The candidate was rejected and
+the hosted static manifest was restored byte-for-byte to `c8f6f6c6...`.
+
 ## Evidence
 
 - `solo-interval3-repeat-turns-public-120s-2026-07-31.log`
@@ -50,3 +58,5 @@ must come from the database producer.
 - `solo-camera-fused-v2-normal-public-60s-2026-07-31.log`
 - `solo-camera-fused-v2-static-deploy-2026-07-31.log`
 - `solo-camera-fused-v2-exact-coordinator-restore-2026-07-31.log`
+- `solo-camera-lane-bypass-repeat-turns-public-120s-2026-07-31.log`
+- `solo-camera-lane-bypass-reject-static-restore-2026-07-31.log`
