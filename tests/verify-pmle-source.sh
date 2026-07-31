@@ -1105,7 +1105,11 @@ grep -q 'const interval=databasePixelPlayoutIntervalMs(' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q "reason:'effective-input-catchup'" \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -q 'presentedTic=result.effectiveTic-1' \
+grep -q 'if(soloMode)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'const catchupTic=result.effectiveTic-1' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'presentedTic=catchupTic' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'const MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS = 49.5' \
   "$ROOT/client/src/authority-wan.ts" &&

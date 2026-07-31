@@ -1,0 +1,22 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_EPT1_SAMPLE|slot=0|previous=111111|current=141414
+PMLE_EPT1_SAMPLE|slot=1|previous=212121|current=242424
+PMLE_DPV2_TRANSPORT|PASS|frames=3|players=2|suffix=PASS|authentication=PASS|ept1_native_exact=PASS|dpt1_endpoints=PASS|malformed=REJECTED
+
+
+PL/SQL procedure successfully completed.
+
