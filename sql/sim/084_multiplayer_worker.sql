@@ -429,7 +429,8 @@ create or replace package body doom_match_worker as
     p_elapsed_ms number,p_pre_mle_ms number default null,
     p_mle_ms number default null,p_post_mle_ms number default null,
     p_commit_ms number default null,p_checkpoint_save_ms number default null,
-    p_checkpoint_publish_ms number default null
+    p_checkpoint_publish_ms number default null,
+    p_stage varchar2 default 'PROCESS_STEP_COMMIT'
   ) is
     pragma autonomous_transaction;
   begin
@@ -439,7 +440,7 @@ create or replace package body doom_match_worker as
     values(p_match,p_tic,p_generation,sys_context('USERENV','SID'),
       p_started,p_ended,p_elapsed_ms,p_pre_mle_ms,p_mle_ms,p_post_mle_ms,
       p_commit_ms,p_checkpoint_save_ms,p_checkpoint_publish_ms,
-      'PROCESS_STEP_COMMIT');
+      p_stage);
     commit;
   end;
 
@@ -1425,7 +1426,9 @@ create or replace package body doom_match_worker as
     l_checkpoint_sha varchar2(64);l_checkpoint_bytes number;
     l_membership raw(1);l_command_sha varchar2(64);
     l_started timestamp with time zone:=utc_now;
-    l_saved timestamp with time zone;l_save_ms number;l_publish_ms number;
+    l_restored timestamp with time zone;l_replayed timestamp with time zone;
+    l_saved timestamp with time zone;l_published timestamp with time zone;
+    l_save_ms number;l_publish_ms number;l_total_ms number;
   begin
     select skill,episode,map,
       case game_mode when 'DEATHMATCH' then 1 else 0 end,membership_epoch
@@ -1442,6 +1445,7 @@ create or replace package body doom_match_worker as
     doom_mle_match_runtime.restore_checkpoint_warm(
       2,l_deathmatch,l_skill,l_episode,l_map,
       l_checkpoint_tic,l_checkpoint,l_state);
+    l_restored:=utc_now;
     l_state:=l_expected;
     dbms_application_info.set_action('STANDBY_CHECKPOINT_REPLAY');
     for step_ in (select tic,membership_bitmap,command_vector,state_sha
@@ -1463,6 +1467,7 @@ create or replace package body doom_match_worker as
         dbms_session.sleep(c_standby_checkpoint_replay_yield);
       end if;
     end loop;
+    l_replayed:=utc_now;
     select membership_bitmap,command_sha,state_sha
       into l_membership,l_command_sha,l_expected
       from doom_match_tic where match_id=p_match and tic=p_target_tic
@@ -1492,6 +1497,23 @@ create or replace package body doom_match_worker as
       where match_id=p_match and tic=p_target_tic
         and generation=p_generation;
     commit;
+    l_published:=utc_now;
+    l_total_ms:=elapsed_micros(l_started,l_published)/1000;
+    if l_total_ms>100 then
+      -- A standby checkpoint is deliberately outside the authority
+      -- transaction. Preserve its four independently useful phases in the
+      -- existing sparse slow-call table so a browser cadence tail can be
+      -- attributed to restore, replay/yield, serialization/export, or SQL
+      -- publication without changing the DMC1 codec or recovery contract.
+      record_slow_call(
+        p_match,p_generation,p_target_tic,l_started,l_published,l_total_ms,
+        elapsed_micros(l_started,l_restored)/1000,
+        elapsed_micros(l_restored,l_replayed)/1000,
+        elapsed_micros(l_replayed,l_saved)/1000,
+        elapsed_micros(l_saved,l_published)/1000,
+        elapsed_micros(l_replayed,l_saved)/1000,l_publish_ms,
+        'STANDBY_CHECKPOINT');
+    end if;
   exception when others then
     if dbms_lob.istemporary(l_checkpoint)=1 then
       dbms_lob.freetemporary(l_checkpoint);
@@ -1511,15 +1533,23 @@ create or replace package body doom_match_worker as
       from doom_match m join doom_match_standby_control s on s.match_id=m.match_id
       where m.match_id=p_match and m.match_state='ACTIVE'
         and m.generation=s.base_generation and s.standby_status='STARTING';
-    if p_warm then
+    select state_sha into l_expected from doom_match_tic
+      where match_id=p_match and tic=0;
+    if p_warm and l_players=2 and l_deathmatch=0 and l_skill=3
+        and l_episode=1 and l_map=1 then
+      -- A READY warm slot is already fenced at this exact default origin.
+      -- Re-restoring the same bank after the authority admitted default
+      -- solo/co-op consumed Free's second running-session slot for roughly
+      -- two seconds, leaving no ORDS lane and visibly freezing the canvas.
+      -- Non-default skills/maps/modes still restore their selected bank.
+      l_state:=l_expected;
+    elsif p_warm then
       doom_mle_match_runtime.prepare_origin_warm(
         l_players,l_deathmatch,l_skill,l_episode,l_map,l_state);
     else
       doom_mle_match_runtime.initialize_game(
         l_players,l_deathmatch,l_skill,l_episode,l_map,l_state);
     end if;
-    select state_sha into l_expected from doom_match_tic
-      where match_id=p_match and tic=0;
     if l_state<>l_expected then
       raise_application_error(c_error,'standby origin state mismatch');end if;
     dbms_application_info.set_action('MLE_STANDBY_PASSIVE');

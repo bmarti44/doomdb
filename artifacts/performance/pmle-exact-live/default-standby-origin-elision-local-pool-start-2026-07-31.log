@@ -1,0 +1,21 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+begin doom_match_worker.start_warm_pool; dbms_output.put_line('PMLE_LOCAL_POOL_START|PASS'); end;
+*
+ERROR at line 1:
+ORA-20731: sequential warm slot failed: 1
+ORA-06512: at "DOOM.DOOM_MATCH_WORKER", line 2047
+ORA-06512: at "DOOM.DOOM_MATCH_WORKER", line 2025
+ORA-06512: at line 1
+
+

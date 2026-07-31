@@ -1,0 +1,33 @@
+
+SQLcl: Release 26.2 Production on Fri Jul 31 04:23:11 2026
+
+Copyright (c) 1982, 2026, Oracle.  All rights reserved.
+
+Last Successful login time: Fri Jul 31 2026 04:22:40 +00:00
+
+Connected to:
+Oracle AI Database 26ai Enterprise Edition Release 23.26.3.1.0 - Production
+Version 23.26.3.1.0
+
+
+Session altered.
+
+
+Package DOOM_MATCH_WORKER compiled
+
+
+Package Body DOOM_MATCH_WORKER compiled
+
+
+[1m'PACKAGE|'||OBJECT_TYPE||'|'||STATUS[m    
+_______________________________________ 
+PACKAGE|PACKAGE|VALID                   
+PACKAGE|PACKAGE BODY|VALID              
+
+
+[1m'ERRORS|'||COUNT(*)[m    
+______________________ 
+ERRORS|0               
+
+Disconnected from Oracle AI Database 26ai Enterprise Edition Release 23.26.3.1.0 - Production
+Version 23.26.3.1.0

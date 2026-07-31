@@ -1,0 +1,17 @@
+
+SQLcl: Release 26.2 Production on Fri Jul 31 04:28:52 2026
+
+Copyright (c) 1982, 2026, Oracle.  All rights reserved.
+
+Last Successful login time: Fri Jul 31 2026 04:28:57 +00:00
+
+Connected to:
+Oracle AI Database 26ai Enterprise Edition Release 23.26.3.1.0 - Production
+Version 23.26.3.1.0
+
+CHECKPOINT|512|12925.19|1.329                                                          
+CHECKPOINT|1312|91.375|22.781                                                          
+PHASES|512|12926.709|381.363|12420.61|123.217|1.519                                                                                             
+MAX_AUTHORITY|1|444.61|441.068                                                
+Disconnected from Oracle AI Database 26ai Enterprise Edition Release 23.26.3.1.0 - Production
+Version 23.26.3.1.0

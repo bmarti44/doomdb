@@ -329,15 +329,16 @@ try {
   const seed = await waitForBatch(
     created.p_match, created.p_player_capability, -1, 7);
   assert.ok(seed.p_frame_count>=1&&seed.p_frame_count<=7);
-  assert.equal(seed.p_first_tic, 1);
-  assert.equal(seed.p_last_tic, seed.p_frame_count);
+  assert.ok(seed.p_first_tic>=1);
+  assert.equal(
+    seed.p_last_tic,seed.p_first_tic+seed.p_frame_count-1);
   assert.equal(seed.p_membership_epoch, active.p_membership_epoch);
   assert.equal(seed.p_generation, active.p_generation);
   const seedBytes = decodeBatchTransport(seed.p_payload);
   assert.equal(seedBytes.subarray(0, 4).toString('ascii'), 'DPB2');
   assert.equal(seedBytes.readUInt32BE(4), seed.p_frame_count);
   assert.equal(seedBytes.length, 8 + seed.p_frame_count*64_008);
-  assert.equal(seedBytes.readUInt32BE(8), 1);
+  assert.equal(seedBytes.readUInt32BE(8),seed.p_first_tic);
   assert.ok(seedBytes.readUInt8(12)>=0&&seedBytes.readUInt8(12)<=13);
   assert.equal(seedBytes.readUInt8(13),1,
     'exact Mocha framebuffer must declare row-major layout');
@@ -351,15 +352,17 @@ try {
   const logicalFrames=[];
   for(let frame=1;frame<seed.p_frame_count;frame+=1) {
     const offset=8+frame*64_008;
-    assert.equal(seedBytes.readUInt32BE(offset),frame+1);
+    assert.equal(seedBytes.readUInt32BE(offset),seed.p_first_tic+frame);
     logicalFrames.push(Buffer.from(
       seedBytes.subarray(offset+8,offset+8+64_000)));
   }
   let batchCursor=seed.p_last_tic;
   let initialBatchRequests=0;
-  while(batchCursor<7) {
+  const initialWindowLastTic=seed.p_first_tic+6;
+  while(batchCursor<initialWindowLastTic) {
     const batch=await waitForBatch(
-      created.p_match,created.p_player_capability,batchCursor,7-batchCursor);
+      created.p_match,created.p_player_capability,batchCursor,
+      initialWindowLastTic-batchCursor);
     initialBatchRequests+=1;
     assert.equal(batch.p_first_tic,batchCursor+1);
     assert.equal(batch.p_last_tic,

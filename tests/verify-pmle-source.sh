@@ -799,6 +799,23 @@ grep -q 'exit when l_count>=l_ready_count or elapsed_ms(l_started)>=l_hold' "$AU
 grep -q 'dbms_alert.waitone' "$AUTHORITY_TRANSPORT" || fail 'DMB1 prompt commit alert missing'
 grep -q 'doom_match_slow_call' "$ROOT/sql/schema/048_multiplayer_worker.sql" || fail 'worker slow-call schema missing'
 grep -q 'record_slow_call' "$ROOT/sql/sim/084_multiplayer_worker.sql" || fail 'worker post-commit slow-call attribution missing'
+grep -q "'STANDBY_CHECKPOINT'" "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
+  fail 'standby checkpoint phase attribution missing'
+grep -q 'elapsed_micros(l_started,l_restored)/1000' \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
+  fail 'standby checkpoint restore attribution missing'
+grep -q 'elapsed_micros(l_restored,l_replayed)/1000' \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
+  fail 'standby checkpoint replay attribution missing'
+grep -q 'elapsed_micros(l_replayed,l_saved)/1000' \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
+  fail 'standby checkpoint serialization attribution missing'
+grep -q 'if p_warm and l_players=2 and l_deathmatch=0 and l_skill=3' \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
+  fail 'default-origin standby restore elision missing'
+grep -q 'and l_episode=1 and l_map=1 then' \
+  "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
+  fail 'default-origin standby restore fence is incomplete'
 grep -q 'cpu_sample_tic number(12)' "$ROOT/sql/schema/048_multiplayer_worker.sql" ||
   fail 'authority CPU telemetry schema missing'
 grep -q 'procedure sample_authority_cpu' "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
@@ -1303,7 +1320,13 @@ grep -Fq "import {gunzipSync} from 'node:zlib';" "$MLE_LIVE_FRAME_E2E" &&
 grep -Fq 'const seedBytes = decodeBatchTransport(seed.p_payload);' \
   "$MLE_LIVE_FRAME_E2E" &&
 grep -q "toString('ascii'), 'DPB2'" "$MLE_LIVE_FRAME_E2E" &&
-grep -Fq 'while(batchCursor<7)' "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'assert.ok(seed.p_first_tic>=1);' "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'seed.p_last_tic,seed.p_first_tic+seed.p_frame_count-1' \
+  "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'seedBytes.readUInt32BE(8),seed.p_first_tic' "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'const initialWindowLastTic=seed.p_first_tic+6;' \
+  "$MLE_LIVE_FRAME_E2E" &&
+grep -Fq 'while(batchCursor<initialWindowLastTic)' "$MLE_LIVE_FRAME_E2E" &&
 grep -Fq 'assert.equal(logicalFrames.length,6)' "$MLE_LIVE_FRAME_E2E" &&
 grep -Fq 'assert.equal(batchBytes.length,8+batch.p_frame_count*64_008)' \
   "$MLE_LIVE_FRAME_E2E" &&
