@@ -8,12 +8,18 @@ if(!inputPath||!outputPath) {
   throw new Error(
     'usage: patch-coordinator-moving-render-prewarm.mjs INPUT OUTPUT');
 }
-const expectedInput=
-  'e0efc05a1e4b6c3e722db057b7a085c2d526fb50a4273ea62b86f7529138590a';
+const expectedInputs=new Set([
+  // Interval-five production lineage.
+  'e0efc05a1e4b6c3e722db057b7a085c2d526fb50a4273ea62b86f7529138590a',
+  // Interval-four/ring-128 A/B lineage. The emitted marker and final artifact
+  // SHA remain mandatory; accepting this exact parent does not generalize the
+  // patch to an unaudited coordinator shape.
+  '34be4687f56eb26796a0f22a60fb1eb22a41e6014422c7c619511384a538f98d',
+]);
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const source=readFileSync(inputPath,'utf8');
 const inputSha=sha(source);
-if(inputSha!==expectedInput) {
+if(!expectedInputs.has(inputSha)) {
   throw new Error(`moving-render prewarm input SHA mismatch: ${inputSha}`);
 }
 const before=`  for (let iteration = 0; iteration < iterations; iteration++) {

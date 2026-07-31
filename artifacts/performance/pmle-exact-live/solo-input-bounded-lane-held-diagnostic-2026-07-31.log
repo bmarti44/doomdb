@@ -1,0 +1,7 @@
+PMLE_PUBLIC_MATCH|id=d840690fa01127fb9b033ae64e7c68c4
+PMLE_PUBLIC_EXACT_FPS|PASS|seconds=30|frames=960|injected_rtt_ms=0|elapsed_ms=30187.400|fps=31.768|gap_p50_ms=28.700|gap_p95_ms=33.200|gap_max_ms=299.300|gap_max_tic=416|starvations=27
+PMLE_PUBLIC_EXACT_PLAYOUT|PASS|present=960|buffer_min=0|buffer_p50=4|buffer_p95=7|mode_accelerate=0|mode_free=492|mode_decelerate=468|batches=345|batch_zero=0|batch_count_p50=3|batch_count_p95=3|starvations=27
+PMLE_PUBLIC_EXACT_PIXELS|PASS|present=960|database_unique=960|database_consecutive_changes=959|canvas_unique=960|canvas_consecutive_changes=959|changed_pixels_p50=4484|changed_pixels_p95=15487|material_frames=926|arrow_up_inputs=91|arrow_up_effective=90
+PMLE_PUBLIC_EXCHANGE|PASS|requests=513|http_200=513|cancelled=0|failed=0|elapsed_p50_ms=43.469|elapsed_p95_ms=59.951
+PMLE_PUBLIC_INPUT_MOTION|PASS|input_sequence=2|effective_tic=206|paint_tic=206|confirmed_frames_skipped=7|input_to_paint_ms=158.400|effective_to_paint_ms=113.700|changed_pixels=13809
+PMLE_PUBLIC_DIRECTION_LATENCY|PASS|samples=5|p50_ms=157.000|p95_ms=164.600|max_ms=164.600
