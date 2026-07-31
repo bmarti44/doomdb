@@ -1,0 +1,3 @@
+PMLE_MOVING_PREWARM_POSTFLIGHT|PASS|candidate=REJECTED|production_moving_route_render_tics=96|active_matches=0|assigned_slots=0|worker_errors=0
+PMLE_MOVING_PREWARM_POSTFLIGHT_SLOT|slot=1|status=READY|last_error=NONE
+PMLE_MOVING_PREWARM_POSTFLIGHT_SLOT|slot=2|status=READY|last_error=NONE
