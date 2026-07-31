@@ -1241,7 +1241,7 @@ grep -Fq 'if(playoutStarted&&changedInput&&presentationCatchup)' \
 grep -Fq 'void reviseMatchInput(' "$ROOT/client/src/multiplayer.ts" &&
 grep -Fq "throw new Error('input-free database-frame exchange changed')" \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -Fq 'value.match,value.playerCapability,requestAfterTic,8)' \
+grep -Fq 'value.match,value.playerCapability,requestAfterTic,8,' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -Fq 'let soloPixelSeekTic=-1;' \
   "$ROOT/client/src/multiplayer.ts" &&
@@ -1571,9 +1571,26 @@ grep -q 'c_standby_checkpoint_replay_batch constant pls_integer:=1' \
   "$MLE_MATCH_WORKER" &&
 grep -q 'dbms_session.sleep(c_standby_checkpoint_replay_yield)' \
   "$MLE_MATCH_WORKER" &&
-grep -q "l_checkpoint_diagnostic=0" "$MLE_MATCH_WORKER" &&
+grep -q "l_checkpoint_diagnostic=0 and l_render_players=2" "$MLE_MATCH_WORKER" &&
 grep -q "checkpoint_status='PROCESSING'" "$MLE_MATCH_WORKER" ||
-  fail 'periodic DMC1 work is not fenced onto the retained standby'
+  fail 'periodic DMC1 work is not fenced to solo-local/co-op-standby ownership'
+grep -Fq 'if l_input_effective_tic=p_tic then' "$MLE_MATCH_WORKER" &&
+grep -Fq 'if l_effective_input_mask>0 then' "$MLE_MATCH_WORKER" &&
+perl -0777 -ne 'exit !(/if l_effective_input_mask>0 then.*?doom_mle_match_runtime[.]flush_live_frames/s)' \
+  "$MLE_MATCH_WORKER" ||
+  fail 'effective input does not flush its confirmed database framebuffer'
+grep -Fq 'p_wait_ms           in  number default 0' "$DOOM_API" &&
+grep -Fq "p_wait_ms not between 0 and 250" "$DOOM_API" &&
+perl -0777 -ne 'exit !(/procedure exchange_match_pixel_batch.*?loop.*?poll_match_pixel_batch\(.*?exit when p_frame_count>0 or systimestamp>=l_deadline.*?dbms_session[.]sleep\([.]005\)/s)' \
+  "$DOOM_API" ||
+  fail 'exact input-frame exchange does not use its bounded database wait'
+grep -Fq 'soloSeekRequest?225:0' "$MULTIPLAYER_CLIENT_TS" ||
+  fail 'solo effective-frame request does not select the bounded database wait'
+perl -0777 -ne 'exit !(/if\(soloMode&&pixelPollInFlight[.]size>0\s*&&performance[.]now\(\)-pixelPollStartedAt<75\)return;/s)' \
+  "$MULTIPLAYER_CLIENT_TS" ||
+  fail 'solo input does not use its bounded uncontended Free-tier API grace'
+grep -Fq 'then p_effective_tic-1 else p_after_tic end' "$DOOM_API" ||
+  fail 'fused input exchange does not fetch its authoritative effective frame'
 grep -q 'save_elapsed_ms number(12,3) default 0 not null' \
   "$MULTIPLAYER_SCHEMA" &&
 grep -q 'publish_elapsed_ms number(12,3) default 0 not null' \

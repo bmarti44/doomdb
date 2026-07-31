@@ -1,0 +1,24 @@
+PMLE_PUBLIC_MATCH|id=9f86da7e099da09d51d91bc9cd732d2a
+PMLE_PUBLIC_EXACT_FPS|PASS|seconds=30|frames=819|injected_rtt_ms=0|elapsed_ms=30005.700|fps=27.261|gap_p50_ms=31.000|gap_p95_ms=44.300|gap_max_ms=572.000|gap_max_tic=323|starvations=41
+PMLE_PUBLIC_EXACT_PLAYOUT|PASS|present=819|buffer_min=0|buffer_p50=3|buffer_p95=11|mode_accelerate=10|mode_free=255|mode_decelerate=554|batches=285|batch_zero=0|batch_count_p50=3|batch_count_p95=6|starvations=41
+PMLE_PUBLIC_EXACT_PIXELS|PASS|present=819|database_unique=819|database_consecutive_changes=818|canvas_unique=819|canvas_consecutive_changes=818|changed_pixels_p50=3865|changed_pixels_p95=15296|material_frames=781|arrow_up_inputs=91|arrow_up_effective=89
+PMLE_PUBLIC_EXCHANGE|PASS|requests=440|http_200=440|cancelled=0|failed=0|elapsed_p50_ms=43.639|elapsed_p95_ms=63.011
+PMLE_PUBLIC_INPUT_MOTION|PASS|input_sequence=2|effective_tic=122|paint_tic=122|confirmed_frames_skipped=6|input_to_paint_ms=276.300|effective_to_paint_ms=222.100|changed_pixels=12240
+PMLE_PUBLIC_DIRECTION_LATENCY|FAIL|samples=5|p50_ms=231.000|p95_ms=274.600|max_ms=274.600
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: direction-change input-to-database-frame p95 274.600 ms
+    at file:///Users/bmarti44/doomdb/probes/mle/teavm-engine/measure-public-exact-fps.mjs:411:8
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processImmediate (node:internal/timers:472:9) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v25.9.0

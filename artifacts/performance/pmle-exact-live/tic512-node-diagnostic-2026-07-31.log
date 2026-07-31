@@ -1,0 +1,66 @@
+6 command-line variables
+M_LoadDefaults: Load system defaults.
+M_Random: Using DelegateRandom.
+-iwad specified. Will be used with priority
+
+ITicker: Using nanosecond accuracy timer.
+                            FreeDoom: Phase 1          v1.9                           
+W_Init: Init WADfiles.
+	added freedoom1.wad (zipped: false network: true)
+VI_Init: set palettes.
+Palette: 3584 colors
+VI_Init: set colormaps.
+Colormaps: 35
+V_Init: allocate screens.
+AM_Init: Init Automap colors - 
+===========================================================================
+       Copyright © 2001-2017 Contributors to the Freedoom project.
+                            All rights reserved.
+     See: https://github.com/freedoom/freedoom/blob/master/COPYING.adoc
+===========================================================================
+Tables.InitTables: Init trigonometric LUTs.
+M_Init: Init miscellaneous info.
+R_Init: Init DOOM refresh daemon - 
+P_Init: Init Playloop state.
+false NUKAGE1 NUKAGE3 8
+false FWATER1 FWATER4 8
+false SWATER1 SWATER4 8
+false LAVA1 LAVA4 8
+false BLOOD1 BLOOD3 8
+false RROCK05 RROCK08 8
+false SLIME01 SLIME04 8
+false SLIME05 SLIME08 8
+false SLIME09 SLIME12 8
+I_Init: Setting up machine state.
+D_CheckNetGame: Checking network game status.
+startskill sk_medium  deathmatch: false  startmap: 1  startepisode: 1
+player 1 of 1 (1 nodes)
+S_Init: Setting up sound.
+M_Random: Switching to DoomRandom (new instance)
+P_GetNodesVersion: using normal BSP nodes
+PMLE_TIC512_NODE|PASS|tics=700|max_tic=1|max_ms=3.870683|tic512_ms=0.051175|memory=iwadBytes=28795076|frameBytes=64000|thinkers=250|mobjs=241|killMonsters=29|livingMonsters=29|awakeMonsters=2|movingMonsters=0|vertexes=1196|segs=2057|sectors=182|subsectors=682|nodes=681|lines=1175|sides=1829|blockmapInts=3764|blocklinks=864|rejectBytes=4141
+PMLE_TIC512_NODE_SAMPLE|tic=500|elapsed_ms=0.134105
+PMLE_TIC512_NODE_SAMPLE|tic=501|elapsed_ms=0.176003
+PMLE_TIC512_NODE_SAMPLE|tic=502|elapsed_ms=0.089986
+PMLE_TIC512_NODE_SAMPLE|tic=503|elapsed_ms=0.092079
+PMLE_TIC512_NODE_SAMPLE|tic=504|elapsed_ms=0.174648
+PMLE_TIC512_NODE_SAMPLE|tic=505|elapsed_ms=0.066430
+PMLE_TIC512_NODE_SAMPLE|tic=506|elapsed_ms=0.071453
+PMLE_TIC512_NODE_SAMPLE|tic=507|elapsed_ms=0.087298
+PMLE_TIC512_NODE_SAMPLE|tic=508|elapsed_ms=0.068853
+PMLE_TIC512_NODE_SAMPLE|tic=509|elapsed_ms=0.079422
+PMLE_TIC512_NODE_SAMPLE|tic=510|elapsed_ms=0.054101
+PMLE_TIC512_NODE_SAMPLE|tic=511|elapsed_ms=0.053317
+PMLE_TIC512_NODE_SAMPLE|tic=512|elapsed_ms=0.051175
+PMLE_TIC512_NODE_SAMPLE|tic=513|elapsed_ms=0.051766
+PMLE_TIC512_NODE_SAMPLE|tic=514|elapsed_ms=0.068643
+PMLE_TIC512_NODE_SAMPLE|tic=515|elapsed_ms=0.061582
+PMLE_TIC512_NODE_SAMPLE|tic=516|elapsed_ms=0.065804
+PMLE_TIC512_NODE_SAMPLE|tic=517|elapsed_ms=0.079710
+PMLE_TIC512_NODE_SAMPLE|tic=518|elapsed_ms=0.075466
+PMLE_TIC512_NODE_SAMPLE|tic=519|elapsed_ms=0.128854
+PMLE_TIC512_NODE_SAMPLE|tic=520|elapsed_ms=0.104240
+PMLE_TIC512_NODE_SAMPLE|tic=521|elapsed_ms=0.062402
+PMLE_TIC512_NODE_SAMPLE|tic=522|elapsed_ms=0.070069
+PMLE_TIC512_NODE_SAMPLE|tic=523|elapsed_ms=0.162804
+PMLE_TIC512_NODE_SAMPLE|tic=524|elapsed_ms=0.154058

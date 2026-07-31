@@ -69,7 +69,13 @@ const ociFrameStageEvidencePath =
   'oci-static-copy-observe-2026-07-29.log';
 const currentExactPublicEvidencePath =
   'artifacts/performance/pmle-exact-live/' +
-  'moving-render-prewarm-public-30s-2026-07-31.log';
+  'solo-input-bounded-lane-public-30s-2026-07-31.log';
+const currentExactPublicRepeatEvidencePath =
+  'artifacts/performance/pmle-exact-live/' +
+  'solo-input-bounded-lane-confirm-v2-public-30s-2026-07-31.log';
+const currentExactPublicRecycleEvidencePath =
+  'artifacts/performance/pmle-exact-live/' +
+  'solo-input-bounded-lane-confirm-public-30s-2026-07-31.log';
 const ociBrowserCleanupEvidencePath =
   'artifacts/performance/pmle-live-frame-authority/' +
   'oci-session-cleanup-browser-native35-2026-07-29.log';
@@ -479,25 +485,43 @@ if (hudLiveFramePromoted) {
     'OCI render/publish stage split');
 }
 contains(currentExactPublic,
-  'PMLE_PUBLIC_EXACT_FPS|PASS|seconds=30|frames=992|injected_rtt_ms=0|' +
-  'elapsed_ms=30240.900|fps=32.770|gap_p50_ms=28.200|' +
-  'gap_p95_ms=32.700|gap_max_ms=790.300',
+  'PMLE_PUBLIC_EXACT_FPS|PASS|seconds=30|frames=966|injected_rtt_ms=0|' +
+  'elapsed_ms=29960.400|fps=32.209|gap_p50_ms=28.400|' +
+  'gap_p95_ms=32.900|gap_max_ms=392.900',
   'current exact public cadence');
 contains(currentExactPublic,
-  'PMLE_PUBLIC_EXACT_PIXELS|PASS|present=992|database_unique=989|' +
-  'database_consecutive_changes=988|canvas_unique=989|' +
-  'canvas_consecutive_changes=988|changed_pixels_p50=4277|' +
-  'changed_pixels_p95=15208|material_frames=942|' +
+  'PMLE_PUBLIC_EXACT_PIXELS|PASS|present=966|database_unique=966|' +
+  'database_consecutive_changes=965|canvas_unique=966|' +
+  'canvas_consecutive_changes=965|changed_pixels_p50=4394|' +
+  'changed_pixels_p95=15566|material_frames=932|' +
   'arrow_up_inputs=91|arrow_up_effective=90',
   'current exact public motion');
 contains(currentExactPublic,
-  'PMLE_PUBLIC_EXCHANGE|PASS|requests=419|http_200=419|cancelled=0|' +
+  'PMLE_PUBLIC_EXCHANGE|PASS|requests=487|http_200=487|cancelled=0|' +
   'failed=0',
   'current exact public exchange');
 contains(currentExactPublic,
-  'PMLE_PUBLIC_DIRECTION_LATENCY|PASS|samples=5|p50_ms=201.300|' +
-  'p95_ms=240.300|max_ms=240.300',
+  'PMLE_PUBLIC_DIRECTION_LATENCY|PASS|samples=5|p50_ms=180.100|' +
+  'p95_ms=189.900|max_ms=189.900',
   'current exact public direction latency');
+const currentExactPublicRepeat=read(currentExactPublicRepeatEvidencePath);
+contains(currentExactPublicRepeat,
+  'PMLE_PUBLIC_EXACT_FPS|PASS|seconds=30|frames=966|injected_rtt_ms=0|' +
+  'elapsed_ms=30000.200|fps=32.166',
+  'repeat exact public cadence');
+contains(currentExactPublicRepeat,
+  'PMLE_PUBLIC_DIRECTION_LATENCY|PASS|samples=5|p50_ms=203.200|' +
+  'p95_ms=248.500|max_ms=248.500',
+  'repeat exact public direction latency');
+const currentExactPublicRecycle=read(currentExactPublicRecycleEvidencePath);
+contains(currentExactPublicRecycle,
+  'PMLE_PUBLIC_EXACT_FPS|PASS|seconds=30|frames=819|injected_rtt_ms=0|' +
+  'elapsed_ms=30005.700|fps=27.261',
+  'back-to-back recycle public cadence');
+contains(currentExactPublicRecycle,
+  'PMLE_PUBLIC_DIRECTION_LATENCY|FAIL|samples=5|p50_ms=231.000|' +
+  'p95_ms=274.600|max_ms=274.600',
+  'back-to-back recycle direction tail');
 contains(ociBrowserCleanup,
   'PASS SESSION-CLEANUP-BROWSER',
   'browser refresh/close cleanup');
@@ -926,18 +950,20 @@ const status = {
         authority.liveFrameRenderer.deployedOutputSha256,
       coordinatorSha256:
         authority.liveFrameRenderer.deployedCoordinatorSha256,
-      status: 'EXACT_320X200_TEMPORAL_SOLO_30FPS_PASS_TWO_POV_20FPS_OPEN',
-      productionShapeServerFps: 32.770,
-      productionShapeServerP50Milliseconds: 28.2,
-      productionShapeServerP95Milliseconds: 32.7,
-      latestPublicSoloFps: 32.770,
-      latestPublicSoloCadenceP95Milliseconds: 32.7,
-      repeatPublicSoloFps: 32.770,
-      repeatPublicSoloCadenceP95Milliseconds: 32.7,
-      repeatPublicSoloMaximumIntervalMilliseconds: 790.3,
-      repeatPublicSoloStarvations: 20,
-      directionInputToCanvasP50Milliseconds: 201.3,
-      directionInputToCanvasP95Milliseconds: 240.3,
+      status: 'EXACT_SOLO_READY_SLOT_30FPS_INPUT_250MS_PASS_RECYCLE_TAIL_OPEN',
+      productionShapeServerFps: 32.209,
+      productionShapeServerP50Milliseconds: 28.4,
+      productionShapeServerP95Milliseconds: 32.9,
+      latestPublicSoloFps: 32.209,
+      latestPublicSoloCadenceP95Milliseconds: 32.9,
+      repeatPublicSoloFps: 32.166,
+      repeatPublicSoloCadenceP95Milliseconds: 32.9,
+      repeatPublicSoloMaximumIntervalMilliseconds: 274.7,
+      repeatPublicSoloStarvations: 22,
+      directionInputToCanvasP50Milliseconds: 203.2,
+      directionInputToCanvasP95Milliseconds: 248.5,
+      backToBackRecycleFps: 27.261,
+      backToBackRecycleDirectionP95Milliseconds: 274.6,
       confirmedFrameDrops: [0, 0],
       currentTwoPovDiagnostic: {
         status: 'EXACT_EVERY_TIC_20FPS_OPEN_TEMPORAL_INTERVAL2_CANDIDATE',
@@ -952,6 +978,8 @@ const status = {
       },
       evidence: [
         currentExactPublicEvidencePath,
+        currentExactPublicRepeatEvidencePath,
+        currentExactPublicRecycleEvidencePath,
         ociHudDatabasePixelEvidencePath,
         ociHudSoloPrimaryEvidencePath,
         ociHudSoloRepeatEvidencePath,

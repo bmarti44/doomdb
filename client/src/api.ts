@@ -572,7 +572,7 @@ export async function pollMatchPixelBatch(
 export async function exchangeMatchPixelBatch(
     match: string, playerCapability: string, afterTic: number,
     maximumFrames: number, inputSequence?: number, ticcmdHex?: string,
-    targetTic?: number): Promise<{
+    targetTic?: number, waitMilliseconds=0): Promise<{
   inputAccepted: number;
   effectiveTic: number | null;
   frameCount: number;
@@ -609,7 +609,8 @@ export async function exchangeMatchPixelBatch(
     p_max_frames: maximumFrames,
     p_input_seq: inputSequence,
     p_ticcmd_hex: ticcmdHex,
-    p_target_tic: targetTic
+    p_target_tic: targetTic,
+    p_wait_ms: waitMilliseconds
   };
   try {
     const primaryRequest=postAsync(

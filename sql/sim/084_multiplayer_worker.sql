@@ -570,6 +570,7 @@ create or replace package body doom_match_worker as
     l_render_mask number:=0;
     l_now timestamp with time zone:=utc_now;l_deadline timestamp with time zone;
     l_eligible timestamp with time zone;l_input raw(8);l_payload raw(32767);
+    l_input_effective_tic number;l_effective_input_mask number:=0;
     l_checkpoint blob;l_checkpoint_sha varchar2(64);l_checkpoint_bytes number;
     l_step_started timestamp with time zone:=utc_now;
     l_step_ended timestamp with time zone;l_step_elapsed_ms number;
@@ -623,12 +624,16 @@ create or replace package body doom_match_worker as
     if l_deadline>l_now then l_deadline:=l_now;end if;
     if p_paced=0 then for l_slot in 0..1 loop
       begin
-        select ticcmd_raw into l_input from (select ticcmd_raw
+        select ticcmd_raw,effective_tic into l_input,l_input_effective_tic
+          from (select ticcmd_raw,effective_tic
           from doom_match_input_event where match_id=p_match
             and player_slot=l_slot and membership_epoch=p_epoch
             and effective_tic<=p_tic order by input_seq desc) where rownum=1;
         l_vector_hex:=substr(l_vector_hex,1,l_slot*16)||rawtohex(l_input)||
           substr(l_vector_hex,l_slot*16+17);
+        if l_input_effective_tic=p_tic then
+          l_effective_input_mask:=l_effective_input_mask+power(2,l_slot);
+        end if;
       exception when no_data_found then null;end;
     end loop;end if;
     l_vector_hex:=lower(l_vector_hex||rpad('00',32,'0'));
@@ -688,6 +693,16 @@ create or replace package body doom_match_worker as
       l_frame_render_ended:=utc_now;
       doom_mle_match_runtime.publish_prepared_views(
         p_match,l_render_mask,p_epoch,p_generation,p_tic);
+      if l_effective_input_mask>0 then
+        -- Normal DPV2 publication amortizes three to five exact frames per
+        -- persistent locator. On a real control transition that otherwise
+        -- hides the already-rendered effective frame for another 85-143 ms.
+        -- Flush only this partial, confirmed MLE-authored bundle; ordinary
+        -- animation keeps the measured batched path and no pixel is predicted
+        -- or produced by the browser.
+        doom_mle_match_runtime.flush_live_frames(
+          p_match,p_epoch,p_generation);
+      end if;
       l_frame_publish_ended:=utc_now;
       if p_diagnostics=1 then
         record_frame_stage(
@@ -832,7 +847,14 @@ create or replace package body doom_match_worker as
       end if;
     end if;
     if l_checkpoint_diagnostic=1 or l_checkpoint_due=1 then
-      if l_checkpoint_diagnostic=0 then
+      -- On Always Free, asking the second retained session to restore and
+      -- replay 512 tics competes with the live renderer for the PDB's single
+      -- effective CPU for nearly the whole checkpoint interval.  A solo
+      -- authority already owns the exact frontier and can serialize it in
+      -- roughly 100 ms, so keep solo checkpoint creation in that session.
+      -- Co-op retains the asynchronous standby path because two live views
+      -- make the shorter authority pause materially more expensive.
+      if l_checkpoint_diagnostic=0 and l_render_players=2 then
         update doom_match_standby_control set
           checkpoint_request_tic=p_tic,checkpoint_status='QUEUED',
           checkpoint_error=null,heartbeat=(localtimestamp at time zone 'UTC')

@@ -177,6 +177,7 @@ create or replace package doom_api authid definer as
     p_input_seq         in  number default null,
     p_ticcmd_hex        in  varchar2 default null,
     p_target_tic        in  number default null,
+    p_wait_ms           in  number default 0,
     p_input_accepted    out number,
     p_effective_tic     out number,
     p_frame_count       out number,
@@ -1463,18 +1464,24 @@ create or replace package body doom_api as
   procedure exchange_match_pixel_batch(
     p_match in varchar2,p_player_capability in varchar2,p_after_tic in number,
     p_max_frames in number,p_input_seq in number,p_ticcmd_hex in varchar2,
-    p_target_tic in number,p_input_accepted out number,
+    p_target_tic in number,p_wait_ms in number,p_input_accepted out number,
     p_effective_tic out number,p_frame_count out number,
     p_first_tic out number,p_last_tic out number,p_current_tic out number,
     p_membership_epoch out number,p_generation out number,p_payload out blob
   ) is
     l_input_membership_epoch number;
     l_input_generation number;
+    l_poll_after_tic number;
+    l_deadline timestamp with time zone;
   begin
     p_input_accepted:=0;p_effective_tic:=null;
     if (p_input_seq is null and p_ticcmd_hex is not null)
        or (p_input_seq is not null and p_ticcmd_hex is null) then
       fail(c_bad_request,'incomplete match pixel exchange input');
+    end if;
+    if p_wait_ms is null or p_wait_ms<>trunc(p_wait_ms)
+       or p_wait_ms not between 0 and 250 then
+      fail(c_bad_request,'invalid match pixel exchange wait');
     end if;
     if p_input_seq is not null then
       revise_match_input(
@@ -1482,10 +1489,20 @@ create or replace package body doom_api as
         p_input_accepted,p_effective_tic,l_input_membership_epoch,
         l_input_generation,p_target_tic);
     end if;
-    poll_match_pixel_batch(
-      p_match,p_player_capability,p_after_tic,p_max_frames,
-      p_frame_count,p_first_tic,p_last_tic,p_current_tic,
-      p_membership_epoch,p_generation,p_payload);
+    -- A fused input exchange asks for the exact authoritative effective tic,
+    -- not the client's pre-acceptance estimate. This removes an entire WAN
+    -- request while retaining the same confirmed database-frame contract.
+    l_poll_after_tic:=case when p_input_seq is not null
+      then p_effective_tic-1 else p_after_tic end;
+    l_deadline:=systimestamp+numtodsinterval(p_wait_ms/1000,'SECOND');
+    loop
+      poll_match_pixel_batch(
+        p_match,p_player_capability,l_poll_after_tic,p_max_frames,
+        p_frame_count,p_first_tic,p_last_tic,p_current_tic,
+        p_membership_epoch,p_generation,p_payload);
+      exit when p_frame_count>0 or systimestamp>=l_deadline;
+      dbms_session.sleep(.005);
+    end loop;
     if p_input_seq is not null and
        (p_membership_epoch<>l_input_membership_epoch
         or p_generation<>l_input_generation) then

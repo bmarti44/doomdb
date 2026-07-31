@@ -532,6 +532,7 @@ async function startDatabaseFrameGame(
   const paintedAt:number[]=[];
   const frames=new Map<number,DatabasePixelFrame>();
   const pixelPollInFlight=new Set<number>();
+  let pixelPollStartedAt=0;
   const arrivedTransportTics=new Set<number>();
   const pixelPollLegs=1;
   // The Always Free PDB has one guaranteed API execution lane beside the
@@ -615,6 +616,14 @@ async function startDatabaseFrameGame(
   // emits unchanged keepalives.
   const postInput=():void=>{
     if(stopped||suspended||inputPostInFlight)return;
+    // The Free-tier PDB has one guaranteed API execution lane beside the
+    // retained authority. Do not race a compact solo input revision against
+    // the one read-only BLOB fetch already using it: let that request finish,
+    // then consume the next lane before another pixel poll is launched. This
+    // is bounded by one ordinary exchange RTT and avoids the much worse ORDS
+    // cancellation backlog produced by aborting an in-flight fetch.
+    if(soloMode&&pixelPollInFlight.size>0
+        &&performance.now()-pixelPollStartedAt<75)return;
     const input=retryInput??pendingInput;
     if(input===null)return;
     if(retryInput!==null)retryInput=null;
@@ -834,13 +843,15 @@ async function startDatabaseFrameGame(
   const launchPixelPoll=(expectedTic:number):void=>{
     if(stopped||suspended||pixelPollInFlight.has(expectedTic))return;
     pixelPollInFlight.add(expectedTic);
+    pixelPollStartedAt=performance.now();
     const requestEpoch=pixelPollEpoch;
     const requestAfterTic=expectedTic<0?-1:expectedTic-1;
     const requestGeneration=generation;
     const soloSeekRequest=soloMode&&expectedTic===soloPixelSeekTic;
     let nextPollDelayMs=8;
     void exchangeMatchPixelBatch(
-      value.match,value.playerCapability,requestAfterTic,8)
+      value.match,value.playerCapability,requestAfterTic,8,
+      undefined,undefined,undefined,soloSeekRequest?225:0)
       .then(async result=>{
         if(requestEpoch!==pixelPollEpoch||stopped||suspended)return;
         const finished=performance.now();
@@ -1014,6 +1025,7 @@ async function startDatabaseFrameGame(
       }).finally(()=>{
         if(requestEpoch!==pixelPollEpoch)return;
         pixelPollInFlight.delete(expectedTic);
+        if(pixelPollInFlight.size===0)pixelPollStartedAt=0;
         if(!stopped&&!suspended) {
           if(retryInput!==null||pendingInput!==null)postInput();
           schedulePixelPolls(nextPollDelayMs);

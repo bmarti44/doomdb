@@ -426,7 +426,7 @@ export async function pollMatchPixelBatch(match, playerCapability, afterTic, max
         payload: frameCount > 0 ? stringField(document, 'p_payload') : null
     };
 }
-export async function exchangeMatchPixelBatch(match, playerCapability, afterTic, maximumFrames, inputSequence, ticcmdHex, targetTic) {
+export async function exchangeMatchPixelBatch(match, playerCapability, afterTic, maximumFrames, inputSequence, ticcmdHex, targetTic, waitMilliseconds = 0) {
     if ((inputSequence === undefined) !== (ticcmdHex === undefined)) {
         throw new TypeError('pixel exchange input is incomplete');
     }
@@ -454,7 +454,8 @@ export async function exchangeMatchPixelBatch(match, playerCapability, afterTic,
         p_max_frames: maximumFrames,
         p_input_seq: inputSequence,
         p_ticcmd_hex: ticcmdHex,
-        p_target_tic: targetTic
+        p_target_tic: targetTic,
+        p_wait_ms: waitMilliseconds
     };
     try {
         const primaryRequest = postAsync('exchange_match_pixel_batch', body, primary.signal);
