@@ -53,9 +53,9 @@
     "liveFrameRenderer": {
       "bytes": 1706614,
       "sha256": "51aadc21bcb619928cee3e73217c8150cebf19aa3186dfd273ea3535d88e2edb",
-      "profile": "exact-320x200-temporal-solo-interval3",
-      "coordinatorBytes": 61397,
-      "coordinatorSha256": "d3d0571ac93f594f340b61b51545c97be73046535b1204c87769e9d2b15f4b84"
+      "profile": "exact-320x200-temporal-solo3-multiview5-ring128-moving-prewarm96",
+      "coordinatorBytes": 72634,
+      "coordinatorSha256": "afbe04722b3a5db03e3a73c834b5ff7600c8c7f4ca73d8296b9f04d6f6135c3e"
     },
     "inputBytecodeSha256": "289edf1d678f9aced34c969ed24dcc9c90b9dce38f1b15701b284a2e5384df7e",
     "mochaBytecodeSha256": "c6d26633316b7a6251e79b9013bfb16ca877e2d93642ebbaba17bfc66c8861a4",
@@ -226,17 +226,19 @@
     "currentHudDeployment": {
       "authoritySha256": "66dd235cde82a8b8fbcac88bb905912bacfd6ea40671d2808e5951ce290ce873",
       "rendererSha256": "51aadc21bcb619928cee3e73217c8150cebf19aa3186dfd273ea3535d88e2edb",
-      "coordinatorSha256": "d3d0571ac93f594f340b61b51545c97be73046535b1204c87769e9d2b15f4b84",
+      "coordinatorSha256": "afbe04722b3a5db03e3a73c834b5ff7600c8c7f4ca73d8296b9f04d6f6135c3e",
       "status": "EXACT_320X200_TEMPORAL_SOLO_30FPS_PASS_TWO_POV_20FPS_OPEN",
-      "productionShapeServerFps": 34.234,
+      "productionShapeServerFps": 32.77,
       "productionShapeServerP50Milliseconds": 28.2,
-      "productionShapeServerP95Milliseconds": 32.6,
-      "latestPublicSoloFps": 34.234,
-      "latestPublicSoloCadenceP95Milliseconds": 32.6,
-      "repeatPublicSoloFps": 33.277,
-      "repeatPublicSoloCadenceP95Milliseconds": 32.6,
-      "repeatPublicSoloMaximumIntervalMilliseconds": 99.5,
-      "repeatPublicSoloStarvations": 6,
+      "productionShapeServerP95Milliseconds": 32.7,
+      "latestPublicSoloFps": 32.77,
+      "latestPublicSoloCadenceP95Milliseconds": 32.7,
+      "repeatPublicSoloFps": 32.77,
+      "repeatPublicSoloCadenceP95Milliseconds": 32.7,
+      "repeatPublicSoloMaximumIntervalMilliseconds": 790.3,
+      "repeatPublicSoloStarvations": 20,
+      "directionInputToCanvasP50Milliseconds": 201.3,
+      "directionInputToCanvasP95Milliseconds": 240.3,
       "confirmedFrameDrops": [
         0,
         0
@@ -259,11 +261,11 @@
           0,
           0
         ],
-        "coordinatorSha256": "d3d0571ac93f594f340b61b51545c97be73046535b1204c87769e9d2b15f4b84",
+        "coordinatorSha256": "afbe04722b3a5db03e3a73c834b5ff7600c8c7f4ca73d8296b9f04d6f6135c3e",
         "evidence": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-two-pov-phase-stagger-2026-07-29.json"
       },
       "evidence": [
-        "artifacts/performance/pmle-exact-live/user-stall-fixed-public-final-2026-07-30.log",
+        "artifacts/performance/pmle-exact-live/moving-render-prewarm-public-30s-2026-07-31.log",
         "artifacts/performance/pmle-live-frame-hud-fix/OCI-160X84-DEPLOYMENT.md",
         "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-solo-browser-repeat-2026-07-29.json",
         "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-solo-browser-2026-07-29.json",
@@ -553,7 +555,7 @@
     "ociHudSoloRepeat": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-solo-browser-2026-07-29.json",
     "ociHudSoloPostflight": "artifacts/performance/pmle-live-frame-hud-fix/oci-160x84-phase-stagger-db-postflight-2026-07-29.log",
     "ociFrameStageDecomposition": "artifacts/performance/pmle-live-frame-stage-split/oci-static-copy-observe-2026-07-29.log",
-    "currentExactPublic": "artifacts/performance/pmle-exact-live/user-stall-fixed-public-final-2026-07-30.log",
+    "currentExactPublic": "artifacts/performance/pmle-exact-live/moving-render-prewarm-public-30s-2026-07-31.log",
     "ociDeCpsPresentationDiagnostic": "artifacts/performance/pmle-presentation-decps/REPORT.md",
     "ociDatabaseFrameDiagnostic": "artifacts/performance/pmle-database-frames/REPORT.md",
     "ociWasm2jsPresentationCost": "artifacts/performance/pmle-database-frames/wasm2js-presentation-cost-verdict-2026-07-26.md",

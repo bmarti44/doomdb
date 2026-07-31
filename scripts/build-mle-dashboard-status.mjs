@@ -69,7 +69,7 @@ const ociFrameStageEvidencePath =
   'oci-static-copy-observe-2026-07-29.log';
 const currentExactPublicEvidencePath =
   'artifacts/performance/pmle-exact-live/' +
-  'user-stall-fixed-public-final-2026-07-30.log';
+  'moving-render-prewarm-public-30s-2026-07-31.log';
 const ociBrowserCleanupEvidencePath =
   'artifacts/performance/pmle-live-frame-authority/' +
   'oci-session-cleanup-browser-native35-2026-07-29.log';
@@ -479,21 +479,25 @@ if (hudLiveFramePromoted) {
     'OCI render/publish stage split');
 }
 contains(currentExactPublic,
-  'PMLE_PUBLIC_EXACT_FPS|PASS|seconds=15|frames=523|injected_rtt_ms=0|' +
-  'elapsed_ms=15248.100|fps=34.234|gap_p50_ms=28.200|' +
-  'gap_p95_ms=32.600|gap_max_ms=99.500',
+  'PMLE_PUBLIC_EXACT_FPS|PASS|seconds=30|frames=992|injected_rtt_ms=0|' +
+  'elapsed_ms=30240.900|fps=32.770|gap_p50_ms=28.200|' +
+  'gap_p95_ms=32.700|gap_max_ms=790.300',
   'current exact public cadence');
 contains(currentExactPublic,
-  'PMLE_PUBLIC_EXACT_PIXELS|PASS|present=523|database_unique=520|' +
-  'database_consecutive_changes=519|canvas_unique=520|' +
-  'canvas_consecutive_changes=519|changed_pixels_p50=4384|' +
-  'changed_pixels_p95=15693|material_frames=487|' +
-  'arrow_up_inputs=5|arrow_up_effective=5',
+  'PMLE_PUBLIC_EXACT_PIXELS|PASS|present=992|database_unique=989|' +
+  'database_consecutive_changes=988|canvas_unique=989|' +
+  'canvas_consecutive_changes=988|changed_pixels_p50=4277|' +
+  'changed_pixels_p95=15208|material_frames=942|' +
+  'arrow_up_inputs=91|arrow_up_effective=90',
   'current exact public motion');
 contains(currentExactPublic,
-  'PMLE_PUBLIC_EXCHANGE|PASS|requests=308|http_200=308|cancelled=0|' +
+  'PMLE_PUBLIC_EXCHANGE|PASS|requests=419|http_200=419|cancelled=0|' +
   'failed=0',
   'current exact public exchange');
+contains(currentExactPublic,
+  'PMLE_PUBLIC_DIRECTION_LATENCY|PASS|samples=5|p50_ms=201.300|' +
+  'p95_ms=240.300|max_ms=240.300',
+  'current exact public direction latency');
 contains(ociBrowserCleanup,
   'PASS SESSION-CLEANUP-BROWSER',
   'browser refresh/close cleanup');
@@ -923,15 +927,17 @@ const status = {
       coordinatorSha256:
         authority.liveFrameRenderer.deployedCoordinatorSha256,
       status: 'EXACT_320X200_TEMPORAL_SOLO_30FPS_PASS_TWO_POV_20FPS_OPEN',
-      productionShapeServerFps: 34.234,
+      productionShapeServerFps: 32.770,
       productionShapeServerP50Milliseconds: 28.2,
-      productionShapeServerP95Milliseconds: 32.6,
-      latestPublicSoloFps: 34.234,
-      latestPublicSoloCadenceP95Milliseconds: 32.6,
-      repeatPublicSoloFps: 33.277,
-      repeatPublicSoloCadenceP95Milliseconds: 32.6,
-      repeatPublicSoloMaximumIntervalMilliseconds: 99.5,
-      repeatPublicSoloStarvations: 6,
+      productionShapeServerP95Milliseconds: 32.7,
+      latestPublicSoloFps: 32.770,
+      latestPublicSoloCadenceP95Milliseconds: 32.7,
+      repeatPublicSoloFps: 32.770,
+      repeatPublicSoloCadenceP95Milliseconds: 32.7,
+      repeatPublicSoloMaximumIntervalMilliseconds: 790.3,
+      repeatPublicSoloStarvations: 20,
+      directionInputToCanvasP50Milliseconds: 201.3,
+      directionInputToCanvasP95Milliseconds: 240.3,
       confirmedFrameDrops: [0, 0],
       currentTwoPovDiagnostic: {
         status: 'EXACT_EVERY_TIC_20FPS_OPEN_TEMPORAL_INTERVAL2_CANDIDATE',

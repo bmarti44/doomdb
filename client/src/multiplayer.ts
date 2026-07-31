@@ -487,12 +487,11 @@ async function startDatabaseFrameGame(
   let latest:Command={seq:0,turn:0,forward:0,strafe:0,run:0,fire:0,use:0,
     weapon:0,pause:0,automap:0,menu:'NONE',cheat:''};
   let inputSequence=initialInputSequence;
-  let retryInput:{
+  type QueuedPixelInput={
     sequence:number;hex:string;targetTic:number;command:Command
-  }|null=null;
-  let pendingInput:{
-    sequence:number;hex:string;targetTic:number;command:Command
-  }|null=null;
+  };
+  let retryInput:QueuedPixelInput|null=null;
+  let pendingInput:QueuedPixelInput|null=null;
   let stopped=false;
   let suspended=document.hidden;
   let hiddenAt=suspended?performance.now():0;
@@ -506,6 +505,7 @@ async function startDatabaseFrameGame(
   let playoutMode:'ACCELERATE'|'FREE'|'DECELERATE'='FREE';
   let starvationActive=false;
   let inputCatchupThroughTic=-1;
+  let soloPixelSeekTic=-1;
   let lastEffectiveInputHex:string|null=null;
   let lastEffectiveCommand:Command|null=null;
   let pixelPollEpoch=0;
@@ -712,7 +712,13 @@ async function startDatabaseFrameGame(
             ? pixelInputCatchupFloor-1
             : pixelInputCatchupFloor;
         }
+        if(soloMode&&changedInput&&presentationCatchup) {
+          soloPixelSeekTic=result.effectiveTic;
+        }
         urgentPixelInput=true;
+        // Seek the exact accepted tic immediately. An unavailable frame
+        // produces a cheap empty response and retries at the normal bounded
+        // cadence; delaying by a full tic added directly to visible latency.
         schedulePixelPolls(0);
       }).catch(cause=>{
         if(stopped||suspended)return;
@@ -820,6 +826,7 @@ async function startDatabaseFrameGame(
     nextFrameAt=0;playoutStarted=false;playoutMode='FREE';
     urgentPixelInput=pendingInput!==null||retryInput!==null;
     inputCatchupThroughTic=-1;lastEffectiveInputHex=null;
+    soloPixelSeekTic=-1;
     lastEffectiveCommand=null;
     starvationActive=false;wan.resetConfirmedBatchDelivery();
     paintedAt.length=0;lastFrameBatchAt=0;
@@ -830,6 +837,7 @@ async function startDatabaseFrameGame(
     const requestEpoch=pixelPollEpoch;
     const requestAfterTic=expectedTic<0?-1:expectedTic-1;
     const requestGeneration=generation;
+    const soloSeekRequest=soloMode&&expectedTic===soloPixelSeekTic;
     let nextPollDelayMs=8;
     void exchangeMatchPixelBatch(
       value.match,value.playerCapability,requestAfterTic,8)
@@ -865,7 +873,16 @@ async function startDatabaseFrameGame(
               ||batch.at(-1)?.tic!==result.lastTic) {
             throw new Error('database frame batch fence changed');
           }
-          if(!transportEstablished) {
+          if(soloSeekRequest&&batch[0]!.tic===expectedTic) {
+            trace('pixel-resync',{reason:'effective-input-seek',
+              expectedTic,generation,source:'database-framebuffer'});
+            frames.clear();arrivedTransportTics.clear();
+            presentedTic=expectedTic-1;
+            transportTic=expectedTic-1;
+            nextFrameAt=0;playoutStarted=true;playoutMode='FREE';
+            starvationActive=false;wan.resetConfirmedBatchDelivery();
+            soloPixelSeekTic=-1;
+          } else if(!transportEstablished) {
             trace('pixel-resync',{reason:'ring-gap',
               expectedTic:transportTic+1,firstTic:batch[0]!.tic,
               generation,source:'database-framebuffer'});
@@ -905,6 +922,37 @@ async function startDatabaseFrameGame(
               next=nextDatabaseFrameTic(transportTic)) {
             transportTic=next;
           }
+          // A changed solo command spends stale confirmed history twice: once
+          // when the compact input response names its effective tic, and once
+          // when the transport actually reaches that tic. The old path only
+          // performed the first half, then displayed newly arrived pre-input
+          // frames at native cadence for another 150-300 ms. Skip only bytes
+          // that are now present and authenticated, stopping immediately
+          // before the exact MLE-rendered effective frame.
+          if(soloMode&&inputCatchupThroughTic>presentedTic
+              &&transportTic>=inputCatchupThroughTic) {
+            const catchupTic=inputCatchupThroughTic-1;
+            let skippedTic=nextDatabaseFrameTic(presentedTic);
+            let skippedCount=0;
+            while(skippedTic<=catchupTic) {
+              frames.delete(skippedTic);
+              trace('pixel-confirmed-drop',{
+                tic:skippedTic,reason:'effective-input-arrival',
+                effectiveTic:inputCatchupThroughTic,
+                source:'database-framebuffer'});
+              skippedCount+=1;
+              skippedTic=nextDatabaseFrameTic(skippedTic);
+            }
+            if(skippedCount>0) {
+              presentedTic=catchupTic;
+              nextFrameAt=0;
+              starvationActive=false;
+              trace('pixel-input-catchup',{
+                effectiveTic:inputCatchupThroughTic,catchupTic,
+                transportTic,skippedCount,phase:'effective-frame-arrival',
+                source:'database-framebuffer'});
+            }
+          }
           if(frames.size>64) {
             if(playoutStarted) {
               throw new Error('database frame backlog exceeded');
@@ -932,7 +980,6 @@ async function startDatabaseFrameGame(
             expectedBatchTics:wan.expectedConfirmedBatchTics,
             firstTic:batch[0]!.tic,lastTic:batch.at(-1)!.tic,
             bufferedFrames:frames.size,source:'database-framebuffer'});
-          pump();
           lastFrameBatchAt=finished;
           // Preserve the low-request-rate batch cadence while the confirmed
           // reserve is healthy, but refill promptly when one batch or less
@@ -955,6 +1002,7 @@ async function startDatabaseFrameGame(
             : 1000/70;
           nextPollDelayMs=Math.max(4,Math.min(20,predicted));
         }
+        pump();
         postInput();
       }).catch(cause=>{
         if(requestEpoch!==pixelPollEpoch||stopped||suspended)return;
@@ -966,7 +1014,10 @@ async function startDatabaseFrameGame(
       }).finally(()=>{
         if(requestEpoch!==pixelPollEpoch)return;
         pixelPollInFlight.delete(expectedTic);
-        if(!stopped&&!suspended)schedulePixelPolls(nextPollDelayMs);
+        if(!stopped&&!suspended) {
+          if(retryInput!==null||pendingInput!==null)postInput();
+          schedulePixelPolls(nextPollDelayMs);
+        }
       });
   };
   schedulePixelPolls=(delayMs=0):void=>{
@@ -975,6 +1026,10 @@ async function startDatabaseFrameGame(
       if(stopped||suspended)return;
       if(urgentPixelInput
           &&(pendingInput!==null||retryInput!==null||inputPostInFlight)) {
+        return;
+      }
+      if(soloPixelSeekTic>=0) {
+        if(pixelPollInFlight.size===0)launchPixelPoll(soloPixelSeekTic);
         return;
       }
       if(!transportEstablished) {

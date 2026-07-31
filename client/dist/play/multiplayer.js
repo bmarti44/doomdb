@@ -4,7 +4,7 @@ import { decodeBytes } from './codec.js';
 import { bindInput } from './input.js';
 import { createPalette, createPaletteSet } from './palette.js';
 import { decodeDatabasePixelTransport, nextDatabaseFrameTic } from './pixel-batch.js';
-import { ConfirmedWanPolicy, confirmedBatchPlayoutDecision, confirmedPlayoutDecision, databasePixelPlayoutIntervalMs } from './authority-wan.js';
+import { ConfirmedWanPolicy, confirmedBatchPlayoutDecision, confirmedPlayoutDecision, confirmedInputCatchupCursor, databasePixelPlayoutIntervalMs } from './authority-wan.js';
 // Presentation catch-up is reserved for controls that change the camera,
 // movement, world interaction, or UI state. Fire press/release is intentionally
 // excluded: a held weapon animates through authoritative frames, and repeatedly
@@ -474,6 +474,7 @@ async function startDatabaseFrameGame(value, status) {
     let playoutMode = 'FREE';
     let starvationActive = false;
     let inputCatchupThroughTic = -1;
+    let soloPixelSeekTic = -1;
     let lastEffectiveInputHex = null;
     let lastEffectiveCommand = null;
     let pixelPollEpoch = 0;
@@ -493,8 +494,7 @@ async function startDatabaseFrameGame(value, status) {
     // reserve refills without dropping, predicting, or reordering any frame.
     // Input catch-up may spend part of the confirmed reserve, but two frames
     // did not cover an ordinary 40-60 ms managed-ORDS tail after HUD payloads
-    // were enabled. Retain three exact database frames before accelerating;
-    // four crossed the 250-ms visual input gate on the same OCI workload.
+    // were enabled. Retain three exact database frames before accelerating.
     const pixelInputCatchupFloor = 3;
     let activePixelInputCatchupFloor = pixelInputCatchupFloor;
     const pixelInputLeadTics = 1;
@@ -625,49 +625,61 @@ async function startDatabaseFrameGame(value, status) {
             lastEffectiveInputHex = input.hex;
             lastEffectiveCommand = { ...input.command };
             if (playoutStarted && changedInput && presentationCatchup) {
-                if (soloMode) {
-                    // The confirmed playout reserve is valuable for ordinary network
-                    // jitter, but it becomes stale visual history as soon as the
-                    // authority accepts a changed command. Advance through the stale
-                    // portion that has already arrived, then accelerate toward the
-                    // exact database-authored effective frame. This never predicts or
-                    // fabricates pixels: every omitted tic is already confirmed and is
-                    // named in telemetry. Without this step a six-frame reserve plus
-                    // batched delivery made movement appear 10-16 tics after the input
-                    // response, and an ORDS tail could stretch that into seconds.
-                    // Never advance the cursor into a future frame. Rapid multiplayer
-                    // input revisions can arrive every few hundred milliseconds; using
-                    // effectiveTic-1 unconditionally made each revision wait for a
-                    // not-yet-generated frame and turned input catch-up into repeated
-                    // canvas pauses. Drop only stale tics that have already crossed the
-                    // authenticated transport frontier, then accelerate the remaining
-                    // confirmed stream toward the effective tic.
-                    // Solo has one native-35-Hz producer and the effective frame is
-                    // normally only a few worker tics away, so jumping directly to its
-                    // predecessor gives the measured sub-300-ms control response.
-                    const catchupTic = result.effectiveTic - 1;
-                    let skippedTic = nextDatabaseFrameTic(presentedTic);
-                    let skippedCount = 0;
-                    while (skippedTic <= catchupTic) {
-                        frames.delete(skippedTic);
-                        trace('pixel-confirmed-drop', {
-                            tic: skippedTic, reason: 'effective-input-catchup',
-                            inputSequence: input.sequence, effectiveTic: result.effectiveTic,
-                            source: 'database-framebuffer'
-                        });
-                        skippedCount += 1;
-                        skippedTic = nextDatabaseFrameTic(skippedTic);
-                    }
-                    if (skippedCount > 0) {
-                        presentedTic = catchupTic;
-                        nextFrameAt = 0;
-                        starvationActive = false;
-                        trace('pixel-input-catchup', {
-                            inputSequence: input.sequence, effectiveTic: result.effectiveTic,
-                            catchupTic, skippedCount, source: 'database-framebuffer'
-                        });
-                    }
+                // The confirmed playout reserve is valuable for ordinary network
+                // jitter, but it becomes stale visual history as soon as the
+                // authority accepts a changed command. Advance through the stale
+                // portion that has already arrived, then accelerate toward the
+                // exact database-authored effective frame. This never predicts or
+                // fabricates pixels: every omitted tic is already confirmed and is
+                // named in telemetry. Without this step a six-frame reserve plus
+                // batched delivery made movement appear 10-16 tics after the input
+                // response, and an ORDS tail could stretch that into seconds.
+                // Never advance the cursor into a future frame. Rapid multiplayer
+                // input revisions can arrive every few hundred milliseconds; using
+                // effectiveTic-1 unconditionally made each revision wait for a
+                // not-yet-generated frame and turned input catch-up into repeated
+                // canvas pauses. Drop only stale tics that have already crossed the
+                // authenticated transport frontier, then accelerate the remaining
+                // confirmed stream toward the effective tic.
+                // Never jump into a future frame. The command's effective tic can
+                // be ahead of the pixel transport frontier after an ORDS tail. The
+                // former direct assignment to effectiveTic-1 made the canvas wait
+                // 10-30 seconds while old light-animation frames kept painting.
+                const confirmedCatchupTic = confirmedInputCatchupCursor(presentedTic, result.effectiveTic, transportTic);
+                // Multiplayer retains the last three confirmed frames while a small
+                // effective-frontier gap closes. At the 25 ms catch-up clock that is
+                // still inside the 250 ms control gate and avoids throwing away the
+                // jitter reserve on every key transition.
+                const catchupTic = soloMode ? confirmedCatchupTic :
+                    Math.max(presentedTic, confirmedCatchupTic - pixelInputCatchupFloor);
+                let skippedTic = nextDatabaseFrameTic(presentedTic);
+                let skippedCount = 0;
+                while (skippedTic <= catchupTic) {
+                    frames.delete(skippedTic);
+                    trace('pixel-confirmed-drop', {
+                        tic: skippedTic, reason: 'effective-input-catchup',
+                        inputSequence: input.sequence, effectiveTic: result.effectiveTic,
+                        source: 'database-framebuffer'
+                    });
+                    skippedCount += 1;
+                    skippedTic = nextDatabaseFrameTic(skippedTic);
                 }
+                if (skippedCount > 0) {
+                    presentedTic = catchupTic;
+                    nextFrameAt = 0;
+                    starvationActive = false;
+                    trace('pixel-input-catchup', {
+                        inputSequence: input.sequence, effectiveTic: result.effectiveTic,
+                        catchupTic, transportTic, skippedCount,
+                        source: 'database-framebuffer'
+                    });
+                }
+                // Do not seek the transport into a future effective tic. That
+                // abandoned the consecutive confirmed suffix on every transition:
+                // buffered lighting frames kept painting, then the canvas stalled
+                // while a direct request waited for unpublished movement pixels.
+                // Continue from the authenticated frontier and accelerate only
+                // already-confirmed frames until the effective tic is presented.
                 inputCatchupThroughTic = Math.max(inputCatchupThroughTic, result.effectiveTic);
                 // A control response that already spent most of the 250-ms visual
                 // budget may consume one additional *confirmed* reserve frame.
@@ -676,7 +688,13 @@ async function startDatabaseFrameGame(value, status) {
                     ? pixelInputCatchupFloor - 1
                     : pixelInputCatchupFloor;
             }
+            if (soloMode && changedInput && presentationCatchup) {
+                soloPixelSeekTic = result.effectiveTic;
+            }
             urgentPixelInput = true;
+            // Seek the exact accepted tic immediately. An unavailable frame
+            // produces a cheap empty response and retries at the normal bounded
+            // cadence; delaying by a full tic added directly to visible latency.
             schedulePixelPolls(0);
         }).catch(cause => {
             if (stopped || suspended)
@@ -732,7 +750,7 @@ async function startDatabaseFrameGame(value, status) {
             // starting after only the first batch creates a sawtooth that reaches
             // zero immediately before every response. Retain the selected reserve
             // after consuming a normal batch by waiting for depth+batch frames.
-            const startupFrames = Math.min(64, wan.playoutBufferTics + wan.expectedConfirmedBatchTics);
+            const startupFrames = Math.min(128, wan.playoutBufferTics + wan.expectedConfirmedBatchTics);
             if (frames.size < startupFrames)
                 return;
             playoutStarted = true;
@@ -759,10 +777,9 @@ async function startDatabaseFrameGame(value, status) {
         const inputCatchup = inputCatchupThroughTic > presentedTic
             && frames.size > activePixelInputCatchupFloor;
         playoutMode = inputCatchup ? 'ACCELERATE' : decision.mode;
-        // Solo remains native 35 Hz. The Free-tier two-POV producer is qualified
-        // against the user-authorized 20 FPS floor and must be consumed at that
-        // sustainable cadence instead of being drained at 35 Hz into a visible
-        // three-frame burst followed by starvation.
+        // Solo remains native 35 Hz. The staggered two-POV producer is consumed
+        // at its measured sustainable 30 Hz instead of the obsolete 20 FPS cap
+        // that accumulated permanent visual debt.
         const interval = databasePixelPlayoutIntervalMs(soloMode, playoutMode, inputCatchup);
         nextFrameAt = nextFrameAt <= 0 ? now + interval :
             Math.max(nextFrameAt + interval, now + 1000 / 70);
@@ -794,6 +811,7 @@ async function startDatabaseFrameGame(value, status) {
         urgentPixelInput = pendingInput !== null || retryInput !== null;
         inputCatchupThroughTic = -1;
         lastEffectiveInputHex = null;
+        soloPixelSeekTic = -1;
         lastEffectiveCommand = null;
         starvationActive = false;
         wan.resetConfirmedBatchDelivery();
@@ -807,6 +825,7 @@ async function startDatabaseFrameGame(value, status) {
         const requestEpoch = pixelPollEpoch;
         const requestAfterTic = expectedTic < 0 ? -1 : expectedTic - 1;
         const requestGeneration = generation;
+        const soloSeekRequest = soloMode && expectedTic === soloPixelSeekTic;
         let nextPollDelayMs = 8;
         void exchangeMatchPixelBatch(value.match, value.playerCapability, requestAfterTic, 8)
             .then(async (result) => {
@@ -841,7 +860,21 @@ async function startDatabaseFrameGame(value, status) {
                     || batch.at(-1)?.tic !== result.lastTic) {
                     throw new Error('database frame batch fence changed');
                 }
-                if (!transportEstablished) {
+                if (soloSeekRequest && batch[0].tic === expectedTic) {
+                    trace('pixel-resync', { reason: 'effective-input-seek',
+                        expectedTic, generation, source: 'database-framebuffer' });
+                    frames.clear();
+                    arrivedTransportTics.clear();
+                    presentedTic = expectedTic - 1;
+                    transportTic = expectedTic - 1;
+                    nextFrameAt = 0;
+                    playoutStarted = true;
+                    playoutMode = 'FREE';
+                    starvationActive = false;
+                    wan.resetConfirmedBatchDelivery();
+                    soloPixelSeekTic = -1;
+                }
+                else if (!transportEstablished) {
                     trace('pixel-resync', { reason: 'ring-gap',
                         expectedTic: transportTic + 1, firstTic: batch[0].tic,
                         generation, source: 'database-framebuffer' });
@@ -858,7 +891,7 @@ async function startDatabaseFrameGame(value, status) {
                     transportEstablished = true;
                 }
                 else if (batch[0].tic !== expectedTic) {
-                    // The 64-entry ring advanced beyond an exact reserved request.
+                    // The 128-entry ring advanced beyond an exact reserved request.
                     // Establish a new confirmed cursor and invalidate the other lane;
                     // no frame is invented, skipped inside the new stream, or reused.
                     trace('pixel-resync', { reason: 'ring-gap',
@@ -885,6 +918,39 @@ async function startDatabaseFrameGame(value, status) {
                 for (let next = nextDatabaseFrameTic(transportTic); arrivedTransportTics.delete(next); next = nextDatabaseFrameTic(transportTic)) {
                     transportTic = next;
                 }
+                // A changed solo command spends stale confirmed history twice: once
+                // when the compact input response names its effective tic, and once
+                // when the transport actually reaches that tic. The old path only
+                // performed the first half, then displayed newly arrived pre-input
+                // frames at native cadence for another 150-300 ms. Skip only bytes
+                // that are now present and authenticated, stopping immediately
+                // before the exact MLE-rendered effective frame.
+                if (soloMode && inputCatchupThroughTic > presentedTic
+                    && transportTic >= inputCatchupThroughTic) {
+                    const catchupTic = inputCatchupThroughTic - 1;
+                    let skippedTic = nextDatabaseFrameTic(presentedTic);
+                    let skippedCount = 0;
+                    while (skippedTic <= catchupTic) {
+                        frames.delete(skippedTic);
+                        trace('pixel-confirmed-drop', {
+                            tic: skippedTic, reason: 'effective-input-arrival',
+                            effectiveTic: inputCatchupThroughTic,
+                            source: 'database-framebuffer'
+                        });
+                        skippedCount += 1;
+                        skippedTic = nextDatabaseFrameTic(skippedTic);
+                    }
+                    if (skippedCount > 0) {
+                        presentedTic = catchupTic;
+                        nextFrameAt = 0;
+                        starvationActive = false;
+                        trace('pixel-input-catchup', {
+                            effectiveTic: inputCatchupThroughTic, catchupTic,
+                            transportTic, skippedCount, phase: 'effective-frame-arrival',
+                            source: 'database-framebuffer'
+                        });
+                    }
+                }
                 if (frames.size > 64) {
                     if (playoutStarted) {
                         throw new Error('database frame backlog exceeded');
@@ -894,7 +960,7 @@ async function startDatabaseFrameGame(value, status) {
                     // require replaying that pre-attachment history: retain one
                     // confirmed batch plus the selected reserve and establish the
                     // cursor immediately before it. Live playout remains consecutive.
-                    const retain = Math.min(64, wan.playoutBufferTics + wan.expectedConfirmedBatchTics + 2);
+                    const retain = Math.min(128, wan.playoutBufferTics + wan.expectedConfirmedBatchTics + 2);
                     const firstRetained = transportTic - retain + 1;
                     for (const tic of frames.keys()) {
                         if (tic < firstRetained)
@@ -914,7 +980,6 @@ async function startDatabaseFrameGame(value, status) {
                     firstTic: batch[0].tic, lastTic: batch.at(-1).tic,
                     bufferedFrames: frames.size, source: 'database-framebuffer'
                 });
-                pump();
                 lastFrameBatchAt = finished;
                 // Preserve the low-request-rate batch cadence while the confirmed
                 // reserve is healthy, but refill promptly when one batch or less
@@ -939,6 +1004,7 @@ async function startDatabaseFrameGame(value, status) {
                     : 1000 / 70;
                 nextPollDelayMs = Math.max(4, Math.min(20, predicted));
             }
+            pump();
             postInput();
         }).catch(cause => {
             if (requestEpoch !== pixelPollEpoch || stopped || suspended)
@@ -954,8 +1020,11 @@ async function startDatabaseFrameGame(value, status) {
             if (requestEpoch !== pixelPollEpoch)
                 return;
             pixelPollInFlight.delete(expectedTic);
-            if (!stopped && !suspended)
+            if (!stopped && !suspended) {
+                if (retryInput !== null || pendingInput !== null)
+                    postInput();
                 schedulePixelPolls(nextPollDelayMs);
+            }
         });
     };
     schedulePixelPolls = (delayMs = 0) => {
@@ -966,6 +1035,11 @@ async function startDatabaseFrameGame(value, status) {
                 return;
             if (urgentPixelInput
                 && (pendingInput !== null || retryInput !== null || inputPostInFlight)) {
+                return;
+            }
+            if (soloPixelSeekTic >= 0) {
+                if (pixelPollInFlight.size === 0)
+                    launchPixelPoll(soloPixelSeekTic);
                 return;
             }
             if (!transportEstablished) {

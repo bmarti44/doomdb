@@ -7,8 +7,11 @@ const MAX_BATCH_PLAYOUT_TICS = 12;
 const PLAYOUT_ACCELERATION_MARGIN_TICS = 2;
 const PLAYOUT_DECELERATION_MARGIN_TICS = 2;
 const MAX_DECELERATED_PLAYOUT_INTERVAL_MS = 31.4;
-const MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS = 49.5;
-const MULTIPLAYER_DATABASE_FRAME_DECELERATED_MS = 49.8;
+// Keep normal browser timer jitter inside the 33.333 ms presentation gate.
+// Confirmed frames retain their authoritative 35 Hz tic ids; this clock only
+// controls when an already-confirmed database pixel frame reaches the canvas.
+const MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS = 30;
+const MULTIPLAYER_DATABASE_FRAME_DECELERATED_MS = 31.4;
 const MAX_SAMPLES = 64;
 const LEAD_HYSTERESIS_MS = 10_000;
 function clamp(value, minimum, maximum) {
@@ -48,12 +51,10 @@ export function confirmedPlayoutIntervalMs(backlogTics) {
 /**
  * Canvas clock for complete database-authored framebuffers.
  *
- * Solo retains native Doom's 35 Hz presentation contract. Two-POV Free-tier
- * matches use the separately authorized 20 FPS floor: the retained worker
- * now sustains just over 20 complete two-view tics/s, so draining that queue
- * at 35 Hz creates visible burst/starvation cycles even though aggregate
- * throughput passes. Input catch-up still time-compresses confirmed frames;
- * this function never predicts, reorders, or skips one.
+ * Solo retains native Doom's 35 Hz presentation contract. The staggered
+ * two-POV Free-tier stream uses a 30 Hz canvas clock. Input catch-up still
+ * time-compresses confirmed frames; this function never predicts or invents
+ * one.
  */
 export function databasePixelPlayoutIntervalMs(solo, mode, inputCatchup) {
     if (typeof solo !== 'boolean'
@@ -74,6 +75,22 @@ export function databasePixelPlayoutIntervalMs(solo, mode, inputCatchup) {
     if (mode === 'DECELERATE')
         return MULTIPLAYER_DATABASE_FRAME_DECELERATED_MS;
     return MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS;
+}
+/**
+ * Last cursor that may be discarded after an authoritative input revision.
+ *
+ * The effective tic can be ahead of the pixel transport frontier. This
+ * helper consumes only already-arrived confirmed pixels. The caller continues
+ * fetching from the authenticated transport frontier; seeking to a future
+ * effective tic caused the observed 10-30 second movement freeze.
+ */
+export function confirmedInputCatchupCursor(presentedTic, effectiveTic, transportTic) {
+    if (!Number.isInteger(presentedTic) || presentedTic < -1
+        || !Number.isInteger(effectiveTic) || effectiveTic < 0
+        || !Number.isInteger(transportTic) || transportTic < -1) {
+        throw new TypeError('database pixel input catch-up cursor is invalid');
+    }
+    return Math.max(presentedTic, Math.min(effectiveTic - 1, transportTic));
 }
 export function confirmedPlayoutDecision(bufferedFrames, selectedDepth, priorMode) {
     if (!Number.isInteger(bufferedFrames) || bufferedFrames < 0 ||

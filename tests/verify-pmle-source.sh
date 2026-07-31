@@ -799,6 +799,12 @@ grep -q 'c_wan_min_batch_transitions constant pls_integer:=8' "$AUTHORITY_TRANSP
 grep -q 'exit when l_count>=l_ready_count or elapsed_ms(l_started)>=l_hold' "$AUTHORITY_TRANSPORT" || fail 'DMB1 WAN batch readiness fence missing'
 grep -q 'dbms_alert.waitone' "$AUTHORITY_TRANSPORT" || fail 'DMB1 prompt commit alert missing'
 grep -q 'doom_match_slow_call' "$ROOT/sql/schema/048_multiplayer_worker.sql" || fail 'worker slow-call schema missing'
+grep -Fq "p_stage=>'FRAME_RENDER'" "$MLE_MATCH_WORKER" &&
+grep -Fq "p_stage=>'FRAME_PUBLISH'" "$MLE_MATCH_WORKER" &&
+grep -Fq "p_stage=>'FRAME_PIPELINE'" "$MLE_MATCH_WORKER" &&
+grep -Fq 'if l_frame_render_ms>100 then' "$MLE_MATCH_WORKER" &&
+grep -Fq 'if l_frame_publish_ms>100 then' "$MLE_MATCH_WORKER" ||
+  fail 'production slow-call attribution does not split render from publish'
 grep -q 'record_slow_call' "$ROOT/sql/sim/084_multiplayer_worker.sql" || fail 'worker post-commit slow-call attribution missing'
 grep -q "'STANDBY_CHECKPOINT'" "$ROOT/sql/sim/084_multiplayer_worker.sql" ||
   fail 'standby checkpoint phase attribution missing'
@@ -1099,6 +1105,12 @@ grep -Fq "status_field(l_status,'gametic')<>'0'" \
 grep -q "sys_context('USERENV','CLOUD_SERVICE') is not null" \
   "$MLE_MATCH_RUNTIME" ||
   fail 'batch flush or cloud renderer plateau prewarm missing'
+grep -Fq 'l_renderer_prewarm_count:=doom_mle_live_frame_prewarm(1);' \
+  "$MLE_MATCH_WORKER" &&
+grep -Fq 'if l_preload_tic<=96 then' "$MLE_MATCH_WORKER" &&
+grep -Fq "raise_application_error(c_error,'moving renderer prewarm mismatch')" \
+  "$MLE_MATCH_WORKER" ||
+  fail 'cloud retained slot does not prewarm moving renderer shapes'
 grep -q 'function authority_sha256 return varchar2' "$MLE_MATCH_RUNTIME" &&
 grep -q 'from doom_mle_live_frame_source source_' "$MLE_MATCH_RUNTIME" &&
 grep -q 'l_authority_sha:=authority_sha256' "$MLE_MATCH_RUNTIME" &&
@@ -1231,6 +1243,18 @@ grep -Fq "throw new Error('input-free database-frame exchange changed')" \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -Fq 'value.match,value.playerCapability,requestAfterTic,8)' \
   "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'let soloPixelSeekTic=-1;' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq "reason:'effective-input-seek'" \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'presentedTic=expectedTic-1;' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'if(pixelPollInFlight.size===0)launchPixelPoll(soloPixelSeekTic);' \
+  "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'PMLE_PUBLIC_DIRECTION_LATENCY' \
+  "$ROOT/probes/mle/teavm-engine/measure-public-exact-fps.mjs" &&
+grep -Fq 'cameraP95<=250' \
+  "$ROOT/probes/mle/teavm-engine/measure-public-exact-fps.mjs" &&
 grep -Fq 'confirmedDropTics.has(expected)' \
   "$ROOT/tests/verify-p13.3-multiplayer-client.mjs" &&
 grep -Fq 'expected=nextDatabaseFrameTic(expected)' \

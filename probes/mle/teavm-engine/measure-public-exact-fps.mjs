@@ -369,6 +369,49 @@ console.log(
     + `|effective_to_paint_ms=${effectiveToPaintMs.toFixed(3)}`
     + `|changed_pixels=${effectivePaint?.changedPixels??-1}`,
 );
+let previousCamera={forward:0,turn:0,strafe:0,run:0};
+const cameraLatencies=[];
+for(const effective of result.trace.effective) {
+  const camera={forward:effective.command?.forward??0,
+    turn:effective.command?.turn??0,
+    strafe:effective.command?.strafe??0,run:effective.command?.run??0};
+  const changed=Object.keys(camera).some(
+    key=>camera[key]!==previousCamera[key]);
+  previousCamera=camera;
+  if(!changed)continue;
+  // UI samples with the same not-yet-posted sequence are intentionally
+  // coalesced. Attribute the accepted command to the last matching sample,
+  // not the first sample carrying that provisional sequence.
+  const input=result.trace.input.findLast(entry=>
+    entry.inputSequence===effective.inputSequence
+      &&entry.at<=effective.at
+      &&(entry.command?.forward??0)===camera.forward
+      &&(entry.command?.turn??0)===camera.turn
+      &&(entry.command?.strafe??0)===camera.strafe
+      &&(entry.command?.run??0)===camera.run);
+  const paint=result.trace.present.find(
+    entry=>entry.tic>=effective.effectiveTic);
+  if(input!==undefined&&paint!==undefined)
+    cameraLatencies.push(paint.at-input.at);
+}
+cameraLatencies.sort((left,right)=>left-right);
+const cameraP50=percentile(cameraLatencies,.5);
+const cameraP95=percentile(cameraLatencies,.95);
+const cameraMax=cameraLatencies.at(-1)??Number.POSITIVE_INFINITY;
+console.log(
+  `PMLE_PUBLIC_DIRECTION_LATENCY|${
+    cameraLatencies.length>=5&&cameraP95<=250&&cameraMax<=350?'PASS':'FAIL'}`
+    +`|samples=${cameraLatencies.length}`
+    +`|p50_ms=${cameraP50.toFixed(3)}`
+    +`|p95_ms=${cameraP95.toFixed(3)}`
+    +`|max_ms=${cameraMax.toFixed(3)}`,
+);
+assert.ok(cameraLatencies.length>=5,
+  'direction-change latency sample coverage changed');
+assert.ok(cameraP95<=250,
+  `direction-change input-to-database-frame p95 ${cameraP95.toFixed(3)} ms`);
+assert.ok(cameraMax<=350,
+  `direction-change input-to-database-frame max ${cameraMax.toFixed(3)} ms`);
 assert.ok(result.fps>=30,
   `database-frame canvas cadence ${result.fps.toFixed(3)} FPS`);
 assert.equal(databaseFingerprints.length,scoredTrace.length,

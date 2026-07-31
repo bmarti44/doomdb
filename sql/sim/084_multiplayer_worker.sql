@@ -573,6 +573,9 @@ create or replace package body doom_match_worker as
     l_checkpoint blob;l_checkpoint_sha varchar2(64);l_checkpoint_bytes number;
     l_step_started timestamp with time zone:=utc_now;
     l_step_ended timestamp with time zone;l_step_elapsed_ms number;
+    l_frame_render_ms number;
+    l_frame_publish_ms number;
+    l_frame_pipeline_ms number;
     l_pre_mle_ended timestamp with time zone;
     l_mle_ended timestamp with time zone;
     l_frame_render_started timestamp with time zone;
@@ -787,6 +790,46 @@ create or replace package body doom_match_worker as
         elapsed_micros(l_pre_mle_ended,l_mle_ended)/1000,
         elapsed_micros(l_mle_ended,l_precommit_ended)/1000,
         elapsed_micros(l_precommit_ended,l_step_ended)/1000);
+      -- Persist the expensive renderer substage separately only when it is
+      -- itself slow. The ordinary PROCESS_STEP_COMMIT row intentionally keeps
+      -- its stable pre/MLE/post/commit contract, while these sparse rows make
+      -- a visible producer pause attributable without enabling per-tic route
+      -- diagnostics (which would perturb the Free-tier workload being timed).
+      if l_frame_render_started is not null
+         and l_frame_render_ended is not null then
+        l_frame_render_ms:=elapsed_micros(
+          l_frame_render_started,l_frame_render_ended)/1000;
+        if l_frame_render_ms>100 then
+          record_slow_call(
+            p_match=>p_match,p_generation=>p_generation,p_tic=>p_tic,
+            p_started=>l_frame_render_started,p_ended=>l_frame_render_ended,
+            p_elapsed_ms=>l_frame_render_ms,p_stage=>'FRAME_RENDER');
+        end if;
+      end if;
+      if l_frame_render_ended is not null
+         and l_frame_publish_ended is not null then
+        l_frame_publish_ms:=elapsed_micros(
+          l_frame_render_ended,l_frame_publish_ended)/1000;
+        if l_frame_publish_ms>100 then
+          record_slow_call(
+            p_match=>p_match,p_generation=>p_generation,p_tic=>p_tic,
+            p_started=>l_frame_render_ended,p_ended=>l_frame_publish_ended,
+            p_elapsed_ms=>l_frame_publish_ms,p_stage=>'FRAME_PUBLISH');
+        end if;
+      end if;
+      if l_frame_render_started is not null
+         and l_frame_publish_ended is not null then
+        l_frame_pipeline_ms:=elapsed_micros(
+          l_frame_render_started,l_frame_publish_ended)/1000;
+        if l_frame_pipeline_ms>100
+           and nvl(l_frame_render_ms,0)<=100
+           and nvl(l_frame_publish_ms,0)<=100 then
+          record_slow_call(
+            p_match=>p_match,p_generation=>p_generation,p_tic=>p_tic,
+            p_started=>l_frame_render_started,p_ended=>l_frame_publish_ended,
+            p_elapsed_ms=>l_frame_pipeline_ms,p_stage=>'FRAME_PIPELINE');
+        end if;
+      end if;
     end if;
     if l_checkpoint_diagnostic=1 or l_checkpoint_due=1 then
       if l_checkpoint_diagnostic=0 then
@@ -1880,6 +1923,7 @@ create or replace package body doom_match_worker as
     l_populated_checkpoint_bytes number;
     l_ticker_prewarm_state varchar2(64);
     l_ticker_prewarm_vector raw(32);
+    l_renderer_prewarm_count number;
   begin
     if p_slot not in(1,2) or
        not regexp_like(p_incarnation,'^[0-9a-f]{32}$') then
@@ -1945,6 +1989,17 @@ create or replace package body doom_match_worker as
         doom_mle_match_runtime.step_game(
           2,3,l_preload_tic,l_ticker_prewarm_vector,
           l_ticker_prewarm_state);
+        -- The static 600-frame plateau compiles the renderer's entry shapes,
+        -- but not moving E1M1 portal/sprite/weapon paths. Render both current
+        -- confirmed viewpoints after each throwaway route step. The candidate
+        -- coordinator keeps this state-local and returns exactly one iteration;
+        -- the tic-zero checkpoint below restores all authoritative state.
+        if l_preload_tic<=96 then
+          l_renderer_prewarm_count:=doom_mle_live_frame_prewarm(1);
+          if l_renderer_prewarm_count<>1 then
+            raise_application_error(c_error,'moving renderer prewarm mismatch');
+          end if;
+        end if;
       end loop;
       -- The first populated-state serialization has a separate, much larger
       -- first-touch cost than the tic-zero checkpoint above. Pay that cost
