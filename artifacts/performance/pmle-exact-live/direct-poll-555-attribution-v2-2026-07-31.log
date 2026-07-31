@@ -1,0 +1,22 @@
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+
+Session altered.
+
+PMLE_DIRECT_POLL_ERROR|iteration=941|after=664|code=-20796|message=ORA-20796: ORA-20796: persistent DPD1 view mismatch|backtrace=ORA-06512: at "DOOM.DOOM_API", line 475 ORA-06512: at line 14 
+PMLE_DIRECT_POLL|calls=1199|errors=1|last_tic=760
+
+
+PL/SQL procedure successfully completed.
+
+Elapsed: 00:00:13.276

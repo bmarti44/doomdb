@@ -318,6 +318,9 @@ console.log(
     + `|elapsed_p50_ms=${percentile(exchangeElapsed,.5).toFixed(3)}`
     + `|elapsed_p95_ms=${percentile(exchangeElapsed,.95).toFixed(3)}`,
 );
+for(const failure of apiFailures) {
+  console.log(`PMLE_PUBLIC_API_FAILURE|${JSON.stringify(failure)}`);
+}
 const forwardInput=result.trace.input.find(
   entry=>entry.command?.forward===1);
 const forwardEffective=forwardInput===undefined?undefined:

@@ -188,6 +188,24 @@ begin
   -- Player 1 begins at global pixel 64,000, whose modulo-three phase is one.
   assert_native_materialized(1,'242121','242124','24');
 
+  -- A foreign-format row that becomes visible after the DPV2 statement must
+  -- not enter the legacy DPD1 fallback. This is the statement-snapshot shape
+  -- of the production worker-commit race.
+  update doom_match_live_frame_views
+     set tic=5,player_mask=3,payload_bytes=dbms_lob.getlength(l_source),
+         payload_blob=empty_blob(),published_at=systimestamp
+   where match_id=c_match and ring_slot=5
+     and membership_epoch=1 and generation=1
+  returning payload_blob into l_wire;
+  dbms_lob.copy(l_wire,l_source,dbms_lob.getlength(l_source),1,1);
+  doom_mle_live_frame_transport.poll_batch(
+    c_match,0,1,1,4,8,l_count,l_first,l_last,l_wire);
+  if l_count<>0 or l_first is not null or l_last is not null
+     or l_wire is not null then
+    raise_application_error(
+      -20993,'foreign-format row entered DPD1 fallback');
+  end if;
+
   -- A payload that still carries the DPV2 discriminator must fail closed;
   -- it may not fall through to a legacy row after validation starts.
   dbms_lob.write(l_target,1,14,hextoraw('FF'));
@@ -206,7 +224,8 @@ begin
   dbms_output.put_line(
     'PMLE_DPV2_TRANSPORT|PASS|frames=3|players=2'
       ||'|suffix=PASS|authentication=PASS'
-      ||'|ept1_native_exact=PASS|malformed=REJECTED');
+      ||'|ept1_native_exact=PASS|fallback_race=IGNORED'
+      ||'|malformed=REJECTED');
   if dbms_lob.istemporary(l_source)=1 then
     dbms_lob.freetemporary(l_source);
   end if;

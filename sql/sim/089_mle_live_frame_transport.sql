@@ -584,6 +584,11 @@ create or replace package body doom_mle_live_frame_transport as
                   and latest_.generation=p_generation
                   and latest_.tic>=0)
              and bitand(player_mask,power(2,p_player_slot))<>0
+             -- The preceding DPV2 lookup and this fallback are separate
+             -- READ COMMITTED statements. A worker commit can become visible
+             -- between them; never let that newly visible DPV2 row enter the
+             -- legacy DPD1 validator and surface as an intermittent 555.
+             and dbms_lob.substr(payload_blob,4,1)=hextoraw('44504431')
            order by tic
         )
        where rownum<=p_max_frames

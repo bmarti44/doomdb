@@ -1015,6 +1015,10 @@ grep -Fq 'coalesce(max(latest_.tic),-1)-64' \
   "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'ring-gap resync without a permanent ORA-20796 loop' \
   "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -Fq "dbms_lob.substr(payload_blob,4,1)=hextoraw('44504431')" \
+  "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -Fq 'foreign-format row entered DPD1 fallback' \
+  "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" &&
 grep -q 'dbms_lob.copy(' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -Fq '8+p_frame_count*64008' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'procedure encode_gzip_dpb2' "$MLE_LIVE_FRAME_TRANSPORT" &&
