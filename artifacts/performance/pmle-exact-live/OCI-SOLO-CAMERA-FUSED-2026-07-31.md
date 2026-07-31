@@ -49,6 +49,24 @@ cage. Its explicit decomposition put input-to-effective at 165.7/232.8 ms
 p50/p95 and effective-to-canvas at 2.7/5.0 ms. The candidate was rejected and
 the hosted static manifest was restored byte-for-byte to `c8f6f6c6...`.
 
+Two further bounded-buffer experiments were rejected:
+
+- Returning up to eight already-confirmed frames in the fused camera response
+  slightly improved cadence (30.213 FPS, 39.2 ms p95, 161 starvations) but
+  increased camera latency to 189.6/260.5/707.6 ms p50/p95/max. The larger
+  BLOB response made the control path slower. An earlier attempt that reached
+  an empty launcher during static replacement is classified VOID; the rerun
+  was preceded by a live index/module readiness check.
+- Increasing solo's post-batch poll spacing from 35 to 45 ms improved camera
+  p95 to 219.2 ms, but throughput fell to 29.131 FPS, cadence p95 rose to
+  45.4 ms, and one producer pause reached 3.239 seconds. It violates the 30
+  FPS gate and was rejected.
+
+These cells bracket the lane tradeoff: more camera payload hurts response;
+less ordinary polling sacrifices source cadence. Production remains the
+one-frame fused response with 35 ms batch spacing and manifest
+`c8f6f6c6...`.
+
 ## Evidence
 
 - `solo-interval3-repeat-turns-public-120s-2026-07-31.log`
@@ -60,3 +78,8 @@ the hosted static manifest was restored byte-for-byte to `c8f6f6c6...`.
 - `solo-camera-fused-v2-exact-coordinator-restore-2026-07-31.log`
 - `solo-camera-lane-bypass-repeat-turns-public-120s-2026-07-31.log`
 - `solo-camera-lane-bypass-reject-static-restore-2026-07-31.log`
+- `solo-camera-batch8-v2-smoke-public-15s-2026-07-31.log`
+- `solo-camera-batch8-v2-repeat-turns-public-120s-2026-07-31.log`
+- `solo-camera-batch8-reject-static-restore-2026-07-31.log`
+- `solo-poll45-repeat-turns-public-120s-2026-07-31.log`
+- `solo-poll45-reject-static-restore-2026-07-31.log`

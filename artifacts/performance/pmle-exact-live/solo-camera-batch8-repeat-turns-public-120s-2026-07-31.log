@@ -1,0 +1,12 @@
+PMLE_PUBLIC_EXACT_STARTUP|FAIL|presented=0|api_failures=[]|page_errors=[]|body="\n  \n\n\n"
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForFunction: Timeout 180000ms exceeded.
+    at /Users/bmarti44/doomdb/probes/mle/teavm-engine/measure-public-exact-fps.mjs:163:14 {
+  log: [],
+  name: 'TimeoutError'
+}
+
+Node.js v25.9.0
