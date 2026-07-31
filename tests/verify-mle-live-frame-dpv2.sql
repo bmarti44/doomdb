@@ -188,18 +188,68 @@ begin
   -- Player 1 begins at global pixel 64,000, whose modulo-three phase is one.
   assert_native_materialized(1,'242121','242124','24');
 
+  -- A palette transition retains temporal pixels: phase one uses the prior
+  -- palette, phase two the current palette, and only a true layout transition
+  -- falls back to copying the current exact frame.
+  dbms_lob.trim(l_source,0);
+  dbms_lob.writeappend(
+    l_source,16,hextoraw('45505431000000040000000703030000'));
+  dbms_lob.writeappend(l_source,4,hextoraw('01040100'));
+  append_frame(hextoraw('14'));
+  append_frame(hextoraw('24'));
+  dbms_lob.writeappend(l_source,4,hextoraw('02050100'));
+  append_frame(hextoraw('17'));
+  append_frame(hextoraw('27'));
+  update doom_match_live_frame_views
+     set tic=7,player_mask=3,payload_bytes=dbms_lob.getlength(l_source),
+         payload_blob=empty_blob(),published_at=systimestamp
+   where match_id=c_match and ring_slot=7
+     and membership_epoch=1 and generation=1
+  returning payload_blob into l_wire;
+  dbms_lob.copy(l_wire,l_source,dbms_lob.getlength(l_source),1,1);
+  doom_mle_live_frame_transport.materialize_temporal_bundle(
+    c_match,1,1,7);
+  select payload_blob into l_target
+    from doom_match_live_frame_views
+   where match_id=c_match and ring_slot=7;
+  if dbms_lob.substr(l_target,1,21)<>hextoraw('01')
+     or dbms_lob.substr(l_target,1,128029)<>hextoraw('02')
+     or rawtohex(dbms_lob.substr(l_target,3,25))<>'141714'
+     or rawtohex(dbms_lob.substr(l_target,3,128033))<>'171714'
+     or rawtohex(dbms_lob.substr(l_target,3,64025))<>'272424'
+     or rawtohex(dbms_lob.substr(l_target,3,192033))<>'272427' then
+    raise_application_error(
+      -20991,'palette-aware temporal materialization mismatch');
+  end if;
+
+  -- A tail longer than one temporal interval must cross one ORDS response.
+  doom_mle_live_frame_transport.poll_batch(
+    c_match,0,1,1,1,6,l_count,l_first,l_last,l_wire);
+  l_raw:=utl_compress.lz_uncompress(l_wire);
+  if l_count<>6 or l_first<>2 or l_last<>7
+     or dbms_lob.getlength(l_raw)<>8+6*64008
+     or dbms_lob.substr(l_raw,8,1)<>hextoraw('4450423200000006') then
+    raise_application_error(
+      -20992,'multiple DPV2 locators were not batched');
+  end if;
+  if dbms_lob.istemporary(l_raw)=1 then dbms_lob.freetemporary(l_raw);end if;
+  if dbms_lob.istemporary(l_wire)=1 then
+    dbms_lob.freetemporary(l_wire);
+  end if;
+
   -- A foreign-format row that becomes visible after the DPV2 statement must
   -- not enter the legacy DPD1 fallback. This is the statement-snapshot shape
   -- of the production worker-commit race.
+  dbms_lob.write(l_source,4,1,hextoraw('DEADBEEF'));
   update doom_match_live_frame_views
-     set tic=5,player_mask=3,payload_bytes=dbms_lob.getlength(l_source),
+     set tic=8,player_mask=3,payload_bytes=dbms_lob.getlength(l_source),
          payload_blob=empty_blob(),published_at=systimestamp
-   where match_id=c_match and ring_slot=5
+   where match_id=c_match and ring_slot=8
      and membership_epoch=1 and generation=1
   returning payload_blob into l_wire;
   dbms_lob.copy(l_wire,l_source,dbms_lob.getlength(l_source),1,1);
   doom_mle_live_frame_transport.poll_batch(
-    c_match,0,1,1,4,8,l_count,l_first,l_last,l_wire);
+    c_match,0,1,1,7,8,l_count,l_first,l_last,l_wire);
   if l_count<>0 or l_first is not null or l_last is not null
      or l_wire is not null then
     raise_application_error(
@@ -224,7 +274,9 @@ begin
   dbms_output.put_line(
     'PMLE_DPV2_TRANSPORT|PASS|frames=3|players=2'
       ||'|suffix=PASS|authentication=PASS'
-      ||'|ept1_native_exact=PASS|fallback_race=IGNORED'
+      ||'|ept1_native_exact=PASS|palette_temporal=PASS'
+      ||'|multi_locator_batch=PASS'
+      ||'|fallback_race=IGNORED'
       ||'|malformed=REJECTED');
   if dbms_lob.istemporary(l_source)=1 then
     dbms_lob.freetemporary(l_source);

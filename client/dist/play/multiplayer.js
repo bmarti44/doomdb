@@ -5,6 +5,22 @@ import { bindInput } from './input.js';
 import { createPalette, createPaletteSet } from './palette.js';
 import { decodeDatabasePixelTransport, nextDatabaseFrameTic } from './pixel-batch.js';
 import { ConfirmedWanPolicy, confirmedBatchPlayoutDecision, confirmedPlayoutDecision, databasePixelPlayoutIntervalMs } from './authority-wan.js';
+// Presentation catch-up is reserved for controls that change the camera,
+// movement, world interaction, or UI state. Fire press/release is intentionally
+// excluded: a held weapon animates through authoritative frames, and repeatedly
+// jumping the cursor for an automated press/release route discards throughput
+// without improving simulation authority or frame correctness.
+const requiresPresentationCatchup = (previous, current) => previous === null
+    || previous.turn !== current.turn
+    || previous.forward !== current.forward
+    || previous.strafe !== current.strafe
+    || previous.run !== current.run
+    || previous.use !== current.use
+    || previous.weapon !== current.weapon
+    || previous.pause !== current.pause
+    || previous.automap !== current.automap
+    || previous.menu !== current.menu
+    || previous.cheat !== current.cheat;
 // Ordinary internet stalls are drained from the already-confirmed queue at
 // the bounded 2x playout rate. Visible clients never discard presentation
 // snapshots; hidden tabs use the explicit checkpoint-resync path instead.
@@ -459,6 +475,7 @@ async function startDatabaseFrameGame(value, status) {
     let starvationActive = false;
     let inputCatchupThroughTic = -1;
     let lastEffectiveInputHex = null;
+    let lastEffectiveCommand = null;
     let pixelPollEpoch = 0;
     let lastFrameBatchAt = 0;
     let transportEstablished = false;
@@ -605,8 +622,10 @@ async function startDatabaseFrameGame(value, status) {
             lastEffectiveInputTic = result.effectiveTic;
             lastInputRoundTripMs = finished - started;
             const changedInput = input.hex !== lastEffectiveInputHex;
+            const presentationCatchup = requiresPresentationCatchup(lastEffectiveCommand, input.command);
             lastEffectiveInputHex = input.hex;
-            if (playoutStarted && changedInput) {
+            lastEffectiveCommand = { ...input.command };
+            if (playoutStarted && changedInput && presentationCatchup) {
                 if (soloMode) {
                     // The confirmed playout reserve is valuable for ordinary network
                     // jitter, but it becomes stale visual history as soon as the
@@ -768,6 +787,7 @@ async function startDatabaseFrameGame(value, status) {
         urgentPixelInput = pendingInput !== null || retryInput !== null;
         inputCatchupThroughTic = -1;
         lastEffectiveInputHex = null;
+        lastEffectiveCommand = null;
         starvationActive = false;
         wan.resetConfirmedBatchDelivery();
         paintedAt.length = 0;

@@ -182,7 +182,7 @@ create or replace package body doom_mle_live_frame_transport as
     l_current_raw raw(32767);
     l_output_raw raw(32767);
     l_record raw(8);
-    l_same_metadata boolean;
+    l_same_layout boolean;
 
     procedure append_current_frame is
       l_copy_offset pls_integer:=1;
@@ -263,8 +263,9 @@ create or replace package body doom_mle_live_frame_transport as
     end if;
     l_previous_source:=21;
     l_current_source:=21+l_endpoint_record_bytes;
-    l_same_metadata:=utl_raw.compare(
-      l_previous_meta,l_current_meta)=0;
+    l_same_layout:=utl_raw.compare(
+      utl_raw.substr(l_previous_meta,3,2),
+      utl_raw.substr(l_current_meta,3,2))=0;
 
     l_current_mask(3):=utl_raw.copies(hextoraw('FF0000'),10922);
     l_current_mask(4):=utl_raw.copies(hextoraw('0000FF'),10922);
@@ -288,9 +289,10 @@ create or replace package body doom_mle_live_frame_transport as
     for l_numerator in 1..2 loop
       l_record:=hextoraw(
         lpad(to_char(l_previous_tic+l_numerator,'FMXXXXXXXX'),8,'0')||
-        rawtohex(l_current_meta));
+        rawtohex(case l_numerator
+          when 1 then l_previous_meta else l_current_meta end));
       dbms_lob.writeappend(l_output,8,l_record);
-      if not l_same_metadata then
+      if not l_same_layout then
         append_current_frame;
       else
         l_offset:=1;
@@ -445,31 +447,32 @@ create or replace package body doom_mle_live_frame_transport as
     -- viewpoints through one persistent locator.  The BLOB never crosses
     -- the REST boundary intact: this definer-rights facade validates every
     -- record and extracts only the requesting member's POV into DPB2.
-    begin
+    -- Fill the caller's existing eight-frame contract from as many consecutive
+    -- DPV2 locators as are already committed. A single-flight ORDS request
+    -- must amortize a 50-170 ms network tail rather than returning at most one
+    -- three-frame interval while confirmed frames wait in the ring.
+    for l_bundle in (
       select tic,player_mask,payload_bytes,payload_blob
-        into l_view_bundle_last,l_view_bundle_mask,l_view_bundle_bytes,
-             l_view_bundle
-        from (
-          select tic,player_mask,payload_bytes,payload_blob
-            from doom_match_live_frame_views
-           where match_id=p_match
-             and membership_epoch=p_membership_epoch
-             and generation=p_generation
-             and tic>p_after_tic
-             and tic>(
-               select coalesce(max(latest_.tic),-1)-64
-                 from doom_match_live_frame_views latest_
-                where latest_.match_id=p_match
-                  and latest_.membership_epoch=p_membership_epoch
-                  and latest_.generation=p_generation
-                  and latest_.tic>=0)
-             and bitand(player_mask,power(2,p_player_slot))<>0
-             and dbms_lob.substr(payload_blob,4,1)=hextoraw('44505632')
-           order by tic
-        )
-       where rownum=1;
-    exception when no_data_found then l_view_bundle:=null;end;
-    if l_view_bundle is not null then
+        from doom_match_live_frame_views
+       where match_id=p_match
+         and membership_epoch=p_membership_epoch
+         and generation=p_generation
+         and tic>p_after_tic
+         and tic>(
+           select coalesce(max(latest_.tic),-1)-64
+             from doom_match_live_frame_views latest_
+            where latest_.match_id=p_match
+              and latest_.membership_epoch=p_membership_epoch
+              and latest_.generation=p_generation
+              and latest_.tic>=0)
+         and bitand(player_mask,power(2,p_player_slot))<>0
+         and dbms_lob.substr(payload_blob,4,1)=hextoraw('44505632')
+       order by tic
+    ) loop
+      l_view_bundle_last:=l_bundle.tic;
+      l_view_bundle_mask:=l_bundle.player_mask;
+      l_view_bundle_bytes:=l_bundle.payload_bytes;
+      l_view_bundle:=l_bundle.payload_blob;
       l_view_header:=dbms_lob.substr(l_view_bundle,16,1);
       l_view_bundle_first:=to_number(rawtohex(
         utl_raw.substr(l_view_header,5,4)),'XXXXXXXX');
@@ -518,6 +521,11 @@ create or replace package body doom_mle_live_frame_transport as
         end if;
         if l_view_bundle_record_tic>p_after_tic
            and p_frame_count<p_max_frames then
+          if p_frame_count>0
+             and l_view_bundle_record_tic<>p_last_tic+1 then
+            raise_application_error(
+              c_error,'persistent DPV2 sequence mismatch');
+          end if;
           l_view_palette:=to_number(rawtohex(utl_raw.substr(
             l_view_record_header,5+p_player_slot,1)),'XX');
           l_view_layout:=to_number(rawtohex(utl_raw.substr(
@@ -542,9 +550,9 @@ create or replace package body doom_mle_live_frame_transport as
           p_last_tic:=l_view_bundle_record_tic;
         end if;
       end loop;
-      if p_frame_count<1 then
-        raise_application_error(c_error,'persistent DPV2 frontier mismatch');
-      end if;
+      exit when p_frame_count>=p_max_frames;
+    end loop;
+    if p_frame_count>0 then
       l_header:=hextoraw(
         '44504232'||lpad(to_char(p_frame_count,'FMXXXXXXXX'),8,'0'));
       dbms_lob.write(p_payload,8,1,l_header);

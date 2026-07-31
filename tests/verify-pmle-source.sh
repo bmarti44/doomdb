@@ -1019,6 +1019,8 @@ grep -Fq "dbms_lob.substr(payload_blob,4,1)=hextoraw('44504431')" \
   "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -Fq 'foreign-format row entered DPD1 fallback' \
   "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" &&
+grep -Fq 'multi_locator_batch=PASS' "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" &&
+grep -Fq 'palette_temporal=PASS' "$MLE_TEMPORAL_VIEW_BUNDLE_TEST" &&
 grep -q 'dbms_lob.copy(' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -Fq '8+p_frame_count*64008' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'procedure encode_gzip_dpb2' "$MLE_LIVE_FRAME_TRANSPORT" &&
@@ -1029,12 +1031,13 @@ grep -q "hextoraw('44505632')" "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'persistent DPV2 header mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'persistent DPV2 record mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'assembled DPV2 batch mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
+grep -q 'persistent DPV2 sequence mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'procedure materialize_temporal_bundle' \
   "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'persistent EPT1 header mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'utl_raw.bit_or(' "$MLE_LIVE_FRAME_TRANSPORT" &&
 grep -q 'materialized DPV2 length mismatch' "$MLE_LIVE_FRAME_TRANSPORT" &&
-perl -0777 -ne 'exit !(/DPV2 amortizes.*?if l_view_bundle is not null.*?DPD1 is the immediate/s)' \
+perl -0777 -ne 'exit !(/DPV2 amortizes.*?for l_bundle in \(.*?exit when p_frame_count>=p_max_frames;.*?if p_frame_count>0 then.*?DPD1 is the immediate/s)' \
   "$MLE_LIVE_FRAME_TRANSPORT" &&
 ! grep -q 'select count(\*) into p_frame_count' \
   "$MLE_LIVE_FRAME_TRANSPORT" ||
@@ -1113,6 +1116,10 @@ grep -q 'if(soloMode)' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'const catchupTic=result.effectiveTic-1' \
   "$ROOT/client/src/multiplayer.ts" &&
+grep -q 'requiresPresentationCatchup(lastEffectiveCommand,input.command)' \
+  "$ROOT/client/src/multiplayer.ts" &&
+! grep -Fq 'previous.fire' "$ROOT/client/src/multiplayer.ts" &&
+grep -Fq 'lastEffectiveCommand=null' "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'presentedTic=catchupTic' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -q 'const MULTIPLAYER_DATABASE_FRAME_INTERVAL_MS = 49.5' \
@@ -1165,7 +1172,7 @@ grep -Fq 'const input=retryInput??pendingInput;' \
 grep -q 'retryInput=input' "$ROOT/client/src/multiplayer.ts" &&
 grep -Fq 'const changedInput=input.hex!==lastEffectiveInputHex;' \
   "$ROOT/client/src/multiplayer.ts" &&
-grep -Fq 'if(playoutStarted&&changedInput)' \
+grep -Fq 'if(playoutStarted&&changedInput&&presentationCatchup)' \
   "$ROOT/client/src/multiplayer.ts" &&
 grep -Fq 'void reviseMatchInput(' "$ROOT/client/src/multiplayer.ts" &&
 grep -Fq "throw new Error('input-free database-frame exchange changed')" \

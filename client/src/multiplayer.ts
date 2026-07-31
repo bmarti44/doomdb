@@ -32,6 +32,25 @@ type LocalMatch = {
   joinCapability?: string;
 };
 
+// Presentation catch-up is reserved for controls that change the camera,
+// movement, world interaction, or UI state. Fire press/release is intentionally
+// excluded: a held weapon animates through authoritative frames, and repeatedly
+// jumping the cursor for an automated press/release route discards throughput
+// without improving simulation authority or frame correctness.
+const requiresPresentationCatchup = (
+    previous:Command|null,current:Command):boolean =>
+  previous===null
+  ||previous.turn!==current.turn
+  ||previous.forward!==current.forward
+  ||previous.strafe!==current.strafe
+  ||previous.run!==current.run
+  ||previous.use!==current.use
+  ||previous.weapon!==current.weapon
+  ||previous.pause!==current.pause
+  ||previous.automap!==current.automap
+  ||previous.menu!==current.menu
+  ||previous.cheat!==current.cheat;
+
 // Ordinary internet stalls are drained from the already-confirmed queue at
 // the bounded 2x playout rate. Visible clients never discard presentation
 // snapshots; hidden tabs use the explicit checkpoint-resync path instead.
@@ -488,6 +507,7 @@ async function startDatabaseFrameGame(
   let starvationActive=false;
   let inputCatchupThroughTic=-1;
   let lastEffectiveInputHex:string|null=null;
+  let lastEffectiveCommand:Command|null=null;
   let pixelPollEpoch=0;
   let lastFrameBatchAt=0;
   let transportEstablished=false;
@@ -625,8 +645,11 @@ async function startDatabaseFrameGame(
         lastEffectiveInputTic=result.effectiveTic;
         lastInputRoundTripMs=finished-started;
         const changedInput=input.hex!==lastEffectiveInputHex;
+        const presentationCatchup=
+          requiresPresentationCatchup(lastEffectiveCommand,input.command);
         lastEffectiveInputHex=input.hex;
-        if(playoutStarted&&changedInput) {
+        lastEffectiveCommand={...input.command};
+        if(playoutStarted&&changedInput&&presentationCatchup) {
           if(soloMode) {
           // The confirmed playout reserve is valuable for ordinary network
           // jitter, but it becomes stale visual history as soon as the
@@ -779,6 +802,7 @@ async function startDatabaseFrameGame(
     nextFrameAt=0;playoutStarted=false;playoutMode='FREE';
     urgentPixelInput=pendingInput!==null||retryInput!==null;
     inputCatchupThroughTic=-1;lastEffectiveInputHex=null;
+    lastEffectiveCommand=null;
     starvationActive=false;wan.resetConfirmedBatchDelivery();
     paintedAt.length=0;lastFrameBatchAt=0;
   };

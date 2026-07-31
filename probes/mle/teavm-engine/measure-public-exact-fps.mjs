@@ -229,6 +229,9 @@ const result = await page.evaluate(start => {
   const percentile = fraction => gaps.length === 0 ? 0
     : gaps[Math.min(gaps.length - 1, Math.ceil(gaps.length * fraction) - 1)];
   const elapsed = values.length > 1 ? values.at(-1) - values[0] : 0;
+  const maximumGapIndex=gaps.length===0?-1:
+    values.slice(1).map((value,index)=>value-values[index])
+      .findIndex(value=>value===gaps.at(-1));
   return {
     frames: values.length,
     elapsed,
@@ -236,6 +239,9 @@ const result = await page.evaluate(start => {
     p50: percentile(.5),
     p95: percentile(.95),
     maximum: gaps.length === 0 ? 0 : gaps.at(-1),
+    maximumGapTic:maximumGapIndex<0?null:
+      window.__doomPixelTrace.present.slice(start)[maximumGapIndex+1]?.tic??null,
+    match:localStorage.getItem('doomdb.solo.current'),
     trace: window.__doomPixelTrace,
     hud: document.body.textContent,
   };
@@ -248,6 +254,7 @@ if(captureDir!==undefined) {
 if (errors.length !== 0) {
   throw new Error(`public exact-frame browser errors: ${errors.join(' | ')}`);
 }
+console.log(`PMLE_PUBLIC_MATCH|id=${result.match??'UNKNOWN'}`);
 console.log(
   `PMLE_PUBLIC_EXACT_FPS|PASS|seconds=${seconds}|frames=${result.frames}`
     + `|injected_rtt_ms=${injectedRttMs}`
@@ -256,6 +263,7 @@ console.log(
     + `|gap_p50_ms=${result.p50.toFixed(3)}`
     + `|gap_p95_ms=${result.p95.toFixed(3)}`
     + `|gap_max_ms=${result.maximum.toFixed(3)}`
+    + `|gap_max_tic=${result.maximumGapTic??-1}`
     + `|starvations=${result.trace.starvation.length}`,
 );
 const scoredTrace = result.trace.present.filter(
@@ -270,6 +278,8 @@ const consecutiveChanges = values => values.slice(1)
   .filter((value,index) => value !== values[index]).length;
 const buffered = scoredTrace.map(entry => entry.bufferedFrames)
   .filter(Number.isFinite).sort((left, right) => left - right);
+const batchCounts=result.trace.batch.map(entry=>entry.frameCount)
+  .filter(Number.isFinite).sort((left,right)=>left-right);
 const modeCounts = Object.fromEntries(
   ['ACCELERATE','FREE','DECELERATE'].map(mode => [
     mode, scoredTrace.filter(entry => entry.playoutMode === mode).length,
@@ -285,6 +295,9 @@ console.log(
     + `|mode_free=${modeCounts.FREE}`
     + `|mode_decelerate=${modeCounts.DECELERATE}`
     + `|batches=${result.trace.batch.length}`
+    + `|batch_zero=${batchCounts.filter(value=>value===0).length}`
+    + `|batch_count_p50=${percentile(batchCounts,.5)}`
+    + `|batch_count_p95=${percentile(batchCounts,.95)}`
     + `|starvations=${result.trace.starvation.length}`,
 );
 console.log(
