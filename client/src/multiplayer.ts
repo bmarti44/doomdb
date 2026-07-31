@@ -20,7 +20,7 @@ import type {DatabasePixelFrame} from './pixel-batch.js';
 import type {ConfirmedPresentation} from './authority-mirror.js';
 import {
   ConfirmedWanPolicy,confirmedBatchPlayoutDecision,confirmedPlayoutDecision,
-  databasePixelPlayoutIntervalMs
+  confirmedInputCatchupCursor,databasePixelPlayoutIntervalMs
 }
   from './authority-wan.js';
 
@@ -649,7 +649,6 @@ async function startDatabaseFrameGame(
         lastEffectiveInputHex=input.hex;
         lastEffectiveCommand={...input.command};
         if(playoutStarted&&changedInput&&presentationCatchup) {
-          if(soloMode) {
           // The confirmed playout reserve is valuable for ordinary network
           // jitter, but it becomes stale visual history as soon as the
           // authority accepts a changed command. Advance through the stale
@@ -666,10 +665,12 @@ async function startDatabaseFrameGame(
           // canvas pauses. Drop only stale tics that have already crossed the
           // authenticated transport frontier, then accelerate the remaining
           // confirmed stream toward the effective tic.
-          // Solo has one native-35-Hz producer and the effective frame is
-          // normally only a few worker tics away, so jumping directly to its
-          // predecessor gives the measured sub-300-ms control response.
-          const catchupTic=result.effectiveTic-1;
+          // Never jump into a future frame. The command's effective tic can
+          // be ahead of the pixel transport frontier after an ORDS tail. The
+          // former direct assignment to effectiveTic-1 made the canvas wait
+          // 10-30 seconds while old light-animation frames kept painting.
+          const catchupTic=confirmedInputCatchupCursor(
+            presentedTic,result.effectiveTic,transportTic);
           let skippedTic=nextDatabaseFrameTic(presentedTic);
           let skippedCount=0;
           while(skippedTic<=catchupTic) {
@@ -687,8 +688,34 @@ async function startDatabaseFrameGame(
             starvationActive=false;
             trace('pixel-input-catchup',{
               inputSequence:input.sequence,effectiveTic:result.effectiveTic,
-              catchupTic,skippedCount,source:'database-framebuffer'});
+              catchupTic,transportTic,skippedCount,
+              source:'database-framebuffer'});
           }
+          if(result.effectiveTic-1>transportTic) {
+            // The accepted input is newer than the prefetched visual reserve.
+            // Seek both cursors together and invalidate requests for the stale
+            // suffix. Advancing only presentedTic (the former implementation)
+            // made those old requests crawl toward the future cursor for
+            // seconds. The next request now asks Oracle directly for the
+            // first database-authored frame affected by this command.
+            pixelPollEpoch+=1;
+            pixelPollInFlight.clear();
+            arrivedTransportTics.clear();
+            frames.clear();
+            presentedTic=result.effectiveTic-1;
+            transportTic=result.effectiveTic-1;
+            transportEstablished=true;
+            nextFrameAt=0;
+            playoutStarted=true;
+            playoutMode='DECELERATE';
+            starvationActive=false;
+            wan.resetConfirmedBatchDelivery();
+            trace('pixel-resync',{
+              reason:'effective-input-seek',
+              inputSequence:input.sequence,
+              effectiveTic:result.effectiveTic,
+              transportTic,
+              source:'database-framebuffer'});
           }
           inputCatchupThroughTic=Math.max(
             inputCatchupThroughTic,result.effectiveTic);
@@ -776,10 +803,9 @@ async function startDatabaseFrameGame(
     const inputCatchup=inputCatchupThroughTic>presentedTic
       &&frames.size>activePixelInputCatchupFloor;
     playoutMode=inputCatchup?'ACCELERATE':decision.mode;
-    // Solo remains native 35 Hz. The Free-tier two-POV producer is qualified
-    // against the user-authorized 20 FPS floor and must be consumed at that
-    // sustainable cadence instead of being drained at 35 Hz into a visible
-    // three-frame burst followed by starvation.
+    // Solo remains native 35 Hz. The staggered two-POV producer is consumed
+    // at its measured sustainable 30 Hz instead of the obsolete 20 FPS cap
+    // that accumulated permanent visual debt.
     const interval=databasePixelPlayoutIntervalMs(
       soloMode,playoutMode,inputCatchup);
     nextFrameAt=nextFrameAt<=0?now+interval:

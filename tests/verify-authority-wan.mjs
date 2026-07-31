@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {
   ConfirmedWanPolicy,confirmedBatchPlayoutDecision,
   confirmedPlayoutDecision,confirmedPlayoutIntervalMs,
-  databasePixelPlayoutIntervalMs
+  confirmedInputCatchupCursor,databasePixelPlayoutIntervalMs
 }
   from '../client/staging/authority-wan.js';
 
@@ -182,10 +182,15 @@ assert.throws(()=>confirmedPlayoutIntervalMs(1.5),/invalid/);
 assert.equal(databasePixelPlayoutIntervalMs(true,'FREE',false),1000/35);
 assert.equal(databasePixelPlayoutIntervalMs(true,'ACCELERATE',true),20);
 assert.equal(databasePixelPlayoutIntervalMs(true,'DECELERATE',false),31);
-assert.equal(databasePixelPlayoutIntervalMs(false,'FREE',false),49.5);
-assert.equal(databasePixelPlayoutIntervalMs(false,'ACCELERATE',false),24.75);
+assert.equal(databasePixelPlayoutIntervalMs(false,'FREE',false),33);
+assert.equal(databasePixelPlayoutIntervalMs(false,'ACCELERATE',false),16.5);
 assert.equal(databasePixelPlayoutIntervalMs(false,'ACCELERATE',true),25);
-assert.equal(databasePixelPlayoutIntervalMs(false,'DECELERATE',false),49.8);
+assert.equal(databasePixelPlayoutIntervalMs(false,'DECELERATE',false),33.2);
 assert.throws(
   ()=>databasePixelPlayoutIntervalMs(false,'INVALID',false),/invalid/);
+assert.equal(confirmedInputCatchupCursor(100,110,104),104);
+assert.equal(confirmedInputCatchupCursor(100,110,120),109);
+assert.equal(confirmedInputCatchupCursor(100,90,120),100);
+assert.equal(confirmedInputCatchupCursor(-1,1,0),0);
+assert.throws(()=>confirmedInputCatchupCursor(1,2,1.5),/invalid/);
 console.log('PASS confirmed WAN lead/playout/hysteresis/substitution policy');
