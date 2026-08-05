@@ -25,11 +25,14 @@ if (!['DPD1','BATCH','VIEW_BUNDLE','NATIVE','STAGGERED']
     .includes(persistenceMode)) {
   throw new Error(`invalid temporal persistence mode: ${persistenceMode}`);
 }
-if(!['BASELINE','INPUT_AWARE','SOLO_INPUT_AWARE'].includes(schedulerMode)) {
+if(!['BASELINE','INPUT_AWARE','SOLO_INPUT_AWARE','SOLO_RESPONSIVE']
+    .includes(schedulerMode)) {
   throw new Error(`invalid temporal scheduler mode: ${schedulerMode}`);
 }
 const inputAwareMode=schedulerMode==='INPUT_AWARE';
-const soloInputAwareMode=schedulerMode==='SOLO_INPUT_AWARE';
+const soloInputAwareMode=schedulerMode==='SOLO_INPUT_AWARE'
+  ||schedulerMode==='SOLO_RESPONSIVE';
+const soloResponsiveMode=schedulerMode==='SOLO_RESPONSIVE';
 if(inputAwareMode&&!staggeredMode) {
   throw new Error('input-aware scheduling requires staggered persistence');
 }
@@ -315,7 +318,13 @@ export default {
   const soloInputTics=new Set(
     soloInputAwareMode?soloInputEndpoints.slice(1):[]);
   for (let tic = 1; tic <= lastTic; tic++) {
-    assert.equal(api.stepOnly(2, 1, command), tic, `step tic ${tic}`);
+    let stepCommand=command;
+    if(soloResponsiveMode&&tic>=2) {
+      stepCommand=new Uint8Array(command);
+      new DataView(stepCommand.buffer).setInt16(
+        2,tic<5?320:tic<7?-320:320,false);
+    }
+    assert.equal(api.stepOnly(2, 1, stepCommand), tic, `step tic ${tic}`);
     if (tic === 1) cameraAtFirstForwardTic = playerCamera(api);
     const before = globalThis.__doomdbTemporalWrites.length;
     assert.equal(
@@ -330,6 +339,9 @@ export default {
   assert.deepEqual(writesPerTic,
     Array.from({length:lastTic},(_,index)=>{
       const tic=index+1;
+      if(soloResponsiveMode) {
+        return 1;
+      }
       if(soloInputAwareMode)return soloInputEndpoints.includes(tic)?1:0;
       if(tic===1)return 1;
       if((tic-1)%keyframeInterval!==0)return 0;
@@ -350,7 +362,7 @@ export default {
   const exactEndpointDiffs=[];
   const soloEndpoints=soloInputAwareMode?soloInputEndpoints:Array.from(
     {length:3},(_,index)=>1+index*keyframeInterval);
-  for(let pair=0;pair<soloEndpoints.length-1;pair++) {
+  for(let pair=0;!soloResponsiveMode&&pair<soloEndpoints.length-1;pair++) {
     const tic=soloEndpoints[pair];
     const currentTic=soloEndpoints[pair+1];
     const previous=writes[tic-1].payload.bytes;
@@ -364,9 +376,9 @@ export default {
       `current-camera keyframes changed only ${changed} pixels at tic ${tic}`);
   }
 
-  // Every intermediate frame is the exact spatial phase mix between adjacent
+  // Every ordinary intermediate frame is the exact spatial phase mix between adjacent
   // keyframes. This checks every pixel, not a sampled visual checksum.
-  for (let pair=0;pair<soloEndpoints.length-1;pair++) {
+  for (let pair=0;!soloResponsiveMode&&pair<soloEndpoints.length-1;pair++) {
     const priorTic=soloEndpoints[pair];
     const currentTic=soloEndpoints[pair+1];
     const interval=currentTic-priorTic;
@@ -389,6 +401,28 @@ export default {
             `synthetic mismatch tic=${tic} row=${row} column=${column}`);
         }
       }
+    }
+  }
+  if(soloResponsiveMode) {
+    // The input tics are confirmed database-side camera reprojections. Each
+    // must be materially different from the preceding published frame, and
+    // the next scheduled interval keyframe must publish the exact Mocha
+    // correction rather than extending a synthetic chain.
+    let maximumChanged=0;
+    for(let tic=2;tic<=lastTic;tic++) {
+      const current=writes[tic-1].payload.bytes;
+      const previous=writes[tic-2].payload.bytes;
+      let changed=0;
+      for(let offset=16;offset<64_016;offset+=1) {
+        if(current[offset]!==previous[offset])changed+=1;
+      }
+      maximumChanged=Math.max(maximumChanged,changed);
+    }
+    assert.ok(maximumChanged>=1_000,
+      `responsive route changed only ${maximumChanged} pixels`);
+    for(const tic of [4,7]) {
+      assert.equal(writes[tic-1].binds.frameTic,tic,
+        `exact correction is absent at tic ${tic}`);
     }
   }
 
